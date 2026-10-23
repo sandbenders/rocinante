@@ -10,7 +10,7 @@ Read `MANIFESTO.md` before starting any work. Every decision below serves it.
 
 An open-source creative coding framework and language.
 
-- **rocinante (the language)**: a small, Logo-inspired language for sketches. No semicolons, no braces, one predictable shape. File extension `.roci`.
+- **rocinante (the language)**: a small, Logo-inspired language for sketches. No semicolons, no braces around blocks, one predictable shape. File extension `.roci`.
 - **The core**: an engine written in **Odin** on SDL3 and its GPU API (Vulkan, Metal, Direct3D 12). It owns windows, rendering, UI, audio, input, I/O and packaging.
 - **`roci` (the tool)**: one command-line program to run, watch, check and package sketches. Written in Odin.
 - **A public Odin API, with a C ABI,** for power users who want to write sketches or extensions in Odin (or C) directly. Same verbs, same behaviour.
