@@ -1,5 +1,9 @@
 # rocinante
 
+> *Y así, después de muchos nombres que formó, borró y quitó, añadió, deshizo y tornó a hacer en su memoria e imaginación, al fin le vino a llamar Rocinante: nombre, a su parecer, alto, sonoro y significativo de lo que había sido cuando fue rocín, antes de lo que ahora era, que era antes y primero de todos los rocines del mundo.*
+>
+> Miguel de Cervantes, *El ingenioso hidalgo don Quijote de la Mancha*, Part I, Chapter 1 (1605)[^expanse]
+
 ```
 circle 100 100 50
 ```
@@ -70,3 +74,5 @@ Releases use calendar versioning, `YYYY.MINOR.MICRO`: `2026.1.0` is the first re
 ## Credits
 
 rocinante is designed and built by Fabrizio (sandbenders), with help from Claude, Anthropic's AI assistant.
+
+[^expanse]: Four centuries later the name went to a ship. In *The Expanse*, the novel series by James S. A. Corey (the pen name of Daniel Abraham and Ty Franck) that began with *Leviathan Wakes* in 2011, the Rocinante starts out as the *Tachi*, a Martian navy gunship. The survivors of the ice freighter *Canterbury* take it over and rename it Rocinante, and it carries them through all nine novels and the television series (Syfy from 2015, then Amazon Prime Video). It is a small ship that keeps flying when it has no business doing so.
