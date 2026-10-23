@@ -213,7 +213,7 @@ my-sketch/
 - **A single file still works.** A lone `.roci` file with no folder runs (non-negotiable 1). `assets/` is where files go once a sketch has any, never a precondition.
 - **Assets are found by name, not path.** `load "cat.png"`, `font "Inter"`, `sound "rain.wav"` search all of `assets/`, subfolders included. The subfolders are a tidy convention, not an address. If two files share a name, the checker says so and asks for the subfolder: `load "images/cat.png"`.
 - **Bundled files come only from `assets/`.** A literal path outside it is a load-time error that teaches: "`/Users/…/cat.png` is outside your sketch, so it wouldn't travel with it. Copy it into `assets/`, or run `roci add /Users/…/cat.png` and I'll copy it for you." This is what makes sketches portable: a zip or a `git clone` runs anywhere, and iOS and Android (which can't read arbitrary paths) behave like the desktop.
-- **Packaging bundles all of `assets/` and `libs/` (§5.10).** Computed names (`load "frame" + n + ".png"`) can't be traced, so nothing is dropped. `roci package` lists files that no literal in the sketch mentions, as a hint, without removing them.
+- **Packaging bundles all of `assets/` and `libs/` (§5.10).** Computed names (`load ("frame" + n + ".png")`) can't be traced, so nothing is dropped. `roci package` lists files that no literal in the sketch mentions, as a hint, without removing them.
 - **Live assets.** While `roci run` is going, a changed asset (repainted image, re-exported model, edited shader) reloads in the running sketch.
 - **Runtime files are the deliberate exception.** Files chosen while the sketch runs may come from anywhere the platform allows: `ask file`, `ask folder`, dropped files, `files in "~/Pictures"`. They are never bundled, because they belong to whoever is running the sketch. On iOS and Android these go through the system file pickers.
 - **Output.** `save`, `record` and exports write to `output/` by default, so renders never clutter the repository. An explicit path is allowed for saving.
@@ -233,8 +233,15 @@ my-sketch/
 ### 5.1 Design principles
 
 - One statement per line. No terminators.
-- One shape: `verb argument argument ...`. Verbs have a fixed number of required arguments, so the parser always knows where a call ends (as in Logo). Parentheses are allowed anywhere for clarity: `circle (x + 10) y 50`.
-- Optional arguments are introduced by small connecting words, never by position: `window 800 600 at 100 100`, `text "hi" at 20 20 size 32`, `image photo at 0 0 width 200`. The connecting words form a short, fixed list (start with: `at`, `size`, `width`, `height`, `from`, `to`, `by`, `in`, plus the style words in §5.9: `fill`, `stroke`, `thickness`, `alpha`, `font`, `style`). `to` is only ever a connecting word (`for i from 1 to 10`, `add x to particles`); verbs are defined with `learn` (§5.11).
+- One shape: `verb argument argument ...`. Verbs have a fixed number of required arguments, so the parser always knows where a call ends (as in Logo).
+- **One thing per argument** (decided 2026-10-23). Each argument of a verb is a single visible item: a number, text, a name (including built-in values such as `width`, `mouse` and `pi`, and verbs that take no arguments such as `anywhere`), a field (`p.pos`), a `{ }` or `[ ]` literal, or a group in round brackets. A call that takes arguments, or a calculation, used as an argument goes in round brackets: `circle (random width) (random height) 5`, `slider "size" 10 (width / 2)`. The rule turns the readable habit into the grammar, so nested calls never depend on the reader counting arities.
+  - **Full expressions are free wherever there is no argument list:** after `=`, after `give`, in `if` and `while` conditions, as the count of `repeat`, and between the commas of vector and record literals (§5.2). So `{ random width, 0 }` needs no brackets, and `x = random width + 10` means `(random width) + 10`: calls bind tighter than arithmetic, as in NetLogo.
+  - **Connecting words belong to the call whose brackets they sit in**, so `add (random from 1 to 3) to scores` can't confuse its two `to`s.
+  - **`roci fmt` adds missing brackets** when the reading is unique (every verb involved has one shape): `circle random width random height 5` becomes `circle (random width) (random height) 5`. It writes subtraction with spaces (`x - 10`) and negative numbers without (`-10`), so the two never look alike.
+  - **Without the formatter, a missing bracket is a load-time error that shows the bracketed line** (§5.7). When brackets nest three deep, the checker adds a hint (not an error) suggesting a name on the line above: `x = random width`.
+  - No pipes, no dot calls (`width.random`) and no commas between arguments. `.` stays for fields and library names (§5.10); a pipe-like form for list chains is a separate question (§10).
+  - Rationale and sources: Logo, NetLogo, Rebol, Smalltalk, Odin and the paren-free languages surveyed all show that fixed arity solves the parser's problem but not the reader's. No study measures nested-call readability directly, so the Phase 2 newcomer test checks this rule (§8).
+- Optional arguments are introduced by small connecting words, never by position: `window 800 600 at 100 100`, `text "hi" at 20 20 size 32`, `image photo at 0 0 width 200`. The connecting words form a short, fixed list (start with: `at`, `size`, `width`, `height`, `from`, `to`, `by`, `in`, `start`, `lines`, plus the style words in §5.9: `fill`, `stroke`, `thickness`, `alpha`, `font`, `style`). `to` is only ever a connecting word (`for i from 1 to 10`, `add x to particles`); verbs are defined with `learn` (§5.11).
 - Blocks use `[ ]`, as in Logo. Newlines inside blocks are free. (Decided 2026-10-22: `[ ]`, not `end`.)
 - **Indentation is free and never changes meaning** (decided 2026-10-23). `[ ]` alone defines blocks; tabs, spaces, pasted code and phone keyboards can never break a sketch. Consistency comes from tooling instead:
   - **`roci fmt`** rewrites a sketch in the house style: two spaces per block level, one space inside brackets, one statement per line. Editor plugins run it on save, `roci new` starts formatted, and all docs and examples are formatted with it. It has no options, so there is nothing to argue about.
@@ -257,8 +264,9 @@ rocinante is **procedural and data-oriented**, in the spirit of Logo and of Odin
 
 Borrowed from Odin (see the Odin FAQ in References):
 
-- **Array programming.** Vectors and colours support arithmetic directly: `pos = pos + vel`, `c = c * 0.5`. Swizzles: `p.xy`, `p.zyx`. These map one to one onto Odin's own array programming in generated code.
-- **Explicit verb groups.** One verb name may accept several argument shapes (`circle 100 100 50` and `circle p 50`). The shapes are declared together in one place, in the core and in user code; the checker picks the shape by arity and argument kinds and reports ambiguity as a load-time error. Shapes with different numbers of arguments interact with comma-free parsing (where does `circle p 50 …` end?); the exact rule is open (§10).
+- **Vector literals.** A vector is written with braces and commas, like Odin's compound literals: `{ x, y }` or `{ x, y, z }`. Braces with `name:` fields are a record; braces without names are a vector. There is no `vec` verb. Each item between commas may be any expression, so `{ random width, 0 }` needs no brackets (§5.1).
+- **Array programming.** Vectors and colours support arithmetic directly: `pos = pos + vel`, `c = c * 0.5`, `v * 2 + { 1, 1 }`. Swizzles: `p.xy`, `p.zyx`. These map one to one onto Odin's own array programming in generated code, and `{ a, b }` maps onto Odin's context-typed `{a, b}`.
+- **Explicit verb groups.** One verb name may accept several argument shapes (`circle 100 100 50` and `circle p 50`). The shapes are declared together in one place, in the core and in user code. Because every argument is one item (§5.1), the parser finds where a call ends without knowing types; the checker then picks the shape by argument count first, then by argument kinds. Two shapes in one group may not share both count and kinds: declaring them is a load-time error, in the core or in `learn` (decided 2026-10-23).
 - **Useful zero values.** A record field that was never set reads as 0 (or empty text, empty list). Reading it is never an error.
 - **No exceptions.** A failing operation (missing file, bad URL) shows the error overlay, yields an empty value and lets the sketch continue. Users can test for emptiness (`if photo is empty [ … ]`); there is no try/catch.
 - **Implicit context.** Style and transform state (fill, stroke, thickness, transform, font, blend) is an implicit context, reset at the start of every `draw` frame and scoped by `with [ ]` (style, §5.9) and `push [ ]` (style and transforms).
@@ -312,16 +320,19 @@ on touch [ ... ]
 on w receive msg [ ... ]
 every 2 seconds [ ... ]
 
-v = vec 3 4                 # vectors, with arithmetic and swizzles
-u = v * 2 + (vec 1 1)
+v = { 3, 4 }                # vectors: braces and commas, no names
+u = v * 2 + { 1, 1 }        # arithmetic and swizzles
 circle v.xy 10
+circle anywhere 5           # a random point in the window
+r = random from 1 to 3      # a random number in a range
+c = pick COLOURS            # a random item from a list
 ```
 
 A complete particle sketch in this style (lists of records, verbs, no objects):
 
 ```
 particles = []
-repeat 200 [ add { pos: (vec (random width) 0), vel: (vec 0 (random 3)) } to particles ]
+repeat 200 [ add { pos: { random width, 0 }, vel: { 0, random 3 } } to particles ]
 
 learn step p [ p.pos = p.pos + p.vel ]
 
@@ -355,6 +366,20 @@ Format, modelled on Elm:
 Did you mean:  circle 100 100 50
 ```
 
+```
+── This value needs brackets ─────────────────────── sketch.roci:4:8
+
+4 │ circle random width random height 5
+  │        ^^^^^^^^^^^^
+
+`random width` works out a number, so when it sits inside `circle`,
+wrap it in round brackets so it reads as one thing:
+
+    circle (random width) (random height) 5
+
+Or let `roci fmt` add them for you.
+```
+
 Every error class needs an entry in `tests/errors/` with the source that triggers it and the expected message. Error messages are reviewed like features. Because all errors come from the shared front end (§4.7), `roci run` and `roci package` report exactly the same errors.
 
 ### 5.8 User interface verbs (draft)
@@ -374,7 +399,7 @@ ui [
   pos    = xypad "position"              # 2D pad, returns a vector
   count  = number "count" 1 1000         # numeric field with steppers
   if button "clear" [ particles = [] ]
-  label "fps: " + fps
+  label ("fps: " + fps)
   progress loaded
 ]
 
@@ -512,7 +537,7 @@ learn double n [
 
 learn star size with points 5 spin 0 [
   turn spin
-  repeat points [ forward size  right 720 / points ]
+  repeat points [ forward size  right (720 / points) ]
 ]
 
 x = double 21
@@ -539,7 +564,7 @@ star 100 points 7 spin 15
 
 ### 5.12 Implementation notes
 
-- Hand-written lexer and recursive-descent parser in Odin (for error quality), producing an AST with full source spans.
+- Hand-written lexer and recursive-descent parser in Odin (for error quality), producing an AST with full source spans. A call collects its arguments greedily until it meets something that can't be an argument: a verb that takes arguments, a verb that gives no value, a connecting word, `]` or the end of the line (§5.1). No types are needed to parse. Edge case: a giving verb with no parameters (`anywhere`) is a name, so the checker warns when one follows a complete call on the same line.
 - Checker and type inference run before anything executes, producing the typed IR (§4.7). Spans are preserved into the IR so runtime errors, and the source map for generated Odin, point at `.roci` lines.
 - The interpreter executes the typed IR directly (no separate AST walker). Keep it simple and correct; it is the reference implementation that the code generator is tested against.
 - Use Odin's allocators deliberately: an arena per frame for temporary values, a long-lived allocator for sketch state, so hot reload can discard and rebuild cleanly.
@@ -561,8 +586,8 @@ Goal: everything the core and standard add-ons of Processing, openFrameworks (0.
 | Transform | `translate`, `rotate`, `rotateX/Y/Z`, `scale`, `shearX/Y`, `applyMatrix`, `pushMatrix`/`popMatrix`, `resetMatrix` | `ofTranslate`, `ofRotate`, `ofScale`, `ofNode` | gl::translate etc. | `move`, `turn`, `grow`, `shear`, block-scoped with `push [ ]` | 1 |
 | Shapes and curves | `beginShape`/`vertex`/`endShape`, contours, `bezier`, `bezierVertex`, `curve`, `curveVertex`, `quadraticVertex`, detail/tightness, `PShape`, `createShape` | `ofPath`, `ofPolyline` | Path2d, Shape2d | `shape [ ]`, `vertex`, `bezier`, `curve`, `hole [ ]`, `path`, `polyline` with resample/smooth/simplify | 1 to 3 |
 | Turtle | (none) | (none) | (none) | `forward`, `back`, `left`, `right`, `pen up/down`, `home`, 3D turtle | 2 |
-| Math | `map`, `lerp`, `constrain`, `dist`, `mag`, `norm`, trig, `degrees`/`radians`, `PVector`, constants `PI`/`TAU` | ofMath, glm | Vec, Matrix | `map`, `mix`, `clamp`, `dist`, `vec`, trig, `pi`, `tau` | 1 |
-| Randomness, noise | `random`, `randomGaussian`, `randomSeed`, `noise`, `noiseSeed`, `noiseDetail` | `ofRandom`, `ofNoise` | Rand, Perlin | `random`, `gaussian`, `seed`, `noise` (Perlin, simplex, 1 to 4D), `fbm` | 1 |
+| Math | `map`, `lerp`, `constrain`, `dist`, `mag`, `norm`, trig, `degrees`/`radians`, `PVector`, constants `PI`/`TAU` | ofMath, glm | Vec, Matrix | `map`, `mix`, `clamp`, `dist`, `{ x, y }` vector literals, trig, `pi`, `tau` | 1 |
+| Randomness, noise | `random`, `randomGaussian`, `randomSeed`, `noise`, `noiseSeed`, `noiseDetail` | `ofRandom`, `ofNoise` | Rand, Perlin | `random`, `random from … to …`, `anywhere`, `pick`, `gaussian`, `seed`, `noise` (Perlin, simplex, 1 to 4D), `fbm` | 1 |
 | Time, animation | `millis`, `second`…`year`, `frameCount`, `delay` | `ofGetElapsedTimef`, `ofGetFrameNum` | Timeline, Tween, easing | `time`, `frame`, `clock`, `tween`, `ease`, `every` | 2 |
 | Input | mouse vars and callbacks, `pmouseX`, keyboard vars and callbacks, `mouseWheel` | mouse, key, touch, drag-and-drop events | Mouse/Key/Touch events | `mouse`, `pmouse`, `key`, `touches`, `wheel`, `on …`, dropped files | 1 to 2 |
 | Events, messages | (none in core) | `ofEvent`, `ofSendMessage` | signals | `send`, `on … receive`, custom events | 2 |
@@ -648,11 +673,11 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 - `circle 100 100 50` as a whole program.
 - `roci run` with file watching, hot reload with state preservation, error overlay.
 - Sketch folders (§4.9): `roci new`, `roci init`, `roci add`, git and optional Git LFS setup, asset lookup by name, the outside-`assets/` error, live asset reload.
-- Error message catalogue with tests, including bracket mismatches located by indentation (§5.1) and every `learn`/`give`/`stop` rule (§5.11).
+- Error message catalogue with tests, including bracket mismatches located by indentation (§5.1), missing argument brackets (§5.1, §5.7) and every `learn`/`give`/`stop` rule (§5.11).
 - `roci fmt`: formatting is idempotent (formatting twice changes nothing) and never changes behaviour (formatted and unformatted sketches produce identical frames).
 - Turtle, events, timers, tweens, taught verbs (`learn`, `give`, `stop`, `with` defaults, sharing rules, §5.11), window messaging.
 - Multi-file sketches and `.roci` libraries (§5.10): `use`, `hidden`, `roci get`, `roci update`, `libs/` vendoring, clash rules and their error messages. The public index starts small in Phase 9.
-- **Exit**: every Phase 1 example rewritten in `.roci`; every example infers fully (no boxed fallbacks) or the fallback is justified here; a newcomer test (someone who has never seen rocinante makes a moving sketch in 15 minutes, observed and written up here).
+- **Exit**: every Phase 1 example rewritten in `.roci`; every example infers fully (no boxed fallbacks) or the fallback is justified here; a newcomer test (someone who has never seen rocinante makes a moving sketch in 15 minutes, observed and written up here), run with two groups that see the same sketches written with one thing per argument and in bare Logo nesting, with the comparison recorded here (§5.1).
 
 ### Phase 3: Text, UI, images, canvases, shaders
 - Text with SDL3_ttf GPU engine (or the alternative chosen in Phase 0).
@@ -705,7 +730,7 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 ## 9. Testing
 
 - Language: parser, checker and inference unit tests; one test per error message in `tests/errors/`.
-- Formatter: every example and test sketch is run through `roci fmt` twice; the second pass must change nothing, and the formatted sketch must parse to the same typed IR as the original.
+- Formatter: every example and test sketch is run through `roci fmt` twice; the second pass must change nothing, and the formatted sketch must parse to the same typed IR as the original. Sketches with bare nested calls are formatted into the bracketed form and checked for identical IR.
 - Rendering: golden-image tests per verb and per backend where CI allows.
 - **Back-end equivalence**: every `.roci` example and test runs interpreted and compiled; frames are compared pixel for pixel (exact match, with a fixed random seed and fixed time step) and printed output byte for byte. Any mismatch fails the pipeline. From Phase 7 on, this is part of the full pipeline on `main`. Compiled runs use the pinned Odin release.
 - UI: scripted input tests (simulated mouse, touch, keyboard and text input events) for every widget, checking returned values and rendered frames; keyboard-only navigation tests; AccessKit tree snapshots per widget and per action.
@@ -747,6 +772,7 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 - **2026-10-23, Commits never mention AI**; Claude Code attribution off and a `commit-msg` hook as a safety net. Full text in §3 and §11.
 - **2026-10-23, CI on Linux only**: GitLab on ORION (fast check on merge requests, full pipeline on `main`, release on tags) and GitHub (full pipeline on `main`, release on tags), pushed to GitHub by hand about twice a week; other platforms checked locally before each release. Full text in §11; non-negotiable 8.
 - **2026-10-23, Versions: calendar-based `YYYY.MINOR.MICRO`** (replaces semantic versioning); tags `vYYYY.MINOR.MICRO`; the first stable release replaces the old "1.0" milestone. Full text in §11.
+- **2026-10-23, One thing per argument**: each verb argument is a single item (number, text, name, field, literal or bracketed group); full expressions after `=`, `give`, in conditions and between literal commas; `roci fmt` adds missing brackets; no pipes, dot calls or argument commas. Vectors are `{ a, b }` literals (the `vec` verb is gone); `random from … to …`, `anywhere` and `pick` cover common random cases. Verb-group shapes are chosen by count, then kinds (closes the former open question 12). Full text in §5.1 and §5.2.
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
 
 ### Open
@@ -757,15 +783,14 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 2. Language name: is the language also "rocinante", or does it get its own name?
 3. Web target: SDL3 GPU has no browser backend. Decide whether sharing sketches on the web matters for the first stable release.
 4. Hot-reload state rules (§5.5).
-5. Names for the list verbs in §5.2 (keep matching, transform each, fold, sort by). They must read naturally in a sentence and must not clash with Processing names users already know (`map`, `filter`).
+5. Names for the list verbs in §5.2 (keep matching, transform each, fold, sort by). They must read naturally in a sentence and must not clash with Processing names users already know (`map`, `filter`). A pipe-like form for chaining list verbs, if any, is decided here too, never for ordinary calls (§5.1).
 6. Video playback backend: platform media APIs versus FFmpeg (FFmpeg's licensing conflicts with the §3 policy unless it is an optional, user-installed component).
 7. Core delivery for `roci package`: ship the core as Odin source compiled together with each sketch (simplest, best optimisation, slower first build) or as prebuilt per-target libraries (faster builds, more release work). C/C++ dependencies (Dear ImGui, accesskit-c, SDL3) ship prebuilt per target either way.
 8. Record-shape inference rules (§5.3): how fields added after creation, records from loaded JSON, and messages between windows get their shapes.
 9. UI details: the hide/show key, and whether `ui` blocks may also appear inside `draw` for widgets attached to things on the canvas.
 10. Library index (§5.10): where it is hosted, who curates it, and the rules for getting a library listed.
 11. Odin/C extension libraries (§5.10, Phase 9): how they are distributed (source compiled at packaging time, or prebuilt per target) and how `roci run` loads them without a toolchain.
-12. Verb groups with different argument counts (§5.2): the parsing rule that decides where a call like `circle p 50 …` ends without commas, using inferred kinds or requiring parentheses, and the error when it can't be decided. Settle before the parser is written in Phase 2.
-13. accesskit-c on Android and iOS: whether prebuilt releases exist, and if not, how the core build produces them (§4.8).
+12. accesskit-c on Android and iOS: whether prebuilt releases exist, and if not, how the core build produces them (§4.8).
 
 ---
 
@@ -843,6 +868,11 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 - cargo new / cargo init (model for `roci new` / `roci init`): https://doc.rust-lang.org/cargo/commands/cargo-new.html
 - Git LFS (`git lfs install`, `git lfs track`, `.gitattributes`): https://git-lfs.com/
 - gofmt's style (model for `roci fmt`): https://go.dev/blog/gofmt
+- Brian Harvey, Computer Science Logo Style vol. 1 ch. 2 (fixed arity, optional parentheses for readability): https://people.eecs.berkeley.edu/~bh/v1ch2/proced.html
+- NetLogo Programming Guide (reporters bind tighter than arithmetic): https://docs.netlogo.org/programming.html
+- Rebol, math precedence (operators before functions, "a source of programming errors"): https://www.rebol.com/r3/docs/concepts/math-precedence.html
+- Inform 7, "a random number from 2 to 5" (range phrase closed by connecting words): https://ganelson.github.io/inform-website/book/WI_8_18.html
+- Stefik & Siebert (2013), An Empirical Investigation into Programming Language Syntax: https://www.vidarholen.net/~vidar/An_Empirical_Investigation_into_Programming_Language_Syntax.pdf
 - Elm, Compiler Errors for Humans: https://elm-lang.org/news/compiler-errors-for-humans
 - Apple App Review Guidelines (2.5.2): https://developer.apple.com/app-store/review/guidelines/
 - nannou (prior art, built on Bevy): https://github.com/nannou-org/nannou
