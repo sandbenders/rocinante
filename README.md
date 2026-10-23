@@ -10,7 +10,7 @@ circle 100 100 50
 
 That line is a complete rocinante sketch. Run it and a window opens with a circle in it.
 
-rocinante is an open-source creative coding framework with its own small and easy to learn, language. It comes out of years of working with Processing, openFrameworks and Cinder, and it borrows Logo's turtle. The goal is to make coding FUN AGAIN, especially for creative coders. You write a line and get a picture, mistakes come with a plain explanation, and when you save the file the running sketch updates.
+rocinante is an open-source creative coding framework with its own small and easy to learn language. It comes out of years of working with [Processing](https://processing.org/), [openFrameworks](https://openframeworks.cc/) and [Cinder](https://libcinder.org/), and it borrows the turtle from [Logo](https://el.media.mit.edu/logo-foundation/). The goal is to make coding FUN AGAIN, especially for creative coders. You write a line and get a picture, mistakes come with a plain explanation, and when you save the file the running sketch updates.
 
 Read [MANIFESTO.md](MANIFESTO.md) for why it exists.
 
@@ -22,7 +22,7 @@ Early design. Nothing runs yet. The project is in Phase 0: setting up the reposi
 
 ```
 particles = []
-repeat 200 [ add { pos: (vec (random width) 0), vel: (vec 0 (random 3)) } to particles ]
+repeat 200 [ add { pos: { random width, 0 }, vel: { 0, random 3 } } to particles ]
 
 learn step p [ p.pos = p.pos + p.vel ]
 
@@ -32,7 +32,7 @@ draw [
 ]
 ```
 
-There are no semicolons or braces and no setup function. Blocks use `[ ]`, you teach new verbs with `learn`, and sliders, buttons and text boxes are ordinary words:
+There are no semicolons and no setup function. Blocks use `[ ]`, `{ a, b }` is a vector, you teach new verbs with `learn`, and sliders, buttons and text boxes are ordinary words:
 
 ```
 ui [ size = slider "size" 10 200 ]
@@ -41,7 +41,7 @@ draw [ circle 200 200 size ]
 
 ## How it works
 
-The core is written in [Odin](https://odin-lang.org/) and draws through SDL3's GPU API, which uses Vulkan, Metal or Direct3D 12 depending on the platform. There is no OpenGL anywhere.
+The core is written in [Odin](https://odin-lang.org/) and draws through the GPU API of [SDL3](https://libsdl.org/), which uses [Vulkan](https://www.vulkan.org/), [Metal](https://developer.apple.com/metal/) or [Direct3D 12](https://learn.microsoft.com/en-us/windows/win32/direct3d12/directx-12-programming-guide) depending on the platform. There is no OpenGL anywhere.
 
 You use one command, `roci`. `roci run` runs a sketch and reloads it whenever you save. It interprets the sketch, so it works without installing anything else. `roci package <target>` compiles the sketch to native code through Odin and turns it into an app. Packaging does need Odin plus your platform's usual build tools (Xcode, MSVC or clang), and `roci doctor` lists what's missing and how to install it.
 
