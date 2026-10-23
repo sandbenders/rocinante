@@ -6,7 +6,7 @@ circle 100 100 50
 
 That line is a complete rocinante sketch. Run it and a window opens with a circle in it.
 
-rocinante is an open-source creative coding framework with its own small language, in the tradition of Processing, openFrameworks and Cinder, and with Logo's turtle built in. It aims to make coding feel like play again: one line makes a picture, errors explain themselves, and saving the file updates the sketch while it runs.
+rocinante is an open-source creative coding framework with its own small language. It comes out of years of working with Processing, openFrameworks and Cinder, and it borrows Logo's turtle. The goal is to make coding fun again. You write a line and get a picture, mistakes come with a plain explanation, and when you save the file the running sketch updates.
 
 Read [MANIFESTO.md](MANIFESTO.md) for why it exists.
 
@@ -28,7 +28,7 @@ draw [
 ]
 ```
 
-No semicolons, no braces, no setup function. Blocks use `[ ]`, new verbs are taught with `learn`, and sliders, buttons and text boxes are words like any other:
+There are no semicolons or braces and no setup function. Blocks use `[ ]`, you teach new verbs with `learn`, and sliders, buttons and text boxes are ordinary words:
 
 ```
 ui [ size = slider "size" 10 200 ]
@@ -37,17 +37,17 @@ draw [ circle 200 200 size ]
 
 ## How it works
 
-- **The core** is written in [Odin](https://odin-lang.org/) on SDL3 and its GPU API (Vulkan, Metal, Direct3D 12). No OpenGL.
-- **`roci`** is the one command you use: `roci run` to work on a sketch live, `roci package <target>` to turn it into an app.
-- **While you work**, sketches are interpreted, so `roci run` needs nothing else installed.
-- **When you ship**, sketches are compiled to native code through Odin. Packaging needs Odin and your platform's usual tools (Xcode, MSVC or clang), and `roci doctor` tells you exactly what's missing.
-- **Platforms:** FreeBSD, Linux, macOS, Windows, iOS and Android, from the same sketch file.
+The core is written in [Odin](https://odin-lang.org/) and draws through SDL3's GPU API, which uses Vulkan, Metal or Direct3D 12 depending on the platform. There is no OpenGL anywhere.
+
+You use one command, `roci`. `roci run` runs a sketch and reloads it whenever you save. It interprets the sketch, so it works without installing anything else. `roci package <target>` compiles the sketch to native code through Odin and turns it into an app. Packaging does need Odin plus your platform's usual build tools (Xcode, MSVC or clang), and `roci doctor` lists what's missing and how to install it.
+
+The same sketch file runs on FreeBSD, Linux, macOS, Windows, iOS and Android.
 
 ## Contributing
 
 Issues and pull requests are welcome here on GitHub.
 
-Day-to-day development happens in a self-hosted GitLab, and this repository is a mirror updated about twice a week. When a pull request is accepted, it is merged there and arrives here with the next update, so it may show as closed rather than merged. Your commits and your authorship are kept.
+Day-to-day development happens in a self-hosted GitLab, and this repository is a mirror updated about twice a week. When a pull request is accepted, it is merged there and arrives here with the next update, so it may show as closed rather than merged. Your commits keep your name as author.
 
 The history is linear: branches are rebased onto `main` and merged fast-forward. Keep commits small, one idea each, with a short imperative message prefixed by the area it touches, for example `gfx: batch circles with instancing`. The name is always written in lowercase, rocinante, including at the start of a sentence.
 
