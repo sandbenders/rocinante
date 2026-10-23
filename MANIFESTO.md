@@ -16,7 +16,7 @@ I have been researching AI for more than 2 decades, and I was lucky enough to cu
 
 And I also believe that computer coding should be **A FUN ACTIVITY** first and foremost.
 
-# The Manifesto
+## The Manifesto
 
 ```
 circle 100 100 50
