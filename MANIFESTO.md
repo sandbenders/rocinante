@@ -1,3 +1,7 @@
+# The rocinante manifesto
+
+## Before the manifesto
+
 I always thought that Manifestos are somehow dated, things that made sense in the modern era, and suited art movements like [Dadaism](https://391.org/manifestos/1918-dada-manifesto-tristan-tzara/) very well (DADA DOES NOT MEAN ANYTHING). Do we still need Manifestos, something that breaks with the past, in an era where computers, digital technologies, and AI act as a semiotic funnel, blurring the line between what is what? And here I am, writing a Manifesto!
 
 I am multiple things: A mathematician, a PhD in semiotics, an [artist](https://collections.vam.ac.uk/search/?id_person=AUTH346833&page=1&page_size=15), a graphic designer, a computer scientist, an academic researcher, a book writer, and the CTO of a [Creative AI company](https://big-c.ai). More than that, my life changed because of an event when I was 9 years old and lived in Porto Alegre, in the south of Brazil. That day, my father came home with a mysterious-looking box whose contents would change my perception of the world and how I interact with it for the rest of my life.
@@ -12,7 +16,7 @@ I have been researching AI for more than 2 decades, and I was lucky enough to cu
 
 And I also believe that computer coding should be **A FUN ACTIVITY** first and foremost.
 
-# The rocinante Manifesto
+# The Manifesto
 
 ```
 circle 100 100 50
@@ -32,15 +36,15 @@ Coding has become bureaucracy. Most of what we type is ceremony that serves the 
 
 **One line should make a picture.** [Seymour Papert](https://en.wikipedia.org/wiki/Seymour_Papert), the co-inventor of Logo, called it low floor, high ceiling, and Logo showed that a child could step onto that floor. We want the same floor, with a ceiling high enough for an installation that runs for a year.
 
-**The machine does the bookkeeping.** [Shader compilation](https://www.howtogeek.com/846514/what-is-shader-compilation-and-why-does-it-make-pc-games-stutter/), GPU backends, memory, [threads](<https://en.wikipedia.org/wiki/Thread_(computing)>, packaging, code signing. That's our problem, not the artist's. Nobody should have to learn what a [swapchain](https://en.wikipedia.org/wiki/Swap_chain) is to draw a circle.
+**The machine does the bookkeeping.** [Shader compilation](https://www.howtogeek.com/846514/what-is-shader-compilation-and-why-does-it-make-pc-games-stutter/), GPU backends, memory, [threads](<https://en.wikipedia.org/wiki/Thread_(computing)>), packaging, code signing. That's our problem, not the artist's. Nobody should have to learn what a [swapchain](https://en.wikipedia.org/wiki/Swap_chain) is to draw a circle.
 
-**Fast underneath, gentle on top.** The core is written in [Odin](https://odin-lang.org/), a wonderful computer language that inspired many rocinante's design choices, and talks directly to [Vulkan](https://www.vulkan.org/), [Metal](https://developer.apple.com/metal/) and [Direct3D 12](https://learn.microsoft.com/en-us/windows/win32/direct3d) through [SDL3](https://libsdl.org/). Your sketch is a few friendly words; what runs is native code on a modern GPU. Being friendly should never cost you speed you can feel.
+**Fast underneath, gentle on top.** The core is written in [Odin](https://odin-lang.org/), a wonderful computer language that inspired many of rocinante's design choices, and talks directly to [Vulkan](https://www.vulkan.org/), [Metal](https://developer.apple.com/metal/) and [Direct3D 12](https://learn.microsoft.com/en-us/windows/win32/direct3d) through [SDL3](https://libsdl.org/). Your sketch is a few friendly words; what runs is native code on a modern GPU. Being friendly should never cost you speed you can feel.
 
 **The canvas never crashes.** When you make a mistake, the last good frame keeps running and the error appears on top of it, in plain words, pointing at the exact spot, with an example of what probably works. An error should teach you something.
 
 **Change it and see it.** Save the file and the sketch updates while it runs, keeping its state. The particles keep flying while you change their colour.
 
-**Small and predictable beats clever.** rocinante reads close to English, but it isn't English. It has few words and one shape (a verb, then what it acts on), so once you've guessed the pattern you can guess the rest. No semicolons, no braces, no punctuation that exists only for the parser.
+**Small and predictable beats clever.** rocinante reads close to English, but it isn't English. It has few words and one shape (a verb, then what it acts on), so once you've guessed the pattern you can guess the rest. No semicolons, no braces around blocks, no punctuation that exists only for the parser.
 
 **Everywhere, from one sketch.** FreeBSD, Linux, macOS, Windows, iOS and Android. The same file runs on all of them, and `roci package ios` turns it into something you can ship. Where a platform owner imposes rules we can't remove ([Apple's signing](https://support.apple.com/en-euro/guide/security/sec7c917bf14/web), for one), we make them as painless as we can and tell you plainly what's left.
 
