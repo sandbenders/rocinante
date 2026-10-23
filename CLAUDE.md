@@ -101,7 +101,8 @@ Odin has no package manager and no workspace file: a package is a directory, and
 rocinante/
   CLAUDE.md
   MANIFESTO.md
-  LICENSE
+  README.md            what rocinante is, project status, how to contribute (§11)
+  LICENSE              0BSD text (§10)
   roci/                public API, prelude, stable verb ABI (package roci)
     platform/          SDL3 wrapper: app loop, windows, input, events
     gfx/               renderer, batching, tessellation, text, images, shaders
@@ -617,7 +618,7 @@ Packaging notes:
 Each phase ends with a demo sketch, passing CI on all desktop targets and an update to this file.
 
 ### Phase 0: Foundations
-- Create the repository layout (§4.2), the Odin build script with its `ci` command, a `LICENSE` file with the 0BSD text and `SPDX-License-Identifier: 0BSD` headers.
+- Create the repository layout (§4.2), the Odin build script with its `ci` command, a `README.md` (kept current: status, contributing, and build instructions once there is something to build), a `LICENSE` file with the 0BSD text and `SPDX-License-Identifier: 0BSD` headers.
 - Set up the Git workflow and both pipelines (§11): `tools/hooks/` (pre-push and commit-msg), the `ODIN_VERSION` file, `.gitlab-ci.yml` on ORION's runner, `.github/workflows/ci.yml`, the `github` remote, protection of `main` in GitLab, and the release checklist.
 - Add a CI licence check: a script that reads every library in `vendor/` and every `vendor:` package we use, and fails on GPL/LGPL code that would ship (§3).
 - Pick and record the pinned Odin release. Confirm Odin's supported targets for every platform we need (x86_64 and arm64 desktop on all four OSes, Android and iOS subtargets) and record gaps.
