@@ -161,6 +161,7 @@ Packaging notes:
 - **iOS**: App Store distribution requires a Mac with full Xcode and an Apple Developer Program account. `roci package ios` drives Odin and Xcode's command-line tools on a Mac; from Linux or FreeBSD it must hand the build to a Mac (local network or CI). `roci doctor` explains this in plain words.
 - **Android**: `roci` fetches and manages the SDK and NDK on first use and keeps the signing keystore out of the user's way.
 - **FreeBSD**: Odin is available as the `lang/odin` port. Produce a package of the sketch; later, a port of `roci` itself (`poudriere bulk -t`).
+- **Signing and trust** (decided 2026-10-24). macOS packages are signed with a Developer ID and notarised, and Windows packages are signed where the user has a certificate; `roci package` says plainly what SmartScreen or Gatekeeper will still show when they have none. `roci` shows the Android SDK licence and asks for acceptance before fetching it.
 - Every target bundles the compiled sketch, all of `assets/` and `libs/`, `ui.toml` and compiled shaders (§4.9). No network access needed at runtime.
 
 ---
@@ -343,7 +344,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **2026-10-24, Top-level `load` waits; loads inside `draw` and events are asynchronous.** Full text in §4.4.
 - **2026-10-24, UI identity is label, panel and tab path, and loop index; `ui.toml` is keyed by it and written on exit and after pauses; rocinante writes its own `toml` package** (neither `core:` nor `vendor:` has one). Full text in §4.8 and §4.9.
 - **2026-10-24, Files other than `sketch.roci` hold definitions only**, evaluated in dependency order before it. Full text in §5.5 and §5.10.
-- **2026-10-24, Trust and signing**: `roci get` and `roci run` ask once before loading a native extension from a git URL; `roci package` covers macOS notarisation (Developer ID) and Windows SmartScreen and says what is left for the user; `roci` shows the Android SDK licence for acceptance; built-in ML models record their source URL and a checksum, and `roci run` needs the network once to fetch them. To be written into §5.10, §7 and §4.10 by Phase 8.
+- **2026-10-24, Trust and signing**: `roci get` and `roci run` ask once before loading a native extension from a git URL; `roci package` covers macOS notarisation (Developer ID) and Windows SmartScreen and says what is left for the user; `roci` shows the Android SDK licence for acceptance; built-in ML models record their source URL and a checksum, and `roci run` needs the network once to fetch them. Written into §4.10, §5.10 and §7.
 - **2026-10-24, Physical key positions**: `keys w a s d` binds by SDL scancode, so AZERTY works (§5.12). Dear ImGui does not shape complex scripts (Arabic, Devanagari): Phase 3 states which scripts the UI supports and tests them with an IME.
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
 
@@ -355,13 +356,10 @@ Ideas that are wanted but not planned for the first stable release live in the R
 
 Decide these with Fabrizio; move each to "Decided" with the date.
 
-Decide these with Fabrizio; move each to "Decided" with the date.
-
 1. Machine learning on FreeBSD: LiteRT's C runtime built there, or ONNX Runtime as the FreeBSD fallback (§4.10). Settled by the LiteRT spike at the start of Phase 6.
 2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
 3. Choices inherited from the sections they point to: vector tessellation (§4.3, Phase 1); text engine (§4.3, Phase 0); AIFF, Opus and AAC decoding (§4.6, Phase 5); MIDI on FreeBSD, iOS and Android (§4.6, Phase 5); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the Git LFS type list (§4.9, Phase 2); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision (§5.13, Phase 4); AccessKit on FreeBSD (§4.8, Phase 3).
 4. Which platforms Odin's official release archives cover, so `roci` knows where it can fetch the pinned Odin (§4.7). Settled in Phase 0.
-5. Still to settle from the review (close by Phase 8): the exact wording of the trust prompts and signing steps in item "Trust and signing" of the Decided list below.
 
 ---
 
