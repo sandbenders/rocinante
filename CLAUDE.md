@@ -49,7 +49,7 @@ These override convenience. If a task seems to require breaking one, stop and ra
 ## 3. Working rules for Claude Code
 
 - **Check official documentation before using any API, library, flag or tool.** Do not guess function signatures, command flags or behaviour. If docs are unclear, say so and ask rather than presenting a guess as fact. Cite the doc URL in commit messages or PR descriptions when a decision depends on it.
-- **Odin.** The core and `roci` are written in Odin. Pin one Odin release per rocinante release (recorded here once Phase 0 picks it) and upgrade deliberately. Follow Odin's own style and idioms; no Rust or C++ habits.
+- **Odin.** The core and `roci` are written in Odin. Pin one Odin release per rocinante release, recorded in the `ODIN_VERSION` file (the one place the version lives), and upgrade deliberately. Follow Odin's own style and idioms; no Rust or C++ habits.
 - **Libraries: Odin `vendor:` first, latest upstream when vendor lags.** Use a library from Odin's `vendor:` collection when its version is current. When it lags behind the latest stable upstream release (SDL3 and its satellites especially), write or regenerate bindings for the latest version in the repository's own `vendor/` folder, and offer the update upstream to Odin. C and C++ libraries are used through Odin's foreign system; C++ only behind a C API.
 - **Ask before adding a dependency.** State what it does, its licence, its platform support (including FreeBSD, iOS and Android) and why an existing dependency won't do.
 - **Licence policy.** rocinante is 0BSD (§10). Dependencies must be under permissive licences (0BSD, MIT, MIT-0, Apache-2.0, BSD, ISC, zlib, public domain). MPL-2.0 only when there is no permissive alternative, with a source notice shipped by `roci package`. Never GPL or LGPL code in the core, in `roci`, or in packaged sketches. (A GPL/LGPL tool used only to build a dependency, such as a build system, is fine as long as nothing from it is shipped.)
@@ -167,7 +167,7 @@ Packaging notes:
 
 ## 8. Phases
 
-Each phase ends with a demo sketch, passing CI on all desktop targets and an update to this file.
+Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-checklist run on the other platforms that the phase touches, and an update to this file.
 
 ### Phase 0: Foundations
 - Create the repository layout (§4.2), the Odin build script with its `ci` command, a `README.md` (kept current: status, contributing, and build instructions once there is something to build), a `LICENSE` file with the 0BSD text and `SPDX-License-Identifier: 0BSD` headers.
@@ -177,16 +177,17 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 - Check the state of `vendor:sdl3` and its satellites against the latest SDL3 releases; decide per library whether to use `vendor:` or our own bindings (§3).
 - Check and reserve names (`rocinante`, `roci`); confirm the name doesn't collide with an active creative-coding project.
 - Verify every "candidate" dependency in this file against its official docs: platform support (FreeBSD, iOS and Android included), licence, maintenance. Record results here.
-- Machine learning (§4.10): call LiteRT's C API from Odin on the four desktop OSes and on one iOS and one Android device, build it on FreeBSD (or decide on ONNX Runtime there), and test the PyTorch and JAX conversion paths end to end with one small model each.
-- Verify and complete the parity map (§6) against the Processing, openFrameworks and Cinder references.
+- Verify the parity map (§6) against the Processing, openFrameworks and Cinder references and fix what is wrong; completing the rows is done phase by phase, before each phase starts.
+- The LiteRT spike (§4.10: C API from Odin on the four desktop OSes, one iOS and one Android device, a FreeBSD build or the ONNX Runtime decision, PyTorch and JAX conversion with one small model each) moves to the start of Phase 6, because it de-risks only that phase.
 - **Spike 1, desktop**: SDL3 GPU device + window + clear colour from Odin on every desktop target, including FreeBSD with Vulkan through Mesa (FreeBSD is not on SDL's official list for the Vulkan GPU backend).
 - **Spike 2, mobile**: an Odin + SDL3 program drawing a circle on a real iPhone and a real Android phone. This is the riskiest assumption in the plan; if it fails, stop and rethink before Phase 1.
 - **Spike 3, code generation**: a hand-written typed-IR fragment (the circle program and a small loop) turned into Odin source and built with the user-installed Odin on all four desktop OSes, with `roci doctor` detecting each toolchain.
 - **Spike 4, UI**: Dear ImGui through dear_bindings, `imgui_impl_sdl3` and `imgui_impl_sdlgpu3` from Odin: a slider, button and text box, IME composition in the text box, and one AccessKit adapter exposing them to a screen reader via accesskit-c.
-- **Exit**: green pipelines on GitLab (Arch) and GitHub (Ubuntu); the four spikes working on their platforms (checked locally where CI doesn't reach); parity map complete; Odin version and target coverage recorded.
+- **Exit**: green pipelines on GitLab (Arch) and GitHub (Ubuntu); the four spikes working on their platforms (checked locally where CI doesn't reach); parity map verified; Odin version and target coverage recorded.
 
 ### Phase 1: Window and 2D core (Odin API)
 - App loop, `window` with optional position, multiple windows, HiDPI.
+- A minimal text path for the error overlay and debug output (a built-in bitmap or SDF font), so Phase 2 can show errors before Phase 3 brings real text (§4.3).
 - Internal shader pipeline: HLSL → SDL_shadercross → embedded SPIR-V/MSL/DXIL.
 - Command list, batching, instancing, geometry cache.
 - 2D primitives, style, colour, gradients (§5.9), transforms, basic shapes (including the tessellation decision, §4.3), math, random, noise, mouse and keyboard.
@@ -277,7 +278,7 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 - Sketch folders: `roci new`/`init` tested with and without git and Git LFS installed; asset lookup, duplicate-name and outside-`assets/` errors; a packaged sketch run from a different machine path finds every asset.
 - Libraries: multi-file sketches behave identically to the same code in one file; `use` with index names and git URLs; offline runs from vendored `libs/`; every clash rule produces its error message.
 - Toolchain: `roci doctor` tested on machines (or CI images) with each toolchain piece missing, wrong version and present.
-- Performance: benchmark sketches tracked in CI in both modes; a regression of more than 10% fails the build.
+- Performance: benchmark sketches tracked in both modes. Timing is gated only on ORION, whose hardware is fixed (lavapipe and shared GitHub runners are too noisy); elsewhere the pipeline compares work counts (draw calls, batches, allocations), which are exact. A timing regression of more than 10% on ORION fails the build.
 - Platforms: Linux in the pipeline on every commit to `main`; every other target through the release checklist before each tag, and at least once per phase (§11).
 - Golden images run on Mesa's software Vulkan driver (lavapipe) in the pipeline, so results don't depend on the machine's GPU.
 

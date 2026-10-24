@@ -48,6 +48,7 @@ Users never see threads. The core decides: rendering and windowing stay where SD
   - **Linux and FreeBSD**: clang, which Odin uses for linking;
   - **Android**: the SDK and NDK, which `roci` fetches and manages on first use (§7).
   `roci doctor` checks all of this per target and prints the exact install steps for the user's OS. Packaging failures are reported in rocinante's plain style, never as raw compiler output; the raw log is saved to `output/` for the curious.
+- **Determinism rules** (non-negotiable 7). Both back ends use the same maths: no fast-math and no contraction of multiply-adds in either (Odin and C flags set once in the build script), one shared implementation of the random generator, noise and the trigonometric functions that both call, and no iteration order that depends on addresses or hashing. A new built-in that breaks one of these fails the equivalence suite (§9).
 - **Stable verb ABI.** Generated code and the interpreter call core verbs through the same functions, so behaviour stays identical (non-negotiable 7).
 - **No bytecode VM, no JIT.** A third back end would be one more thing to keep equivalent. Revisit only if the interpreter proves too slow for development use before Phase 7.
 - **Source mapping.** Crashes and profiler output in packaged sketches must point at `.roci` lines. Investigate whether Odin can carry line information from generated code; otherwise keep a map from generated Odin lines to `.roci` lines and translate reports.
