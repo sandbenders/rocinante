@@ -160,7 +160,7 @@ Packaging notes:
 - **Toolchain** (§4.7): Odin at the pinned version everywhere, fetched into `roci`'s own cache on first use; MSVC and the Windows SDK on Windows; the Xcode command-line tools on macOS; clang on Linux and FreeBSD.
 - **iOS**: App Store distribution requires a Mac with full Xcode and an Apple Developer Program account. `roci package ios` drives Odin and Xcode's command-line tools on a Mac; from Linux or FreeBSD it must hand the build to a Mac (local network or CI). `roci doctor` explains this in plain words.
 - **Android**: `roci` fetches and manages the SDK and NDK on first use and keeps the signing keystore out of the user's way.
-- **FreeBSD**: Odin is available as the `lang/odin` port. Produce a package of the sketch; later, a port of `roci` itself (`poudriere bulk -t`).
+- **FreeBSD**: Odin is available as the `lang/odin` port. Produce a package of the sketch; later, a port of `roci` itself (named `roci`, because `sysutils/rocinante` is another project's port) (`poudriere bulk -t`).
 - **Signing and trust** (decided 2026-10-24). macOS packages are signed with a Developer ID and notarised, and Windows packages are signed where the user has a certificate; `roci package` says plainly what SmartScreen or Gatekeeper will still show when they have none. `roci` shows the Android SDK licence and asks for acceptance before fetching it.
 - Every target bundles the compiled sketch, all of `assets/` and `libs/`, `ui.toml` and compiled shaders (§4.9). No network access needed at runtime.
 
@@ -191,6 +191,13 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **Odin:** pinned to `dev-2026-10`. Official archives cover Linux amd64 and arm64, macOS arm64 and Windows amd64 only (§4.7). Homebrew's `dev-2026-07` built against LLVM 23 failed to compile any program; Homebrew's `dev-2026-10` (LLVM 22.1.8) works.
 - **`vendor:sdl3`:** its bindings are for SDL 3.4.2, while the latest SDL3 release is 3.4.18 (2026-10-02). Patch releases keep the ABI, so the bindings load the newer library, but functions added after 3.4.2 are missing; the decision between `vendor:` and our own bindings stays open until Phase 1 needs one.
 - **Odin from source on FreeBSD** (2026-10-24, FreeBSD 15.1, Intel Xeon X5675): `LLVM_CONFIG=llvm-config19 gmake release-native` on the `dev-2026-10` tag built in 2 minutes 10 seconds and reports `dev-2026-10:84bc3fc`, the same commit as the official macOS archive, using one core (99% CPU, so `-j` does not help: the script runs one compile). It needed `gmake`, git and the ports package `llvm19` (the base system's clang has no `llvm-config`); `roci` must find `llvm-config` under its versioned name.
+- **Name check** (2026-10-24; registries and GitHub queried directly, no legal or trademark search):
+  - **FreeBSD:** a port `sysutils/rocinante` already exists (BastilleBSD's configuration-management tool, command `rocinante`, 79 stars, in ports). Our command is `roci`, so no file clashes, but a port or package of ours cannot be called `rocinante`: name it `roci`.
+  - **`roci`:** free as a command on Homebrew, Arch's AUR and Repology. The name exists as a small crates.io library (Elodin's flight software framework, 2,384 downloads), a tiny npm package ("Roci common build setup") and a dormant PyPI package. None is a creative-coding tool.
+  - **`rocinante`:** npm and PyPI names are taken by unrelated web frameworks; crates.io and Homebrew are free. We publish to none of them. The GitHub organisation name `Rocinante` is taken (an organisation with one repository), so the public mirror cannot live at `github.com/rocinante`.
+  - **Creative coding:** GitHub text searches for creative-coding, game-engine, graphics and language projects named rocinante or roci found nothing; four more searches were rate-limited and a web search was blocked by a bot check, so this is not exhaustive. The Expanse ship name and Cervantes' horse are the other uses, as the README says.
+  - **Domains** (DNS only): `rocinante.dev`, `.org`, `.io`, `.run` and `roci.dev` resolve, so they are taken or parked; `rocinante.art`, `.studio`, `.codes` and `roci.sh` did not resolve and may be free.
+  - **Still to do by hand:** a trademark search for software classes (EUIPO, WIPO, USPTO), and a manual web search.
 - **Dependency checks** (2026-10-24, from each project's own repository, releases and licence files; the GitHub API gave the dates):
 
   | Dependency | Licence | Latest release | Finding |
