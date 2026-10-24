@@ -383,6 +383,8 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **2026-10-24, Files other than `sketch.roci` hold definitions only**, evaluated in dependency order before it. Full text in §5.5 and §5.10.
 - **2026-10-24, Trust and signing**: `roci get` and `roci run` ask once before loading a native extension from a git URL; `roci package` covers macOS notarisation (Developer ID) and Windows SmartScreen and says what is left for the user; `roci` shows the Android SDK licence for acceptance; built-in ML models record their source URL and a checksum, and `roci run` needs the network once to fetch them. Written into §4.10, §5.10 and §7.
 - **2026-10-24, Physical key positions**: `keys w a s d` binds by SDL scancode, so AZERTY works (§5.12). Dear ImGui does not shape complex scripts (Arabic, Devanagari): Phase 3 states which scripts the UI supports and tests them with an IME.
+- **2026-10-24, Origin words**: `as center` and `as corner` (default) say what a shape's or image's position means, per element, replacing Processing's four `*Mode` verbs; an `as` straight after a shape's required arguments is its origin, an `as` after a `fill` or `stroke` value belongs to the value. Full text in §5.9.
+- **2026-10-24, Escape does not quit a sketch by default**; Escape leaves the widgets (§4.8), and Cmd+Q, Ctrl+Q and the window's close button quit.
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
 
 ### Later
@@ -397,8 +399,6 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
 3. Choices inherited from the sections they point to: vector tessellation (§4.3, Phase 1); text engine (§4.3, Phase 0); AIFF, Opus and AAC decoding (§4.6, Phase 5); MIDI on FreeBSD, iOS and Android (§4.6, Phase 5); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the Git LFS type list (§4.9, Phase 2); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision (§5.13, Phase 4); AccessKit on FreeBSD (§4.8, Phase 3).
 4. What to do about Windows arm64 and macOS Intel, which Odin's official archives do not cover (§4.7): build Odin from source there as on FreeBSD, or drop the targets. Settled in Phase 0.
-5. Alignment modes for shapes and images (Processing's `rectMode`, `ellipseMode`, `imageMode`, `shapeMode`): whether `rect`, `circle` and `image` take an origin word such as `as center` or `as corner`, given that `as` already carries fill modes (§5.9). Recommended: yes, one shared pair of words. Close by Phase 1.
-6. Whether Escape quits a sketch by default (openFrameworks' `ofSetEscapeQuitsApp`), given that Escape also leaves the widgets (§4.8). Recommended: no default quit; Cmd+Q, Ctrl+Q and the window's close button quit. Close by Phase 1.
 
 ---
 

@@ -416,6 +416,7 @@ Words:
 - `font`: a font file in the sketch's `assets/` (§4.9) or a system font name; `size` sets text size in pixels; `weight` (`light`, `regular`, `bold`, or a number) is optional.
 - `caps`, `joins`, `blend`: as in the parity map (§6).
 - Precedence: per-element words override `with` blocks, which override the current style.
+- **Origin** (decided 2026-10-24). `rect`, `circle` (and the other 2D shapes), `image`, `square` and `ellipse` take `as center` or `as corner` to say what their position means: `rect 200 200 80 40 as center` puts the middle of the rectangle at 200, 200; `as corner` is the default, the top left, as in Processing. One shared pair of words replaces Processing's `rectMode`, `ellipseMode`, `imageMode` and `shapeMode`, and it is per element, so nothing sticks from one line to the next. `as` already carries fill modes (`fill photo as center`, `fill [ red teal ] as radial`), so the rule is positional (§5.1): an `as` directly after a shape's required arguments is its origin, and an `as` after a `fill` or `stroke` value belongs to that value. `circle 100 100 50 as center fill photo as cover` reads one way: the first `as` is the origin and the second is the fill mode. A circle is already centred, so `as center` only matters for the shapes that default to a corner.
 
 **Colours** are accepted anywhere a colour goes:
 
@@ -706,6 +707,6 @@ Goal: everything the core and standard add-ons of Processing, openFrameworks (0.
 - Cinder's `cairo`, `qtime`, `dx` and `winrt` namespaces: `export svg`/`pdf` and the platform video frameworks (§4.11) cover them.
 - Cinder's `Arcball` and `CameraUi`: the default orbit camera (§4.3). Cinder's `Ray`, `AxisAlignedBox` and frustum types: the collision verbs (§5.13). Cinder's `Teapot`: not offered.
 
-**Not yet decided** (§10 Open): alignment modes (`rectMode`, `ellipseMode`, `imageMode`, `shapeMode`) and whether Escape quits a sketch (`ofSetEscapeQuitsApp`), given that Escape already leaves the widgets (§4.8).
+**Decided on the way** (2026-10-24): alignment modes become the origin words `as center` and `as corner` (§5.9), and Escape does not quit a sketch (`ofSetEscapeQuitsApp`), because it already leaves the widgets (§4.8).
 
 
