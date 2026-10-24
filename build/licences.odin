@@ -64,7 +64,8 @@ collect_dependencies :: proc(root: string) -> (imports: map[string]string, dirs:
 			continue
 		}
 		if fi.type == .Directory {
-			if fi.name == ".git" || fi.name == "output" {
+			// .cache holds the Odin the pipelines install; its vendor: packages are not ours.
+			if fi.name == ".git" || fi.name == "output" || fi.name == ".cache" {
 				os.walker_skip_dir(&w)
 			}
 			continue
