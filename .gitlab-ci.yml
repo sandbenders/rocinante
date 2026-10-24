@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: 0BSD
+#
+# GitLab pipeline (CLAUDE.md section 11). A thin wrapper: every check lives in
+# the build script's `ci` command.
+#
+# Assumes the ORION runner uses the Docker executor and carries the tag `orion`;
+# change `image` and `tags` here if it is set up differently.
+
+default:
+  image: archlinux:latest
+  tags: [orion]
+
+variables:
+  ODIN_DIR: $CI_PROJECT_DIR/.cache/odin
+
+.setup: &setup
+  - pacman -Syu --noconfirm clang curl tar git
+  # SDL3 and Mesa's software Vulkan (lavapipe) join this line when code needs them:
+  #   sdl3 vulkan-swrast
+  - tools/ci/install-odin.sh "$ODIN_DIR"
+  - export PATH="$ODIN_DIR:$PATH"
+
+# Fast check on merge requests only.
+fast:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - *setup
+    - odin run build -- ci --fast
+
+# Full pipeline on every commit to main.
+full:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - *setup
+    - odin run build -- ci
+
+# Release on version tags: the full pipeline. The Linux release artefact joins
+# this job when there is something to package.
+release:
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  script:
+    - *setup
+    - odin run build -- ci

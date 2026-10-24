@@ -73,7 +73,7 @@ git config core.hooksPath tools/hooks
 
 ## Building
 
-There is nothing to run yet, but the build script and its checks work. Install the Odin release named in `ODIN_VERSION` from the [official releases](https://github.com/odin-lang/Odin/releases) (a package manager's Odin may be older or built against a different LLVM, and one such build failed to compile even a hello world on macOS), then:
+There is nothing to run yet, but the build script and its checks work. Install the Odin release named in `ODIN_VERSION`: `brew install odin` gives the right one on macOS at the time of writing, and the [official releases](https://github.com/odin-lang/Odin/releases) cover Linux, macOS and Windows. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) Then:
 
 ```
 odin run build -- ci          # what the pipelines run

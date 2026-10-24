@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: 0BSD
+#
+# GitHub pipeline (CLAUDE.md section 11). A thin wrapper: every check lives in
+# the build script's `ci` command. Runs the full pipeline on pushes to main and
+# on version tags; there is no merge-request job on GitHub.
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang
+        run: sudo apt-get update && sudo apt-get install -y clang
+        # SDL3 and Mesa's software Vulkan (mesa-vulkan-drivers) join here when
+        # code needs them.
+      - name: Install Odin
+        run: tools/ci/install-odin.sh "$HOME/odin"
+      - name: Run the pipeline
+        run: |
+          export PATH="$HOME/odin:$PATH"
+          odin run build -- ci
