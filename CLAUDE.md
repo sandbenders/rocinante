@@ -190,7 +190,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 
 - **Odin:** pinned to `dev-2026-10`. Official archives cover Linux amd64 and arm64, macOS arm64 and Windows amd64 only (§4.7). Homebrew's `dev-2026-07` built against LLVM 23 failed to compile any program; Homebrew's `dev-2026-10` (LLVM 22.1.8) works.
 - **`vendor:sdl3`:** its bindings are for SDL 3.4.2, while the latest SDL3 release is 3.4.18 (2026-10-02). Patch releases keep the ABI, so the bindings load the newer library, but functions added after 3.4.2 are missing; the decision between `vendor:` and our own bindings stays open until Phase 1 needs one.
-- **Spike 1, macOS arm64:** an SDL3 window and GPU device cleared to a colour from Odin, 181 frames in 3 seconds on the Metal driver, with Homebrew's SDL 3.4.18 library and the 3.4.2 bindings (`spikes/desktop`). Linux, Windows and FreeBSD are still to check.
+- **Spike 1, macOS arm64:** an SDL3 window and GPU device cleared to a colour from Odin, 181 frames in 3 seconds on the Metal driver, with Homebrew's SDL 3.4.18 library and the 3.4.2 bindings (`spikes/desktop`). FreeBSD 15.1-RELEASE-p5 (Intel Xeon X5675, AMD Radeon RX 580): passes on the Vulkan driver through Mesa, 187 frames in 3 seconds, with SDL 3.4.16 as the library, so Vulkan GPU rendering works on FreeBSD even though SDL doesn't list it. Linux and Windows are still to check.
 
 ### Phase 1: Window and 2D core (Odin API)
 - App loop, `window` with optional position, multiple windows, HiDPI.
