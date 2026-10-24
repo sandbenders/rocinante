@@ -190,7 +190,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 
 - **Odin:** pinned to `dev-2026-10`. Official archives cover Linux amd64 and arm64, macOS arm64 and Windows amd64 only (§4.7). Homebrew's `dev-2026-07` built against LLVM 23 failed to compile any program; Homebrew's `dev-2026-10` (LLVM 22.1.8) works.
 - **`vendor:sdl3`:** its bindings are for SDL 3.4.2, while the latest SDL3 release is 3.4.18 (2026-10-02). Patch releases keep the ABI, so the bindings load the newer library, but functions added after 3.4.2 are missing; the decision between `vendor:` and our own bindings stays open until Phase 1 needs one.
-- **Spike 1, macOS arm64:** an SDL3 window and GPU device cleared to a colour from Odin, 181 frames in 3 seconds on the Metal driver, with Homebrew's SDL 3.4.18 library and the 3.4.2 bindings (`spikes/desktop`). FreeBSD 15.1-RELEASE-p5 (Intel Xeon X5675, AMD Radeon RX 580): passes on the Vulkan driver through Mesa, 187 frames in 3 seconds, with Odin `dev-2026-09` (the `lang/odin` port, one release behind the pin) and SDL 3.4.16 as the library, so Vulkan GPU rendering works on FreeBSD even though SDL doesn't list it. Linux and Windows are still to check.
+- **Spike 1, macOS arm64:** an SDL3 window and GPU device cleared to a colour from Odin, 181 frames in 3 seconds on the Metal driver, with Homebrew's SDL 3.4.18 library and the 3.4.2 bindings (`spikes/desktop`). FreeBSD 15.1-RELEASE-p5 (Intel Xeon X5675, AMD Radeon RX 580): passes on the Vulkan driver through Mesa, 187 frames in 3 seconds, with Odin `dev-2026-09` (the `lang/odin` port, one release behind the pin; the decision is to build the pinned release from source there instead) and SDL 3.4.16 as the library, so Vulkan GPU rendering works on FreeBSD even though SDL doesn't list it. Linux and Windows are still to check.
 
 ### Phase 1: Window and 2D core (Odin API)
 - App loop, `window` with optional position, multiple windows, HiDPI.
@@ -346,7 +346,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **2026-10-24, Connecting words are positional**: a word is a connecting word only once the call's required arguments are filled, so `width`, `height` and `size` stay usable as values; multi-word verbs are a fixed table matched longest-first; `[ ]` is a block or a list by the parameter's kind. Full text in §5.1 and §5.14.
 - **2026-10-24, CLAUDE.md is split**: this file keeps the rules and plan; `docs/design.md` holds §4.3 to §6 and is imported here. Section numbers are global.
 - **2026-10-24, Language details** (operators, lists, maps, text, `print` and `log`, scope, conventions, defaults, reserved names, `copy`, spelling, runtime failures, mixed 2D and 3D). Full text in §5.15.
-- **2026-10-24, `roci` fetches the pinned Odin** into its own cache. Full text in §4.7.
+- **2026-10-24, `roci` fetches the pinned Odin** into its own cache, and on FreeBSD, where Odin has no official archive, builds it from the source tag. Full text in §4.7.
 - **2026-10-24, Top-level `load` waits; loads inside `draw` and events are asynchronous.** Full text in §4.4.
 - **2026-10-24, UI identity is label, panel and tab path, and loop index; `ui.toml` is keyed by it and written on exit and after pauses; rocinante writes its own `toml` package** (neither `core:` nor `vendor:` has one). Full text in §4.8 and §4.9.
 - **2026-10-24, Files other than `sketch.roci` hold definitions only**, evaluated in dependency order before it. Full text in §5.5 and §5.10.
@@ -365,7 +365,7 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 1. Machine learning on FreeBSD: LiteRT's C runtime built there, or ONNX Runtime as the FreeBSD fallback (§4.10). Settled by the LiteRT spike at the start of Phase 6.
 2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
 3. Choices inherited from the sections they point to: vector tessellation (§4.3, Phase 1); text engine (§4.3, Phase 0); AIFF, Opus and AAC decoding (§4.6, Phase 5); MIDI on FreeBSD, iOS and Android (§4.6, Phase 5); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the Git LFS type list (§4.9, Phase 2); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision (§5.13, Phase 4); AccessKit on FreeBSD (§4.8, Phase 3).
-4. What to do about the platforms Odin's official archives do not cover: FreeBSD, Windows arm64 and macOS Intel (§4.7). Settled in Phase 0.
+4. What to do about Windows arm64 and macOS Intel, which Odin's official archives do not cover (§4.7): build Odin from source there as on FreeBSD, or drop the targets. Settled in Phase 0.
 
 ---
 
