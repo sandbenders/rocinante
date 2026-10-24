@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: 0BSD
+#
+# Licences of every dependency that can ship (CLAUDE.md section 3), checked by
+# `odin run build -- licences`. One entry per line: <what> <SPDX id>.
+#
+#   vendor:<package>   a package of Odin's vendor: collection that sketches may import
+#   vendor/<dir>       a directory of our own bindings or sources in vendor/
+#
+# Allowed ids: 0BSD MIT MIT-0 Apache-2.0 BSD-2-Clause BSD-3-Clause ISC Zlib
+# Unlicense Public-Domain. MPL-2.0 passes with a warning (source notice needed).
+# GPL, LGPL and AGPL ids always fail. Add a line only after reading the
+# package's own licence file.
+
+vendor:sdl3     Zlib
+vendor:box2d    MIT
+vendor:cgltf    MIT

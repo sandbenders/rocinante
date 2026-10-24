@@ -71,7 +71,15 @@ After cloning, turn on the project's git hooks once:
 git config core.hooksPath tools/hooks
 ```
 
-Build instructions will appear here once there is something to build.
+## Building
+
+There is nothing to run yet, but the build script and its checks work. Install the Odin release named in `ODIN_VERSION` from the [official releases](https://github.com/odin-lang/Odin/releases) (a package manager's Odin may be older or built against a different LLVM, and one such build failed to compile even a hello world on macOS), then:
+
+```
+odin run build -- ci          # what the pipelines run
+odin run build -- ci --fast   # what the pre-push hook runs
+odin run build -- licences    # dependency licence check
+```
 
 ## Versions
 
