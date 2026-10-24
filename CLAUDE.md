@@ -326,7 +326,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **2026-10-24, The language is called rocinante too.** Full text in §1.
 - **2026-10-24, No web target for now**; it is on the roadmap (README.md).
 - **2026-10-24, The core ships as Odin source**, compiled with each sketch by `roci package`; C and C++ dependencies ship prebuilt per target. Full text in §4.7.
-- **2026-10-24, UI hiding and placement**: `Tab` hides and shows the UI (`ui key` changes it), sharing the key with focus navigation by one rule; `ui` blocks may sit inside `draw`, positioned in canvas coordinates. Full text in §5.8.
+- **2026-10-24, UI hiding and placement**: the backtick key hides and shows the UI (three-finger tap on touch devices; `ui key` changes it), and `Tab` only moves focus, so no key has two jobs (revised the same day from a shared Tab); `ui` blocks may sit inside `draw`, positioned in canvas coordinates. Full text in §5.8.
 - **2026-10-24, Library index**: a git repository on GitHub, curated by Fabrizio at first. Listing rules are in the entry below. Full text in §5.10.
 - **2026-10-24, accesskit-c on mobile**: its releases include iOS and Android libraries; we build FreeBSD and arm64 Linux ourselves once per release. Full text in §4.8.
 - **2026-10-24, Gamepad names**: friendlier rocinante names (`bottom`, `leftstick`, `lefttrigger`, `dpad`, …) mapped onto SDL3's positional buttons. Full text in §5.12.
