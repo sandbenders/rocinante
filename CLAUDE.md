@@ -194,7 +194,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **Name check** (2026-10-24; registries and GitHub queried directly, no legal or trademark search):
   - **FreeBSD:** a port `sysutils/rocinante` already exists (BastilleBSD's configuration-management tool, command `rocinante`, 79 stars, in ports). Our command is `roci`, so no file clashes, but a port or package of ours cannot be called `rocinante`: name it `roci`.
   - **`roci`:** free as a command on Homebrew, Arch's AUR and Repology. The name exists as a small crates.io library (Elodin's flight software framework, 2,384 downloads), a tiny npm package ("Roci common build setup") and a dormant PyPI package. None is a creative-coding tool.
-  - **`rocinante`:** npm and PyPI names are taken by unrelated web frameworks; crates.io and Homebrew are free. We publish to none of them. The GitHub organisation name `Rocinante` is taken (an organisation with one repository), so the public mirror cannot live at `github.com/rocinante`.
+  - **`rocinante`:** npm and PyPI names are taken by unrelated web frameworks; crates.io and Homebrew are free. We publish to none of them. The GitHub organisation name `Rocinante` is taken (an organisation with one repository), so the public mirror lives at `github.com/sandbenders/rocinante` instead.
   - **Creative coding:** GitHub text searches for creative-coding, game-engine, graphics and language projects named rocinante or roci found nothing; four more searches were rate-limited and a web search was blocked by a bot check, so this is not exhaustive. The Expanse ship name and Cervantes' horse are the other uses, as the README says.
   - **Domains** (DNS only): `rocinante.dev`, `.org`, `.io`, `.run` and `roci.dev` resolve, so they are taken or parked; `rocinante.art`, `.studio`, `.codes` and `roci.sh` did not resolve and may be free.
   - **Still to do by hand:** a trademark search for software classes (EUIPO, WIPO, USPTO), and a manual web search.
@@ -426,7 +426,7 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 **Remotes.**
 
 - `origin` is GitLab on ORION (Arch Linux), where all daily work goes.
-- `github` is the public mirror. About twice a week: `git push github main --tags`. Pushed by hand, not by GitLab's push mirroring, so GitHub only receives snapshots Fabrizio chose to publish.
+- `github` is the public mirror, `https://github.com/sandbenders/rocinante` (decided 2026-10-24, because the `Rocinante` organisation name is taken). About twice a week: `git push github main --tags`. Pushed by hand, not by GitLab's push mirroring, so GitHub only receives snapshots Fabrizio chose to publish.
 - Issues and pull requests from the community arrive on GitHub. A pull request is accepted by fetching its branch locally, merging it through the normal GitLab flow, and pushing to GitHub; the README explains this to contributors.
 
 **Pipelines (Linux only).**
