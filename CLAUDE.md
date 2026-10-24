@@ -174,7 +174,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - Create the repository layout (§4.2), the Odin build script with its `ci` command, a `README.md` (kept current: status, contributing, and build instructions once there is something to build), a `LICENSE` file with the 0BSD text and `SPDX-License-Identifier: 0BSD` headers.
 - Set up the Git workflow and both pipelines (§11): `tools/hooks/` (pre-push and commit-msg), the `ODIN_VERSION` file, `.gitlab-ci.yml` on ORION's runner, `.github/workflows/ci.yml`, the `github` remote, protection of `main` in GitLab, and the release checklist.
 - Add a CI licence check: a script that reads every library in `vendor/` and every `vendor:` package we use, and fails on GPL/LGPL code that would ship (§3).
-- Pick and record the pinned Odin release. Confirm Odin's supported targets for every platform we need (x86_64 and arm64 desktop on all four OSes, Android and iOS subtargets) and record gaps.
+- Pick and record the pinned Odin release (`dev-2026-10`, recorded in `ODIN_VERSION` on 2026-10-24). Confirm Odin's supported targets for every platform we need (x86_64 and arm64 desktop on all four OSes, Android and iOS subtargets) and record gaps.
 - Check the state of `vendor:sdl3` and its satellites against the latest SDL3 releases; decide per library whether to use `vendor:` or our own bindings (§3).
 - Check and reserve names (`rocinante`, `roci`); confirm the name doesn't collide with an active creative-coding project.
 - Verify every "candidate" dependency in this file against its official docs: platform support (FreeBSD, iOS and Android included), licence, maintenance. Record results here.
@@ -359,7 +359,7 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 1. Machine learning on FreeBSD: LiteRT's C runtime built there, or ONNX Runtime as the FreeBSD fallback (§4.10). Settled by the LiteRT spike at the start of Phase 6.
 2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
 3. Choices inherited from the sections they point to: vector tessellation (§4.3, Phase 1); text engine (§4.3, Phase 0); AIFF, Opus and AAC decoding (§4.6, Phase 5); MIDI on FreeBSD, iOS and Android (§4.6, Phase 5); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the Git LFS type list (§4.9, Phase 2); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision (§5.13, Phase 4); AccessKit on FreeBSD (§4.8, Phase 3).
-4. Which platforms Odin's official release archives cover, so `roci` knows where it can fetch the pinned Odin (§4.7). Settled in Phase 0.
+4. What to do about the platforms Odin's official archives do not cover: FreeBSD, Windows arm64 and macOS Intel (§4.7). Settled in Phase 0.
 
 ---
 

@@ -1,0 +1,14 @@
+#!/bin/sh
+# SPDX-License-Identifier: 0BSD
+# Safety net for section 11 of CLAUDE.md: remove assistant co-author trailers
+# and session links from a commit message, in case a tool adds them.
+f="$1"
+tmp="$(mktemp)"
+# POSIX grep, not rg: contributors on every platform run this hook.
+grep -v -i -E \
+  -e '^co-authored-by:.*(claude|anthropic)' \
+  -e 'claude\.ai/code/session' \
+  -e '^generated with .*claude' "$f" > "$tmp"
+# grep exits 1 when nothing is left; the message is then empty, which git rejects.
+cat "$tmp" > "$f"
+rm -f "$tmp"
