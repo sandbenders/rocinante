@@ -10,7 +10,7 @@ circle 100 100 50
 
 That line is a complete rocinante sketch. Run it and a window opens with a circle in it.
 
-rocinante is an open-source creative coding framework with its own small and easy to learn language. It comes out of years of working with [Processing](https://processing.org/), [openFrameworks](https://openframeworks.cc/) and [Cinder](https://libcinder.org/), and it borrows the turtle from [Logo](https://el.media.mit.edu/logo-foundation/). The goal is to make coding FUN AGAIN, especially for creative coders. You write a line and get a picture, mistakes come with a plain explanation, and when you save the file the running sketch updates.
+rocinante is an open-source creative coding framework with its own small and easy to learn, language. It comes out of years of working with [Processing](https://processing.org/), [openFrameworks](https://openframeworks.cc/) and [Cinder](https://libcinder.org/), and it borrows the turtle from [Logo](https://el.media.mit.edu/logo-foundation/). The goal is to make coding FUN AGAIN, especially for creative coders. You write a line and get a picture, mistakes come with a plain explanation, and when you save the file the running sketch updates.
 
 Read [MANIFESTO.md](MANIFESTO.md) for why it exists.
 
@@ -46,6 +46,16 @@ The core is written in [Odin](https://odin-lang.org/) and draws through the GPU 
 You use one command, `roci`. `roci run` runs a sketch and reloads it whenever you save. It interprets the sketch, so it works without installing anything else. `roci package <target>` compiles the sketch to native code through Odin and turns it into an app. Packaging does need Odin plus your platform's usual build tools (Xcode, MSVC or clang), and `roci doctor` lists what's missing and how to install it.
 
 The same sketch file runs on FreeBSD, Linux, macOS, Windows, iOS and Android.
+
+## Roadmap
+
+These are wanted, but not planned for the first stable release:
+
+- **A rocinante shader dialect.** Shaders are written in HLSL for now. Later, a small shader language in rocinante's own style will compile to HLSL.
+- **A web target**, so sketches can be shared in a browser.
+- **Live coding on phones and tablets**: an app that runs the interpreter on iOS and Android, so sketches can be written and changed on the device itself.
+- **3D physics** (gravity, joints and stacking in 3D). Collision detection works in 2D and 3D, and physics simulation in 2D.
+- **Training models** inside rocinante. For now, trained models run locally but are trained elsewhere.
 
 ## Contributing
 

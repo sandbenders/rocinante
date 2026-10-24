@@ -10,7 +10,7 @@ Read `MANIFESTO.md` before starting any work. Every decision below serves it.
 
 An open-source creative coding framework and language.
 
-- **rocinante (the language)**: a small, Logo-inspired language for sketches. No semicolons, no braces around blocks, one predictable shape. File extension `.roci`.
+- **rocinante (the language)**: a small, Logo-inspired language for sketches. The language, the framework and the project share the one name (decided 2026-10-24). No semicolons, no braces around blocks, one predictable shape. File extension `.roci`.
 - **The core**: an engine written in **Odin** on SDL3 and its GPU API (Vulkan, Metal, Direct3D 12). It owns windows, rendering, UI, audio, input, I/O and packaging.
 - **`roci` (the tool)**: one command-line program to run, watch, check and package sketches. Written in Odin.
 - **A public Odin API, with a C ABI,** for power users who want to write sketches or extensions in Odin (or C) directly. Same verbs, same behaviour.
@@ -34,7 +34,7 @@ It opens a default window, draws the circle and keeps the window open. This must
 These override convenience. If a task seems to require breaking one, stop and raise it with Fabrizio.
 
 1. **One line makes a picture.** No mandatory setup, imports, main function or config file.
-2. **Nothing technical leaks.** Users never see shader formats, GPU backends, lifetimes, threads, types, compilers, linkers, build systems or signing unless they explicitly go looking. The one exception: `roci package` needs a user-installed toolchain (Odin, plus Xcode, MSVC or clang depending on the platform, §4.7). `roci run` never does, and `roci doctor` explains every missing piece in plain words with the exact install steps.
+2. **Nothing technical leaks.** Users never see shader formats, GPU backends, lifetimes, threads, types, tensors, compilers, linkers, build systems or signing unless they explicitly go looking. Two exceptions, both outside `roci run`: `roci package` needs a user-installed toolchain (Odin, plus Xcode, MSVC or clang depending on the platform, §4.7), and turning a PyTorch or JAX model into a model rocinante can run needs the official Python converters (§4.10). `roci run` never needs either, and `roci doctor` explains every missing piece in plain words with the exact install steps.
 3. **The canvas never crashes.** Script errors keep the last good frame running and draw an error overlay. A crash in the core is a bug of the highest severity.
 4. **Errors teach.** Every error says where (file, line, column, with the source line shown), what went wrong in plain language, and gives an example that would work. Model: Elm's error messages (see References).
 5. **Live by default.** `roci run` watches the file and reloads on save, keeping state where possible.
@@ -80,12 +80,14 @@ These override convenience. If a task seems to require breaking one, stop and ra
                                        │ calls verbs (stable verb ABI)
  Odin/C sketch ────────────────────►  roci (public API: verbs, types, events)
                                        │
-        ┌──────────────────────────────┼──────────────────┬───────────────┐
-        ▼                              ▼                  ▼               ▼
-   gfx + ui                        audio              io              platform
-   (2D/3D, text, images,          (I/O, playback,    (files, data,   (SDL3: windows,
-   shaders; Dear ImGui            synthesis, MIDI,   network,        input, events,
-   + AccessKit bridge)            OSC, analysis)     serial, video)  camera, sensors)
+        ┌──────────────────┬───────────┼──────────┬──────────────┬──────────────┐
+        ▼                  ▼           ▼          ▼              ▼              ▼
+   gfx + ui              audio        io         ml           collide       platform
+   (2D/3D, text,        (I/O,        (files,    (LiteRT:      (2D and 3D    (SDL3: windows,
+   images, gradients,   playback,    data,      local         overlap,      input, gamepads,
+   shaders; Dear ImGui  synthesis,   network,   inference)    contact,      joysticks, events,
+   + AccessKit bridge)  MIDI, OSC)   serial,                  ray tests)    camera, sensors)
+                                     video)
         │
         ▼
    SDL3 GPU API ──► Vulkan / Metal / D3D12
@@ -104,11 +106,13 @@ rocinante/
   README.md            what rocinante is, project status, how to contribute (§11)
   LICENSE              0BSD text (§10)
   roci/                public API, prelude, stable verb ABI (package roci)
-    platform/          SDL3 wrapper: app loop, windows, input, events
+    platform/          SDL3 wrapper: app loop, windows, input, gamepads, joysticks, events
     gfx/               renderer, batching, tessellation, text, images, shaders
     ui/                UI verbs on Dear ImGui, theme, custom widgets, AccessKit bridge
     audio/             audio graph, playback, synthesis, MIDI, OSC
-    io/                files, data formats, network, serial, video, camera
+    io/                files, data formats, network, serial, video (§4.11), camera
+    ml/                machine-learning models on LiteRT: loading, inference, built-in tasks (§4.10)
+    collide/           collision detection (2D on Box2D, 3D in Odin) and 2D physics on Box2D worlds (§5.13)
     lang/              lexer, parser, checker, type inference, typed IR, interpreter
     codegen/           typed IR → Odin source for `roci package`
   cli/                 the `roci` binary (package main)
@@ -133,14 +137,14 @@ Package boundaries can change; record the change here.
 - Geometry that does not change between frames is detected (hash of command + parameters) and cached on the GPU automatically.
 - 2D and 3D share one window. A window has a default 2D orthographic projection; using any 3D verb (`box`, `camera`, `light`) switches that draw block to a perspective camera with sensible defaults, including mouse orbit, unless the user sets a camera.
 - **SDL3**: Odin's `vendor:sdl3`, `vendor:sdl3/ttf` and `vendor:sdl3/image` exist; use them when current, otherwise our own bindings for the latest SDL3 release (§3).
-- **Shaders**: internal shaders are written once in HLSL and compiled offline with SDL_shadercross to SPIR-V, MSL and DXIL, then embedded in the binary. SDL_shadercross takes SPIR-V or HLSL as input and outputs DXBC, DXIL, SPIR-V, MSL or HLSL, and offers both runtime translation and an offline command-line tool. User-written shaders: see Open Questions.
+- **Shaders**: internal shaders are written once in HLSL and compiled offline with SDL_shadercross to SPIR-V, MSL and DXIL, then embedded in the binary. SDL_shadercross takes SPIR-V or HLSL as input and outputs DXBC, DXIL, SPIR-V, MSL or HLSL, and offers both runtime translation and an offline command-line tool. **User-written shaders are HLSL too** (decided 2026-10-24): one shader language for the core and for users. `roci run` translates them at run time through SDL_shadercross, so editing a shader hot-reloads it; `roci package` compiles them offline like the internal ones. A small rocinante shader dialect that compiles to HLSL is on the roadmap (README.md).
 - **Text**: SDL3_ttf's GPU text engine (`TTF_CreateGPUTextEngine`, available since SDL_ttf 3.0.0) is the first candidate. Verify shaping, fallback fonts and atlas behaviour before committing.
 - **Vector tessellation** (paths, thick strokes, curves): our own Odin implementation, or a permissively licensed C library. Decide in Phase 1.
 - **Math**: Odin's built-in array programming, swizzles, matrices and quaternions, plus `core:math/linalg`. No external maths library.
 
 ### 4.4 Threads
 
-Users never see threads. The core decides: rendering and windowing stay where SDL requires them (check SDL3 documentation for thread rules per subsystem; `TTF_CreateGPUTextEngine`, for example, must be called on the thread that created the GPU device). Audio runs on its own real-time thread. Asset loading is asynchronous by default; a sketch using an image before it has loaded draws nothing for that frame rather than blocking. Odin's implicit `context` (allocator, logger) is set up per thread by the core.
+Users never see threads. The core decides: rendering and windowing stay where SDL requires them (check SDL3 documentation for thread rules per subsystem; `TTF_CreateGPUTextEngine`, for example, must be called on the thread that created the GPU device). Audio runs on its own real-time thread. Asset loading is asynchronous by default; a sketch using an image before it has loaded draws nothing for that frame rather than blocking. Machine-learning inference runs on worker threads the same way: a sketch reads the latest finished result and never waits for a model (§4.10). Odin's implicit `context` (allocator, logger) is set up per thread by the core.
 
 ### 4.5 Multi-window and messaging
 
@@ -163,7 +167,7 @@ Users never see threads. The core decides: rendering and windowing stay where SD
 
 - **Front end (shared).** Lexer, parser, checker and type inference produce a **typed IR**. All errors users see come from here, so they are identical in both modes.
 - **Development back end: interpreter.** `roci run` executes the typed IR directly. It owns hot reload, state preservation across saves and the error overlay. It is part of the `roci` binary and needs no toolchain. The core is linked into `roci`, so `roci run` works on a machine with nothing else installed.
-- **Release back end: Odin code generation.** `roci package` translates the typed IR into Odin source and builds it, together with the core's Odin source, using the user's installed Odin compiler (LLVM-based, so the whole program is optimised together), for the chosen target. Odin's Android and iOS subtargets cover mobile. No interpreter ships in released sketches. Generated Odin must be readable: one Odin procedure per verb, names derived from the sketch.
+- **Release back end: Odin code generation.** `roci package` translates the typed IR into Odin source and builds it, together with the core's Odin source (the core ships as Odin source and is compiled with every sketch, decided 2026-10-24; C and C++ dependencies such as SDL3, Dear ImGui, accesskit-c and LiteRT ship prebuilt per target), using the user's installed Odin compiler (LLVM-based, so the whole program is optimised together), for the chosen target. Odin's Android and iOS subtargets cover mobile. No interpreter ships in released sketches. Generated Odin must be readable: one Odin procedure per verb, names derived from the sketch.
 - **User-installed toolchain for packaging only** (decided 2026-10-23). rocinante does not bundle compilers or linkers. `roci package` needs:
   - **Odin**, at the version pinned by this rocinante release (§3); `roci` checks `odin version` and explains a mismatch;
   - **Windows**: MSVC and the Windows SDK from Visual Studio's "Desktop development with C++" component, which Odin requires;
@@ -183,7 +187,7 @@ UI elements are first-class citizens: built-in verbs, drawn by Dear ImGui throug
 - **Immediate mode.** Widgets are verbs called every frame inside a `ui [ ]` block; they return their current value (or `true` on the frame a button is clicked). No callbacks, no widget objects, no syncing between UI state and sketch state. This matches the paradigm in §5.2: widgets are verbs, values are plain data.
 - **Engine: Dear ImGui** (MIT). Its official backends `imgui_impl_sdl3` (input, platform) and `imgui_impl_sdlgpu3` (rendering through the SDL3 GPU API) mean no custom renderer integration. UI is drawn last in each window's render pass, so it is exported, recorded and golden-image tested like any other drawing. It always draws on top of the canvas and ignores canvas transforms, cameras and styles. Users only ever see rocinante verbs and rocinante's theme; Dear ImGui never appears in the language, docs or errors.
 - **Odin bindings** come from **dear_bindings** (MIT), which generates a C API (`dcimgui.h`) and a JSON description from which we generate Odin bindings. The SDL3 backend is in dear_bindings' tested list; `imgui_impl_sdlgpu3` is not yet, so verify its conversion in Phase 0 and contribute fixes upstream. Generated bindings live in `vendor/`.
-- **Accessibility: our own AccessKit bridge** (decided 2026-10-23). Dear ImGui has no screen-reader support, so we build it. Every widget goes through a rocinante verb, so the core always knows each widget's role, label, value, state and focus, even though Dear ImGui doesn't keep them. Each frame, `ui` builds an AccessKit tree from its own widget records plus Dear ImGui's item rectangles and IDs, sends updates only when something changed, and turns AccessKit action requests (focus, press, set value, increment, decrement) into the same changes a mouse or keyboard would make. AccessKit (Apache-2.0 OR MIT; Chromium-derived parts under a BSD-style licence) is used through its C bindings, accesskit-c, which publishes prebuilt releases; accesskit-c itself is built in Rust, so if prebuilt libraries for a target (Android and iOS are not mentioned in its README) are missing, we build them once per release as part of the core build, never on users' machines. AccessKit's adapters cover Windows (UI Automation), macOS (NSAccessibility), Unix (AT-SPI over D-Bus), Android and iOS. Whether the Unix adapter works on FreeBSD is unverified: confirm in Phase 3 and record it here. Offer the bridge upstream to Dear ImGui as a reusable piece.
+- **Accessibility: our own AccessKit bridge** (decided 2026-10-23). Dear ImGui has no screen-reader support, so we build it. Every widget goes through a rocinante verb, so the core always knows each widget's role, label, value, state and focus, even though Dear ImGui doesn't keep them. Each frame, `ui` builds an AccessKit tree from its own widget records plus Dear ImGui's item rectangles and IDs, sends updates only when something changed, and turns AccessKit action requests (focus, press, set value, increment, decrement) into the same changes a mouse or keyboard would make. AccessKit (Apache-2.0 OR MIT; Chromium-derived parts under a BSD-style licence) is used through its C bindings, accesskit-c. Its release workflow publishes prebuilt libraries for macOS (arm64, x86_64), iOS (arm64 and the simulators), Windows (arm64, x86, x86_64), Linux (x86, x86_64) and Android (arm64-v8a, x86_64). It publishes none for FreeBSD or arm64 Linux, although its Unix adapter is compiled for FreeBSD too. accesskit-c is written in Rust, so for those two targets we build it once per release on the release machines (never on users' machines) and offer the targets upstream. AccessKit's adapters cover Windows (UI Automation), macOS (NSAccessibility), Unix (AT-SPI over D-Bus), Android and iOS. Whether the Unix adapter works with screen readers on FreeBSD is unverified: confirm in Phase 3 and record it here. Offer the bridge upstream to Dear ImGui as a reusable piece.
 - **Identity.** Each widget is identified by its label plus its position in the source (mapped to Dear ImGui IDs), so values survive hot reload and editing nearby code. Two widgets with the same label in the same block are a load-time error with a friendly message.
 - **Memory.** Widget values persist across hot reload and are saved in `ui.toml` in the sketch folder, which is committed to git (§4.9). `forget ui` resets them.
 - **Text input and IME** use SDL3's text input API through the SDL3 backend: `SDL_StartTextInput` enables text and IME editing events and, on some platforms, shows the on-screen keyboard; `SDL_StartTextInputWithProperties` requests number fields and multi-line input; the IME window is placed with `SDL_SetTextInputArea`. Verify the backend's IME handling against non-Latin input in Phase 0.
@@ -202,7 +206,7 @@ A sketch that has files lives in a sketch folder. Everything it ships with is in
 my-sketch/
   sketch.roci          # roci new starts it with: circle 100 100 50
   assets/
-    images/  sounds/  fonts/  models/  shaders/  data/
+    images/  sounds/  videos/  fonts/  3d-models/  ml-models/  shaders/  data/
   output/              # saved frames, recordings, exports, build logs; ignored by git
   libs/                # vendored libraries from `use` (§5.10); committed to git
   ui.toml              # remembered UI values; committed to git
@@ -211,6 +215,7 @@ my-sketch/
 ```
 
 - **A single file still works.** A lone `.roci` file with no folder runs (non-negotiable 1). `assets/` is where files go once a sketch has any, never a precondition.
+- **What goes where.** `images/` (PNG, JPEG, …), `sounds/` (WAV, FLAC, MP3, Ogg), `videos/` (movie files for `movie`), `fonts/` (TTF, OTF, including copied system fonts, below), `3d-models/` (glTF, OBJ, SVG for 3D import, §6), `ml-models/` (LiteRT `.tflite` and `.litertlm` files, §4.10), `shaders/` (user shaders), `data/` (JSON, CSV, text). `roci add` picks the folder from the file type. Folder names are lowercase, like everything else in rocinante (§5.1).
 - **Assets are found by name, not path.** `load "cat.png"`, `font "Inter"`, `sound "rain.wav"` search all of `assets/`, subfolders included. The subfolders are a tidy convention, not an address. If two files share a name, the checker says so and asks for the subfolder: `load "images/cat.png"`.
 - **Bundled files come only from `assets/`.** A literal path outside it is a load-time error that teaches: "`/Users/…/cat.png` is outside your sketch, so it wouldn't travel with it. Copy it into `assets/`, or run `roci add /Users/…/cat.png` and I'll copy it for you." This is what makes sketches portable: a zip or a `git clone` runs anywhere, and iOS and Android (which can't read arbitrary paths) behave like the desktop.
 - **Packaging bundles all of `assets/` and `libs/` (§5.10).** Computed names (`load ("frame" + n + ".png")`) can't be traced, so nothing is dropped. `roci package` lists files that no literal in the sketch mentions, as a hint, without removing them.
@@ -218,13 +223,43 @@ my-sketch/
 - **Runtime files are the deliberate exception.** Files chosen while the sketch runs may come from anywhere the platform allows: `ask file`, `ask folder`, dropped files, `files in "~/Pictures"`. They are never bundled, because they belong to whoever is running the sketch. On iOS and Android these go through the system file pickers.
 - **Output.** `save`, `record` and exports write to `output/` by default, so renders never clutter the repository. An explicit path is allowed for saving.
 - **Remembered UI values** (§4.8) live in `ui.toml` at the top of the sketch folder, written in a readable, stable order so diffs are meaningful. It is committed to git, so a tuned performance travels with the repository. `forget ui` clears it. Packaged sketches start from the committed values.
+- **System fonts are copied into the sketch** (decided 2026-10-24). When `font "Name"` finds no file in `assets/` but finds a font installed on the system, `roci run` copies the font files into `assets/fonts/` the first time and says so in one line, so the sketch looks the same on every machine and in every package. Font licences decide whether a copy may travel: before copying, `roci` reads the font's licence fields (the OpenType `name` table licence description and URL, and the `OS/2` embedding bits). Fonts under licences that allow redistribution (SIL Open Font License, Apache-2.0, the Ubuntu Font Licence and similar) are copied silently apart from the one-line note. Fonts whose licence doesn't allow it, or can't be read (most fonts that ship with macOS, Windows and iOS), are used on this machine but not copied, with a message that teaches: "Helvetica Neue belongs to Apple, so it can't travel with your sketch. It works here; anywhere else your sketch would fall back to rocinante's default font. To share it, put a font you're allowed to share in `assets/fonts/`. Inter is a good start." `roci package` refuses to bundle a font with a restrictive licence and says which one.
 - **Packaging details** (app name, icon, bundle id) are asked by `roci package` on first use and stored in the sketch folder then; there is no config file to write by hand.
 
 **`roci new` and `roci init`.** `roci new <name>` creates the folder above; `roci init` does the same in an existing folder without overwriting anything. Both:
 
 - write `sketch.roci` (formatted, with the circle), `assets/` and its subfolders (each with an empty `.keep` file so git keeps them), `output/` and `.gitignore` (ignoring `output/` and roci's local cache);
 - if git is installed, run `git init` and make a first commit; without git, say so in one line and carry on;
-- **offer Git LFS** for large binary assets. On yes, and if `git lfs` is installed, track common audio, video, 3D and large image types (`*.wav`, `*.aiff`, `*.flac`, `*.mp4`, `*.mov`, `*.glb`, `*.fbx`, `*.exr`, `*.psd`, list to be finalised in Phase 2) with `git lfs track`, which writes `.gitattributes`, and commit that file. If Git LFS isn't installed, explain in plain words how to get it and continue without it. Git LFS is a separate, user-installed tool; rocinante neither bundles nor depends on it (§3).
+- **offer Git LFS** for large binary assets. On yes, and if `git lfs` is installed, track common audio, video, 3D, machine-learning and large image types (`*.wav`, `*.aiff`, `*.flac`, `*.mp4`, `*.mov`, `*.glb`, `*.fbx`, `*.tflite`, `*.litertlm`, `*.exr`, `*.psd`, list to be finalised in Phase 2) with `git lfs track`, which writes `.gitattributes`, and commit that file. If Git LFS isn't installed, explain in plain words how to get it and continue without it. Git LFS is a separate, user-installed tool; rocinante neither bundles nor depends on it (§3).
+
+### 4.10 Machine learning (decided 2026-10-24)
+
+Trained models run locally, out of the box, in every sketch and on every platform. No cloud service, no account, no Python while the sketch runs. Users see pictures, numbers and lists, never tensors.
+
+- **One runtime: LiteRT** (Google's on-device runtime, formerly TensorFlow Lite; Apache-2.0), used through its C API (`tensorflow/lite/c/c_api.h`). Odin's `vendor:` collection has no machine-learning runtime, so the bindings live in `vendor/` (§3). One runtime keeps one behaviour (non-negotiable 7) and one set of bugs.
+- **Three kinds of model, one file format.** LiteRT runs `.tflite` models, with `.litertlm` for language models. The other two sources reach that format through Google's official converters, once, on the author's machine:
+  - **LiteRT:** `.tflite` and `.litertlm` files work as they are: drop them in `assets/ml-models/` or run `roci add pose.tflite`.
+  - **PyTorch:** converted to `.tflite` with the LiteRT Torch converter.
+  - **JAX:** converted with `jax2tf` to a TensorFlow SavedModel, then to `.tflite` with the TFLite converter. Google's docs call `jax2tf` experimental.
+  - The converters are Python tools the author installs (non-negotiable 2's second exception). `roci doctor ml` checks for them and prints the install steps. Phase 0 settles which saved PyTorch and JAX files `roci add` can convert by itself and which need the short Python recipe in rocinante's docs.
+- **Built-in tasks for the common cases**, in the spirit of ml5.js: `poses`, `hands`, `faces`, `objects`, `labels` (image classification) and `cutout` (person segmentation), each taking an image, a canvas or the webcam and giving plain data (lists of records with named points as vectors, labels as text, masks as images). They use open, permissively licensed models chosen in Phase 6. The first use of a task copies its model into the sketch's `assets/ml-models/`, like `use` vendors libraries (§5.10), so the sketch runs offline and travels whole.
+- **Any other model:** `style = load "style.tflite"` loads it and `out = predict style webcam` runs it. `predict` reads the model's input and output description and converts automatically: images are resized and normalised, numbers and lists become tensors and back, image-shaped outputs come back as images. When a model doesn't describe its inputs well enough, the error teaches and shows how to say it with connecting words.
+- **Never blocks a frame.** Inference runs on worker threads (§4.4). `predict` and the task verbs give the latest finished result, and an empty value until the first one arrives (§5.2 useful zero values), so a slow model lowers its own update rate, never the sketch's frame rate.
+- **Hardware.** CPU (XNNPACK) everywhere; GPU through LiteRT's Metal (Apple) and WebGPU (desktop) paths; NPUs where LiteRT supports them. Never LiteRT's OpenGL path (non-negotiable 9); on Android that leaves OpenCL, the NPU and the CPU. Users never choose: the core picks the fastest path that works and falls back silently.
+- **Equivalence and testing.** Interpreted and compiled sketches call the same runtime through the stable verb ABI. Equivalence and golden tests run models on the CPU with a fixed thread count, where results repeat exactly (§9).
+- **Model licences.** Model weights carry their own licences. `roci add` records where a model came from and its licence in a small `.source` file next to it, and `roci package` lists the licences of every bundled model.
+- **Platform gaps.** LiteRT's own list covers Android, iOS, Linux, macOS and Windows, but not FreeBSD. FreeBSD's ports tree carries the Python TFLite runtime (`misc/py-tflite`), so building the C runtime there is likely; Phase 0 confirms it. If it fails, the fallback is ONNX Runtime (MIT, `misc/onnxruntime` in ports), decided then and recorded here.
+- **Inference only.** Training models inside rocinante is out of scope for the first stable release.
+
+### 4.11 Video (decided 2026-10-24)
+
+Playing and recording video uses no FFmpeg (its licensing conflicts with §3 unless it is an optional, user-installed component).
+
+- **Each platform's own media framework first:** AVFoundation on macOS and iOS, Media Foundation on Windows, MediaCodec on Android. They decode H.264 and HEVC in hardware, and the operating system covers those formats' licensing.
+- **Open formats everywhere through permissive libraries:** AV1 with dav1d (BSD-2-Clause), VP8 and VP9 with libvpx (BSD-3-Clause), MPEG-1 with pl_mpeg (MIT). On Linux and FreeBSD, which have no system framework, these are the formats that play. AV1 and VP9 were designed to be royalty-free.
+- **Recording** (`record`) writes AV1 or VP9 on every platform, and H.264 where the platform encoder offers it. Encoder libraries are chosen in Phase 6 under §3's rules.
+- **FFmpeg as an optional extra:** if the user has installed FFmpeg, `movie` can use it for formats nothing else plays. rocinante never ships it, and `roci doctor` explains how to install it.
+- `movie` and `webcam` give frames that work anywhere an image does: drawn, used as fills (§5.9), or passed to `predict` (§4.10).
 
 ---
 
@@ -239,9 +274,9 @@ my-sketch/
   - **Connecting words belong to the call whose brackets they sit in**, so `add (random from 1 to 3) to scores` can't confuse its two `to`s.
   - **`roci fmt` adds missing brackets** when the reading is unique (every verb involved has one shape): `circle random width random height 5` becomes `circle (random width) (random height) 5`. It writes subtraction with spaces (`x - 10`) and negative numbers without (`-10`), so the two never look alike.
   - **Without the formatter, a missing bracket is a load-time error that shows the bracketed line** (§5.7). When brackets nest three deep, the checker adds a hint (not an error) suggesting a name on the line above: `x = random width`.
-  - No pipes, no dot calls (`width.random`) and no commas between arguments. `.` stays for fields and library names (§5.10); a pipe-like form for list chains is a separate question (§10).
+  - No pipes, no dot calls (`width.random`) and no commas between arguments. `.` stays for fields and library names (§5.10). List chains are named steps, not pipes (§5.2).
   - Rationale and sources: Logo, NetLogo, Rebol, Smalltalk, Odin and the paren-free languages surveyed all show that fixed arity solves the parser's problem but not the reader's. No study measures nested-call readability directly, so the Phase 2 newcomer test checks this rule (§8).
-- Optional arguments are introduced by small connecting words, never by position: `window 800 600 at 100 100`, `text "hi" at 20 20 size 32`, `image photo at 0 0 width 200`. The connecting words form a short, fixed list (start with: `at`, `size`, `width`, `height`, `from`, `to`, `by`, `in`, `start`, `lines`, plus the style words in §5.9: `fill`, `stroke`, `thickness`, `alpha`, `font`, `style`). `to` is only ever a connecting word (`for i from 1 to 10`, `add x to particles`); verbs are defined with `learn` (§5.11).
+- Optional arguments are introduced by small connecting words, never by position: `window 800 600 at 100 100`, `text "hi" at 20 20 size 32`, `image photo at 0 0 width 200`. The connecting words form a short, fixed list (start with: `at`, `size`, `width`, `height`, `from`, `to`, `by`, `in`, `start`, `lines`, `angle`, `stops`, `as`, plus the style words in §5.9: `fill`, `stroke`, `thickness`, `alpha`, `font`, `style`). `to` is only ever a connecting word (`for i from 1 to 10`, `add x to particles`); verbs are defined with `learn` (§5.11).
 - Blocks use `[ ]`, as in Logo. Newlines inside blocks are free. (Decided 2026-10-22: `[ ]`, not `end`.)
 - **Indentation is free and never changes meaning** (decided 2026-10-23). `[ ]` alone defines blocks; tabs, spaces, pasted code and phone keyboards can never break a sketch. Consistency comes from tooling instead:
   - **`roci fmt`** rewrites a sketch in the house style: two spaces per block level, one space inside brackets, one statement per line. Editor plugins run it on save, `roci new` starts formatted, and all docs and examples are formatted with it. It has no options, so there is nothing to argue about.
@@ -274,14 +309,29 @@ Borrowed from Odin (see the Odin FAQ in References):
 Deliberate differences from Odin:
 
 - **Blocks capture variables.** `every 2 seconds [ grow size ]` sees `size`. Odin has only non-capturing procedures because capturing closures need automatic memory management; our runtime manages memory, so users never think about it. Generated Odin passes captured variables explicitly.
-- **A light functional layer for lists**, as verbs that take a block: keep matching items, transform each item, fold, sort by. Names are open (see §10); `map` is reserved for the Processing-style number remapping verb.
+- **A light functional layer for lists** (decided 2026-10-24), as verbs that take a block. Inside the block, `it` is the current item. Each gives a new list or value and leaves the original alone:
+
+```
+alive  = keep particles [ it.life > 0 ]       # the items that pass
+calm   = skip particles [ it.speed > 5 ]      # the items that don't
+sizes  = collect particles [ it.size * 2 ]    # one new value per item
+total  = combine scores from 0 [ result + it ]   # fold: `result` is the running value
+big    = find particles [ it.size > 20 ]      # the first match, or empty
+order  = sort particles by [ it.size ]        # sorted by what the block gives
+```
+
+  There is no pipe: chains are written one named step per line, which reads more clearly and fits one statement per line. `map` stays Processing's number-remapping verb, and `filter` stays an image effect. `collect` and the idea of plain-English list verbs come from Smalltalk. `it` and `result` are keywords, lowercase like all others (§5.1).
 
 ### 5.3 Typing: inferred and static (decided 2026-10-22)
 
 - **Users never write a type.** There is no type syntax in sketches.
 - **The checker infers every type it can** from literals, verb signatures, field use and assignments: `x = 10` is a number, `p.pos` is a vector, `particles` is a list of records with fields `pos` and `vel`, both vectors.
 - **Conflicts are load-time errors in plain words**, never type jargon. For example: "`size` holds a number on line 3 but text on line 12. A name keeps one kind of value; try a new name for the text."
-- **Records are shaped by use.** A record literal fixes its fields; adding a field elsewhere extends the shape for all records built at that site. The exact rules are designed in Phase 2 with the error messages written first.
+- **Records are shaped by use** (decided 2026-10-24). Three rules, with the error messages written first in Phase 2:
+  - **One shape per place a record is made.** A record literal fixes its fields; assigning a field anywhere else in the sketch (`ball.colour = red`) extends the shape for every record made at that place, and the field starts at its zero value.
+  - **Verbs take any record that has what they use.** `learn step p [ p.pos = p.pos + p.vel ]` works for every record with `pos` and `vel`, whatever else it holds (structural records, as in Elm). Compiled code gets one plain Odin struct per shape and one version of the verb per shape it is used with.
+  - **Data from files gets its shape from the file.** When `load "birds.json"` names a file in `assets/`, the checker reads that file while checking and takes the shape from it, as F#'s JSON type providers do, so `birds.items` and its fields are known before the sketch runs. When the file name is computed, or the data comes from `fetch` or `ask file`, values use the boxed fallback below.
+  - **Messages between windows** take their shape from the `send` lines that can reach each `on … receive`; the checker sees the whole program.
 - **Fallback, not failure.** Where inference cannot decide (rare in sketches), the value becomes a general boxed value (an Odin tagged union in generated code): slower, still correct, identical behaviour in both back ends. `roci check --why-slow` (name provisional) lists those places so power users can see them; ordinary users never need to.
 - Inference is what makes compiled sketches fast: known types become plain Odin structs, floats and arrays instead of runtime kind checks.
 
@@ -346,8 +396,14 @@ draw [
 
 - Top-level statements run once, in order. If the program has no `draw` block, the window shows the result and stays open.
 - If a `draw` block exists, top-level statements act as setup and the block runs every frame.
-- State survives hot reload (interpreter only): top-level variables keep their values unless the line defining them changed. Exact rules: decide in Phase 2 and record here.
-- Constants (all-capital names, §5.1) never keep old state: on every reload they take the value written in the source, so editing `SPEED = 4` to `SPEED = 8` takes effect immediately while variables keep their running values.
+- **Hot reload** (interpreter only, decided 2026-10-24). On every save:
+  - The new code is checked first. If it has an error, the old code keeps running under the error overlay (non-negotiable 3) until the next save fixes it.
+  - If it checks, verbs, `draw` blocks, event blocks and `ui` blocks switch to the new code on the next frame.
+  - A top-level variable keeps its running value unless the line that defines it changed, or the kind of value it holds changed; then that line runs again.
+  - Records keep their values when their shape gains a field; the new field starts at its zero value (§5.2). When a shape loses a field or a field changes kind, the variables holding those records start again from their defining lines.
+  - Constants (all-capital names, §5.1) always take the value written in the source, so editing `SPEED = 4` to `SPEED = 8` takes effect at once while variables keep their running values.
+  - UI values are remembered as before (§4.8).
+  - `Ctrl+R` in a sketch window (`Cmd+R` on macOS) restarts the sketch from scratch: every variable from its defining line, every top-level statement again. UI values are kept; `forget ui` clears them.
 
 ### 5.6 Turtle
 
@@ -430,9 +486,10 @@ ui [
 - **Default layout:** widgets stack vertically in a floating panel at the top left of the window, sized to fit. `at x y` places a widget or panel explicitly; `width` sets its width.
 - **Starting values:** `slider "size" 10 200 start 50`. Without `start`, numbers start at the minimum, toggles off, text empty, dropdowns on the first item.
 - **Control windows:** a second window holding only a `ui` block is the standard way to build a control surface for a performance or installation; its values are readable from every window directly, no messaging needed.
-- **Hiding:** `ui hide` / `ui show` (and a key, default `Tab` held with a modifier, to be decided) so performances can run clean.
+- **Hiding** (decided 2026-10-24): `Tab` hides and shows the UI, and `ui key "f1"` (any key name) changes it; `ui hide` and `ui show` do it from code, so performances can run clean. Tab also moves keyboard focus between widgets (§4.8), so the two share the key by one rule: while a widget has focus, Tab moves focus and Escape leaves the widgets; with no widget focused, Tab hides the UI; when Tab shows the UI again, focus goes to the first widget, so keyboard and screen-reader users reach the widgets in one press.
+- **`ui` inside `draw`** (decided 2026-10-24): `ui [ ]` blocks may also sit inside `draw` blocks, for widgets tied to things on the canvas. `at` there takes canvas positions, so `slider "speed" 0 5 at p.pos` follows `p` as it moves. Widgets still draw on top and keep their size and theme; only their position follows the canvas.
 
-Full widget set for the first stable release: `label`, `button`, `toggle`, `checkbox` (alias of toggle), `slider`, `range` (two-handle slider), `knob`, `number`, `textbox`, `dropdown`, `choice`, `colorpicker`, `xypad`, `progress`, `list` (selectable list), `panel`, `row`, `column`, `tabs`/`tab`, `menu`/`item`, `tip`, `separator`, `image button`. Additions go through this file first.
+Full widget set for the first stable release: `label`, `button`, `toggle`, `checkbox` (alias of toggle), `slider`, `range` (two-handle slider), `knob`, `number`, `textbox`, `dropdown`, `choice`, `colorpicker`, `xypad`, `progress`, `list` (selectable list), `panel`, `row`, `column`, `tabs`/`tab`, `menu`/`item`, `tip`, `separator`, `image button`, `controls` (remapping actions, §5.12). Additions go through this file first.
 
 ### 5.9 Style and colour (decided 2026-10-23)
 
@@ -493,6 +550,49 @@ Words:
 - Values outside 0–255 are clamped, with a gentle warning from the checker when it can see the value at load time.
 - Colours are values: `c = rgb 255 136 0`, `mix c blue 0.5`, `c * 0.5` (§5.2 array programming).
 
+**Gradients** (decided 2026-10-24). Wherever a colour goes in `fill`, `stroke` or `background`, a list of colours makes a gradient. The colours are spaced evenly unless `stops` says otherwise.
+
+```
+fill [ red orange teal ]                      # linear, left to right
+fill [ red orange teal ] angle 90             # linear, top to bottom
+fill [ red orange teal ] stops [ 0 20 100 ]   # uneven steps, in percent along the way
+fill [ white black ] as radial                # from the centre outwards
+fill [ white black ] as radial at 30 30       # centre at 30% across, 30% down the shape
+fill [ red yellow red ] as conic angle 45     # sweeping round the centre
+fill [ red blue ] in rgb                      # mixed in RGB, like Processing
+background [ navy black ] angle 90
+stroke [ white cyan ]
+
+sunset = gradient [ orange purple ] angle 90  # a gradient is a value
+circle 100 100 50 fill sunset
+glow = { fill: sunset, stroke: white }        # and works in named styles
+```
+
+- **Kinds:** `as linear` (the default), `as radial`, `as conic`.
+- **Orientation:** `angle` in degrees. `0` runs left to right and angles turn clockwise, like the turtle's `right`; for `conic`, `angle` sets where the sweep starts.
+- **Steps:** any number of colours, each a full colour value (`#ff8800`, `rgb …`, a name, with alpha). `stops` gives each colour's position as a percentage, one per colour.
+- **Geometry follows the shape.** Positions are percentages of the element's bounding box, so a gradient fits a circle, a rectangle or a line of text without arithmetic.
+- **Mixing:** colours are mixed in Oklab by default, which keeps gradients even and avoids muddy middles; `in rgb` gives Processing's look and `in oklch` mixes along the hue.
+- With per-element style words, a bare list works (`circle 100 100 50 fill [ red teal ]`). A gradient with options is named first or wrapped: `fill (gradient [ red teal ] angle 90)`, because connecting words belong to the call they sit in (§5.1).
+- Gradients are drawn on the GPU in one pass per element, like solid colours.
+
+**Images, video and canvases as fills** (decided 2026-10-24). `fill` also takes an image, a canvas, a movie or the webcam. The element becomes a mask: the image shows only inside the shape, including text.
+
+```
+photo = load "cat.png"
+fill photo                       # cover: fill the shape, crop what overflows
+circle 200 200 150
+square 20 20 100 fill photo as fit       # whole image inside, empty bands if needed
+rect 0 0 400 100 fill photo as stretch   # distort to fit exactly
+rect 0 0 width height fill pattern as tile size 64   # repeat at 64 pixels
+square 50 50 300 fill photo as center   # original size, centred, no scaling
+text "rocinante" at 20 200 size 96 fill webcam
+```
+
+- **Modes:** `as cover` (the default: scale to fill the shape and crop the overflow), `as fit` (scale to show the whole image inside the shape), `as stretch` (scale each axis to the shape's box), `as tile` (repeat at the image's own size, or `size n`) and `as center` (no scaling, centred). `cover` is CSS's name for "fill"; rocinante uses it because `fill photo as fill` would read badly.
+- `at x y` shifts the image inside the shape, in pixels, for `tile` and `center`.
+- Image fills work with `stroke` too, and inside `with` blocks and named styles.
+
 **UI elements** accept the same words per widget (`button "stop" fill red`); theme-wide changes use the `ui` verbs in §4.8.
 
 ### 5.10 Files, libraries and names (decided 2026-10-23)
@@ -512,8 +612,16 @@ draw [ flock birds ]
 
 - `roci get <name or url>`, or the first `roci run` that meets a new `use` line, copies the library into `libs/<name>/` inside the sketch folder, with a small `source` file recording where it came from and which commit. `libs/` is committed to git. Vendoring follows Odin's stance against package managers: a sketch runs offline and keeps running years later, even if the original repository disappears.
 - `roci update <name>` (or `roci update` for all) fetches a newer version, shows what changed, and replaces the copy. Nothing ever updates by itself.
-- **The index** is a plain git repository mapping short names to git URLs, curated in the spirit of ofxAddons. No central server or registry is needed. Any git URL works without the index.
-- **A library is a folder of `.roci` files**, optionally with its own `assets/` (found by name after the sketch's own assets, which always win) and a short `README`. Later (Phase 9) a library can also be an Odin or C extension using the stable verb ABI (§4.7); the `use` line is identical and users can't tell the difference.
+- **The index** is a plain git repository on GitHub mapping short names to git URLs, curated in the spirit of ofxAddons; Fabrizio curates it at first (decided 2026-10-24). Libraries are listed through a pull request to the index, which Fabrizio reviews (decided 2026-10-24). To be listed, a library:
+  - lives in a public git repository under a licence allowed by §3's dependency policy;
+  - passes `roci check` on the current rocinante release;
+  - has a `README` with at least one example that runs;
+  - has a lowercase name that doesn't clash with built-ins or with another listed library;
+  - downloads nothing and runs no outside code when it loads;
+  - names a maintainer who can be contacted.
+
+  A library is removed from the index when it has been broken for two consecutive releases, or when its licence changes to one §3 doesn't allow. Sketches that already vendored it keep working, because `libs/` is theirs. No central server or registry is needed. Any git URL works without the index.
+- **A library is a folder of `.roci` files**, optionally with its own `assets/` (found by name after the sketch's own assets, which always win) and a short `README`. Later (Phase 9) a library can also be an Odin or C extension using the stable verb ABI (§4.7); the `use` line is identical and users can't tell the difference. An extension ships two ways (decided 2026-10-24): as Odin source, which `roci package` compiles together with the core and the sketch (like the core itself, §4.7), and as prebuilt dynamic libraries for the four desktop systems, which `roci run` loads with Odin's `core:dynlib`, so no toolchain is needed while working. The interpreter doesn't run on phones, so mobile needs only the source. The index provides a GitHub Actions template that builds an extension's desktop libraries for its authors.
 - **Visibility.** Every verb a library teaches with `learn`, plus its constants, is available to the sketch. Helpers are kept inside with `hidden learn helper [ … ]`.
 - Libraries may `use` other libraries; `roci get` vendors the whole set flat into `libs/`. Two libraries needing different versions of a third is a plain-language error at `roci get` time; `roci` never picks one silently.
 - Packaging bundles `libs/` exactly like `assets/` (§4.9).
@@ -562,7 +670,80 @@ star 100 points 7 spin 15
 - **Sharing (decided 2026-10-23).** Numbers, vectors, colours and text are copied when passed or assigned. Lists and records are shared: a verb that changes a record changes the caller's record, which is what makes `learn step p [ p.pos = p.pos + p.vel ]` work, and what Processing users expect from objects and arrays. `b = a` with a record also shares; `b = copy a` makes an independent copy. Passing a constant (§5.1) to a verb that changes it is a load-time error.
 - `learn`, `give`, `stop` and `with` are keywords, lowercase like all others (§5.1).
 
-### 5.12 Implementation notes
+### 5.12 Game controllers and actions (decided 2026-10-24)
+
+Gamepads, joysticks and other controllers work in every sketch with no setup, through SDL3's gamepad and joystick APIs, with hot-plugging on every platform.
+
+```
+p = gamepad                       # the first connected gamepad, or empty
+circle (p.leftstick.x * 100 + 200) 300 20   # sticks are vectors from -1 to 1
+if p.bottom [ jump ]              # buttons are true while held
+for each pad in gamepads [ … ]    # every connected gamepad
+```
+
+- **Gamepads** follow SDL3's model: buttons are named by where they are on the pad, not by the letter printed on them, because the same position says A on one pad and B or ✕ on another. rocinante gives SDL3's positions friendlier names (decided 2026-10-24):
+
+| rocinante field | SDL3 | What it is |
+|---|---|---|
+| `bottom`, `right`, `left`, `top` | `SOUTH`, `EAST`, `WEST`, `NORTH` | the four face buttons, by position |
+| `leftstick`, `rightstick` | left and right stick axes | vectors from -1 to 1 |
+| `leftstickpress`, `rightstickpress` | `LEFT_STICK`, `RIGHT_STICK` | pressing a stick in |
+| `leftshoulder`, `rightshoulder` | `LEFT_SHOULDER`, `RIGHT_SHOULDER` | shoulder buttons |
+| `lefttrigger`, `righttrigger` | trigger axes | 0 to 1 |
+| `dpad` | `DPAD_UP`, `DPAD_DOWN`, `DPAD_LEFT`, `DPAD_RIGHT` | a vector: x and y each -1, 0 or 1 |
+| `start`, `back`, `home` | `START`, `BACK`, `GUIDE` | menu buttons |
+| `extra` | `MISC1`–`MISC6`, paddles, `TOUCHPAD` | a list of the remaining buttons |
+
+  Input names use the same words: `"pad bottom"`, `"pad leftstick"`, `"pad lefttrigger"`, `"pad dpad"`. The docs show each pad family's printed labels next to the positions.
+- **SDL3 knows most pads out of the box.** For unknown pads, rocinante accepts SDL mapping strings, added through SDL's mapping functions, and `roci` keeps a community mapping database up to date.
+- **Joysticks** without a gamepad layout (flight sticks, wheels, arcade panels, custom hardware) appear in `joysticks`, each with `axes` and `buttons` lists.
+- **Actions, so input can be remapped.** A sketch names what the player does and binds inputs to it, from any device:
+
+```
+bind "jump" to "pad bottom"
+bind "jump" to "key space"          # several bindings, any of them works
+bind "move" to "pad leftstick"
+bind "move" to "keys w a s d"       # four keys become a vector
+on press "jump" [ … ]
+if held "fire" [ … ]
+pos = pos + (direction "move") * SPEED
+```
+
+- **Players remap at run time** with the `controls` widget (§5.8): it lists every action and its bindings, and pressing a new button or key rebinds it. Remapped bindings are remembered values, saved in `ui.toml` like any widget (§4.9); `forget ui` restores the sketch's own bindings. Packaged sketches start from the committed ones.
+- **Feedback:** `rumble strength seconds` (strength 0 to 1) where the pad supports it. Pad gyroscopes, touchpads and lights come later, through the same SDL3 API.
+- **Input names** are text, so one list covers keyboards, mice, gamepads and joysticks: `"key space"`, `"mouse left"`, `"pad bottom"`, `"pad leftstick"`, `"joystick 1 button 3"`. A name that doesn't exist is a load-time error that lists the closest names.
+
+### 5.13 Collision detection (decided 2026-10-24)
+
+Collision is built in. Shapes are plain records (§5.2), recognised by their fields, so the same record can be drawn and tested:
+
+| Record fields | Shape |
+|---|---|
+| a vector (`{ 10, 20 }`) | point |
+| `pos`, `radius` | circle (2D) or sphere (3D vector) |
+| `pos`, `size` (and optional `angle`) | rectangle or box, rotated by `angle` |
+| `from`, `to` | line segment |
+| `points` | polygon (2D) |
+
+```
+ball   = { pos: { 200, 100 }, radius: 10, vel: { 2, 3 } }
+paddle = { pos: { 180, 380 }, size: { 80, 12 } }
+
+if touching ball paddle [ ball.vel.y = -ball.vel.y ]
+c = contact ball paddle            # { point, normal, depth }, or empty
+for each b in (hits ball bricks) [ remove b from bricks ]
+if inside mouse paddle [ … ]
+h = cast { from: eye, to: target } walls   # first thing along a line
+```
+
+- **Verbs:** `touching a b` (true or false), `contact a b` (where they touch, the direction to push apart and how far, or empty), `hits a list` (every item in a list that touches `a`), `inside point shape` and `cast segment list` (the first hit along a line, with its point and normal).
+- **Fast for many things.** `hits` and `cast` over lists use a broad phase (a dynamic tree) automatically, so a thousand particles against a thousand walls stays cheap.
+- **Detection first, simulation when asked for.** Collision answers questions; what happens next is the sketch's choice.
+- **2D physics** (decided 2026-10-24) builds on the same records and on Box2D v3's world simulation. Draft verbs: `simulate ball` hands a shape record to the physics world, which then updates its `pos`, `vel` and `angle` every frame; `fixed wall` makes a body that never moves; `gravity { 0, 400 }` sets gravity; `kick ball { 0, -300 }` applies an impulse (not `push`, which scopes style and transforms); `join a b` connects two bodies. A sketch that never calls `simulate` has no physics world at all. 3D physics is on the roadmap (README.md).
+- **Implementation:** 2D uses Box2D v3's collision functions through Odin's `vendor:box2d` (MIT). 3D starts with rocinante's own sphere, box, segment and ray tests in Odin; Box3D (Box2D's 3D sibling, MIT, also in `vendor:`) is reconsidered once it has releases and covers iOS and Android.
+- Results are identical interpreted and compiled, because both call the same core functions (non-negotiable 7).
+
+### 5.14 Implementation notes
 
 - Hand-written lexer and recursive-descent parser in Odin (for error quality), producing an AST with full source spans. A call collects its arguments greedily until it meets something that can't be an argument: a verb that takes arguments, a verb that gives no value, a connecting word, `]` or the end of the line (§5.1). No types are needed to parse. Edge case: a giving verb with no parameters (`anywhere`) is a name, so the checker warns when one follows a complete call on the same line.
 - Checker and type inference run before anything executes, producing the typed IR (§4.7). Spans are preserved into the IR so runtime errors, and the source map for generated Odin, point at `.roci` lines.
@@ -581,7 +762,7 @@ Goal: everything the core and standard add-ons of Processing, openFrameworks (0.
 | Window, app loop | `size`, `fullScreen`, `windowMove`, `windowTitle`, `windowResizable`, `frameRate`, `settings`, `loop`/`noLoop`, `redraw`, `exit` | `ofAppRunner`, `ofBaseApp`, `ofMainLoop`, multi-window via `ofCreateWindow` | App, Window | `window`, `title`, `fullscreen`, `fps`, `draw`, `pause`, `resume`, `quit` | 1 |
 | Display | `displayWidth/Height`, `displayDensity`, `pixelDensity`, `cursor`, `noCursor`, `smooth` | screen size, `ofHideCursor` | Display | automatic HiDPI, `screen.width`, `cursor`, `smooth` (on by default) | 1 |
 | 2D primitives | `arc`, `circle`, `ellipse`, `line`, `point`, `quad`, `rect`, `square`, `triangle` | ofGraphics draw functions | 2D Graphics | same names | 1 |
-| Style | `fill`, `noFill`, `stroke`, `noStroke`, `strokeWeight`, `strokeCap`, `strokeJoin`, `ellipseMode`, `rectMode`, `push`/`pop` | `ofSetColor`, `ofFill`, `ofSetLineWidth` | gl::color | `fill`, `no fill`, `stroke`, `no stroke`, `thickness`, `alpha`, `caps`, `joins`; per-element style words; `with … [ ]` and `push [ ]` scopes; named styles as records (§5.9) | 1 |
+| Style | `fill`, `noFill`, `stroke`, `noStroke`, `strokeWeight`, `strokeCap`, `strokeJoin`, `ellipseMode`, `rectMode`, `push`/`pop` | `ofSetColor`, `ofFill`, `ofSetLineWidth` | gl::color | `fill`, `no fill`, `stroke`, `no stroke`, `thickness`, `alpha`, `caps`, `joins`; per-element style words; `with … [ ]` and `push [ ]` scopes; named styles as records; gradients (`fill [ red teal ] angle 90`, `as radial`, `as conic`) (§5.9) | 1 |
 | Color | `color`, `colorMode`, `lerpColor`, `red`/`green`/`blue`/`alpha`, `hue`/`saturation`/`brightness`, `background`, `clear` | `ofColor` | Color | CSS names (`red`), hex (`#ff8800`), grey number, `rgb`, `hsb`, `oklch`, `alpha`, `mix`, `background`, `clear`; channels 0–255 (§5.9) | 1 |
 | Transform | `translate`, `rotate`, `rotateX/Y/Z`, `scale`, `shearX/Y`, `applyMatrix`, `pushMatrix`/`popMatrix`, `resetMatrix` | `ofTranslate`, `ofRotate`, `ofScale`, `ofNode` | gl::translate etc. | `move`, `turn`, `grow`, `shear`, block-scoped with `push [ ]` | 1 |
 | Shapes and curves | `beginShape`/`vertex`/`endShape`, contours, `bezier`, `bezierVertex`, `curve`, `curveVertex`, `quadraticVertex`, detail/tightness, `PShape`, `createShape` | `ofPath`, `ofPolyline` | Path2d, Shape2d | `shape [ ]`, `vertex`, `bezier`, `curve`, `hole [ ]`, `path`, `polyline` with resample/smooth/simplify | 1 to 3 |
@@ -592,7 +773,7 @@ Goal: everything the core and standard add-ons of Processing, openFrameworks (0.
 | Input | mouse vars and callbacks, `pmouseX`, keyboard vars and callbacks, `mouseWheel` | mouse, key, touch, drag-and-drop events | Mouse/Key/Touch events | `mouse`, `pmouse`, `key`, `touches`, `wheel`, `on …`, dropped files | 1 to 2 |
 | Events, messages | (none in core) | `ofEvent`, `ofSendMessage` | signals | `send`, `on … receive`, custom events | 2 |
 | Typography | `text`, `createFont`, `loadFont`, `textFont`, `textSize`, `textAlign`, `textLeading`, `textWidth`, `textAscent`/`Descent` | `ofTrueTypeFont` | TextBox | `text`, `font`, `align`, `leading`, `measure`, text along a path, text to shapes | 3 |
-| Images, pixels | `PImage`, `loadImage`, `requestImage`, `image`, `imageMode`, `tint`, `get`/`set`, `pixels[]`, `filter`, `mask`, `blend`, `copy` | `ofImage`, `ofPixels`, `ofTexture` | Surface, Channel, ImageIo | `image`, `load`, `tint`, `pixel`, `pixels`, `filter`, `mask`, `crop`, `resize` (GPU-side) | 3 |
+| Images, pixels | `PImage`, `loadImage`, `requestImage`, `image`, `imageMode`, `tint`, `get`/`set`, `pixels[]`, `filter`, `mask`, `blend`, `copy` | `ofImage`, `ofPixels`, `ofTexture` | Surface, Channel, ImageIo | `image`, `load`, `tint`, `pixel`, `pixels`, `filter`, `mask`, `crop`, `resize` (GPU-side); images, video and canvases as shape fills (`as cover`, `fit`, `stretch`, `tile`, `center`, §5.9) | 3 |
 | Offscreen, blending, clipping | `createGraphics`, `PGraphics`, `blendMode`, `clip`/`noClip` | `ofFbo` | gl::Fbo | `canvas`, `draw into c [ ]`, `blend`, `clip` | 3 |
 | Shaders | `PShader`, `loadShader`, `shader`, `resetShader` | `ofShader` | GlslProg | `shader` (hot-reloaded), post effects (`blur`, `glow` …) as built-ins | 3 |
 | 3D primitives, meshes | `box`, `sphere`, `sphereDetail` | `of3dPrimitive`, box/cone/cylinder/icosphere/plane/sphere, `ofMesh` | geom:: | `box`, `sphere`, `cone`, `cylinder`, `plane`, `icosphere`, `torus`, `mesh`, `wireframe` | 4 |
@@ -604,10 +785,12 @@ Goal: everything the core and standard add-ons of Processing, openFrameworks (0.
 | Files, data | `loadStrings`, `loadBytes`, `loadJSON*`, `loadTable`, `loadXML`, `save*`, `createWriter`, `selectInput`/`Output`/`Folder` | `ofFile`, `ofDirectory`, `ofJson`, `ofXml`, system dialogs | DataSource | `load`, `save` (format from extension), `ask file`, `ask folder`, `files in` | 6 |
 | Network | (Net library) | ofxNetwork, URL loader | (blocks) | `fetch`, `udp`, `tcp`, `websocket` | 6 |
 | Serial, hardware | (Serial library) | `ofSerial`, `ofArduino` (Firmata) | (blocks) | `serial`, `firmata` | 6 |
-| Video, camera input | (Video library) | `ofVideoPlayer`, `ofVideoGrabber` | video:: | `movie`, `webcam` (SDL3 camera API) | 6 |
+| Video, camera input | (Video library) | `ofVideoPlayer`, `ofVideoGrabber` | video:: | `movie` (platform frameworks plus dav1d, libvpx, pl_mpeg; §4.11), `webcam` (SDL3 camera API) | 6 |
 | UI, parameters | (contributed: controlP5 and others) | ofxGui, `ofParameter`, ofxImGui | params::, Cinder-ImGui | built-in `ui [ ]` blocks with `button`, `slider`, `range`, `knob`, `toggle`, `number`, `textbox`, `dropdown`, `choice`, `colorpicker`, `xypad`, `list`, `progress`, `label`, panels, rows, tabs, menus, tooltips; values remembered per sketch; screen-reader support (§4.8, §5.8) | 3 |
-| Sensors, gamepads | (none) | iOS/Android add-ons | (platform) | `tilt`, `compass`, `gamepad` via SDL3 | 6 |
+| Sensors, gamepads, joysticks | (none) | iOS/Android add-ons | (platform) | `tilt`, `compass`; `gamepad`, `gamepads`, `joysticks`, `bind`, `press`, `held`, `direction`, `rumble`, `controls` widget (§5.12) | 6 |
 | Output, export | `save`, `saveFrame`, `beginRecord`/`beginRaw` (PDF, SVG) | screen grab, Cairo renderer | ImageIo | `save "x.png"`, `record` (frames/video), `export svg`/`pdf` | 3 and 6 |
+| Collision | (none in core) | (contributed add-ons) | (blocks) | `touching`, `contact`, `hits`, `inside`, `cast`; 2D physics with `simulate`, `fixed`, `gravity`, `kick`, `join` (§5.13) | 2 (2D), 4 (3D), 6 (physics) |
+| Machine learning | (none in core; ml5.js for p5.js) | (contributed add-ons) | (blocks) | `poses`, `hands`, `faces`, `objects`, `labels`, `cutout`, `predict` on LiteRT; PyTorch and JAX models through conversion (§4.10) | 6 |
 | Computer vision, depth | (OpenCV library) | ofxOpenCv, ofxKinect | (blocks) | extension libraries, after the first stable release | 9 |
 
 ---
@@ -617,14 +800,15 @@ Goal: everything the core and standard add-ons of Processing, openFrameworks (0.
 ```
 roci new <name>          create a sketch folder (§4.9) with git and an optional Git LFS setup
 roci init                the same, inside an existing folder; never overwrites
-roci add <path>          copy a file into the right assets/ subfolder
+roci add <path>          copy a file into the right assets/ subfolder; converts PyTorch and JAX models (§4.10)
 roci get <name|url>      vendor a library into libs/ (§5.10)
 roci update [name]       fetch newer versions of vendored libraries, showing what changed
 roci run [file]          interpret with live reload (default: sketch.roci); needs nothing installed
 roci check [file]        parse, check and infer types without running
 roci fmt [file]          format a sketch in the house style (§5.1); no options
 roci package <target>    compile to native code and package; targets: linux, freebsd, macos, windows, android, ios
-roci doctor              check what each package target needs on this machine and print install steps
+roci doctor              check what each package target needs on this machine and print install steps;
+                         `roci doctor ml` checks the PyTorch and JAX model converters
 ```
 
 Packaging notes:
@@ -650,6 +834,7 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 - Check the state of `vendor:sdl3` and its satellites against the latest SDL3 releases; decide per library whether to use `vendor:` or our own bindings (§3).
 - Check and reserve names (`rocinante`, `roci`); confirm the name doesn't collide with an active creative-coding project.
 - Verify every "candidate" dependency in this file against its official docs: platform support (FreeBSD, iOS and Android included), licence, maintenance. Record results here.
+- Machine learning (§4.10): call LiteRT's C API from Odin on the four desktop OSes and on one iOS and one Android device, build it on FreeBSD (or decide on ONNX Runtime there), and test the PyTorch and JAX conversion paths end to end with one small model each.
 - Verify and complete the parity map (§6) against the Processing, openFrameworks and Cinder references.
 - **Spike 1, desktop**: SDL3 GPU device + window + clear colour from Odin on every desktop target, including FreeBSD with Vulkan through Mesa (FreeBSD is not on SDL's official list for the Vulkan GPU backend).
 - **Spike 2, mobile**: an Odin + SDL3 program drawing a circle on a real iPhone and a real Android phone. This is the riskiest assumption in the plan; if it fails, stop and rethink before Phase 1.
@@ -661,7 +846,7 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 - App loop, `window` with optional position, multiple windows, HiDPI.
 - Internal shader pipeline: HLSL → SDL_shadercross → embedded SPIR-V/MSL/DXIL.
 - Command list, batching, instancing, geometry cache.
-- 2D primitives, style, colour, transforms, basic shapes (including the tessellation decision, §4.3), math, random, noise, mouse and keyboard.
+- 2D primitives, style, colour, gradients (§5.9), transforms, basic shapes (including the tessellation decision, §4.3), math, random, noise, mouse and keyboard.
 - First version of the stable verb ABI (§4.7), with its C ABI.
 - Golden-image test harness (render offscreen, compare against reference PNGs with tolerance).
 - Mobile: the Phase 1 examples running on an iOS device and an Android device.
@@ -671,19 +856,21 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 - Lexer, parser, checker, type inference, typed IR, interpreter (§4.7, §5).
 - Inference error messages written before the inference rules are final (§5.3).
 - `circle 100 100 50` as a whole program.
-- `roci run` with file watching, hot reload with state preservation, error overlay.
+- `roci run` with file watching, hot reload with the state rules of §5.5, `Ctrl+R` restart, error overlay.
 - Sketch folders (§4.9): `roci new`, `roci init`, `roci add`, git and optional Git LFS setup, asset lookup by name, the outside-`assets/` error, live asset reload.
 - Error message catalogue with tests, including bracket mismatches located by indentation (§5.1), missing argument brackets (§5.1, §5.7) and every `learn`/`give`/`stop` rule (§5.11).
 - `roci fmt`: formatting is idempotent (formatting twice changes nothing) and never changes behaviour (formatted and unformatted sketches produce identical frames).
+- List verbs (`keep`, `skip`, `collect`, `combine`, `find`, `sort … by`, §5.2).
 - Turtle, events, timers, tweens, taught verbs (`learn`, `give`, `stop`, `with` defaults, sharing rules, §5.11), window messaging.
+- 2D collision detection (§5.13) with its broad phase.
 - Multi-file sketches and `.roci` libraries (§5.10): `use`, `hidden`, `roci get`, `roci update`, `libs/` vendoring, clash rules and their error messages. The public index starts small in Phase 9.
 - **Exit**: every Phase 1 example rewritten in `.roci`; every example infers fully (no boxed fallbacks) or the fallback is justified here; a newcomer test (someone who has never seen rocinante makes a moving sketch in 15 minutes, observed and written up here), run with two groups that see the same sketches written with one thing per argument and in bare Logo nesting, with the comparison recorded here (§5.1).
 
 ### Phase 3: Text, UI, images, canvases, shaders
-- Text with SDL3_ttf GPU engine (or the alternative chosen in Phase 0).
+- Text with SDL3_ttf GPU engine (or the alternative chosen in Phase 0), including copying system fonts into the sketch with the licence check (§4.9).
 - `ui` with the full widget set (§5.8) on Dear ImGui: immediate-mode `ui [ ]` blocks, automatic layout, focus and keyboard navigation, text input with IME and on-screen keyboards, touch sizing, theme, value persistence, custom widgets.
 - The AccessKit bridge (§4.8) on Windows, macOS, Linux, FreeBSD (verify), Android and iOS.
-- Images and pixels, offscreen canvases, blend modes, clipping, masks.
+- Images and pixels, offscreen canvases, blend modes, clipping, masks, image and video fills (§5.9).
 - User shaders with hot reload; built-in post effects.
 - Export: PNG, frame sequences, SVG/PDF.
 - **Exit**: ports of ten classic Processing examples, pixel-compared where meaningful; a two-window sketch (control window with every widget, canvas window reacting live) working with mouse, touch, keyboard only, and a screen reader on at least macOS (VoiceOver), Windows (NVDA or Narrator) and Linux (Orca); text boxes accepting non-Latin input through an IME.
@@ -691,6 +878,7 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 ### Phase 4: 3D
 - Primitives, meshes, camera with default orbit, nodes, lights, PBR materials, shadows.
 - glTF import (`vendor:cgltf`), SVG import.
+- 3D collision detection (§5.13).
 - 3D turtle.
 - **Exit**: a 3D generative sketch with lights and an imported model running on all six platforms.
 
@@ -701,14 +889,17 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 - **Exit**: an audio-visual sketch controlled by a MIDI controller; latency measured and recorded here.
 
 ### Phase 6: The world outside
-- Files and data formats, dialogs, network, serial and Firmata, webcam, video playback, sensors, gamepads, video recording.
-- **Exit**: an installation-style sketch (camera in, OSC out, UI control window, runs for 24 hours without leaks).
+- Files and data formats, dialogs, network, serial and Firmata, webcam, video playback and recording (§4.11), sensors, gamepads, joysticks, actions and the `controls` widget (§5.12), video recording.
+- 2D physics on Box2D v3 worlds (§5.13).
+- Machine learning (§4.10): LiteRT bindings, `predict`, the built-in tasks and their chosen models, `roci add` conversion, `roci doctor ml`.
+- **Exit**: an installation-style sketch (camera in, OSC out, UI control window, runs for 24 hours without leaks); a webcam sketch driven by `hands` at full frame rate on all six platforms; a game-style sketch played with two different gamepads, remapped by a player through `controls`.
 
 ### Phase 7: The compiler
 - `codegen`: typed IR → readable Odin source, built with the user's Odin together with the core, on all four desktop OSes.
 - Lists of same-shaped records as contiguous arrays (or `#soa`); vector maths as Odin array programming; boxed fallback as tagged unions.
 - Source mapping from packaged sketches back to `.roci` lines (§4.7).
 - `roci doctor` complete for desktop toolchains.
+- Packaging build time measured on each desktop OS, since the core is compiled with every sketch (§4.7); record it here.
 - Back-end equivalence suite (§9) running every example in both modes in the Linux pipeline, and locally on the other platforms before each release.
 - **Exit**: every example produces identical frames interpreted and compiled; the particle benchmark (100,000 records updated and drawn per frame) holds 60 fps compiled on a mid-range laptop, with the interpreted figure recorded here for comparison.
 
@@ -734,6 +925,12 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 - Rendering: golden-image tests per verb and per backend where CI allows.
 - **Back-end equivalence**: every `.roci` example and test runs interpreted and compiled; frames are compared pixel for pixel (exact match, with a fixed random seed and fixed time step) and printed output byte for byte. Any mismatch fails the pipeline. From Phase 7 on, this is part of the full pipeline on `main`. Compiled runs use the pinned Odin release.
 - UI: scripted input tests (simulated mouse, touch, keyboard and text input events) for every widget, checking returned values and rendered frames; keyboard-only navigation tests; AccessKit tree snapshots per widget and per action.
+- Controllers: scripted gamepad and joystick events for every binding kind, remapping through `controls`, and hot-plugging.
+- Collision: every shape pair against reference results, including touching edges and zero-size shapes; broad-phase results identical to brute force.
+- Machine learning: each built-in task and `predict` on fixed images, run on the CPU with a fixed thread count; outputs compared exactly between interpreted and compiled runs and against stored results.
+- Hot reload: every rule in §5.5 (unchanged line keeps its value, changed line re-runs, shape gains and loses fields, constants, a save with an error, `Ctrl+R`).
+- Records: shapes taken from JSON files in `assets/`, structural verbs used with several shapes, messages typed from `send` lines.
+- Fonts: copying with free, restrictive and unreadable licences; `roci package` refusing a restrictive font.
 - Sketch folders: `roci new`/`init` tested with and without git and Git LFS installed; asset lookup, duplicate-name and outside-`assets/` errors; a packaged sketch run from a different machine path finds every asset.
 - Libraries: multi-file sketches behave identically to the same code in one file; `use` with index names and git URLs; offline runs from vendored `libs/`; every clash rule produces its error message.
 - Toolchain: `roci doctor` tested on machines (or CI images) with each toolchain piece missing, wrong version and present.
@@ -773,24 +970,40 @@ Each phase ends with a demo sketch, passing CI on all desktop targets and an upd
 - **2026-10-23, CI on Linux only**: GitLab on ORION (fast check on merge requests, full pipeline on `main`, release on tags) and GitHub (full pipeline on `main`, release on tags), pushed to GitHub by hand about twice a week; other platforms checked locally before each release. Full text in §11; non-negotiable 8.
 - **2026-10-23, Versions: calendar-based `YYYY.MINOR.MICRO`** (replaces semantic versioning); tags `vYYYY.MINOR.MICRO`; the first stable release replaces the old "1.0" milestone. Full text in §11.
 - **2026-10-23, One thing per argument**: each verb argument is a single item (number, text, name, field, literal or bracketed group); full expressions after `=`, `give`, in conditions and between literal commas; `roci fmt` adds missing brackets; no pipes, dot calls or argument commas. Vectors are `{ a, b }` literals (the `vec` verb is gone); `random from … to …`, `anywhere` and `pick` cover common random cases. Verb-group shapes are chosen by count, then kinds (closes the former open question 12). Full text in §5.1 and §5.2.
+- **2026-10-24, Machine learning out of the box**: local inference on LiteRT (Apache-2.0) through its C API; `.tflite` and `.litertlm` run directly, PyTorch and JAX models through the official converters at `roci add` time; built-in tasks (`poses`, `hands`, `faces`, `objects`, `labels`, `cutout`) and `predict`; never blocks a frame; no OpenGL path; inference only. Full text in §4.10; non-negotiable 2.
+- **2026-10-24, Asset folders**: `3d-models/` and `ml-models/` replace `models/`, plus `videos/`; folder names lowercase. Full text in §4.9.
+- **2026-10-24, System fonts are copied into `assets/fonts/`** when their licence allows; otherwise used locally with a teaching message, and never packaged. Full text in §4.9.
+- **2026-10-24, Game controllers**: gamepads, joysticks, actions with `bind`, player remapping through the `controls` widget saved in `ui.toml`. Full text in §5.12.
+- **2026-10-24, Gradients**: a list of colours in `fill`, `stroke` or `background`, with `angle`, `stops`, `as linear`/`radial`/`conic` and `in rgb`/`oklch`; Oklab mixing by default; `gradient` makes a gradient value. Full text in §5.9.
+- **2026-10-24, Image fills**: images, video, canvases and the webcam fill any shape, which acts as a mask; modes `as cover` (default), `fit`, `stretch`, `tile`, `center`. Full text in §5.9.
+- **2026-10-24, Collision detection built in**: shapes as records, `touching`, `contact`, `hits`, `inside`, `cast`; Box2D v3 collision functions for 2D, our own Odin tests for 3D. Full text in §5.13.
+- **2026-10-24, User shaders are HLSL**, translated at run time by SDL_shadercross for hot reload and compiled offline for packaging; a rocinante shader dialect is on the roadmap. Full text in §4.3.
+- **2026-10-24, The language is called rocinante too.** Full text in §1.
+- **2026-10-24, No web target for now**; it is on the roadmap (README.md).
+- **2026-10-24, The core ships as Odin source**, compiled with each sketch by `roci package`; C and C++ dependencies ship prebuilt per target. Full text in §4.7.
+- **2026-10-24, UI hiding and placement**: `Tab` hides and shows the UI (`ui key` changes it), sharing the key with focus navigation by one rule; `ui` blocks may sit inside `draw`, positioned in canvas coordinates. Full text in §5.8.
+- **2026-10-24, Library index**: a git repository on GitHub, curated by Fabrizio at first; listing rules still open. Full text in §5.10.
+- **2026-10-24, accesskit-c on mobile**: its releases include iOS and Android libraries; we build FreeBSD and arm64 Linux ourselves once per release. Full text in §4.8.
+- **2026-10-24, Gamepad names**: friendlier rocinante names (`bottom`, `leftstick`, `lefttrigger`, `dpad`, …) mapped onto SDL3's positional buttons. Full text in §5.12.
+- **2026-10-24, Hot reload rules**: check first and keep the old code on errors; unchanged definitions keep their values, changed ones re-run; shapes may gain fields; constants always reload; `Ctrl+R` restarts. Full text in §5.5.
+- **2026-10-24, List verbs**: `keep`, `skip`, `collect`, `combine … from`, `find`, `sort … by`, with `it` and `result`; no pipe. Full text in §5.2.
+- **2026-10-24, Video without FFmpeg**: platform media frameworks plus dav1d, libvpx and pl_mpeg; FFmpeg only as an optional user install. Full text in §4.11.
+- **2026-10-24, Record shapes**: one shape per creation site, structural verbs, shapes of JSON assets read at check time, messages typed from `send`. Full text in §5.3.
+- **2026-10-24, Library index rules** for listing and removal. Full text in §5.10.
+- **2026-10-24, Extensions** ship as Odin source for packaging and as prebuilt desktop libraries for `roci run`. Full text in §5.10.
+- **2026-10-24, 2D physics** on Box2D v3 worlds; 3D physics on the roadmap. Full text in §5.13.
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
+
+### Later
+
+Ideas that are wanted but not planned for the first stable release live in the Roadmap section of `README.md`, so contributors can see them. When one is taken up, it moves here and into §8.
 
 ### Open
 
 Decide these with Fabrizio; move each to "Decided" with the date.
 
-1. User shader language: HLSL (one language, compiled by SDL_shadercross), WGSL, or a tiny rocinante shader dialect compiled to HLSL.
-2. Language name: is the language also "rocinante", or does it get its own name?
-3. Web target: SDL3 GPU has no browser backend. Decide whether sharing sketches on the web matters for the first stable release.
-4. Hot-reload state rules (§5.5).
-5. Names for the list verbs in §5.2 (keep matching, transform each, fold, sort by). They must read naturally in a sentence and must not clash with Processing names users already know (`map`, `filter`). A pipe-like form for chaining list verbs, if any, is decided here too, never for ordinary calls (§5.1).
-6. Video playback backend: platform media APIs versus FFmpeg (FFmpeg's licensing conflicts with the §3 policy unless it is an optional, user-installed component).
-7. Core delivery for `roci package`: ship the core as Odin source compiled together with each sketch (simplest, best optimisation, slower first build) or as prebuilt per-target libraries (faster builds, more release work). C/C++ dependencies (Dear ImGui, accesskit-c, SDL3) ship prebuilt per target either way.
-8. Record-shape inference rules (§5.3): how fields added after creation, records from loaded JSON, and messages between windows get their shapes.
-9. UI details: the hide/show key, and whether `ui` blocks may also appear inside `draw` for widgets attached to things on the canvas.
-10. Library index (§5.10): where it is hosted, who curates it, and the rules for getting a library listed.
-11. Odin/C extension libraries (§5.10, Phase 9): how they are distributed (source compiled at packaging time, or prebuilt per target) and how `roci run` loads them without a toolchain.
-12. accesskit-c on Android and iOS: whether prebuilt releases exist, and if not, how the core build produces them (§4.8).
+1. Machine learning on FreeBSD: LiteRT's C runtime built there, or ONNX Runtime as the FreeBSD fallback (§4.10). Settled by Phase 0.
+2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
 
 ---
 
@@ -876,6 +1089,21 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 - Elm, Compiler Errors for Humans: https://elm-lang.org/news/compiler-errors-for-humans
 - Apple App Review Guidelines (2.5.2): https://developer.apple.com/app-store/review/guidelines/
 - nannou (prior art, built on Bevy): https://github.com/nannou-org/nannou
+- LiteRT (runtime, platforms, accelerators, LiteRT Torch converter): https://github.com/google-ai-edge/LiteRT
+- LiteRT C API (`tensorflow/lite/c/c_api.h`): https://developers.google.com/edge/litert/android/native
+- LiteRT, JAX models (`jax2tf`, then the TFLite converter): https://developers.google.com/edge/litert/conversion/jax/overview
+- ONNX Runtime FreeBSD port (fallback candidate): https://www.freshports.org/misc/onnxruntime/
+- ExecuTorch desktop platforms (open question 2): https://docs.pytorch.org/executorch/1.1/desktop-section.html
+- ml5.js (model for the built-in ML tasks): https://docs.ml5js.org/
+- SDL3 gamepad API (mappings, positional buttons, labels, rumble): https://wiki.libsdl.org/SDL3/CategoryGamepad
+- SDL3 gamepad buttons (`SDL_GamepadButton`, names mapped in §5.12): https://wiki.libsdl.org/SDL3/SDL_GamepadButton
+- accesskit-c release workflow (published targets): https://github.com/AccessKit/accesskit-c/blob/main/.github/workflows/publish.yml
+- Box3D (3D sibling of Box2D, MIT; 3D physics on the roadmap): https://github.com/erincatto/box3d
+- F# type providers (model for JSON shapes in §5.3): https://learn.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
+- dav1d (AV1 decoder, BSD-2-Clause): https://code.videolan.org/videolan/dav1d
+- libvpx (VP8/VP9, BSD-3-Clause): https://github.com/webmproject/libvpx
+- pl_mpeg (MPEG-1, MIT): https://github.com/phoboslab/pl_mpeg
+- OpenType `OS/2` table, `fsType` embedding bits (font licence check in §4.9): https://learn.microsoft.com/en-us/typography/opentype/spec/os2#fstype
 - Calendar Versioning (CalVer, segment names `YYYY`, `MINOR`, `MICRO`): https://calver.org/
 - Zero-Clause BSD (OSI): https://opensource.org/license/0BSD
 - GitLab CI job rules (`$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH`, merge request pipelines): https://docs.gitlab.com/ci/jobs/job_rules/
