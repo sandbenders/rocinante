@@ -191,6 +191,29 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **Odin:** pinned to `dev-2026-10`. Official archives cover Linux amd64 and arm64, macOS arm64 and Windows amd64 only (§4.7). Homebrew's `dev-2026-07` built against LLVM 23 failed to compile any program; Homebrew's `dev-2026-10` (LLVM 22.1.8) works.
 - **`vendor:sdl3`:** its bindings are for SDL 3.4.2, while the latest SDL3 release is 3.4.18 (2026-10-02). Patch releases keep the ABI, so the bindings load the newer library, but functions added after 3.4.2 are missing; the decision between `vendor:` and our own bindings stays open until Phase 1 needs one.
 - **Odin from source on FreeBSD** (2026-10-24, FreeBSD 15.1, Intel Xeon X5675): `LLVM_CONFIG=llvm-config19 gmake release-native` on the `dev-2026-10` tag built in 2 minutes 10 seconds and reports `dev-2026-10:84bc3fc`, the same commit as the official macOS archive, using one core (99% CPU, so `-j` does not help: the script runs one compile). It needed `gmake`, git and the ports package `llvm19` (the base system's clang has no `llvm-config`); `roci` must find `llvm-config` under its versioned name.
+- **Dependency checks** (2026-10-24, from each project's own repository, releases and licence files; the GitHub API gave the dates):
+
+  | Dependency | Licence | Latest release | Finding |
+  |---|---|---|---|
+  | SDL3 | Zlib | 3.4.18 (2026-10-02) | `vendor:sdl3` bindings are 3.4.2 (see above) |
+  | SDL_ttf | Zlib | 3.2.2 (2025-03-31) | `TTF_CreateGPUTextEngine` exists since 3.0.0 and must run on the device's thread; the last release is 19 months old, though commits continue (2026-10-17) |
+  | SDL_shadercross | Zlib | none (no tags or releases) | takes HLSL or SPIR-V; needs SPIRV-Cross (Apache-2.0) and, for DXIL, DXC (LLVM Release Licence, permissive) shipped beside it; DXBC needs vkd3d off Windows, which we don't need. No release means pinning a commit |
+  | Dear ImGui | MIT | 1.93.0 (2026-10-14) | active |
+  | dear_bindings | MIT | 0.26 for ImGui 1.93.0 (2026-10-18) | its tested list has SDL3 but not `imgui_impl_sdlgpu3` (it has an `example_sdl3_sdlgpu3`); Spike 4 verifies it |
+  | accesskit-c | Apache-2.0 or MIT (BSD parts from Chromium) | 0.23.1 (2026-09-26) | active; its README lists no platforms, so the release-workflow list in §4.8 still stands as the source |
+  | LiteRT | Apache-2.0 | 2.3.0 (2026-10-07) | two C APIs (§4.10); Google's docs list Android, iOS, macOS, Linux, Windows, web and embedded, not FreeBSD |
+  | ONNX Runtime (FreeBSD fallback) | MIT | 1.31.0 (2026-10-09) | active |
+  | Box2D | MIT | 3.2.0 (2026-10-19) | active |
+  | Box3D | MIT | 0.1.0 (2026-06-30) | still pre-release, as §5.13 assumed |
+  | miniaudio | public domain or MIT-0 | 0.11.25 (2026-03-03) | confirmed from its README |
+  | stb (incl. `stb_vorbis` 1.22) | public domain or MIT | no releases | confirmed from file headers |
+  | PortMidi | MIT-style | 2.0.7 (2025-10-25) | no iOS or Android; FreeBSD only through minimal sndio (§4.6) |
+  | cgltf | MIT | 1.15 (2025-02-09) | the least active of the lot (last push 2026-02-02), but small and stable |
+  | dav1d | BSD-2-Clause | not checked | licence confirmed from `COPYING` |
+  | libvpx | BSD-3-Clause | no releases listed on GitHub | licence confirmed |
+  | pl_mpeg | MIT | none | its README says MIT (GitHub shows no licence file); last push 2025-12-30 |
+
+  Still unchecked: the exact platform lists of dav1d, libvpx and AccessKit's FreeBSD adapter (Phase 3), and every library's behaviour on iOS and Android, which the mobile spike covers.
 - **Spike 1, macOS arm64:** an SDL3 window and GPU device cleared to a colour from Odin, 181 frames in 3 seconds on the Metal driver, with Homebrew's SDL 3.4.18 library and the 3.4.2 bindings (`spikes/desktop`). FreeBSD 15.1-RELEASE-p5 (Intel Xeon X5675, AMD Radeon RX 580): passes on the Vulkan driver through Mesa, 187 frames in 3 seconds, with Odin `dev-2026-09` (the `lang/odin` port, one release behind the pin; the decision is to build the pinned release from source there instead) and SDL 3.4.16 as the library, so Vulkan GPU rendering works on FreeBSD even though SDL doesn't list it. It passed again with the source-built Odin `dev-2026-10:84bc3fc`: Vulkan, 186 frames in 3 seconds. Linux and Windows are still to check.
 
 ### Phase 1: Window and 2D core (Odin API)

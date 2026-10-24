@@ -14,3 +14,9 @@
 vendor:sdl3     Zlib
 vendor:box2d    MIT
 vendor:cgltf    MIT
+# miniaudio: README says public domain or MIT-0 (checked 2026-10-24).
+vendor:miniaudio MIT-0
+# stb, stb_vorbis included: public domain or MIT.
+vendor:stb      Public-Domain
+# PortMidi: licence.txt is MIT-style, with non-binding requests.
+vendor:portmidi MIT

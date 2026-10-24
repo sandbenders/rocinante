@@ -31,7 +31,7 @@ Users never see threads. The core decides: rendering and windowing stay where SD
 - Device I/O through SDL3 audio, so one platform layer covers every target. Verify SDL3's audio backend on FreeBSD early.
 - Decoding: miniaudio (public domain or MIT-0; in Odin's `vendor:`) has built-in decoders for WAV, FLAC and MP3. Vorbis comes from `stb_vorbis` (also in `vendor:`). AIFF, Opus and AAC: decide in Phase 5 (permissive C libraries or platform APIs).
 - Synthesis and DSP: our own Odin DSP library (oscillators, filters, envelopes, effects, FFT), with simple user verbs. Bind a permissive C library only if writing our own proves unreasonable.
-- MIDI: candidate `vendor:portmidi`. Verify its FreeBSD, iOS and Android support before Phase 5; fill gaps with our own backends if needed.
+- MIDI: candidate `vendor:portmidi` (MIT-style licence, verified 2026-10-24). Its README names Linux (ALSA), a minimal sndio mode for FreeBSD, OpenBSD and NetBSD, Haiku, and says nothing of iOS or Android, so mobile needs our own backends (CoreMIDI on iOS, Android's MIDI API), and FreeBSD's sndio mode lacks timestamped output and virtual devices. Verify its FreeBSD, iOS and Android support before Phase 5; fill gaps with our own backends if needed.
 - OSC: our own Odin implementation (OSC is a small protocol).
 
 ### 4.7 Execution model (decided 2026-10-22, revised 2026-10-23)
@@ -110,7 +110,7 @@ my-sketch/
 
 Trained models run locally, out of the box, in every sketch and on every platform. No cloud service, no account, no Python while the sketch runs. Users see pictures, numbers and lists, never tensors.
 
-- **One runtime: LiteRT** (Google's on-device runtime, formerly TensorFlow Lite; Apache-2.0), used through its C API (`tensorflow/lite/c/c_api.h`). Odin's `vendor:` collection has no machine-learning runtime, so the bindings live in `vendor/` (§3). One runtime keeps one behaviour (non-negotiable 7) and one set of bugs.
+- **One runtime: LiteRT** (Google's on-device runtime, formerly TensorFlow Lite; Apache-2.0), used through its C API. The LiteRT repository (v2.3.0, 2026-10-07) has two: the classic one, `tflite/c/c_api.h`, which the original TensorFlow Lite C API became, and a newer `litert/c/` API built around `CompiledModel`, which Google's docs now lead with. Phase 6's spike picks one and records why; the classic one is the likelier fit for CPU inference with fixed threads (§9). Odin's `vendor:` collection has no machine-learning runtime, so the bindings live in `vendor/` (§3). One runtime keeps one behaviour (non-negotiable 7) and one set of bugs.
 - **Three kinds of model, one file format.** LiteRT runs `.tflite` models, with `.litertlm` for language models. The other two sources reach that format through Google's official converters, once, on the author's machine:
   - **LiteRT:** `.tflite` and `.litertlm` files work as they are: drop them in `assets/ml-models/` or run `roci add pose.tflite`.
   - **PyTorch:** converted to `.tflite` with the LiteRT Torch converter.
