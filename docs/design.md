@@ -140,7 +140,7 @@ Playing and recording video uses no FFmpeg (its licensing conflicts with §3 unl
 
 ### 5.1 Design principles
 
-- One statement per line. No terminators.
+- One statement per line. No terminators. (Decided 2026-10-24: inside a `[ ]` block that fits on one line, statements may be separated by two spaces, as in `[ step p  circle p.pos 3 ]`; `roci fmt` keeps a block on one line only when it is short and otherwise puts one statement per line.)
 - One shape: `verb argument argument ...`. Verbs have a fixed number of required arguments, so the parser always knows where a call ends (as in Logo).
 - **One thing per argument** (decided 2026-10-23). Each argument of a verb is a single visible item: a number, text, a name (including built-in values such as `width`, `mouse` and `pi`, and verbs that take no arguments such as `anywhere`), a field (`p.pos`), a `{ }` or `[ ]` literal, or a group in round brackets. A call that takes arguments, or a calculation, used as an argument goes in round brackets: `circle (random width) (random height) 5`, `slider "size" 10 (width / 2)`. The rule turns the readable habit into the grammar, so nested calls never depend on the reader counting arities.
   - **Full expressions are free wherever there is no argument list:** after `=`, after `give`, in `if` and `while` conditions, as the count of `repeat`, and between the commas of vector and record literals (§5.2). So `{ random width, 0 }` needs no brackets, and `x = random width + 10` means `(random width) + 10`: calls bind tighter than arithmetic, as in NetLogo.
@@ -150,6 +150,9 @@ Playing and recording video uses no FFmpeg (its licensing conflicts with §3 unl
   - No pipes, no dot calls (`width.random`) and no commas between arguments. `.` stays for fields and library names (§5.10). List chains are named steps, not pipes (§5.2).
   - Rationale and sources: Logo, NetLogo, Rebol, Smalltalk, Odin and the paren-free languages surveyed all show that fixed arity solves the parser's problem but not the reader's. No study measures nested-call readability directly, so the Phase 2 newcomer test checks this rule (§8).
 - Optional arguments are introduced by small connecting words, never by position: `window 800 600 at 100 100`, `text "hi" at 20 20 size 32`, `image photo at 0 0 width 200`. The connecting words form a short, fixed list (start with: `at`, `size`, `width`, `height`, `from`, `to`, `by`, `in`, `start`, `lines`, `angle`, `stops`, `as`, plus the style words in §5.9: `fill`, `stroke`, `thickness`, `alpha`, `font`, `style`). `to` is only ever a connecting word (`for i from 1 to 10`, `add x to particles`); verbs are defined with `learn` (§5.11).
+- **A connecting word is one only after the call's required arguments are filled** (decided 2026-10-24). While a verb still has an open required slot, a word that is also a built-in value or a user name (`width`, `height`, `size`) is read as a value: `rect 0 0 width height fill pattern` reads `width` and `height` as the last two required arguments, then `fill` as a connecting word. The same holds for parameters of `learn` (`learn star size [ … ]`). The checker warns when the other reading would also have been valid.
+- **Multi-word verbs** (`pen up`, `no fill`, `look at`, `ask file`, `forget ui`, `on mouse down`, `draw into`, `image button`, `export svg`, `hidden learn`, `for each`) are a fixed table of phrases, matched longest-first before a word is read on its own. The table is part of the core and is listed in the docs; user verbs are always one word.
+- **`[ ]` is a block or a list by position** (decided 2026-10-24): where the verb's parameter takes a block (`repeat`, `if`, `draw`, `learn`) it is a block; after `=`, as a verb's list parameter, or as a colour list it is a list. Lists have no commas and vectors do (`[ 1 2 ]` against `{ 1, 2 }`); the Phase 2 newcomer test watches for this mix-up.
 - Blocks use `[ ]`, as in Logo. Newlines inside blocks are free. (Decided 2026-10-22: `[ ]`, not `end`.)
 - **Indentation is free and never changes meaning** (decided 2026-10-23). `[ ]` alone defines blocks; tabs, spaces, pasted code and phone keyboards can never break a sketch. Consistency comes from tooling instead:
   - **`roci fmt`** rewrites a sketch in the house style: two spaces per block level, one space inside brackets, one statement per line. Editor plugins run it on save, `roci new` starts formatted, and all docs and examples are formatted with it. It has no options, so there is nothing to argue about.
@@ -181,7 +184,7 @@ Borrowed from Odin (see the Odin FAQ in References):
 
 Deliberate differences from Odin:
 
-- **Blocks capture variables.** `every 2 seconds [ grow size ]` sees `size`. Odin has only non-capturing procedures because capturing closures need automatic memory management; our runtime manages memory, so users never think about it. Generated Odin passes captured variables explicitly.
+- **Blocks capture variables.** `every 2 seconds [ size = size + 10 ]` sees `size`. Odin has only non-capturing procedures because capturing closures need automatic memory management; our runtime manages memory, so users never think about it. Generated Odin passes captured variables explicitly.
 - **A light functional layer for lists** (decided 2026-10-24), as verbs that take a block. Inside the block, `it` is the current item. Each gives a new list or value and leaves the original alone:
 
 ```
@@ -217,7 +220,7 @@ x = 10                      # variables: just assign
 name = "Ada"
 SPEED = 4                   # all capitals: a constant, can never change
 COLOURS = [ red orange teal ]   # constant list: readable, never modified
-points = [ 1 2 3 ]          # lists
+points = [ { 10, 20 } { 30, 40 } ]   # lists
 p = { x: 10, y: 20 }        # records; access with p.x
 
 learn star size [           # teach a new verb, Logo style (§5.11)
@@ -233,7 +236,7 @@ if mouse.x > width / 2 [ fill red ] else [ fill blue ]
 
 repeat 10 [ circle (random width) (random height) 5 ]
 for i from 1 to 10 [ line 0 (i * 10) width (i * 10) ]
-for each p in points [ circle p 50 10 ]
+for each p in points [ circle p 10 ]
 
 draw [ ... ]                # runs every frame (default window)
 draw w [ ... ]              # runs every frame for window w
@@ -594,9 +597,11 @@ Collision is built in. Shapes are plain records (§5.2), recognised by their fie
 |---|---|
 | a vector (`{ 10, 20 }`) | point |
 | `pos`, `radius` | circle (2D) or sphere (3D vector) |
-| `pos`, `size` (and optional `angle`) | rectangle or box, rotated by `angle` |
+| `pos`, `size` (and optional `angle`) | rectangle or box, rotated by `angle`; a record that also has `radius` is a circle or sphere |
 | `from`, `to` | line segment |
 | `points` | polygon (2D) |
+
+A record that matches no row, or matches rows that disagree (for example `points` together with `from`), is a load-time error when it is passed to a collision verb, and the message lists the fields each shape needs (decided 2026-10-24).
 
 ```
 ball   = { pos: { 200, 100 }, radius: 10, vel: { 2, 3 } }
@@ -618,7 +623,7 @@ h = cast { from: eye, to: target } walls   # first thing along a line
 
 ### 5.14 Implementation notes
 
-- Hand-written lexer and recursive-descent parser in Odin (for error quality), producing an AST with full source spans. A call collects its arguments greedily until it meets something that can't be an argument: a verb that takes arguments, a verb that gives no value, a connecting word, `]` or the end of the line (§5.1). No types are needed to parse. Edge case: a giving verb with no parameters (`anywhere`) is a name, so the checker warns when one follows a complete call on the same line.
+- Hand-written lexer and recursive-descent parser in Odin (for error quality), producing an AST with full source spans. A call collects its arguments greedily until it meets something that can't be an argument: a verb that takes arguments, a verb that gives no value, a connecting word, `]` or the end of the line (§5.1). No types are needed to parse, but the parser does need the verb table: before parsing a file it reads the `learn` headers of the whole program (the sketch's other files and `libs/`), because taught verbs fix argument counts and add their own connecting words. A connecting word is recognised only once the call's required arguments are filled (§5.1). Edge case: a giving verb with no parameters (`anywhere`) is a name, so the checker warns when one follows a complete call on the same line.
 - Checker and type inference run before anything executes, producing the typed IR (§4.7). Spans are preserved into the IR so runtime errors, and the source map for generated Odin, point at `.roci` lines.
 - The interpreter executes the typed IR directly (no separate AST walker). Keep it simple and correct; it is the reference implementation that the code generator is tested against.
 - Use Odin's allocators deliberately: an arena per frame for temporary values, a long-lived allocator for sketch state, so hot reload can discard and rebuild cleanly.
@@ -650,7 +655,7 @@ Goal: everything the core and standard add-ons of Processing, openFrameworks (0.
 | Offscreen, blending, clipping | `createGraphics`, `PGraphics`, `blendMode`, `clip`/`noClip` | `ofFbo` | gl::Fbo | `canvas`, `draw into c [ ]`, `blend`, `clip` | 3 |
 | Shaders | `PShader`, `loadShader`, `shader`, `resetShader` | `ofShader` | GlslProg | `shader` (hot-reloaded), post effects (`blur`, `glow` …) as built-ins | 3 |
 | 3D primitives, meshes | `box`, `sphere`, `sphereDetail` | `of3dPrimitive`, box/cone/cylinder/icosphere/plane/sphere, `ofMesh` | geom:: | `box`, `sphere`, `cone`, `cylinder`, `plane`, `icosphere`, `torus`, `mesh`, `wireframe` | 4 |
-| Camera | `camera`, `perspective`, `ortho`, `frustum`, `beginCamera`, `screenX/Y/Z`, `modelX/Y/Z` | `ofCamera`, `ofEasyCam`, `ofNode` | CameraPersp, CameraUi | `camera`, `orbit` (default), `look at`, `ortho`, `to screen`, `to world` | 4 |
+| Camera | `camera`, `perspective`, `ortho`, `frustum`, `beginCamera`, `screenX/Y/Z`, `modelX/Y/Z` | `ofCamera`, `ofEasyCam`, `ofNode` | CameraPersp, CameraUi | `camera`, `orbit` (default), `look at`, `ortho`, `screen point`, `world point` | 4 |
 | Lights, materials | `lights`, `ambientLight`, `directionalLight`, `pointLight`, `spotLight`, falloff, specular, `ambient`, `emissive`, `shininess`, `specular` | `ofLight`, `ofMaterial` | gl lighting via shaders | `light` (ambient/sun/point/spot), `material` (PBR by default), `shadows` | 4 |
 | Model and vector import | `loadShape` (SVG, OBJ) | ofxAssimpModelLoader, ofxSvg | ObjLoader | `model "x.glb"` (glTF first, `vendor:cgltf`), `svg` | 4 |
 | Sound | (Sound library) | `ofSoundPlayer`, `ofSoundStream`, `ofSoundBuffer` | audio:: node graph | `sound`, `play`, `loop`, `volume`, `synth`, `listen` (mic), `fft`, `level`, effects | 5 |
