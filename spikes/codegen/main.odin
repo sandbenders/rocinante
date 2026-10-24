@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: 0BSD
+//
+// Spike 3 (CLAUDE.md section 8, Phase 0): a hand-written typed-IR fragment is
+// run by a small interpreter and turned into Odin source, which is built with
+// the pinned Odin and run. Both must print exactly the same thing, which is
+// non-negotiable 7 in miniature. Run it from the repository root:
+//
+//     odin run spikes/codegen -- check     interpret, generate, build, compare
+//     odin run spikes/codegen -- doctor    look for the packaging toolchain
+package codegen_spike
+
+import "core:fmt"
+import "core:os"
+import "core:strings"
+import "verbs"
+
+OUT_DIR :: "output/codegen"
+
+main :: proc() {
+	command := "check"
+	if len(os.args) > 1 {
+		command = os.args[1]
+	}
+	ok: bool
+	switch command {
+	case "check":
+		ok = run_check()
+	case "doctor":
+		ok = doctor(pinned_odin())
+	case:
+		fmt.eprintln("usage: odin run spikes/codegen -- check | doctor")
+	}
+	if !ok {
+		os.exit(1)
+	}
+}
+
+pinned_odin :: proc() -> string {
+	data, err := os.read_entire_file("ODIN_VERSION", context.allocator)
+	if err != nil {
+		return ""
+	}
+	return strings.trim_space(string(data))
+}
+
+run_check :: proc() -> bool {
+	ok := true
+	for program in ([]Program{program_circle(), program_loop()}) {
+		ok = check_one(program) && ok
+	}
+	return ok
+}
+
+check_one :: proc(p: Program) -> bool {
+	fmt.printfln("== %s", p.name)
+
+	errors := check_program(p)
+	if len(errors) > 0 {
+		for message in errors {
+			fmt.eprintln(message)
+		}
+		return false
+	}
+
+	// 1. The interpreter, capturing what the verbs print.
+	captured: strings.Builder
+	strings.builder_init(&captured)
+	verbs.sink = &captured
+	interpret(p)
+	verbs.sink = nil
+	expected := strings.to_string(captured)
+
+	// 2. Generate Odin into its own folder, next to a copy of the verbs.
+	dir := fmt.tprintf("%s/%s", OUT_DIR, p.name)
+	if err := os.make_directory_all(fmt.tprintf("%s/verbs", dir)); err != nil && err != .Exist {
+		fmt.eprintfln("cannot create %s: %v", dir, err)
+		return false
+	}
+	verbs_source, read_err := os.read_entire_file("spikes/codegen/verbs/verbs.odin", context.allocator)
+	if read_err != nil {
+		fmt.eprintfln("cannot read the verbs: %v", read_err)
+		return false
+	}
+	source := generate(p)
+	if err := os.write_entire_file(fmt.tprintf("%s/main.odin", dir), source); err != nil {
+		fmt.eprintfln("cannot write the generated source: %v", err)
+		return false
+	}
+	if err := os.write_entire_file(fmt.tprintf("%s/verbs/verbs.odin", dir), verbs_source); err != nil {
+		fmt.eprintfln("cannot write the verbs: %v", err)
+		return false
+	}
+	fmt.print(source)
+
+	// 3. Build it with the same Odin that built this program.
+	binary := fmt.tprintf("%s/sketch", dir)
+	build_command := []string{"odin", "build", dir, "-vet", "-strict-style", fmt.tprintf("-out:%s", binary)}
+	state, _, build_stderr, build_err := os.process_exec({command = build_command}, context.allocator)
+	if build_err != nil || state.exit_code != 0 {
+		fmt.eprintfln("the generated Odin did not build (%v, exit code %d):", build_err, state.exit_code)
+		fmt.eprint(string(build_stderr))
+		return false
+	}
+
+	// 4. Run the generated program and compare.
+	run_state, run_stdout, _, run_err := os.process_exec({command = {binary}}, context.allocator)
+	if run_err != nil || run_state.exit_code != 0 {
+		fmt.eprintfln("the generated program failed (%v, exit code %d)", run_err, run_state.exit_code)
+		return false
+	}
+	if string(run_stdout) != expected {
+		fmt.eprintln("MISMATCH between the interpreter and the generated program")
+		fmt.eprintfln("interpreter:\n%s", expected)
+		fmt.eprintfln("generated:\n%s", string(run_stdout))
+		return false
+	}
+	fmt.printfln("   identical output, %d lines", strings.count(expected, "\n"))
+	return true
+}

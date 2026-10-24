@@ -98,5 +98,7 @@ ci :: proc(fast: bool) -> bool {
 // as they appear.
 check_packages :: proc() -> bool {
 	ok := step("check build script", {"odin", "check", "build", "-vet", "-strict-style"})
+	// Spike 3: interpret, generate Odin, build it and compare the output.
+	ok = step("spike 3: code generation", {"odin", "run", "spikes/codegen", "--", "check"}) && ok
 	return ok
 }
