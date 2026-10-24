@@ -178,7 +178,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - Check the state of `vendor:sdl3` and its satellites against the latest SDL3 releases; decide per library whether to use `vendor:` or our own bindings (§3).
 - Check and reserve names (`rocinante`, `roci`); confirm the name doesn't collide with an active creative-coding project.
 - Verify every "candidate" dependency in this file against its official docs: platform support (FreeBSD, iOS and Android included), licence, maintenance. Record results here.
-- Verify the parity map (§6) against the Processing, openFrameworks and Cinder references and fix what is wrong; completing the rows is done phase by phase, before each phase starts.
+- Verify the parity map (§6) against the Processing, openFrameworks and Cinder references and fix what is wrong (done 2026-10-24); completing the rows is done phase by phase, before each phase starts.
 - The LiteRT spike (§4.10: C API from Odin on the four desktop OSes, one iOS and one Android device, a FreeBSD build or the ONNX Runtime decision, PyTorch and JAX conversion with one small model each) moves to the start of Phase 6, because it de-risks only that phase.
 - **Spike 1, desktop**: SDL3 GPU device + window + clear colour from Odin on every desktop target, including FreeBSD with Vulkan through Mesa (FreeBSD is not on SDL's official list for the Vulkan GPU backend).
 - **Spike 2, mobile**: an Odin + SDL3 program drawing a circle on a real iPhone and a real Android phone. This is the riskiest assumption in the plan; if it fails, stop and rethink before Phase 1.
@@ -397,6 +397,8 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
 3. Choices inherited from the sections they point to: vector tessellation (§4.3, Phase 1); text engine (§4.3, Phase 0); AIFF, Opus and AAC decoding (§4.6, Phase 5); MIDI on FreeBSD, iOS and Android (§4.6, Phase 5); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the Git LFS type list (§4.9, Phase 2); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision (§5.13, Phase 4); AccessKit on FreeBSD (§4.8, Phase 3).
 4. What to do about Windows arm64 and macOS Intel, which Odin's official archives do not cover (§4.7): build Odin from source there as on FreeBSD, or drop the targets. Settled in Phase 0.
+5. Alignment modes for shapes and images (Processing's `rectMode`, `ellipseMode`, `imageMode`, `shapeMode`): whether `rect`, `circle` and `image` take an origin word such as `as center` or `as corner`, given that `as` already carries fill modes (§5.9). Recommended: yes, one shared pair of words. Close by Phase 1.
+6. Whether Escape quits a sketch by default (openFrameworks' `ofSetEscapeQuitsApp`), given that Escape also leaves the widgets (§4.8). Recommended: no default quit; Cmd+Q, Ctrl+Q and the window's close button quit. Close by Phase 1.
 
 ---
 
