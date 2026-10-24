@@ -16,7 +16,7 @@ Read [MANIFESTO.md](MANIFESTO.md) for why it exists.
 
 ## Status
 
-Early design. Nothing runs yet. The project is in Phase 0: setting up the repository and testing the riskiest assumptions on every platform. The design and the plan live in [CLAUDE.md](CLAUDE.md), which is kept up to date as decisions are made.
+Early design. Nothing runs yet. The project is in Phase 0: setting up the repository and testing the riskiest assumptions on every platform. The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
 
 ## What it will look like
 
