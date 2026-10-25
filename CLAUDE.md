@@ -1,8 +1,48 @@
-# CLAUDE.md: rocinante
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 This file and `docs/design.md` (imported below) are together the single source of truth for rocinante's design, scope and plan. When a decision changes, update the file that holds the section, in place. Do not create other design documents, changelogs of decisions or "notes" files beside them. `MANIFESTO.md` is the public statement of intent; this file is how we build it.
 
 Read `MANIFESTO.md` before starting any work. Every decision below serves it.
+
+## Commands
+
+Everything is driven by the build script in `build/`, written in Odin; there is no Makefile or CMake for contributors. Run it from the repository root with the Odin release named in `ODIN_VERSION` (`odin version` must match it; the build script warns locally and fails in the pipelines when it does not).
+
+```
+odin run build -- ci            # exactly what both pipelines run
+odin run build -- ci --fast     # the pre-push subset (git config core.hooksPath tools/hooks)
+odin run build -- licences      # dependency licence check against tools/licences.txt
+odin check <dir> -vet -strict-style           # type-check one package
+odin test <dir>                               # run its @(test) procedures (core:testing)
+odin test <dir> -define:ODIN_TEST_NAMES=package.test_name   # run a single test
+```
+
+`ci` is the only gate today, and there are no `@(test)` procedures yet, so there is no real single-test run until the first tests land (§9). `ci` will run `odin test` on every package that has tests.
+
+The Phase 0 spikes, each run from the repository root:
+
+```
+odin run spikes/desktop                       # Spike 1: SDL3 window and GPU device, clears for 3 seconds
+odin run spikes/codegen -- check              # Spike 3: interpret, generate Odin, build it, compare output
+odin run spikes/codegen -- doctor [host]      # which targets this computer can build, and the toolchain
+odin run spikes/mobile/macos                  # the shared circle spike on the desktop, 5 seconds
+spikes/mobile/android/build.sh --install      # Spike 2, Android; needs SDL_ANDROID_LIB and SDL_ANDROID_JAVA
+spikes/mobile/ios/build.sh --install          # Spike 2, iOS; needs SDL_IOS_LIB, TEAM_ID and DEVICE
+spikes/mobile/shared/shaders/compile.sh       # GLSL to SPIR-V (glslc) and Metal (spirv-cross); outputs are committed
+```
+
+The Android and iOS scripts need SDL 3.4.18 built for the phone, which is not in the repository (the recipe is in the Phase 0 results in §8).
+
+**Where things are.** This file holds the rules, the plan and the decisions; `docs/design.md`, imported below, holds the architecture details, the language and the parity map; section numbers are global, so `§5.9` is in `design.md` and `§8` is here. `spikes/` is throwaway Phase 0 code, not the planned packages: the real ones (`roci/`, `cli/`, `vendor/`, `shaders/`, `tests/`) in §4.2 do not exist yet. `output/` and `.cache/` are generated and ignored by git.
+
+**Shell and tool gotchas** (these have all cost time):
+- Fabrizio's `ls` is an alias for `eza` and adds colour codes, so scripts and anything piped must use `command ls`. Use `rg`, not `grep`, in anything written for him; portable scripts that contributors run (hooks, CI) use POSIX tools.
+- macOS has no `timeout`, and BSD `sed` needs `-i ''`.
+- Odin: write `-target` before `-subtarget`; a literal `{` in an `fmt` format string means something, so pass it as an argument; a procedure cannot return a slice literal (copy it to the heap); a global cannot call a procedure that needs `context`.
+- Odin on Apple Silicon guesses the wrong NDK folder, so set `ODIN_ANDROID_NDK_TOOLCHAIN` (to the `darwin-x86_64` toolchain) when building for Android.
+- Never test a mobile app on a sleeping or locked phone: Android draws nothing, iOS refuses to launch.
 
 ---
 
@@ -56,6 +96,7 @@ These override convenience. If a task seems to require breaking one, stop and ra
 - **The name is always lowercase**: rocinante, never "Rocinante", including at the start of a sentence, in titles, docs, UI text, package metadata and commit messages. The same applies to `roci`.
 - Fabrizio's tools: `nvim` (never `nano`), `rg` (not `grep`), `eza` (not `ls`). Use these in any instructions, scripts or docs you write for him.
 - For FreeBSD ports, build and test in one pass with `poudriere bulk -t`. Use `testport -i` only when debugging inside the jail.
+- **All code needs the best possible unit-test coverage** (decided 2026-10-25). Every package ships with `@(test)` procedures (run with `odin test`, §9) written with the code, not after it: every procedure, every branch and every error path, including the edge cases (empty input, zero, the largest and smallest values, malformed text). A change that adds code without tests for it is not finished; if something truly cannot be tested, say why in the commit. Odin has no coverage tool, so coverage is kept by discipline and by review: list the branches of what you wrote and check that each has a test.
 - Work in small, reviewable steps. Each phase below lists exit criteria; a phase is done only when all of them pass.
 - Never weaken a non-negotiable to make a task easier. Flag the conflict instead.
 - When you finish something that changes the design, update this file in the same commit.
@@ -74,7 +115,7 @@ These override convenience. If a task seems to require breaking one, stop and ra
               roci run  │ (interpreter)          roci package│ (code generator)
                         ▼                                   ▼
                   interpreter                  generated Odin source
-                        │                                   │ odin build (user-installed),
+                        │                                   │ odin build (pinned, fetched),
                         │                                   │ together with the core
                         └──────────────┬────────────────────┘
                                        │ calls verbs (stable verb ABI)
@@ -190,6 +231,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - Check the state of `vendor:sdl3` and its satellites against the latest SDL3 releases; decide per library whether to use `vendor:` or our own bindings (§3).
 - Check and reserve names (`rocinante`, `roci`); confirm the name doesn't collide with an active creative-coding project.
 - Verify every "candidate" dependency in this file against its official docs: platform support (FreeBSD, iOS and Android included), licence, maintenance. Record results here.
+- Write the first unit tests for the Phase 0 code that exists (the licence check in `build/`, and the spike 3 checker, interpreter and generator), set up `odin test` in `ci`, and prove it by making a test fail once.
 - Verify the parity map (§6) against the Processing, openFrameworks and Cinder references and fix what is wrong (done 2026-10-24); completing the rows is done phase by phase, before each phase starts.
 - The LiteRT spike (§4.10: C API from Odin on the four desktop OSes, one iOS and one Android device, a FreeBSD build or the ONNX Runtime decision, PyTorch and JAX conversion with one small model each) moves to the start of Phase 6, because it de-risks only that phase.
 - **Spike 1, desktop**: SDL3 GPU device + window + clear colour from Odin on every desktop target, including FreeBSD with Vulkan through Mesa (FreeBSD is not on SDL's official list for the Vulkan GPU backend).
@@ -329,6 +371,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 
 ## 9. Testing
 
+- **Unit tests come first** (decided 2026-10-25): every package is written with `@(test)` procedures from its first commit, aiming for the best possible coverage (§3). `odin test <dir>` runs them, `-define:ODIN_TEST_NAMES=package.test_name` runs one, and `ci` runs every package's tests, so a failing or missing test fails the pipeline. The kinds of test below are in addition to unit tests, not instead of them.
 - Language: parser, checker and inference unit tests; one test per error message in `tests/errors/`.
 - Formatter: every example and test sketch is run through `roci fmt` twice; the second pass must change nothing, and the formatted sketch must parse to the same typed IR as the original. Sketches with bare nested calls are formatted into the bracketed form and checked for identical IR.
 - Rendering: golden-image tests per verb and per backend where CI allows.
@@ -413,6 +456,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **2026-10-24, Origin words**: `as center` and `as corner` (default) say what a shape's or image's position means, per element, replacing Processing's four `*Mode` verbs; an `as` straight after a shape's required arguments is its origin, an `as` after a `fill` or `stroke` value belongs to the value. Full text in §5.9.
 - **2026-10-24, Escape does not quit a sketch by default**; Escape leaves the widgets (§4.8), and Cmd+Q, Ctrl+Q and the window's close button quit.
 - **2026-10-25, no cross-compilation between desktop systems**: FreeBSD, Linux, macOS and Windows each package for themselves; iOS needs a Mac, Android needs macOS, Linux x86-64 or Windows (§7).
+- **2026-10-25, all code needs the best possible unit-test coverage**, written with the code; `odin test` runs in `ci`; Phase 0 gets tests for the code it already has. Full text in §3 and §9.
 - **2026-10-25, iOS and Android are targets only**: sketches are written, run and packaged on FreeBSD, Linux, macOS and Windows; `roci` does not run on phones, and the on-device live-coding idea is dropped from the roadmap. `roci doctor` says plainly when this computer cannot build a target (iOS only on macOS, Android on macOS, Linux x86-64 and Windows). Full text in §7.
 - **2026-10-25, `roci` fetches a JDK (Temurin 21) for Android packaging**, like Odin and the NDK; Android packaging therefore runs on macOS, Linux x86-64 and Windows hosts only (the NDK has no other hosts). Full text in §4.7.
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
@@ -515,7 +559,7 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 - Apple App Review Guidelines (2.5.2): https://developer.apple.com/app-store/review/guidelines/
 - nannou (prior art, built on Bevy): https://github.com/nannou-org/nannou
 - LiteRT (runtime, platforms, accelerators, LiteRT Torch converter): https://github.com/google-ai-edge/LiteRT
-- LiteRT C API (`tensorflow/lite/c/c_api.h`): https://developers.google.com/edge/litert/android/native
+- LiteRT C APIs (`tflite/c/c_api.h` classic, `litert/c/` newer; the old `tensorflow/lite/c/` path is gone): https://github.com/google-ai-edge/LiteRT
 - LiteRT, JAX models (`jax2tf`, then the TFLite converter): https://developers.google.com/edge/litert/conversion/jax/overview
 - ONNX Runtime FreeBSD port (fallback candidate): https://www.freshports.org/misc/onnxruntime/
 - ExecuTorch desktop platforms (open question 2): https://docs.pytorch.org/executorch/1.1/desktop-section.html
