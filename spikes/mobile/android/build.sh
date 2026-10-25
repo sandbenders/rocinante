@@ -38,6 +38,9 @@ esac
 
 rm -rf "$out"
 mkdir -p "$out/lib/arm64-v8a" "$out/classes" "$out/dex"
+# The debug key lives outside $out: a new key on every build would make the
+# phone refuse to update the app.
+keystore="$root/output/spike-debug.keystore"
 
 echo "== odin: libmain.so"
 ODIN_ANDROID_SDK="$ANDROID_HOME/" ODIN_ANDROID_NDK="$ndk/" \
@@ -62,10 +65,11 @@ cp "$out/dex/classes.dex" "$out/classes.dex"
   lib/arm64-v8a/libmain.so lib/arm64-v8a/libSDL3.so > /dev/null)
 "$build_tools/zipalign" -f -p 4 "$out/spike-unaligned.apk" "$out/spike-aligned.apk"
 
-keystore="$out/debug.keystore"
-keytool -genkeypair -keystore "$keystore" -storepass android -keypass android \
-  -alias spike -keyalg RSA -keysize 2048 -validity 10000 \
-  -dname "CN=rocinante spike, O=rocinante" > /dev/null 2>&1
+if [ ! -f "$keystore" ]; then
+  keytool -genkeypair -keystore "$keystore" -storepass android -keypass android \
+    -alias spike -keyalg RSA -keysize 2048 -validity 10000 \
+    -dname "CN=rocinante spike, O=rocinante" > /dev/null 2>&1
+fi
 "$build_tools/apksigner" sign --ks "$keystore" --ks-pass pass:android \
   --key-pass pass:android --out "$out/spike.apk" "$out/spike-aligned.apk"
 echo "built $out/spike.apk"

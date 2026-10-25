@@ -33,6 +33,13 @@ rocinante_main :: proc "c" (argc: c.int, argv: [^]cstring) -> c.int {
 	return 0 if run() else 1
 }
 
+// Odin links the NDK's native_app_glue into every Android library, and that
+// glue refers to an `android_main` that the app is meant to define for
+// NativeActivity. SDL's activity never goes through the glue, so this is never
+// called; it exists so the library can be loaded at all.
+@(export, link_name = "android_main")
+android_main :: proc "c" (app: rawptr) {}
+
 fail :: proc(what: string) -> bool {
 	log("spike: %s failed: %s", what, sdl.GetError())
 	return false
@@ -41,6 +48,7 @@ fail :: proc(what: string) -> bool {
 run :: proc() -> bool {
 	log("spike: Odin is running inside SDL %d (library)", sdl.GetVersion())
 
+	sdl.SetLogPriorities(.VERBOSE) // so SDL says why it rejects a GPU backend
 	if !sdl.Init({.VIDEO}) {
 		return fail("SDL_Init")
 	}
@@ -52,7 +60,14 @@ run :: proc() -> bool {
 	}
 	defer sdl.DestroyWindow(window)
 
-	device := sdl.CreateGPUDevice({.SPIRV}, true, nil)
+	// SDL asks Vulkan for shaderClipDistance by default, and the Pixel 9's
+	// Mali-G715 does not have it, so SDL finds "no suitable physical device".
+	// rocinante's shaders do not need clip distances, so it is switched off.
+	props := sdl.CreateProperties()
+	defer sdl.DestroyProperties(props)
+	sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, true)
+	sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_FEATURE_CLIP_DISTANCE_BOOLEAN, false)
+	device := sdl.CreateGPUDeviceWithProperties(props)
 	if device == nil {
 		return fail("SDL_CreateGPUDevice")
 	}
