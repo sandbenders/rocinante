@@ -11,7 +11,7 @@ Work through this before tagging `vYYYY.MINOR.MICRO` (CLAUDE.md §11). Record th
 
 ## On each platform
 
-For FreeBSD, macOS, Windows, iOS and Android: build, run every example, run the golden-image suite and the back-end equivalence suite, and build the platform's artefact.
+For FreeBSD, macOS and Windows: build on that system, run every example, run the golden-image suite and the back-end equivalence suite, and build the platform's artefact. For iOS and Android, which are targets only: package from a host that can (a Mac for iOS; macOS, Linux x86-64 or Windows for Android), install on a real device, and run every example there.
 
 ## Results
 

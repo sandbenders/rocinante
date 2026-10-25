@@ -17,7 +17,7 @@ An open-source creative coding framework and language.
 
 Execution: **interpreted while you work, compiled to native code when you ship** (§4.7). Users never choose or notice; `roci run` interprets, `roci package` compiles.
 
-Target platforms, all first class from the start: FreeBSD, Linux, macOS, Windows, iOS, Android.
+Target platforms, all first class from the start: FreeBSD, Linux, macOS, Windows, iOS, Android. Four of them are also **host** platforms, where sketches are written, run (`roci run`) and packaged: FreeBSD, Linux, macOS and Windows. **iOS and Android are targets only** (decided 2026-10-25): `roci` does not run on them, nothing is developed on them, and a sketch gets there as a packaged app. Which hosts can package which targets is in §7.
 
 The smallest valid program:
 
@@ -150,17 +150,29 @@ roci run [file]          interpret with live reload (default: sketch.roci); need
 roci check [file]        parse, check and infer types without running
 roci fmt [file]          format a sketch in the house style (§5.1); no options
 roci package <target>    compile to native code and package; targets: linux, freebsd, macos, windows, android, ios
-roci doctor              check what each package target needs on this machine and print install steps;
-                         `roci doctor ml` checks the PyTorch and JAX model converters
+roci doctor              for each package target, say whether this computer can build it, and if so what is
+                         missing, with install steps; `roci doctor ml` checks the PyTorch and JAX converters
 ```
 
 Packaging notes:
 
 - `roci package` always generates Odin and builds it with the pinned Odin and the user's platform toolchain (§4.7). The user never sees Odin code or compiler output unless they open the saved build log in `output/`; failures are reported in rocinante's plain style, with `roci doctor` as the next step.
 - **Toolchain** (§4.7): Odin at the pinned version everywhere, fetched into `roci`'s own cache on first use; MSVC and the Windows SDK on Windows; the Xcode command-line tools on macOS; clang on Linux and FreeBSD.
-- **iOS**: App Store distribution requires a Mac with full Xcode and an Apple Developer Program account. `roci package ios` drives Odin and Xcode's command-line tools on a Mac; from Linux or FreeBSD it must hand the build to a Mac (local network or CI). `roci doctor` explains this in plain words.
+- **iOS**: App Store distribution requires a Mac with full Xcode and an Apple Developer Program account. `roci package ios` drives Odin and Xcode's command-line tools, and runs on macOS only; there is no hand-off to another machine.
 - **Android**: `roci` fetches and manages the SDK, the NDK and a JDK (Temurin 21) on first use and keeps the signing keystore out of the user's way. It can package from macOS, Linux x86-64 and Windows hosts only, because Google's NDK has no other hosts (§4.7).
 - **FreeBSD**: Odin is available as the `lang/odin` port. Produce a package of the sketch; later, a port of `roci` itself (named `roci`, because `sysutils/rocinante` is another project's port) (`poudriere bulk -t`).
+- **Hosts and targets** (decided 2026-10-25). Sketches are written, run and packaged on FreeBSD, Linux, macOS and Windows computers; iOS and Android are targets only. A target can be packaged only on the hosts below. Desktop targets are packaged on their own operating system; packaging one desktop system from another is not planned for the first stable release.
+
+  | Target | Can be packaged on | Why |
+  |---|---|---|
+  | `linux` | Linux | built with the host's clang and linker (§4.7) |
+  | `freebsd` | FreeBSD | the same |
+  | `macos` | macOS | Xcode command-line tools |
+  | `windows` | Windows | MSVC and the Windows SDK |
+  | `android` | macOS, Linux x86-64, Windows | Google's NDK has no other hosts (§4.7) |
+  | `ios` | macOS | Apple's tools run only on a Mac |
+
+  When this computer cannot build a target, `roci doctor` says so first, in plain words, before looking for tools, and names the computers that can: for example, "iOS apps can only be built on a Mac, because Apple's tools only run there. This computer is running FreeBSD, so build this one on a Mac." `roci package <target>` refuses with the same message instead of failing halfway through, and `roci doctor` marks each of the six targets as ready, missing something (with the install steps), or not buildable here. Phase 8 tests this for every host and target pair (§9).
 - **Signing and trust** (decided 2026-10-24). macOS packages are signed with a Developer ID and notarised, and Windows packages are signed where the user has a certificate; `roci package` says plainly what SmartScreen or Gatekeeper will still show when they have none. `roci` shows the Android SDK licence and asks for acceptance before fetching it.
 - Every target bundles the compiled sketch, all of `assets/` and `libs/`, `ui.toml` and compiled shaders (§4.9). No network access needed at runtime.
 
@@ -324,7 +336,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - Fonts: copying with free, restrictive and unreadable licences; `roci package` refusing a restrictive font.
 - Sketch folders: `roci new`/`init` tested with and without git and Git LFS installed; asset lookup, duplicate-name and outside-`assets/` errors; a packaged sketch run from a different machine path finds every asset.
 - Libraries: multi-file sketches behave identically to the same code in one file; `use` with index names and git URLs; offline runs from vendored `libs/`; every clash rule produces its error message.
-- Toolchain: `roci doctor` tested on machines (or CI images) with each toolchain piece missing, wrong version and present.
+- Toolchain: `roci doctor` tested on machines (or CI images) with each toolchain piece missing, wrong version and present. For every host and target pair, `roci doctor` and `roci package` give the "cannot be built on this computer" message exactly when §7's table says so.
 - Performance: benchmark sketches tracked in both modes. Timing is gated only on ORION, whose hardware is fixed (lavapipe and shared GitHub runners are too noisy); elsewhere the pipeline compares work counts (draw calls, batches, allocations), which are exact. A timing regression of more than 10% on ORION fails the build.
 - Platforms: Linux in the pipeline on every commit to `main`; every other target through the release checklist before each tag, and at least once per phase (§11).
 - Golden images run on Mesa's software Vulkan driver (lavapipe) in the pipeline, so results don't depend on the machine's GPU.
@@ -394,6 +406,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **2026-10-24, Physical key positions**: `keys w a s d` binds by SDL scancode, so AZERTY works (§5.12). Dear ImGui does not shape complex scripts (Arabic, Devanagari): Phase 3 states which scripts the UI supports and tests them with an IME.
 - **2026-10-24, Origin words**: `as center` and `as corner` (default) say what a shape's or image's position means, per element, replacing Processing's four `*Mode` verbs; an `as` straight after a shape's required arguments is its origin, an `as` after a `fill` or `stroke` value belongs to the value. Full text in §5.9.
 - **2026-10-24, Escape does not quit a sketch by default**; Escape leaves the widgets (§4.8), and Cmd+Q, Ctrl+Q and the window's close button quit.
+- **2026-10-25, iOS and Android are targets only**: sketches are written, run and packaged on FreeBSD, Linux, macOS and Windows; `roci` does not run on phones, and the on-device live-coding idea is dropped from the roadmap. `roci doctor` says plainly when this computer cannot build a target (iOS only on macOS, Android on macOS, Linux x86-64 and Windows). Full text in §7.
 - **2026-10-25, `roci` fetches a JDK (Temurin 21) for Android packaging**, like Odin and the NDK; Android packaging therefore runs on macOS, Linux x86-64 and Windows hosts only (the NDK has no other hosts). Full text in §4.7.
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
 

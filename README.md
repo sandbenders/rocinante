@@ -45,7 +45,7 @@ The core is written in [Odin](https://odin-lang.org/) and draws through the GPU 
 
 You use one command, `roci`. `roci run` runs a sketch and reloads it whenever you save. It interprets the sketch, so it works without installing anything else. `roci package <target>` compiles the sketch to native code through Odin and turns it into an app. Packaging fetches the right version of Odin for you and needs your platform's usual build tools (Xcode, MSVC or clang), and `roci doctor` lists what's missing and how to install it.
 
-The same sketch file runs on FreeBSD, Linux, macOS, Windows, iOS and Android.
+The same sketch file runs on FreeBSD, Linux, macOS, Windows, iOS and Android. You write, run and package sketches on a FreeBSD, Linux, macOS or Windows computer; iOS and Android are targets only, where the packaged app runs. Not every computer can package every target (an iOS app can only be built on a Mac), and `roci doctor` tells you which ones yours can.
 
 ## Roadmap
 
@@ -53,7 +53,6 @@ These are wanted, but not planned for the first stable release:
 
 - **A rocinante shader dialect.** Shaders are written in HLSL for now. Later, a small shader language in rocinante's own style will compile to HLSL.
 - **A web target**, so sketches can be shared in a browser.
-- **Live coding on phones and tablets**: an app that runs the interpreter on iOS and Android, so sketches can be written and changed on the device itself.
 - **3D physics** (gravity, joints and stacking in 3D). Collision detection works in 2D and 3D, and physics simulation in 2D.
 - **Training models** inside rocinante. For now, trained models run locally but are trained elsewhere.
 
