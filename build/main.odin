@@ -98,6 +98,10 @@ ci :: proc(fast: bool) -> bool {
 // as they appear.
 check_packages :: proc() -> bool {
 	ok := step("check build script", {"odin", "check", "build", "-vet", "-strict-style"})
+	// The spikes that build on any machine are type-checked; the Android and iOS
+	// ones need their SDKs and are built by hand (CLAUDE.md section 8).
+	ok = step("check spike 1", {"odin", "check", "spikes/desktop", "-vet", "-strict-style"}) && ok
+	ok = step("check spike 2 shared code", {"odin", "check", "spikes/mobile/shared", "-no-entry-point", "-vet", "-strict-style"}) && ok
 	// Spike 3: interpret, generate Odin, build it and compare the output.
 	ok = step("spike 3: code generation", {"odin", "run", "spikes/codegen", "--", "check"}) && ok
 	return ok
