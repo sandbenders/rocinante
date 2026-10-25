@@ -24,6 +24,7 @@ odin test <dir> -define:ODIN_TEST_NAMES=package.test_name   # run a single test
 The Phase 0 spikes, each run from the repository root:
 
 ```
+cp "$(odin root)/vendor/sdl3/SDL3.dll" .      # Windows, once before Spike 1: the program needs SDL3.dll beside it (ignored by git)
 odin run spikes/desktop                       # Spike 1: SDL3 window and GPU device, clears for 3 seconds
 odin run spikes/codegen -- check              # Spike 3: interpret, generate Odin, build it, compare output
 odin run spikes/codegen -- doctor [host]      # which targets this computer can build, and the toolchain

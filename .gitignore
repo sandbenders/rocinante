@@ -4,3 +4,4 @@ output/
 /codegen
 /build.exe
 /codegen.exe
+/SDL3.dll
