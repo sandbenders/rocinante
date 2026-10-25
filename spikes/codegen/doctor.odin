@@ -99,7 +99,7 @@ report_targets :: proc(host: string) {
 		if can_package(target, host) {
 			fmt.printfln("  %s%s %s", term.out_icon(.Ok), term.out(term.pad("can build", 12), .Green), term.out(target.name, .Bold))
 		} else {
-			fmt.printfln("  %s%s %s: %s", term.out_icon(.Cannot), term.out(term.pad("cannot build", 12), .Yellow), term.out(target.name, .Bold), term.out(fmt.tprintf("%s. This computer is %s, so build this one elsewhere.", target.says, host_label(host)), .Dim))
+			fmt.printfln("  %s%s %s: %s", term.out_icon(.Cannot), term.out(term.pad("cannot build", 12), .Yellow), term.out(target.name, .Bold), term.out(target.says, .Dim))
 		}
 	}
 	fmt.println("")
