@@ -16,7 +16,7 @@ import shared "../shared"
 @(export, link_name = "rocinante_main")
 rocinante_main :: proc "c" (argc: c.int, argv: [^]cstring) -> c.int {
 	context = runtime.default_context()
-	return 0 if shared.run({.SPIRV}) else 1
+	return 0 if shared.run({.SPIRV}, 20000) else 1
 }
 
 // Odin links the NDK's native_app_glue into every Android library, and that

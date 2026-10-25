@@ -11,8 +11,6 @@ import "core:math"
 import "core:strings"
 import sdl "vendor:sdl3"
 
-RUN_MS :: 20000
-
 log :: proc(format: string, args: ..any) {
 	message := fmt.tprintf(format, ..args)
 	sdl.Log("%s", strings.clone_to_cstring(message, context.temp_allocator))
@@ -23,7 +21,10 @@ fail :: proc(what: string) -> bool {
 	return false
 }
 
-run :: proc(shader_formats: sdl.GPUShaderFormat) -> bool {
+// run_ms is how long to run; 0 means until the system asks the app to quit.
+// iOS apps do not quit themselves (the user swipes them away), so the iOS spike
+// passes 0; a returning main would leave a blank, still-running app.
+run :: proc(shader_formats: sdl.GPUShaderFormat, run_ms: u64) -> bool {
 	log("spike: Odin is running inside SDL %d (library)", sdl.GetVersion())
 
 	sdl.SetLogPriorities(.VERBOSE) // so SDL says why it rejects a GPU backend
@@ -68,8 +69,11 @@ run :: proc(shader_formats: sdl.GPUShaderFormat) -> bool {
 			}
 		}
 		elapsed := sdl.GetTicks() - start
-		if elapsed > RUN_MS {
+		if run_ms != 0 && elapsed > run_ms {
 			running = false
+		}
+		if frames > 0 && frames % 300 == 0 {
+			log("spike: %d frames in %d ms", frames, elapsed)
 		}
 
 		commands := sdl.AcquireGPUCommandBuffer(device)

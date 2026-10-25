@@ -13,7 +13,7 @@ import sdl "vendor:sdl3"
 
 sdl_main :: proc "c" (argc: c.int, argv: [^]cstring) -> c.int {
 	context = runtime.default_context()
-	return 0 if shared.run({.MSL}) else 1
+	return 0 if shared.run({.MSL}, 0) else 1
 }
 
 main :: proc() {
