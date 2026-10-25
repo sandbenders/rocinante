@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: 0BSD -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.rocinante.spike"
+    android:versionCode="1"
+    android:versionName="0.1">
+    <uses-feature android:glEsVersion="0x00020000" />
+    <uses-feature android:name="android.hardware.vulkan.version" android:version="0x400003" android:required="true" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <application android:label="rocinante spike"
+        android:hasCode="true"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:hardwareAccelerated="true">
+        <activity android:name=".SpikeActivity"
+            android:label="rocinante spike"
+            android:configChanges="layoutDirection|locale|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
