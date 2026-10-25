@@ -3,6 +3,7 @@ package build
 
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 
 ALLOWED_LICENCES :: []string{
@@ -22,7 +23,27 @@ contains :: proc(list: []string, s: string) -> bool {
 	return false
 }
 
-// Reads tools/licences.txt into a map from entry name to licence id.
+// Turns the text of tools/licences.txt into a map from entry name to licence
+// id. A line that is not `<what> <SPDX id>` is reported and skipped.
+parse_licence_table :: proc(text: string) -> (table: map[string]string, errors: [dynamic]string) {
+	table = make(map[string]string)
+	remaining := text
+	for raw in strings.split_lines_iterator(&remaining) {
+		line := strings.trim_space(raw)
+		if len(line) == 0 || line[0] == '#' {
+			continue
+		}
+		fields := strings.fields(line)
+		if len(fields) != 2 {
+			append(&errors, fmt.aprintf("expected '<what> <SPDX id>', got '%s'", line))
+			continue
+		}
+		table[fields[0]] = fields[1]
+	}
+	return
+}
+
+// Reads tools/licences.txt under root.
 read_licence_table :: proc(root: string) -> (table: map[string]string, ok: bool) {
 	path := fmt.tprintf("%s/tools/licences.txt", root)
 	data, err := os.read_entire_file(path, context.allocator)
@@ -30,21 +51,35 @@ read_licence_table :: proc(root: string) -> (table: map[string]string, ok: bool)
 		fmt.eprintfln("cannot read %s: %v", path, err)
 		return
 	}
-	table = make(map[string]string)
-	ok = true
-	text := string(data)
-	for raw in strings.split_lines_iterator(&text) {
-		line := strings.trim_space(raw)
-		if len(line) == 0 || line[0] == '#' {
+	errors: [dynamic]string
+	table, errors = parse_licence_table(string(data))
+	for message in errors {
+		fmt.eprintfln("%s: %s", path, message)
+	}
+	ok = len(errors) == 0
+	return
+}
+
+// The vendor: packages that Odin source text imports, as `vendor:<package>`,
+// with any sub-package folded into its package (vendor:sdl3/image is
+// vendor:sdl3) because one entry in the table covers both. Only real import
+// lines count, not comments or other code that mentions a vendor: path.
+vendor_imports :: proc(text: string) -> (names: [dynamic]string) {
+	remaining := text
+	for line in strings.split_lines_iterator(&remaining) {
+		trimmed := strings.trim_space(line)
+		is_import := strings.has_prefix(trimmed, "import ") || strings.has_prefix(trimmed, "foreign import ")
+		at := strings.index(line, "\"vendor:")
+		if !is_import || at < 0 {
 			continue
 		}
-		fields := strings.fields(line)
-		if len(fields) != 2 {
-			fmt.eprintfln("%s: expected '<what> <SPDX id>', got '%s'", path, line)
-			ok = false
+		rest := line[at + len("\"vendor:"):]
+		end := strings.index_byte(rest, '"')
+		if end < 0 {
 			continue
 		}
-		table[fields[0]] = fields[1]
+		top, _, _ := strings.partition(rest[:end], "/")
+		append(&names, fmt.aprintf("vendor:%s", top))
 	}
 	return
 }
@@ -79,23 +114,8 @@ collect_dependencies :: proc(root: string) -> (imports: map[string]string, dirs:
 			ok = false
 			continue
 		}
-		text := string(data)
-		for line in strings.split_lines_iterator(&text) {
-			trimmed := strings.trim_space(line)
-			is_import := strings.has_prefix(trimmed, "import ") || strings.has_prefix(trimmed, "foreign import ")
-			at := strings.index(line, "\"vendor:")
-			if !is_import || at < 0 {
-				continue
-			}
-			rest := line[at + len("\"vendor:"):]
-			end := strings.index_byte(rest, '"')
-			if end < 0 {
-				continue
-			}
-			package_path := rest[:end]
-			// vendor:sdl3/image is covered by the entry for vendor:sdl3.
-			top, _, _ := strings.partition(package_path, "/")
-			imports[fmt.aprintf("vendor:%s", top)] = strings.clone(fi.fullpath)
+		for name in vendor_imports(string(data)) {
+			imports[name] = strings.clone(fi.fullpath)
 		}
 	}
 
@@ -115,40 +135,57 @@ collect_dependencies :: proc(root: string) -> (imports: map[string]string, dirs:
 	return
 }
 
+// What is wrong with the licences, as messages, in a stable order: entries
+// with a forbidden or unknown licence, then imports and vendor/ directories
+// that have no entry. Warnings are things that pass but need action later.
+licence_problems :: proc(table: map[string]string, imports: map[string]string, dirs: []string) -> (errors, warnings: [dynamic]string) {
+	names, _ := slice.map_keys(table, context.temp_allocator)
+	slice.sort(names)
+	for name in names {
+		id := table[name]
+		lower := strings.to_lower(id, context.temp_allocator)
+		if strings.contains(lower, "gpl") {
+			append(&errors, fmt.aprintf("%s is %s. GPL, LGPL and AGPL code may not ship (CLAUDE.md section 3).", name, id))
+		} else if contains(NOTICE_LICENCES, id) {
+			append(&warnings, fmt.aprintf("%s is %s; a source notice must ship with packaged sketches.", name, id))
+		} else if !contains(ALLOWED_LICENCES, id) {
+			append(&errors, fmt.aprintf("%s has the licence '%s', which is not on the allowed list in build/licences.odin.", name, id))
+		}
+	}
+
+	imported, _ := slice.map_keys(imports, context.temp_allocator)
+	slice.sort(imported)
+	for name in imported {
+		if name not_in table {
+			append(&errors, fmt.aprintf("%s imports %s, which is not in tools/licences.txt. Read its licence file and add a line.", imports[name], name))
+		}
+	}
+
+	sorted_dirs := slice.clone(dirs, context.temp_allocator)
+	slice.sort(sorted_dirs)
+	for dir in sorted_dirs {
+		if dir not_in table {
+			append(&errors, fmt.aprintf("%s is not in tools/licences.txt. Add a line with its SPDX licence id.", dir))
+		}
+	}
+	return
+}
+
 check_licences :: proc(root: string) -> bool {
 	table, table_ok := read_licence_table(root)
 	if !table_ok {
 		return false
 	}
 	imports, dirs, deps_ok := collect_dependencies(root)
-	ok := deps_ok
+	errors, warnings := licence_problems(table, imports, dirs[:])
 
-	for name, id in table {
-		lower := strings.to_lower(id, context.temp_allocator)
-		if strings.contains(lower, "gpl") {
-			fmt.eprintfln("licences: %s is %s. GPL, LGPL and AGPL code may not ship (CLAUDE.md section 3).", name, id)
-			ok = false
-		} else if contains(NOTICE_LICENCES, id) {
-			fmt.eprintfln("licences: warning: %s is %s; a source notice must ship with packaged sketches.", name, id)
-		} else if !contains(ALLOWED_LICENCES, id) {
-			fmt.eprintfln("licences: %s has the licence '%s', which is not on the allowed list in build/licences.odin.", name, id)
-			ok = false
-		}
+	for message in warnings {
+		fmt.eprintfln("licences: warning: %s", message)
 	}
-
-	for name, file in imports {
-		if name not_in table {
-			fmt.eprintfln("licences: %s imports %s, which is not in tools/licences.txt. Read its licence file and add a line.", file, name)
-			ok = false
-		}
+	for message in errors {
+		fmt.eprintfln("licences: %s", message)
 	}
-	for dir in dirs {
-		if dir not_in table {
-			fmt.eprintfln("licences: %s is not in tools/licences.txt. Add a line with its SPDX licence id.", dir)
-			ok = false
-		}
-	}
-
+	ok := deps_ok && len(errors) == 0
 	if ok {
 		fmt.printfln("licences: ok (%d entries, %d vendor: imports, %d vendor/ directories)", len(table), len(imports), len(dirs))
 	}

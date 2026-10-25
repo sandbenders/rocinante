@@ -19,7 +19,7 @@ odin test <dir>                               # run its @(test) procedures (core
 odin test <dir> -define:ODIN_TEST_NAMES=package.test_name   # run a single test
 ```
 
-`ci` is the only gate today, and there are no `@(test)` procedures yet, so there is no real single-test run until the first tests land (§9). `ci` will run `odin test` on every package that has tests.
+`ci` runs `odin test` on every package listed in `TEST_PACKAGES` in `build/main.odin` (add a package there as soon as it has tests), and a failing test makes `ci` exit with 1. Tests run from the repository root, in parallel threads, and some make fixtures under `output/`. A test file that builds maps or dynamic arrays from literals needs `#+feature dynamic-literals` at the top.
 
 The Phase 0 spikes, each run from the repository root:
 
@@ -43,6 +43,7 @@ The Android and iOS scripts need SDL 3.4.18 built for the phone, which is not in
 - Odin: write `-target` before `-subtarget`; a literal `{` in an `fmt` format string means something, so pass it as an argument; a procedure cannot return a slice literal (copy it to the heap); a global cannot call a procedure that needs `context`.
 - Odin on Apple Silicon guesses the wrong NDK folder, so set `ODIN_ANDROID_NDK_TOOLCHAIN` (to the `darwin-x86_64` toolchain) when building for Android.
 - Never test a mobile app on a sleeping or locked phone: Android draws nothing, iOS refuses to launch.
+- Odin: package-level state shared by tests is a data race (the tests run in parallel), so use `@(thread_local)`; and a constant slice of structs that hold slices is rebuilt on the stack at each use, so keep such tables in a package-level variable (both were found by the first unit tests).
 
 ---
 
@@ -231,7 +232,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - Check the state of `vendor:sdl3` and its satellites against the latest SDL3 releases; decide per library whether to use `vendor:` or our own bindings (§3).
 - Check and reserve names (`rocinante`, `roci`); confirm the name doesn't collide with an active creative-coding project.
 - Verify every "candidate" dependency in this file against its official docs: platform support (FreeBSD, iOS and Android included), licence, maintenance. Record results here.
-- Write the first unit tests for the Phase 0 code that exists (the licence check in `build/`, and the spike 3 checker, interpreter and generator), set up `odin test` in `ci`, and prove it by making a test fail once.
+- Write the first unit tests for the Phase 0 code that exists (the licence check in `build/`, and the spike 3 checker, interpreter and generator), set up `odin test` in `ci`, and prove it by making a test fail once (done 2026-10-25: 45 tests in `build/` and 47 in `spikes/codegen`; the Android and iOS spikes and the SDL window code need real devices and are covered by the hand-run spikes instead).
 - Verify the parity map (§6) against the Processing, openFrameworks and Cinder references and fix what is wrong (done 2026-10-24); completing the rows is done phase by phase, before each phase starts.
 - The LiteRT spike (§4.10: C API from Odin on the four desktop OSes, one iOS and one Android device, a FreeBSD build or the ONNX Runtime decision, PyTorch and JAX conversion with one small model each) moves to the start of Phase 6, because it de-risks only that phase.
 - **Spike 1, desktop**: SDL3 GPU device + window + clear colour from Odin on every desktop target, including FreeBSD with Vulkan through Mesa (FreeBSD is not on SDL's official list for the Vulkan GPU backend).

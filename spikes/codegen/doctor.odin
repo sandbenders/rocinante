@@ -39,7 +39,10 @@ Target :: struct {
 	says:  string,   // the plain-words reason, shown when this computer cannot
 }
 
-TARGETS :: []Target{
+// A package-level variable, not a constant: a constant slice of structs that
+// hold slices is rebuilt on the stack at each use, so a copy of one entry
+// returned from a procedure would point at freed memory (found by the tests).
+TARGETS := []Target{
 	{"linux", {"linux-amd64", "linux-arm64"}, "Linux apps are built on a Linux computer"},
 	{"freebsd", {"freebsd-amd64", "freebsd-arm64"}, "FreeBSD apps are built on a FreeBSD computer"},
 	{"macos", {"macos-arm64", "macos-amd64"}, "macOS apps are built on a Mac"},

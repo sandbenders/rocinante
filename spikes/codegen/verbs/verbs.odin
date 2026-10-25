@@ -11,6 +11,7 @@ import "core:strings"
 
 // When set, output goes here instead of stdout. The spike's test sets it for
 // the interpreter run; generated programs never touch it.
+@(thread_local)
 sink: ^strings.Builder
 
 circle :: proc(x, y, radius: f64) {

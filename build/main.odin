@@ -83,6 +83,10 @@ check_odin :: proc() -> bool {
 	return true
 }
 
+// Packages whose @(test) procedures `ci` runs, from the repository root (some
+// tests make fixtures under output/). Add each package here as it gets tests.
+TEST_PACKAGES :: []string{"build", "spikes/codegen"}
+
 ci :: proc(fast: bool) -> bool {
 	ok := check_odin()
 	ok = check_licences(".") && ok
@@ -98,6 +102,9 @@ ci :: proc(fast: bool) -> bool {
 // as they appear.
 check_packages :: proc() -> bool {
 	ok := step("check build script", {"odin", "check", "build", "-vet", "-strict-style"})
+	for package_dir in TEST_PACKAGES {
+		ok = step(fmt.tprintf("unit tests: %s", package_dir), {"odin", "test", package_dir, "-vet", "-strict-style"}) && ok
+	}
 	// The spikes that build on any machine are type-checked; the Android and iOS
 	// ones need their SDKs and are built by hand (CLAUDE.md section 8).
 	ok = step("check spike 1", {"odin", "check", "spikes/desktop", "-vet", "-strict-style"}) && ok
