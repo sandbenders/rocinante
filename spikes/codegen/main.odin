@@ -13,6 +13,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "verbs"
+import "../../tools/term"
 
 OUT_DIR :: "output/codegen"
 
@@ -21,6 +22,7 @@ main :: proc() {
 	if len(os.args) > 1 {
 		command = os.args[1]
 	}
+	term.setup()
 	ok: bool
 	switch command {
 	case "check":
@@ -53,12 +55,12 @@ run_check :: proc() -> bool {
 }
 
 check_one :: proc(p: Program) -> bool {
-	fmt.printfln("== %s", p.name)
+	fmt.printfln("%s", term.out(fmt.tprintf("== %s", p.name), .Bold_Cyan))
 
 	errors := check_program(p)
 	if len(errors) > 0 {
 		for message in errors {
-			fmt.eprintln(message)
+			fmt.eprintln(term.err(message, .Red))
 		}
 		return false
 	}
@@ -110,11 +112,11 @@ check_one :: proc(p: Program) -> bool {
 		return false
 	}
 	if string(run_stdout) != expected {
-		fmt.eprintln("MISMATCH between the interpreter and the generated program")
+		fmt.eprintln(term.err("MISMATCH between the interpreter and the generated program", .Bold_Red))
 		fmt.eprintfln("interpreter:\n%s", expected)
 		fmt.eprintfln("generated:\n%s", string(run_stdout))
 		return false
 	}
-	fmt.printfln("   identical output, %d lines", strings.count(expected, "\n"))
+	fmt.printfln("   %s", term.out(fmt.tprintf("identical output, %d lines", strings.count(expected, "\n")), .Green))
 	return true
 }

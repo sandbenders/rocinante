@@ -10,6 +10,8 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
+import "../../tools/term"
+
 // Runs a command and returns its first line of output, or false if it could not run.
 probe :: proc(command: ..string) -> (line: string, ok: bool) {
 	state, stdout, _, err := os.process_exec({command = command}, context.allocator)
@@ -23,10 +25,10 @@ probe :: proc(command: ..string) -> (line: string, ok: bool) {
 
 report :: proc(what: string, found: string, ok: bool, fix: string) -> bool {
 	if ok {
-		fmt.printfln("  ok       %s: %s", what, found)
+		fmt.printfln("  %s %s: %s", term.out(term.pad("ok", 8), .Green), term.out(what, .Bold), found)
 	} else {
-		fmt.printfln("  MISSING  %s", what)
-		fmt.printfln("           %s", fix)
+		fmt.printfln("  %s %s", term.out(term.pad("MISSING", 8), .Bold_Red), term.out(what, .Bold))
+		fmt.printfln("           %s", term.out(fix, .Yellow))
 	}
 	return ok
 }
@@ -92,12 +94,12 @@ can_package :: proc(target: Target, host: string) -> bool {
 // For every target: can this computer build it? Says so first, before any tool
 // is looked for, as the section 7 rule asks.
 report_targets :: proc(host: string) {
-	fmt.printfln("this computer is %s", host_label(host))
+	fmt.printfln("%s", term.out(fmt.tprintf("this computer is %s", host_label(host)), .Bold_Cyan))
 	for target in TARGETS {
 		if can_package(target, host) {
-			fmt.printfln("  can build    %s", target.name)
+			fmt.printfln("  %s %s", term.out(term.pad("can build", 12), .Green), term.out(target.name, .Bold))
 		} else {
-			fmt.printfln("  cannot build %s: %s. This computer is %s, so build this one elsewhere.", target.name, target.says, host_label(host))
+			fmt.printfln("  %s %s: %s", term.out(term.pad("cannot build", 12), .Yellow), term.out(target.name, .Bold), term.out(fmt.tprintf("%s. This computer is %s, so build this one elsewhere.", target.says, host_label(host)), .Dim))
 		}
 	}
 	fmt.println("")
@@ -107,7 +109,7 @@ doctor :: proc(pinned_odin: string, pretend_host := "") -> bool {
 	ok := true
 	host := pretend_host if pretend_host != "" else host_id()
 	report_targets(host)
-	fmt.printfln("roci doctor, packaging for this computer (%v %v)", ODIN_OS, ODIN_ARCH)
+	fmt.printfln("%s", term.out(fmt.tprintf("roci doctor, packaging for this computer (%v %v)", ODIN_OS, ODIN_ARCH), .Bold_Cyan))
 
 	// Odin itself, at the pinned version.
 	version, have_odin := probe("odin", "version")

@@ -11,6 +11,9 @@ package build
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:time"
+
+import "../tools/term"
 
 USAGE :: `usage: odin run build -- <command>
 
@@ -21,6 +24,7 @@ commands:
 `
 
 main :: proc() {
+	term.setup()
 	args := os.args[1:]
 	if len(args) == 0 {
 		fmt.eprint(USAGE)
@@ -44,14 +48,16 @@ main :: proc() {
 
 // Runs one named step and prints what it printed if it fails.
 step :: proc(name: string, command: []string) -> bool {
-	fmt.printfln("== %s", name)
+	fmt.printfln("%s", term.out(fmt.tprintf("== %s", name), .Bold_Cyan))
+	started := time.now()
 	state, stdout, stderr, err := os.process_exec({command = command}, context.allocator)
 	if err != nil || state.exit_code != 0 {
-		fmt.eprintfln("%s failed (%v, exit code %d)", name, err, state.exit_code)
+		fmt.eprintfln("%s", term.err(fmt.tprintf("%s failed (%v, exit code %d)", name, err, state.exit_code), .Bold_Red))
 		fmt.eprint(string(stdout))
 		fmt.eprint(string(stderr))
 		return false
 	}
+	fmt.printfln("   %s", term.out(fmt.tprintf("ok, %.1f s", time.duration_seconds(time.since(started))), .Green))
 	return true
 }
 
@@ -60,32 +66,32 @@ step :: proc(name: string, command: []string) -> bool {
 check_odin :: proc() -> bool {
 	data, read_err := os.read_entire_file("ODIN_VERSION", context.allocator)
 	if read_err != nil {
-		fmt.eprintfln("cannot read ODIN_VERSION: %v", read_err)
+		fmt.eprintfln("%s", term.err(fmt.tprintf("cannot read ODIN_VERSION: %v", read_err), .Bold_Red))
 		return false
 	}
 	pinned := strings.trim_space(string(data))
 
 	state, stdout, _, err := os.process_exec({command = {"odin", "version"}}, context.allocator)
 	if err != nil || state.exit_code != 0 {
-		fmt.eprintfln("cannot run `odin version`: %v", err)
+		fmt.eprintfln("%s", term.err(fmt.tprintf("cannot run `odin version`: %v", err), .Bold_Red))
 		return false
 	}
 	have := strings.trim_space(string(stdout))
 	if strings.contains(have, pinned) {
-		fmt.printfln("odin: ok (%s)", pinned)
+		fmt.printfln("%s %s", term.out("odin:", .Bold), term.out(fmt.tprintf("ok (%s)", pinned), .Green))
 		return true
 	}
-	fmt.eprintfln("odin: this rocinante release is pinned to %s, but you have '%s'.", pinned, have)
+	fmt.eprintfln("%s this rocinante release is pinned to %s, but you have '%s'.", term.err("odin:", .Bold_Red), pinned, have)
 	if os.get_env("CI", context.temp_allocator) != "" {
 		return false
 	}
-	fmt.eprintln("odin: continuing, because this is not a pipeline.")
+	fmt.eprintfln("%s continuing, because this is not a pipeline.", term.err("odin:", .Yellow))
 	return true
 }
 
 // Packages whose @(test) procedures `ci` runs, from the repository root (some
 // tests make fixtures under output/). Add each package here as it gets tests.
-TEST_PACKAGES :: []string{"build", "spikes/codegen"}
+TEST_PACKAGES :: []string{"build", "spikes/codegen", "tools/term"}
 
 ci :: proc(fast: bool) -> bool {
 	ok := check_odin()
@@ -93,7 +99,12 @@ ci :: proc(fast: bool) -> bool {
 	// Compile-check every Odin package that exists so far.
 	ok = check_packages() && ok
 	if !fast {
-		fmt.println("== golden images, back-end equivalence, benchmarks: not built yet")
+		fmt.printfln("%s %s", term.out("== golden images, back-end equivalence, benchmarks:", .Bold_Cyan), term.out("not built yet", .Dim))
+	}
+	if ok {
+		fmt.printfln("\n%s", term.out("ci: all checks passed", .Bold_Green))
+	} else {
+		fmt.eprintfln("\n%s", term.err("ci: FAILED, see the messages above", .Bold_Red))
 	}
 	return ok
 }

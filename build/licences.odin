@@ -6,6 +6,8 @@ import "core:os"
 import "core:slice"
 import "core:strings"
 
+import "../tools/term"
+
 ALLOWED_LICENCES :: []string{
 	"0BSD", "MIT", "MIT-0", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause",
 	"ISC", "Zlib", "Unlicense", "Public-Domain",
@@ -180,14 +182,14 @@ check_licences :: proc(root: string) -> bool {
 	errors, warnings := licence_problems(table, imports, dirs[:])
 
 	for message in warnings {
-		fmt.eprintfln("licences: warning: %s", message)
+		fmt.eprintfln("%s %s", term.err("licences: warning:", .Yellow), message)
 	}
 	for message in errors {
-		fmt.eprintfln("licences: %s", message)
+		fmt.eprintfln("%s %s", term.err("licences:", .Bold_Red), message)
 	}
 	ok := deps_ok && len(errors) == 0
 	if ok {
-		fmt.printfln("licences: ok (%d entries, %d vendor: imports, %d vendor/ directories)", len(table), len(imports), len(dirs))
+		fmt.printfln("%s %s", term.out("licences:", .Bold), term.out(fmt.tprintf("ok (%d entries, %d vendor: imports, %d vendor/ directories)", len(table), len(imports), len(dirs)), .Green))
 	}
 	return ok
 }
