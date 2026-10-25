@@ -82,7 +82,8 @@ run :: proc(shader_formats: sdl.GPUShaderFormat, run_ms: u64) -> bool {
 	}
 	defer sdl.Quit()
 
-	window := sdl.CreateWindow("rocinante spike 2", 0, 0, {.HIGH_PIXEL_DENSITY})
+	// The size is ignored on phones, where the window fills the screen.
+	window := sdl.CreateWindow("rocinante spike 2", 800, 600, {.HIGH_PIXEL_DENSITY})
 	if window == nil {
 		return fail("SDL_CreateWindow")
 	}
