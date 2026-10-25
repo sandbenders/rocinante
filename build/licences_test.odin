@@ -5,20 +5,40 @@ package build
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:sync"
 import "core:testing"
 
 // The tests run from the repository root, so fixtures go under output/, which
 // git ignores and the licence scan skips.
 FIXTURE_ROOT :: "output/test-licences"
 
+// The tests run in parallel and share output/ and output/test-licences/, so
+// building a fixture is done one test at a time.
+fixture_lock: sync.Mutex
+
+// Makes a folder and its parents, trying again a few times, and says why if it
+// still cannot.
+ensure_directory :: proc(path: string) {
+	err: os.Error
+	for _ in 0 ..< 100 {
+		err = os.make_directory_all(path)
+		if os.exists(path) {
+			return
+		}
+	}
+	panic(fmt.tprintf("cannot make the folder %s: %v", path, err))
+}
+
 // Writes files (path under the fixture, then contents) into a fresh folder and
 // returns the folder.
 make_fixture :: proc(name: string, files: []string) -> string {
+	sync.mutex_guard(&fixture_lock)
 	root := fmt.tprintf("%s/%s", FIXTURE_ROOT, name)
 	os.remove_all(root)
+	ensure_directory(root)
 	for i := 0; i + 1 < len(files); i += 2 {
 		path := fmt.tprintf("%s/%s", root, files[i])
-		os.make_directory_all(path[:strings.last_index_byte(path, '/')])
+		ensure_directory(path[:strings.last_index_byte(path, '/')])
 		if err := os.write_entire_file(path, files[i + 1]); err != nil {
 			panic(fmt.tprintf("cannot write the fixture %s: %v", path, err))
 		}
