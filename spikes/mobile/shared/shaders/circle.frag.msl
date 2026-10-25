@@ -1,0 +1,29 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct _13
+{
+    float2 _m0;
+    float _m1;
+    float _m2;
+};
+
+struct main0_out
+{
+    float4 m_82 [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 m_11 [[user(locn0)]];
+};
+
+fragment main0_out main0(main0_in in [[stage_in]], constant _13& _15 [[buffer(0)]])
+{
+    main0_out out = {};
+    out.m_82 = float4(mix(float3(0.070000000298023223876953125, 0.0900000035762786865234375, 0.1599999964237213134765625), float3(1.0, 0.550000011920928955078125, 0.119999997317790985107421875), float3(1.0 - smoothstep(-1.0, 1.0, length((in.m_11 * _15._m0) - ((_15._m0 * 0.5) + ((float2(sin(_15._m1 * 1.5), cos(_15._m1 * 1.10000002384185791015625)) * _15._m0) * 0.1500000059604644775390625))) - (fast::min(_15._m0.x, _15._m0.y) * 0.180000007152557373046875)))), 1.0);
+    return out;
+}
+
