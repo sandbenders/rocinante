@@ -57,3 +57,23 @@ test_pad :: proc(t: ^testing.T) {
 	testing.expect_value(t, pad("ab", 0), "ab")
 	testing.expect(t, strings.has_prefix(pad("a", 4), "a"))
 }
+
+@(test)
+test_icon_off_is_empty_for_every_icon :: proc(t: ^testing.T) {
+	for i in Icon {
+		testing.expect_value(t, icon(i, false), "")
+	}
+}
+
+@(test)
+test_icon_on_ends_with_a_space_and_differs :: proc(t: ^testing.T) {
+	for i in Icon {
+		s := icon(i, true)
+		testing.expect(t, strings.has_suffix(s, " ") && len(s) > 1, "an icon and a space")
+		for other in Icon {
+			if other < i {
+				testing.expect(t, icon(other, true) != s, "two icons are the same")
+			}
+		}
+	}
+}

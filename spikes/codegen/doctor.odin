@@ -25,10 +25,10 @@ probe :: proc(command: ..string) -> (line: string, ok: bool) {
 
 report :: proc(what: string, found: string, ok: bool, fix: string) -> bool {
 	if ok {
-		fmt.printfln("  %s %s: %s", term.out(term.pad("ok", 8), .Green), term.out(what, .Bold), found)
+		fmt.printfln("  %s%s %s: %s", term.out_icon(.Ok), term.out(term.pad("ok", 8), .Green), term.out(what, .Bold), found)
 	} else {
-		fmt.printfln("  %s %s", term.out(term.pad("MISSING", 8), .Bold_Red), term.out(what, .Bold))
-		fmt.printfln("           %s", term.out(fix, .Yellow))
+		fmt.printfln("  %s%s %s", term.out_icon(.Missing), term.out(term.pad("MISSING", 8), .Bold_Red), term.out(what, .Bold))
+		fmt.printfln("  %s         %s", "   " if term.out_colour else "", term.out(fix, .Yellow))
 	}
 	return ok
 }
@@ -97,9 +97,9 @@ report_targets :: proc(host: string) {
 	fmt.printfln("%s", term.out(fmt.tprintf("this computer is %s", host_label(host)), .Bold_Cyan))
 	for target in TARGETS {
 		if can_package(target, host) {
-			fmt.printfln("  %s %s", term.out(term.pad("can build", 12), .Green), term.out(target.name, .Bold))
+			fmt.printfln("  %s%s %s", term.out_icon(.Ok), term.out(term.pad("can build", 12), .Green), term.out(target.name, .Bold))
 		} else {
-			fmt.printfln("  %s %s: %s", term.out(term.pad("cannot build", 12), .Yellow), term.out(target.name, .Bold), term.out(fmt.tprintf("%s. This computer is %s, so build this one elsewhere.", target.says, host_label(host)), .Dim))
+			fmt.printfln("  %s%s %s: %s", term.out_icon(.Cannot), term.out(term.pad("cannot build", 12), .Yellow), term.out(target.name, .Bold), term.out(fmt.tprintf("%s. This computer is %s, so build this one elsewhere.", target.says, host_label(host)), .Dim))
 		}
 	}
 	fmt.println("")

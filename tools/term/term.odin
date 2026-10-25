@@ -83,3 +83,32 @@ pad :: proc(text: string, width: int) -> string {
 	}
 	return fmt.tprintf("%s%*s", text, width - n, "")
 }
+
+// Emoji marks for results. They follow the colour switch: a terminal that shows
+// colour shows them, and piped output and logs stay plain text.
+Icon :: enum {
+	Ok,
+	Cannot,
+	Missing,
+}
+
+// The icon and a space, or nothing when `on` is false.
+icon :: proc(i: Icon, on: bool) -> string {
+	if !on {
+		return ""
+	}
+	switch i {
+	case .Ok: return "✅ "
+	case .Cannot: return "🚫 "
+	case .Missing: return "❌ "
+	}
+	return ""
+}
+
+out_icon :: proc(i: Icon) -> string {
+	return icon(i, out_colour)
+}
+
+err_icon :: proc(i: Icon) -> string {
+	return icon(i, err_colour)
+}

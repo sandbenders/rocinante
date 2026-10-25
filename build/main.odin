@@ -57,7 +57,7 @@ step :: proc(name: string, command: []string) -> bool {
 		fmt.eprint(string(stderr))
 		return false
 	}
-	fmt.printfln("   %s", term.out(fmt.tprintf("ok, %.1f s", time.duration_seconds(time.since(started))), .Green))
+	fmt.printfln("   %s%s", term.out_icon(.Ok), term.out(fmt.tprintf("ok, %.1f s", time.duration_seconds(time.since(started))), .Green))
 	return true
 }
 
@@ -102,9 +102,9 @@ ci :: proc(fast: bool) -> bool {
 		fmt.printfln("%s %s", term.out("== golden images, back-end equivalence, benchmarks:", .Bold_Cyan), term.out("not built yet", .Dim))
 	}
 	if ok {
-		fmt.printfln("\n%s", term.out("ci: all checks passed", .Bold_Green))
+		fmt.printfln("\n%s%s", term.out_icon(.Ok), term.out("ci: all checks passed", .Bold_Green))
 	} else {
-		fmt.eprintfln("\n%s", term.err("ci: FAILED, see the messages above", .Bold_Red))
+		fmt.eprintfln("\n%s%s", term.err_icon(.Missing), term.err("ci: FAILED, see the messages above", .Bold_Red))
 	}
 	return ok
 }

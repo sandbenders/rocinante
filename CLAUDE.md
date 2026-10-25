@@ -35,7 +35,7 @@ spikes/mobile/shared/shaders/compile.sh       # GLSL to SPIR-V (glslc) and Metal
 
 The Android and iOS scripts need SDL 3.4.18 built for the phone, which is not in the repository (the recipe is in the Phase 0 results in §8).
 
-**Terminal output** is coloured through `tools/term` (decided 2026-10-25): every command that prints for people, including `doctor`, paints headings, results and errors with it. Colour is on only when the stream is a terminal and `NO_COLOR` is unset, the words are identical with or without it, and piped output and the pipelines stay plain. New commands use `term.out` and `term.err`, never raw escape codes.
+**Terminal output** is coloured through `tools/term` (decided 2026-10-25): every command that prints for people, including `doctor`, paints headings, results and errors with it and marks results with ✅, 🚫 and ❌ (`term.out_icon`). Colour is on only when the stream is a terminal and `NO_COLOR` is unset, the words are identical with or without it, and piped output and the pipelines stay plain. New commands use `term.out` and `term.err`, never raw escape codes.
 
 **Where things are.** This file holds the rules, the plan and the decisions; `docs/design.md`, imported below, holds the architecture details, the language and the parity map; section numbers are global, so `§5.9` is in `design.md` and `§8` is here. `spikes/` is throwaway Phase 0 code, not the planned packages: the real ones (`roci/`, `cli/`, `vendor/`, `shaders/`, `tests/`) in §4.2 do not exist yet. `output/` and `.cache/` are generated and ignored by git.
 
