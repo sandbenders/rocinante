@@ -31,8 +31,79 @@ report :: proc(what: string, found: string, ok: bool, fix: string) -> bool {
 	return ok
 }
 
-doctor :: proc(pinned_odin: string) -> bool {
+// Which computers can package which target (CLAUDE.md section 7). iOS and
+// Android are targets only; desktop targets are packaged on their own system.
+Target :: struct {
+	name:  string,
+	hosts: []string, // host ids, see host_id
+	says:  string,   // the plain-words reason, shown when this computer cannot
+}
+
+TARGETS :: []Target{
+	{"linux", {"linux-amd64", "linux-arm64"}, "Linux apps are built on a Linux computer"},
+	{"freebsd", {"freebsd-amd64", "freebsd-arm64"}, "FreeBSD apps are built on a FreeBSD computer"},
+	{"macos", {"macos-arm64", "macos-amd64"}, "macOS apps are built on a Mac"},
+	{"windows", {"windows-amd64"}, "Windows apps are built on a Windows computer"},
+	{"android", {"macos-arm64", "macos-amd64", "linux-amd64", "windows-amd64"}, "Android apps are built on a Mac, a Linux x86-64 computer or a Windows computer, because Google's Android tools run nowhere else"},
+	{"ios", {"macos-arm64", "macos-amd64"}, "iOS apps can only be built on a Mac, because Apple's tools only run there"},
+}
+
+host_id :: proc() -> string {
+	os_name: string
+	when ODIN_OS == .Darwin {
+		os_name = "macos"
+	} else when ODIN_OS == .Linux {
+		os_name = "linux"
+	} else when ODIN_OS == .FreeBSD {
+		os_name = "freebsd"
+	} else when ODIN_OS == .Windows {
+		os_name = "windows"
+	} else {
+		os_name = "other"
+	}
+	arch_name := "amd64" if ODIN_ARCH == .amd64 else "arm64"
+	return fmt.tprintf("%s-%s", os_name, arch_name)
+}
+
+// The host as a person would say it.
+host_label :: proc(host: string) -> string {
+	switch host {
+	case "macos-arm64", "macos-amd64": return "a Mac"
+	case "linux-amd64": return "a Linux x86-64 computer"
+	case "linux-arm64": return "a Linux arm64 computer"
+	case "freebsd-amd64", "freebsd-arm64": return "a FreeBSD computer"
+	case "windows-amd64": return "a Windows computer"
+	}
+	return host
+}
+
+can_package :: proc(target: Target, host: string) -> bool {
+	for h in target.hosts {
+		if h == host {
+			return true
+		}
+	}
+	return false
+}
+
+// For every target: can this computer build it? Says so first, before any tool
+// is looked for, as the section 7 rule asks.
+report_targets :: proc(host: string) {
+	fmt.printfln("this computer is %s", host_label(host))
+	for target in TARGETS {
+		if can_package(target, host) {
+			fmt.printfln("  can build    %s", target.name)
+		} else {
+			fmt.printfln("  cannot build %s: %s. This computer is %s, so build this one elsewhere.", target.name, target.says, host_label(host))
+		}
+	}
+	fmt.println("")
+}
+
+doctor :: proc(pinned_odin: string, pretend_host := "") -> bool {
 	ok := true
+	host := pretend_host if pretend_host != "" else host_id()
+	report_targets(host)
 	fmt.printfln("roci doctor, packaging for this computer (%v %v)", ODIN_OS, ODIN_ARCH)
 
 	// Odin itself, at the pinned version.

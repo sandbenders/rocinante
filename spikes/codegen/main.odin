@@ -6,7 +6,7 @@
 // non-negotiable 7 in miniature. Run it from the repository root:
 //
 //     odin run spikes/codegen -- check     interpret, generate, build, compare
-//     odin run spikes/codegen -- doctor    look for the packaging toolchain
+//     odin run spikes/codegen -- doctor    say which targets this computer can build, and look for the toolchain
 package codegen_spike
 
 import "core:fmt"
@@ -26,7 +26,8 @@ main :: proc() {
 	case "check":
 		ok = run_check()
 	case "doctor":
-		ok = doctor(pinned_odin())
+		// `doctor <host>` pretends to be another computer, to see its messages.
+		ok = doctor(pinned_odin(), os.args[2] if len(os.args) > 2 else "")
 	case:
 		fmt.eprintln("usage: odin run spikes/codegen -- check | doctor")
 	}
