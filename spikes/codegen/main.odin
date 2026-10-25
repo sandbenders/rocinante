@@ -17,6 +17,14 @@ import "../../tools/term"
 
 OUT_DIR :: "output/codegen"
 
+// Odin on Windows refuses an -out: path without .exe.
+EXE :: ".exe" when ODIN_OS == .Windows else ""
+
+// The generated program's path inside its folder.
+binary_path :: proc(dir: string) -> string {
+	return fmt.tprintf("%s/sketch%s", dir, EXE)
+}
+
 main :: proc() {
 	command := "check"
 	if len(os.args) > 1 {
@@ -96,7 +104,7 @@ check_one :: proc(p: Program) -> bool {
 	fmt.print(source)
 
 	// 3. Build it with the same Odin that built this program.
-	binary := fmt.tprintf("%s/sketch", dir)
+	binary := binary_path(dir)
 	build_command := []string{"odin", "build", dir, "-vet", "-strict-style", fmt.tprintf("-out:%s", binary)}
 	state, _, build_stderr, build_err := os.process_exec({command = build_command}, context.allocator)
 	if build_err != nil || state.exit_code != 0 {

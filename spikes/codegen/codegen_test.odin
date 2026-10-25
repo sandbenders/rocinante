@@ -506,3 +506,19 @@ test_probe_finds_a_command_and_misses_a_missing_one :: proc(t: ^testing.T) {
 	_, missing := probe("a-command-that-does-not-exist-anywhere")
 	testing.expect(t, !missing)
 }
+
+// the generated program's path
+
+@(test)
+test_binary_path_is_inside_the_folder :: proc(t: ^testing.T) {
+	testing.expect_value(t, binary_path("output/codegen/circle"), "output/codegen/circle/sketch" + EXE)
+}
+
+@(test)
+test_binary_path_has_the_system_extension :: proc(t: ^testing.T) {
+	when ODIN_OS == .Windows {
+		testing.expect_value(t, binary_path("d"), "d/sketch.exe")
+	} else {
+		testing.expect_value(t, binary_path("d"), "d/sketch")
+	}
+}
