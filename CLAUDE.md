@@ -101,6 +101,7 @@ These override convenience. If a task seems to require breaking one, stop and ra
 - Work in small, reviewable steps. Each phase below lists exit criteria; a phase is done only when all of them pass.
 - Never weaken a non-negotiable to make a task easier. Flag the conflict instead.
 - When you finish something that changes the design, update this file in the same commit.
+- **Never push automatically** (decided 2026-10-25). Claude Code does not push to `origin`, `github` or any other remote unless Fabrizio asks for a push in that very message; an earlier "yes" does not carry over. After committing, it says what to run (`git push origin <branch>`), and Fabrizio pushes, opens the merge request and merges it himself. It also never merges into `main` or deletes remote branches on its own; it deletes merged local branches only when asked.
 - **Git** follows §11: short feature branches rebased onto `main` and merged fast-forward, small frequent commits. **Never mention AI, Claude or any assistant in commit messages, branch names, tags or release notes, and never add `Co-Authored-By` trailers or session links.**
 - Contribute fixes upstream (Odin, its vendor bindings, SDL, Dear ImGui, AccessKit) whenever we fix something there.
 
@@ -457,6 +458,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **2026-10-24, Origin words**: `as center` and `as corner` (default) say what a shape's or image's position means, per element, replacing Processing's four `*Mode` verbs; an `as` straight after a shape's required arguments is its origin, an `as` after a `fill` or `stroke` value belongs to the value. Full text in §5.9.
 - **2026-10-24, Escape does not quit a sketch by default**; Escape leaves the widgets (§4.8), and Cmd+Q, Ctrl+Q and the window's close button quit.
 - **2026-10-25, no cross-compilation between desktop systems**: FreeBSD, Linux, macOS and Windows each package for themselves; iOS needs a Mac, Android needs macOS, Linux x86-64 or Windows (§7).
+- **2026-10-25, Claude Code never pushes automatically**: only when Fabrizio asks for it in that message. Full text in §3.
 - **2026-10-25, all code needs the best possible unit-test coverage**, written with the code; `odin test` runs in `ci`; Phase 0 gets tests for the code it already has. Full text in §3 and §9.
 - **2026-10-25, iOS and Android are targets only**: sketches are written, run and packaged on FreeBSD, Linux, macOS and Windows; `roci` does not run on phones, and the on-device live-coding idea is dropped from the roadmap. `roci doctor` says plainly when this computer cannot build a target (iOS only on macOS, Android on macOS, Linux x86-64 and Windows). Full text in §7.
 - **2026-10-25, `roci` fetches a JDK (Temurin 21) for Android packaging**, like Odin and the NDK; Android packaging therefore runs on macOS, Linux x86-64 and Windows hosts only (the NDK has no other hosts). Full text in §4.7.
@@ -502,7 +504,7 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 
 **Remotes.**
 
-- `origin` is GitLab on ORION (Arch Linux), where all daily work goes.
+- `origin` is GitLab on ORION (Arch Linux), where all daily work goes. Fabrizio pushes it; Claude Code does not push unless asked in that message (§3).
 - `github` is the public mirror, `https://github.com/sandbenders/rocinante` (decided 2026-10-24, because the `Rocinante` organisation name is taken). About twice a week: `git push github main --tags`. Pushed by hand, not by GitLab's push mirroring, so GitHub only receives snapshots Fabrizio chose to publish.
 - Issues and pull requests from the community arrive on GitHub. A pull request is accepted by fetching its branch locally, merging it through the normal GitLab flow, and pushing to GitHub; the README explains this to contributors.
 
