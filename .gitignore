@@ -2,3 +2,5 @@
 .cache/
 output/
 /codegen
+/build.exe
+/codegen.exe

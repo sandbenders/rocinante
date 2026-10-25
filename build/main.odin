@@ -93,6 +93,19 @@ check_odin :: proc() -> bool {
 // tests make fixtures under output/). Add each package here as it gets tests.
 TEST_PACKAGES :: []string{"build", "spikes/codegen", "tools/term"}
 
+// Where `odin test` writes each package's test program. Left to itself it writes
+// build.exe to the repository root, the very file `odin run build` is running
+// from, which Windows keeps locked.
+TEST_OUT_DIR :: "output/tests"
+
+// Odin on Windows refuses an -out: path without .exe.
+EXE :: ".exe" when ODIN_OS == .Windows else ""
+
+test_binary :: proc(package_dir: string) -> string {
+	name, _ := strings.replace_all(package_dir, "/", "_", context.temp_allocator)
+	return fmt.tprintf("%s/%s%s", TEST_OUT_DIR, name, EXE)
+}
+
 ci :: proc(fast: bool) -> bool {
 	ok := check_odin()
 	ok = check_licences(".") && ok
@@ -113,8 +126,13 @@ ci :: proc(fast: bool) -> bool {
 // as they appear.
 check_packages :: proc() -> bool {
 	ok := step("check build script", {"odin", "check", "build", "-vet", "-strict-style"})
+	if err := os.make_directory_all(TEST_OUT_DIR); err != nil && err != .Exist {
+		fmt.eprintfln("%s", term.err(fmt.tprintf("cannot make the folder %s: %v", TEST_OUT_DIR, err), .Bold_Red))
+		return false
+	}
 	for package_dir in TEST_PACKAGES {
-		ok = step(fmt.tprintf("unit tests: %s", package_dir), {"odin", "test", package_dir, "-vet", "-strict-style"}) && ok
+		out := fmt.tprintf("-out:%s", test_binary(package_dir))
+		ok = step(fmt.tprintf("unit tests: %s", package_dir), {"odin", "test", package_dir, "-vet", "-strict-style", out}) && ok
 	}
 	// The spikes that build on any machine are type-checked; the Android and iOS
 	// ones need their SDKs and are built by hand (CLAUDE.md section 8).
