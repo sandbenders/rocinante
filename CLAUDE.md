@@ -63,7 +63,7 @@ An open-source creative coding framework and language.
 
 Execution: **interpreted while you work, compiled to native code when you ship** (§4.7). Users never choose or notice; `roci run` interprets, `roci package` compiles.
 
-Target platforms, all first class from the start: FreeBSD, Linux, macOS, Windows, iOS, Android. Four of them are also **host** platforms, where sketches are written, run (`roci run`) and packaged: FreeBSD, Linux, macOS and Windows. **iOS and Android are targets only** (decided 2026-10-25): `roci` does not run on them, nothing is developed on them, and a sketch gets there as a packaged app. Which hosts can package which targets is in §7.
+Target platforms, all first class from the start: FreeBSD, Linux, macOS, Windows, iOS, Android. Four of them are also **host** platforms, where sketches are written, run (`roci run`) and packaged: FreeBSD, Linux, macOS and Windows. **iOS and Android are targets only** (decided 2026-10-25): `roci` does not run on them, nothing is developed on them, and a sketch gets there as a packaged app. Which hosts can package which targets is in §7. On the desktop, the first stable release covers x86-64 FreeBSD, Linux and Windows and Apple silicon Macs; other processors are on the roadmap (decided 2026-10-26).
 
 The smallest valid program:
 
@@ -250,7 +250,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 **Phase 0 results so far** (recorded 2026-10-24):
 
 - **Odin:** pinned to `dev-2026-10`. Official archives cover Linux amd64 and arm64, macOS arm64 and Windows amd64 only (§4.7). Homebrew's `dev-2026-07` built against LLVM 23 failed to compile any program; Homebrew's `dev-2026-10` (LLVM 22.1.8) works.
-- **`vendor:sdl3`:** its bindings are for SDL 3.4.2, while the latest SDL3 release is 3.4.18 (2026-10-02). Patch releases keep the ABI, so the bindings load the newer library, but functions added after 3.4.2 are missing; the decision between `vendor:` and our own bindings stays open until Phase 1 needs one.
+- **`vendor:sdl3`:** its bindings are for SDL 3.4.2, while the latest SDL3 release is 3.4.18 (2026-10-02). Patch releases keep the ABI, so the bindings load the newer library, but functions added after 3.4.2 are missing; the decision between `vendor:` and our own bindings stays open until Phase 1 needs one. The spikes ran with SDL 3.4.2, 3.4.16 and 3.4.18 libraries, and those patch-release differences are accepted (decided 2026-10-26).
 - **Odin from source on FreeBSD** (2026-10-24, FreeBSD 15.1, Intel Xeon X5675): `LLVM_CONFIG=llvm-config19 gmake release-native` on the `dev-2026-10` tag built in 2 minutes 10 seconds and reports `dev-2026-10:84bc3fc`, the same commit as the official macOS archive, using one core (99% CPU, so `-j` does not help: the script runs one compile). It needed `gmake`, git and the ports package `llvm19` (the base system's clang has no `llvm-config`); `roci` must find `llvm-config` under its versioned name.
 - **Name check** (2026-10-24; registries and GitHub queried directly, no legal or trademark search):
   - **FreeBSD:** a port `sysutils/rocinante` already exists (BastilleBSD's configuration-management tool, command `rocinante`, 79 stars, in ports). Our command is `roci`, so no file clashes, but a port or package of ours cannot be called `rocinante`: name it `roci`.
@@ -289,7 +289,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
   - **`android_main`:** Odin always links the NDK's `native_app_glue` into an Android library, and that glue needs an `android_main`; a do-nothing exported stub lets the library load under SDL's activity.
   - **Apple Silicon:** the NDK ships only `darwin-x86_64` toolchains, and Odin guesses `darwin-arm64`, so `ODIN_ANDROID_NDK_TOOLCHAIN` must be set (it runs under Rosetta).
   - **Signing:** a new debug key on each build makes the phone refuse the update (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`); the key must be kept.
-  - **Java is needed to package:** `javac`, `d8` and `apksigner` all need a JDK (see Open item 5).
+  - **Java is needed to package:** `javac`, `d8` and `apksigner` all need a JDK, which `roci` fetches (decided 2026-10-25, §4.7).
   - **Debugging:** the activity starts on a locked or sleeping phone and then fails with `VK_ERROR_SURFACE_LOST_KHR` or draws nothing; test with the screen on.
 - **Spike 2, iOS** (`spikes/mobile/ios`, 2026-10-25, iPhone 13 Pro, iOS 26.6.2, Xcode 27.1, a free Apple ID): passes for the window and GPU half. An Odin executable for the iPhone, started through SDL's UIKit loop, opened an SDL3 window and GPU device on the Metal driver (swapchain 1170 × 2532) and cleared the screen to a changing colour at 60 fps (3,300 frames in 55 seconds, then the user closed it). **Circle:** the same shader, converted from SPIR-V to Metal's shading language with `spirv-cross` (entry point renamed `main0` by it, uniform in `[[buffer(0)]]`), runs on the iPhone with the pipeline created without errors and 60 fps, and the user confirmed by eye that the circle shows and moves. The shared shader sources and their compiled outputs are in `spikes/mobile/shared/shaders` (committed, so building needs neither tool). How it is built, with no Xcode GUI: SDL 3.4.18 compiled as a static `libSDL3.a` for the iPhone with CMake; Odin builds the sketch code with `-target:darwin_arm64 -subtarget:iphone -build-mode:lib`; `clang` links it with SDL and the system frameworks; a tiny generated Xcode project only wraps the executable and signs it, and `xcodebuild -allowProvisioningUpdates` created the development certificate and provisioning profile; `xcrun devicectl` installs and launches it and streams the log. Findings:
   - **Link it yourself:** Odin's own link step puts Homebrew's macOS `libSDL3.dylib` ahead of the iPhone library (`-L/opt/homebrew/lib` comes first) and fails with "building for iOS, but linking in dylib built for macOS", so the core builds a static library and the final link is done separately.
@@ -467,6 +467,8 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **2026-10-25, all code needs the best possible unit-test coverage**, written with the code; `odin test` runs in `ci`; Phase 0 gets tests for the code it already has. Full text in §3 and §9.
 - **2026-10-25, iOS and Android are targets only**: sketches are written, run and packaged on FreeBSD, Linux, macOS and Windows; `roci` does not run on phones, and the on-device live-coding idea is dropped from the roadmap. `roci doctor` says plainly when this computer cannot build a target (iOS only on macOS, Android on macOS, Linux x86-64 and Windows). Full text in §7.
 - **2026-10-25, `roci` fetches a JDK (Temurin 21) for Android packaging**, like Odin and the NDK; Android packaging therefore runs on macOS, Linux x86-64 and Windows hosts only (the NDK has no other hosts). Full text in §4.7.
+- **2026-10-26, Desktop processors for the first stable release**: x86-64 on FreeBSD, Linux and Windows, and arm64 (Apple silicon) on macOS; "every desktop target" in §8 means these four systems. arm64 FreeBSD, Linux and Windows and Intel Macs are on the roadmap (README.md), which settles the old open question about Windows arm64 and macOS Intel, where Odin publishes no archive (§4.7).
+- **2026-10-26, SDL patch releases**: results from SDL 3.4.2, 3.4.16 and 3.4.18 libraries count as the same SDL; differences between patch releases are accepted (§8, Phase 0 results).
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
 
 ### Later
@@ -480,7 +482,6 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 1. Machine learning on FreeBSD: LiteRT's C runtime built there, or ONNX Runtime as the FreeBSD fallback (§4.10). Settled by the LiteRT spike at the start of Phase 6.
 2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
 3. Choices inherited from the sections they point to: vector tessellation (§4.3, Phase 1); text engine (§4.3, Phase 0); AIFF, Opus and AAC decoding (§4.6, Phase 5); MIDI on FreeBSD, iOS and Android (§4.6, Phase 5); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the Git LFS type list (§4.9, Phase 2); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision (§5.13, Phase 4); AccessKit on FreeBSD (§4.8, Phase 3).
-4. What to do about Windows arm64 and macOS Intel, which Odin's official archives do not cover (§4.7): build Odin from source there as on FreeBSD, or drop the targets. Settled in Phase 0.
 
 ---
 

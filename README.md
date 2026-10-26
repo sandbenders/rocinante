@@ -53,6 +53,7 @@ These are wanted, but not planned for the first stable release:
 
 - **A rocinante shader dialect.** Shaders are written in HLSL for now. Later, a small shader language in rocinante's own style will compile to HLSL.
 - **A web target**, so sketches can be shared in a browser.
+- **More processors on the desktop.** The first stable release runs on x86-64 computers with FreeBSD, Linux or Windows, and on Macs with Apple silicon. Later: arm64 FreeBSD, Linux and Windows computers, and Intel Macs.
 - **3D physics** (gravity, joints and stacking in 3D). Collision detection works in 2D and 3D, and physics simulation in 2D.
 - **Training models** inside rocinante. For now, trained models run locally but are trained elsewhere.
 
