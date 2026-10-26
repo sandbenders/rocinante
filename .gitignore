@@ -5,3 +5,5 @@ output/
 /build.exe
 /codegen.exe
 /SDL3.dll
+/imgui.ini
+/ui
