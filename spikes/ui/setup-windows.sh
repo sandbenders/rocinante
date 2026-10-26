@@ -2,8 +2,13 @@
 # SPDX-License-Identifier: 0BSD
 #
 # Spike 4 on Windows (CLAUDE.md section 8): the same as setup.sh, with MSVC.
-# Run it from Git Bash that was started from the "x64 Native Tools Command
-# Prompt for VS" (so that cl and lib are on the PATH), from the repository root:
+# cl and lib must be on the PATH, so load the Build Tools in a plain cmd window
+# and start Git Bash in that same window (the Windows gotcha in CLAUDE.md):
+#
+#     call "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+#     "C:\Program Files\Git\bin\bash.exe" --login -i
+#
+# Then, from the repository root:
 #
 #     spikes/ui/setup-windows.sh
 #     cp "$(odin root)/vendor/sdl3/SDL3.dll" .      # once, as for Spike 1
@@ -25,7 +30,16 @@ DEAR_BINDINGS_TAG=v0.26
 export MSYS2_ARG_CONV_EXCL='*'
 
 for tool in git cl lib odin; do
-	command -v "$tool" >/dev/null 2>&1 || { echo "setup: $tool not found on the PATH (start Git Bash from the x64 Native Tools Command Prompt)" >&2; exit 1; }
+	command -v "$tool" >/dev/null 2>&1 && continue
+	echo "setup: $tool not found on the PATH" >&2
+	case "$tool" in
+	cl | lib)
+		echo "setup: in a plain cmd window, run the Build Tools' vcvars64.bat, then start Git Bash there:" >&2
+		echo '    call "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat"' >&2
+		echo '    "C:\Program Files\Git\bin\bash.exe" --login -i' >&2
+		;;
+	esac
+	exit 1
 done
 python=
 for candidate in python3 python; do
