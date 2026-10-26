@@ -14,9 +14,11 @@ Everything is driven by the build script in `build/`, written in Odin; there is 
 odin run build -- ci            # exactly what both pipelines run
 odin run build -- ci --fast     # the pre-push subset (git config core.hooksPath tools/hooks)
 odin run build -- licences      # dependency licence check against tools/licences.txt
+odin run build -- odin          # check the installed Odin against ODIN_VERSION
 odin check <dir> -vet -strict-style           # type-check one package
 odin test <dir>                               # run its @(test) procedures (core:testing)
 odin test <dir> -define:ODIN_TEST_NAMES=package.test_name   # run a single test
+odin test <dir> -out:output/tests/<name>.exe  # on Windows: keep the test program out of the repository root, as ci does
 ```
 
 `ci` runs `odin test` on every package listed in `TEST_PACKAGES` in `build/main.odin` (add a package there as soon as it has tests), and a failing test makes `ci` exit with 1. Tests run from the repository root, in parallel threads, and some make fixtures under `output/`. A test file that builds maps or dynamic arrays from literals needs `#+feature dynamic-literals` at the top.
@@ -40,6 +42,11 @@ The Android and iOS scripts need SDL 3.4.18 built for the phone, which is not in
 
 **Where things are.** This file holds the rules, the plan and the decisions; `docs/design.md`, imported below, holds the architecture details, the language and the parity map; section numbers are global, so `§5.9` is in `design.md` and `§8` is here. `spikes/` is throwaway Phase 0 code, not the planned packages: the real ones (`roci/`, `cli/`, `vendor/`, `shaders/`, `tests/`) in §4.2 do not exist yet. `output/` and `.cache/` are generated and ignored by git.
 
+**The code that exists so far:**
+- `build/main.odin`: `ci` is a list of `step` calls in `check_packages` (each runs one command and prints its output only when it fails), so a new package or spike joins the pipelines there, and `TEST_PACKAGES` lists what `odin test` runs. `build/licences.odin` is the licence check (§3).
+- `spikes/codegen` (Spike 3) is the language pipeline in miniature: `ir.odin` holds a hand-written typed IR (§4.7), `check.odin` is a stand-in checker, and the two back ends, `interp.odin` and `codegen.odin`, both call the same `verbs` package, which is non-negotiable 7 in small. The interpreter's output is captured through the thread-local `verbs.sink`; `main.odin` (`check`) writes each generated program to `output/codegen/<name>/` beside a copy of `verbs`, builds it with Odin and compares the two outputs. A new test program goes in `programs.odin` and in the list in `run_check`, with an exact `generate` test. `doctor.odin` is the stand-in `roci doctor` and holds §7's host and target table.
+- `tools/term`: `out` and `err` paint text for stdout and stderr (`.Bold_Cyan` headings, `.Green` results, `.Bold_Red` errors), `out_icon` and `err_icon` give the result marks, and `setup` is called first in every `main`.
+
 **Shell and tool gotchas** (these have all cost time):
 - Fabrizio's `ls` is an alias for `eza` and adds colour codes, so scripts and anything piped must use `command ls`. Use `rg`, not `grep`, in anything written for him; portable scripts that contributors run (hooks, CI) use POSIX tools.
 - macOS has no `timeout`, and BSD `sed` needs `-i ''`.
@@ -48,6 +55,7 @@ The Android and iOS scripts need SDL 3.4.18 built for the phone, which is not in
 - Never test a mobile app on a sleeping or locked phone: Android draws nothing, iOS refuses to launch.
 - Odin `dev-2026-10`: `for x in m[key]` crashes when `key` is missing from the map, so copy the value to a local first (`list := m[key]`, then `for x in list`); found in Spike 3, worth reporting upstream.
 - Windows: an `-out:` path must end in `.exe`, and a running program's file is locked, so nothing may write `build.exe` while `odin run build` runs (`ci` puts test programs in `output/tests/`). A program that needs `SDL3.dll` finds it only next to itself or on `PATH`.
+- Python is not a rocinante dependency until the Phase 6 model converters (§4.10), so the repository's scripts use Odin or POSIX tools even on computers that have it. Windows: in Git Bash, a heredoc whose text holds backticks and quotes can fail to parse; write such files with the editor's write tool instead. Line endings are LF everywhere: `.gitattributes` (`* text=auto eol=lf`) overrides `core.autocrlf`, so shell scripts keep working when a Windows clone is used from WSL or copied to a Mac.
 - Odin: package-level state shared by tests is a data race (the tests run in parallel), so use `@(thread_local)`; and a constant slice of structs that hold slices is rebuilt on the stack at each use, so keep such tables in a package-level variable (both were found by the first unit tests).
 
 ---
@@ -107,6 +115,7 @@ These override convenience. If a task seems to require breaking one, stop and ra
 - Never weaken a non-negotiable to make a task easier. Flag the conflict instead.
 - When you finish something that changes the design, update this file in the same commit.
 - **Never push automatically** (decided 2026-10-25). Claude Code does not push to `origin`, `github` or any other remote unless Fabrizio asks for a push in that very message; an earlier "yes" does not carry over. After committing, it says what to run (`git push origin <branch>`), and Fabrizio pushes, opens the merge request and merges it himself. It also never merges into `main` or deletes remote branches on its own; it deletes merged local branches only when asked.
+- **Never commit on `main`** (decided 2026-10-26). Before the first commit of any change, create a branch named by kind (`feat/…`, `fix/…`, `docs/…`, `spike/…`, `refactor/…`, §11) and commit there; `main` changes only through a tested GitLab merge request that Fabrizio merges. After he merges, fast-forward the local `main` to `origin/main`, delete the branch with `git branch -d` when he asks, and run `git fetch --prune` (GitLab deletes merged branches itself). When `main` moved while a branch waited, rebase the branch onto `origin/main` and tell him to push it with `git push --force-with-lease origin <branch>`.
 - **Git** follows §11: short feature branches rebased onto `main` and merged fast-forward, small frequent commits. **Never mention AI, Claude or any assistant in commit messages, branch names, tags or release notes, and never add `Co-Authored-By` trailers or session links.**
 - Contribute fixes upstream (Odin, its vendor bindings, SDL, Dear ImGui, AccessKit) whenever we fix something there.
 
@@ -468,6 +477,8 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **2026-10-25, iOS and Android are targets only**: sketches are written, run and packaged on FreeBSD, Linux, macOS and Windows; `roci` does not run on phones, and the on-device live-coding idea is dropped from the roadmap. `roci doctor` says plainly when this computer cannot build a target (iOS only on macOS, Android on macOS, Linux x86-64 and Windows). Full text in §7.
 - **2026-10-25, `roci` fetches a JDK (Temurin 21) for Android packaging**, like Odin and the NDK; Android packaging therefore runs on macOS, Linux x86-64 and Windows hosts only (the NDK has no other hosts). Full text in §4.7.
 - **2026-10-26, Desktop processors for the first stable release**: x86-64 on FreeBSD, Linux and Windows, and arm64 (Apple silicon) on macOS; "every desktop target" in §8 means these four systems. arm64 FreeBSD, Linux and Windows and Intel Macs are on the roadmap (README.md), which settles the old open question about Windows arm64 and macOS Intel, where Odin publishes no archive (§4.7).
+- **2026-10-26, Never commit on `main`**: every change starts on its own branch and reaches `main` only through a GitLab merge request. Full text in §3.
+- **2026-10-26, LF line endings in every clone**, set by `.gitattributes`. Full text in the shell and tool gotchas.
 - **2026-10-26, SDL patch releases**: results from SDL 3.4.2, 3.4.16 and 3.4.18 libraries count as the same SDL; differences between patch releases are accepted (§8, Phase 0 results).
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
 

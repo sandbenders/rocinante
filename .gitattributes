@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: 0BSD
+# LF in every clone, whatever core.autocrlf says (CLAUDE.md, shell and tool gotchas).
+* text=auto eol=lf
