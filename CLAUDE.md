@@ -35,6 +35,7 @@ spikes/mobile/android/build.sh --install      # Spike 2, Android; needs SDL_ANDR
 spikes/mobile/ios/build.sh --install          # Spike 2, iOS; needs SDL_IOS_LIB, TEAM_ID and DEVICE
 spikes/mobile/shared/shaders/compile.sh       # GLSL to SPIR-V (glslc) and Metal (spirv-cross); outputs are committed
 spikes/ui/setup.sh                            # Spike 4, once: fetch Dear ImGui, dear_bindings and accesskit-c into .cache/ui, generate and build them
+spikes/ui/setup-windows.sh                    # the same on Windows, with MSVC (from Git Bash started in the x64 Native Tools Command Prompt); no accesskit-c yet
 odin run spikes/ui [-- interactive]           # Spike 4: slider, button and text box, and the screen-reader bridge on macOS
 ```
 
