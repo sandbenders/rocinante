@@ -246,7 +246,7 @@ Packaging notes:
 
 Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-checklist run on the other platforms that the phase touches, and an update to this file.
 
-### Phase 0: Foundations
+### Phase 0: Foundations (done 2026-10-27)
 - Create the repository layout (§4.2), the Odin build script with its `ci` command, a `README.md` (kept current: status, contributing, and build instructions once there is something to build), a `LICENSE` file with the 0BSD text and `SPDX-License-Identifier: 0BSD` headers.
 - Set up the Git workflow and both pipelines (§11): `tools/hooks/` (pre-push and commit-msg), the `ODIN_VERSION` file, `.gitlab-ci.yml` on ORION's runner, `.github/workflows/ci.yml`, the `github` remote, protection of `main` in GitLab, and the release checklist.
 - Add a CI licence check: a script that reads every library in `vendor/` and every `vendor:` package we use, and fails on GPL/LGPL code that would ship (§3).
@@ -263,7 +263,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **Spike 4, UI**: Dear ImGui through dear_bindings, `imgui_impl_sdl3` and `imgui_impl_sdlgpu3` from Odin: a slider, button and text box, IME composition in the text box, and one AccessKit adapter exposing them to a screen reader via accesskit-c.
 - **Exit**: green pipelines on GitLab (Arch) and GitHub (Ubuntu); the four spikes working on their platforms (checked locally where CI doesn't reach); parity map verified; Odin version and target coverage recorded.
 
-**Phase 0 results so far** (recorded 2026-10-24):
+**Phase 0 results** (recorded 2026-10-24 to 2026-10-27):
 
 - **Odin:** pinned to `dev-2026-10`. Official archives cover Linux amd64 and arm64, macOS arm64 and Windows amd64 only (§4.7). Homebrew's `dev-2026-07` built against LLVM 23 failed to compile any program; Homebrew's `dev-2026-10` (LLVM 22.1.8) works.
 - **`vendor:sdl3`:** its bindings are for SDL 3.4.2, while the latest SDL3 release is 3.4.18 (2026-10-02). Patch releases keep the ABI, so the bindings load the newer library, but functions added after 3.4.2 are missing; the decision between `vendor:` and our own bindings stays open until Phase 1 needs one. The spikes ran with SDL 3.4.2, 3.4.16 and 3.4.18 libraries, and those patch-release differences are accepted (decided 2026-10-26).
@@ -316,6 +316,22 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
   - **Entry:** `sdl.RunApp(0, nil, main_func, nil)` from Odin's `main` starts UIKit and calls the sketch's main on SDL's thread.
 - **Spike 1, macOS arm64:** an SDL3 window and GPU device cleared to a colour from Odin, 181 frames in 3 seconds on the Metal driver, with Homebrew's SDL 3.4.18 library and the 3.4.2 bindings (`spikes/desktop`). FreeBSD 15.1-RELEASE-p5 (Intel Xeon X5675, AMD Radeon RX 580): passes on the Vulkan driver through Mesa, 187 frames in 3 seconds, with Odin `dev-2026-09` (the `lang/odin` port, one release behind the pin; the decision is to build the pinned release from source there instead) and SDL 3.4.16 as the library, so Vulkan GPU rendering works on FreeBSD even though SDL doesn't list it. It passed again with the source-built Odin `dev-2026-10:84bc3fc`: Vulkan, 186 frames in 3 seconds. CachyOS Linux x86_64 (Intel i7-9800X, NVIDIA RTX 2080 Ti, Odin `dev-2026-10:84bc3fc21`, SDL 3.4.18): passes on Vulkan, 306 frames in 3 seconds. Windows 11 Pro x86_64 (2026-10-25, the same machine, installed on bare metal rather than in a virtual machine, Odin `dev-2026-10-nightly:84bc3fc`, Visual Studio Build Tools 2026): passes on the Direct3D 12 driver, 302 frames in 3 seconds (the spike presents with vsync and the display runs at 99 Hz, so about 300 is the ceiling), with the `SDL3.dll` (3.4.2) that Odin ships in `vendor/sdl3`, copied next to the program because Windows looks for DLLs there. All four desktop systems now pass.
 
+**Phase 0 exit** (2026-10-27). Every exit criterion is met:
+
+- **Pipelines:** green on GitLab (Arch, ORION's runner) and on GitHub (Ubuntu 24.04, pinned) from the same `main`, which the first GitHub push published on 2026-10-27; both run `odin run build -- ci`, which includes 136 unit tests (49 in `build/`, 78 in `spikes/codegen`, 9 in `tools/term`) and the licence check.
+- **Spikes:** 1 (SDL3 window and GPU device) passes on macOS, FreeBSD, Linux and Windows; 2 (a shader-drawn circle) passes on a Pixel 9 and an iPhone 13 Pro; 3 (code generation, `doctor`) passes on all four desktop systems, with lists of records; 4 (Dear ImGui, IME, a screen-reader adapter) passes on all four desktop systems for rendering and input, with IME checked on macOS and Windows and VoiceOver on macOS.
+- **Parity map** verified against the three references (2026-10-24). **Odin** pinned to `dev-2026-10` with the target coverage and gaps recorded (§4.7). Hosts and targets are decided (§7).
+
+**Carried into later phases** (found open when Phase 0 closed, none blocks Phase 1):
+
+- **Text engine** (§4.3): SDL3_ttf's GPU engine was not tried in Phase 0, so the choice is made at the start of Phase 3; Phase 1's error overlay uses its own minimal font.
+- **`vendor:sdl3` or our own bindings:** decided in Phase 1, the first time a function added after SDL 3.4.2 is needed.
+- **Screen readers and IME:** the AccessKit adapters for Windows (UI Automation), Linux and FreeBSD (AT-SPI) are not written, and IME on Linux and FreeBSD is untried; Phase 3. The spike's hand-declared Dear ImGui and accesskit-c bindings are replaced by generated ones (accesskit-c's layouts must come from `accesskit.h`, not from a guess).
+- **Name:** the trademark search for software classes and a manual web search of the name are still to do by hand (see the name check above).
+- **Unchecked dependencies:** the platform lists of dav1d, libvpx and AccessKit's FreeBSD adapter (Phase 3 and Phase 6).
+- **Offers to make upstream:** Odin's `for x in m[key]` crash on a missing key, `SDL_main` declared as an import in `vendor:sdl3` (§8, Spike 2), and the bindings gaps above.
+- **`spikes/` is throwaway:** the packages in §4.2 (`roci/`, `cli/`, `vendor/`, `shaders/`, `tests/`) are created in Phase 1.
+
 ### Phase 1: Window and 2D core (Odin API)
 - App loop, `window` with optional position, multiple windows, HiDPI.
 - A minimal text path for the error overlay and debug output (a built-in bitmap or SDF font), so Phase 2 can show errors before Phase 3 brings real text (§4.3).
@@ -342,7 +358,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **Exit**: every Phase 1 example rewritten in `.roci`; every example infers fully (no boxed fallbacks) or the fallback is justified here; a newcomer test (someone who has never seen rocinante makes a moving sketch in 15 minutes, observed and written up here), run with two groups that see the same sketches written with one thing per argument and in bare Logo nesting, with the comparison recorded here (§5.1).
 
 ### Phase 3: Text, UI, images, canvases, shaders
-- Text with SDL3_ttf GPU engine (or the alternative chosen in Phase 0), including copying system fonts into the sketch with the licence check (§4.9).
+- Text with SDL3_ttf GPU engine (or the alternative chosen at the start of this phase), including copying system fonts into the sketch with the licence check (§4.9).
 - `ui` with the full widget set (§5.8) on Dear ImGui: immediate-mode `ui [ ]` blocks, automatic layout, focus and keyboard navigation, text input with IME and on-screen keyboards, touch sizing, theme, value persistence, custom widgets.
 - The AccessKit bridge (§4.8) on Windows, macOS, Linux, FreeBSD (verify), Android and iOS.
 - Images and pixels, offscreen canvases, blend modes, clipping, masks, image and video fills (§5.9).
@@ -501,7 +517,7 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 
 1. Machine learning on FreeBSD: LiteRT's C runtime built there, or ONNX Runtime as the FreeBSD fallback (§4.10). Settled by the LiteRT spike at the start of Phase 6.
 2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
-3. Choices inherited from the sections they point to: vector tessellation (§4.3, Phase 1); text engine (§4.3, Phase 0); AIFF, Opus and AAC decoding (§4.6, Phase 5); MIDI on FreeBSD, iOS and Android (§4.6, Phase 5); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the Git LFS type list (§4.9, Phase 2); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision (§5.13, Phase 4); AccessKit on FreeBSD (§4.8, Phase 3).
+3. Choices inherited from the sections they point to: vector tessellation (§4.3, Phase 1); text engine (§4.3, start of Phase 3); AIFF, Opus and AAC decoding (§4.6, Phase 5); MIDI on FreeBSD, iOS and Android (§4.6, Phase 5); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the Git LFS type list (§4.9, Phase 2); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision (§5.13, Phase 4); AccessKit on FreeBSD (§4.8, Phase 3).
 
 ---
 

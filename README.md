@@ -16,7 +16,7 @@ Read [MANIFESTO.md](MANIFESTO.md) for why it exists.
 
 ## Status
 
-Early design. Nothing runs yet. The project is in Phase 0: setting up the repository and testing the riskiest assumptions on every platform. The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
+Early design. Nothing a user can run yet. Phase 0 is done (2026-10-27): the repository, the build script and both pipelines work, and four spikes showed that the core's riskiest parts (a window and GPU device on every desktop system, a shader-drawn circle on a real iPhone and a real Android phone, generating Odin from a typed IR, and Dear ImGui with a screen reader) work. The project is now in Phase 1: the window and the 2D core. The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
 
 ## What it will look like
 
