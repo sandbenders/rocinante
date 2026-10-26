@@ -43,7 +43,7 @@ cd "$cache"
 
 clone() { # url tag dir
 	if [ ! -d "$3" ]; then
-		git clone -q --depth 1 --branch "$2" "$1" "$3"
+		git -c advice.detachedHead=false clone -q --depth 1 --branch "$2" "$1" "$3"
 	fi
 }
 clone https://github.com/ocornut/imgui "$IMGUI_TAG" imgui
@@ -63,25 +63,27 @@ if [ ! -d venv ]; then
 	"$python" -m venv venv
 	venv/Scripts/python.exe -m pip -q install -r dear_bindings/requirements.txt
 fi
+# Native Windows programs (python, cl, lib) need Windows paths, not /c/... ones.
+m=$(cygpath -m "$cache")
 gen="$cache/generated"
 mkdir -p "$gen/backends"
 (
 	cd dear_bindings
-	"$cache/venv/Scripts/python.exe" dear_bindings.py -o "$gen/dcimgui" ../imgui/imgui.h
+	"$cache/venv/Scripts/python.exe" dear_bindings.py -o "$m/generated/dcimgui" ../imgui/imgui.h
 	for backend in sdl3 sdlgpu3; do
 		"$cache/venv/Scripts/python.exe" dear_bindings.py --backend --include ../imgui/imgui.h \
-			-o "$gen/backends/dcimgui_impl_$backend" "../imgui/backends/imgui_impl_$backend.h"
+			-o "$m/generated/backends/dcimgui_impl_$backend" "../imgui/backends/imgui_impl_$backend.h"
 	done
 )
 
 # 3. One static library with Dear ImGui, its two backends and the C wrappers.
+# -MT, the static C runtime, because Odin links libucrt.lib rather than the DLL.
 mkdir -p obj
-m=$(cygpath -m "$cache")
 for src in imgui/imgui imgui/imgui_demo imgui/imgui_draw imgui/imgui_tables imgui/imgui_widgets \
 	imgui/backends/imgui_impl_sdl3 imgui/backends/imgui_impl_sdlgpu3 \
 	generated/dcimgui generated/backends/dcimgui_impl_sdl3 generated/backends/dcimgui_impl_sdlgpu3; do
 	name=$(basename "$src")
-	cl -nologo -std:c++17 -O2 -MD -EHsc -c \
+	cl -nologo -std:c++17 -O2 -MT -EHsc -c \
 		-I"$m/imgui" -I"$m/imgui/backends" -I"$m/generated" -I"$m/generated/backends" -I"$m/sdl-include" \
 		-Fo"$m/obj/$name.obj" "$m/$src.cpp"
 done
