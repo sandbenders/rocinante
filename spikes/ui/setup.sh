@@ -9,8 +9,9 @@
 #
 #     spikes/ui/setup.sh
 #
-# It also builds accesskit-c (the screen-reader bridge) into .cache/ui/libaccesskit.a,
-# which needs Rust (cargo) and CMake.
+# On macOS it also builds accesskit-c (the screen-reader bridge) into
+# .cache/ui/libaccesskit.a, which needs Rust (cargo) and CMake; the other systems'
+# adapters are not wired into the spike yet, so they skip it.
 #
 # SDL_INCLUDE: the folder that holds SDL3/SDL.h (default: pkg-config, then Homebrew).
 set -eu
@@ -31,7 +32,9 @@ clone() { # url tag dir
 }
 clone https://github.com/ocornut/imgui "$IMGUI_TAG" imgui
 clone https://github.com/dearimgui/dear_bindings "$DEAR_BINDINGS_TAG" dear_bindings
-clone https://github.com/AccessKit/accesskit-c "$ACCESSKIT_TAG" accesskit-c
+if [ "$(uname)" = Darwin ]; then
+	clone https://github.com/AccessKit/accesskit-c "$ACCESSKIT_TAG" accesskit-c
+fi
 
 if [ -z "${SDL_INCLUDE:-}" ]; then
 	SDL_INCLUDE=$(pkg-config --variable=includedir sdl3 2>/dev/null || echo /opt/homebrew/include)
@@ -68,10 +71,12 @@ rm -f libroci_ui.a
 ar rcs libroci_ui.a "$obj"/*.o
 echo "setup: built $cache/libroci_ui.a (Dear ImGui $IMGUI_TAG, dear_bindings $DEAR_BINDINGS_TAG)"
 
-# 3. accesskit-c, as a static library (its CMake build runs cargo).
-if [ ! -f libaccesskit.a ]; then
-	cmake -S accesskit-c -B accesskit-c/build -DCMAKE_BUILD_TYPE=Release >/dev/null
-	cmake --build accesskit-c/build >/dev/null
-	cp accesskit-c/build/libaccesskit.a libaccesskit.a
+# 3. accesskit-c, as a static library (its CMake build runs cargo), on macOS only.
+if [ "$(uname)" = Darwin ]; then
+	if [ ! -f libaccesskit.a ]; then
+		cmake -S accesskit-c -B accesskit-c/build -DCMAKE_BUILD_TYPE=Release >/dev/null
+		cmake --build accesskit-c/build >/dev/null
+		cp accesskit-c/build/libaccesskit.a libaccesskit.a
+	fi
+	echo "setup: built $cache/libaccesskit.a (accesskit-c $ACCESSKIT_TAG)"
 fi
-echo "setup: built $cache/libaccesskit.a (accesskit-c $ACCESSKIT_TAG)"
