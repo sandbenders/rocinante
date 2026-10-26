@@ -56,7 +56,7 @@ pinned_odin :: proc() -> string {
 
 run_check :: proc() -> bool {
 	ok := true
-	for program in ([]Program{program_circle(), program_loop()}) {
+	for program in ([]Program{program_circle(), program_loop(), program_records()}) {
 		ok = check_one(program) && ok
 	}
 	return ok

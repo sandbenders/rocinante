@@ -35,7 +35,7 @@ has_error :: proc(errors: []string, needle: string) -> bool {
 @(test)
 test_eval_a_number :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
-	env := make(Env)
+	env: Env
 	testing.expect_value(t, eval(num(42.5), &env), 42.5)
 	testing.expect_value(t, eval(num(-3), &env), -3)
 	testing.expect_value(t, eval(num(0), &env), 0)
@@ -44,7 +44,7 @@ test_eval_a_number :: proc(t: ^testing.T) {
 @(test)
 test_eval_each_operator :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
-	env := make(Env)
+	env: Env
 	testing.expect_value(t, eval(bin(.Add, num(2), num(3)), &env), 5)
 	testing.expect_value(t, eval(bin(.Sub, num(2), num(3)), &env), -1)
 	testing.expect_value(t, eval(bin(.Mul, num(2), num(3)), &env), 6)
@@ -54,7 +54,7 @@ test_eval_each_operator :: proc(t: ^testing.T) {
 @(test)
 test_eval_nests_operators :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
-	env := make(Env)
+	env: Env
 	// (1 + 2) * (10 - 4) / 3
 	expr := bin(.Div, bin(.Mul, bin(.Add, num(1), num(2)), bin(.Sub, num(10), num(4))), num(3))
 	testing.expect_value(t, eval(expr, &env), 6)
@@ -63,22 +63,22 @@ test_eval_nests_operators :: proc(t: ^testing.T) {
 @(test)
 test_eval_reads_a_variable :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
-	env := make(Env)
-	env["gap"] = 40
+	env: Env
+	env.numbers["gap"] = 40
 	testing.expect_value(t, eval(bin(.Mul, ref("gap"), num(2)), &env), 80)
 }
 
 @(test)
 test_eval_an_unset_variable_reads_as_zero :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
-	env := make(Env)
+	env: Env
 	testing.expect_value(t, eval(ref("nothing"), &env), 0)
 }
 
 @(test)
 test_eval_divides_by_zero_to_infinity :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
-	env := make(Env)
+	env: Env
 	testing.expect(t, math.is_inf(eval(bin(.Div, num(1), num(0)), &env)))
 	testing.expect(t, math.is_nan(eval(bin(.Div, num(0), num(0)), &env)))
 }

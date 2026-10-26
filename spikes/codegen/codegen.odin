@@ -3,7 +3,9 @@
 // Typed IR to Odin source (CLAUDE.md section 4.7). The output has to be
 // readable: names come from the sketch, each statement carries a comment with
 // its .roci line (the spike's stand-in for source mapping), and verbs are
-// called by the same names the interpreter uses.
+// called by the same names the interpreter uses. A record shape becomes a plain
+// struct and a list of records a dynamic array of it, which is the fast layout
+// section 5.2 promises.
 package codegen_spike
 
 import "core:fmt"
@@ -23,21 +25,38 @@ generate :: proc(p: Program) -> string {
 	fmt.sbprintln(&b, "")
 	fmt.sbprintln(&b, "import \"verbs\"")
 	fmt.sbprintln(&b, "")
+
+	for shape in p.shapes {
+		fmt.sbprintfln(&b, "%s :: struct %s", shape.name, "{")
+		for field in shape.fields {
+			fmt.sbprintfln(&b, "\t%s: f64,", field)
+		}
+		fmt.sbprintln(&b, "}")
+		fmt.sbprintln(&b, "")
+	}
+
 	fmt.sbprintln(&b, "main :: proc() {")
 
 	// A name assigned anywhere in a sketch is sketch-wide (section 5.15), so
-	// every assigned name is declared once at the top, starting at zero.
+	// every assigned name and every list is declared once at the top, empty.
 	names: [dynamic]string
 	defer delete(names)
 	collect_assigned(p.body, &names)
 	for name in names {
 		fmt.sbprintfln(&b, "\t%s: f64", name)
 	}
-	if len(names) > 0 {
+	lists: [dynamic]New_List
+	defer delete(lists)
+	collect_lists(p.body, &lists)
+	for list in lists {
+		fmt.sbprintfln(&b, "\t%s: [dynamic]%s", list.name, list.shape)
+		fmt.sbprintfln(&b, "\tdefer delete(%s)", list.name)
+	}
+	if len(names) > 0 || len(lists) > 0 {
 		fmt.sbprintln(&b, "")
 	}
 
-	emit_body(&b, p.body, 1, fmt.tprintf("%s.roci", p.name))
+	emit_body(&b, p.body, 1, fmt.tprintf("%s.roci", p.name), p.shapes)
 	fmt.sbprintln(&b, "}")
 	return strings.to_string(b)
 }
@@ -45,7 +64,7 @@ generate :: proc(p: Program) -> string {
 collect_assigned :: proc(body: []Stmt, names: ^[dynamic]string) {
 	for stmt in body {
 		switch s in stmt {
-		case Call:
+		case Call, New_List, Add, Set_Field:
 		case Assign:
 			seen := false
 			for name in names {
@@ -56,13 +75,38 @@ collect_assigned :: proc(body: []Stmt, names: ^[dynamic]string) {
 			}
 		case For:
 			collect_assigned(s.body, names)
+		case For_Each:
+			collect_assigned(s.body, names)
 		}
 	}
 }
 
-emit_body :: proc(b: ^strings.Builder, body: []Stmt, depth: int, file: string) {
+// Every list the sketch makes, once each, in the order they first appear.
+collect_lists :: proc(body: []Stmt, lists: ^[dynamic]New_List) {
+	for stmt in body {
+		switch s in stmt {
+		case Call, Assign, Add, Set_Field:
+		case New_List:
+			seen := false
+			for list in lists {
+				seen ||= list.name == s.name
+			}
+			if !seen {
+				append(lists, s)
+			}
+		case For:
+			collect_lists(s.body, lists)
+		case For_Each:
+			collect_lists(s.body, lists)
+		}
+	}
+}
+
+emit_body :: proc(b: ^strings.Builder, body: []Stmt, depth: int, file: string, shapes: []Shape) {
 	for stmt in body {
 		indent(b, depth)
+		// The braces below are separate arguments: a literal "{" in a format
+		// string means something to Odin's fmt.
 		switch s in stmt {
 		case Call:
 			fmt.sbprintf(b, "verbs.%s(", s.verb)
@@ -82,12 +126,36 @@ emit_body :: proc(b: ^strings.Builder, body: []Stmt, depth: int, file: string) {
 			emit_expr(b, s.from, true)
 			fmt.sbprintf(b, "; %s <= ", s.var)
 			emit_expr(b, s.to, true)
-			// The brace is a separate argument: a literal "{" in a format string
-			// means something to Odin's fmt.
 			fmt.sbprintfln(b, "; %s += 1 %s // %s:%d", s.var, "{", file, s.line)
-			emit_body(b, s.body, depth + 1, file)
+			emit_body(b, s.body, depth + 1, file, shapes)
 			indent(b, depth)
 			fmt.sbprintln(b, "}")
+		case New_List:
+			fmt.sbprintfln(b, "clear(&%s) // %s:%d", s.name, file, s.line)
+		case Add:
+			shape, _ := find_shape(shapes, s.shape)
+			fmt.sbprintf(b, "append(&%s, %s%s", s.list, s.shape, "{")
+			for value, i in s.values {
+				if i >= len(shape.fields) {
+					break
+				}
+				if i > 0 {
+					fmt.sbprint(b, ", ")
+				}
+				fmt.sbprintf(b, "%s = ", shape.fields[i])
+				emit_expr(b, value, true)
+			}
+			fmt.sbprintfln(b, "%s) // %s:%d", "}", file, s.line)
+		case For_Each:
+			// By reference, because records are shared (section 5.11).
+			fmt.sbprintfln(b, "for &%s in %s %s // %s:%d", s.var, s.list, "{", file, s.line)
+			emit_body(b, s.body, depth + 1, file, shapes)
+			indent(b, depth)
+			fmt.sbprintln(b, "}")
+		case Set_Field:
+			fmt.sbprintf(b, "%s.%s = ", s.record, s.name)
+			emit_expr(b, s.value, true)
+			fmt.sbprintfln(b, " // %s:%d", file, s.line)
 		}
 	}
 }
@@ -119,6 +187,8 @@ emit_expr :: proc(b: ^strings.Builder, e: Expr, top: bool) {
 		if !top {
 			fmt.sbprint(b, ")")
 		}
+	case Field:
+		fmt.sbprintf(b, "%s.%s", v.record, v.name)
 	}
 }
 
