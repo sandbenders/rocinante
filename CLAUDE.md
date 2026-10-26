@@ -164,6 +164,8 @@ rocinante/
   CLAUDE.md            rules, plan, tool, testing, git and CI (this file)
   MANIFESTO.md
   README.md            what rocinante is, project status, how to contribute (§11)
+  CONTRIBUTING.md      a pointer to README's Contributing section, for GitHub and GitLab to show
+  CHANGELOG.md         a pointer to the releases page; release notes live on the tags (§11)
   LICENSE              0BSD text (§10)
   roci/                public API, prelude, stable verb ABI (package roci)
     platform/          SDL3 wrapper: app loop, windows, input, gamepads, joysticks, events
@@ -484,6 +486,7 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 - **2026-10-26, Never commit on `main`**: every change starts on its own branch and reaches `main` only through a GitLab merge request. Full text in §3.
 - **2026-10-26, LF line endings in every clone**, set by `.gitattributes`. Full text in the shell and tool gotchas.
 - **2026-10-26, SDL patch releases**: results from SDL 3.4.2, 3.4.16 and 3.4.18 libraries count as the same SDL; differences between patch releases are accepted (§8, Phase 0 results).
+- **2026-10-26, `CHANGELOG.md` and `CONTRIBUTING.md` are pointers**: the first to the releases page (release notes stay on the tags), the second to README's Contributing section, so neither duplicates what lives elsewhere. Full text in §4.2 and §11.
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
 
 ### Later
@@ -545,7 +548,7 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 - A release is an annotated tag `vYYYY.MINOR.MICRO` on `main` (for example `v2026.1.0`), so the `v*` tag rules of both pipelines apply unchanged.
 - The version does not signal compatibility. Releases before the first stable release are marked as previews in their release notes. After it, any change that breaks existing sketches, the stable verb ABI or `ui.toml` is listed at the top of the release notes with the fix for each, and `roci check` explains it in plain words when it meets the old form.
 - Before tagging, work through the release checklist (`docs/release-checklist.md`): build and run the examples, golden-image and equivalence suites on FreeBSD, macOS, Windows, iOS and Android, record the results in the checklist's table for that version, and build those platforms' artefacts locally. The Linux artefact comes from the tag pipeline.
-- Release notes are written on the tag (GitLab and GitHub releases), not in a separate changelog file.
+- Release notes are written on the tag (GitLab and GitHub releases), not in a separate changelog file. `CHANGELOG.md` only points to the releases page and keeps no history (decided 2026-10-26).
 - Golden-image PNGs stay small and in plain git, not Git LFS, to stay within GitHub's LFS quotas.
 
 ---
