@@ -16,7 +16,9 @@ Read [MANIFESTO.md](MANIFESTO.md) for why it exists.
 
 ## Status
 
-Early design. Nothing a user can run yet. Phase 0 is done (2026-10-27): the repository, the build script and both pipelines work, and four spikes showed that the core's riskiest parts (a window and GPU device on every desktop system, a shader-drawn circle on a real iPhone and a real Android phone, generating Odin from a typed IR, and Dear ImGui with a screen reader) work. The project is now in Phase 1: the window and the 2D core. The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
+Early. There is no language yet, so `.roci` files and the `roci` command do not exist; you cannot run the sketch above. What does run is the engine underneath, through its Odin API (and a C API): windows on a GPU device, 2D shapes with styles, gradients, transforms, colour, random numbers and noise, mouse and keyboard, several windows that send each other messages, and a small text path for debugging. It draws on macOS (Metal), Linux and FreeBSD (Vulkan), Windows (Direct3D 12), and on an iPhone and an Android phone, and 100,000 circles a frame hold about 60 frames a second on the computers tried so far.
+
+Phase 0 (2026-10-27) tested the riskiest parts with four spikes: a window and GPU device on every desktop system, a shader-drawn circle on a real iPhone and a real Android phone, generating Odin from a typed IR, and Dear ImGui with a screen reader. Phase 1, the window and the 2D core, is built and measured on all of them. The next phase is the language itself: the parser, the checker, the interpreter and `roci run`. The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
 
 ## What it will look like
 
@@ -77,13 +79,29 @@ git config core.hooksPath tools/hooks
 
 ## Building
 
-There is nothing to run yet, but the build script and its checks work. Install the Odin release named in `ODIN_VERSION`: `brew install odin` gives the right one on macOS at the time of writing, and the [official releases](https://github.com/odin-lang/Odin/releases) cover Linux, macOS and Windows. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) Then:
+Install the Odin release named in `ODIN_VERSION`: `brew install odin` gives the right one on macOS at the time of writing, and the [official releases](https://github.com/odin-lang/Odin/releases) cover Linux, macOS and Windows. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) You also need SDL3, which the engine's tests link: `brew install sdl3` on macOS, `sdl3` from your package manager on Arch, `pkg install sdl3` on FreeBSD, and on Windows Odin ships `SDL3.lib` and you copy its `SDL3.dll` next to the programs (`cp "$(odin root)/vendor/sdl3/SDL3.dll" .`). Then, from the repository root:
 
 ```
 odin run build -- ci          # what the pipelines run
 odin run build -- ci --fast   # what the pre-push hook runs
 odin run build -- licences    # dependency licence check
 ```
+
+The full `ci` also draws the golden images on Mesa's software Vulkan driver (lavapipe) when it is installed, and says so when it is not.
+
+## Trying the engine
+
+The examples use the Odin API and open real windows:
+
+```
+odin run examples/circle              # the smallest sketch: one circle
+odin run examples/garden              # the Phase 1 demo: a palette window and a garden
+odin run examples/two_windows         # two windows that send each other messages
+odin run examples/shapes              # every shape, a circle follows the mouse
+odin run examples/benchmark -o:speed  # 100,000 circles a frame, with frame rate and timings
+```
+
+Add `-- 3` to any of them to close the window after three seconds. `examples/c/circle.c` is the same circle through the C API (`include/roci.h`, checked by `tools/abi-check.sh`).
 
 ## Versions
 
