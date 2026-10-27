@@ -353,6 +353,10 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - **PNG output:** Odin's `core:image/png` only reads PNG; the image packages that write are `bmp`, `tga`, `qoi` and `netpbm`. The golden-image harness therefore writes PNG with a small writer of our own (stored deflate blocks, `core:hash` CRC-32 and Adler-32), tested by reading its files back with `core:image/png`.
 - **C ABI exports:** `@(export, link_name = "...")` on a `proc "c"` works, as Spike 2's `rocinante_main` shows; the Odin overview does not describe it, so the C ABI step tests it with a C program before the header is generated.
 
+**Phase 1 results** (hand runs, kept short; counts and timings are in git history):
+
+- **`roci/platform`, `examples/window`** (2026-10-27): runs on macOS (Metal; 3 seconds, 228 frames, no errors, pixel density 1, so that display may not be Retina and a Retina check is still to do) and on FreeBSD (invictus, Vulkan; Fabrizio confirmed it works). Still to run: Linux and Windows.
+
 ### Phase 2: The language
 - Lexer, parser, checker, type inference, typed IR, interpreter (§4.7, §5).
 - Inference error messages written before the inference rules are final (§5.3).
