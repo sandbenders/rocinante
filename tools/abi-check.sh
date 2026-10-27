@@ -6,16 +6,31 @@
 # declares, and builds examples/c/circle.c against the header and the library. Pass
 # `--run` to run the C example for 2 seconds as well (it opens a window).
 #
-# Needs odin, a C compiler, nm, and SDL3 where the linker can find it. Not part of
-# `ci` yet, because the GitLab image has no SDL3.
+# Needs odin, a C compiler, nm, and SDL3 where the linker can find it; exits 3 when
+# the compiler or SDL3 is missing. `ci` runs it, and skips it with a note on a
+# computer without SDL3 unless ROCI_REQUIRE_SDL3 is set (as both pipelines do).
 set -eu
 cd "$(dirname "$0")/.."
 mkdir -p output
 case "$(uname -s)" in
-  Darwin) lib=output/libroci.dylib; syms='_roci_' ;;
-  *)      lib=output/libroci.so;    syms='roci_' ;;
+  Darwin) lib=output/libroci.dylib ;;
+  *)      lib=output/libroci.so ;;
 esac
-odin build roci -build-mode:shared -no-entry-point -vet -strict-style -out:"$lib"
+# No C compiler, or no SDL3 for the linker (Odin knows where Homebrew keeps it, a bare
+# `cc` does not, so the question is put to Odin itself): say so with the exit code
+# `ci` knows. The pipelines treat it as a failure; a contributor's computer skips.
+if ! command -v cc >/dev/null 2>&1; then
+  echo "abi-check: no C compiler here" >&2
+  exit 3
+fi
+if ! odin build roci -build-mode:shared -no-entry-point -vet -strict-style -out:"$lib" >output/abi-build.log 2>&1; then
+  if grep -qi 'SDL3' output/abi-build.log; then
+    echo "abi-check: SDL3 cannot be linked here" >&2
+    exit 3
+  fi
+  cat output/abi-build.log >&2
+  exit 1
+fi
 
 # Every function the header declares is exported, and nothing else is.
 sed -n 's/.* \(roci_[a-z0-9_]*\)(.*/\1/p' include/roci.h | sort > output/abi-header.txt

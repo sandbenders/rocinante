@@ -112,6 +112,7 @@ ci :: proc(fast: bool) -> bool {
 	// Compile-check every Odin package that exists so far.
 	ok = check_packages() && ok
 	if !fast {
+		ok = check_abi() && ok
 		fmt.printfln("%s %s", term.out("== golden images, back-end equivalence, benchmarks:", .Bold_Cyan), term.out("not built yet", .Dim))
 	}
 	if ok {
@@ -147,4 +148,55 @@ check_packages :: proc() -> bool {
 	// Spike 3: interpret, generate Odin, build it and compare the output.
 	ok = step("spike 3: code generation", {"odin", "run", "spikes/codegen", "--", "check"}) && ok
 	return ok
+}
+
+// tools/abi-check.sh gives this when it cannot run here: no C compiler, or no SDL3
+// to link against.
+ABI_CHECK_UNAVAILABLE :: 3
+
+Abi_Outcome :: enum {
+	Passed,
+	Skipped, // not possible on this computer, which is fine for a contributor
+	Failed,
+}
+
+// What an exit code of the C ABI check means. The pipelines set ROCI_REQUIRE_SDL3,
+// so for them "cannot run" is a failure, never a quiet skip.
+abi_outcome :: proc(exit_code: int, required: bool) -> Abi_Outcome {
+	switch {
+	case exit_code == 0:                                   return .Passed
+	case exit_code == ABI_CHECK_UNAVAILABLE && !required:  return .Skipped
+	}
+	return .Failed
+}
+
+// The C ABI check (tools/abi-check.sh): builds roci as a shared library and compares
+// what it exports with include/roci.h. It needs a Unix shell, a C compiler and SDL3,
+// so on Windows and on computers without SDL3 it is skipped, unless
+// ROCI_REQUIRE_SDL3 is set, as it is in both pipelines.
+check_abi :: proc() -> bool {
+	name := "C ABI: include/roci.h against the shared library"
+	fmt.printfln("%s", term.out(fmt.tprintf("== %s", name), .Bold_Cyan))
+	when ODIN_OS == .Windows {
+		fmt.printfln("   %s", term.out("skipped, it needs a Unix shell", .Dim))
+		return true
+	}
+	started := time.now()
+	state, stdout, stderr, err := os.process_exec({command = {"sh", "tools/abi-check.sh"}}, context.allocator)
+	required := os.get_env("ROCI_REQUIRE_SDL3", context.temp_allocator) != ""
+	outcome := abi_outcome(state.exit_code if err == nil else -1, required)
+	switch outcome {
+	case .Passed:
+		fmt.printfln("   %s%s", term.out_icon(.Ok), term.out(fmt.tprintf("ok, %.1f s", time.duration_seconds(time.since(started))), .Green))
+		return true
+	case .Skipped:
+		fmt.printfln("   %s", term.out("skipped, no C compiler or SDL3 here (the pipelines require them)", .Dim))
+		return true
+	case .Failed:
+		fmt.eprintfln("%s", term.err(fmt.tprintf("%s failed (%v, exit code %d)", name, err, state.exit_code), .Bold_Red))
+		fmt.eprint(string(stdout))
+		fmt.eprint(string(stderr))
+		return false
+	}
+	return false
 }

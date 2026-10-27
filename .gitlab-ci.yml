@@ -12,6 +12,7 @@ default:
 
 variables:
   ODIN_DIR: $CI_PROJECT_DIR/.cache/odin
+  ROCI_REQUIRE_SDL3: "1" # the C ABI check must run here, not skip
 
 .setup: &setup
   - pacman -Syu --noconfirm clang curl tar git sdl3
