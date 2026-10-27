@@ -27,7 +27,8 @@ Kind :: enum u8 {
 }
 
 // What a position means (section 5.9, "Origin"). `Default` is each shape's own
-// habit: a circle is centred on its point, the others start at their corner.
+// habit: circles, ellipses and arcs are centred on their point, the others
+// start at their corner (see `is_centred`).
 Origin :: enum u8 {
 	Default,
 	Center,

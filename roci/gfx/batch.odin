@@ -143,12 +143,12 @@ to_instance :: proc "contextless" (c: Command) -> (i: Instance) {
 	switch c.kind {
 	case .Circle:
 		cx, cy = a[0], a[1]
-		if c.origin == .Corner {cx, cy = a[0] + a[2], a[1] + a[2]}
+		if !is_centred(c) {cx, cy = a[0] + a[2], a[1] + a[2]}
 		i.kind, i.shape[0] = .Circle, a[2]
 		hw, hh = a[2], a[2]
 	case .Ellipse, .Rect:
 		cx, cy = a[0], a[1]
-		if c.origin != .Center {cx, cy = a[0] + a[2] / 2, a[1] + a[3] / 2}
+		if !is_centred(c) {cx, cy = a[0] + a[2] / 2, a[1] + a[3] / 2}
 		i.kind = .Ellipse if c.kind == .Ellipse else .Rect
 		i.shape[0], i.shape[1] = a[2] / 2, a[3] / 2
 		hw, hh = a[2] / 2, a[3] / 2

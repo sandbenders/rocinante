@@ -30,6 +30,18 @@ kind_name :: proc "contextless" (kind: Kind) -> string {
 	return ""
 }
 
+// Whether the position of a command is the middle of its shape. Circles,
+// ellipses and arcs default to it, as in Processing; the rest start at their
+// corner. `as center` and `as corner` override either habit (section 5.9).
+is_centred :: proc "contextless" (c: Command) -> bool {
+	switch c.origin {
+	case .Center: return true
+	case .Corner: return false
+	case .Default: return c.kind == .Circle || c.kind == .Ellipse || c.kind == .Arc
+	}
+	return false
+}
+
 // The shape's box in the space the command was recorded in, before the
 // transform: the top left corner and the size.
 local_bounds :: proc "contextless" (c: Command) -> (x, y, w, h: f32) {
@@ -38,11 +50,11 @@ local_bounds :: proc "contextless" (c: Command) -> (x, y, w, h: f32) {
 	case .Circle:
 		d := a[2] * 2
 		x, y = a[0], a[1]
-		if c.origin != .Corner {x, y = a[0] - a[2], a[1] - a[2]}
+		if is_centred(c) {x, y = a[0] - a[2], a[1] - a[2]}
 		return x, y, d, d
 	case .Ellipse, .Rect, .Arc:
 		x, y = a[0], a[1]
-		if c.origin == .Center {x, y = a[0] - a[2] / 2, a[1] - a[3] / 2}
+		if is_centred(c) {x, y = a[0] - a[2] / 2, a[1] - a[3] / 2}
 		return x, y, a[2], a[3]
 	case .Line:
 		return min(a[0], a[2]), min(a[1], a[3]), abs(a[2] - a[0]), abs(a[3] - a[1])

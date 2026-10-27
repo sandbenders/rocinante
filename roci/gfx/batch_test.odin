@@ -30,10 +30,15 @@ test_origin_moves_the_described_box :: proc(t: ^testing.T) {
 	rect(&list, 100, 100, 40, 20)
 	rect(&list, 100, 100, 40, 20, .Center)
 	circle(&list, 100, 100, 10, .Corner)
+	ellipse(&list, 100, 100, 40, 20)
+	ellipse(&list, 100, 100, 40, 20, .Corner)
 	testing.expect_value(t, describe(list.commands[0]).x, f32(100))
 	testing.expect_value(t, describe(list.commands[1]).x, f32(80))
 	testing.expect_value(t, describe(list.commands[1]).y, f32(90))
 	testing.expect_value(t, describe(list.commands[2]).x, f32(100))
+	testing.expect_value(t, describe(list.commands[3]).x, f32(80)) // an ellipse is centred, as in Processing
+	testing.expect_value(t, describe(list.commands[3]).y, f32(90))
+	testing.expect_value(t, describe(list.commands[4]).x, f32(100))
 }
 
 @(test)
@@ -66,7 +71,7 @@ test_every_kind_has_a_box_and_a_name :: proc(t: ^testing.T) {
 	quad(&list, 1, 1, 9, 2, 8, 9, 2, 7)
 	arc(&list, 5, 5, 20, 10, 0, 90)
 	ellipse(&list, 0, 0, 6, 4)
-	boxes := [?][4]f32{{10, 20, 20, 20}, {5, 6, 0, 0}, {0, 0, 10, 8}, {1, 1, 8, 8}, {5, 5, 20, 10}, {0, 0, 6, 4}}
+	boxes := [?][4]f32{{10, 20, 20, 20}, {5, 6, 0, 0}, {0, 0, 10, 8}, {1, 1, 8, 8}, {-5, 0, 20, 10}, {-3, -2, 6, 4}}
 	for box, i in boxes {
 		d := describe(list.commands[i])
 		testing.expect_value(t, [4]f32{d.x, d.y, d.width, d.height}, box)
@@ -360,7 +365,22 @@ test_rect_and_ellipse_centre_and_halve_their_size :: proc(t: ^testing.T) {
 
 	i = instance_of(proc(list: ^Command_List) {ellipse(list, 10, 20, 40, 10)})
 	testing.expect_value(t, i.kind, Shape_Kind.Ellipse)
+	testing.expect_value(t, i.transform[4], f32(10)) // centred by default, as in Processing
+	testing.expect_value(t, i.transform[5], f32(20))
+
+	i = instance_of(proc(list: ^Command_List) {ellipse(list, 10, 20, 40, 10, .Corner)})
 	testing.expect_value(t, i.transform[4], f32(30))
+	testing.expect_value(t, i.transform[5], f32(25))
+}
+
+@(test)
+test_which_shapes_are_centred_by_default :: proc(t: ^testing.T) {
+	for kind in Kind {
+		want := kind == .Circle || kind == .Ellipse || kind == .Arc
+		testing.expect_value(t, is_centred(Command{kind = kind}), want)
+		testing.expect(t, is_centred(Command{kind = kind, origin = .Center}))
+		testing.expect(t, !is_centred(Command{kind = kind, origin = .Corner}))
+	}
 }
 
 @(test)
