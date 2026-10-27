@@ -136,6 +136,8 @@ check_packages :: proc() -> bool {
 	}
 	// The spikes that build on any machine are type-checked; the Android and iOS
 	// ones need their SDKs and are built by hand (CLAUDE.md section 8).
+	ok = step("check shapes example", {"odin", "check", "examples/shapes", "-vet", "-strict-style"}) && ok
+	ok = step("check golden tests", {"odin", "check", "tests/golden", "-vet", "-strict-style"}) && ok
 	ok = step("check window example", {"odin", "check", "examples/window", "-vet", "-strict-style"}) && ok
 	ok = step("check spike 2 shared code", {"odin", "check", "spikes/mobile/shared", "-no-entry-point", "-vet", "-strict-style"}) && ok
 	// Spike 3: interpret, generate Odin, build it and compare the output.
