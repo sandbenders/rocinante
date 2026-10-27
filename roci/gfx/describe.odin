@@ -72,9 +72,30 @@ local_bounds :: proc "contextless" (c: Command) -> (x, y, w, h: f32) {
 	return
 }
 
-// Whether the command puts anything on the screen: it needs a fill or an
-// outline of some width to show with (a point and a line show only by their
-// stroke).
+// Whether a shape encloses any area. A circle of radius 0, a rectangle with no
+// width or height and a triangle whose points are in a line have nothing to
+// fill (they can still show an outline).
+has_area :: proc "contextless" (c: Command) -> bool {
+	a := c.args
+	switch c.kind {
+	case .Circle:
+		return a[2] > 0
+	case .Ellipse, .Rect, .Arc:
+		return a[2] > 0 && a[3] > 0
+	case .Triangle:
+		return (a[2] - a[0]) * (a[5] - a[1]) - (a[4] - a[0]) * (a[3] - a[1]) != 0
+	case .Quad:
+		_, _, w, h := local_bounds(c)
+		return w > 0 && h > 0
+	case .Line, .Point:
+		return false
+	}
+	return false
+}
+
+// Whether the command puts anything on the screen: it needs a fill (and some
+// area to fill) or an outline of some width to show with. A point and a line
+// show only by their stroke.
 is_visible :: proc "contextless" (c: Command) -> bool {
 	if c.style.alpha <= 0 {
 		return false
@@ -84,7 +105,7 @@ is_visible :: proc "contextless" (c: Command) -> bool {
 	case .Line, .Point:
 		return has_outline
 	case .Circle, .Ellipse, .Rect, .Triangle, .Quad, .Arc:
-		return c.style.fill_on || has_outline
+		return (c.style.fill_on && has_area(c)) || has_outline
 	}
 	return false
 }

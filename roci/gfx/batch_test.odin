@@ -99,6 +99,40 @@ test_a_line_and_a_point_take_their_colour_from_the_stroke :: proc(t: ^testing.T)
 }
 
 @(test)
+test_a_shape_with_no_area_has_nothing_to_fill :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	circle(&list, 5, 5, 0)                  // 0
+	rect(&list, 5, 5, 0, 10)                // 1
+	rect(&list, 5, 5, 10, 0)                // 2
+	ellipse(&list, 5, 5, 0, 0)              // 3
+	arc(&list, 5, 5, 0, 4, 0, 90)           // 4
+	triangle(&list, 0, 0, 5, 5, 10, 10)     // 5: the points are in a line
+	triangle(&list, 0, 0, 5, 5, 5, 5)       // 6: two points are the same
+	quad(&list, 3, 3, 3, 3, 3, 3, 3, 3)     // 7
+	circle(&list, 5, 5, 0.1)                // 8: tiny, but it has area
+	triangle(&list, 0, 0, 10, 0, 0, 10)     // 9
+	rect(&list, 5, 5, 3, 4)                 // 10
+	for i in 0 ..< 8 {
+		testing.expectf(t, !has_area(list.commands[i]), "command %d", i)
+		testing.expectf(t, !is_visible(list.commands[i]), "command %d is filled but has no area", i)
+	}
+	for i in 8 ..< 11 {
+		testing.expectf(t, has_area(list.commands[i]), "command %d", i)
+		testing.expectf(t, is_visible(list.commands[i]), "command %d", i)
+	}
+	// With an outline, a shape with no area still shows.
+	set_stroke(&list, maths.grey(0))
+	circle(&list, 5, 5, 0)
+	testing.expect(t, is_visible(list.commands[len(list.commands) - 1]))
+	// Lines and points never have an area; they are drawn by their stroke.
+	line(&list, 0, 0, 1, 1)
+	point(&list, 0, 0)
+	testing.expect(t, !has_area(list.commands[len(list.commands) - 1]))
+	testing.expect(t, !has_area(list.commands[len(list.commands) - 2]))
+}
+
+@(test)
 test_visibility_rules :: proc(t: ^testing.T) {
 	list := fresh()
 	defer destroy(&list)
