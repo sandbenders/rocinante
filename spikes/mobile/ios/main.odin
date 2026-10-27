@@ -8,12 +8,13 @@ package spike_ios
 
 import "base:runtime"
 import "core:c"
-import shared "../shared"
+import sketch "../sketch"
 import sdl "vendor:sdl3"
 
 sdl_main :: proc "c" (argc: c.int, argv: [^]cstring) -> c.int {
 	context = runtime.default_context()
-	return 0 if shared.run({.MSL}, 0) else 1
+	sketch.run()
+	return 0
 }
 
 main :: proc() {

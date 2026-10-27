@@ -11,7 +11,7 @@ test_test_binary_is_under_the_test_folder :: proc(t: ^testing.T) {
 
 @(test)
 test_test_binary_flattens_every_slash :: proc(t: ^testing.T) {
-	testing.expect_value(t, test_binary("spikes/mobile/shared"), "output/tests/spikes_mobile_shared" + EXE)
+	testing.expect_value(t, test_binary("spikes/mobile/sketch"), "output/tests/spikes_mobile_sketch" + EXE)
 }
 
 @(test)

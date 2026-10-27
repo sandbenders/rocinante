@@ -144,7 +144,7 @@ check_packages :: proc() -> bool {
 	ok = step("check shapes example", {"odin", "check", "examples/shapes", "-vet", "-strict-style"}) && ok
 	ok = step("check golden tests", {"odin", "check", "tests/golden", "-vet", "-strict-style"}) && ok
 	ok = step("check window example", {"odin", "check", "examples/window", "-vet", "-strict-style"}) && ok
-	ok = step("check spike 2 shared code", {"odin", "check", "spikes/mobile/shared", "-no-entry-point", "-vet", "-strict-style"}) && ok
+	ok = step("check phone sketch", {"odin", "check", "spikes/mobile/sketch", "-no-entry-point", "-vet", "-strict-style"}) && ok
 	// Spike 3: interpret, generate Odin, build it and compare the output.
 	ok = step("spike 3: code generation", {"odin", "run", "spikes/codegen", "--", "check"}) && ok
 	return ok
