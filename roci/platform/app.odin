@@ -15,6 +15,7 @@ import sdl "vendor:sdl3"
 App :: struct {
 	device:  ^sdl.GPUDevice,
 	driver:  string,     // "vulkan", "metal" or "direct3d12", as SDL names it
+	gpu:     string,     // the device's name as its driver gives it ("llvmpipe (...)" on lavapipe); "" when unknown
 	windows: [dynamic]^Window,
 	error:   string,     // the last failure, in SDL's words; "" when there is none
 }
@@ -60,6 +61,9 @@ init :: proc(app: ^App) -> bool {
 		return false
 	}
 	app.driver = string(sdl.GetGPUDeviceDriver(app.device))
+	// The name has no fixed format, so it is for people and for the golden images'
+	// check that lavapipe drew them, never for choosing what to do.
+	app.gpu = strings.clone_from_cstring(sdl.GetStringProperty(sdl.GetGPUDeviceProperties(app.device), sdl.PROP_GPU_DEVICE_NAME_STRING, ""))
 	return true
 }
 
@@ -70,6 +74,7 @@ shutdown :: proc(app: ^App) {
 	}
 	delete(app.windows)
 	delete(app.error)
+	delete(app.gpu)
 	if app.device != nil {
 		sdl.DestroyGPUDevice(app.device)
 	}
