@@ -244,7 +244,7 @@ Packaging notes:
 
   When this computer cannot build a target, `roci doctor` says so first, in plain words, before looking for tools, and names the computers that can: for example, "iOS apps can only be built on a Mac, because Apple's tools only run there." (The line above it already says what this computer is, so the message does not repeat it.) `roci package <target>` refuses with the same message instead of failing halfway through, and `roci doctor` marks each of the six targets as ready, missing something (with the install steps), or not buildable here. Phase 8 tests this for every host and target pair (§9).
 - **Signing and trust** (decided 2026-10-24). macOS packages are signed with a Developer ID and notarised, and Windows packages are signed where the user has a certificate; `roci package` says plainly what SmartScreen or Gatekeeper will still show when they have none. `roci` shows the Android SDK licence and asks for acceptance before fetching it.
-- Every target bundles the compiled sketch, all of `assets/` and `libs/`, `ui.toml` and compiled shaders (§4.9). No network access needed at runtime.
+- Every target bundles the compiled sketch, all of `assets/` and `libs/`, `ui.toml` and compiled shaders (§4.9), under the name, id, icon and version in `sketch.toml`, whose build number `roci package` raises by one each time. No network access needed at runtime.
 
 ---
 
@@ -362,7 +362,7 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 
 ### Phase 3: Text, UI, images, canvases, shaders
 - Text with SDL3_ttf GPU engine (or the alternative chosen at the start of this phase), including copying system fonts into the sketch with the licence check (§4.9).
-- `ui` with the full widget set (§5.8) on Dear ImGui: immediate-mode `ui [ ]` blocks, automatic layout, focus and keyboard navigation, text input with IME and on-screen keyboards, touch sizing, theme, value persistence, custom widgets.
+- `ui` with the full widget set (§5.8) on Dear ImGui: immediate-mode `ui [ ]` blocks, automatic layout, focus and keyboard navigation, text input with IME and on-screen keyboards, touch sizing, theme, value persistence in `ui.toml` (with the `toml` package written for it, §4.9), custom widgets.
 - The AccessKit bridge (§4.8) on Windows, macOS, Linux, FreeBSD (verify), Android and iOS.
 - Images and pixels, offscreen canvases, blend modes, clipping, masks, image and video fills (§5.9).
 - User shaders with hot reload; built-in post effects.
@@ -399,6 +399,7 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 
 ### Phase 8: Packaging
 - `roci package` for all six targets (generate, build, bundle, sign where needed); `roci doctor` for every target.
+- `sketch.toml` (§4.9): the packaging questions, the version schemes checked against each store's limits, and the build number. Apple's version rules are read from its documentation first.
 - Mobile behaviour for multiple windows, touch-first defaults, orientation.
 - **Exit**: the same sketch file packaged and installed on all six platforms by someone other than Fabrizio, following only the docs, starting from a machine with nothing installed except what `roci doctor` asked for.
 
@@ -428,6 +429,7 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - Fonts: copying with free, restrictive and unreadable licences; `roci package` refusing a restrictive font.
 - Sketch folders: `roci new`/`init` tested with and without git and Git LFS installed; asset lookup, duplicate-name and outside-`assets/` errors; a packaged sketch run from a different machine path finds every asset.
 - Libraries: multi-file sketches behave identically to the same code in one file; `use` with index names and git URLs; offline runs from vendored `libs/`; every clash rule produces its error message.
+- Versions: `sketch.toml` read and written (missing file, hand-edited invalid values), each version scheme checked against every target's limit, and the build number never decreasing (§4.9).
 - Toolchain: `roci doctor` tested on machines (or CI images) with each toolchain piece missing, wrong version and present. For every host and target pair, `roci doctor` and `roci package` give the "cannot be built on this computer" message exactly when §7's table says so.
 - Performance: benchmark sketches tracked in both modes. Timing is gated only on ORION, whose hardware is fixed (lavapipe and shared GitHub runners are too noisy); elsewhere the pipeline compares work counts (draw calls, batches, allocations), which are exact. A timing regression of more than 10% on ORION fails the build.
 - Platforms: Linux in the pipeline on every commit to `main`; every other target through the release checklist before each tag, and at least once per phase (§11).
@@ -509,6 +511,7 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - **2026-10-26, SDL patch releases**: results from SDL 3.4.2, 3.4.16 and 3.4.18 libraries count as the same SDL; differences between patch releases are accepted (§8, Phase 0 results).
 - **2026-10-26, `CHANGELOG.md` and `CONTRIBUTING.md` are pointers**: the first to the releases page (release notes stay on the tags), the second to README's Contributing section, so neither duplicates what lives elsewhere. Full text in §4.2 and §11.
 - **2026-10-27, Plain words, not English sentences**: the goal of reading close to English is dropped for good; every construct has one canonical form with a fixed word order. Full text in §5.1.
+- **2026-10-27, `sketch.toml`**: an optional file beside `sketch.roci` for packaging details and the version (any scheme, `1.0.1` or a date); `roci` owns the build number and checks the version against each store's limits. Full text in §4.9.
 - **2026-10-27, Research notes folded in** (Logo's history, language trends): `[ ]` stays a block and a list, with teaching errors for the wrong one; sharing stays, with a hint (§5.1, §5.11). Not adopted: parenthesised calls such as `window(800, 600)` (no call parentheses, §5.1), value semantics (sharing stays), a `learn shader` subset (HLSL is decided, §4.3), quantity suffixes such as `90 degrees` (angles are degrees, §5.15), user-visible effect handlers, and live coding on phones (§7). The file extension is `.roci`.
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
 
