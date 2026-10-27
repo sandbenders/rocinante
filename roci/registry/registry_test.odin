@@ -180,6 +180,16 @@ test_two_identical_shapes_are_ambiguous_for_the_checker :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_caps_and_joins_take_one_word :: proc(t: ^testing.T) {
+	for name in ([?]string{"caps", "joins"}) {
+		verb, ok := find_verb(name)
+		testing.expect(t, ok, name)
+		_, r := shape_for(verb, {.Name})
+		testing.expect_value(t, r, Shape_Result.Found)
+	}
+}
+
+@(test)
 test_noise_takes_one_to_four_numbers_and_as_simplex :: proc(t: ^testing.T) {
 	noise, _ := find_verb("noise")
 	for count in 1 ..= 4 {

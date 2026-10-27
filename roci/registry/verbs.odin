@@ -80,6 +80,8 @@ VERBS := []Verb{
 	{"no stroke", {{{}, nil, .None}}, "Turns outlines off from now on."},
 	{"thickness", {{{{"pixels", .Number}}, nil, .None}}, "Sets the width of outlines and lines, in pixels."},
 	{"alpha", {{{{"amount", .Number}}, nil, .None}}, "Sets how transparent fill and stroke are, 0 to 255."},
+	{"caps", {{{{"style", .Name}}, nil, .None}}, "Sets how lines and points end from now on: butt, round or square."},
+	{"joins", {{{{"style", .Name}}, nil, .None}}, "Sets how outlines turn corners from now on: miter, round or bevel."},
 
 	// Colour
 	{"rgb", {{{{"red", .Number}, {"green", .Number}, {"blue", .Number}}, ALPHA_OPTION, .Colour}}, "Makes a colour from red, green and blue, each 0 to 255."},

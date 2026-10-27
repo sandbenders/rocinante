@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: 0BSD
 //
 // Draws a frame's batches through SDL's GPU API (Vulkan, Metal or Direct3D 12).
-// The command list and the batcher know nothing of the GPU; this file is the
-// only part of package gfx that does. It is checked by hand and by the golden
-// images (tests/golden), not by `ci`, which has no GPU.
+// The command list, the batcher and the mesh builder know nothing of the GPU;
+// this file is the only part of package gfx that does. It is checked by hand and
+// by the golden images (tests/golden), not by `ci`, which has no GPU.
+//
+// Two pipelines draw a frame: the shapes pipeline (one instanced quad per shape,
+// the shape worked out from a signed distance, shaders/shapes.hlsl) and the mesh
+// pipeline (triangles made by package geom, shaders/mesh.hlsl). Both draw into a
+// multisampled target that is resolved onto the window's texture, which smooths
+// the edges of meshes; where the computer cannot multisample, the frame is drawn
+// without.
 //
 // Pipelines are made the first time they are needed, for the format of the
 // target being drawn to, and a pipeline that cannot be made is reported once and
@@ -15,51 +22,98 @@ import "core:mem"
 import "core:strings"
 import sdl "vendor:sdl3"
 
-// The shapes shader, compiled from shaders/shapes.hlsl by shaders/compile.sh
-// (and compile-dxil.sh for Windows). The DXIL files are made on a Windows
-// computer; until they are committed, Direct3D 12 reports that plainly.
+// The shaders, compiled from shaders/*.hlsl by shaders/compile.sh (and
+// compile-dxil.sh for Windows). The DXIL files are made on a Windows computer;
+// until they are committed, Direct3D 12 reports that plainly.
 SHAPES_VERT_SPV :: #load("../../shaders/compiled/shapes.vert.spv")
 SHAPES_FRAG_SPV :: #load("../../shaders/compiled/shapes.frag.spv")
 SHAPES_VERT_MSL :: #load("../../shaders/compiled/shapes.vert.msl")
 SHAPES_FRAG_MSL :: #load("../../shaders/compiled/shapes.frag.msl")
-when #exists("../../shaders/compiled/shapes.vert.dxil") && #exists("../../shaders/compiled/shapes.frag.dxil") {
+MESH_VERT_SPV :: #load("../../shaders/compiled/mesh.vert.spv")
+MESH_FRAG_SPV :: #load("../../shaders/compiled/mesh.frag.spv")
+MESH_VERT_MSL :: #load("../../shaders/compiled/mesh.vert.msl")
+MESH_FRAG_MSL :: #load("../../shaders/compiled/mesh.frag.msl")
+when #exists("../../shaders/compiled/shapes.vert.dxil") && #exists("../../shaders/compiled/shapes.frag.dxil") && #exists("../../shaders/compiled/mesh.vert.dxil") && #exists("../../shaders/compiled/mesh.frag.dxil") {
 	SHAPES_VERT_DXIL :: #load("../../shaders/compiled/shapes.vert.dxil")
 	SHAPES_FRAG_DXIL :: #load("../../shaders/compiled/shapes.frag.dxil")
+	MESH_VERT_DXIL :: #load("../../shaders/compiled/mesh.vert.dxil")
+	MESH_FRAG_DXIL :: #load("../../shaders/compiled/mesh.frag.dxil")
 } else {
 	SHAPES_VERT_DXIL :: []byte{}
 	SHAPES_FRAG_DXIL :: []byte{}
+	MESH_VERT_DXIL :: []byte{}
+	MESH_FRAG_DXIL :: []byte{}
 }
 
-// What the vertex shader's uniform buffer holds (register b0, space1).
+// What the vertex shaders' uniform buffer holds (register b0, space1).
 Frame_Uniforms :: struct {
 	canvas_size: [2]f32, // the window in logical pixels, as sketches see it
 	unused:      [2]f32,
 }
 
+// How many samples a pixel gets. Four is the usual choice: it makes the edges of
+// meshes smooth and every GPU that can multisample at all supports it.
+MSAA_SAMPLES :: sdl.GPUSampleCount._4
+
+Program :: enum {
+	Shapes,
+	Mesh,
+}
+
+Pipeline_Key :: struct {
+	program: Program,
+	format:  sdl.GPUTextureFormat,
+	samples: sdl.GPUSampleCount,
+}
+
+Msaa_Key :: struct {
+	width, height: u32,
+	format:        sdl.GPUTextureFormat,
+}
+
+// A GPU buffer that grows, remembering how big it is.
+Gpu_Buffer :: struct {
+	buffer:   ^sdl.GPUBuffer,
+	capacity: int, // bytes
+}
+
 Renderer :: struct {
-	device:            ^sdl.GPUDevice,
-	pipelines:         map[sdl.GPUTextureFormat]^sdl.GPUGraphicsPipeline,
-	failed:            bool,   // a pipeline could not be made; `error` says why
-	error:             string,
-	instance_buffer:   ^sdl.GPUBuffer,
-	instance_capacity: int,    // bytes
-	transfer_buffer:   ^sdl.GPUTransferBuffer,
+	device:    ^sdl.GPUDevice,
+	pipelines: map[Pipeline_Key]^sdl.GPUGraphicsPipeline,
+	msaa:      map[Msaa_Key]^sdl.GPUTexture,
+	samples:   sdl.GPUSampleCount, // what to ask for; ._1 turns multisampling off
+	failed:    bool,              // a pipeline could not be made; `error` says why
+	error:     string,
+
+	instances:     Gpu_Buffer,
+	mesh_vertices: Gpu_Buffer,
+	mesh_indices:  Gpu_Buffer,
+	transfer:      ^sdl.GPUTransferBuffer,
 	transfer_capacity: int,
-	uploaded_hash:     u64,    // of the instances now on the GPU
-	uploaded_count:    int,
+
+	// Hashes of what is on the GPU now, so an unchanged scene uploads nothing.
+	uploaded_instances: u64,
+	uploaded_instance_count: int,
+	uploaded_mesh: u64,
+	uploaded_mesh_vertex_count: int,
+	uploaded_mesh_index_count: int,
+
 	// What the last frame did, for tests and benchmarks.
-	stats:             Render_Stats,
+	stats: Render_Stats,
 }
 
 Render_Stats :: struct {
-	draws:     int,
-	uploaded:  bool, // false when the instances were the same as last frame and were kept
-	unrendered_paths: int, // path commands waiting for the tessellator
+	draws:              int,
+	uploaded_instances: bool, // false when the instances were the same as last frame and were kept
+	uploaded_mesh:      bool,
+	samples:            int,  // per pixel
 }
 
 renderer_init :: proc(r: ^Renderer, device: ^sdl.GPUDevice) {
 	r.device = device
-	r.pipelines = make(map[sdl.GPUTextureFormat]^sdl.GPUGraphicsPipeline)
+	r.samples = MSAA_SAMPLES
+	r.pipelines = make(map[Pipeline_Key]^sdl.GPUGraphicsPipeline)
+	r.msaa = make(map[Msaa_Key]^sdl.GPUTexture)
 }
 
 renderer_destroy :: proc(r: ^Renderer) {
@@ -67,11 +121,15 @@ renderer_destroy :: proc(r: ^Renderer) {
 		sdl.ReleaseGPUGraphicsPipeline(r.device, pipeline)
 	}
 	delete(r.pipelines)
-	if r.instance_buffer != nil {
-		sdl.ReleaseGPUBuffer(r.device, r.instance_buffer)
+	release_msaa(r)
+	delete(r.msaa)
+	for buffer in ([?]^Gpu_Buffer{&r.instances, &r.mesh_vertices, &r.mesh_indices}) {
+		if buffer.buffer != nil {
+			sdl.ReleaseGPUBuffer(r.device, buffer.buffer)
+		}
 	}
-	if r.transfer_buffer != nil {
-		sdl.ReleaseGPUTransferBuffer(r.device, r.transfer_buffer)
+	if r.transfer != nil {
+		sdl.ReleaseGPUTransferBuffer(r.device, r.transfer)
 	}
 	delete(r.error)
 	r^ = {}
@@ -84,27 +142,38 @@ set_error :: proc(r: ^Renderer, what: string) {
 	r.failed = true
 }
 
-// Which shader format the device takes, and the code and entry points for it.
+@(private)
+set_plain_error :: proc(r: ^Renderer, message: string) {
+	delete(r.error)
+	r.error = strings.clone(message)
+	r.failed = true
+}
+
+// ---- shaders and pipelines ----
+
+// Which shader format the device takes, and the code and entry points for one program.
 Shader_Source :: struct {
-	format:       sdl.GPUShaderFormat,
-	vertex:       []byte,
-	fragment:     []byte,
-	vertex_entry: cstring,
+	format:         sdl.GPUShaderFormat,
+	vertex:         []byte,
+	fragment:       []byte,
+	vertex_entry:   cstring,
 	fragment_entry: cstring,
 }
 
-shader_source_for :: proc(formats: sdl.GPUShaderFormat) -> (source: Shader_Source, ok: bool) {
+shader_source_for :: proc(program: Program, formats: sdl.GPUShaderFormat) -> (source: Shader_Source, ok: bool) {
+	shapes := program == .Shapes
 	switch {
 	case .SPIRV in formats:
-		return {{.SPIRV}, SHAPES_VERT_SPV, SHAPES_FRAG_SPV, "main", "main"}, true
+		return {{.SPIRV}, SHAPES_VERT_SPV if shapes else MESH_VERT_SPV, SHAPES_FRAG_SPV if shapes else MESH_FRAG_SPV, "main", "main"}, true
 	case .MSL in formats:
 		// SPIRV-Cross renames the entry point main to main0 in Metal.
-		return {{.MSL}, SHAPES_VERT_MSL, SHAPES_FRAG_MSL, "main0", "main0"}, true
+		return {{.MSL}, SHAPES_VERT_MSL if shapes else MESH_VERT_MSL, SHAPES_FRAG_MSL if shapes else MESH_FRAG_MSL, "main0", "main0"}, true
 	case .DXIL in formats:
-		if len(SHAPES_VERT_DXIL) == 0 || len(SHAPES_FRAG_DXIL) == 0 {
+		vertex, fragment := SHAPES_VERT_DXIL if shapes else MESH_VERT_DXIL, SHAPES_FRAG_DXIL if shapes else MESH_FRAG_DXIL
+		if len(vertex) == 0 || len(fragment) == 0 {
 			return {}, false
 		}
-		return {{.DXIL}, SHAPES_VERT_DXIL, SHAPES_FRAG_DXIL, "vs_main", "ps_main"}, true
+		return {{.DXIL}, vertex, fragment, "vs_main", "ps_main"}, true
 	}
 	return {}, false
 }
@@ -121,25 +190,35 @@ create_shader :: proc(r: ^Renderer, code: []byte, entry: cstring, format: sdl.GP
 	})
 }
 
-// The pipeline for drawing shapes into a target of this format, made on first use.
-shapes_pipeline :: proc(r: ^Renderer, format: sdl.GPUTextureFormat) -> ^sdl.GPUGraphicsPipeline {
-	if existing, found := r.pipelines[format]; found {
+// The sample count to draw with into a target of this format: what was asked
+// for, if the GPU can do it, else one.
+@(private)
+samples_for :: proc(r: ^Renderer, format: sdl.GPUTextureFormat) -> sdl.GPUSampleCount {
+	if r.samples != ._1 && sdl.GPUTextureSupportsSampleCount(r.device, format, r.samples) {
+		return r.samples
+	}
+	return ._1
+}
+
+// The pipeline for drawing a program into a target of this format and sample
+// count, made on first use. Gives nil, with `r.error` set, when it cannot be made.
+get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount) -> ^sdl.GPUGraphicsPipeline {
+	key := Pipeline_Key{program, format, samples}
+	if existing, found := r.pipelines[key]; found {
 		return existing
 	}
 	if r.failed {
 		return nil
 	}
-	source, ok := shader_source_for(sdl.GetGPUShaderFormats(r.device))
+	source, ok := shader_source_for(program, sdl.GetGPUShaderFormats(r.device))
 	if !ok {
-		delete(r.error)
-		r.error = strings.clone("the shapes shader is not built for this computer's graphics system yet (DXIL for Direct3D 12 comes from compile-dxil.sh on Windows)")
-		r.failed = true
+		set_plain_error(r, "the shaders are not built for this computer's graphics system yet (DXIL for Direct3D 12 comes from compile-dxil.sh on Windows)")
 		return nil
 	}
 	vertex := create_shader(r, source.vertex, source.vertex_entry, source.format, .VERTEX, 1)
 	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 0)
 	if vertex == nil || fragment == nil {
-		set_error(r, "creating the shapes shaders")
+		set_error(r, "creating the shaders")
 		if vertex != nil {sdl.ReleaseGPUShader(r.device, vertex)}
 		if fragment != nil {sdl.ReleaseGPUShader(r.device, fragment)}
 		return nil
@@ -148,8 +227,28 @@ shapes_pipeline :: proc(r: ^Renderer, format: sdl.GPUTextureFormat) -> ^sdl.GPUG
 	defer sdl.ReleaseGPUShader(r.device, vertex)
 	defer sdl.ReleaseGPUShader(r.device, fragment)
 
-	buffers := [1]sdl.GPUVertexBufferDescription{{slot = 0, pitch = size_of(Instance), input_rate = .INSTANCE}}
-	attributes := [9]sdl.GPUVertexAttribute{
+	// Premultiplied alpha: the shaders multiply the colour by its alpha.
+	blend := sdl.GPUColorTargetBlendState{
+		src_color_blendfactor = .ONE,
+		dst_color_blendfactor = .ONE_MINUS_SRC_ALPHA,
+		color_blend_op        = .ADD,
+		src_alpha_blendfactor = .ONE,
+		dst_alpha_blendfactor = .ONE_MINUS_SRC_ALPHA,
+		alpha_blend_op        = .ADD,
+		enable_blend          = true,
+	}
+	target := sdl.GPUColorTargetDescription{format = format, blend_state = blend}
+	info := sdl.GPUGraphicsPipelineCreateInfo{
+		vertex_shader     = vertex,
+		fragment_shader   = fragment,
+		primitive_type    = .TRIANGLELIST,
+		multisample_state = {sample_count = samples},
+		target_info       = {color_target_descriptions = &target, num_color_targets = 1},
+	}
+	// The vertex layouts are the structs Instance (batch.odin) and Mesh_Vertex
+	// (mesh.odin); the shaders read them as TEXCOORD0, 1, 2 ... in order.
+	instance_buffers := [1]sdl.GPUVertexBufferDescription{{slot = 0, pitch = size_of(Instance), input_rate = .INSTANCE}}
+	instance_attributes := [9]sdl.GPUVertexAttribute{
 		{location = 0, format = .FLOAT4, offset = u32(offset_of(Instance, transform))},
 		{location = 1, format = .FLOAT4, offset = u32(offset_of(Instance, transform)) + 16}, // e f, then half
 		{location = 2, format = .FLOAT4, offset = u32(offset_of(Instance, shape))},
@@ -164,147 +263,281 @@ shapes_pipeline :: proc(r: ^Renderer, format: sdl.GPUTextureFormat) -> ^sdl.GPUG
 	// two must sit side by side in the instance.
 	#assert(offset_of(Instance, half) == offset_of(Instance, transform) + 24)
 	#assert(offset_of(Instance, shape) == offset_of(Instance, half) + 8)
-
-	// Premultiplied alpha: the shader multiplies the colour by its alpha.
-	blend := sdl.GPUColorTargetBlendState{
-		src_color_blendfactor = .ONE,
-		dst_color_blendfactor = .ONE_MINUS_SRC_ALPHA,
-		color_blend_op        = .ADD,
-		src_alpha_blendfactor = .ONE,
-		dst_alpha_blendfactor = .ONE_MINUS_SRC_ALPHA,
-		alpha_blend_op        = .ADD,
-		enable_blend          = true,
+	mesh_buffers := [1]sdl.GPUVertexBufferDescription{{slot = 0, pitch = size_of(Mesh_Vertex), input_rate = .VERTEX}}
+	mesh_attributes := [2]sdl.GPUVertexAttribute{
+		{location = 0, format = .FLOAT2, offset = u32(offset_of(Mesh_Vertex, position))},
+		{location = 1, format = .FLOAT4, offset = u32(offset_of(Mesh_Vertex, colour))},
 	}
-	target := sdl.GPUColorTargetDescription{format = format, blend_state = blend}
-	pipeline := sdl.CreateGPUGraphicsPipeline(r.device, sdl.GPUGraphicsPipelineCreateInfo{
-		vertex_shader   = vertex,
-		fragment_shader = fragment,
-		vertex_input_state = {
-			vertex_buffer_descriptions = raw_data(buffers[:]),
+	switch program {
+	case .Shapes:
+		info.vertex_input_state = {
+			vertex_buffer_descriptions = raw_data(instance_buffers[:]),
 			num_vertex_buffers         = 1,
-			vertex_attributes          = raw_data(attributes[:]),
-			num_vertex_attributes      = len(attributes),
-		},
-		primitive_type = .TRIANGLELIST,
-		target_info    = {color_target_descriptions = &target, num_color_targets = 1},
-	})
+			vertex_attributes          = raw_data(instance_attributes[:]),
+			num_vertex_attributes      = len(instance_attributes),
+		}
+	case .Mesh:
+		info.vertex_input_state = {
+			vertex_buffer_descriptions = raw_data(mesh_buffers[:]),
+			num_vertex_buffers         = 1,
+			vertex_attributes          = raw_data(mesh_attributes[:]),
+			num_vertex_attributes      = len(mesh_attributes),
+		}
+	}
+	pipeline := sdl.CreateGPUGraphicsPipeline(r.device, info)
 	if pipeline == nil {
-		set_error(r, "creating the shapes pipeline")
+		set_error(r, "creating a pipeline")
 		return nil
 	}
-	r.pipelines[format] = pipeline
+	r.pipelines[key] = pipeline
 	return pipeline
 }
 
-// Makes sure the instance buffer and the transfer buffer hold `bytes`, growing
-// them (by doubling) when they do not.
+// ---- multisampled targets ----
+
 @(private)
-ensure_buffers :: proc(r: ^Renderer, bytes: int) -> bool {
-	if bytes <= r.instance_capacity && r.instance_buffer != nil {
+release_msaa :: proc(r: ^Renderer) {
+	for _, texture in r.msaa {
+		sdl.ReleaseGPUTexture(r.device, texture)
+	}
+	clear(&r.msaa)
+}
+
+// The multisampled texture to draw into for a target of this size and format,
+// kept for the next frame. A handful are kept (a few windows, a few sizes); when
+// resizing a window has left too many, all are released and the one in use is made again.
+@(private)
+msaa_texture :: proc(r: ^Renderer, width, height: u32, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount) -> ^sdl.GPUTexture {
+	key := Msaa_Key{width, height, format}
+	if existing, found := r.msaa[key]; found {
+		return existing
+	}
+	if len(r.msaa) >= 8 {
+		release_msaa(r)
+	}
+	texture := sdl.CreateGPUTexture(r.device, {
+		type                 = .D2,
+		format               = format,
+		usage                = {.COLOR_TARGET},
+		width                = width,
+		height               = height,
+		layer_count_or_depth = 1,
+		num_levels           = 1,
+		sample_count         = samples,
+	})
+	if texture == nil {
+		return nil
+	}
+	r.msaa[key] = texture
+	return texture
+}
+
+// ---- buffers ----
+
+// Makes sure a GPU buffer holds `bytes`, growing it (by doubling) when it does
+// not. Gives whether it was made new, which leaves it empty.
+@(private)
+ensure_buffer :: proc(r: ^Renderer, buffer: ^Gpu_Buffer, usage: sdl.GPUBufferUsageFlags, bytes: int) -> (grew, ok: bool) {
+	if buffer.buffer != nil && bytes <= buffer.capacity {
+		return false, true
+	}
+	capacity := max(buffer.capacity * 2, bytes, 4096)
+	made := sdl.CreateGPUBuffer(r.device, {usage = usage, size = u32(capacity)})
+	if made == nil {
+		set_error(r, "creating a buffer")
+		return false, false
+	}
+	if buffer.buffer != nil {
+		sdl.ReleaseGPUBuffer(r.device, buffer.buffer)
+	}
+	buffer.buffer, buffer.capacity = made, capacity
+	return true, true
+}
+
+@(private)
+ensure_transfer :: proc(r: ^Renderer, bytes: int) -> bool {
+	if r.transfer != nil && bytes <= r.transfer_capacity {
 		return true
 	}
-	capacity := max(r.instance_capacity * 2, bytes, 64 * size_of(Instance))
-	buffer := sdl.CreateGPUBuffer(r.device, {usage = {.VERTEX}, size = u32(capacity)})
-	transfer := sdl.CreateGPUTransferBuffer(r.device, {usage = .UPLOAD, size = u32(capacity)})
-	if buffer == nil || transfer == nil {
-		set_error(r, "creating the instance buffers")
-		if buffer != nil {sdl.ReleaseGPUBuffer(r.device, buffer)}
-		if transfer != nil {sdl.ReleaseGPUTransferBuffer(r.device, transfer)}
+	capacity := max(r.transfer_capacity * 2, bytes, 4096)
+	made := sdl.CreateGPUTransferBuffer(r.device, {usage = .UPLOAD, size = u32(capacity)})
+	if made == nil {
+		set_error(r, "creating the transfer buffer")
 		return false
 	}
-	if r.instance_buffer != nil {
-		sdl.ReleaseGPUBuffer(r.device, r.instance_buffer)
-		sdl.ReleaseGPUTransferBuffer(r.device, r.transfer_buffer)
+	if r.transfer != nil {
+		sdl.ReleaseGPUTransferBuffer(r.device, r.transfer)
 	}
-	r.instance_buffer, r.transfer_buffer = buffer, transfer
-	r.instance_capacity, r.transfer_capacity = capacity, capacity
-	r.uploaded_hash, r.uploaded_count = 0, 0 // a new buffer is empty
+	r.transfer, r.transfer_capacity = made, capacity
 	return true
 }
 
-// The hash of everything the instance buffer would hold.
+// The hash of what a pipeline's buffer would hold: its batches' hashes.
 @(private)
-frame_hash :: proc(b: ^Batcher) -> u64 {
-	h := hash_u64(FNV_OFFSET, u64(len(b.instances)))
+pipeline_hash :: proc(b: ^Batcher, pipeline: Pipeline) -> u64 {
+	h := FNV_OFFSET
 	for batch in b.batches {
-		if batch.pipeline == .Shapes {
+		if batch.pipeline == pipeline {
 			h = hash_u64(h, batch.hash)
 		}
 	}
 	return h
 }
 
-// Copies the batcher's instances to the GPU, unless they are the same as the
-// ones already there (a still scene, or one whose shapes did not change).
+// Copies the batcher's instances and mesh to the GPU, unless they are the same
+// as the ones already there (a still scene, or one whose shapes did not change).
 @(private)
 upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bool {
-	r.stats.uploaded = false
-	if len(b.instances) == 0 {
+	r.stats.uploaded_instances, r.stats.uploaded_mesh = false, false
+	instance_bytes := len(b.instances) * size_of(Instance)
+	vertex_bytes := len(b.mesh.vertices) * size_of(Mesh_Vertex)
+	index_bytes := len(b.mesh.indices) * size_of(u32)
+
+	// Grow the buffers first; a new buffer is empty, so what was uploaded is forgotten.
+	if instance_bytes > 0 {
+		grew, ok := ensure_buffer(r, &r.instances, {.VERTEX}, instance_bytes)
+		if !ok {return false}
+		if grew {r.uploaded_instances, r.uploaded_instance_count = 0, 0}
+	}
+	if vertex_bytes > 0 {
+		grew_v, ok_v := ensure_buffer(r, &r.mesh_vertices, {.VERTEX}, vertex_bytes)
+		grew_i, ok_i := ensure_buffer(r, &r.mesh_indices, {.INDEX}, index_bytes)
+		if !ok_v || !ok_i {return false}
+		if grew_v || grew_i {r.uploaded_mesh, r.uploaded_mesh_vertex_count, r.uploaded_mesh_index_count = 0, 0, 0}
+	}
+
+	instance_hash, mesh_hash := pipeline_hash(b, .Shapes), pipeline_hash(b, .Paths)
+	need_instances := instance_bytes > 0 && (instance_hash != r.uploaded_instances || len(b.instances) != r.uploaded_instance_count)
+	need_mesh := vertex_bytes > 0 && (mesh_hash != r.uploaded_mesh || len(b.mesh.vertices) != r.uploaded_mesh_vertex_count || len(b.mesh.indices) != r.uploaded_mesh_index_count)
+	if !need_instances && !need_mesh {
 		return true
 	}
-	bytes := len(b.instances) * size_of(Instance)
-	if !ensure_buffers(r, bytes) {
+
+	total := (instance_bytes if need_instances else 0) + (vertex_bytes + index_bytes if need_mesh else 0)
+	if !ensure_transfer(r, total) {
 		return false
 	}
-	h := frame_hash(b)
-	if h == r.uploaded_hash && len(b.instances) == r.uploaded_count {
-		return true
-	}
-	mapped := sdl.MapGPUTransferBuffer(r.device, r.transfer_buffer, true)
+	mapped := sdl.MapGPUTransferBuffer(r.device, r.transfer, true)
 	if mapped == nil {
 		set_error(r, "mapping the transfer buffer")
 		return false
 	}
-	mem.copy(mapped, raw_data(b.instances), bytes)
-	sdl.UnmapGPUTransferBuffer(r.device, r.transfer_buffer)
+	base := ([^]byte)(mapped)
+	offset := 0
+	instance_at, vertex_at, index_at := 0, 0, 0
+	if need_instances {
+		mem.copy(base[offset:], raw_data(b.instances), instance_bytes)
+		instance_at = offset
+		offset += instance_bytes
+	}
+	if need_mesh {
+		mem.copy(base[offset:], raw_data(b.mesh.vertices), vertex_bytes)
+		vertex_at = offset
+		offset += vertex_bytes
+		mem.copy(base[offset:], raw_data(b.mesh.indices), index_bytes)
+		index_at = offset
+	}
+	sdl.UnmapGPUTransferBuffer(r.device, r.transfer)
+
 	copy_pass := sdl.BeginGPUCopyPass(commands)
-	sdl.UploadToGPUBuffer(copy_pass, {transfer_buffer = r.transfer_buffer}, {buffer = r.instance_buffer, size = u32(bytes)}, true)
+	if need_instances {
+		sdl.UploadToGPUBuffer(copy_pass, {transfer_buffer = r.transfer, offset = u32(instance_at)}, {buffer = r.instances.buffer, size = u32(instance_bytes)}, true)
+		r.uploaded_instances, r.uploaded_instance_count = instance_hash, len(b.instances)
+		r.stats.uploaded_instances = true
+	}
+	if need_mesh {
+		sdl.UploadToGPUBuffer(copy_pass, {transfer_buffer = r.transfer, offset = u32(vertex_at)}, {buffer = r.mesh_vertices.buffer, size = u32(vertex_bytes)}, true)
+		sdl.UploadToGPUBuffer(copy_pass, {transfer_buffer = r.transfer, offset = u32(index_at)}, {buffer = r.mesh_indices.buffer, size = u32(index_bytes)}, true)
+		r.uploaded_mesh, r.uploaded_mesh_vertex_count, r.uploaded_mesh_index_count = mesh_hash, len(b.mesh.vertices), len(b.mesh.indices)
+		r.stats.uploaded_mesh = true
+	}
 	sdl.EndGPUCopyPass(copy_pass)
-	r.uploaded_hash, r.uploaded_count = h, len(b.instances)
-	r.stats.uploaded = true
 	return true
 }
 
-// Records the frame into `commands`, drawing to `target`: uploads the instances,
-// clears to the background and draws every shapes batch. `canvas` is the size
-// the sketch sees (logical pixels); the target may have more pixels. Gives false
-// when something failed; `r.error` says what, and the frame is left unfinished
-// but safe to submit.
-render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTexture, format: sdl.GPUTextureFormat, canvas: [2]f32, list: ^Command_List, b: ^Batcher) -> bool {
+// ---- drawing ----
+
+// Records the frame into `commands`, drawing to `target`: uploads what changed,
+// clears to the background and draws every batch in order. `pixels` is the
+// target's size in device pixels; `canvas` is the size the sketch sees (logical
+// pixels). Gives false when something failed; `r.error` says what, and the frame
+// is left as far as it got but is safe to submit.
+render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTexture, format: sdl.GPUTextureFormat, pixels: [2]u32, canvas: [2]f32, list: ^Command_List, b: ^Batcher) -> bool {
 	r.stats = {}
-	pipeline := shapes_pipeline(r, format)
-	if pipeline == nil {
-		return false
+	samples := samples_for(r, format)
+	msaa: ^sdl.GPUTexture
+	if samples != ._1 {
+		msaa = msaa_texture(r, pixels.x, pixels.y, format, samples)
+		if msaa == nil {
+			samples = ._1 // no room for it: draw plainly
+		}
 	}
-	if !upload(r, commands, b) {
-		return false
+	switch samples {
+	case ._1: r.stats.samples = 1
+	case ._2: r.stats.samples = 2
+	case ._4: r.stats.samples = 4
+	case ._8: r.stats.samples = 8
 	}
+
+	shapes, mesh: ^sdl.GPUGraphicsPipeline
+	ok := true
+	for batch in b.batches {
+		switch batch.pipeline {
+		case .Shapes: if shapes == nil {shapes = get_pipeline(r, .Shapes, format, samples)}
+		case .Paths:  if mesh == nil {mesh = get_pipeline(r, .Mesh, format, samples)}
+		}
+	}
+	if (len(b.instances) > 0 && shapes == nil) || (len(b.mesh.indices) > 0 && mesh == nil) {
+		ok = false
+	}
+	if ok && !upload(r, commands, b) {
+		ok = false
+	}
+
 	bg := list.background
 	colour_target := sdl.GPUColorTargetInfo{
-		texture     = target,
+		texture     = msaa if msaa != nil else target,
 		clear_color = sdl.FColor{bg.r / 255, bg.g / 255, bg.b / 255, bg.a / 255},
 		load_op     = .CLEAR,
 		store_op    = .STORE,
 	}
+	if msaa != nil {
+		colour_target.resolve_texture = target
+		colour_target.store_op = .RESOLVE
+	}
 	pass := sdl.BeginGPURenderPass(commands, &colour_target, 1, nil)
 	defer sdl.EndGPURenderPass(pass)
-	if len(b.instances) == 0 {
-		r.stats.unrendered_paths = b.stats.path_commands
-		return true
+	if !ok {
+		return false
 	}
-	sdl.BindGPUGraphicsPipeline(pass, pipeline)
 	uniforms := Frame_Uniforms{canvas_size = canvas}
-	sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
-	binding := sdl.GPUBufferBinding{buffer = r.instance_buffer}
-	sdl.BindGPUVertexBuffers(pass, 0, &binding, 1)
+	bound: Pipeline = .Shapes
+	have_bound := false
 	for batch in b.batches {
+		if !have_bound || batch.pipeline != bound {
+			bound, have_bound = batch.pipeline, true
+			switch batch.pipeline {
+			case .Shapes:
+				sdl.BindGPUGraphicsPipeline(pass, shapes)
+				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
+				binding := sdl.GPUBufferBinding{buffer = r.instances.buffer}
+				sdl.BindGPUVertexBuffers(pass, 0, &binding, 1)
+			case .Paths:
+				sdl.BindGPUGraphicsPipeline(pass, mesh)
+				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
+				vertices := sdl.GPUBufferBinding{buffer = r.mesh_vertices.buffer}
+				sdl.BindGPUVertexBuffers(pass, 0, &vertices, 1)
+				indices := sdl.GPUBufferBinding{buffer = r.mesh_indices.buffer}
+				sdl.BindGPUIndexBuffer(pass, indices, ._32BIT)
+			}
+		}
 		switch batch.pipeline {
 		case .Shapes:
 			sdl.DrawGPUPrimitives(pass, 6, u32(batch.count), 0, u32(batch.first))
-			r.stats.draws += 1
 		case .Paths:
-			r.stats.unrendered_paths += batch.count
+			sdl.DrawGPUIndexedPrimitives(pass, u32(batch.count), 1, u32(batch.first), 0, 0)
 		}
+		r.stats.draws += 1
 	}
 	return true
 }
@@ -319,14 +552,15 @@ render_window :: proc(r: ^Renderer, window: ^sdl.Window, canvas: [2]f32, list: ^
 		return false
 	}
 	swapchain: ^sdl.GPUTexture
-	if !sdl.WaitAndAcquireGPUSwapchainTexture(commands, window, &swapchain, nil, nil) {
+	width, height: u32
+	if !sdl.WaitAndAcquireGPUSwapchainTexture(commands, window, &swapchain, &width, &height) {
 		set_error(r, "acquiring the swapchain texture")
 		_ = sdl.CancelGPUCommandBuffer(commands)
 		return false
 	}
 	ok := true
 	if swapchain != nil {
-		ok = render(r, commands, swapchain, sdl.GetGPUSwapchainTextureFormat(r.device, window), canvas, list, b)
+		ok = render(r, commands, swapchain, sdl.GetGPUSwapchainTextureFormat(r.device, window), {width, height}, canvas, list, b)
 	}
 	if !sdl.SubmitGPUCommandBuffer(commands) {
 		set_error(r, "submitting the frame")
@@ -382,7 +616,7 @@ render_offscreen :: proc(r: ^Renderer, width, height: int, canvas: [2]f32, list:
 		set_error(r, "acquiring a command buffer")
 		return {}, false
 	}
-	if !render(r, commands, texture, format, canvas, list, b) {
+	if !render(r, commands, texture, format, {u32(width), u32(height)}, canvas, list, b) {
 		_ = sdl.CancelGPUCommandBuffer(commands)
 		return {}, false
 	}

@@ -6,6 +6,7 @@
 // -define:GOLDEN_UPDATE=true and looking at the result before committing it.
 package golden
 
+import "../../roci/geom"
 import "../../roci/gfx"
 import "../../roci/maths"
 
@@ -27,6 +28,9 @@ SCENES := [?]Scene{
 	{"transforms", transforms},
 	{"origins", origins},
 	{"background_wipes", background_wipes},
+	{"quads_and_arcs", quads_and_arcs},
+	{"outline_joins", outline_joins},
+	{"line_caps", line_caps},
 }
 
 named :: proc(name: string) -> maths.Colour {
@@ -179,4 +183,58 @@ background_wipes :: proc(list: ^gfx.Command_List) {
 	gfx.background(list, named("navy"))
 	gfx.set_fill(list, named("white"))
 	gfx.circle(list, 150, 100, 30)
+}
+
+quads_and_arcs :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(245))
+	gfx.set_fill(list, named("steelblue"))
+	gfx.quad(list, 15, 20, 80, 10, 90, 60, 25, 55)
+	gfx.set_fill(list, named("tomato"))
+	gfx.quad(list, 105, 20, 155, 20, 155, 60, 130, 35) // concave: an arrowhead
+	// Arcs: a quarter, three quarters (concave pie), and the whole ellipse.
+	gfx.set_fill(list, named("seagreen"))
+	gfx.arc(list, 40, 105, 50, 50, 0, 90)
+	gfx.set_fill(list, named("goldenrod"))
+	gfx.arc(list, 100, 105, 50, 50, 20, 290)
+	gfx.set_fill(list, named("orchid"))
+	gfx.arc(list, 160, 105, 40, 30, 0, 360)
+}
+
+outline_joins :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(250))
+	gfx.set_fill(list, named("lightyellow"))
+	gfx.set_stroke(list, named("firebrick"))
+	gfx.set_thickness(list, 8)
+	// The three joins, on a rectangle and on a triangle.
+	joins := [?]geom.Join{.Miter, .Bevel, .Round}
+	for join, i in joins {
+		gfx.push(list, .Style_And_Transform)
+		gfx.set_joins(list, join)
+		gfx.move(list, 20 + f32(i) * 62, 20)
+		gfx.rect(list, 0, 0, 40, 30)
+		gfx.triangle(list, 0, 110, 40, 110, 20, 60)
+		gfx.pop(list)
+	}
+	// A very sharp triangle: the miter is cut off past the limit.
+	gfx.set_thickness(list, 3)
+	gfx.triangle(list, 20, 140, 180, 130, 20, 146)
+}
+
+line_caps :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(240))
+	gfx.set_stroke(list, maths.grey(20))
+	gfx.set_thickness(list, 14)
+	caps := [?]geom.Cap{.Butt, .Round, .Square}
+	for cap, i in caps {
+		gfx.set_caps(list, cap)
+		y := 25 + f32(i) * 35
+		gfx.line(list, 40, y, 160, y)
+		gfx.point(list, 20, y)
+	}
+	// Guides at the ends of the lines, to see how far each cap reaches.
+	gfx.set_thickness(list, 1)
+	gfx.set_caps(list, .Butt)
+	gfx.set_stroke(list, named("crimson"))
+	gfx.line(list, 40, 5, 40, 130)
+	gfx.line(list, 160, 5, 160, 130)
 }
