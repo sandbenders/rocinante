@@ -113,7 +113,8 @@ ci :: proc(fast: bool) -> bool {
 	ok = check_packages() && ok
 	if !fast {
 		ok = check_abi() && ok
-		fmt.printfln("%s %s", term.out("== golden images, back-end equivalence, benchmarks:", .Bold_Cyan), term.out("not built yet", .Dim))
+		ok = check_golden() && ok
+		fmt.printfln("%s %s", term.out("== back-end equivalence, benchmarks:", .Bold_Cyan), term.out("not built yet", .Dim))
 	}
 	if ok {
 		fmt.printfln("\n%s%s", term.out_icon(.Ok), term.out("ci: all checks passed", .Bold_Green))
@@ -154,7 +155,7 @@ check_packages :: proc() -> bool {
 // to link against.
 ABI_CHECK_UNAVAILABLE :: 3
 
-Abi_Outcome :: enum {
+Check_Outcome :: enum {
 	Passed,
 	Skipped, // not possible on this computer, which is fine for a contributor
 	Failed,
@@ -162,7 +163,7 @@ Abi_Outcome :: enum {
 
 // What an exit code of the C ABI check means. The pipelines set ROCI_REQUIRE_SDL3,
 // so for them "cannot run" is a failure, never a quiet skip.
-abi_outcome :: proc(exit_code: int, required: bool) -> Abi_Outcome {
+abi_outcome :: proc(exit_code: int, required: bool) -> Check_Outcome {
 	switch {
 	case exit_code == 0:                                   return .Passed
 	case exit_code == ABI_CHECK_UNAVAILABLE && !required:  return .Skipped

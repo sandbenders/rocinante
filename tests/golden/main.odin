@@ -2,7 +2,8 @@
 //
 // Golden-image tests (CLAUDE.md section 9): every scene in scenes.odin is drawn
 // offscreen through the real renderer and compared with a reference picture in
-// this folder. It needs SDL3 and a GPU driver, so `ci` does not run it yet. It is a
+// this folder. It needs SDL3 and a GPU driver; `ci` runs it on Mesa's software
+// Vulkan (lavapipe), where the references are drawn (build/golden.odin). It is a
 // program and not an `odin test`, because SDL's video system must start on the
 // main thread on a Mac.
 //
@@ -93,7 +94,8 @@ run :: proc() -> bool {
 		return false
 	}
 	defer platform.shutdown(&app)
-	fmt.printfln("golden: GPU driver %s", app.driver)
+	// `ci` reads this line to make sure lavapipe drew the pictures.
+	fmt.printfln("golden: GPU driver %s, device %s", app.driver, app.gpu)
 	_ = os.make_directory_all("output/golden")
 
 	renderer: gfx.Renderer

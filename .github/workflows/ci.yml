@@ -51,5 +51,6 @@ jobs:
           export LD_LIBRARY_PATH="$HOME/sdl3/lib:${LD_LIBRARY_PATH:-}"
           export PKG_CONFIG_PATH="$HOME/sdl3/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
           export ROCI_REQUIRE_SDL3=1 # the C ABI check must run here, not skip
+          export ROCI_REQUIRE_LAVAPIPE=1 # and so must the golden images
           echo "SDL3 $(pkg-config --modversion sdl3)"
           odin run build -- ci

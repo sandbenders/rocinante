@@ -40,20 +40,20 @@ test_exe_matches_the_system :: proc(t: ^testing.T) {
 
 @(test)
 test_a_passing_abi_check_passes_whatever_the_pipeline_asks :: proc(t: ^testing.T) {
-	testing.expect_value(t, abi_outcome(0, false), Abi_Outcome.Passed)
-	testing.expect_value(t, abi_outcome(0, true), Abi_Outcome.Passed)
+	testing.expect_value(t, abi_outcome(0, false), Check_Outcome.Passed)
+	testing.expect_value(t, abi_outcome(0, true), Check_Outcome.Passed)
 }
 
 @(test)
 test_a_missing_compiler_or_sdl3_skips_on_a_contributors_computer_and_fails_in_a_pipeline :: proc(t: ^testing.T) {
-	testing.expect_value(t, abi_outcome(ABI_CHECK_UNAVAILABLE, false), Abi_Outcome.Skipped)
-	testing.expect_value(t, abi_outcome(ABI_CHECK_UNAVAILABLE, true), Abi_Outcome.Failed)
+	testing.expect_value(t, abi_outcome(ABI_CHECK_UNAVAILABLE, false), Check_Outcome.Skipped)
+	testing.expect_value(t, abi_outcome(ABI_CHECK_UNAVAILABLE, true), Check_Outcome.Failed)
 }
 
 @(test)
 test_any_other_exit_code_fails :: proc(t: ^testing.T) {
 	for code in ([?]int{1, 2, 4, 127, -1}) {
-		testing.expect_value(t, abi_outcome(code, false), Abi_Outcome.Failed)
-		testing.expect_value(t, abi_outcome(code, true), Abi_Outcome.Failed)
+		testing.expect_value(t, abi_outcome(code, false), Check_Outcome.Failed)
+		testing.expect_value(t, abi_outcome(code, true), Check_Outcome.Failed)
 	}
 }
