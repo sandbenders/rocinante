@@ -54,6 +54,11 @@ init :: proc(app: ^App) -> bool {
 	// the Mali-G715 in the Pixel 9 does not have it (Spike 2). rocinante's shaders
 	// never use clip distances, so it is always off.
 	sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_FEATURE_CLIP_DISTANCE_BOOLEAN, false)
+	// SDL's debug mode (validation layers where installed, Metal's API validation)
+	// "defaults to true" (wiki.libsdl.org/SDL3/SDL_CreateGPUDeviceWithProperties).
+	// It is a tool for working on rocinante, not something a sketch should pay for,
+	// so it is off unless ROCI_GPU_DEBUG asks for it (decided 2026-10-27).
+	sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN, gpu_debug_wanted(string(sdl.getenv(GPU_DEBUG_VARIABLE))))
 	app.device = sdl.CreateGPUDeviceWithProperties(props)
 	if app.device == nil {
 		fail(app, "SDL_CreateGPUDevice")
@@ -65,6 +70,15 @@ init :: proc(app: ^App) -> bool {
 	// check that lavapipe drew them, never for choosing what to do.
 	app.gpu = strings.clone_from_cstring(sdl.GetStringProperty(sdl.GetGPUDeviceProperties(app.device), sdl.PROP_GPU_DEVICE_NAME_STRING, ""))
 	return true
+}
+
+// The environment variable that turns the GPU's debug mode on.
+GPU_DEBUG_VARIABLE :: "ROCI_GPU_DEBUG"
+
+// Whether the value of ROCI_GPU_DEBUG asks for debug mode: anything but unset,
+// empty or 0.
+gpu_debug_wanted :: proc "contextless" (value: string) -> bool {
+	return value != "" && value != "0"
 }
 
 // Closes every window, the device and SDL.

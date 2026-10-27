@@ -272,3 +272,13 @@ test_a_window_in_pixels_gets_a_canvas_in_logical_pixels :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.width, 390)
 	testing.expect_value(t, m.density, f32(3))
 }
+
+@(test)
+test_gpu_debug_mode_is_off_unless_asked_for :: proc(t: ^testing.T) {
+	testing.expect(t, !gpu_debug_wanted(""))  // unset reads as empty
+	testing.expect(t, !gpu_debug_wanted("0"))
+	testing.expect(t, gpu_debug_wanted("1"))
+	testing.expect(t, gpu_debug_wanted("yes"))
+	testing.expect(t, gpu_debug_wanted("00")) // only a plain 0 turns it off
+	testing.expect_value(t, GPU_DEBUG_VARIABLE, "ROCI_GPU_DEBUG")
+}
