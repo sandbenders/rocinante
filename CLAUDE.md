@@ -21,7 +21,7 @@ odin test <dir> -define:ODIN_TEST_NAMES=package.test_name   # run a single test
 odin test <dir> -out:output/tests/<name>.exe  # on Windows: keep the test program out of the repository root, as ci does
 ```
 
-`ci` runs `odin test` on every package listed in `TEST_PACKAGES` in `build/main.odin` (add a package there as soon as it has tests), and a failing test makes `ci` exit with 1. Tests run from the repository root, in parallel threads, and some make fixtures under `output/`. A test file that builds maps or dynamic arrays from literals needs `#+feature dynamic-literals` at the top.
+**SDL3 must be installed to run `ci`** (found 2026-10-27, when the first GitLab pipeline with package `roci` failed with "cannot find -lSDL3"): the unit tests of `roci` link it, because the API can start a window even though the tests run headless. Arch has `sdl3`, FreeBSD `pkg install sdl3`, macOS `brew install sdl3`, the GitHub pipeline builds it (§11), and on Windows Odin ships `SDL3.lib`. `ci` runs `odin test` on every package listed in `TEST_PACKAGES` in `build/main.odin` (add a package there as soon as it has tests), and a failing test makes `ci` exit with 1. Tests run from the repository root, in parallel threads, and some make fixtures under `output/`. A test file that builds maps or dynamic arrays from literals needs `#+feature dynamic-literals` at the top.
 
 The Phase 0 spikes, each run from the repository root:
 
