@@ -4,6 +4,8 @@ output/
 /codegen
 /build.exe
 /codegen.exe
+/golden
+/golden.exe
 /SDL3.dll
 /imgui.ini
 /ui
