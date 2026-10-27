@@ -1,0 +1,115 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct main0_out
+{
+    float4 _entryPointOutput [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 input_local [[user(locn0)]];
+    float4 input_shape_0123 [[user(locn1), flat]];
+    float2 input_shape_45 [[user(locn2), flat]];
+    float4 input_fill [[user(locn3), flat]];
+    float4 input_stroke [[user(locn4), flat]];
+    float input_thickness [[user(locn5), flat]];
+    uint input_kind [[user(locn6)]];
+    uint input_flags [[user(locn7)]];
+};
+
+fragment main0_out main0(main0_in in [[stage_in]])
+{
+    main0_out out = {};
+    float _908;
+    switch (in.input_kind)
+    {
+        case 0u:
+        {
+            _908 = length(in.input_local) - in.input_shape_0123.x;
+            break;
+        }
+        case 1u:
+        {
+            float2 _614 = fast::max(in.input_shape_0123.xy, float2(9.9999999747524270787835121154785e-07));
+            float2 _575 = _614;
+            float _618 = length(in.input_local / _614);
+            float _624 = length(in.input_local / (_614 * _614));
+            _908 = (_624 > 9.9999999600419720025001879548654e-13) ? ((_618 * (_618 - 1.0)) / _624) : (-fast::min(_575.x, _575.y));
+            break;
+        }
+        case 2u:
+        {
+            float2 _646 = abs(in.input_local) - in.input_shape_0123.xy;
+            float2 _578 = _646;
+            _908 = length(fast::max(_646, float2(0.0))) + fast::min(fast::max(_578.x, _578.y), 0.0);
+            break;
+        }
+        case 3u:
+        {
+            float2 _821 = in.input_local - in.input_shape_0123.xy;
+            float2 _824 = in.input_shape_0123.zw - in.input_shape_0123.xy;
+            _908 = length(_821 - (_824 * fast::clamp(dot(_821, _824) / fast::max(dot(_824, _824), 9.9999999600419720025001879548654e-13), 0.0, 1.0)));
+            break;
+        }
+        default:
+        {
+            float2 _686 = in.input_shape_0123.zw - in.input_shape_0123.xy;
+            float2 _671 = _686;
+            float2 _689 = in.input_shape_45 - in.input_shape_0123.zw;
+            float2 _672 = _689;
+            float2 _692 = in.input_shape_0123.xy - in.input_shape_45;
+            float2 _673 = _692;
+            float2 _695 = in.input_local - in.input_shape_0123.xy;
+            float2 _674 = _695;
+            float2 _698 = in.input_local - in.input_shape_0123.zw;
+            float2 _675 = _698;
+            float2 _701 = in.input_local - in.input_shape_45;
+            float2 _676 = _701;
+            float2 _714 = _695 - (_686 * fast::clamp(dot(_695, _686) / fast::max(dot(_686, _686), 9.9999999600419720025001879548654e-13), 0.0, 1.0));
+            float2 _727 = _698 - (_689 * fast::clamp(dot(_698, _689) / fast::max(dot(_689, _689), 9.9999999600419720025001879548654e-13), 0.0, 1.0));
+            float2 _740 = _701 - (_692 * fast::clamp(dot(_701, _692) / fast::max(dot(_692, _692), 9.9999999600419720025001879548654e-13), 0.0, 1.0));
+            float _752 = sign((_671.x * _673.y) - (_671.y * _673.x));
+            float2 _681 = fast::min(fast::min(float2(dot(_714, _714), _752 * ((_674.x * _671.y) - (_674.y * _671.x))), float2(dot(_727, _727), _752 * ((_675.x * _672.y) - (_675.y * _672.x)))), float2(dot(_740, _740), _752 * ((_676.x * _673.y) - (_676.y * _673.x))));
+            _908 = (-sqrt(_681.x)) * sign(_681.y);
+            break;
+        }
+    }
+    float _499 = fwidth(_908);
+    float _500 = fast::max(_499, 9.9999999747524270787835121154785e-07);
+    float _909;
+    float _912;
+    if (in.input_kind == 3u)
+    {
+        _912 = 0.0;
+        _909 = in.input_stroke.w * fast::clamp(0.5 - ((_908 - (in.input_thickness * 0.5)) / _500), 0.0, 1.0);
+    }
+    else
+    {
+        float _914;
+        if ((in.input_flags & 1u) != 0u)
+        {
+            _914 = in.input_fill.w * fast::clamp(0.5 - (_908 / _500), 0.0, 1.0);
+        }
+        else
+        {
+            _914 = 0.0;
+        }
+        float _910;
+        if ((in.input_flags & 2u) != 0u)
+        {
+            _910 = in.input_stroke.w * fast::clamp(0.5 - ((abs(_908) - (in.input_thickness * 0.5)) / _500), 0.0, 1.0);
+        }
+        else
+        {
+            _910 = 0.0;
+        }
+        _912 = _914;
+        _909 = _910;
+    }
+    out._entryPointOutput = float4((in.input_stroke.xyz * _909) + ((in.input_fill.xyz * _912) * (1.0 - _909)), _909 + (_912 * (1.0 - _909)));
+    return out;
+}
+

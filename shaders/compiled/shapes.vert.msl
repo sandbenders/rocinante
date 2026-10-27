@@ -1,0 +1,98 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+#pragma clang diagnostic ignored "-Wmissing-braces"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+template<typename T, size_t Num>
+struct spvUnsafeArray
+{
+    T elements[Num ? Num : 1];
+    
+    thread T& operator [] (size_t pos) thread
+    {
+        return elements[pos];
+    }
+    constexpr const thread T& operator [] (size_t pos) const thread
+    {
+        return elements[pos];
+    }
+    
+    device T& operator [] (size_t pos) device
+    {
+        return elements[pos];
+    }
+    constexpr const device T& operator [] (size_t pos) const device
+    {
+        return elements[pos];
+    }
+    
+    constexpr const constant T& operator [] (size_t pos) const constant
+    {
+        return elements[pos];
+    }
+    
+    threadgroup T& operator [] (size_t pos) threadgroup
+    {
+        return elements[pos];
+    }
+    constexpr const threadgroup T& operator [] (size_t pos) const threadgroup
+    {
+        return elements[pos];
+    }
+};
+
+struct Frame
+{
+    float2 canvas_size;
+    float2 unused;
+};
+
+constant spvUnsafeArray<float2, 6> _27 = spvUnsafeArray<float2, 6>({ float2(-1.0), float2(1.0, -1.0), float2(-1.0, 1.0), float2(-1.0, 1.0), float2(1.0, -1.0), float2(1.0) });
+
+struct main0_out
+{
+    float2 _entryPointOutput_local [[user(locn0)]];
+    float4 _entryPointOutput_shape_0123 [[user(locn1)]];
+    float2 _entryPointOutput_shape_45 [[user(locn2)]];
+    float4 _entryPointOutput_fill [[user(locn3)]];
+    float4 _entryPointOutput_stroke [[user(locn4)]];
+    float _entryPointOutput_thickness [[user(locn5)]];
+    uint _entryPointOutput_kind [[user(locn6)]];
+    uint _entryPointOutput_flags [[user(locn7)]];
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float4 input_transform_ab_cd [[attribute(0)]];
+    float4 input_transform_ef_half [[attribute(1)]];
+    float4 input_shape_0123 [[attribute(2)]];
+    float2 input_shape_45 [[attribute(3)]];
+    float4 input_fill [[attribute(4)]];
+    float4 input_stroke [[attribute(5)]];
+    float input_thickness [[attribute(6)]];
+    uint input_kind [[attribute(7)]];
+    uint input_flags [[attribute(8)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant Frame& _95 [[buffer(0)]], uint gl_VertexIndex [[vertex_id]])
+{
+    main0_out out = {};
+    float2 _236 = _27[gl_VertexIndex] * in.input_transform_ef_half.zw;
+    float2 _219 = _236;
+    float2 _224 = float2(((in.input_transform_ab_cd.x * _219.x) + (in.input_transform_ab_cd.z * _219.y)) + in.input_transform_ef_half.x, ((in.input_transform_ab_cd.y * _219.x) + (in.input_transform_ab_cd.w * _219.y)) + in.input_transform_ef_half.y);
+    out.gl_Position = float4(((_224.x / _95.canvas_size.x) * 2.0) - 1.0, 1.0 - ((_224.y / _95.canvas_size.y) * 2.0), 0.0, 1.0);
+    out._entryPointOutput_local = _236;
+    out._entryPointOutput_shape_0123 = in.input_shape_0123;
+    out._entryPointOutput_shape_45 = in.input_shape_45;
+    out._entryPointOutput_fill = in.input_fill;
+    out._entryPointOutput_stroke = in.input_stroke;
+    out._entryPointOutput_thickness = in.input_thickness;
+    out._entryPointOutput_kind = in.input_kind;
+    out._entryPointOutput_flags = in.input_flags;
+    return out;
+}
+
