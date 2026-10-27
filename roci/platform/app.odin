@@ -152,6 +152,15 @@ window_metrics :: proc(window: ^Window) -> Metrics {
 	return metrics_from(int(w), int(h), int(pw), int(ph), sdl.GetWindowDisplayScale(window.handle))
 }
 
+// Resizes the window, in logical pixels.
+set_size :: proc(window: ^Window, width, height: int) {
+	sdl.SetWindowSize(window.handle, i32(width), i32(height))
+}
+
+set_position :: proc(window: ^Window, x, y: int) {
+	sdl.SetWindowPosition(window.handle, i32(x), i32(y))
+}
+
 set_title :: proc(window: ^Window, title: string) {
 	sdl.SetWindowTitle(window.handle, strings.clone_to_cstring(title, context.temp_allocator))
 }
