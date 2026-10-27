@@ -56,6 +56,10 @@ These are wanted, but not planned for the first stable release:
 - **More processors on the desktop.** The first stable release runs on x86-64 computers with FreeBSD, Linux or Windows, and on Macs with Apple silicon. Later: arm64 FreeBSD, Linux and Windows computers, and Intel Macs.
 - **3D physics** (gravity, joints and stacking in 3D). Collision detection works in 2D and 3D, and physics simulation in 2D.
 - **Training models** inside rocinante. For now, trained models run locally but are trained elsewhere.
+- **Help for writing sketches with AI assistants**: a sketch-writing skill and an MCP server built on `roci`'s checker and headless run.
+- **Editor tools in the source**: inline sliders and colour pickers that edit the number in your file, and a frame scrubber that steps backwards through a running sketch.
+- **Turtle export** to plotter and embroidery formats.
+- **Translated keywords and error messages.**
 
 ## Contributing
 
