@@ -22,8 +22,8 @@ mesh_of :: proc(setup: proc(list: ^Command_List)) -> Mesh {
 	defer destroy(&list)
 	setup(&list)
 	m: Mesh
-	for c in list.commands {
-		mesh_add_command(&m, c)
+	for i in 0 ..< len(list.commands) {
+		mesh_add_command(&m, command_at(&list, i))
 	}
 	return m
 }
@@ -84,8 +84,8 @@ test_a_butt_capped_point_draws_nothing :: proc(t: ^testing.T) {
 	point(&list, 5, 5)
 	set_caps(&list, .Square)
 	point(&list, 5, 5)
-	testing.expect(t, !is_visible(list.commands[0]))
-	testing.expect(t, is_visible(list.commands[1]))
+	testing.expect(t, !is_visible(command_at(&list, 0)))
+	testing.expect(t, is_visible(command_at(&list, 1)))
 }
 
 // ---- the style words ----
@@ -106,10 +106,10 @@ test_caps_and_joins_are_recorded_scoped_and_hashed :: proc(t: ^testing.T) {
 	line(&list, 0, 0, 1, 1)
 	pop(&list)
 	line(&list, 0, 0, 1, 1)
-	testing.expect_value(t, list.commands[0].style.cap, geom.Cap.Square)
-	testing.expect_value(t, list.commands[0].style.join, geom.Join.Bevel)
-	testing.expect_value(t, list.commands[1].style.cap, geom.Cap.Round)
-	testing.expect(t, command_hash(list.commands[0]) != command_hash(list.commands[1]))
+	testing.expect_value(t, command_at(&list, 0).style.cap, geom.Cap.Square)
+	testing.expect_value(t, command_at(&list, 0).style.join, geom.Join.Bevel)
+	testing.expect_value(t, command_at(&list, 1).style.cap, geom.Cap.Round)
+	testing.expect(t, command_hash(command_at(&list, 0)) != command_hash(command_at(&list, 1)))
 	begin_frame(&list)
 	testing.expect_value(t, list.style.cap, geom.Cap.Round)
 }
@@ -231,7 +231,7 @@ test_line_caps_change_the_length :: proc(t: ^testing.T) {
 		line(&list, 0, 0, 10, 0)
 		m: Mesh
 		defer mesh_destroy(&m)
-		mesh_add_command(&m, list.commands[0])
+		mesh_add_command(&m, command_at(&list, 0))
 		return mesh_area(m)
 	}
 	testing.expect(t, math.abs(area(.Butt) - 40) < 1e-3)
@@ -259,7 +259,7 @@ test_a_whole_arc_is_an_ellipse_and_a_part_is_a_slice_of_pie :: proc(t: ^testing.
 		arc(&list, 0, 0, 20, 20, start, stop)
 		m: Mesh
 		defer mesh_destroy(&m)
-		mesh_add_command(&m, list.commands[0])
+		mesh_add_command(&m, command_at(&list, 0))
 		return mesh_area(m)
 	}
 	// The polyline stays inside the true curve by up to a tenth of a pixel, so the
@@ -309,12 +309,12 @@ test_commands_that_flatten_to_nothing_add_nothing :: proc(t: ^testing.T) {
 	defer destroy(&list)
 	grow(&list, 0, 0) // every point lands on one spot
 	quad(&list, 0, 0, 10, 0, 10, 10, 0, 10)
-	mesh_add_command(&m, list.commands[0])
+	mesh_add_command(&m, command_at(&list, 0))
 	testing.expect_value(t, len(m.indices), 0)
 	// A quad with no area and no outline.
 	begin_frame(&list)
 	quad(&list, 3, 3, 3, 3, 3, 3, 3, 3)
-	mesh_add_command(&m, list.commands[0])
+	mesh_add_command(&m, command_at(&list, 0))
 	testing.expect_value(t, len(m.indices), 0)
 }
 

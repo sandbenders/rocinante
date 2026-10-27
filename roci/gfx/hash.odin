@@ -9,8 +9,8 @@
 // invalidate a picture that did not change.
 //
 // A command's hash is two parts: its shape (kind, origin, numbers, content) and
-// its look (style and transform). Neighbouring commands nearly always share a
-// look, so the batcher works the look out once per run of them (`Look_Cache`);
+// its look (style and transform). The list keeps each look once for a run of
+// commands (`Command_List.looks`), so the batcher hashes each look once;
 // `command_hash` combines the same two parts, so the two never disagree.
 package gfx
 
@@ -76,33 +76,4 @@ shape_hash :: proc "contextless" (c: Command) -> u64 {
 
 command_hash :: proc "contextless" (c: Command) -> u64 {
 	return hash_u64(shape_hash(c), look_hash(c.style, c.transform))
-}
-
-// The look hash of the last command seen, reused while the next ones have the
-// same look. "The same" means the same bits in every field the hash reads, so a
-// reused hash is always the one `look_hash` would give.
-Look_Cache :: struct {
-	valid:     bool,
-	style:     Style,
-	transform: Transform,
-	hash:      u64,
-}
-
-look_cache_hash :: proc "contextless" (cache: ^Look_Cache, s: Style, t: Transform) -> u64 {
-	if !cache.valid || !same_look_bits(cache.style, cache.transform, s, t) {
-		cache^ = {true, s, t, look_hash(s, t)}
-	}
-	return cache.hash
-}
-
-// Whether two looks give the same hash input, bit for bit (so 0 and -0 differ).
-same_look_bits :: proc "contextless" (s1: Style, t1: Transform, s2: Style, t2: Transform) -> bool {
-	return transmute([6]u32)t1 == transmute([6]u32)t2 &&
-		transmute([4]u32)s1.fill == transmute([4]u32)s2.fill &&
-		transmute([4]u32)s1.stroke == transmute([4]u32)s2.stroke &&
-		transmute(u32)s1.thickness == transmute(u32)s2.thickness &&
-		transmute(u32)s1.alpha == transmute(u32)s2.alpha &&
-		s1.fill_on == s2.fill_on && s1.stroke_on == s2.stroke_on &&
-		s1.cap == s2.cap && s1.join == s2.join &&
-		s1.fill_paint.hash == s2.fill_paint.hash && s1.stroke_paint.hash == s2.stroke_paint.hash
 }

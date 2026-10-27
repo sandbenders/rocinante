@@ -13,7 +13,7 @@ test_a_circle_describes_its_box_and_colour :: proc(t: ^testing.T) {
 	defer destroy(&list)
 	set_fill(&list, maths.rgb(255, 128, 0))
 	circle(&list, 100, 50, 10)
-	d := describe(list.commands[0])
+	d := describe(command_at(&list, 0))
 	testing.expect_value(t, d.kind, Kind.Circle)
 	testing.expect_value(t, d.x, f32(90))
 	testing.expect_value(t, d.y, f32(40))
@@ -32,13 +32,13 @@ test_origin_moves_the_described_box :: proc(t: ^testing.T) {
 	circle(&list, 100, 100, 10, .Corner)
 	ellipse(&list, 100, 100, 40, 20)
 	ellipse(&list, 100, 100, 40, 20, .Corner)
-	testing.expect_value(t, describe(list.commands[0]).x, f32(100))
-	testing.expect_value(t, describe(list.commands[1]).x, f32(80))
-	testing.expect_value(t, describe(list.commands[1]).y, f32(90))
-	testing.expect_value(t, describe(list.commands[2]).x, f32(100))
-	testing.expect_value(t, describe(list.commands[3]).x, f32(80)) // an ellipse is centred, as in Processing
-	testing.expect_value(t, describe(list.commands[3]).y, f32(90))
-	testing.expect_value(t, describe(list.commands[4]).x, f32(100))
+	testing.expect_value(t, describe(command_at(&list, 0)).x, f32(100))
+	testing.expect_value(t, describe(command_at(&list, 1)).x, f32(80))
+	testing.expect_value(t, describe(command_at(&list, 1)).y, f32(90))
+	testing.expect_value(t, describe(command_at(&list, 2)).x, f32(100))
+	testing.expect_value(t, describe(command_at(&list, 3)).x, f32(80)) // an ellipse is centred, as in Processing
+	testing.expect_value(t, describe(command_at(&list, 3)).y, f32(90))
+	testing.expect_value(t, describe(command_at(&list, 4)).x, f32(100))
 }
 
 @(test)
@@ -48,7 +48,7 @@ test_the_transform_is_applied_to_the_described_box :: proc(t: ^testing.T) {
 	move(&list, 10, 20)
 	grow(&list, 2, 2)
 	rect(&list, 1, 1, 5, 5)
-	d := describe(list.commands[0])
+	d := describe(command_at(&list, 0))
 	testing.expect_value(t, d.x, f32(12))
 	testing.expect_value(t, d.y, f32(22))
 	testing.expect_value(t, d.width, f32(10))
@@ -56,7 +56,7 @@ test_the_transform_is_applied_to_the_described_box :: proc(t: ^testing.T) {
 	begin_frame(&list)
 	turn(&list, 90)
 	rect(&list, 0, 0, 40, 10)
-	d = describe(list.commands[0])
+	d = describe(command_at(&list, 0))
 	testing.expect_value(t, d.width, f32(10))
 	testing.expect_value(t, d.height, f32(40))
 }
@@ -73,7 +73,7 @@ test_every_kind_has_a_box_and_a_name :: proc(t: ^testing.T) {
 	ellipse(&list, 0, 0, 6, 4)
 	boxes := [?][4]f32{{10, 20, 20, 20}, {5, 6, 0, 0}, {0, 0, 10, 8}, {1, 1, 8, 8}, {-5, 0, 20, 10}, {-3, -2, 6, 4}}
 	for box, i in boxes {
-		d := describe(list.commands[i])
+		d := describe(command_at(&list, i))
 		testing.expect_value(t, [4]f32{d.x, d.y, d.width, d.height}, box)
 	}
 	for kind in Kind {
@@ -88,14 +88,14 @@ test_a_line_and_a_point_take_their_colour_from_the_stroke :: proc(t: ^testing.T)
 	defer destroy(&list)
 	set_stroke(&list, maths.rgb(1, 2, 3))
 	line(&list, 0, 0, 5, 5)
-	testing.expect_value(t, describe(list.commands[0]).colour, maths.Colour{1, 2, 3, 255})
+	testing.expect_value(t, describe(command_at(&list, 0)).colour, maths.Colour{1, 2, 3, 255})
 	// A shape with no fill shows its stroke colour; with neither it has none.
 	no_fill(&list)
 	circle(&list, 0, 0, 5)
-	testing.expect_value(t, describe(list.commands[1]).colour, maths.Colour{1, 2, 3, 255})
+	testing.expect_value(t, describe(command_at(&list, 1)).colour, maths.Colour{1, 2, 3, 255})
 	no_stroke(&list)
 	circle(&list, 0, 0, 5)
-	testing.expect_value(t, describe(list.commands[2]).colour, maths.Colour{})
+	testing.expect_value(t, describe(command_at(&list, 2)).colour, maths.Colour{})
 }
 
 @(test)
@@ -114,22 +114,22 @@ test_a_shape_with_no_area_has_nothing_to_fill :: proc(t: ^testing.T) {
 	triangle(&list, 0, 0, 10, 0, 0, 10)     // 9
 	rect(&list, 5, 5, 3, 4)                 // 10
 	for i in 0 ..< 8 {
-		testing.expectf(t, !has_area(list.commands[i]), "command %d", i)
-		testing.expectf(t, !is_visible(list.commands[i]), "command %d is filled but has no area", i)
+		testing.expectf(t, !has_area(command_at(&list, i)), "command %d", i)
+		testing.expectf(t, !is_visible(command_at(&list, i)), "command %d is filled but has no area", i)
 	}
 	for i in 8 ..< 11 {
-		testing.expectf(t, has_area(list.commands[i]), "command %d", i)
-		testing.expectf(t, is_visible(list.commands[i]), "command %d", i)
+		testing.expectf(t, has_area(command_at(&list, i)), "command %d", i)
+		testing.expectf(t, is_visible(command_at(&list, i)), "command %d", i)
 	}
 	// With an outline, a shape with no area still shows.
 	set_stroke(&list, maths.grey(0))
 	circle(&list, 5, 5, 0)
-	testing.expect(t, is_visible(list.commands[len(list.commands) - 1]))
+	testing.expect(t, is_visible(command_at(&list, len(list.commands) - 1)))
 	// Lines and points never have an area; they are drawn by their stroke.
 	line(&list, 0, 0, 1, 1)
 	point(&list, 0, 0)
-	testing.expect(t, !has_area(list.commands[len(list.commands) - 1]))
-	testing.expect(t, !has_area(list.commands[len(list.commands) - 2]))
+	testing.expect(t, !has_area(command_at(&list, len(list.commands) - 1)))
+	testing.expect(t, !has_area(command_at(&list, len(list.commands) - 2)))
 }
 
 @(test)
@@ -154,7 +154,7 @@ test_visibility_rules :: proc(t: ^testing.T) {
 	circle(&list, 0, 0, 5)                  // 8: fully transparent: invisible
 	want := [?]bool{true, false, true, false, true, false, false, false, false}
 	for w, i in want {
-		testing.expectf(t, is_visible(list.commands[i]) == w, "command %d", i)
+		testing.expectf(t, is_visible(command_at(&list, i)) == w, "command %d", i)
 	}
 }
 
@@ -166,31 +166,31 @@ test_hashes_repeat_and_react_to_every_part_of_a_command :: proc(t: ^testing.T) {
 	defer destroy(&list)
 	circle(&list, 1, 2, 3)
 	circle(&list, 1, 2, 3)
-	base := command_hash(list.commands[0])
-	testing.expect_value(t, command_hash(list.commands[1]), base)
+	base := command_hash(command_at(&list, 0))
+	testing.expect_value(t, command_hash(command_at(&list, 1)), base)
 
-	changed := list.commands[0]
+	changed := command_at(&list, 0)
 	changed.args[0] = 1.5
 	testing.expect(t, command_hash(changed) != base, "args")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.kind = .Ellipse
 	testing.expect(t, command_hash(changed) != base, "kind")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.origin = .Corner
 	testing.expect(t, command_hash(changed) != base, "origin")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.transform.e = 1
 	testing.expect(t, command_hash(changed) != base, "transform")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.style.fill.r = 1
 	testing.expect(t, command_hash(changed) != base, "fill")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.style.stroke_on = true
 	testing.expect(t, command_hash(changed) != base, "stroke switch")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.style.thickness = 2
 	testing.expect(t, command_hash(changed) != base, "thickness")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.style.alpha = 10
 	testing.expect(t, command_hash(changed) != base, "alpha")
 }
@@ -202,7 +202,7 @@ test_the_source_span_does_not_change_the_hash :: proc(t: ^testing.T) {
 	circle(&list, 1, 2, 3)
 	list.span = Span{1, 9, 9, 9}
 	circle(&list, 1, 2, 3)
-	testing.expect_value(t, command_hash(list.commands[0]), command_hash(list.commands[1]))
+	testing.expect_value(t, command_hash(command_at(&list, 0)), command_hash(command_at(&list, 1)))
 }
 
 @(test)
@@ -225,41 +225,41 @@ test_every_number_of_a_command_reaches_its_hash :: proc(t: ^testing.T) {
 	list := fresh()
 	defer destroy(&list)
 	quad(&list, 1, 2, 3, 4, 5, 6, 7, 8)
-	base := command_hash(list.commands[0])
+	base := command_hash(command_at(&list, 0))
 	for i in 0 ..< 8 {
-		changed := list.commands[0]
+		changed := command_at(&list, 0)
 		changed.args[i] += 0.5
 		testing.expectf(t, command_hash(changed) != base, "args[%d]", i)
 	}
 	tr := [6]f32{1, 0, 0, 1, 0, 0}
 	for i in 0 ..< 6 {
-		changed := list.commands[0]
+		changed := command_at(&list, 0)
 		moved := tr
 		moved[i] += 0.5
 		changed.transform = transmute(Transform)moved
 		testing.expectf(t, command_hash(changed) != base, "transform[%d]", i)
 	}
 	for i in 0 ..< 4 {
-		changed := list.commands[0]
+		changed := command_at(&list, 0)
 		changed.style.stroke[i] += 1
 		testing.expectf(t, command_hash(changed) != base, "stroke[%d]", i)
-		changed = list.commands[0]
+		changed = command_at(&list, 0)
 		changed.style.fill[i] += 1
 		testing.expectf(t, command_hash(changed) != base, "fill[%d]", i)
 	}
-	changed := list.commands[0]
+	changed := command_at(&list, 0)
 	changed.style.cap = .Butt
 	testing.expect(t, command_hash(changed) != base, "cap")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.style.join = .Bevel
 	testing.expect(t, command_hash(changed) != base, "join")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.style.fill_paint.hash = 9
 	testing.expect(t, command_hash(changed) != base, "fill gradient")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.style.stroke_paint.hash = 9
 	testing.expect(t, command_hash(changed) != base, "stroke gradient")
-	changed = list.commands[0]
+	changed = command_at(&list, 0)
 	changed.content = 9
 	testing.expect(t, command_hash(changed) != base, "content")
 }
@@ -271,7 +271,7 @@ test_a_command_hash_is_its_shape_and_its_look :: proc(t: ^testing.T) {
 	set_fill(&list, maths.rgb(10, 20, 30))
 	move(&list, 5, 6)
 	circle(&list, 1, 2, 3)
-	c := list.commands[0]
+	c := command_at(&list, 0)
 	testing.expect_value(t, command_hash(c), hash_u64(shape_hash(c), look_hash(c.style, c.transform)))
 	// the look does not reach the shape part, nor the shape the look part
 	other := c
@@ -281,69 +281,6 @@ test_a_command_hash_is_its_shape_and_its_look :: proc(t: ^testing.T) {
 	other = c
 	other.args[0] = 9
 	testing.expect_value(t, look_hash(other.style, other.transform), look_hash(c.style, c.transform))
-}
-
-@(test)
-test_the_look_cache_reuses_an_equal_look_and_rehashes_a_different_one :: proc(t: ^testing.T) {
-	cache: Look_Cache
-	s, tr := DEFAULT_STYLE, IDENTITY
-	testing.expect_value(t, look_cache_hash(&cache, s, tr), look_hash(s, tr))
-	testing.expect_value(t, look_cache_hash(&cache, s, tr), look_hash(s, tr))
-
-	s2 := s
-	s2.fill.g = 7
-	testing.expect_value(t, look_cache_hash(&cache, s2, tr), look_hash(s2, tr))
-	tr2 := tr
-	tr2.f = 3
-	testing.expect_value(t, look_cache_hash(&cache, s2, tr2), look_hash(s2, tr2))
-	// and back
-	testing.expect_value(t, look_cache_hash(&cache, s, tr), look_hash(s, tr))
-}
-
-@(test)
-test_the_look_cache_tells_zero_from_negative_zero :: proc(t: ^testing.T) {
-	cache: Look_Cache
-	s, tr := DEFAULT_STYLE, IDENTITY
-	_ = look_cache_hash(&cache, s, tr)
-	tr2 := tr
-	tr2.e = math.copy_sign(f32(0), -1)
-	testing.expect_value(t, look_cache_hash(&cache, s, tr2), look_hash(s, tr2))
-	testing.expect(t, look_hash(s, tr2) != look_hash(s, tr))
-	s2 := s
-	s2.thickness = math.copy_sign(f32(0), -1)
-	s.thickness = 0
-	_ = look_cache_hash(&cache, s, tr)
-	testing.expect_value(t, look_cache_hash(&cache, s2, tr), look_hash(s2, tr))
-}
-
-@(test)
-test_same_look_bits_reads_every_field_the_hash_reads :: proc(t: ^testing.T) {
-	s, tr := DEFAULT_STYLE, IDENTITY
-	testing.expect(t, same_look_bits(s, tr, s, tr))
-	changes := [?]proc(s: ^Style){
-		proc(s: ^Style) {s.fill.a = 1},
-		proc(s: ^Style) {s.stroke.b = 1},
-		proc(s: ^Style) {s.thickness = 3},
-		proc(s: ^Style) {s.alpha = 3},
-		proc(s: ^Style) {s.fill_on = !s.fill_on},
-		proc(s: ^Style) {s.stroke_on = !s.stroke_on},
-		proc(s: ^Style) {s.cap = .Square},
-		proc(s: ^Style) {s.join = .Round},
-		proc(s: ^Style) {s.fill_paint.hash = 1},
-		proc(s: ^Style) {s.stroke_paint.hash = 1},
-	}
-	for change, i in changes {
-		s2 := s
-		change(&s2)
-		testing.expectf(t, !same_look_bits(s, tr, s2, tr), "change %d", i)
-	}
-	tr2 := tr
-	tr2.c = 0.5
-	testing.expect(t, !same_look_bits(s, tr, s, tr2))
-	// a gradient's number is not hashed, so it does not count
-	s2 := s
-	s2.fill_paint.id = 4
-	testing.expect(t, same_look_bits(s, tr, s2, tr))
 }
 
 @(test)
@@ -363,8 +300,8 @@ test_a_batch_hash_folds_the_command_hashes_in_order :: proc(t: ^testing.T) {
 	defer batcher_destroy(&b)
 	testing.expect_value(t, len(b.batches), 1)
 	want := FNV_OFFSET
-	for c in list.commands {
-		want = hash_u64(want, command_hash(c))
+	for i in 0 ..< len(list.commands) {
+		want = hash_u64(want, command_hash(command_at(&list, i)))
 	}
 	testing.expect_value(t, b.batches[0].hash, want)
 }
@@ -514,7 +451,7 @@ instance_of :: proc(setup: proc(list: ^Command_List)) -> Instance {
 	list := fresh()
 	defer destroy(&list)
 	setup(&list)
-	return to_instance(list.commands[0])
+	return to_instance(command_at(&list, 0))
 }
 
 @(test)

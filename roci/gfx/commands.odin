@@ -65,6 +65,28 @@ Command :: struct {
 	content:   u64,       // a hash of what the command holds beyond its numbers (a text's characters)
 }
 
+// How the list keeps a command: everything but its style and transform, which
+// live once in `Command_List.looks` for every command recorded under the same
+// ones. 64 bytes, one cache line, against 184 for a whole `Command`: a frame of a
+// hundred thousand shapes is written and read back again, and on an older
+// computer that memory traffic was a third of the frame. `command_at` gives the
+// whole command back.
+Recorded :: struct {
+	kind:    Kind,
+	origin:  Origin,
+	look:    u32, // index into `Command_List.looks`
+	args:    [8]f32,
+	span:    Span,
+	content: u64,
+}
+#assert(size_of(Recorded) == 64)
+
+// A style and the transform it was used with.
+Look :: struct {
+	style:     Style,
+	transform: Transform,
+}
+
 // What `push` saves and `pop` brings back.
 Scope :: enum u8 {
 	Style,           // `with [ ]`: the style only
@@ -78,10 +100,14 @@ Saved :: struct {
 }
 
 Command_List :: struct {
-	commands:   [dynamic]Command,
+	commands:   [dynamic]Recorded, // read them whole with `command_at`
+	looks:      [dynamic]Look,     // the looks the commands were recorded under, each once in a row
 	background: maths.Colour,
+	// Change these two only through the procedures below, which set `look_changed`,
+	// so the next command starts a new look.
 	style:      Style,
 	transform:  Transform,
+	look_changed: bool,
 	saved:      [dynamic]Saved,
 	span:       Span, // stamped on each new command
 	gradients:  [dynamic]Gradient, // the gradients this frame's commands use; ids index it from 1
@@ -93,6 +119,7 @@ Command_List :: struct {
 // transform, the background and the span back to the defaults.
 begin_frame :: proc(list: ^Command_List) {
 	clear(&list.commands)
+	clear(&list.looks)
 	clear(&list.saved)
 	clear(&list.gradients)
 	clear(&list.text)
@@ -113,6 +140,7 @@ end_frame :: proc(list: ^Command_List) -> (unbalanced: int) {
 
 destroy :: proc(list: ^Command_List) {
 	delete(list.commands)
+	delete(list.looks)
 	delete(list.saved)
 	delete(list.gradients)
 	delete(list.text)
@@ -140,16 +168,38 @@ record :: proc(list: ^Command_List, kind: Kind, origin: Origin, args: [8]f32, co
 	if !finite(..args[:]) {
 		return false
 	}
-	append(&list.commands, Command{
+	// A new look only when the style or transform may have changed since the last
+	// command: a flag, not a comparison, because this runs for every shape.
+	if list.look_changed || len(list.looks) == 0 {
+		append(&list.looks, Look{list.style, list.transform})
+		list.look_changed = false
+	}
+	n := len(list.looks)
+	append(&list.commands, Recorded{
 		kind = kind,
 		origin = origin,
+		look = u32(n - 1),
 		args = args,
-		transform = list.transform,
-		style = list.style,
 		span = list.span,
 		content = content,
 	})
 	return true
+}
+
+// The `i`th command of the frame, whole, with the style and transform it was
+// recorded under.
+command_at :: proc "contextless" (list: ^Command_List, i: int) -> Command {
+	r := list.commands[i]
+	look := list.looks[r.look]
+	return Command{
+		kind      = r.kind,
+		origin    = r.origin,
+		args      = r.args,
+		transform = look.transform,
+		style     = look.style,
+		span      = r.span,
+		content   = r.content,
+	}
 }
 
 // Every recording procedure gives false when it dropped the command because a
@@ -254,12 +304,14 @@ register_gradient :: proc(list: ^Command_List, g: Gradient) -> Gradient_Ref {
 }
 
 set_fill :: proc(list: ^Command_List, colour: maths.Colour) {
+	list.look_changed = true
 	list.style.fill, list.style.fill_on = colour, true
 	list.style.fill_paint = {}
 }
 
 // Fills with a gradient from now on.
 set_fill_gradient :: proc(list: ^Command_List, g: Gradient) {
+	list.look_changed = true
 	if g.count == 0 {
 		return // no colours: nothing to shade with
 	}
@@ -268,6 +320,7 @@ set_fill_gradient :: proc(list: ^Command_List, g: Gradient) {
 }
 
 set_stroke_gradient :: proc(list: ^Command_List, g: Gradient) {
+	list.look_changed = true
 	if g.count == 0 {
 		return
 	}
@@ -276,57 +329,68 @@ set_stroke_gradient :: proc(list: ^Command_List, g: Gradient) {
 }
 
 no_fill :: proc(list: ^Command_List) {
+	list.look_changed = true
 	list.style.fill_on = false
 }
 
 set_stroke :: proc(list: ^Command_List, colour: maths.Colour) {
+	list.look_changed = true
 	list.style.stroke, list.style.stroke_on = colour, true
 	list.style.stroke_paint = {}
 }
 
 no_stroke :: proc(list: ^Command_List) {
+	list.look_changed = true
 	list.style.stroke_on = false
 }
 
 // Negative and not-a-number thicknesses count as 0 (a stroke of no width).
 set_thickness :: proc(list: ^Command_List, pixels: f32) {
+	list.look_changed = true
 	list.style.thickness = max(pixels, 0) if finite(pixels) else 0
 }
 
 // 0 is invisible, 255 is fully opaque; out of range is clamped.
 set_alpha :: proc(list: ^Command_List, amount: f32) {
+	list.look_changed = true
 	list.style.alpha = clamp(amount, 0, 255) if finite(amount) else 255
 }
 
 // How open lines, lines and points end, and how outlines turn corners (section
 // 5.9 `caps` and `joins`).
 set_caps :: proc(list: ^Command_List, cap: geom.Cap) {
+	list.look_changed = true
 	list.style.cap = cap
 }
 
 set_joins :: proc(list: ^Command_List, join: geom.Join) {
+	list.look_changed = true
 	list.style.join = join
 }
 
 // ---- transforms ----
 
 move :: proc(list: ^Command_List, x, y: f32) {
+	list.look_changed = true
 	if finite(x, y) {
 		list.transform = transform_move(list.transform, x, y)
 	}
 }
 
 turn :: proc(list: ^Command_List, degrees: f64) {
+	list.look_changed = true
 	list.transform = transform_turn(list.transform, degrees)
 }
 
 grow :: proc(list: ^Command_List, x, y: f32) {
+	list.look_changed = true
 	if finite(x, y) {
 		list.transform = transform_grow(list.transform, x, y)
 	}
 }
 
 shear :: proc(list: ^Command_List, x_degrees, y_degrees: f64) {
+	list.look_changed = true
 	if !math.is_nan(x_degrees) && !math.is_nan(y_degrees) {
 		list.transform = transform_shear(list.transform, x_degrees, y_degrees)
 	}
@@ -341,6 +405,7 @@ push :: proc(list: ^Command_List, scope: Scope) {
 // Brings back what the matching `push` saved. Gives false when there was
 // nothing to pop (a `pop` without a `push`), and then changes nothing.
 pop :: proc(list: ^Command_List) -> bool {
+	list.look_changed = true
 	if len(list.saved) == 0 {
 		return false
 	}

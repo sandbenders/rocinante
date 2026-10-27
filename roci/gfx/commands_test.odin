@@ -51,10 +51,10 @@ test_commands_keep_the_style_and_transform_that_were_current :: proc(t: ^testing
 	set_fill(&list, maths.rgb(0, 0, 255))
 	turn(&list, 90)
 	circle(&list, 1, 1, 5)
-	testing.expect_value(t, list.commands[0].style.fill, maths.Colour{255, 0, 0, 255})
-	testing.expect_value(t, list.commands[0].transform, Transform{1, 0, 0, 1, 10, 20})
-	testing.expect_value(t, list.commands[1].style.fill, maths.Colour{0, 0, 255, 255})
-	testing.expect(t, list.commands[1].transform != list.commands[0].transform)
+	testing.expect_value(t, command_at(&list, 0).style.fill, maths.Colour{255, 0, 0, 255})
+	testing.expect_value(t, command_at(&list, 0).transform, Transform{1, 0, 0, 1, 10, 20})
+	testing.expect_value(t, command_at(&list, 1).style.fill, maths.Colour{0, 0, 255, 255})
+	testing.expect(t, command_at(&list, 1).transform != command_at(&list, 0).transform)
 }
 
 @(test)
@@ -86,8 +86,8 @@ test_every_shape_verb_records_its_arguments_in_order :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, len(list.commands), len(want))
 	for w, i in want {
-		testing.expect_value(t, list.commands[i].kind, w.kind)
-		testing.expect_value(t, list.commands[i].args, w.args)
+		testing.expect_value(t, command_at(&list, i).kind, w.kind)
+		testing.expect_value(t, command_at(&list, i).args, w.args)
 	}
 }
 
@@ -98,10 +98,10 @@ test_negative_sizes_are_drawn_as_positive :: proc(t: ^testing.T) {
 	circle(&list, 0, 0, -5)
 	rect(&list, 0, 0, -3, -4)
 	square(&list, 0, 0, -2)
-	testing.expect_value(t, list.commands[0].args[2], f32(5))
-	testing.expect_value(t, list.commands[1].args[2], f32(3))
-	testing.expect_value(t, list.commands[1].args[3], f32(4))
-	testing.expect_value(t, list.commands[2].args[2], f32(2))
+	testing.expect_value(t, command_at(&list, 0).args[2], f32(5))
+	testing.expect_value(t, command_at(&list, 1).args[2], f32(3))
+	testing.expect_value(t, command_at(&list, 1).args[3], f32(4))
+	testing.expect_value(t, command_at(&list, 2).args[2], f32(2))
 }
 
 @(test)
@@ -129,8 +129,8 @@ test_the_span_is_stamped_on_new_commands :: proc(t: ^testing.T) {
 	circle(&list, 0, 0, 1)
 	list.span = Span{1, 7, 3, 12}
 	circle(&list, 0, 0, 1)
-	testing.expect_value(t, list.commands[0].span, Span{})
-	testing.expect_value(t, list.commands[1].span, Span{1, 7, 3, 12})
+	testing.expect_value(t, command_at(&list, 0).span, Span{})
+	testing.expect_value(t, command_at(&list, 1).span, Span{1, 7, 3, 12})
 }
 
 @(test)
@@ -266,7 +266,7 @@ test_background_wipes_what_came_before_but_not_what_comes_after :: proc(t: ^test
 	background(&list, maths.rgb(10, 20, 30))
 	circle(&list, 0, 0, 2)
 	testing.expect_value(t, len(list.commands), 1)
-	testing.expect_value(t, list.commands[0].args[2], f32(2))
+	testing.expect_value(t, command_at(&list, 0).args[2], f32(2))
 	testing.expect_value(t, list.background, maths.Colour{10, 20, 30, 255})
 }
 
@@ -318,4 +318,124 @@ test_a_shape_with_a_non_finite_number_anywhere_is_dropped :: proc(t: ^testing.T)
 		testing.expect(t, !quad(&list, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]))
 	}
 	testing.expect_value(t, len(list.commands), 0)
+}
+
+// ---- looks ----
+
+@(test)
+test_commands_under_one_look_share_it_and_a_change_makes_a_new_one :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	circle(&list, 1, 1, 1)
+	circle(&list, 2, 2, 2)
+	set_fill(&list, maths.rgb(1, 2, 3))
+	circle(&list, 3, 3, 3)
+	move(&list, 5, 0)
+	circle(&list, 4, 4, 4)
+	set_fill(&list, DEFAULT_STYLE.fill) // back to the first fill, but moved
+	circle(&list, 5, 5, 5)
+	testing.expect_value(t, len(list.looks), 4)
+	looks := [?]u32{0, 0, 1, 2, 3}
+	for want, i in looks {
+		testing.expect_value(t, list.commands[i].look, want)
+	}
+	testing.expect_value(t, command_at(&list, 2).style.fill, maths.rgb(1, 2, 3))
+	testing.expect_value(t, command_at(&list, 3).transform.e, f32(5))
+}
+
+@(test)
+test_a_popped_style_is_the_style_later_commands_get :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	set_fill(&list, maths.rgb(9, 9, 9))
+	push(&list, .Style)
+	set_fill(&list, maths.rgb(1, 1, 1))
+	circle(&list, 1, 1, 1)
+	pop(&list)
+	circle(&list, 2, 2, 2)
+	testing.expect_value(t, command_at(&list, 0).style.fill, maths.rgb(1, 1, 1))
+	testing.expect_value(t, command_at(&list, 1).style.fill, maths.rgb(9, 9, 9))
+}
+
+@(test)
+test_command_at_gives_back_everything_that_was_recorded :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	set_stroke(&list, maths.rgb(4, 5, 6))
+	set_thickness(&list, 3)
+	set_caps(&list, .Square)
+	turn(&list, 30)
+	list.span = Span{2, 7, 3, 9}
+	arc(&list, 1, 2, 3, 4, 5, 6, .Corner)
+	debug_text(&list, "hi", 10, 20, 2)
+	c := command_at(&list, 0)
+	testing.expect_value(t, c.kind, Kind.Arc)
+	testing.expect_value(t, c.origin, Origin.Corner)
+	testing.expect_value(t, c.args, [8]f32{1, 2, 3, 4, 5, 6, 0, 0})
+	testing.expect_value(t, c.span, Span{2, 7, 3, 9})
+	testing.expect_value(t, c.style, list.style)
+	testing.expect_value(t, c.transform, list.transform)
+	text := command_at(&list, 1)
+	testing.expect_value(t, text.kind, Kind.Text)
+	testing.expect(t, text.content != 0)
+	testing.expect_value(t, text.content, list.commands[1].content)
+}
+
+@(test)
+test_a_new_frame_forgets_the_looks :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	circle(&list, 1, 1, 1)
+	begin_frame(&list)
+	testing.expect_value(t, len(list.looks), 0)
+	circle(&list, 1, 1, 1)
+	testing.expect_value(t, len(list.looks), 1)
+	testing.expect_value(t, list.commands[0].look, u32(0))
+}
+
+@(test)
+test_a_dropped_command_adds_no_look :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	testing.expect(t, !circle(&list, math.nan_f32(), 1, 1))
+	testing.expect_value(t, len(list.looks), 0)
+}
+
+@(test)
+test_a_recorded_command_is_one_cache_line :: proc(t: ^testing.T) {
+	testing.expect_value(t, size_of(Recorded), 64)
+}
+
+@(test)
+test_every_style_and_transform_change_reaches_the_next_command :: proc(t: ^testing.T) {
+	g, _ := gradient_make({maths.rgb(255, 0, 0), maths.rgb(0, 0, 255)})
+	changes := [?]proc(list: ^Command_List, g: Gradient){
+		proc(list: ^Command_List, g: Gradient) {set_fill(list, maths.rgb(1, 2, 3))},
+		proc(list: ^Command_List, g: Gradient) {set_fill_gradient(list, g)},
+		proc(list: ^Command_List, g: Gradient) {set_stroke_gradient(list, g)},
+		proc(list: ^Command_List, g: Gradient) {no_fill(list)},
+		proc(list: ^Command_List, g: Gradient) {set_stroke(list, maths.rgb(4, 5, 6))},
+		proc(list: ^Command_List, g: Gradient) {set_stroke(list, maths.rgb(4, 5, 6)); no_stroke(list)},
+		proc(list: ^Command_List, g: Gradient) {set_thickness(list, 7)},
+		proc(list: ^Command_List, g: Gradient) {set_alpha(list, 8)},
+		proc(list: ^Command_List, g: Gradient) {set_caps(list, .Butt)},
+		proc(list: ^Command_List, g: Gradient) {set_joins(list, .Bevel)},
+		proc(list: ^Command_List, g: Gradient) {move(list, 9, 0)},
+		proc(list: ^Command_List, g: Gradient) {turn(list, 10)},
+		proc(list: ^Command_List, g: Gradient) {grow(list, 2, 3)},
+		proc(list: ^Command_List, g: Gradient) {shear(list, 11, 0)},
+		proc(list: ^Command_List, g: Gradient) {push(list, .Style_And_Transform); set_alpha(list, 1); move(list, 1, 1); circle(list, 0, 0, 1); pop(list)},
+	}
+	for change, i in changes {
+		list := fresh()
+		set_fill(&list, maths.rgb(200, 200, 200))
+		move(&list, 3, 3)
+		set_fill(&list, maths.rgb(100, 100, 100))
+		circle(&list, 1, 1, 1)
+		change(&list, g)
+		circle(&list, 2, 2, 2)
+		last := command_at(&list, len(list.commands) - 1)
+		testing.expectf(t, last.style == list.style && last.transform == list.transform, "change %d: the last command did not get the current look", i)
+		destroy(&list)
+	}
 }

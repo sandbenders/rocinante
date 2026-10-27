@@ -21,9 +21,14 @@ finish :: proc() {
 	shutdown()
 }
 
-// The commands recorded in a window.
+// The commands recorded in a window, whole.
 commands_of :: proc(w: Window) -> []gfx.Command {
-	return win_for(w).list.commands[:]
+	list := &win_for(w).list
+	out := make([]gfx.Command, len(list.commands), context.temp_allocator)
+	for i in 0 ..< len(out) {
+		out[i] = gfx.command_at(list, i)
+	}
+	return out
 }
 
 // ---- the default window and `window` ----
@@ -38,8 +43,8 @@ test_a_verb_makes_the_default_window :: proc(t: ^testing.T) {
 	testing.expect_value(t, w.width, DEFAULT_WIDTH)
 	testing.expect_value(t, w.height, DEFAULT_HEIGHT)
 	testing.expect_value(t, len(w.list.commands), 1)
-	testing.expect_value(t, w.list.commands[0].kind, gfx.Kind.Circle)
-	a := w.list.commands[0].args
+	testing.expect_value(t, gfx.command_at(&w.list, 0).kind, gfx.Kind.Circle)
+	a := gfx.command_at(&w.list, 0).args
 	testing.expect_value(t, [3]f32{a[0], a[1], a[2]}, [3]f32{100, 100, 50})
 }
 
@@ -260,8 +265,8 @@ test_arc_and_text_and_background :: proc(t: ^testing.T) {
 	list := &the.windows[0].list
 	testing.expect_value(t, len(list.commands), 2) // the circle was wiped
 	testing.expect_value(t, list.background, Colour{10, 20, 30, 255})
-	testing.expect_value(t, list.commands[0].kind, gfx.Kind.Arc)
-	testing.expect_value(t, list.commands[1].kind, gfx.Kind.Text)
+	testing.expect_value(t, gfx.command_at(list, 0).kind, gfx.Kind.Arc)
+	testing.expect_value(t, gfx.command_at(list, 1).kind, gfx.Kind.Text)
 	background_grey(100)
 	testing.expect_value(t, len(list.commands), 0)
 	testing.expect_value(t, list.background, maths.grey(100))

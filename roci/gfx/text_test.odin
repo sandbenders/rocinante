@@ -11,7 +11,7 @@ test_debug_text_records_where_how_big_and_what :: proc(t: ^testing.T) {
 	defer destroy(&list)
 	testing.expect(t, debug_text(&list, "hello", 10, 20, 2))
 	testing.expect_value(t, len(list.commands), 1)
-	c := list.commands[0]
+	c := command_at(&list, 0)
 	testing.expect_value(t, c.kind, Kind.Text)
 	// x, y, scale, width, height, offset, length
 	testing.expect_value(t, c.args, [8]f32{10, 20, 2, 5 * 8 * 2, 8 * 2, 0, 5, 0})
@@ -23,7 +23,7 @@ test_the_default_size_is_two :: proc(t: ^testing.T) {
 	list := fresh()
 	defer destroy(&list)
 	debug_text(&list, "x", 0, 0)
-	testing.expect_value(t, list.commands[0].args[2], f32(2))
+	testing.expect_value(t, command_at(&list, 0).args[2], f32(2))
 }
 
 @(test)
@@ -33,8 +33,8 @@ test_texts_are_stored_end_to_end_and_found_by_offset :: proc(t: ^testing.T) {
 	debug_text(&list, "abc", 0, 0)
 	debug_text(&list, "de", 0, 20)
 	testing.expect_value(t, string(list.text[:]), "abcde")
-	testing.expect_value(t, list.commands[1].args[5], f32(3))
-	testing.expect_value(t, list.commands[1].args[6], f32(2))
+	testing.expect_value(t, command_at(&list, 1).args[5], f32(3))
+	testing.expect_value(t, command_at(&list, 1).args[6], f32(2))
 }
 
 @(test)
@@ -68,7 +68,7 @@ test_a_frame_forgets_its_text :: proc(t: ^testing.T) {
 	begin_frame(&list)
 	testing.expect_value(t, len(list.text), 0)
 	debug_text(&list, "z", 0, 0)
-	testing.expect_value(t, list.commands[0].args[5], f32(0))
+	testing.expect_value(t, command_at(&list, 0).args[5], f32(0))
 }
 
 @(test)
@@ -80,10 +80,10 @@ test_the_hash_follows_the_characters_the_place_and_the_size :: proc(t: ^testing.
 	debug_text(&list, "hellp", 0, 0, 2) // one character differs
 	debug_text(&list, "hello", 1, 0, 2)
 	debug_text(&list, "hello", 0, 0, 3)
-	base := command_hash(list.commands[0])
-	testing.expect_value(t, command_hash(list.commands[1]), base)
+	base := command_hash(command_at(&list, 0))
+	testing.expect_value(t, command_hash(command_at(&list, 1)), base)
 	for i in 2 ..< 5 {
-		testing.expect(t, command_hash(list.commands[i]) != base)
+		testing.expect(t, command_hash(command_at(&list, i)) != base)
 	}
 }
 
@@ -101,7 +101,7 @@ test_text_shows_in_the_fill_colour_only :: proc(t: ^testing.T) {
 	debug_text(&list, "hi", 0, 0)                // 2: fully transparent
 	want := [?]bool{true, false, false}
 	for w, i in want {
-		testing.expectf(t, is_visible(list.commands[i]) == w, "command %d", i)
+		testing.expectf(t, is_visible(command_at(&list, i)) == w, "command %d", i)
 	}
 }
 
@@ -111,7 +111,7 @@ test_text_describes_its_box_and_name :: proc(t: ^testing.T) {
 	defer destroy(&list)
 	set_fill(&list, maths.rgb(1, 2, 3))
 	debug_text(&list, "ab\ncd", 5, 7, 1)
-	d := describe(list.commands[0])
+	d := describe(command_at(&list, 0))
 	testing.expect_value(t, d.kind, Kind.Text)
 	testing.expect_value(t, [4]f32{d.x, d.y, d.width, d.height}, [4]f32{5, 7, 16, 18})
 	testing.expect_value(t, d.colour, maths.Colour{1, 2, 3, 255})
