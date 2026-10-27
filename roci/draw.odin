@@ -303,6 +303,14 @@ mix_colours :: proc(a, b: Colour, amount: f64, space := maths.Mix_Space.Oklab) -
 	return maths.mix(a, b, amount, space)
 }
 
+// A number between two numbers (`mix 1 2 0.5`): `amount` 0 gives the first and 1 the second.
+mix_numbers :: proc(a, b, amount: f64) -> f64 {
+	return a * (1 - amount) + b * amount
+}
+
+// Blends two colours (in Oklab unless asked) or two numbers.
+mix :: proc{mix_colours, mix_numbers}
+
 // A gradient from at least one and at most 16 colours (section 5.9). A bad one is
 // an empty gradient, which fills with nothing.
 gradient :: proc(colours: []Colour, kind := gfx.Gradient_Kind.Linear, angle := f64(0), space := maths.Mix_Space.Oklab, stops: []f32 = nil, centre := [2]f32{50, 50}) -> Gradient {

@@ -391,6 +391,10 @@ test_colour_helpers :: proc(t: ^testing.T) {
 	testing.expect(t, oklch(0.7, 0.1, 30).a == 255)
 	m := mix_colours(grey(0), grey(255), 0.5, .Rgb)
 	testing.expect_value(t, m, grey(127.5))
+	testing.expect_value(t, mix(grey(0), grey(255), 0.5, .Rgb), grey(127.5)) // the group picks colours
+	testing.expect_value(t, mix(10.0, 20.0, 0.25), 12.5)                       // and numbers
+	testing.expect_value(t, mix_numbers(0, 100, 0), 0.0)
+	testing.expect_value(t, mix_numbers(0, 100, 1), 100.0)
 }
 
 // ---- maths ----

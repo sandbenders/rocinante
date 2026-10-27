@@ -41,7 +41,7 @@ API_NAMES := [?]Api_Entry{
 	{"hsb", "hsb"},
 	{"oklch", "oklch"},
 	{"gradient", "gradient"},
-	{"mix", "mix_colours"},
+	{"mix", "mix"},
 	{"move", "move"},
 	{"turn", "turn"},
 	{"grow", "grow"},

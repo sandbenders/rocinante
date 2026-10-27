@@ -136,6 +136,7 @@ check_packages :: proc() -> bool {
 	}
 	// The spikes that build on any machine are type-checked; the Android and iOS
 	// ones need their SDKs and are built by hand (CLAUDE.md section 8).
+	ok = step("check header tool", {"odin", "check", "tools/header", "-vet", "-strict-style"}) && ok
 	ok = step("check circle example", {"odin", "check", "examples/circle", "-vet", "-strict-style"}) && ok
 	ok = step("check two windows example", {"odin", "check", "examples/two_windows", "-vet", "-strict-style"}) && ok
 	ok = step("check shapes example", {"odin", "check", "examples/shapes", "-vet", "-strict-style"}) && ok
