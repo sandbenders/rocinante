@@ -6,6 +6,7 @@
 // back. Gradients and image fills join the fill in later phases.
 package gfx
 
+import "../geom"
 import "../maths"
 
 Style :: struct {
@@ -15,10 +16,12 @@ Style :: struct {
 	stroke_on: bool,
 	thickness: f32, // in logical pixels, never negative
 	alpha:     f32, // 0-255, multiplies the alpha of fill and stroke
+	cap:       geom.Cap,  // how an open line, a line or a point ends
+	join:      geom.Join, // how an outline turns a corner
 }
 
 // What every frame starts with (section 5.15): white fill, no outline,
-// thickness 1, fully opaque.
+// thickness 1, fully opaque, round caps and mitred corners (Processing's defaults).
 DEFAULT_STYLE :: Style{
 	fill      = {255, 255, 255, 255},
 	fill_on   = true,
@@ -26,6 +29,8 @@ DEFAULT_STYLE :: Style{
 	stroke_on = false,
 	thickness = 1,
 	alpha     = 255,
+	cap       = .Round,
+	join      = .Miter,
 }
 
 // A window's background when nothing sets one: light grey, 230 (section 5.15).

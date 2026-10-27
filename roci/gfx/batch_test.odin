@@ -272,13 +272,14 @@ test_paths_split_the_shapes_into_batches_in_painting_order :: proc(t: ^testing.T
 	testing.expect_value(t, len(b.batches), 3)
 	testing.expect_value(t, b.batches[0], Batch{.Shapes, 0, 2, b.batches[0].hash})
 	testing.expect_value(t, b.batches[1].pipeline, Pipeline.Paths)
-	testing.expect_value(t, b.batches[1].count, 2)
+	testing.expect_value(t, b.batches[1].first, 0)
+	testing.expect_value(t, b.batches[1].count, len(b.mesh.indices)) // the quad's and the arc's triangles
+	testing.expect(t, b.batches[1].count > 6, "the arc adds triangles to the quad's two")
 	testing.expect_value(t, b.batches[2].pipeline, Pipeline.Shapes)
 	testing.expect_value(t, b.batches[2].first, 2)
 	testing.expect_value(t, b.stats.instances, 3)
 	testing.expect_value(t, b.stats.path_commands, 2)
-	testing.expect_value(t, b.path_commands[0], 2)
-	testing.expect_value(t, b.path_commands[1], 3)
+	testing.expect_value(t, b.stats.mesh_triangles, len(b.mesh.indices) / 3)
 }
 
 @(test)
@@ -490,10 +491,11 @@ test_quads_and_arcs_give_an_empty_instance :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_which_pipeline_draws_which_kind :: proc(t: ^testing.T) {
+test_which_pipeline_draws_which_kind_by_default :: proc(t: ^testing.T) {
+	// The default style has a fill and no outline, with round caps.
 	for kind in Kind {
 		want := Pipeline.Paths if kind == .Quad || kind == .Arc else Pipeline.Shapes
-		testing.expect_value(t, pipeline_for(kind), want)
+		testing.expect_value(t, pipeline_for(Command{kind = kind, style = DEFAULT_STYLE}), want)
 	}
 }
 

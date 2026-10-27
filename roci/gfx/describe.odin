@@ -102,7 +102,9 @@ is_visible :: proc "contextless" (c: Command) -> bool {
 	}
 	has_outline := c.style.stroke_on && c.style.thickness > 0
 	switch c.kind {
-	case .Line, .Point:
+	case .Point:
+		return has_outline && c.style.cap != .Butt // a butt-capped dot has no length to draw
+	case .Line:
 		return has_outline
 	case .Circle, .Ellipse, .Rect, .Triangle, .Quad, .Arc:
 		return (c.style.fill_on && has_area(c)) || has_outline

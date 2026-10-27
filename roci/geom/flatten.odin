@@ -12,8 +12,8 @@ import "core:math"
 
 Point :: [2]f64
 
-// A sensible default: a quarter of a pixel.
-DEFAULT_TOLERANCE :: 0.25
+// A sensible default: a tenth of a pixel, so even a small round cap looks round.
+DEFAULT_TOLERANCE :: 0.1
 
 // How deep one curve may be split, so a hostile or broken curve cannot loop for
 // ever. 2^16 pieces is far finer than anything a screen shows.

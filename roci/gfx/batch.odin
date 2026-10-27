@@ -7,8 +7,9 @@
 // Circles, ellipses, rectangles, lines, points and triangles are all drawn by
 // one "shapes" pipeline: a quad per shape, with the shape worked out from a
 // signed distance in the fragment shader, so a thousand circles are one draw.
-// Quads and arcs need a mesh, which step "paths" of Phase 1 builds; until then
-// they form `Paths` batches that carry command numbers and no instances.
+// The rest (quads, arcs, and shapes whose corners or ends the distance shader
+// cannot draw as styled, see `needs_mesh`) are cut into triangles on the CPU and
+// drawn from one shared mesh, as `Paths` batches.
 package gfx
 
 Pipeline :: enum u8 {
@@ -46,7 +47,7 @@ Instance :: struct {
 #assert(size_of(Instance) == 104)
 
 // A run of neighbouring commands drawn by one pipeline. For `Shapes`, `first`
-// and `count` index `Batcher.instances`; for `Paths`, `Batcher.path_commands`.
+// and `count` index `Batcher.instances`; for `Paths`, the mesh's indices.
 Batch :: struct {
 	pipeline: Pipeline,
 	first:    int,
@@ -58,24 +59,25 @@ Stats :: struct {
 	commands:        int, // recorded
 	skipped:         int, // recorded but invisible (no fill and no outline, fully transparent)
 	instances:       int,
-	path_commands:   int,
+	path_commands:   int, // commands drawn from the mesh
+	mesh_triangles:  int,
 	batches:         int,
 	draws:           int, // one per batch
-	reallocations:   int, // how many of the three buffers had to grow; 0 once they fit the frame
+	reallocations:   int, // how many of the four buffers had to grow; 0 once they fit the frame
 }
 
 // Keep one Batcher for the life of a window: its buffers are reused every
 // frame, so a steady scene allocates nothing.
 Batcher :: struct {
-	instances:     [dynamic]Instance,
-	path_commands: [dynamic]int, // indexes into the command list
-	batches:       [dynamic]Batch,
-	stats:         Stats,
+	instances: [dynamic]Instance,
+	mesh:      Mesh,
+	batches:   [dynamic]Batch,
+	stats:     Stats,
 }
 
 batcher_destroy :: proc(b: ^Batcher) {
 	delete(b.instances)
-	delete(b.path_commands)
+	mesh_destroy(&b.mesh)
 	delete(b.batches)
 	b^ = {}
 }
@@ -84,49 +86,55 @@ batcher_destroy :: proc(b: ^Batcher) {
 AA_MARGIN :: f32(1)
 
 build :: proc(b: ^Batcher, list: ^Command_List) {
-	instances_cap, paths_cap, batches_cap := cap(b.instances), cap(b.path_commands), cap(b.batches)
+	grown_before := [4]int{cap(b.instances), cap(b.mesh.vertices), cap(b.mesh.indices), cap(b.batches)}
 	clear(&b.instances)
-	clear(&b.path_commands)
+	clear(&b.mesh.vertices)
+	clear(&b.mesh.indices)
 	clear(&b.batches)
 	b.stats = {commands = len(list.commands)}
 
-	for command, index in list.commands {
+	for command in list.commands {
 		if !is_visible(command) {
 			b.stats.skipped += 1
 			continue
 		}
-		pipeline := pipeline_for(command.kind)
-		ch := command_hash(command)
-		open := len(b.batches) > 0 && b.batches[len(b.batches) - 1].pipeline == pipeline
-		if !open {
-			first := len(b.instances) if pipeline == .Shapes else len(b.path_commands)
+		pipeline := pipeline_for(command)
+		// What this command adds to its pipeline's buffer: one instance, or the
+		// indices of its triangles. A command that makes no triangles is skipped.
+		first, added := len(b.instances), 1
+		if pipeline == .Paths {
+			first = len(b.mesh.indices)
+			mesh_add_command(&b.mesh, command)
+			added = len(b.mesh.indices) - first
+			if added == 0 {
+				b.stats.skipped += 1
+				continue
+			}
+			b.stats.path_commands += 1
+		}
+		if len(b.batches) == 0 || b.batches[len(b.batches) - 1].pipeline != pipeline {
 			append(&b.batches, Batch{pipeline = pipeline, first = first, hash = FNV_OFFSET})
 		}
 		batch := &b.batches[len(b.batches) - 1]
-		batch.count += 1
-		batch.hash = hash_u64(batch.hash, ch)
-		switch pipeline {
-		case .Shapes:
+		batch.count += added
+		batch.hash = hash_u64(batch.hash, command_hash(command))
+		if pipeline == .Shapes {
 			append(&b.instances, to_instance(command))
-		case .Paths:
-			append(&b.path_commands, index)
 		}
 	}
 	b.stats.instances = len(b.instances)
-	b.stats.path_commands = len(b.path_commands)
+	b.stats.mesh_triangles = len(b.mesh.indices) / 3
 	b.stats.batches = len(b.batches)
 	b.stats.draws = len(b.batches)
-	b.stats.reallocations = int(cap(b.instances) != instances_cap) + int(cap(b.path_commands) != paths_cap) + int(cap(b.batches) != batches_cap)
+	grown_after := [4]int{cap(b.instances), cap(b.mesh.vertices), cap(b.mesh.indices), cap(b.batches)}
+	for i in 0 ..< 4 {
+		b.stats.reallocations += int(grown_before[i] != grown_after[i])
+	}
 }
 
-pipeline_for :: proc "contextless" (kind: Kind) -> Pipeline {
-	switch kind {
-	case .Circle, .Ellipse, .Rect, .Line, .Point, .Triangle:
-		return .Shapes
-	case .Quad, .Arc:
-		return .Paths
-	}
-	return .Paths
+// Which pipeline draws a command.
+pipeline_for :: proc "contextless" (c: Command) -> Pipeline {
+	return .Paths if needs_mesh(c) else .Shapes
 }
 
 // The instance for a visible command of a kind the shapes pipeline draws.

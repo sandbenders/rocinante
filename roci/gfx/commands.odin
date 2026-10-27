@@ -12,6 +12,7 @@
 // defaults, so one frame never leaks into the next (section 5.9).
 package gfx
 
+import "../geom"
 import "../maths"
 import "core:math"
 
@@ -215,6 +216,16 @@ set_thickness :: proc(list: ^Command_List, pixels: f32) {
 // 0 is invisible, 255 is fully opaque; out of range is clamped.
 set_alpha :: proc(list: ^Command_List, amount: f32) {
 	list.style.alpha = clamp(amount, 0, 255) if finite(amount) else 255
+}
+
+// How open lines, lines and points end, and how outlines turn corners (section
+// 5.9 `caps` and `joins`).
+set_caps :: proc(list: ^Command_List, cap: geom.Cap) {
+	list.style.cap = cap
+}
+
+set_joins :: proc(list: ^Command_List, join: geom.Join) {
+	list.style.join = join
 }
 
 // ---- transforms ----
