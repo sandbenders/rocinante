@@ -61,6 +61,7 @@ Sketch :: struct {
 	next_id:      int,
 	current:      ^Win,    // the window verbs draw into
 	default:      ^Win,    // the window made when a verb needed one and there was none
+	newest:       ^Win,    // the window the last `window` call made: verbs outside any block act on it
 	focused:      ^Win,    // the window the mouse and keys are in
 	quit:         bool,
 	frame:        int,
@@ -178,12 +179,17 @@ make_win :: proc(width, height: int, position: Maybe([2]int), title: string) -> 
 	return w
 }
 
-// The window verbs act on: the one whose block is running, else the default
-// window, made now if there is none (a program of one line needs nothing else).
+// The window verbs act on: the one whose block is running, else the one the last
+// `window` call made (so `title` after `window` names that window, in reading
+// order), else the default window, made now if there is none (a program of one
+// line needs nothing else).
 @(private)
 current_win :: proc() -> ^Win {
 	if the.current != nil {
 		return the.current
+	}
+	if the.newest != nil {
+		return the.newest
 	}
 	if the.default == nil && len(the.windows) > 0 {
 		the.default = the.windows[0] // the default window closed; the first one left takes over

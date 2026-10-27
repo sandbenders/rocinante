@@ -166,6 +166,7 @@ close_window :: proc(w: ^Win) {
 		}
 	}
 	if the.default == w {the.default = nil}
+	if the.newest == w {the.newest = nil}
 	if the.current == w {the.current = nil}
 	if the.focused == w {the.focused = nil}
 	if w.handle != nil {

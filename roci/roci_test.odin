@@ -211,8 +211,8 @@ test_each_window_has_its_own_draw_block_and_verbs_go_to_its_window :: proc(t: ^t
 	testing.expect_value(t, len(commands_of(b)), 2)
 	testing.expect_value(t, which_window[0], a)
 	testing.expect_value(t, which_window[1], b)
-	// Outside any draw block the verbs go back to the first window.
-	testing.expect_value(t, current_window(), a)
+	// Outside any draw block the verbs go to the window the last `window` call made.
+	testing.expect_value(t, current_window(), b)
 }
 
 @(test)
@@ -879,4 +879,60 @@ test_a_hundred_thousand_circles_are_one_draw_and_a_steady_frame_allocates_nothin
 	testing.expect_value(t, stats.batches, 1)
 	testing.expect_value(t, stats.skipped, 0)
 	testing.expect_value(t, stats.reallocations, 0)
+}
+
+@(test)
+test_set_up_verbs_act_on_the_window_just_made :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	a := window(100, 100)
+	title("first")
+	circle(1, 1, 1)
+	b := window(200, 200)
+	title("second")
+	rect(0, 0, 1, 1)
+	rect(1, 1, 1, 1)
+	testing.expect_value(t, win_for(a).title, "first")
+	testing.expect_value(t, win_for(b).title, "second")
+	testing.expect_value(t, len(commands_of(a)), 1)
+	testing.expect_value(t, len(commands_of(b)), 2)
+	testing.expect_value(t, current_window(), b)
+}
+
+@(test)
+test_the_first_window_call_still_keeps_what_was_drawn_before_it :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	circle(1, 1, 1) // makes the default window
+	a := window(300, 200)
+	testing.expect_value(t, len(the.windows), 1)
+	testing.expect_value(t, len(commands_of(a)), 1)
+	testing.expect_value(t, current_window(), a)
+}
+
+@(test)
+test_when_the_newest_window_closes_the_verbs_go_to_the_default_one :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	a := window(100, 100)
+	b := window(200, 200)
+	testing.expect_value(t, current_window(), b)
+	close_window(win_for(b))
+	testing.expect_value(t, current_window(), a)
+	title("still here")
+	testing.expect_value(t, win_for(a).title, "still here")
+}
+
+@(test)
+test_a_draw_block_still_draws_into_its_own_window :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	which_window = {}
+	defer delete(which_window)
+	a := window(100, 100)
+	_ = window(200, 200) // the newest, but `a`'s block draws into `a`
+	draw(a, record_window)
+	step()
+	testing.expect_value(t, which_window[0], a)
+	testing.expect_value(t, len(commands_of(a)), 1)
 }

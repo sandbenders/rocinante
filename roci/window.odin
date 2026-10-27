@@ -9,13 +9,15 @@ import "core:strings"
 import "platform"
 
 // Opens a window of the given logical size, optionally at a position, and gives
-// it back. The first call replaces the default window: if the program has already
+// it back; until the next `window` call, verbs outside any block act on it. The
+// first call replaces the default window: if the program has already
 // drawn something, the default window (with what it holds) becomes this one.
 window :: proc(width, height: int, at: Maybe([2]int) = nil) -> Window {
 	if the.default != nil && !the.default.explicit {
 		w := the.default
 		w.explicit = true
 		w.width, w.height = max(width, 1), max(height, 1)
+		the.newest = w
 		if w.handle != nil {
 			platform.set_size(w.handle, w.width, w.height)
 			if p, has := at.?; has {
@@ -27,14 +29,15 @@ window :: proc(width, height: int, at: Maybe([2]int) = nil) -> Window {
 	start()
 	w := make_win(width, height, at, "rocinante")
 	w.explicit = true
+	the.newest = w
 	if the.default == nil {
-		the.default = w // verbs outside any `draw` block draw into the first window
+		the.default = w // where verbs go if the newest window closes
 	}
 	return w.id
 }
 
 // The window the verbs are drawing into now: the one whose `draw` block is
-// running, or the default window.
+// running, else the one the last `window` call made, else the default window.
 current_window :: proc() -> Window {
 	return current_win().id
 }
