@@ -116,6 +116,10 @@ handle_event :: proc(event: platform.Event) {
 	case platform.Resized:
 		if w := win_for_platform(e.window); w != nil {
 			w.width, w.height = e.width, e.height
+			if w.handle != nil {
+				m := platform.window_metrics(w.handle)
+				w.width, w.height = m.width, m.height
+			}
 		}
 	case platform.Pixel_Size_Changed, platform.Scale_Changed, platform.Moved:
 	case platform.Focus_Changed:
@@ -126,6 +130,9 @@ handle_event :: proc(event: platform.Event) {
 	case platform.Mouse_Moved:
 		if w := win_for_platform(e.window); w != nil {
 			w.mouse = {f64(e.x), f64(e.y)}
+			if w.handle != nil {
+				w.mouse /= platform.input_scale(w.handle)
+			}
 			the.focused = w
 		}
 	case platform.Mouse_Button_Changed:

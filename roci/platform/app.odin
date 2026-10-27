@@ -149,7 +149,13 @@ window_metrics :: proc(window: ^Window) -> Metrics {
 	w, h, pw, ph: i32
 	sdl.GetWindowSize(window.handle, &w, &h)
 	sdl.GetWindowSizeInPixels(window.handle, &pw, &ph)
-	return metrics_from(int(w), int(h), int(pw), int(ph), sdl.GetWindowDisplayScale(window.handle))
+	return metrics_from(int(w), int(h), int(pw), int(ph), sdl.GetWindowDisplayScale(window.handle), WINDOW_IS_IN_PIXELS)
+}
+
+// How many of SDL's window units make one logical pixel: 1 everywhere except on
+// Android (WINDOW_IS_IN_PIXELS). Mouse and touch positions are divided by it.
+input_scale :: proc(window: ^Window) -> f64 {
+	return f64(content_scale(sdl.GetWindowDisplayScale(window.handle), WINDOW_IS_IN_PIXELS))
 }
 
 // Resizes the window, in logical pixels.

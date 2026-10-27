@@ -249,3 +249,26 @@ test_the_default_window_size_is_800_by_600 :: proc(t: ^testing.T) {
 	testing.expect_value(t, DEFAULT_WIDTH, 800)
 	testing.expect_value(t, DEFAULT_HEIGHT, 600)
 }
+
+@(test)
+test_content_scale_only_applies_when_the_window_is_in_pixels :: proc(t: ^testing.T) {
+	testing.expect_value(t, content_scale(2.625, true), f32(2.625))
+	testing.expect_value(t, content_scale(2.625, false), f32(1)) // a window counted in points
+	testing.expect_value(t, content_scale(1, true), f32(1))
+	testing.expect_value(t, content_scale(0.5, true), f32(1)) // never shrinks the canvas
+	testing.expect_value(t, content_scale(0, true), f32(1))
+}
+
+@(test)
+test_a_window_in_pixels_gets_a_canvas_in_logical_pixels :: proc(t: ^testing.T) {
+	// A Pixel 9: 1080 x 2188 device pixels, content scale 2.625 (SDL's own size is the pixels).
+	m := metrics_from(1080, 2188, 1080, 2188, 2.625, true)
+	testing.expect_value(t, m.width, 411)
+	testing.expect_value(t, m.height, 834) // 833.5 rounds up
+	testing.expect_value(t, m.pixel_width, 1080)
+	testing.expect(t, m.density > 2.6 && m.density < 2.65, "density is device pixels per logical pixel")
+	// Not in pixels (an iPhone, a Retina Mac): the sizes pass through.
+	m = metrics_from(390, 844, 1170, 2532, 3, false)
+	testing.expect_value(t, m.width, 390)
+	testing.expect_value(t, m.density, f32(3))
+}

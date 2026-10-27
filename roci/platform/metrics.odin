@@ -19,10 +19,32 @@ Metrics :: struct {
 	scale:                     f32, // SDL_GetWindowDisplayScale
 }
 
+// On Android SDL counts window sizes in device pixels (density 1) and reports the
+// phone's content scale (2.6 on a Pixel 9) only as the display scale, so a sketch
+// would draw in tiny pixels where an iPhone, whose windows are in points, shows
+// the same sketch three times bigger. There the canvas is the window divided by
+// that scale, so `width` and `height` mean the same on every phone (section 5.15).
+WINDOW_IS_IN_PIXELS :: ODIN_PLATFORM_SUBTARGET == .Android
+
+// How many device pixels make one logical pixel when SDL's own window size is in
+// pixels. Anything below 1, or a window that SDL already counts in points, is 1.
+content_scale :: proc "contextless" (display_scale: f32, window_is_in_pixels: bool) -> f32 {
+	if window_is_in_pixels && display_scale > 1 {
+		return display_scale
+	}
+	return 1
+}
+
 // Builds Metrics from what SDL reports. A size of zero (a window being made, or
 // minimised) gives a density of 1 instead of dividing by zero, and a scale that
-// is zero or negative counts as 1.
-metrics_from :: proc "contextless" (width, height, pixel_width, pixel_height: int, display_scale: f32) -> Metrics {
+// is zero or negative counts as 1. With `window_is_in_pixels` the logical size is
+// the window's pixels divided by the display scale (see WINDOW_IS_IN_PIXELS).
+metrics_from :: proc "contextless" (width, height, pixel_width, pixel_height: int, display_scale: f32, window_is_in_pixels := false) -> Metrics {
+	width, height := width, height
+	if divisor := content_scale(display_scale, window_is_in_pixels); divisor != 1 {
+		width = int(f32(width) / divisor + 0.5)
+		height = int(f32(height) / divisor + 0.5)
+	}
 	density: f32 = 1
 	if width > 0 {
 		density = f32(pixel_width) / f32(width)
