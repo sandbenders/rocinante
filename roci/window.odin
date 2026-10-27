@@ -60,6 +60,17 @@ fullscreen :: proc(on := true) {
 	}
 }
 
+// Turns waiting for the display's refresh on or off for the current window (it is
+// on by default). Without it frames may tear but come as fast as the computer can
+// make them, which is how the benchmark measures headroom. A computer that cannot
+// do that stays on vsync (CLAUDE.md section 6, `vsync`).
+vsync :: proc(on := true) {
+	w := current_win()
+	if w.handle != nil {
+		platform.set_vsync(&the.app, w.handle, on)
+	}
+}
+
 // Closes the sketch: `run` returns after the frame in progress.
 quit :: proc() {
 	the.quit = true

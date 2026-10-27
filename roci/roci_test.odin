@@ -844,3 +844,34 @@ test_every_registry_verb_has_an_odin_name_and_no_name_is_invented :: proc(t: ^te
 		}
 	}
 }
+
+// ---- the benchmark's work counts ----
+
+draw_many_circles :: proc() {
+	no_stroke()
+	for i in 0 ..< 100_000 {
+		if i % 100 == 0 {
+			fill(hsb(f64(i / 100 % 255), 200, 255, 200))
+		}
+		circle(f64(i * 7919 % 800), f64(i * 104729 % 600), 2 + f64(i % 5))
+	}
+}
+
+@(test)
+test_a_hundred_thousand_circles_are_one_draw_and_a_steady_frame_allocates_nothing :: proc(t: ^testing.T) {
+	// Work counts are exact on every machine (CLAUDE.md section 9): the pipelines compare
+	// these where timing would be too noisy.
+	begin()
+	defer finish()
+	window(800, 600)
+	draw(draw_many_circles)
+	step()
+	step()
+	stats := the.windows[0].batcher.stats
+	testing.expect_value(t, stats.commands, 100_000)
+	testing.expect_value(t, stats.instances, 100_000)
+	testing.expect_value(t, stats.draws, 1)
+	testing.expect_value(t, stats.batches, 1)
+	testing.expect_value(t, stats.skipped, 0)
+	testing.expect_value(t, stats.reallocations, 0)
+}

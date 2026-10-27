@@ -3,7 +3,8 @@
 // Hashes of commands (CLAUDE.md section 4.3: "geometry that does not change
 // between frames is detected (hash of command + parameters)"). A batch whose
 // hash is the same as last frame's can reuse the GPU buffer it uploaded then.
-// FNV-1a over the values, field by field, so padding bytes never matter. The
+// FNV-1a style (an exclusive-or and a multiply per 64-bit word) over the values,
+// field by field, so padding bytes never matter. The
 // source span is left out on purpose: moving a line in the file must not
 // invalidate a picture that did not change.
 package gfx
@@ -12,13 +13,11 @@ FNV_OFFSET :: u64(0xcbf29ce484222325)
 FNV_PRIME :: u64(0x100000001b3)
 
 hash_u64 :: proc "contextless" (h: u64, value: u64) -> u64 {
-	h := h
-	v := value
-	for _ in 0 ..< 8 {
-		h = (h ~ (v & 0xff)) * FNV_PRIME
-		v >>= 8
-	}
-	return h
+	// One whole word per step, not one byte: a frame hashes a command per shape, and
+	// a hundred thousand commands add up. The shift folds the high bits down so the
+	// multiply does not leave them out of the low ones.
+	mixed := (h ~ value) * FNV_PRIME
+	return mixed ~ (mixed >> 32)
 }
 
 // Hashes the bits of a float, so 0 and -0 differ and every NaN counts, which is
