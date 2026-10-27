@@ -11,6 +11,7 @@
 // turn goes clockwise on screen, like the turtle's `right`. Angles are degrees.
 package gfx
 
+import "../maths"
 import "core:math"
 
 Transform :: struct {
@@ -58,21 +59,6 @@ transform_apply :: proc "contextless" (t: Transform, x, y: f32) -> (f32, f32) {
 }
 
 // Sine and cosine of an angle in degrees, exact for multiples of 90 so a
-// quarter turn leaves whole numbers whole.
-sin_cos_degrees :: proc "contextless" (degrees: f64) -> (s, c: f64) {
-	if math.is_nan(degrees) || math.is_inf(degrees) {
-		return 0, 1
-	}
-	turns := math.mod(degrees, 360)
-	if turns < 0 {
-		turns += 360
-	}
-	switch turns {
-	case 0:   return 0, 1
-	case 90:  return 1, 0
-	case 180: return 0, -1
-	case 270: return -1, 0
-	}
-	radians := math.to_radians(turns)
-	return math.sin(radians), math.cos(radians)
-}
+// quarter turn leaves whole numbers whole: the one implementation the verbs use
+// too (maths/trig.odin).
+sin_cos_degrees :: maths.sin_cos_deg

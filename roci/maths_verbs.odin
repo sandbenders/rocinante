@@ -106,33 +106,12 @@ dist_v :: proc(a, b: [2]f64) -> f64 {
 
 dist :: proc{dist_xy, dist_v}
 
-// Sine of an angle in degrees.
+// Sine of an angle in degrees (maths/trig.odin: exact at right angles).
 sin_deg :: proc(degrees: f64) -> f64 {
-	s, _ := sin_cos_deg(degrees)
-	return s
+	return maths.sin_deg(degrees)
 }
 
 // Cosine of an angle in degrees.
 cos_deg :: proc(degrees: f64) -> f64 {
-	_, c := sin_cos_deg(degrees)
-	return c
-}
-
-@(private)
-sin_cos_deg :: proc(degrees: f64) -> (s, c: f64) {
-	if math.is_nan(degrees) || math.is_inf(degrees) {
-		return 0, 1
-	}
-	turns := math.mod(degrees, 360)
-	if turns < 0 {
-		turns += 360
-	}
-	switch turns { // exact at right angles, so a quarter turn leaves whole numbers whole
-	case 0:   return 0, 1
-	case 90:  return 1, 0
-	case 180: return 0, -1
-	case 270: return -1, 0
-	}
-	radians := math.to_radians(turns)
-	return math.sin(radians), math.cos(radians)
+	return maths.cos_deg(degrees)
 }
