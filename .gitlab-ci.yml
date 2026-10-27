@@ -14,9 +14,9 @@ variables:
   ODIN_DIR: $CI_PROJECT_DIR/.cache/odin
 
 .setup: &setup
-  - pacman -Syu --noconfirm clang curl tar git
-  # SDL3 and Mesa's software Vulkan (lavapipe) join this line when code needs them:
-  #   sdl3 vulkan-swrast
+  - pacman -Syu --noconfirm clang curl tar git sdl3
+  # Mesa's software Vulkan (lavapipe) joins this line when the golden images run:
+  #   vulkan-swrast
   - tools/ci/install-odin.sh "$ODIN_DIR"
   - export PATH="$ODIN_DIR:$PATH"
 
