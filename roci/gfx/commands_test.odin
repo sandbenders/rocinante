@@ -297,3 +297,25 @@ test_finite_accepts_numbers_and_rejects_nan_and_infinity :: proc(t: ^testing.T) 
 	testing.expect(t, !finite(1, math.nan_f32()))
 	testing.expect(t, !finite(math.inf_f32(-1)))
 }
+
+@(test)
+test_finite_at_the_edges_of_the_floats :: proc(t: ^testing.T) {
+	testing.expect(t, finite(math.copy_sign(f32(0), -1)))                 // -0
+	testing.expect(t, finite(math.F32_MAX, -math.F32_MAX))                 // the largest
+	testing.expect(t, finite(transmute(f32)u32(1), -transmute(f32)u32(1))) // the smallest, subnormal
+	testing.expect(t, !finite(math.inf_f32(1)))
+	testing.expect(t, !finite(math.nan_f32(), 1, 2, 3, 4, 5, 6, 7))        // first of eight
+	testing.expect(t, !finite(1, 2, 3, 4, 5, 6, 7, math.nan_f32()))        // last of eight
+}
+
+@(test)
+test_a_shape_with_a_non_finite_number_anywhere_is_dropped :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	for i in 0 ..< 8 {
+		args: [8]f32
+		args[i] = math.inf_f32(1) if i % 2 == 0 else math.nan_f32()
+		testing.expect(t, !quad(&list, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]))
+	}
+	testing.expect_value(t, len(list.commands), 0)
+}

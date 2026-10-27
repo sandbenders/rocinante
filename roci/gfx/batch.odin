@@ -149,6 +149,7 @@ build_commands :: proc(b: ^Batcher, list: ^Command_List, canvas: [2]f32, may_res
 	clear(&b.mesh.indices)
 	clear(&b.batches)
 	b.stats = {commands = len(list.commands)}
+	looks: Look_Cache
 
 	// A background gradient is a rectangle the size of the canvas under everything.
 	if list.background_paint.id != 0 && canvas.x > 0 && canvas.y > 0 {
@@ -159,13 +160,13 @@ build_commands :: proc(b: ^Batcher, list: ^Command_List, canvas: [2]f32, may_res
 			transform = IDENTITY,
 			style     = Style{fill_on = true, alpha = 255, fill_paint = list.background_paint},
 		}
-		if !add_command(b, list, backdrop, may_reset) {
+		if !add_command(b, list, backdrop, may_reset, &looks) {
 			return false
 		}
 		b.stats.commands += 1
 	}
 	for command in list.commands {
-		if !add_command(b, list, command, may_reset) {
+		if !add_command(b, list, command, may_reset, &looks) {
 			return false
 		}
 	}
@@ -179,7 +180,7 @@ build_commands :: proc(b: ^Batcher, list: ^Command_List, canvas: [2]f32, may_res
 
 // Adds one command to the batches. Gives false when the gradient atlas restarted.
 @(private)
-add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, may_reset: bool) -> bool {
+add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, may_reset: bool, looks: ^Look_Cache) -> bool {
 	if !is_visible(command) {
 		b.stats.skipped += 1
 		return true
@@ -217,7 +218,8 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, may_rese
 	}
 	batch := &b.batches[len(b.batches) - 1]
 	batch.count += added
-	batch.hash = hash_u64(batch.hash, command_hash(command))
+	// command_hash, with the look worked out once for a run of commands that share it
+	batch.hash = hash_u64(batch.hash, hash_u64(shape_hash(command), look_cache_hash(looks, command.style, command.transform)))
 	if pipeline == .Shapes {
 		append(&b.instances, to_instance(command, fill_row, stroke_row))
 	}

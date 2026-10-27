@@ -211,6 +211,165 @@ test_zero_and_negative_zero_hash_differently :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_a_pair_hash_tells_the_two_floats_and_their_order_apart :: proc(t: ^testing.T) {
+	base := hash_f32_pair(FNV_OFFSET, 1, 2)
+	testing.expect_value(t, hash_f32_pair(FNV_OFFSET, 1, 2), base)
+	testing.expect(t, hash_f32_pair(FNV_OFFSET, 2, 1) != base, "order")
+	testing.expect(t, hash_f32_pair(FNV_OFFSET, 1, 3) != base, "second")
+	testing.expect(t, hash_f32_pair(FNV_OFFSET, 0, 2) != base, "first")
+	testing.expect(t, hash_f32_pair(FNV_OFFSET, 0, 0) != hash_f32_pair(FNV_OFFSET, 0, math.copy_sign(f32(0), -1)), "-0")
+}
+
+@(test)
+test_every_number_of_a_command_reaches_its_hash :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	quad(&list, 1, 2, 3, 4, 5, 6, 7, 8)
+	base := command_hash(list.commands[0])
+	for i in 0 ..< 8 {
+		changed := list.commands[0]
+		changed.args[i] += 0.5
+		testing.expectf(t, command_hash(changed) != base, "args[%d]", i)
+	}
+	tr := [6]f32{1, 0, 0, 1, 0, 0}
+	for i in 0 ..< 6 {
+		changed := list.commands[0]
+		moved := tr
+		moved[i] += 0.5
+		changed.transform = transmute(Transform)moved
+		testing.expectf(t, command_hash(changed) != base, "transform[%d]", i)
+	}
+	for i in 0 ..< 4 {
+		changed := list.commands[0]
+		changed.style.stroke[i] += 1
+		testing.expectf(t, command_hash(changed) != base, "stroke[%d]", i)
+		changed = list.commands[0]
+		changed.style.fill[i] += 1
+		testing.expectf(t, command_hash(changed) != base, "fill[%d]", i)
+	}
+	changed := list.commands[0]
+	changed.style.cap = .Butt
+	testing.expect(t, command_hash(changed) != base, "cap")
+	changed = list.commands[0]
+	changed.style.join = .Bevel
+	testing.expect(t, command_hash(changed) != base, "join")
+	changed = list.commands[0]
+	changed.style.fill_paint.hash = 9
+	testing.expect(t, command_hash(changed) != base, "fill gradient")
+	changed = list.commands[0]
+	changed.style.stroke_paint.hash = 9
+	testing.expect(t, command_hash(changed) != base, "stroke gradient")
+	changed = list.commands[0]
+	changed.content = 9
+	testing.expect(t, command_hash(changed) != base, "content")
+}
+
+@(test)
+test_a_command_hash_is_its_shape_and_its_look :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	set_fill(&list, maths.rgb(10, 20, 30))
+	move(&list, 5, 6)
+	circle(&list, 1, 2, 3)
+	c := list.commands[0]
+	testing.expect_value(t, command_hash(c), hash_u64(shape_hash(c), look_hash(c.style, c.transform)))
+	// the look does not reach the shape part, nor the shape the look part
+	other := c
+	other.style.alpha = 1
+	other.transform.e = 9
+	testing.expect_value(t, shape_hash(other), shape_hash(c))
+	other = c
+	other.args[0] = 9
+	testing.expect_value(t, look_hash(other.style, other.transform), look_hash(c.style, c.transform))
+}
+
+@(test)
+test_the_look_cache_reuses_an_equal_look_and_rehashes_a_different_one :: proc(t: ^testing.T) {
+	cache: Look_Cache
+	s, tr := DEFAULT_STYLE, IDENTITY
+	testing.expect_value(t, look_cache_hash(&cache, s, tr), look_hash(s, tr))
+	testing.expect_value(t, look_cache_hash(&cache, s, tr), look_hash(s, tr))
+
+	s2 := s
+	s2.fill.g = 7
+	testing.expect_value(t, look_cache_hash(&cache, s2, tr), look_hash(s2, tr))
+	tr2 := tr
+	tr2.f = 3
+	testing.expect_value(t, look_cache_hash(&cache, s2, tr2), look_hash(s2, tr2))
+	// and back
+	testing.expect_value(t, look_cache_hash(&cache, s, tr), look_hash(s, tr))
+}
+
+@(test)
+test_the_look_cache_tells_zero_from_negative_zero :: proc(t: ^testing.T) {
+	cache: Look_Cache
+	s, tr := DEFAULT_STYLE, IDENTITY
+	_ = look_cache_hash(&cache, s, tr)
+	tr2 := tr
+	tr2.e = math.copy_sign(f32(0), -1)
+	testing.expect_value(t, look_cache_hash(&cache, s, tr2), look_hash(s, tr2))
+	testing.expect(t, look_hash(s, tr2) != look_hash(s, tr))
+	s2 := s
+	s2.thickness = math.copy_sign(f32(0), -1)
+	s.thickness = 0
+	_ = look_cache_hash(&cache, s, tr)
+	testing.expect_value(t, look_cache_hash(&cache, s2, tr), look_hash(s2, tr))
+}
+
+@(test)
+test_same_look_bits_reads_every_field_the_hash_reads :: proc(t: ^testing.T) {
+	s, tr := DEFAULT_STYLE, IDENTITY
+	testing.expect(t, same_look_bits(s, tr, s, tr))
+	changes := [?]proc(s: ^Style){
+		proc(s: ^Style) {s.fill.a = 1},
+		proc(s: ^Style) {s.stroke.b = 1},
+		proc(s: ^Style) {s.thickness = 3},
+		proc(s: ^Style) {s.alpha = 3},
+		proc(s: ^Style) {s.fill_on = !s.fill_on},
+		proc(s: ^Style) {s.stroke_on = !s.stroke_on},
+		proc(s: ^Style) {s.cap = .Square},
+		proc(s: ^Style) {s.join = .Round},
+		proc(s: ^Style) {s.fill_paint.hash = 1},
+		proc(s: ^Style) {s.stroke_paint.hash = 1},
+	}
+	for change, i in changes {
+		s2 := s
+		change(&s2)
+		testing.expectf(t, !same_look_bits(s, tr, s2, tr), "change %d", i)
+	}
+	tr2 := tr
+	tr2.c = 0.5
+	testing.expect(t, !same_look_bits(s, tr, s, tr2))
+	// a gradient's number is not hashed, so it does not count
+	s2 := s
+	s2.fill_paint.id = 4
+	testing.expect(t, same_look_bits(s, tr, s2, tr))
+}
+
+@(test)
+test_a_batch_hash_folds_the_command_hashes_in_order :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	circle(&list, 1, 2, 3)
+	circle(&list, 4, 5, 6)
+	set_fill(&list, maths.rgb(1, 2, 3))
+	circle(&list, 7, 8, 9)
+	move(&list, 1, 1)
+	circle(&list, 7, 8, 9)
+	set_fill(&list, maths.rgb(255, 255, 255)) // back to the first look
+	move(&list, -1, -1)
+	circle(&list, 1, 1, 1)
+	b := drawn(&list)
+	defer batcher_destroy(&b)
+	testing.expect_value(t, len(b.batches), 1)
+	want := FNV_OFFSET
+	for c in list.commands {
+		want = hash_u64(want, command_hash(c))
+	}
+	testing.expect_value(t, b.batches[0].hash, want)
+}
+
+@(test)
 test_fill_and_stroke_switches_hash_apart :: proc(t: ^testing.T) {
 	a, b := DEFAULT_STYLE, DEFAULT_STYLE
 	a.fill_on, a.stroke_on = true, false

@@ -7,6 +7,11 @@
 // field by field, so padding bytes never matter. The
 // source span is left out on purpose: moving a line in the file must not
 // invalidate a picture that did not change.
+//
+// A command's hash is two parts: its shape (kind, origin, numbers, content) and
+// its look (style and transform). Neighbouring commands nearly always share a
+// look, so the batcher works the look out once per run of them (`Look_Cache`);
+// `command_hash` combines the same two parts, so the two never disagree.
 package gfx
 
 FNV_OFFSET :: u64(0xcbf29ce484222325)
@@ -26,36 +31,78 @@ hash_f32 :: proc "contextless" (h: u64, value: f32) -> u64 {
 	return hash_u64(h, u64(transmute(u32)value))
 }
 
+// Two floats in one step, which halves the chain of multiplies for the numbers.
+hash_f32_pair :: proc "contextless" (h: u64, a, b: f32) -> u64 {
+	return hash_u64(h, u64(transmute(u32)a) | u64(transmute(u32)b) << 32)
+}
+
 hash_style :: proc "contextless" (h: u64, s: Style) -> u64 {
 	h := h
-	for v in s.fill {h = hash_f32(h, v)}
-	for v in s.stroke {h = hash_f32(h, v)}
-	h = hash_u64(h, u64(s.fill_on) | u64(s.stroke_on) << 1)
-	h = hash_f32(h, s.thickness)
-	h = hash_f32(h, s.alpha)
-	h = hash_u64(h, u64(s.cap) | u64(s.join) << 8)
+	h = hash_f32_pair(h, s.fill.r, s.fill.g)
+	h = hash_f32_pair(h, s.fill.b, s.fill.a)
+	h = hash_f32_pair(h, s.stroke.r, s.stroke.g)
+	h = hash_f32_pair(h, s.stroke.b, s.stroke.a)
+	h = hash_f32_pair(h, s.thickness, s.alpha)
+	h = hash_u64(h, u64(s.fill_on) | u64(s.stroke_on) << 1 | u64(s.cap) << 8 | u64(s.join) << 16)
 	h = hash_u64(h, s.fill_paint.hash)
 	return hash_u64(h, s.stroke_paint.hash)
 }
 
 hash_transform :: proc "contextless" (h: u64, t: Transform) -> u64 {
 	h := h
-	h = hash_f32(h, t.a)
-	h = hash_f32(h, t.b)
-	h = hash_f32(h, t.c)
-	h = hash_f32(h, t.d)
-	h = hash_f32(h, t.e)
-	return hash_f32(h, t.f)
+	h = hash_f32_pair(h, t.a, t.b)
+	h = hash_f32_pair(h, t.c, t.d)
+	return hash_f32_pair(h, t.e, t.f)
 }
 
-command_hash :: proc "contextless" (c: Command) -> u64 {
+// The look part of a command's hash: its style and transform.
+look_hash :: proc "contextless" (s: Style, t: Transform) -> u64 {
+	return hash_style(hash_transform(FNV_OFFSET, t), s)
+}
+
+// The shape part: everything in a command but its look and its source span.
+shape_hash :: proc "contextless" (c: Command) -> u64 {
 	h := hash_u64(FNV_OFFSET, u64(c.kind) | u64(c.origin) << 8)
 	args := c.args
 	if c.kind == .Text {
 		args[5] = 0 // where the characters sit in the list's storage is not part of the picture
 	}
-	for v in args {h = hash_f32(h, v)}
-	h = hash_transform(h, c.transform)
-	h = hash_style(h, c.style)
+	h = hash_f32_pair(h, args[0], args[1])
+	h = hash_f32_pair(h, args[2], args[3])
+	h = hash_f32_pair(h, args[4], args[5])
+	h = hash_f32_pair(h, args[6], args[7])
 	return hash_u64(h, c.content)
+}
+
+command_hash :: proc "contextless" (c: Command) -> u64 {
+	return hash_u64(shape_hash(c), look_hash(c.style, c.transform))
+}
+
+// The look hash of the last command seen, reused while the next ones have the
+// same look. "The same" means the same bits in every field the hash reads, so a
+// reused hash is always the one `look_hash` would give.
+Look_Cache :: struct {
+	valid:     bool,
+	style:     Style,
+	transform: Transform,
+	hash:      u64,
+}
+
+look_cache_hash :: proc "contextless" (cache: ^Look_Cache, s: Style, t: Transform) -> u64 {
+	if !cache.valid || !same_look_bits(cache.style, cache.transform, s, t) {
+		cache^ = {true, s, t, look_hash(s, t)}
+	}
+	return cache.hash
+}
+
+// Whether two looks give the same hash input, bit for bit (so 0 and -0 differ).
+same_look_bits :: proc "contextless" (s1: Style, t1: Transform, s2: Style, t2: Transform) -> bool {
+	return transmute([6]u32)t1 == transmute([6]u32)t2 &&
+		transmute([4]u32)s1.fill == transmute([4]u32)s2.fill &&
+		transmute([4]u32)s1.stroke == transmute([4]u32)s2.stroke &&
+		transmute(u32)s1.thickness == transmute(u32)s2.thickness &&
+		transmute(u32)s1.alpha == transmute(u32)s2.alpha &&
+		s1.fill_on == s2.fill_on && s1.stroke_on == s2.stroke_on &&
+		s1.cap == s2.cap && s1.join == s2.join &&
+		s1.fill_paint.hash == s2.fill_paint.hash && s1.stroke_paint.hash == s2.stroke_paint.hash
 }

@@ -124,12 +124,14 @@ destroy :: proc(list: ^Command_List) {
 // Whether a number can be drawn. A sketch can produce NaN or infinity (0/0), and
 // the canvas must not crash (non-negotiable 3), so such commands are dropped.
 finite :: proc "contextless" (values: ..f32) -> bool {
+	// v * 0 is 0 (or -0) for every finite v and NaN for infinity and NaN, so this is
+	// one multiply and one comparison a value with no branches: every shape a
+	// sketch draws passes through here.
+	ok := true
 	for v in values {
-		if math.is_nan(v) || math.is_inf(v) {
-			return false
-		}
+		ok &= v * 0 == 0
 	}
-	return true
+	return ok
 }
 
 @(private)
