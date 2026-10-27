@@ -407,6 +407,7 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - Turtle, events, timers, tweens, taught verbs (`learn`, `give`, `stop`, `with` defaults, sharing rules, §5.11), window messaging.
 - 2D collision detection (§5.13) with its broad phase.
 - Multi-file sketches and `.roci` libraries (§5.10): `use`, `hidden`, `roci get`, `roci update`, `libs/` vendoring, clash rules and their error messages. The public index starts small in Phase 9.
+- The typed IR carries what Phase 7's optimisation passes need (§4.7): each block's call site and captures, record shapes per creation site, lists changed inside loops, and whether a value leaves its frame. The interpreter ignores these facts.
 - **Exit**: every Phase 1 example rewritten in `.roci`; every example infers fully (no boxed fallbacks) or the fallback is justified here; a newcomer test (someone who has never seen rocinante makes a moving sketch in 15 minutes, observed and written up here), run with two groups that see the same sketches written with one thing per argument and in bare Logo nesting, with the comparison recorded here (§5.1). The test also watches for three traps from Logo's history: `[ 1 2 ]` against `{ 1, 2 }`, a list used where a block belongs, and `b = a` sharing a list or record (§5.1, §5.11).
 
 ### Phase 3: Text, UI, images, canvases, shaders
@@ -439,12 +440,12 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 
 ### Phase 7: The compiler
 - `codegen`: typed IR → readable Odin source, built with the user's Odin together with the core, on all four desktop OSes.
-- Lists of same-shaped records as contiguous arrays (or `#soa`); vector maths as Odin array programming; boxed fallback as tagged unions.
+- Lists of same-shaped records as contiguous arrays (or `#soa`); vector maths as Odin array programming; boxed fallback as tagged unions. The optimisation passes of §4.7 (blocks as plain loops, construction in place, bounds-check elimination, frame-local values on the stack or the arena) run here.
 - Source mapping from packaged sketches back to `.roci` lines (§4.7).
 - `roci doctor` complete for desktop toolchains.
 - Packaging build time measured on each desktop OS, since the core is compiled with every sketch (§4.7); record it here.
 - Back-end equivalence suite (§9) running every example in both modes in the Linux pipeline, and locally on the other platforms before each release.
-- **Exit**: every example produces identical frames interpreted and compiled; the particle benchmark (100,000 records updated and drawn per frame) holds 60 fps compiled on a mid-range laptop, with the interpreted figure recorded here for comparison.
+- **Exit**: every example produces identical frames interpreted and compiled; the particle benchmark (100,000 records updated and drawn per frame) holds 60 fps compiled on a mid-range laptop, with the interpreted figure recorded here for comparison. Measure the particle benchmark with each optimisation pass off and on, and record the result here.
 
 ### Phase 8: Packaging
 - `roci package` for all six targets (generate, build, bundle, sign where needed); `roci doctor` for every target.
