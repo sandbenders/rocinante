@@ -17,6 +17,7 @@ import "../maths"
 Pipeline :: enum u8 {
 	Shapes,
 	Paths,
+	Text,
 }
 
 // What the shader draws. Points are circles of the stroke colour, so they have
@@ -52,8 +53,20 @@ Instance :: struct {
 }
 #assert(size_of(Instance) == 112)
 
+// One character of the overlay font as the text shader sees it: a quad of 8 x 8
+// glyph pixels, which `transform` takes onto the canvas (so it holds the text's
+// size and any transform), in one colour. 48 bytes.
+Glyph_Instance :: struct {
+	transform: [6]f32,
+	colour:    [4]f32, // straight alpha; the shader multiplies it in
+	glyph:     u32,    // 0 for space up to 95 for the missing-character box (font.odin)
+	_:         u32,
+}
+#assert(size_of(Glyph_Instance) == 48)
+
 // A run of neighbouring commands drawn by one pipeline. For `Shapes`, `first`
-// and `count` index `Batcher.instances`; for `Paths`, the mesh's indices.
+// and `count` index `Batcher.instances`; for `Paths`, the mesh's indices; for
+// `Text`, `Batcher.glyphs`.
 Batch :: struct {
 	pipeline: Pipeline,
 	first:    int,
@@ -66,6 +79,7 @@ Stats :: struct {
 	skipped:         int, // recorded but invisible (no fill and no outline, fully transparent)
 	instances:       int,
 	path_commands:   int, // commands drawn from the mesh
+	glyphs:          int,
 	mesh_triangles:  int,
 	batches:         int,
 	draws:           int, // one per batch
@@ -76,6 +90,7 @@ Stats :: struct {
 // frame, so a steady scene allocates nothing.
 Batcher :: struct {
 	instances: [dynamic]Instance,
+	glyphs:    [dynamic]Glyph_Instance,
 	mesh:      Mesh,
 	batches:   [dynamic]Batch,
 	atlas:     Gradient_Atlas, // the gradients drawn so far, baked; kept between frames
@@ -84,6 +99,7 @@ Batcher :: struct {
 
 batcher_destroy :: proc(b: ^Batcher) {
 	delete(b.instances)
+	delete(b.glyphs)
 	mesh_destroy(&b.mesh)
 	delete(b.batches)
 	atlas_destroy(&b.atlas)
@@ -96,14 +112,14 @@ AA_MARGIN :: f32(1)
 // `canvas` is the size of the window in logical pixels; it is needed only to
 // draw a background gradient, which covers the whole canvas.
 build :: proc(b: ^Batcher, list: ^Command_List, canvas := [2]f32{}) {
-	grown_before := [4]int{cap(b.instances), cap(b.mesh.vertices), cap(b.mesh.indices), cap(b.batches)}
+	grown_before := [5]int{cap(b.instances), cap(b.mesh.vertices), cap(b.mesh.indices), cap(b.batches), cap(b.glyphs)}
 	// If the gradient atlas fills up, it starts again and the rows handed out so
 	// far are stale, so the frame is built once more against the fresh atlas.
 	if !build_commands(b, list, canvas, true) {
 		build_commands(b, list, canvas, false)
 	}
-	grown_after := [4]int{cap(b.instances), cap(b.mesh.vertices), cap(b.mesh.indices), cap(b.batches)}
-	for i in 0 ..< 4 {
+	grown_after := [5]int{cap(b.instances), cap(b.mesh.vertices), cap(b.mesh.indices), cap(b.batches), cap(b.glyphs)}
+	for i in 0 ..< 5 {
 		b.stats.reallocations += int(grown_before[i] != grown_after[i])
 	}
 }
@@ -128,6 +144,7 @@ paint_row :: proc(b: ^Batcher, list: ^Command_List, ref: Gradient_Ref, may_reset
 @(private)
 build_commands :: proc(b: ^Batcher, list: ^Command_List, canvas: [2]f32, may_reset: bool) -> bool {
 	clear(&b.instances)
+	clear(&b.glyphs)
 	clear(&b.mesh.vertices)
 	clear(&b.mesh.indices)
 	clear(&b.batches)
@@ -153,6 +170,7 @@ build_commands :: proc(b: ^Batcher, list: ^Command_List, canvas: [2]f32, may_res
 		}
 	}
 	b.stats.instances = len(b.instances)
+	b.stats.glyphs = len(b.glyphs)
 	b.stats.mesh_triangles = len(b.mesh.indices) / 3
 	b.stats.batches = len(b.batches)
 	b.stats.draws = len(b.batches)
@@ -172,9 +190,18 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, may_rese
 		return false
 	}
 	pipeline := pipeline_for(command)
-	// What this command adds to its pipeline's buffer: one instance, or the
-	// indices of its triangles. A command that makes no triangles is skipped.
+	// What this command adds to its pipeline's buffer: one instance, the indices of
+	// its triangles, or its glyphs. A command that adds nothing is skipped.
 	first, added := len(b.instances), 1
+	if pipeline == .Text {
+		first = len(b.glyphs)
+		glyphs_add_command(&b.glyphs, command, list.text[:])
+		added = len(b.glyphs) - first
+		if added == 0 {
+			b.stats.skipped += 1
+			return true
+		}
+	}
 	if pipeline == .Paths {
 		first = len(b.mesh.indices)
 		mesh_add_command(&b.mesh, command, fill_row, stroke_row)
@@ -199,7 +226,35 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, may_rese
 
 // Which pipeline draws a command.
 pipeline_for :: proc "contextless" (c: Command) -> Pipeline {
-	return .Paths if needs_mesh(c) else .Shapes
+	switch {
+	case c.kind == .Text:
+		return .Text
+	case needs_mesh(c):
+		return .Paths
+	}
+	return .Shapes
+}
+
+// Appends the glyphs of a text command: one quad per visible character, placed by
+// `layout_text` and moved onto the canvas by the transform the text was recorded
+// under. `text` is the list's text storage, which the command indexes.
+glyphs_add_command :: proc(out: ^[dynamic]Glyph_Instance, c: Command, text: []u8) {
+	offset, length := int(c.args[5]), int(c.args[6])
+	if offset < 0 || length <= 0 || offset + length > len(text) {
+		return
+	}
+	scale := c.args[2]
+	placed := make([dynamic]Placed_Glyph, context.temp_allocator)
+	layout_text(string(text[offset:offset + length]), scale, &placed)
+	colour := colour_for_gpu(c.style.fill, c.style.alpha)
+	for g in placed {
+		t := transform_grow(transform_move(c.transform, c.args[0] + g.x, c.args[1] + g.y), scale, scale)
+		append(out, Glyph_Instance{
+			transform = {t.a, t.b, t.c, t.d, t.e, t.f},
+			colour    = colour,
+			glyph     = u32(g.index),
+		})
+	}
 }
 
 // The instance for a visible command of a kind the shapes pipeline draws.
@@ -244,7 +299,7 @@ to_instance :: proc "contextless" (c: Command, fill_row := u32(0), stroke_row :=
 		i.kind = .Triangle
 		i.shape = {a[0] - cx, a[1] - cy, a[2] - cx, a[3] - cy, a[4] - cx, a[5] - cy}
 		hw, hh = (hi_x - lo_x) / 2, (hi_y - lo_y) / 2
-	case .Quad, .Arc:
+	case .Quad, .Arc, .Text:
 		return {}
 	}
 	t := transform_move(c.transform, cx, cy)

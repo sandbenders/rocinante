@@ -138,6 +138,9 @@ draw :: proc(list: ^gfx.Command_List, time: f32, mouse: [2]f32) {
 	gfx.rect(list, 0, 0, 80, 80, .Center)
 	gfx.pop(list)
 
+	gfx.set_fill(list, maths.grey(40))
+	gfx.debug_text(list, "rocinante shapes", 10, 576, 2)
+
 	// Follows the mouse.
 	gfx.set_fill(list, maths.rgb(0, 0, 0, 90))
 	gfx.no_stroke(list)

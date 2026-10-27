@@ -494,7 +494,9 @@ test_quads_and_arcs_give_an_empty_instance :: proc(t: ^testing.T) {
 test_which_pipeline_draws_which_kind_by_default :: proc(t: ^testing.T) {
 	// The default style has a fill and no outline, with round caps.
 	for kind in Kind {
-		want := Pipeline.Paths if kind == .Quad || kind == .Arc else Pipeline.Shapes
+		want := Pipeline.Shapes
+		if kind == .Quad || kind == .Arc {want = .Paths}
+		if kind == .Text {want = .Text}
 		testing.expect_value(t, pipeline_for(Command{kind = kind, style = DEFAULT_STYLE}), want)
 	}
 }

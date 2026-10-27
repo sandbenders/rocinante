@@ -33,16 +33,24 @@ MESH_VERT_SPV :: #load("../../shaders/compiled/mesh.vert.spv")
 MESH_FRAG_SPV :: #load("../../shaders/compiled/mesh.frag.spv")
 MESH_VERT_MSL :: #load("../../shaders/compiled/mesh.vert.msl")
 MESH_FRAG_MSL :: #load("../../shaders/compiled/mesh.frag.msl")
-when #exists("../../shaders/compiled/shapes.vert.dxil") && #exists("../../shaders/compiled/shapes.frag.dxil") && #exists("../../shaders/compiled/mesh.vert.dxil") && #exists("../../shaders/compiled/mesh.frag.dxil") {
+TEXT_VERT_SPV :: #load("../../shaders/compiled/text.vert.spv")
+TEXT_FRAG_SPV :: #load("../../shaders/compiled/text.frag.spv")
+TEXT_VERT_MSL :: #load("../../shaders/compiled/text.vert.msl")
+TEXT_FRAG_MSL :: #load("../../shaders/compiled/text.frag.msl")
+when #exists("../../shaders/compiled/shapes.vert.dxil") && #exists("../../shaders/compiled/shapes.frag.dxil") && #exists("../../shaders/compiled/mesh.vert.dxil") && #exists("../../shaders/compiled/mesh.frag.dxil") && #exists("../../shaders/compiled/text.vert.dxil") && #exists("../../shaders/compiled/text.frag.dxil") {
 	SHAPES_VERT_DXIL :: #load("../../shaders/compiled/shapes.vert.dxil")
 	SHAPES_FRAG_DXIL :: #load("../../shaders/compiled/shapes.frag.dxil")
 	MESH_VERT_DXIL :: #load("../../shaders/compiled/mesh.vert.dxil")
 	MESH_FRAG_DXIL :: #load("../../shaders/compiled/mesh.frag.dxil")
+	TEXT_VERT_DXIL :: #load("../../shaders/compiled/text.vert.dxil")
+	TEXT_FRAG_DXIL :: #load("../../shaders/compiled/text.frag.dxil")
 } else {
 	SHAPES_VERT_DXIL :: []byte{}
 	SHAPES_FRAG_DXIL :: []byte{}
 	MESH_VERT_DXIL :: []byte{}
 	MESH_FRAG_DXIL :: []byte{}
+	TEXT_VERT_DXIL :: []byte{}
+	TEXT_FRAG_DXIL :: []byte{}
 }
 
 // What the vertex shaders' uniform buffer holds (register b0, space1).
@@ -58,6 +66,7 @@ MSAA_SAMPLES :: sdl.GPUSampleCount._4
 Program :: enum {
 	Shapes,
 	Mesh,
+	Text,
 }
 
 Pipeline_Key :: struct {
@@ -88,6 +97,7 @@ Renderer :: struct {
 	instances:     Gpu_Buffer,
 	mesh_vertices: Gpu_Buffer,
 	mesh_indices:  Gpu_Buffer,
+	glyphs:        Gpu_Buffer,
 	transfer:      ^sdl.GPUTransferBuffer,
 	transfer_capacity: int,
 
@@ -95,6 +105,12 @@ Renderer :: struct {
 	gradient_texture: ^sdl.GPUTexture,
 	gradient_sampler: ^sdl.GPUSampler,
 	uploaded_atlas:   u64, // the atlas version on the GPU
+
+	// The overlay font's glyphs, one texture made the first time text is drawn.
+	font_texture: ^sdl.GPUTexture,
+	font_sampler: ^sdl.GPUSampler,
+	uploaded_glyphs:       u64,
+	uploaded_glyph_count:  int,
 
 	// Hashes of what is on the GPU now, so an unchanged scene uploads nothing.
 	uploaded_instances: u64,
@@ -112,6 +128,7 @@ Render_Stats :: struct {
 	uploaded_instances: bool, // false when the instances were the same as last frame and were kept
 	uploaded_mesh:      bool,
 	uploaded_gradients: bool,
+	uploaded_glyphs:    bool,
 	samples:            int,  // per pixel
 }
 
@@ -129,7 +146,7 @@ renderer_destroy :: proc(r: ^Renderer) {
 	delete(r.pipelines)
 	release_msaa(r)
 	delete(r.msaa)
-	for buffer in ([?]^Gpu_Buffer{&r.instances, &r.mesh_vertices, &r.mesh_indices}) {
+	for buffer in ([?]^Gpu_Buffer{&r.instances, &r.mesh_vertices, &r.mesh_indices, &r.glyphs}) {
 		if buffer.buffer != nil {
 			sdl.ReleaseGPUBuffer(r.device, buffer.buffer)
 		}
@@ -142,6 +159,12 @@ renderer_destroy :: proc(r: ^Renderer) {
 	}
 	if r.gradient_sampler != nil {
 		sdl.ReleaseGPUSampler(r.device, r.gradient_sampler)
+	}
+	if r.font_texture != nil {
+		sdl.ReleaseGPUTexture(r.device, r.font_texture)
+	}
+	if r.font_sampler != nil {
+		sdl.ReleaseGPUSampler(r.device, r.font_sampler)
 	}
 	delete(r.error)
 	r^ = {}
@@ -173,19 +196,23 @@ Shader_Source :: struct {
 }
 
 shader_source_for :: proc(program: Program, formats: sdl.GPUShaderFormat) -> (source: Shader_Source, ok: bool) {
-	shapes := program == .Shapes
+	spv_v, spv_f, msl_v, msl_f, dxil_v, dxil_f: []byte
+	switch program {
+	case .Shapes: spv_v, spv_f, msl_v, msl_f, dxil_v, dxil_f = SHAPES_VERT_SPV, SHAPES_FRAG_SPV, SHAPES_VERT_MSL, SHAPES_FRAG_MSL, SHAPES_VERT_DXIL, SHAPES_FRAG_DXIL
+	case .Mesh:   spv_v, spv_f, msl_v, msl_f, dxil_v, dxil_f = MESH_VERT_SPV, MESH_FRAG_SPV, MESH_VERT_MSL, MESH_FRAG_MSL, MESH_VERT_DXIL, MESH_FRAG_DXIL
+	case .Text:   spv_v, spv_f, msl_v, msl_f, dxil_v, dxil_f = TEXT_VERT_SPV, TEXT_FRAG_SPV, TEXT_VERT_MSL, TEXT_FRAG_MSL, TEXT_VERT_DXIL, TEXT_FRAG_DXIL
+	}
 	switch {
 	case .SPIRV in formats:
-		return {{.SPIRV}, SHAPES_VERT_SPV if shapes else MESH_VERT_SPV, SHAPES_FRAG_SPV if shapes else MESH_FRAG_SPV, "main", "main"}, true
+		return {{.SPIRV}, spv_v, spv_f, "main", "main"}, true
 	case .MSL in formats:
 		// SPIRV-Cross renames the entry point main to main0 in Metal.
-		return {{.MSL}, SHAPES_VERT_MSL if shapes else MESH_VERT_MSL, SHAPES_FRAG_MSL if shapes else MESH_FRAG_MSL, "main0", "main0"}, true
+		return {{.MSL}, msl_v, msl_f, "main0", "main0"}, true
 	case .DXIL in formats:
-		vertex, fragment := SHAPES_VERT_DXIL if shapes else MESH_VERT_DXIL, SHAPES_FRAG_DXIL if shapes else MESH_FRAG_DXIL
-		if len(vertex) == 0 || len(fragment) == 0 {
+		if len(dxil_v) == 0 || len(dxil_f) == 0 {
 			return {}, false
 		}
-		return {{.DXIL}, vertex, fragment, "vs_main", "ps_main"}, true
+		return {{.DXIL}, dxil_v, dxil_f, "vs_main", "ps_main"}, true
 	}
 	return {}, false
 }
@@ -288,7 +315,21 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 		{location = 3, format = .FLOAT2, offset = u32(offset_of(Mesh_Vertex, box))},
 		{location = 4, format = .UINT, offset = u32(offset_of(Mesh_Vertex, gradient))},
 	}
+	glyph_buffers := [1]sdl.GPUVertexBufferDescription{{slot = 0, pitch = size_of(Glyph_Instance), input_rate = .INSTANCE}}
+	glyph_attributes := [4]sdl.GPUVertexAttribute{
+		{location = 0, format = .FLOAT4, offset = u32(offset_of(Glyph_Instance, transform))},
+		{location = 1, format = .FLOAT2, offset = u32(offset_of(Glyph_Instance, transform)) + 16}, // e, f
+		{location = 2, format = .FLOAT4, offset = u32(offset_of(Glyph_Instance, colour))},
+		{location = 3, format = .UINT, offset = u32(offset_of(Glyph_Instance, glyph))},
+	}
 	switch program {
+	case .Text:
+		info.vertex_input_state = {
+			vertex_buffer_descriptions = raw_data(glyph_buffers[:]),
+			num_vertex_buffers         = 1,
+			vertex_attributes          = raw_data(glyph_attributes[:]),
+			num_vertex_attributes      = len(glyph_attributes),
+		}
 	case .Shapes:
 		info.vertex_input_state = {
 			vertex_buffer_descriptions = raw_data(instance_buffers[:]),
@@ -355,6 +396,43 @@ ensure_gradient_texture :: proc(r: ^Renderer) -> bool {
 	r.gradient_texture, r.gradient_sampler = texture, sampler
 	r.uploaded_atlas = 0
 	return true
+}
+
+// ---- the overlay font ----
+
+// Makes the font texture and its sampler, once, and gives whether it was just
+// made (so the caller uploads the glyphs). Sampling is nearest, so the pixels of
+// the font stay sharp.
+@(private)
+ensure_font_texture :: proc(r: ^Renderer) -> (made, ok: bool) {
+	if r.font_texture != nil {
+		return false, true
+	}
+	texture := sdl.CreateGPUTexture(r.device, {
+		type                 = .D2,
+		format               = .R8_UNORM,
+		usage                = {.SAMPLER},
+		width                = ATLAS_WIDTH,
+		height               = ATLAS_HEIGHT,
+		layer_count_or_depth = 1,
+		num_levels           = 1,
+	})
+	sampler := sdl.CreateGPUSampler(r.device, {
+		min_filter     = .NEAREST,
+		mag_filter     = .NEAREST,
+		mipmap_mode    = .NEAREST,
+		address_mode_u = .CLAMP_TO_EDGE,
+		address_mode_v = .CLAMP_TO_EDGE,
+		address_mode_w = .CLAMP_TO_EDGE,
+	})
+	if texture == nil || sampler == nil {
+		set_error(r, "creating the font texture")
+		if texture != nil {sdl.ReleaseGPUTexture(r.device, texture)}
+		if sampler != nil {sdl.ReleaseGPUSampler(r.device, sampler)}
+		return false, false
+	}
+	r.font_texture, r.font_sampler = texture, sampler
+	return true, true
 }
 
 // ---- multisampled targets ----
@@ -452,8 +530,9 @@ pipeline_hash :: proc(b: ^Batcher, pipeline: Pipeline) -> u64 {
 // as the ones already there (a still scene, or one whose shapes did not change).
 @(private)
 upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bool {
-	r.stats.uploaded_instances, r.stats.uploaded_mesh, r.stats.uploaded_gradients = false, false, false
+	r.stats.uploaded_instances, r.stats.uploaded_mesh, r.stats.uploaded_gradients, r.stats.uploaded_glyphs = false, false, false, false
 	instance_bytes := len(b.instances) * size_of(Instance)
+	glyph_bytes := len(b.glyphs) * size_of(Glyph_Instance)
 	vertex_bytes := len(b.mesh.vertices) * size_of(Mesh_Vertex)
 	index_bytes := len(b.mesh.indices) * size_of(u32)
 
@@ -470,7 +549,19 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 		if grew_v || grew_i {r.uploaded_mesh, r.uploaded_mesh_vertex_count, r.uploaded_mesh_index_count = 0, 0, 0}
 	}
 
-	instance_hash, mesh_hash := pipeline_hash(b, .Shapes), pipeline_hash(b, .Paths)
+	if glyph_bytes > 0 {
+		grew, ok := ensure_buffer(r, &r.glyphs, {.VERTEX}, glyph_bytes)
+		if !ok {return false}
+		if grew {r.uploaded_glyphs, r.uploaded_glyph_count = 0, 0}
+	}
+	font_made, font_ok := false, true
+	if glyph_bytes > 0 {
+		font_made, font_ok = ensure_font_texture(r)
+		if !font_ok {return false}
+	}
+
+	instance_hash, mesh_hash, glyph_hash := pipeline_hash(b, .Shapes), pipeline_hash(b, .Paths), pipeline_hash(b, .Text)
+	need_glyphs := glyph_bytes > 0 && (glyph_hash != r.uploaded_glyphs || len(b.glyphs) != r.uploaded_glyph_count)
 	need_instances := instance_bytes > 0 && (instance_hash != r.uploaded_instances || len(b.instances) != r.uploaded_instance_count)
 	need_mesh := vertex_bytes > 0 && (mesh_hash != r.uploaded_mesh || len(b.mesh.vertices) != r.uploaded_mesh_vertex_count || len(b.mesh.indices) != r.uploaded_mesh_index_count)
 	// The gradient atlas goes up whole whenever it has changed: it is small, and a
@@ -478,7 +569,7 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 	atlas_rows := len(b.atlas.rows) * 2
 	atlas_bytes := atlas_rows * RAMP_WIDTH * size_of([4]f16)
 	need_atlas := atlas_rows > 0 && b.atlas.version != r.uploaded_atlas
-	if !need_instances && !need_mesh && !need_atlas {
+	if !need_instances && !need_mesh && !need_atlas && !need_glyphs && !font_made {
 		return true
 	}
 
@@ -498,7 +589,16 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 	}
 	if need_atlas {
 		atlas_at = total
-		total += atlas_bytes
+		total += align(atlas_bytes)
+	}
+	glyph_at, font_at := 0, 0
+	if need_glyphs {
+		glyph_at = total
+		total += align(glyph_bytes)
+	}
+	if font_made {
+		font_at = total
+		total += ATLAS_WIDTH * ATLAS_HEIGHT
 	}
 	if !ensure_transfer(r, total) {
 		return false
@@ -527,6 +627,13 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 			mem.copy(base[params:], &params_data, size_of([4]f16))
 		}
 	}
+	if need_glyphs {
+		mem.copy(base[glyph_at:], raw_data(b.glyphs), glyph_bytes)
+	}
+	if font_made {
+		pixels := font_atlas_pixels(context.temp_allocator)
+		mem.copy(base[font_at:], raw_data(pixels), len(pixels))
+	}
 	sdl.UnmapGPUTransferBuffer(r.device, r.transfer)
 
 	copy_pass := sdl.BeginGPUCopyPass(commands)
@@ -550,6 +657,19 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 		)
 		r.uploaded_atlas = b.atlas.version
 		r.stats.uploaded_gradients = true
+	}
+	if need_glyphs {
+		sdl.UploadToGPUBuffer(copy_pass, {transfer_buffer = r.transfer, offset = u32(glyph_at)}, {buffer = r.glyphs.buffer, size = u32(glyph_bytes)}, true)
+		r.uploaded_glyphs, r.uploaded_glyph_count = glyph_hash, len(b.glyphs)
+		r.stats.uploaded_glyphs = true
+	}
+	if font_made {
+		sdl.UploadToGPUTexture(
+			copy_pass,
+			{transfer_buffer = r.transfer, offset = u32(font_at), pixels_per_row = ATLAS_WIDTH, rows_per_layer = ATLAS_HEIGHT},
+			{texture = r.font_texture, w = ATLAS_WIDTH, h = ATLAS_HEIGHT, d = 1},
+			false,
+		)
 	}
 	sdl.EndGPUCopyPass(copy_pass)
 	return true
@@ -579,15 +699,16 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 	case ._8: r.stats.samples = 8
 	}
 
-	shapes, mesh: ^sdl.GPUGraphicsPipeline
+	shapes, mesh, text: ^sdl.GPUGraphicsPipeline
 	ok := ensure_gradient_texture(r)
 	for batch in b.batches {
 		switch batch.pipeline {
 		case .Shapes: if shapes == nil && ok {shapes = get_pipeline(r, .Shapes, format, samples)}
 		case .Paths:  if mesh == nil && ok {mesh = get_pipeline(r, .Mesh, format, samples)}
+		case .Text:   if text == nil && ok {text = get_pipeline(r, .Text, format, samples)}
 		}
 	}
-	if (len(b.instances) > 0 && shapes == nil) || (len(b.mesh.indices) > 0 && mesh == nil) {
+	if (len(b.instances) > 0 && shapes == nil) || (len(b.mesh.indices) > 0 && mesh == nil) || (len(b.glyphs) > 0 && text == nil) {
 		ok = false
 	}
 	if ok && !upload(r, commands, b) {
@@ -632,6 +753,13 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 				sdl.BindGPUVertexBuffers(pass, 0, &vertices, 1)
 				indices := sdl.GPUBufferBinding{buffer = r.mesh_indices.buffer}
 				sdl.BindGPUIndexBuffer(pass, indices, ._32BIT)
+			case .Text:
+				sdl.BindGPUGraphicsPipeline(pass, text)
+				fonts := sdl.GPUTextureSamplerBinding{texture = r.font_texture, sampler = r.font_sampler}
+				sdl.BindGPUFragmentSamplers(pass, 0, &fonts, 1)
+				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
+				glyphs := sdl.GPUBufferBinding{buffer = r.glyphs.buffer}
+				sdl.BindGPUVertexBuffers(pass, 0, &glyphs, 1)
 			}
 		}
 		switch batch.pipeline {
@@ -639,6 +767,8 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 			sdl.DrawGPUPrimitives(pass, 6, u32(batch.count), 0, u32(batch.first))
 		case .Paths:
 			sdl.DrawGPUIndexedPrimitives(pass, u32(batch.count), 1, u32(batch.first), 0, 0)
+		case .Text:
+			sdl.DrawGPUPrimitives(pass, 6, u32(batch.count), 0, u32(batch.first))
 		}
 		r.stats.draws += 1
 	}

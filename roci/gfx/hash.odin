@@ -51,7 +51,12 @@ hash_transform :: proc "contextless" (h: u64, t: Transform) -> u64 {
 
 command_hash :: proc "contextless" (c: Command) -> u64 {
 	h := hash_u64(FNV_OFFSET, u64(c.kind) | u64(c.origin) << 8)
-	for v in c.args {h = hash_f32(h, v)}
+	args := c.args
+	if c.kind == .Text {
+		args[5] = 0 // where the characters sit in the list's storage is not part of the picture
+	}
+	for v in args {h = hash_f32(h, v)}
 	h = hash_transform(h, c.transform)
-	return hash_style(h, c.style)
+	h = hash_style(h, c.style)
+	return hash_u64(h, c.content)
 }

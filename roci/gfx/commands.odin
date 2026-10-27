@@ -14,6 +14,7 @@ package gfx
 
 import "../geom"
 import "../maths"
+import "core:hash"
 import "core:math"
 
 Kind :: enum u8 {
@@ -25,6 +26,7 @@ Kind :: enum u8 {
 	Triangle,
 	Quad,
 	Arc,
+	Text, // the overlay font (font.odin); see `debug_text`
 }
 
 // What a position means (section 5.9, "Origin"). `Default` is each shape's own
@@ -52,6 +54,7 @@ Span :: struct {
 //     Triangle x1 y1 x2 y2 x3 y3
 //     Quad     x1 y1 x2 y2 x3 y3 x4 y4
 //     Arc      x y width height start stop     (angles in degrees)
+//     Text     x y scale width height offset length     (the text is in the list's `text`)
 Command :: struct {
 	kind:      Kind,
 	origin:    Origin,
@@ -59,6 +62,7 @@ Command :: struct {
 	transform: Transform, // the transform that was current
 	style:     Style,     // the style that was current
 	span:      Span,
+	content:   u64,       // a hash of what the command holds beyond its numbers (a text's characters)
 }
 
 // What `push` saves and `pop` brings back.
@@ -81,6 +85,7 @@ Command_List :: struct {
 	saved:      [dynamic]Saved,
 	span:       Span, // stamped on each new command
 	gradients:  [dynamic]Gradient, // the gradients this frame's commands use; ids index it from 1
+	text:       [dynamic]u8,       // the characters of this frame's text commands, end to end
 	background_paint: Gradient_Ref, // a gradient behind everything, when set
 }
 
@@ -90,6 +95,7 @@ begin_frame :: proc(list: ^Command_List) {
 	clear(&list.commands)
 	clear(&list.saved)
 	clear(&list.gradients)
+	clear(&list.text)
 	list.background_paint = {}
 	list.background = DEFAULT_BACKGROUND
 	list.style = DEFAULT_STYLE
@@ -109,6 +115,7 @@ destroy :: proc(list: ^Command_List) {
 	delete(list.commands)
 	delete(list.saved)
 	delete(list.gradients)
+	delete(list.text)
 	list^ = {}
 }
 
@@ -126,7 +133,7 @@ finite :: proc "contextless" (values: ..f32) -> bool {
 }
 
 @(private)
-record :: proc(list: ^Command_List, kind: Kind, origin: Origin, args: [8]f32) -> bool {
+record :: proc(list: ^Command_List, kind: Kind, origin: Origin, args: [8]f32, content := u64(0)) -> bool {
 	args := args
 	if !finite(..args[:]) {
 		return false
@@ -138,6 +145,7 @@ record :: proc(list: ^Command_List, kind: Kind, origin: Origin, args: [8]f32) ->
 		transform = list.transform,
 		style = list.style,
 		span = list.span,
+		content = content,
 	})
 	return true
 }
@@ -180,6 +188,27 @@ quad :: proc(list: ^Command_List, x1, y1, x2, y2, x3, y3, x4, y4: f32) -> bool {
 
 arc :: proc(list: ^Command_List, x, y, width, height, start, stop: f32, origin := Origin.Default) -> bool {
 	return record(list, .Arc, origin, {x, y, abs(width), abs(height), start, stop, 0, 0})
+}
+
+// Text in the overlay font (section 8, Phase 1; real text comes in Phase 3), in the
+// fill colour, with its top left corner at (x, y). `scale` makes every character
+// 8 x scale pixels wide; whole numbers look best. Lines break at `\n`. Gives false
+// when a number is not finite or `scale` is not a size that can be drawn; empty
+// text is fine and records nothing.
+debug_text :: proc(list: ^Command_List, text: string, x, y: f32, scale: f32 = 2) -> bool {
+	if !finite(x, y, scale) || !valid_text_scale(scale) {
+		return false
+	}
+	if len(text) == 0 {
+		return true
+	}
+	offset := len(list.text)
+	if offset + len(text) >= 1 << 24 { // the offset travels as a float, exact up to 2^24
+		return false
+	}
+	w, h := measure_text(text, scale)
+	append(&list.text, text)
+	return record(list, .Text, .Corner, {x, y, scale, w, h, f32(offset), f32(len(text)), 0}, hash.fnv64a(transmute([]u8)text))
 }
 
 // `background` paints the whole window, so everything recorded before it is

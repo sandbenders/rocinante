@@ -36,6 +36,7 @@ SCENES := [?]Scene{
 	{"gradient_spaces", gradient_spaces},
 	{"gradient_strokes_and_meshes", gradient_strokes_and_meshes},
 	{"gradient_background", gradient_background},
+	{"debug_text", debug_text},
 }
 
 named :: proc(name: string) -> maths.Colour {
@@ -332,4 +333,24 @@ gradient_background :: proc(list: ^gfx.Command_List) {
 translucent_gradient :: proc() -> gfx.Gradient {
 	g, _ := gfx.gradient_make({maths.rgb(255, 255, 255, 255), maths.rgb(255, 255, 255, 0)})
 	return g
+}
+
+debug_text :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(250))
+	gfx.set_fill(list, maths.grey(20))
+	gfx.debug_text(list, "rocinante 0123456789", 6, 6, 1)
+	gfx.debug_text(list, "Hello world!", 6, 20, 2)
+	gfx.debug_text(list, "ABC xyz {}[]<>", 6, 40, 3)
+	gfx.set_fill(list, named("crimson"))
+	gfx.debug_text(list, "line one\nline two\n\tindented", 6, 70, 2)
+	// Characters the font lacks come out as boxes, and a transform carries the text along.
+	gfx.set_fill(list, named("teal"))
+	gfx.debug_text(list, "caf\xc3\xa9 \xe6\x97\xa5", 6, 125, 2)
+	gfx.push(list, .Style_And_Transform)
+	gfx.move(list, 150, 80)
+	gfx.turn(list, 30)
+	gfx.set_alpha(list, 150)
+	gfx.set_fill(list, named("navy"))
+	gfx.debug_text(list, "turned", 0, 0, 2)
+	gfx.pop(list)
 }

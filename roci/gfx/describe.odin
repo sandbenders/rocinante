@@ -26,6 +26,7 @@ kind_name :: proc "contextless" (kind: Kind) -> string {
 	case .Triangle: return "triangle"
 	case .Quad:     return "quadrilateral"
 	case .Arc:      return "arc"
+	case .Text:     return "text"
 	}
 	return ""
 }
@@ -68,6 +69,8 @@ local_bounds :: proc "contextless" (c: Command) -> (x, y, w, h: f32) {
 		lo_x, hi_x := min(a[0], a[2], a[4], a[6]), max(a[0], a[2], a[4], a[6])
 		lo_y, hi_y := min(a[1], a[3], a[5], a[7]), max(a[1], a[3], a[5], a[7])
 		return lo_x, lo_y, hi_x - lo_x, hi_y - lo_y
+	case .Text:
+		return a[0], a[1], a[3], a[4]
 	}
 	return
 }
@@ -87,6 +90,8 @@ has_area :: proc "contextless" (c: Command) -> bool {
 	case .Quad:
 		_, _, w, h := local_bounds(c)
 		return w > 0 && h > 0
+	case .Text:
+		return a[3] > 0 && a[4] > 0
 	case .Line, .Point:
 		return false
 	}
@@ -106,6 +111,8 @@ is_visible :: proc "contextless" (c: Command) -> bool {
 		return has_outline && c.style.cap != .Butt // a butt-capped dot has no length to draw
 	case .Line:
 		return has_outline
+	case .Text:
+		return c.style.fill_on && has_area(c) // text is drawn in the fill colour
 	case .Circle, .Ellipse, .Rect, .Triangle, .Quad, .Arc:
 		return (c.style.fill_on && has_area(c)) || has_outline
 	}

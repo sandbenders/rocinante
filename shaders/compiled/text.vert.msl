@@ -1,0 +1,81 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+#pragma clang diagnostic ignored "-Wmissing-braces"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+template<typename T, size_t Num>
+struct spvUnsafeArray
+{
+    T elements[Num ? Num : 1];
+    
+    thread T& operator [] (size_t pos) thread
+    {
+        return elements[pos];
+    }
+    constexpr const thread T& operator [] (size_t pos) const thread
+    {
+        return elements[pos];
+    }
+    
+    device T& operator [] (size_t pos) device
+    {
+        return elements[pos];
+    }
+    constexpr const device T& operator [] (size_t pos) const device
+    {
+        return elements[pos];
+    }
+    
+    constexpr const constant T& operator [] (size_t pos) const constant
+    {
+        return elements[pos];
+    }
+    
+    threadgroup T& operator [] (size_t pos) threadgroup
+    {
+        return elements[pos];
+    }
+    constexpr const threadgroup T& operator [] (size_t pos) const threadgroup
+    {
+        return elements[pos];
+    }
+};
+
+struct Frame
+{
+    float2 canvas_size;
+    float2 unused;
+};
+
+constant spvUnsafeArray<float2, 6> _27 = spvUnsafeArray<float2, 6>({ float2(0.0), float2(1.0, 0.0), float2(0.0, 1.0), float2(0.0, 1.0), float2(1.0, 0.0), float2(1.0) });
+
+struct main0_out
+{
+    float2 _entryPointOutput_uv [[user(locn0)]];
+    float4 _entryPointOutput_colour [[user(locn1)]];
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float4 input_transform_abcd [[attribute(0)]];
+    float2 input_transform_ef [[attribute(1)]];
+    float4 input_colour [[attribute(2)]];
+    uint input_glyph [[attribute(3)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant Frame& _82 [[buffer(0)]], uint gl_VertexIndex [[vertex_id]])
+{
+    main0_out out = {};
+    float2 _177 = _27[gl_VertexIndex] * 8.0;
+    float2 _167 = _177;
+    float2 _168 = float2(((in.input_transform_abcd.x * _167.x) + (in.input_transform_abcd.z * _167.y)) + in.input_transform_ef.x, ((in.input_transform_abcd.y * _167.x) + (in.input_transform_abcd.w * _167.y)) + in.input_transform_ef.y);
+    out.gl_Position = float4(((_168.x / _82.canvas_size.x) * 2.0) - 1.0, 1.0 - ((_168.y / _82.canvas_size.y) * 2.0), 0.0, 1.0);
+    out._entryPointOutput_uv = ((float2(float(in.input_glyph % 16u), float(in.input_glyph / 16u)) * 8.0) + _177) * float2(0.0078125, 0.02083333395421504974365234375);
+    out._entryPointOutput_colour = in.input_colour;
+    return out;
+}
+
