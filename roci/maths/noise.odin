@@ -175,11 +175,10 @@ perm_at :: proc "contextless" (n: ^Noise, i: int) -> int {
 }
 
 // One corner's share of a simplex sum: its gradient dotted with the offset,
-// faded out to nothing at distance sqrt(radius_sq). Gustavson's reference uses
-// 0.6 in 3D and 4D, which leaves tiny steps (about 0.0004) where simplexes meet;
-// 0.5 makes the field continuous, at the price of a quieter sum, which the
-// factors 75 (3D) and 62 (4D) make up for (found from millions of samples; the
-// raw sum then runs about -1 to 1 and `unit` clamps any overshoot).
+// faded out to nothing at distance sqrt(radius_sq): 0.5 in 2D and 0.6 in 3D and
+// 4D, as in Gustavson's reference (decided 2026-10-27, so results match other
+// simplex noise). At 0.6 the field has tiny steps, about 0.001 on the 0 to 1
+// scale, where simplexes meet; 0.5 would remove them but is not the reference.
 @(private)
 corner_share :: proc "contextless" (radius_sq, dist_sq, dot: f64) -> f64 {
 	t := radius_sq - dist_sq
@@ -261,11 +260,11 @@ simplex3 :: proc "contextless" (n: ^Noise, x, y, z: f64) -> f64 {
 	g1 := GRAD3[hash(n, ii + i1, jj + j1, kk + k1)]
 	g2 := GRAD3[hash(n, ii + i2, jj + j2, kk + k2)]
 	g3 := GRAD3[hash(n, ii + 1, jj + 1, kk + 1)]
-	sum := corner_share(0.5, x0 * x0 + y0 * y0 + z0 * z0, g0[0] * x0 + g0[1] * y0 + g0[2] * z0)
-	sum += corner_share(0.5, x1 * x1 + y1 * y1 + z1 * z1, g1[0] * x1 + g1[1] * y1 + g1[2] * z1)
-	sum += corner_share(0.5, x2 * x2 + y2 * y2 + z2 * z2, g2[0] * x2 + g2[1] * y2 + g2[2] * z2)
-	sum += corner_share(0.5, x3 * x3 + y3 * y3 + z3 * z3, g3[0] * x3 + g3[1] * y3 + g3[2] * z3)
-	return unit(75 * sum)
+	sum := corner_share(0.6, x0 * x0 + y0 * y0 + z0 * z0, g0[0] * x0 + g0[1] * y0 + g0[2] * z0)
+	sum += corner_share(0.6, x1 * x1 + y1 * y1 + z1 * z1, g1[0] * x1 + g1[1] * y1 + g1[2] * z1)
+	sum += corner_share(0.6, x2 * x2 + y2 * y2 + z2 * z2, g2[0] * x2 + g2[1] * y2 + g2[2] * z2)
+	sum += corner_share(0.6, x3 * x3 + y3 * y3 + z3 * z3, g3[0] * x3 + g3[1] * y3 + g3[2] * z3)
+	return unit(32 * sum)
 }
 
 // Simplex noise from 0 to 1 in four dimensions (space and time, say).
@@ -305,7 +304,7 @@ simplex4 :: proc "contextless" (n: ^Noise, x, y, z, w: f64) -> f64 {
 		}
 		h := perm_at(n, cell[0] + step[0] + perm_at(n, cell[1] + step[1] + perm_at(n, cell[2] + step[2] + perm_at(n, cell[3] + step[3]))))
 		g := GRAD4[h % 32]
-		sum += corner_share(0.5, dist_sq, g[0] * d[0] + g[1] * d[1] + g[2] * d[2] + g[3] * d[3])
+		sum += corner_share(0.6, dist_sq, g[0] * d[0] + g[1] * d[1] + g[2] * d[2] + g[3] * d[3])
 	}
-	return unit(62 * sum)
+	return unit(27 * sum)
 }
