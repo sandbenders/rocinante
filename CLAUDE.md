@@ -124,7 +124,7 @@ These override convenience. If a task seems to require breaking one, stop and ra
 - **Never push automatically** (decided 2026-10-25). Claude Code does not push to `origin`, `github` or any other remote unless Fabrizio asks for a push in that very message; an earlier "yes" does not carry over. After committing, it says what to run (`git push origin <branch>`), and Fabrizio pushes, opens the merge request and merges it himself. It also never merges into `main` or deletes remote branches on its own; it deletes merged local branches only when asked.
 - **Never commit on `main`** (decided 2026-10-26). Before the first commit of any change, create a branch named by kind (`feat/…`, `fix/…`, `docs/…`, `spike/…`, `refactor/…`, §11) and commit there; `main` changes only through a tested GitLab merge request that Fabrizio merges. After he merges, fast-forward the local `main` to `origin/main`, delete the branch with `git branch -d` when he asks, and run `git fetch --prune` (GitLab deletes merged branches itself). When `main` moved while a branch waited, rebase the branch onto `origin/main` and tell him to push it with `git push --force-with-lease origin <branch>`.
 - **Git** follows §11: short feature branches rebased onto `main` and merged fast-forward, small frequent commits. **Never mention AI, Claude or any assistant in commit messages, branch names, tags or release notes, and never add `Co-Authored-By` trailers or session links.**
-- Contribute fixes upstream (Odin, its vendor bindings, SDL, Dear ImGui, AccessKit) whenever we fix something there.
+- Contribute fixes upstream (Odin, its vendor bindings, SDL, Dear ImGui, AccessKit) whenever we fix something there. **SDL's projects forbid AI-generated contributions** (SDL_shadercross's `AGENTS.md`: generative AI "should not be used in any way when contributing to SDL", checked 2026-10-27), so Claude Code never writes a patch, issue or comment for SDL or its satellites; it describes the problem and Fabrizio writes the contribution himself.
 
 ---
 
@@ -343,6 +343,12 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - Golden-image test harness (render offscreen, compare against reference PNGs with tolerance).
 - Mobile: the Phase 1 examples running on an iOS device and an Android device.
 - **Exit**: `examples/circle.odin` and a 100,000-circle benchmark at 60 fps; two windows exchanging a message; runs on iOS and Android.
+
+**Phase 1 dependency checks** (2026-10-27, from the projects' own repositories and Odin's installed source):
+
+- **SDL_shadercross** (Zlib): no tags or releases; pinned at `1ff05bec573988a98ef9e0260b4da44f512b8367` (2026-09-03) in `SHADERCROSS_COMMIT`. It needs SPIRV-Cross (Apache-2.0) for SPIR-V and Metal output and DXC (LLVM Release Licence) for DXIL; its README lists no host platforms, and its own `AGENTS.md` forbids AI-generated contributions (§3). Used only as an offline build tool, so none of the three is shipped. **Still to do:** build the CLI once on macOS and Linux, and recompile the circle shader with it, before the renderer depends on it.
+- **PNG output:** Odin's `core:image/png` only reads PNG; the image packages that write are `bmp`, `tga`, `qoi` and `netpbm`. The golden-image harness therefore writes PNG with a small writer of our own (stored deflate blocks, `core:hash` CRC-32 and Adler-32), tested by reading its files back with `core:image/png`.
+- **C ABI exports:** `@(export, link_name = "...")` on a `proc "c"` works, as Spike 2's `rocinante_main` shows; the Odin overview does not describe it, so the C ABI step tests it with a C program before the header is generated.
 
 ### Phase 2: The language
 - Lexer, parser, checker, type inference, typed IR, interpreter (§4.7, §5).
