@@ -509,6 +509,7 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - **2026-10-26, SDL patch releases**: results from SDL 3.4.2, 3.4.16 and 3.4.18 libraries count as the same SDL; differences between patch releases are accepted (§8, Phase 0 results).
 - **2026-10-26, `CHANGELOG.md` and `CONTRIBUTING.md` are pointers**: the first to the releases page (release notes stay on the tags), the second to README's Contributing section, so neither duplicates what lives elsewhere. Full text in §4.2 and §11.
 - **2026-10-27, Plain words, not English sentences**: the goal of reading close to English is dropped for good; every construct has one canonical form with a fixed word order. Full text in §5.1.
+- **2026-10-27, Research notes folded in** (Logo's history, language trends): `[ ]` stays a block and a list, with teaching errors for the wrong one; sharing stays, with a hint (§5.1, §5.11). Not adopted: parenthesised calls such as `window(800, 600)` (no call parentheses, §5.1), value semantics (sharing stays), a `learn shader` subset (HLSL is decided, §4.3), quantity suffixes such as `90 degrees` (angles are degrees, §5.15), user-visible effect handlers, and live coding on phones (§7). The file extension is `.roci`.
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
 
 ### Later
@@ -522,6 +523,12 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 1. Machine learning on FreeBSD: LiteRT's C runtime built there, or ONNX Runtime as the FreeBSD fallback (§4.10). Settled by the LiteRT spike at the start of Phase 6.
 2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
 3. Choices inherited from the sections they point to: vector tessellation (§4.3, Phase 1); text engine (§4.3, start of Phase 3); AIFF, Opus and AAC decoding (§4.6, Phase 5); MIDI on FreeBSD, iOS and Android (§4.6, Phase 5); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the Git LFS type list (§4.9, Phase 2); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision (§5.13, Phase 4); AccessKit on FreeBSD (§4.8, Phase 3).
+4. Time in verbs (Phase 2, before the interpreter is designed): whether a taught verb can `wait` (a strand on a logical clock, as in ChucK and Sonic Pi) beyond `every`, timers and tweens (§6). If yes, a loop that never waits is a teaching error, not a hang (Sonic Pi's rule, §12), and compiled code needs fibers or a state-machine transform of suspending verbs.
+5. Interpreter shape (Phase 2): it walks the typed IR (§4.7, no bytecode VM). The trigger for revisiting is a measured one, when the interpreter proves too slow for development use; the candidate is a register bytecode on Odin's `#must_tail` with the `"preserve/none"` calling convention (Odin newsletter 2026 Q1, §12; check its docs first), benchmarked against a switch fallback on every Odin upgrade.
+6. `roci explain` (name provisional, Phase 2): describe a line or block in plain words from the typed IR, for learners and for tools.
+7. The accessible canvas (Phase 3): scene descriptions built from the command records (§4.3), a `describe "…"` verb, a live region that updates only when the scene changes, and colour-contrast checks, extending §4.8 from widgets to the canvas (p5.js does this with `describe` and `textOutput`, §12).
+8. Libraries and `sketch.toml` (Phase 9): whether a library keeps its version in the same file, so `roci update` can say "flocking 1.2.0 to 1.3.0" (§4.9).
+9. Teaching profiles (Phase 9): lint settings over one stable language, not Hedy-style levels where commands change.
 
 ---
 
