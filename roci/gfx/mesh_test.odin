@@ -350,8 +350,8 @@ test_a_command_that_makes_no_triangles_is_skipped_by_the_batcher :: proc(t: ^tes
 }
 
 @(test)
-test_the_vertex_is_24_bytes :: proc(t: ^testing.T) {
-	testing.expect_value(t, size_of(Mesh_Vertex), 24)
+test_the_vertex_is_48_bytes :: proc(t: ^testing.T) {
+	testing.expect_value(t, size_of(Mesh_Vertex), 48)
 }
 
 @(test)

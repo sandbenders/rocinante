@@ -34,7 +34,9 @@ hash_style :: proc "contextless" (h: u64, s: Style) -> u64 {
 	h = hash_u64(h, u64(s.fill_on) | u64(s.stroke_on) << 1)
 	h = hash_f32(h, s.thickness)
 	h = hash_f32(h, s.alpha)
-	return hash_u64(h, u64(s.cap) | u64(s.join) << 8)
+	h = hash_u64(h, u64(s.cap) | u64(s.join) << 8)
+	h = hash_u64(h, s.fill_paint.hash)
+	return hash_u64(h, s.stroke_paint.hash)
 }
 
 hash_transform :: proc "contextless" (h: u64, t: Transform) -> u64 {

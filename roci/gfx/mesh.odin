@@ -17,12 +17,20 @@ import "../geom"
 import "core:math"
 
 // One corner of a triangle: where it is on the canvas and its colour (straight
-// alpha; the shader multiplies it in). 24 bytes.
+// alpha; the shader multiplies it in). For a gradient, `local` is the corner's
+// place in the shape's own space measured from the middle of its bounding box,
+// `box` is half that box's size and `gradient` the atlas row (1 and up) the
+// shader shades it with, in which case the colour holds only the style's alpha.
+// 48 bytes.
 Mesh_Vertex :: struct {
 	position: [2]f32,
 	colour:   [4]f32,
+	local:    [2]f32,
+	box:      [2]f32,
+	gradient: u32,
+	_:        u32,
 }
-#assert(size_of(Mesh_Vertex) == 24)
+#assert(size_of(Mesh_Vertex) == 48)
 
 Mesh :: struct {
 	vertices: [dynamic]Mesh_Vertex,
@@ -59,11 +67,17 @@ scale_of :: proc "contextless" (t: Transform) -> f64 {
 
 // Appends the triangles of `tri`, moved onto the canvas, in one colour.
 @(private)
-add_triangulation :: proc(m: ^Mesh, tri: geom.Triangulation, t: Transform, colour: [4]f32) {
+add_triangulation :: proc(m: ^Mesh, tri: geom.Triangulation, t: Transform, colour: [4]f32, gradient: u32, box_centre, box_half: [2]f32) {
 	base := u32(len(m.vertices))
 	for p in tri.points {
 		x, y := transform_apply(t, f32(p.x), f32(p.y))
-		append(&m.vertices, Mesh_Vertex{{x, y}, colour})
+		append(&m.vertices, Mesh_Vertex{
+			position = {x, y},
+			colour   = colour,
+			local    = {f32(p.x) - box_centre.x, f32(p.y) - box_centre.y},
+			box      = box_half,
+			gradient = gradient,
+		})
 	}
 	for index in tri.indices {
 		append(&m.indices, base + index)
@@ -99,16 +113,19 @@ outline_of :: proc(c: Command, tolerance: f64, points: ^[dynamic]geom.Point) -> 
 	return false
 }
 
-// Appends a command's fill and outline to the mesh.
-mesh_add_command :: proc(m: ^Mesh, c: Command) {
+// Appends a command's fill and outline to the mesh. `fill_row` and `stroke_row`
+// are the gradient atlas rows (1 and up) of the command's paints, or 0 for plain colours.
+mesh_add_command :: proc(m: ^Mesh, c: Command, fill_row := u32(0), stroke_row := u32(0)) {
 	style := c.style
 	scale := scale_of(c.transform)
 	if !(scale > 0) || math.is_inf(scale) {
 		return // flattened to nothing, or beyond sense
 	}
 	tolerance := geom.DEFAULT_TOLERANCE / scale // a tenth of a pixel on the canvas
-	fill_colour := colour_for_gpu(style.fill, style.alpha)
-	stroke_colour := colour_for_gpu(style.stroke, style.alpha)
+	fill_colour := paint_for_gpu(style.fill, style.alpha, fill_row)
+	stroke_colour := paint_for_gpu(style.stroke, style.alpha, stroke_row)
+	bx, by, bw, bh := local_bounds(c)
+	box_centre, box_half := [2]f32{bx + bw / 2, by + bh / 2}, [2]f32{bw / 2, bh / 2}
 	stroke := geom.Stroke_Options{
 		half_width = f64(style.thickness) / 2,
 		cap        = style.cap,
@@ -121,18 +138,18 @@ mesh_add_command :: proc(m: ^Mesh, c: Command) {
 	points := make([dynamic]geom.Point, context.temp_allocator)
 
 	if c.kind == .Arc {
-		arc_into_mesh(m, c, tolerance, fill_colour, stroke_colour, stroke)
+		arc_into_mesh(m, c, tolerance, {fill_colour, stroke_colour, fill_row, stroke_row, box_centre, box_half}, stroke)
 		return
 	}
 	closed := outline_of(c, tolerance, &points)
 	if style.fill_on && has_area(c) && closed {
 		geom.triangulate({points[:]}, &tri)
-		add_triangulation(m, tri, c.transform, fill_colour)
+		add_triangulation(m, tri, c.transform, fill_colour, fill_row, box_centre, box_half)
 		geom.triangulation_destroy(&tri)
 	}
 	if has_outline && len(points) > 0 {
 		geom.stroke_polyline(points[:], closed, stroke, &tri)
-		add_triangulation(m, tri, c.transform, stroke_colour)
+		add_triangulation(m, tri, c.transform, stroke_colour, stroke_row, box_centre, box_half)
 	}
 }
 
@@ -140,7 +157,14 @@ mesh_add_command :: proc(m: ^Mesh, c: Command) {
 // curve), outlined along the curve only, or all the way round when it is the
 // whole ellipse.
 @(private)
-arc_into_mesh :: proc(m: ^Mesh, c: Command, tolerance: f64, fill_colour, stroke_colour: [4]f32, stroke: geom.Stroke_Options) {
+Arc_Paint :: struct {
+	fill_colour, stroke_colour: [4]f32,
+	fill_row, stroke_row:       u32,
+	box_centre, box_half:       [2]f32,
+}
+
+@(private)
+arc_into_mesh :: proc(m: ^Mesh, c: Command, tolerance: f64, paint: Arc_Paint, stroke: geom.Stroke_Options) {
 	a := c.args
 	cx, cy := a[0], a[1]
 	if !is_centred(c) {
@@ -170,11 +194,11 @@ arc_into_mesh :: proc(m: ^Mesh, c: Command, tolerance: f64, fill_colour, stroke_
 		}
 		append(&polygon, ..curve[:])
 		geom.triangulate({polygon[:]}, &tri)
-		add_triangulation(m, tri, c.transform, fill_colour)
+		add_triangulation(m, tri, c.transform, paint.fill_colour, paint.fill_row, paint.box_centre, paint.box_half)
 		geom.triangulation_destroy(&tri)
 	}
 	if c.style.stroke_on && c.style.thickness > 0 {
 		geom.stroke_polyline(curve[:], whole, stroke, &tri)
-		add_triangulation(m, tri, c.transform, stroke_colour)
+		add_triangulation(m, tri, c.transform, paint.stroke_colour, paint.stroke_row, paint.box_centre, paint.box_half)
 	}
 }

@@ -80,6 +80,8 @@ Command_List :: struct {
 	transform:  Transform,
 	saved:      [dynamic]Saved,
 	span:       Span, // stamped on each new command
+	gradients:  [dynamic]Gradient, // the gradients this frame's commands use; ids index it from 1
+	background_paint: Gradient_Ref, // a gradient behind everything, when set
 }
 
 // Starts a frame: forgets last frame's commands and puts the style, the
@@ -87,6 +89,8 @@ Command_List :: struct {
 begin_frame :: proc(list: ^Command_List) {
 	clear(&list.commands)
 	clear(&list.saved)
+	clear(&list.gradients)
+	list.background_paint = {}
 	list.background = DEFAULT_BACKGROUND
 	list.style = DEFAULT_STYLE
 	list.transform = IDENTITY
@@ -104,6 +108,7 @@ end_frame :: proc(list: ^Command_List) -> (unbalanced: int) {
 destroy :: proc(list: ^Command_List) {
 	delete(list.commands)
 	delete(list.saved)
+	delete(list.gradients)
 	list^ = {}
 }
 
@@ -182,6 +187,18 @@ arc :: proc(list: ^Command_List, x, y, width, height, start, stop: f32, origin :
 background :: proc(list: ^Command_List, colour: maths.Colour) {
 	clear(&list.commands)
 	list.background = colour
+	list.background_paint = {}
+}
+
+// A gradient behind everything (`background [ navy black ] angle 90`). It is
+// drawn as a rectangle the size of the canvas, so the batcher needs that size.
+background_gradient :: proc(list: ^Command_List, g: Gradient) {
+	if g.count == 0 {
+		return
+	}
+	clear(&list.commands)
+	list.background = g.colours[0]
+	list.background_paint = register_gradient(list, g)
 }
 
 // `clear` empties the window, leaving it transparent.
@@ -192,8 +209,39 @@ clear_window :: proc(list: ^Command_List) {
 
 // ---- style ----
 
+// Gives the frame's list a gradient to point at, reusing an equal one that is
+// already there. The id is its place in `list.gradients`, counted from 1.
+register_gradient :: proc(list: ^Command_List, g: Gradient) -> Gradient_Ref {
+	h := gradient_hash(g)
+	for existing, i in list.gradients {
+		if gradient_hash(existing) == h {
+			return Gradient_Ref{u32(i + 1), h}
+		}
+	}
+	append(&list.gradients, g)
+	return Gradient_Ref{u32(len(list.gradients)), h}
+}
+
 set_fill :: proc(list: ^Command_List, colour: maths.Colour) {
 	list.style.fill, list.style.fill_on = colour, true
+	list.style.fill_paint = {}
+}
+
+// Fills with a gradient from now on.
+set_fill_gradient :: proc(list: ^Command_List, g: Gradient) {
+	if g.count == 0 {
+		return // no colours: nothing to shade with
+	}
+	list.style.fill, list.style.fill_on = g.colours[0], true
+	list.style.fill_paint = register_gradient(list, g)
+}
+
+set_stroke_gradient :: proc(list: ^Command_List, g: Gradient) {
+	if g.count == 0 {
+		return
+	}
+	list.style.stroke, list.style.stroke_on = g.colours[0], true
+	list.style.stroke_paint = register_gradient(list, g)
 }
 
 no_fill :: proc(list: ^Command_List) {
@@ -202,6 +250,7 @@ no_fill :: proc(list: ^Command_List) {
 
 set_stroke :: proc(list: ^Command_List, colour: maths.Colour) {
 	list.style.stroke, list.style.stroke_on = colour, true
+	list.style.stroke_paint = {}
 }
 
 no_stroke :: proc(list: ^Command_List) {

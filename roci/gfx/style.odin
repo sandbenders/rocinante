@@ -18,6 +18,10 @@ Style :: struct {
 	alpha:     f32, // 0-255, multiplies the alpha of fill and stroke
 	cap:       geom.Cap,  // how an open line, a line or a point ends
 	join:      geom.Join, // how an outline turns a corner
+	// A gradient instead of the plain colour (0 id means none); `fill` and `stroke`
+	// then hold its first colour, which is what is drawn if the gradient cannot be.
+	fill_paint:   Gradient_Ref,
+	stroke_paint: Gradient_Ref,
 }
 
 // What every frame starts with (section 5.15): white fill, no outline,

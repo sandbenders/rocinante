@@ -345,8 +345,8 @@ test_a_steady_scene_stops_allocating :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_the_instance_is_104_bytes :: proc(t: ^testing.T) {
-	testing.expect_value(t, size_of(Instance), 104)
+test_the_instance_is_112_bytes :: proc(t: ^testing.T) {
+	testing.expect_value(t, size_of(Instance), 112)
 }
 
 // ---- instances ----
