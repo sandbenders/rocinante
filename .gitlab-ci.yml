@@ -15,7 +15,7 @@ variables:
   ROCI_REQUIRE_SDL3: "1" # the C ABI check must run here, not skip
 
 .setup: &setup
-  - pacman -Syu --noconfirm clang curl tar git sdl3
+  - pacman -Syu --noconfirm clang curl tar git sdl3 diffutils
   # Mesa's software Vulkan (lavapipe) joins this line when the golden images run:
   #   vulkan-swrast
   - tools/ci/install-odin.sh "$ODIN_DIR"
