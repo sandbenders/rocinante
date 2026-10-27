@@ -186,10 +186,12 @@ rocinante/
                        prebuilt libraries (Dear ImGui via dear_bindings, accesskit-c, …)
   build/               build script written in Odin (no Make, no CMake for contributors)
   shaders/             internal shaders (HLSL source), compiled at build time
-  examples/            .roci and .odin examples, one per feature
+  examples/            .roci and .odin examples, one per feature; each .roci example has a one-line task
+                       description and a reference PNG checked by the golden-image harness (§9)
   tests/               golden-image tests, language tests, back-end equivalence tests
   tools/hooks/         pre-push and commit-msg hooks (§11)
   docs/                design.md (architecture details, the language, parity map; imported by CLAUDE.md),
+                       grammar.ebnf (the language's grammar, written in Phase 2, §5.14),
                        release checklist and contributor docs
   ODIN_VERSION         the pinned Odin release, read by the build script and both pipelines
   .gitlab-ci.yml       GitLab pipeline (§11)
@@ -212,7 +214,9 @@ roci init                the same, inside an existing folder; never overwrites
 roci add <path>          copy a file into the right assets/ subfolder; converts PyTorch and JAX models (§4.10)
 roci get <name|url>      vendor a library into libs/ (§5.10)
 roci update [name]       fetch newer versions of vendored libraries, showing what changed
-roci run [file]          interpret with live reload (default: sketch.roci); needs nothing installed
+roci run [file]          interpret with live reload (default: sketch.roci); needs nothing installed.
+                         `--frames N --screenshot out.png --errors json` runs headless: N frames, a picture,
+                         and errors as data (line, column, message ID, nearest known verb); the tests use it
 roci check [file]        parse, check and infer types without running
 roci fmt [file]          format a sketch in the house style (§5.1); no options
 roci package <target>    compile to native code and package; targets: linux, freebsd, macos, windows, android, ios
@@ -344,7 +348,9 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - Lexer, parser, checker, type inference, typed IR, interpreter (§4.7, §5).
 - Inference error messages written before the inference rules are final (§5.3).
 - `circle 100 100 50` as a whole program.
-- `roci run` with file watching, hot reload with the state rules of §5.5, `Ctrl+R` restart, error overlay.
+- `docs/grammar.ebnf` and source spans on every node, literal and runtime command (§5.14); an error-tolerant parser that resynchronises at `[ ]` and reports every error in one pass (§5.7).
+- `roci run` with file watching, hot reload with the state rules of §5.5 (saying whether it reloaded or restarted), `Ctrl+R` restart, error overlay, and the headless options `--frames`, `--screenshot` and `--errors json` (§7).
+- The verified example corpus: each example in `examples/` has a task description and a reference PNG, so it doubles as a golden test and as documentation (§9).
 - Sketch folders (§4.9): `roci new`, `roci init`, `roci add`, git and optional Git LFS setup, asset lookup by name, the outside-`assets/` error, live asset reload.
 - Error message catalogue with tests, including bracket mismatches located by indentation (§5.1), missing argument brackets (§5.1, §5.7) and every `learn`/`give`/`stop` rule (§5.11).
 - `roci fmt`: formatting is idempotent (formatting twice changes nothing) and never changes behaviour (formatted and unformatted sketches produce identical frames).
@@ -352,7 +358,7 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - Turtle, events, timers, tweens, taught verbs (`learn`, `give`, `stop`, `with` defaults, sharing rules, §5.11), window messaging.
 - 2D collision detection (§5.13) with its broad phase.
 - Multi-file sketches and `.roci` libraries (§5.10): `use`, `hidden`, `roci get`, `roci update`, `libs/` vendoring, clash rules and their error messages. The public index starts small in Phase 9.
-- **Exit**: every Phase 1 example rewritten in `.roci`; every example infers fully (no boxed fallbacks) or the fallback is justified here; a newcomer test (someone who has never seen rocinante makes a moving sketch in 15 minutes, observed and written up here), run with two groups that see the same sketches written with one thing per argument and in bare Logo nesting, with the comparison recorded here (§5.1).
+- **Exit**: every Phase 1 example rewritten in `.roci`; every example infers fully (no boxed fallbacks) or the fallback is justified here; a newcomer test (someone who has never seen rocinante makes a moving sketch in 15 minutes, observed and written up here), run with two groups that see the same sketches written with one thing per argument and in bare Logo nesting, with the comparison recorded here (§5.1). The test also watches for three traps from Logo's history: `[ 1 2 ]` against `{ 1, 2 }`, a list used where a block belongs, and `b = a` sharing a list or record (§5.1, §5.11).
 
 ### Phase 3: Text, UI, images, canvases, shaders
 - Text with SDL3_ttf GPU engine (or the alternative chosen at the start of this phase), including copying system fonts into the sketch with the licence check (§4.9).
@@ -411,7 +417,7 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - **Unit tests come first** (decided 2026-10-25): every package is written with `@(test)` procedures from its first commit, aiming for the best possible coverage (§3). `odin test <dir>` runs them, `-define:ODIN_TEST_NAMES=package.test_name` runs one, and `ci` runs every package's tests, so a failing or missing test fails the pipeline. The kinds of test below are in addition to unit tests, not instead of them.
 - Language: parser, checker and inference unit tests; one test per error message in `tests/errors/`.
 - Formatter: every example and test sketch is run through `roci fmt` twice; the second pass must change nothing, and the formatted sketch must parse to the same typed IR as the original. Sketches with bare nested calls are formatted into the bracketed form and checked for identical IR.
-- Rendering: golden-image tests per verb and per backend where CI allows.
+- Rendering: golden-image tests per verb and per backend where CI allows. Every `.roci` example in `examples/` is also a golden test: its reference PNG is rendered headless with a fixed seed (§4.7).
 - **Back-end equivalence**: every `.roci` example and test runs interpreted and compiled; frames are compared pixel for pixel (exact match, with a fixed random seed and fixed time step) and printed output byte for byte. Any mismatch fails the pipeline. From Phase 7 on, this is part of the full pipeline on `main`. Compiled runs use the pinned Odin release.
 - UI: scripted input tests (simulated mouse, touch, keyboard and text input events) for every widget, checking returned values and rendered frames; keyboard-only navigation tests; AccessKit tree snapshots per widget and per action.
 - Controllers: scripted gamepad and joystick events for every binding kind, remapping through `controls`, and hot-plugging.
