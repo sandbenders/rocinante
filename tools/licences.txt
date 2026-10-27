@@ -18,5 +18,6 @@ vendor:cgltf    MIT
 vendor:miniaudio MIT-0
 # stb, stb_vorbis included: public domain or MIT.
 vendor:stb      Public-Domain
+# font8x8 glyph data, embedded in roci/gfx/font_data.odin: Public Domain, by its own header (checked 2026-10-27).
 # PortMidi: licence.txt is MIT-style, with non-binding requests.
 vendor:portmidi MIT
