@@ -25,7 +25,7 @@ compile_stage() {
   name=${file%.hlsl}
   # glslang names the SPIR-V entry point "main"; SPIRV-Cross then calls it
   # "main0" in Metal, which is the name the renderer asks SDL for.
-  glslang -D -V -S "$stage" -e main --source-entrypoint "$entry" "$file" -o "compiled/$name.$suffix.spv"
+  glslang -D -V -S "$stage" -e main --source-entrypoint "$entry" --auto-sampled-textures -I. "$file" -o "compiled/$name.$suffix.spv"
   spirv-cross --msl --msl-version 20300 --output "compiled/$name.$suffix.msl" "compiled/$name.$suffix.spv"
 }
 

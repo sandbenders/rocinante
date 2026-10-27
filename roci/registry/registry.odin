@@ -22,6 +22,7 @@ Kind :: enum u8 {
 	Block, // a [ ] block of statements
 	Window,
 	Name, // a plain word such as `center` after `as`
+	Gradient, // made by `gradient`, or written as a list of colours where a colour goes
 	Any,
 }
 

@@ -50,7 +50,7 @@ struct Frame
     float2 unused;
 };
 
-constant spvUnsafeArray<float2, 6> _27 = spvUnsafeArray<float2, 6>({ float2(-1.0), float2(1.0, -1.0), float2(-1.0, 1.0), float2(-1.0, 1.0), float2(1.0, -1.0), float2(1.0) });
+constant spvUnsafeArray<float2, 6> _28 = spvUnsafeArray<float2, 6>({ float2(-1.0), float2(1.0, -1.0), float2(-1.0, 1.0), float2(-1.0, 1.0), float2(1.0, -1.0), float2(1.0) });
 
 struct main0_out
 {
@@ -62,6 +62,8 @@ struct main0_out
     float _entryPointOutput_thickness [[user(locn5)]];
     uint _entryPointOutput_kind [[user(locn6)]];
     uint _entryPointOutput_flags [[user(locn7)]];
+    uint2 _entryPointOutput_gradients [[user(locn8)]];
+    float2 _entryPointOutput_box_half [[user(locn9)]];
     float4 gl_Position [[position]];
 };
 
@@ -76,16 +78,18 @@ struct main0_in
     float input_thickness [[attribute(6)]];
     uint input_kind [[attribute(7)]];
     uint input_flags [[attribute(8)]];
+    uint input_fill_gradient [[attribute(9)]];
+    uint input_stroke_gradient [[attribute(10)]];
 };
 
-vertex main0_out main0(main0_in in [[stage_in]], constant Frame& _95 [[buffer(0)]], uint gl_VertexIndex [[vertex_id]])
+vertex main0_out main0(main0_in in [[stage_in]], constant Frame& _96 [[buffer(0)]], uint gl_VertexIndex [[vertex_id]])
 {
     main0_out out = {};
-    float2 _236 = _27[gl_VertexIndex] * in.input_transform_ef_half.zw;
-    float2 _219 = _236;
-    float2 _224 = float2(((in.input_transform_ab_cd.x * _219.x) + (in.input_transform_ab_cd.z * _219.y)) + in.input_transform_ef_half.x, ((in.input_transform_ab_cd.y * _219.x) + (in.input_transform_ab_cd.w * _219.y)) + in.input_transform_ef_half.y);
-    out.gl_Position = float4(((_224.x / _95.canvas_size.x) * 2.0) - 1.0, 1.0 - ((_224.y / _95.canvas_size.y) * 2.0), 0.0, 1.0);
-    out._entryPointOutput_local = _236;
+    float2 _284 = _28[gl_VertexIndex] * in.input_transform_ef_half.zw;
+    float2 _266 = _284;
+    float2 _271 = float2(((in.input_transform_ab_cd.x * _266.x) + (in.input_transform_ab_cd.z * _266.y)) + in.input_transform_ef_half.x, ((in.input_transform_ab_cd.y * _266.x) + (in.input_transform_ab_cd.w * _266.y)) + in.input_transform_ef_half.y);
+    out.gl_Position = float4(((_271.x / _96.canvas_size.x) * 2.0) - 1.0, 1.0 - ((_271.y / _96.canvas_size.y) * 2.0), 0.0, 1.0);
+    out._entryPointOutput_local = _284;
     out._entryPointOutput_shape_0123 = in.input_shape_0123;
     out._entryPointOutput_shape_45 = in.input_shape_45;
     out._entryPointOutput_fill = in.input_fill;
@@ -93,6 +97,8 @@ vertex main0_out main0(main0_in in [[stage_in]], constant Frame& _95 [[buffer(0)
     out._entryPointOutput_thickness = in.input_thickness;
     out._entryPointOutput_kind = in.input_kind;
     out._entryPointOutput_flags = in.input_flags;
+    out._entryPointOutput_gradients = uint2(in.input_fill_gradient, in.input_stroke_gradient);
+    out._entryPointOutput_box_half = fast::max(in.input_transform_ef_half.zw - float2(1.0 + (((in.input_flags & 2u) != 0u) ? (in.input_thickness * 0.5) : 0.0)), float2(0.0));
     return out;
 }
 

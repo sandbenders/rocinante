@@ -113,7 +113,7 @@ run :: proc() -> bool {
 		ran += 1
 		gfx.begin_frame(&list)
 		scene.draw(&list)
-		gfx.build(&batcher, &list)
+		gfx.build(&batcher, &list, CANVAS)
 		picture, ok := gfx.render_offscreen(&renderer, int(CANVAS.x) * SCALE, int(CANVAS.y) * SCALE, CANVAS, &list, &batcher)
 		if !ok {
 			failures += 1

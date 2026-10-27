@@ -31,6 +31,11 @@ SCENES := [?]Scene{
 	{"quads_and_arcs", quads_and_arcs},
 	{"outline_joins", outline_joins},
 	{"line_caps", line_caps},
+	{"gradient_linear", gradient_linear},
+	{"gradient_radial_conic", gradient_radial_conic},
+	{"gradient_spaces", gradient_spaces},
+	{"gradient_strokes_and_meshes", gradient_strokes_and_meshes},
+	{"gradient_background", gradient_background},
 }
 
 named :: proc(name: string) -> maths.Colour {
@@ -237,4 +242,94 @@ line_caps :: proc(list: ^gfx.Command_List) {
 	gfx.set_stroke(list, named("crimson"))
 	gfx.line(list, 40, 5, 40, 130)
 	gfx.line(list, 160, 5, 160, 130)
+}
+
+gradient_of :: proc(colours: []string, kind := gfx.Gradient_Kind.Linear, angle := f32(0), space := maths.Mix_Space.Oklab, stops: []f32 = nil, centre := [2]f32{50, 50}) -> gfx.Gradient {
+	list := make([dynamic]maths.Colour, context.temp_allocator)
+	for name in colours {
+		append(&list, named(name))
+	}
+	g, _ := gfx.gradient_make(list[:], kind, angle, space, stops, centre)
+	return g
+}
+
+gradient_linear :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(250))
+	three := []string{"tomato", "gold", "teal"}
+	for angle, i in ([?]f32{0, 90, 45, 180}) {
+		gfx.set_fill_gradient(list, gradient_of(three, angle = angle))
+		gfx.rect(list, 10 + f32(i % 2) * 95, 10 + f32(i / 2) * 50, 85, 40)
+	}
+	// Uneven stops, with a hard edge in the middle.
+	gfx.set_fill_gradient(list, gradient_of({"navy", "navy", "orange", "orange"}, stops = {0, 50, 50, 100}))
+	gfx.rect(list, 10, 112, 85, 30)
+	// A gradient on a tall thin box, to see the angle follow the shape.
+	gfx.set_fill_gradient(list, gradient_of({"white", "black"}, angle = 45))
+	gfx.rect(list, 120, 105, 20, 40)
+	gfx.rect(list, 150, 105, 40, 40)
+}
+
+gradient_radial_conic :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(245))
+	gfx.set_fill_gradient(list, gradient_of({"white", "navy"}, .Radial))
+	gfx.circle(list, 40, 40, 30)
+	gfx.set_fill_gradient(list, gradient_of({"yellow", "red", "purple"}, .Radial, centre = {30, 30}))
+	gfx.ellipse(list, 120, 40, 70, 50)
+	gfx.set_fill_gradient(list, gradient_of({"red", "yellow", "lime", "cyan", "blue", "magenta", "red"}, .Conic))
+	gfx.circle(list, 40, 110, 30)
+	gfx.set_fill_gradient(list, gradient_of({"black", "white"}, .Conic, 90, stops = {0, 100}))
+	gfx.rect(list, 95, 85, 50, 50)
+	gfx.set_fill_gradient(list, gradient_of({"orange", "teal"}, .Conic, centre = {80, 20}))
+	gfx.rect(list, 155, 85, 35, 50)
+}
+
+gradient_spaces :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(255))
+	for space, i in ([?]maths.Mix_Space{.Oklab, .Rgb, .Oklch}) {
+		gfx.set_fill_gradient(list, gradient_of({"blue", "white"}, space = space))
+		gfx.rect(list, 10, 10 + f32(i) * 25, 180, 20)
+	}
+	for space, i in ([?]maths.Mix_Space{.Oklab, .Rgb, .Oklch}) {
+		gfx.set_fill_gradient(list, gradient_of({"red", "lime"}, space = space))
+		gfx.rect(list, 10, 90 + f32(i) * 20, 180, 16)
+	}
+}
+
+gradient_strokes_and_meshes :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(240))
+	// A gradient outline on a circle, and a gradient fill and outline together.
+	gfx.no_fill(list)
+	gfx.set_stroke_gradient(list, gradient_of({"crimson", "gold"}, angle = 45))
+	gfx.set_thickness(list, 8)
+	gfx.circle(list, 40, 40, 28)
+	gfx.set_fill_gradient(list, gradient_of({"white", "lightskyblue"}, angle = 90))
+	gfx.set_stroke_gradient(list, gradient_of({"navy", "teal"}))
+	gfx.set_thickness(list, 5)
+	gfx.rect(list, 85, 15, 50, 50) // mitred, so drawn as a mesh
+	// A line with a gradient stroke, and a quad and an arc filled with gradients.
+	gfx.set_stroke_gradient(list, gradient_of({"magenta", "cyan"}))
+	gfx.set_thickness(list, 10)
+	gfx.set_caps(list, .Butt)
+	gfx.line(list, 150, 20, 190, 60)
+	gfx.no_stroke(list)
+	gfx.set_fill_gradient(list, gradient_of({"seagreen", "yellow"}, angle = 30))
+	gfx.quad(list, 15, 85, 70, 80, 75, 140, 10, 135)
+	gfx.set_fill_gradient(list, gradient_of({"orchid", "white"}, .Radial))
+	gfx.arc(list, 125, 110, 60, 60, 30, 330)
+}
+
+gradient_background :: proc(list: ^gfx.Command_List) {
+	gfx.background_gradient(list, gradient_of({"navy", "darkviolet", "orange"}, angle = 90))
+	gfx.set_alpha(list, 180)
+	gfx.set_fill_gradient(list, translucent_gradient())
+	gfx.circle(list, 60, 70, 40)
+	gfx.set_fill(list, maths.grey(0))
+	gfx.set_alpha(list, 100)
+	gfx.rect(list, 110, 40, 70, 80)
+}
+
+// White fading to nothing, to check that a gradient's own alpha is drawn.
+translucent_gradient :: proc() -> gfx.Gradient {
+	g, _ := gfx.gradient_make({maths.rgb(255, 255, 255, 255), maths.rgb(255, 255, 255, 0)})
+	return g
 }

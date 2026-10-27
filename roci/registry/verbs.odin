@@ -20,6 +20,15 @@ STYLE_OPTIONS := []Option{
 	{"as", {.Name}, false},
 }
 
+// `gradient [ red teal ] angle 90 stops [ 0 20 100 ] as radial at 30 30 in rgb`
+GRADIENT_OPTIONS := []Option{
+	{"angle", {.Number}, false},
+	{"stops", {.List}, false},
+	{"as", {.Name}, false},
+	{"at", {.Number, .Number}, false},
+	{"in", {.Name}, false},
+}
+
 WINDOW_OPTIONS := []Option{{"at", {.Number, .Number}, false}}
 ALPHA_OPTION := []Option{{"alpha", {.Number}, false}}
 NOISE_OPTIONS := []Option{{"as", {.Name}, false}} // `as simplex`; Perlin is the default
@@ -87,6 +96,9 @@ VERBS := []Verb{
 	{"rgb", {{{{"red", .Number}, {"green", .Number}, {"blue", .Number}}, ALPHA_OPTION, .Colour}}, "Makes a colour from red, green and blue, each 0 to 255."},
 	{"hsb", {{{{"hue", .Number}, {"saturation", .Number}, {"brightness", .Number}}, ALPHA_OPTION, .Colour}}, "Makes a colour from hue, saturation and brightness, each 0 to 255."},
 	{"oklch", {{{{"lightness", .Number}, {"chroma", .Number}, {"hue", .Number}}, ALPHA_OPTION, .Colour}}, "Makes a colour from lightness 0 to 1, chroma and hue in degrees."},
+	{"gradient", {
+		{{{"colours", .List}}, GRADIENT_OPTIONS, .Gradient},
+	}, "Makes a gradient from a list of colours, to use wherever a colour goes."},
 	{"mix", {
 		{{{"first", .Colour}, {"second", .Colour}, {"amount", .Number}}, nil, .Colour},
 		{{{"first", .Number}, {"second", .Number}, {"amount", .Number}}, nil, .Number},

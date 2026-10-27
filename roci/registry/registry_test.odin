@@ -180,6 +180,30 @@ test_two_identical_shapes_are_ambiguous_for_the_checker :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_a_gradient_goes_wherever_a_colour_does :: proc(t: ^testing.T) {
+	for name in ([?]string{"fill", "stroke", "background"}) {
+		verb, _ := find_verb(name)
+		for kind in ([?]Kind{.Colour, .Number, .List, .Gradient}) {
+			_, r := shape_for(verb, {kind})
+			testing.expect_value(t, r, Shape_Result.Found)
+		}
+	}
+	gradient, ok := find_verb("gradient")
+	testing.expect(t, ok)
+	i, r := shape_for(gradient, {.List})
+	testing.expect_value(t, r, Shape_Result.Found)
+	testing.expect_value(t, gradient.shapes[i].gives, Kind.Gradient)
+	words: [dynamic]string
+	defer delete(words)
+	for option in gradient.shapes[i].options {
+		append(&words, option.word)
+	}
+	for want in ([?]string{"angle", "stops", "as", "at", "in"}) {
+		testing.expect(t, slice.contains(words[:], want), want)
+	}
+}
+
+@(test)
 test_caps_and_joins_take_one_word :: proc(t: ^testing.T) {
 	for name in ([?]string{"caps", "joins"}) {
 		verb, ok := find_verb(name)

@@ -12,6 +12,15 @@
 // Colour is not converted: values go to the screen as written, like Processing,
 // and the output is premultiplied (the pipeline blends with ONE, ONE_MINUS_SRC_ALPHA).
 
+#include "gradient.hlsli"
+
+static const uint FLAG_FILL = 1;
+static const uint FLAG_STROKE = 2;
+
+// Margin the CPU adds around a shape for smoothing, in the shape's own units
+// (AA_MARGIN in roci/gfx/batch.odin).
+static const float AA_MARGIN = 1.0;
+
 cbuffer Frame : register(b0, space1)
 {
     float2 canvas_size; // the window in logical pixels, as sketches see it
@@ -29,6 +38,8 @@ struct VSInput
     float thickness : TEXCOORD6;
     uint kind : TEXCOORD7;
     uint flags : TEXCOORD8;
+    uint fill_gradient : TEXCOORD9;
+    uint stroke_gradient : TEXCOORD10;
     uint vertex_id : SV_VertexID;
 };
 
@@ -43,6 +54,8 @@ struct VSOutput
     nointerpolation float thickness : TEXCOORD5;
     nointerpolation uint kind : TEXCOORD6;
     nointerpolation uint flags : TEXCOORD7;
+    nointerpolation uint2 gradients : TEXCOORD8; // fill, stroke
+    nointerpolation float2 box_half : TEXCOORD9; // the shape's box, without margin
 };
 
 VSOutput vs_main(VSInput input)
@@ -74,6 +87,9 @@ VSOutput vs_main(VSInput input)
     output.thickness = input.thickness;
     output.kind = input.kind;
     output.flags = input.flags;
+    output.gradients = uint2(input.fill_gradient, input.stroke_gradient);
+    float pad = AA_MARGIN + ((input.flags & FLAG_STROKE) != 0 ? input.thickness * 0.5 : 0.0);
+    output.box_half = max(half_size - pad, 0.0);
     return output;
 }
 
@@ -82,9 +98,6 @@ static const uint KIND_ELLIPSE = 1;
 static const uint KIND_RECT = 2;
 static const uint KIND_LINE = 3;
 static const uint KIND_TRIANGLE = 4;
-
-static const uint FLAG_FILL = 1;
-static const uint FLAG_STROKE = 2;
 
 float distance_to_segment(float2 p, float2 a, float2 b)
 {
@@ -153,28 +166,42 @@ float4 ps_main(VSOutput input) : SV_Target0
     float d = shape_distance(input);
     float pixel = max(fwidth(d), 1e-6);
 
+    // A gradient replaces the colour; the colour's alpha then holds the style's alpha.
+    float4 fill = input.fill;
+    if (input.gradients.x != 0)
+    {
+        float4 g = gradient_colour(input.gradients.x, input.local, input.box_half);
+        fill = float4(g.rgb, g.a * input.fill.a);
+    }
+    float4 stroke = input.stroke;
+    if (input.gradients.y != 0)
+    {
+        float4 g = gradient_colour(input.gradients.y, input.local, input.box_half);
+        stroke = float4(g.rgb, g.a * input.stroke.a);
+    }
+
     float fill_alpha = 0.0;
     float stroke_alpha = 0.0;
     if (input.kind == KIND_LINE)
     {
         // A line has no inside: its stroke is the band around the segment.
-        stroke_alpha = input.stroke.a * coverage(d - input.thickness * 0.5, pixel);
+        stroke_alpha = stroke.a * coverage(d - input.thickness * 0.5, pixel);
     }
     else
     {
         if ((input.flags & FLAG_FILL) != 0)
         {
-            fill_alpha = input.fill.a * coverage(d, pixel);
+            fill_alpha = fill.a * coverage(d, pixel);
         }
         if ((input.flags & FLAG_STROKE) != 0)
         {
             // The outline is centred on the edge, half inside and half outside.
-            stroke_alpha = input.stroke.a * coverage(abs(d) - input.thickness * 0.5, pixel);
+            stroke_alpha = stroke.a * coverage(abs(d) - input.thickness * 0.5, pixel);
         }
     }
 
     // Stroke over fill, premultiplied.
-    float3 colour = input.stroke.rgb * stroke_alpha + input.fill.rgb * fill_alpha * (1.0 - stroke_alpha);
+    float3 colour = stroke.rgb * stroke_alpha + fill.rgb * fill_alpha * (1.0 - stroke_alpha);
     float alpha = stroke_alpha + fill_alpha * (1.0 - stroke_alpha);
     return float4(colour, alpha);
 }

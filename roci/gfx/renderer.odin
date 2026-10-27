@@ -91,6 +91,11 @@ Renderer :: struct {
 	transfer:      ^sdl.GPUTransferBuffer,
 	transfer_capacity: int,
 
+	// The gradient atlas as a texture: 256 colours wide, two rows to a gradient.
+	gradient_texture: ^sdl.GPUTexture,
+	gradient_sampler: ^sdl.GPUSampler,
+	uploaded_atlas:   u64, // the atlas version on the GPU
+
 	// Hashes of what is on the GPU now, so an unchanged scene uploads nothing.
 	uploaded_instances: u64,
 	uploaded_instance_count: int,
@@ -106,6 +111,7 @@ Render_Stats :: struct {
 	draws:              int,
 	uploaded_instances: bool, // false when the instances were the same as last frame and were kept
 	uploaded_mesh:      bool,
+	uploaded_gradients: bool,
 	samples:            int,  // per pixel
 }
 
@@ -130,6 +136,12 @@ renderer_destroy :: proc(r: ^Renderer) {
 	}
 	if r.transfer != nil {
 		sdl.ReleaseGPUTransferBuffer(r.device, r.transfer)
+	}
+	if r.gradient_texture != nil {
+		sdl.ReleaseGPUTexture(r.device, r.gradient_texture)
+	}
+	if r.gradient_sampler != nil {
+		sdl.ReleaseGPUSampler(r.device, r.gradient_sampler)
 	}
 	delete(r.error)
 	r^ = {}
@@ -179,13 +191,14 @@ shader_source_for :: proc(program: Program, formats: sdl.GPUShaderFormat) -> (so
 }
 
 @(private)
-create_shader :: proc(r: ^Renderer, code: []byte, entry: cstring, format: sdl.GPUShaderFormat, stage: sdl.GPUShaderStage, uniform_buffers: u32) -> ^sdl.GPUShader {
+create_shader :: proc(r: ^Renderer, code: []byte, entry: cstring, format: sdl.GPUShaderFormat, stage: sdl.GPUShaderStage, uniform_buffers, samplers: u32) -> ^sdl.GPUShader {
 	return sdl.CreateGPUShader(r.device, sdl.GPUShaderCreateInfo{
 		code_size           = len(code),
 		code                = raw_data(code),
 		entrypoint          = entry,
 		format              = format,
 		stage               = stage,
+		num_samplers        = samplers,
 		num_uniform_buffers = uniform_buffers,
 	})
 }
@@ -215,8 +228,10 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 		set_plain_error(r, "the shaders are not built for this computer's graphics system yet (DXIL for Direct3D 12 comes from compile-dxil.sh on Windows)")
 		return nil
 	}
-	vertex := create_shader(r, source.vertex, source.vertex_entry, source.format, .VERTEX, 1)
-	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 0)
+	// The vertex shaders read one uniform buffer; the fragment shaders one sampler,
+	// the gradient atlas.
+	vertex := create_shader(r, source.vertex, source.vertex_entry, source.format, .VERTEX, 1, 0)
+	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 0, 1)
 	if vertex == nil || fragment == nil {
 		set_error(r, "creating the shaders")
 		if vertex != nil {sdl.ReleaseGPUShader(r.device, vertex)}
@@ -248,7 +263,7 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 	// The vertex layouts are the structs Instance (batch.odin) and Mesh_Vertex
 	// (mesh.odin); the shaders read them as TEXCOORD0, 1, 2 ... in order.
 	instance_buffers := [1]sdl.GPUVertexBufferDescription{{slot = 0, pitch = size_of(Instance), input_rate = .INSTANCE}}
-	instance_attributes := [9]sdl.GPUVertexAttribute{
+	instance_attributes := [11]sdl.GPUVertexAttribute{
 		{location = 0, format = .FLOAT4, offset = u32(offset_of(Instance, transform))},
 		{location = 1, format = .FLOAT4, offset = u32(offset_of(Instance, transform)) + 16}, // e f, then half
 		{location = 2, format = .FLOAT4, offset = u32(offset_of(Instance, shape))},
@@ -258,15 +273,20 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 		{location = 6, format = .FLOAT, offset = u32(offset_of(Instance, thickness))},
 		{location = 7, format = .UINT, offset = u32(offset_of(Instance, kind))},
 		{location = 8, format = .UINT, offset = u32(offset_of(Instance, flags))},
+		{location = 9, format = .UINT, offset = u32(offset_of(Instance, fill_gradient))},
+		{location = 10, format = .UINT, offset = u32(offset_of(Instance, stroke_gradient))},
 	}
 	// The shader reads the transform's e and f together with the half size, so the
 	// two must sit side by side in the instance.
 	#assert(offset_of(Instance, half) == offset_of(Instance, transform) + 24)
 	#assert(offset_of(Instance, shape) == offset_of(Instance, half) + 8)
 	mesh_buffers := [1]sdl.GPUVertexBufferDescription{{slot = 0, pitch = size_of(Mesh_Vertex), input_rate = .VERTEX}}
-	mesh_attributes := [2]sdl.GPUVertexAttribute{
+	mesh_attributes := [5]sdl.GPUVertexAttribute{
 		{location = 0, format = .FLOAT2, offset = u32(offset_of(Mesh_Vertex, position))},
 		{location = 1, format = .FLOAT4, offset = u32(offset_of(Mesh_Vertex, colour))},
+		{location = 2, format = .FLOAT2, offset = u32(offset_of(Mesh_Vertex, local))},
+		{location = 3, format = .FLOAT2, offset = u32(offset_of(Mesh_Vertex, box))},
+		{location = 4, format = .UINT, offset = u32(offset_of(Mesh_Vertex, gradient))},
 	}
 	switch program {
 	case .Shapes:
@@ -291,6 +311,50 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 	}
 	r.pipelines[key] = pipeline
 	return pipeline
+}
+
+// ---- the gradient atlas ----
+
+GRADIENT_TEXTURE_FORMAT :: sdl.GPUTextureFormat.R16G16B16A16_FLOAT
+GRADIENT_TEXTURE_HEIGHT :: MAX_GRADIENTS * 2
+
+// Makes the gradient texture and its sampler, once. Every pipeline reads them
+// whether a frame has gradients or not, so they must exist.
+@(private)
+ensure_gradient_texture :: proc(r: ^Renderer) -> bool {
+	if r.gradient_texture != nil {
+		return true
+	}
+	if !sdl.GPUTextureSupportsFormat(r.device, GRADIENT_TEXTURE_FORMAT, .D2, {.SAMPLER}) {
+		set_plain_error(r, "this computer's graphics cannot sample 16-bit float textures, which gradients need")
+		return false
+	}
+	texture := sdl.CreateGPUTexture(r.device, {
+		type                 = .D2,
+		format               = GRADIENT_TEXTURE_FORMAT,
+		usage                = {.SAMPLER},
+		width                = RAMP_WIDTH,
+		height               = GRADIENT_TEXTURE_HEIGHT,
+		layer_count_or_depth = 1,
+		num_levels           = 1,
+	})
+	sampler := sdl.CreateGPUSampler(r.device, {
+		min_filter     = .LINEAR,
+		mag_filter     = .LINEAR,
+		mipmap_mode    = .NEAREST,
+		address_mode_u = .CLAMP_TO_EDGE,
+		address_mode_v = .CLAMP_TO_EDGE,
+		address_mode_w = .CLAMP_TO_EDGE,
+	})
+	if texture == nil || sampler == nil {
+		set_error(r, "creating the gradient texture")
+		if texture != nil {sdl.ReleaseGPUTexture(r.device, texture)}
+		if sampler != nil {sdl.ReleaseGPUSampler(r.device, sampler)}
+		return false
+	}
+	r.gradient_texture, r.gradient_sampler = texture, sampler
+	r.uploaded_atlas = 0
+	return true
 }
 
 // ---- multisampled targets ----
@@ -388,7 +452,7 @@ pipeline_hash :: proc(b: ^Batcher, pipeline: Pipeline) -> u64 {
 // as the ones already there (a still scene, or one whose shapes did not change).
 @(private)
 upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bool {
-	r.stats.uploaded_instances, r.stats.uploaded_mesh = false, false
+	r.stats.uploaded_instances, r.stats.uploaded_mesh, r.stats.uploaded_gradients = false, false, false
 	instance_bytes := len(b.instances) * size_of(Instance)
 	vertex_bytes := len(b.mesh.vertices) * size_of(Mesh_Vertex)
 	index_bytes := len(b.mesh.indices) * size_of(u32)
@@ -409,11 +473,33 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 	instance_hash, mesh_hash := pipeline_hash(b, .Shapes), pipeline_hash(b, .Paths)
 	need_instances := instance_bytes > 0 && (instance_hash != r.uploaded_instances || len(b.instances) != r.uploaded_instance_count)
 	need_mesh := vertex_bytes > 0 && (mesh_hash != r.uploaded_mesh || len(b.mesh.vertices) != r.uploaded_mesh_vertex_count || len(b.mesh.indices) != r.uploaded_mesh_index_count)
-	if !need_instances && !need_mesh {
+	// The gradient atlas goes up whole whenever it has changed: it is small, and a
+	// texture cycled for the upload does not keep its old rows.
+	atlas_rows := len(b.atlas.rows) * 2
+	atlas_bytes := atlas_rows * RAMP_WIDTH * size_of([4]f16)
+	need_atlas := atlas_rows > 0 && b.atlas.version != r.uploaded_atlas
+	if !need_instances && !need_mesh && !need_atlas {
 		return true
 	}
 
-	total := (instance_bytes if need_instances else 0) + (vertex_bytes + index_bytes if need_mesh else 0)
+	// Each piece starts on a 16-byte boundary: a copy into a texture must begin on a
+	// multiple of its texel size, and the rest are tidier for it.
+	align :: proc(n: int) -> int {return (n + 15) &~ 15}
+	instance_at, vertex_at, index_at, atlas_at, total := 0, 0, 0, 0, 0
+	if need_instances {
+		instance_at = total
+		total += align(instance_bytes)
+	}
+	if need_mesh {
+		vertex_at = total
+		total += align(vertex_bytes)
+		index_at = total
+		total += align(index_bytes)
+	}
+	if need_atlas {
+		atlas_at = total
+		total += atlas_bytes
+	}
 	if !ensure_transfer(r, total) {
 		return false
 	}
@@ -423,19 +509,23 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 		return false
 	}
 	base := ([^]byte)(mapped)
-	offset := 0
-	instance_at, vertex_at, index_at := 0, 0, 0
 	if need_instances {
-		mem.copy(base[offset:], raw_data(b.instances), instance_bytes)
-		instance_at = offset
-		offset += instance_bytes
+		mem.copy(base[instance_at:], raw_data(b.instances), instance_bytes)
 	}
 	if need_mesh {
-		mem.copy(base[offset:], raw_data(b.mesh.vertices), vertex_bytes)
-		vertex_at = offset
-		offset += vertex_bytes
-		mem.copy(base[offset:], raw_data(b.mesh.indices), index_bytes)
-		index_at = offset
+		mem.copy(base[vertex_at:], raw_data(b.mesh.vertices), vertex_bytes)
+		mem.copy(base[index_at:], raw_data(b.mesh.indices), index_bytes)
+	}
+	if need_atlas {
+		row_bytes := RAMP_WIDTH * size_of([4]f16)
+		for gradient, n in b.atlas.rows {
+			ramp, params := atlas_at + n * 2 * row_bytes, atlas_at + (n * 2 + 1) * row_bytes
+			ramp_data := gradient.ramp
+			mem.copy(base[ramp:], &ramp_data, row_bytes)
+			mem.zero(base[params:], row_bytes)
+			params_data := gradient.params
+			mem.copy(base[params:], &params_data, size_of([4]f16))
+		}
 	}
 	sdl.UnmapGPUTransferBuffer(r.device, r.transfer)
 
@@ -450,6 +540,16 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 		sdl.UploadToGPUBuffer(copy_pass, {transfer_buffer = r.transfer, offset = u32(index_at)}, {buffer = r.mesh_indices.buffer, size = u32(index_bytes)}, true)
 		r.uploaded_mesh, r.uploaded_mesh_vertex_count, r.uploaded_mesh_index_count = mesh_hash, len(b.mesh.vertices), len(b.mesh.indices)
 		r.stats.uploaded_mesh = true
+	}
+	if need_atlas {
+		sdl.UploadToGPUTexture(
+			copy_pass,
+			{transfer_buffer = r.transfer, offset = u32(atlas_at), pixels_per_row = RAMP_WIDTH, rows_per_layer = u32(atlas_rows)},
+			{texture = r.gradient_texture, w = RAMP_WIDTH, h = u32(atlas_rows), d = 1},
+			true,
+		)
+		r.uploaded_atlas = b.atlas.version
+		r.stats.uploaded_gradients = true
 	}
 	sdl.EndGPUCopyPass(copy_pass)
 	return true
@@ -480,11 +580,11 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 	}
 
 	shapes, mesh: ^sdl.GPUGraphicsPipeline
-	ok := true
+	ok := ensure_gradient_texture(r)
 	for batch in b.batches {
 		switch batch.pipeline {
-		case .Shapes: if shapes == nil {shapes = get_pipeline(r, .Shapes, format, samples)}
-		case .Paths:  if mesh == nil {mesh = get_pipeline(r, .Mesh, format, samples)}
+		case .Shapes: if shapes == nil && ok {shapes = get_pipeline(r, .Shapes, format, samples)}
+		case .Paths:  if mesh == nil && ok {mesh = get_pipeline(r, .Mesh, format, samples)}
 		}
 	}
 	if (len(b.instances) > 0 && shapes == nil) || (len(b.mesh.indices) > 0 && mesh == nil) {
@@ -511,6 +611,7 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 		return false
 	}
 	uniforms := Frame_Uniforms{canvas_size = canvas}
+	gradients := sdl.GPUTextureSamplerBinding{texture = r.gradient_texture, sampler = r.gradient_sampler}
 	bound: Pipeline = .Shapes
 	have_bound := false
 	for batch in b.batches {
@@ -519,11 +620,13 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 			switch batch.pipeline {
 			case .Shapes:
 				sdl.BindGPUGraphicsPipeline(pass, shapes)
+				sdl.BindGPUFragmentSamplers(pass, 0, &gradients, 1)
 				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
 				binding := sdl.GPUBufferBinding{buffer = r.instances.buffer}
 				sdl.BindGPUVertexBuffers(pass, 0, &binding, 1)
 			case .Paths:
 				sdl.BindGPUGraphicsPipeline(pass, mesh)
+				sdl.BindGPUFragmentSamplers(pass, 0, &gradients, 1)
 				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
 				vertices := sdl.GPUBufferBinding{buffer = r.mesh_vertices.buffer}
 				sdl.BindGPUVertexBuffers(pass, 0, &vertices, 1)

@@ -11,7 +11,7 @@ cd "$(dirname "$0")"
 mkdir -p compiled
 for file in *.hlsl; do
   name=${file%.hlsl}
-  dxc -nologo -T vs_6_0 -E vs_main "$file" -Fo "compiled/$name.vert.dxil"
-  dxc -nologo -T ps_6_0 -E ps_main "$file" -Fo "compiled/$name.frag.dxil"
+  dxc -nologo -I . -T vs_6_0 -E vs_main "$file" -Fo "compiled/$name.vert.dxil"
+  dxc -nologo -I . -T ps_6_0 -E ps_main "$file" -Fo "compiled/$name.frag.dxil"
 done
 echo "compiled $(command ls compiled/*.dxil | wc -l | tr -d ' ') DXIL files"

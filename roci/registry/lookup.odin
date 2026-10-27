@@ -76,12 +76,13 @@ Shape_Result :: enum {
 }
 
 // Whether an argument of kind `got` can go where a parameter of kind `want` is
-// expected. A colour parameter also takes a number (a grey) and a list (a gradient).
+// expected. A colour parameter also takes a number (a grey), a list of colours
+// and a gradient (a gradient is a paint like any colour, section 5.9).
 accepts :: proc(want, got: Kind) -> bool {
 	if want == got || want == .Any {
 		return true
 	}
-	return want == .Colour && (got == .Number || got == .List)
+	return want == .Colour && (got == .Number || got == .List || got == .Gradient)
 }
 
 // Picks the shape of a verb group for these argument kinds: first by count,

@@ -77,8 +77,8 @@ run :: proc() -> bool {
 
 		time := f32(sdl.GetTicks() - start) / 1000
 		draw(&list, time, mouse)
-		gfx.build(&batcher, &list)
 		m := platform.window_metrics(window)
+		gfx.build(&batcher, &list, {f32(m.width), f32(m.height)})
 		if !gfx.render_window(&renderer, window.handle, {f32(m.width), f32(m.height)}, &list, &batcher) {
 			fmt.eprintfln("shapes: %s", renderer.error)
 			return false
