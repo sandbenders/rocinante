@@ -500,6 +500,7 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - **2026-10-26, LF line endings in every clone**, set by `.gitattributes`. Full text in the shell and tool gotchas.
 - **2026-10-26, SDL patch releases**: results from SDL 3.4.2, 3.4.16 and 3.4.18 libraries count as the same SDL; differences between patch releases are accepted (§8, Phase 0 results).
 - **2026-10-26, `CHANGELOG.md` and `CONTRIBUTING.md` are pointers**: the first to the releases page (release notes stay on the tags), the second to README's Contributing section, so neither duplicates what lives elsewhere. Full text in §4.2 and §11.
+- **2026-10-27, Plain words, not English sentences**: the goal of reading close to English is dropped for good; every construct has one canonical form with a fixed word order. Full text in §5.1.
 - **2026-10-23, Sharing: numbers, vectors, colours and text are copied; lists and records are shared**; `copy` makes an independent copy. Full text in §5.11.
 
 ### Later
@@ -596,6 +597,18 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 - Inform 7, "a random number from 2 to 5" (range phrase closed by connecting words): https://ganelson.github.io/inform-website/book/WI_8_18.html
 - Stefik & Siebert (2013), An Empirical Investigation into Programming Language Syntax: https://www.vidarholen.net/~vidar/An_Empirical_Investigation_into_Programming_Language_Syntax.pdf
 - Elm, Compiler Errors for Humans: https://elm-lang.org/news/compiler-errors-for-humans
+- Cook, "AppleScript" (HOPL III, 2007; why naturalistic syntax is hard to write and diagnose): https://pdos.csail.mit.edu/6.828/2007/readings/applescript.pdf
+- Solomon, Harvey, Kahn et al., "History of Logo" (HOPL IV, 2020; Logo's parsing, scope and sigil traps): https://people.eecs.berkeley.edu/~bh/HOPL.pdf
+- Victor, "Learnable Programming" (hidden state in Processing, the turtle): https://worrydream.com/LearnableProgramming/
+- Hermans, "Gradual Programming in Hedy: A First User Study" (2021; errors read aloud): https://www.hedy.org/research/Gradual_Programming_in_Hedy_A_First_User_Study_2021.pdf
+- Swidan and Hermans, "A Framework for the Localization of Programming Languages" (SPLASH-E 2023): https://www.hedy.org/research/A_Framework_for_the_Localization_of_Programming_Languages_2023.pdf
+- Becker et al., compiler error messages considered unhelpful (summary): https://neverworkintheory.org/2021/09/02/compiler-error-messages-considered-unhelpful.html
+- Sam Aaron, live coding in education (Sonic Pi: a loop that never waits is an error): https://sonic-pi.net/files/articles/Live-Coding-Education.pdf
+- Schanzer, Bahram and Krishnamurthi, accessible AST-based programming: https://cs.brown.edu/~sk/Publications/Papers/Published/sbk-accessible-ast-blocks/paper.pdf
+- p5.js web accessibility (`describe`, `textOutput`): https://p5js.org/contribute/web_accessibility/
+- Odin newsletter 2026 Q1 (`#must_tail`, `"preserve/none"`): https://odin-lang.org/news/newsletter-2026-q1/
+- Android app versioning (`versionCode`, `versionName`): https://developer.android.com/studio/publish/versioning
+- Windows VERSIONINFO resource: https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource
 - Apple App Review Guidelines (2.5.2): https://developer.apple.com/app-store/review/guidelines/
 - nannou (prior art, built on Bevy): https://github.com/nannou-org/nannou
 - LiteRT (runtime, platforms, accelerators, LiteRT Torch converter): https://github.com/google-ai-edge/LiteRT

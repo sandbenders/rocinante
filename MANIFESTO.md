@@ -44,7 +44,7 @@ Coding has become bureaucracy. Most of what we type is ceremony that serves the 
 
 **Change it and see it.** Save the file and the sketch updates while it runs, keeping its state. The particles keep flying while you change their colour.
 
-**Small and predictable beats clever.** rocinante reads close to English, but it isn't English. It has few words and one shape (a verb, then what it acts on), so once you've guessed the pattern you can guess the rest. No semicolons, no braces around blocks, no punctuation that exists only for the parser.
+**Small and predictable beats clever.** rocinante has few words and one shape (a verb, then what it acts on), so once you've guessed the pattern you can guess the rest. No semicolons, no braces around blocks, no punctuation that exists only for the parser.
 
 **Everywhere, from one sketch.** FreeBSD, Linux, macOS, Windows, iOS and Android. The same file runs on all of them, and `roci package ios` turns it into something you can ship. Where a platform owner imposes rules we can't remove ([Apple's signing](https://support.apple.com/en-euro/guide/security/sec7c917bf14/web), for one), we make them as painless as we can and tell you plainly what's left.
 
