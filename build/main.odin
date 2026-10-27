@@ -160,6 +160,7 @@ check_packages :: proc() -> bool {
 	ok = step("check benchmark example", {"odin", "check", "examples/benchmark", "-vet", "-strict-style"}) && ok
 	ok = step("check circle example", {"odin", "check", "examples/circle", "-vet", "-strict-style"}) && ok
 	ok = step("check two windows example", {"odin", "check", "examples/two_windows", "-vet", "-strict-style"}) && ok
+	ok = step("check garden example", {"odin", "check", "examples/garden", "-vet", "-strict-style"}) && ok
 	ok = step("check shapes example", {"odin", "check", "examples/shapes", "-vet", "-strict-style"}) && ok
 	ok = step("check golden tests", {"odin", "check", "tests/golden", "-vet", "-strict-style"}) && ok
 	ok = step("check window example", {"odin", "check", "examples/window", "-vet", "-strict-style"}) && ok
