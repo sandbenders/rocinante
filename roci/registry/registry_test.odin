@@ -179,6 +179,23 @@ test_two_identical_shapes_are_ambiguous_for_the_checker :: proc(t: ^testing.T) {
 	testing.expect_value(t, r, Shape_Result.Ambiguous)
 }
 
+@(test)
+test_noise_takes_one_to_four_numbers_and_as_simplex :: proc(t: ^testing.T) {
+	noise, _ := find_verb("noise")
+	for count in 1 ..= 4 {
+		kinds: [4]Kind
+		for i in 0 ..< count {
+			kinds[i] = .Number
+		}
+		i, r := shape_for(noise, kinds[:count])
+		testing.expect_value(t, r, Shape_Result.Found)
+		testing.expect_value(t, len(noise.shapes[i].params), count)
+		testing.expect_value(t, noise.shapes[i].options[0].word, "as")
+	}
+	_, r := shape_for(noise, {.Number, .Number, .Number, .Number, .Number})
+	testing.expect_value(t, r, Shape_Result.Wrong_Count)
+}
+
 // ---- did you mean ----
 
 @(test)

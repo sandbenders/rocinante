@@ -22,6 +22,7 @@ STYLE_OPTIONS := []Option{
 
 WINDOW_OPTIONS := []Option{{"at", {.Number, .Number}, false}}
 ALPHA_OPTION := []Option{{"alpha", {.Number}, false}}
+NOISE_OPTIONS := []Option{{"as", {.Name}, false}} // `as simplex`; Perlin is the default
 RANDOM_RANGE := []Option{{"from", {.Number}, true}, {"to", {.Number}, true}}
 
 VERBS := []Verb{
@@ -123,9 +124,10 @@ VERBS := []Verb{
 	{"gaussian", {{{{"mean", .Number}, {"spread", .Number}}, nil, .Number}}, "A random number clustered around a mean."},
 	{"seed", {{{{"value", .Number}}, nil, .None}}, "Makes every random number from now on repeat the same way."},
 	{"noise", {
-		{{{"x", .Number}}, nil, .Number},
-		{{{"x", .Number}, {"y", .Number}}, nil, .Number},
-		{{{"x", .Number}, {"y", .Number}, {"z", .Number}}, nil, .Number},
-	}, "Smooth random noise from 0 to 1."},
+		{{{"x", .Number}}, NOISE_OPTIONS, .Number},
+		{{{"x", .Number}, {"y", .Number}}, NOISE_OPTIONS, .Number},
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}}, NOISE_OPTIONS, .Number},
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"w", .Number}}, NOISE_OPTIONS, .Number},
+	}, "Smooth random noise from 0 to 1 in one to four dimensions; add `as simplex` for simplex noise."},
 	{"fbm", {{{{"x", .Number}, {"y", .Number}, {"z", .Number}}, nil, .Number}}, "Layers of noise from 0 to 1, with finer detail added on top."},
 }
