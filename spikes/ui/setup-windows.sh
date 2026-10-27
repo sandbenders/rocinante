@@ -11,7 +11,7 @@
 # Then, from the repository root:
 #
 #     spikes/ui/setup-windows.sh
-#     cp "$(odin root)/vendor/sdl3/SDL3.dll" .      # once, as for Spike 1
+#     cp "$(odin root)/vendor/sdl3/SDL3.dll" .      # once, as for examples/window
 #     odin run spikes/ui
 #     odin run spikes/ui -- interactive
 #
