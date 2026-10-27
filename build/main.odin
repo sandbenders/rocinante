@@ -101,9 +101,10 @@ TEST_OUT_DIR :: "output/tests"
 // Odin on Windows refuses an -out: path without .exe.
 EXE :: ".exe" when ODIN_OS == .Windows else ""
 
-test_binary :: proc(package_dir: string) -> string {
+// `variant` keeps the optimised build of a package's tests apart from the default one.
+test_binary :: proc(package_dir: string, variant := "") -> string {
 	name, _ := strings.replace_all(package_dir, "/", "_", context.temp_allocator)
-	return fmt.tprintf("%s/%s%s", TEST_OUT_DIR, name, EXE)
+	return fmt.tprintf("%s/%s%s%s", TEST_OUT_DIR, name, variant, EXE)
 }
 
 ci :: proc(fast: bool) -> bool {
@@ -112,6 +113,7 @@ ci :: proc(fast: bool) -> bool {
 	// Compile-check every Odin package that exists so far.
 	ok = check_packages() && ok
 	if !fast {
+		ok = check_optimised_tests() && ok
 		ok = check_abi() && ok
 		ok = check_golden() && ok
 		fmt.printfln("%s %s", term.out("== back-end equivalence, benchmarks:", .Bold_Cyan), term.out("not built yet", .Dim))
@@ -120,6 +122,22 @@ ci :: proc(fast: bool) -> bool {
 		fmt.printfln("\n%s%s", term.out_icon(.Ok), term.out("ci: all checks passed", .Bold_Green))
 	} else {
 		fmt.eprintfln("\n%s%s", term.err_icon(.Missing), term.err("ci: FAILED, see the messages above", .Bold_Red))
+	}
+	return ok
+}
+
+// The unit tests again, built optimised (-o:speed, as the benchmark is measured):
+// a sketch must behave the same however it was built (non-negotiable 7), so the
+// optimiser must not change a result, which holds only while nothing uses
+// fast-math. The full `ci` only, because building every package optimised takes
+// about a minute.
+OPTIMISED_TEST_FLAG :: "-o:speed"
+
+check_optimised_tests :: proc() -> bool {
+	ok := true
+	for package_dir in TEST_PACKAGES {
+		out := fmt.tprintf("-out:%s", test_binary(package_dir, "_speed"))
+		ok = step(fmt.tprintf("unit tests, optimised: %s", package_dir), {"odin", "test", package_dir, OPTIMISED_TEST_FLAG, "-vet", "-strict-style", out}) && ok
 	}
 	return ok
 }

@@ -57,3 +57,27 @@ test_any_other_exit_code_fails :: proc(t: ^testing.T) {
 		testing.expect_value(t, abi_outcome(code, true), Check_Outcome.Failed)
 	}
 }
+
+@(test)
+test_an_optimised_test_binary_has_its_own_name :: proc(t: ^testing.T) {
+	testing.expect_value(t, test_binary("roci/gfx", "_speed"), "output/tests/roci_gfx_speed" + EXE)
+	testing.expect(t, test_binary("roci/gfx", "_speed") != test_binary("roci/gfx"))
+}
+
+@(test)
+test_optimised_test_binaries_differ_from_every_default_one :: proc(t: ^testing.T) {
+	seen := make(map[string]bool, context.temp_allocator)
+	for package_dir in TEST_PACKAGES {
+		seen[test_binary(package_dir)] = true
+	}
+	for package_dir in TEST_PACKAGES {
+		path := test_binary(package_dir, "_speed")
+		testing.expectf(t, !seen[path], "%s's optimised tests share %s", package_dir, path)
+		seen[path] = true
+	}
+}
+
+@(test)
+test_the_optimised_tests_are_built_for_speed :: proc(t: ^testing.T) {
+	testing.expect_value(t, OPTIMISED_TEST_FLAG, "-o:speed")
+}
