@@ -333,7 +333,9 @@ It also checked every dependency, the name, the parity map (§6) and Odin's targ
 - Internal shader pipeline: HLSL → SDL_shadercross → embedded SPIR-V/MSL/DXIL.
 - Command list, batching, instancing, geometry cache.
 - 2D primitives, style, colour, gradients (§5.9), transforms, basic shapes (including the tessellation decision, §4.3), math, random, noise, mouse and keyboard.
-- First version of the stable verb ABI (§4.7), with its C ABI.
+- First version of the stable verb ABI (§4.7), with its C ABI, and the verb registry it is generated with (name, parameters, connecting words, description).
+- Commands that describe themselves (kind, position, size, colour, an empty source-span slot, §4.3), lazy pipeline creation with a fallback, one seed per run with the single random and noise implementation (§4.7).
+- Headless rendering: the golden-image harness renders N frames offscreen to PNG, which Phase 2 exposes as `roci run --frames`.
 - Golden-image test harness (render offscreen, compare against reference PNGs with tolerance).
 - Mobile: the Phase 1 examples running on an iOS device and an Android device.
 - **Exit**: `examples/circle.odin` and a 100,000-circle benchmark at 60 fps; two windows exchanging a message; runs on iOS and Android.
