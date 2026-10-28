@@ -11,7 +11,7 @@ Read `MANIFESTO.md` before starting any work. Every decision below serves it.
 - `main` moves between sessions and other work lands without this file being re-read: run `git fetch` and read `git log --oneline origin/main -20` before trusting anything below.
 - Branch first, never commit on `main`, never push (§3). Fabrizio pushes, opens the merge request and merges. When he says a branch is merged, check `git rev-list --count origin/main..<branch>` is 0, fast-forward `main` and delete every merged local branch with `git branch -d`, without waiting to be asked (decided 2026-10-28).
 - Run `odin run build -- ci` before handing a branch over.
-- Phase 0 and Phase 1 are closed (§8); Phase 2, the language, is under way: the front end and checker are merged, and the interpreter and `roci run` come in three steps (the interpreter run headless, events and messages, live reload and the error overlay).
+- Phase 0 and Phase 1 are closed (§8). Phase 2, the language, is well under way: the front end, checker, interpreter, `roci run` (live reload, overlay), `roci fmt`, `roci man` and sketch folders exist; what is still open is listed in §8 (multi-file sketches and libraries, held input, turtle, tweens, collision, the newcomer test) and the Phase 2 code map below says what each piece does.
 
 ## Commands
 
@@ -39,7 +39,12 @@ odin run examples/two_windows [-- seconds]    # two windows that send each other
 odin run examples/shapes [-- seconds]         # roci/gfx by hand: every shape through the renderer
 odin run examples/window [-- seconds]         # roci/platform by hand: windows, events, N / F / V keys
 odin run examples/benchmark -o:speed -- [seconds] [count] [novsync] [headless]   # 100,000 circles a frame; frame rate and where the time goes
-odin run cli -- run examples/garden/sketch.roci [--frames N --screenshot out.png --window 2 --seed N --errors json]   # run a sketch in the language; with --frames, headless
+odin run cli -- run examples/garden/sketch.roci [--frames N --screenshot out.png --window 2 --seed N --errors json]   # run a sketch in the language (a folder runs its sketch.roci); with --frames, headless
+odin run cli -- check <file or folder> [--types --tree --errors json]   # parse and check, and say every mistake
+odin run cli -- fmt [file or folder]          # write sketches in the house style; no name means every .roci file here
+odin run cli -- man [word]                    # how a verb or statement is written, made from the registry
+odin run cli -- new <name> | init | add <file>   # a sketch folder, its files in this folder, a file into assets/
+ROCI_UPDATE_ERRORS=1 odin test roci/lang      # write tests/errors/**/*.txt, tests/check/*.types and examples/*/sketch.types again (review them like code); roci/interp does the same for tests/errors/runtime
 ROCI_GPU_DEBUG=1 odin run examples/shapes     # any program with GPU validation on (off by default)
 odin run tests/golden [-- update | scene]     # golden images: scenes drawn offscreen, compared with tests/golden/*.png
 odin run tools/header -- include/roci.h       # regenerate the C header from the registry (a test fails when it is stale)
