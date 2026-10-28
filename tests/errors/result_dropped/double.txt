@@ -1,0 +1,8 @@
+── Warning: `double` gives a value back, and nothing uses it ─── sketch.roci:2:1
+
+2 │ double 21
+  │ ^^^^^^^^^
+
+This line calls `double` and throws its result away, which is usually a mistake. Keep the value in a name.
+
+Write:  answer = double 21

@@ -1,0 +1,25 @@
+# Taught verbs: parameters typed from the call, one version per argument types,
+# defaults, local names, recursion and a verb used with two record shapes.
+learn step p [ p.pos = p.pos + p.vel ]
+learn double n [ give n * 2 ]
+learn fact n [
+  if n < 2 [ give 1 ]
+  give n * fact (n - 1)
+]
+learn star size with points 5 spin 0 [
+  turns = points + spin
+  repeat points [ circle 100 100 size ]
+]
+
+birds = []
+add { pos: { 1, 2 }, vel: { 3, 4 }, name: "a" } to birds
+fish = []
+add { pos: { 5, 6 }, vel: { 7, 8 } } to fish
+for each b in birds [ step b ]
+for each f in fish [ step f ]
+
+a = double 21
+v = double { 1, 2 }
+n = fact 5
+star 100
+star 50 points 7 spin 15

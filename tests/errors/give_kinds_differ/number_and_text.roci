@@ -1,0 +1,4 @@
+learn pick_one n [
+  if n < 0 [ give 1 ] else [ give "a" ]
+]
+x = pick_one 5

@@ -1,0 +1,8 @@
+── `pick_one` gives two kinds of value ──────────────── sketch.roci:2:35
+
+2 │   if n < 0 [ give 1 ] else [ give "a" ]
+  │                                   ^^^
+
+An earlier `give` in `pick_one` hands back a number, but this one hands back text. A verb gives one kind of value, and several results come back as a record.
+
+Write:  if n < 0 [ give 1 ] else [ give 1 ]

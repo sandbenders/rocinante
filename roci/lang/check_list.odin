@@ -109,8 +109,13 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 		}
 		for o in k.options {
 			if o.word == word && len(o.args) > 0 {
-				if path, is_path := o.args[0].kind.(Path); is_path && len(path.parts) == 1 && slice_contains(c.walking[:], path.parts[0]) {
-					changed_while_walking(c, path.parts[0], o.args[0].span)
+				if path, is_path := o.args[0].kind.(Path); is_path && len(path.parts) == 1 {
+					if slice_contains(c.walking[:], path.parts[0]) {
+						changed_while_walking(c, path.parts[0], o.args[0].span)
+					}
+					if sym := lookup(c, path.parts[0]); sym != nil && sym.kind == .Parameter {
+						sym.mutated = true
+					}
 				}
 			}
 		}

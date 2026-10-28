@@ -1,0 +1,3 @@
+learn tint p [ p.red = 255 ]
+PALETTE = { red: 0 }
+tint PALETTE

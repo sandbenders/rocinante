@@ -258,7 +258,7 @@ as_word :: proc(c: ^Checker, e: ^Expr) -> (word: string, ok: bool) {
 @(private)
 check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 	if k.taught != nil {
-		return check_taught_call(c, e, k)
+		return check_taught_call(c, e, k, as_stmt)
 	}
 	verb := k.verb
 	args := make([dynamic]^IR, c.alloc)
@@ -443,34 +443,6 @@ slice_contains :: proc(items: []string, item: string) -> bool {
 	return false
 }
 
-// A call of a verb taught with `learn` (step 3b checks the body and gives the real
-// type): the arguments are checked and counted, the result is a mixed value.
-@(private)
-check_taught_call :: proc(c: ^Checker, e: ^Expr, k: Call) -> ^IR {
-	args := make([dynamic]^IR, c.alloc)
-	for a in k.args {
-		append(&args, check_expr(c, a, false))
-	}
-	options := make([dynamic]IR_Option, c.alloc)
-	for o in k.options {
-		values := make([dynamic]^IR, c.alloc)
-		for a in o.args {
-			append(&values, check_expr(c, a, false))
-		}
-		append(&options, IR_Option{word = o.word, args = values[:]})
-	}
-	if len(k.args) != len(k.taught.params) {
-		names := make([dynamic]string, context.temp_allocator)
-		takes := fmt.tprintf("%s (%s)", count_words(len(k.taught.params)), names_words(k.taught.params)) if len(k.taught.params) > 0 else "no values"
-		append(&names, k.taught.name)
-		for param, i in k.taught.params {
-			append(&names, text_at(c, k.args[i].span) if i < len(k.args) else param)
-		}
-		note(c, .Wrong_Argument_Count, e.span, k.taught.name, takes, count_words(len(k.args)), fix(c, e.span, strings.join(names[:], " ", context.temp_allocator)))
-		return error_ir(c, e.span)
-	}
-	return new_ir(c, e.span, T_BOXED, IR_Call{taught = k.taught, args = args[:], options = options[:]})
-}
 
 // Used by tests and `roci check --types`.
 parse_number_text :: proc(text: string) -> f64 {

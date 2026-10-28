@@ -1,0 +1,4 @@
+learn sign n [
+  if n < 0 [ give -1 ]
+]
+x = sign 5

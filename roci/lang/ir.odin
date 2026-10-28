@@ -21,6 +21,8 @@ Symbol_Kind :: enum u8 {
 	Item,     // `it` inside a list verb's block
 	Result,   // `result` inside `combine`'s block
 	Message,  // the name of a message in `on w receive msg`
+	Parameter, // a parameter of a taught verb
+	Local,    // a name made inside a taught verb that does not exist at top level (section 5.11)
 }
 
 Symbol :: struct {
@@ -30,6 +32,7 @@ Symbol :: struct {
 	first_write: Span,  // where it is first given a value, in reading order
 	written:     bool,  // set when the checker reaches that first write
 	scope:       int,   // 0 for a sketch-wide name; the depth of the block a local belongs to
+	mutated:     bool,  // a taught verb changes what this parameter holds (`p.x = 1`, `add x to p`)
 }
 
 IR_Number :: struct {
@@ -106,9 +109,10 @@ IR_Option :: struct {
 // A call of a built-in verb, with the shape of its group the checker chose. A taught
 // verb (step 3b) has `taught` set and no `verb`.
 IR_Call :: struct {
-	verb:    ^registry.Verb,
-	taught:  ^Taught_Verb,
-	shape:   int,
+	verb:     ^registry.Verb,
+	taught:   ^Taught_Verb,
+	instance: ^IR_Instance, // the version of the taught verb for these argument types
+	shape:    int,
 	args:    []^IR,
 	options: []IR_Option,
 }
@@ -218,8 +222,39 @@ IR_Draw :: struct {
 	body:   IR_Block,
 }
 
-// A `learn` or `use` that step 3a does not check yet; kept so the order is whole.
+// A `learn` or `use`: nothing runs where it stands. A taught verb runs through its
+// instances (below).
 IR_Unchecked :: struct {}
+
+IR_Give :: struct {
+	value: ^IR,
+}
+
+IR_Stop :: struct {}
+
+// A word of a `learn` header after `with`: its own name inside the verb, and the
+// value it has when the call does not give one.
+IR_Default :: struct {
+	word:   string,
+	symbol: ^Symbol,
+	value:  ^IR,
+}
+
+// One version of a taught verb, for one tuple of argument types (section 5.3 and
+// 4.7): a record shape makes its own, so compiled code gets one plain procedure
+// per shape. A verb nobody calls is checked once with mixed parameters and marked
+// `unused`.
+IR_Instance :: struct {
+	name:      string,
+	params:    []^Symbol,
+	defaults:  []IR_Default,
+	body:      IR_Block,
+	arg_types: []Type_Id,
+	result:    Type_Id, // what `give` hands back; None when the verb has no `give`
+	gives:     bool,
+	mutated:   []bool,  // which parameters the body changes
+	unused:    bool,
+}
 
 IR_Error_Stmt :: struct {}
 
@@ -236,6 +271,8 @@ IR_Stmt_Kind :: union {
 	IR_On,
 	IR_Draw,
 	IR_Unchecked,
+	IR_Give,
+	IR_Stop,
 	IR_Error_Stmt,
 }
 
@@ -246,6 +283,7 @@ IR_Stmt :: struct {
 
 IR_Program :: struct {
 	stmts:   []^IR_Stmt,
-	symbols: []^Symbol, // the sketch-wide names, in the order they are first written
-	types:   ^Types,
+	symbols:   []^Symbol, // the sketch-wide names, in the order they are first written
+	instances: []^IR_Instance,
+	types:     ^Types,
 }

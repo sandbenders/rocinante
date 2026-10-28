@@ -1,0 +1,5 @@
+birds: a list of records with pos, vel and name
+fish: a list of records with pos and vel
+a: a number
+v: a vector of 2 numbers
+n: a number

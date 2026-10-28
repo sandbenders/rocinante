@@ -1,0 +1,8 @@
+── `tint` changes what `PALETTE` holds ───────────────── sketch.roci:3:6
+
+3 │ tint PALETTE
+  │      ^^^^^^^
+
+`PALETTE` is written in capitals, so it is a constant and can never change, but `tint` changes the list or record it is given. Give it a copy instead.
+
+Write:  tint (copy PALETTE)

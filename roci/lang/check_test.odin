@@ -595,3 +595,146 @@ test_the_loop_variable_of_for_each_is_a_record_with_the_fields_of_the_list :: pr
 	expect_errors(t, "ps = [ { x: 1 } ]\nfor each p in ps [ p.x = p.x + 1 ]", {})
 	expect_errors(t, "ps = [ { x: 1 } ]\nfor each p in ps [ q = p.nope ]", {.Unknown_Field})
 }
+
+// ---- taught verbs (step 3b-2) ----
+
+@(private = "file")
+instances_of :: proc(got: Checked_Text, name: string) -> int {
+	n := 0
+	for inst in got.checked.program.instances {
+		if inst.name == name && !inst.unused {
+			n += 1
+		}
+	}
+	return n
+}
+
+@(test)
+test_a_taught_verb_takes_its_parameter_types_from_the_call :: proc(t: ^testing.T) {
+	expect_types(t, "learn double n [ give n * 2 ]\na = double 21\nv = double { 1, 2 }", "a: a number\nv: a vector of 2 numbers")
+	expect_errors(t, "learn show n [ circle 1 2 n ]\nshow 5", {})
+	expect_errors(t, "learn show n [ circle 1 2 n ]\nshow \"a\"", {.Wrong_Argument_Kind})
+}
+
+@(test)
+test_a_verb_is_checked_once_for_each_distinct_tuple_of_argument_types :: proc(t: ^testing.T) {
+	got := check_text("learn double n [ give n * 2 ]\na = double 1\nb = double 2\nc = double { 1, 2 }")
+	testing.expect_value(t, instances_of(got, "double"), 2)
+	testing.expect_value(t, len(got.checked.diagnostics), 0)
+}
+
+@(test)
+test_a_verb_used_with_two_record_shapes_gets_two_versions :: proc(t: ^testing.T) {
+	got := check_text("learn step p [ p.pos = p.pos + p.vel ]\na = { pos: { 1, 2 }, vel: { 3, 4 }, name: \"a\" }\nb = { pos: { 1, 2 }, vel: { 3, 4 } }\nstep a\nstep b")
+	testing.expect_value(t, instances_of(got, "step"), 2)
+	testing.expect_value(t, len(got.checked.diagnostics), 0)
+	// A record that lacks what the verb uses is the verb's mistake, reported where it is.
+	expect_errors(t, "learn step p [ p.pos = p.pos + p.vel ]\nc = { pos: { 1, 2 } }\nstep c", {.Unknown_Field})
+}
+
+@(test)
+test_a_verb_nobody_calls_is_still_checked :: proc(t: ^testing.T) {
+	expect_errors(t, "learn lonely a [ x = nothing_here + 1 ]", {.Unknown_Name})
+	expect_errors(t, "learn lonely a [ circle 1 2 a ]", {})
+	got := check_text("learn lonely a [ circle 1 2 a ]")
+	testing.expect_value(t, len(got.checked.program.instances), 1)
+	testing.expect(t, got.checked.program.instances[0].unused)
+}
+
+@(test)
+test_recursion_ends_and_settles_the_result_from_the_gives :: proc(t: ^testing.T) {
+	expect_types(t, "learn fact n [\n  if n < 2 [ give 1 ]\n  give n * fact (n - 1)\n]\nx = fact 5", "x: a number")
+	got := check_text("learn tree n [ if n > 0 [ circle 1 2 n\n  tree (n - 1) ] ]\ntree 5")
+	testing.expect_value(t, len(got.checked.diagnostics), 0)
+	testing.expect_value(t, instances_of(got, "tree"), 1)
+}
+
+@(test)
+test_names_made_inside_a_verb_are_local_and_top_level_names_are_changed :: proc(t: ^testing.T) {
+	expect_types(t, "total = 0\nlearn add_up n [ total = total + n\n  scratch = n * 2 ]\nadd_up 5", "total: a number")
+	// `scratch` does not exist outside the verb.
+	expect_errors(t, "learn add_up n [ scratch = n * 2 ]\nadd_up 5\nx = scratch", {.Unknown_Name})
+	expect_errors(t, "learn f n [ y = x ]\nf 1", {.Unknown_Name})
+}
+
+@(test)
+test_a_verb_reads_top_level_names_given_further_down :: proc(t: ^testing.T) {
+	expect_errors(t, "learn f n [ circle n n size ]\nf 1\nsize = 5", {})
+}
+
+@(test)
+test_defaults_with_words_are_typed_and_the_call_may_change_them :: proc(t: ^testing.T) {
+	expect_errors(t, "learn star size with points 5 spin 0 [ repeat points [ circle 1 2 size ]\n  turn spin ]\nstar 100\nstar 50 points 7 spin 15\nstar 1 spin 2", {})
+	expect_errors(t, "learn star size with points 5 [ repeat points [ ] ]\nstar 100 points \"a\"", {.Wrong_Argument_Kind})
+}
+
+@(test)
+test_a_verb_that_gives_has_to_give_on_every_path :: proc(t: ^testing.T) {
+	expect_errors(t, "learn f n [ if n < 0 [ give 1 ] ]\nx = f 1", {.Give_Missing_On_Path})
+	expect_errors(t, "learn f n [ if n < 0 [ stop ]\n  give n ]\nx = f 1", {.Give_Missing_On_Path})
+	expect_errors(t, "learn f n [ if n < 0 [ give 1 ] else [ give 2 ] ]\nx = f 1", {})
+	expect_errors(t, "learn f n [ if n < 0 [ give 1 ]\n  give 2 ]\nx = f 1", {})
+	expect_errors(t, "learn f n [ repeat 3 [ give 1 ] ]\nx = f 1", {.Give_Missing_On_Path})
+	expect_errors(t, "learn f n [ if n < 0 [ if n < 5 [ give 1 ] else [ give 2 ] ] else [ give 3 ] ]\nx = f 1", {})
+}
+
+@(test)
+test_every_give_of_a_verb_gives_the_same_kind_of_value :: proc(t: ^testing.T) {
+	expect_errors(t, "learn f n [ if n < 0 [ give 1 ] else [ give \"a\" ] ]\nx = f 1", {.Give_Kinds_Differ})
+	expect_errors(t, "learn f n [ if n < 0 [ give { 1, 2 } ] else [ give { 3, 4, 5 } ] ]\nx = f 1", {.Give_Kinds_Differ})
+	expect_errors(t, "learn f a b [ give { min: a, max: b } ]\nr = f 1 2\nlow = r.min", {})
+}
+
+@(test)
+test_a_verb_with_and_without_give_is_used_the_right_way :: proc(t: ^testing.T) {
+	expect_errors(t, "learn star size [ circle 1 2 size ]\nx = star 3", {.Value_Of_Nothing})
+	expect_errors(t, "learn double n [ give n * 2 ]\ndouble 3", {.Result_Dropped})
+	got := check_text("learn double n [ give n * 2 ]\ndouble 3")
+	testing.expect(t, !has_errors(got.checked.diagnostics))
+	expect_errors(t, "learn star size [ circle 1 2 size ]\nstar 3", {})
+}
+
+@(test)
+test_a_constant_cannot_be_given_to_a_verb_that_changes_it :: proc(t: ^testing.T) {
+	expect_errors(t, "learn tint p [ p.red = 255 ]\nPALETTE = { red: 0 }\ntint PALETTE", {.Constant_Changed_By_Verb})
+	expect_errors(t, "learn tint p [ p.red = 255 ]\npalette = { red: 0 }\ntint palette", {})
+	expect_errors(t, "learn fill_up xs [ add 1 to xs ]\nNUMBERS = [ 1 ]\nfill_up NUMBERS", {.Constant_Changed_By_Verb})
+	// A constant given to a verb that only reads it is fine, and so is a copy.
+	expect_errors(t, "learn show p [ circle p.x p.x 5 ]\nP = { x: 1 }\nshow P", {})
+	expect_errors(t, "learn tint p [ p.red = 255 ]\nPALETTE = { red: 0 }\ntint (copy PALETTE)", {})
+	// The change is passed along: a parameter handed on to a verb that changes it.
+	expect_errors(t, "learn inner p [ p.red = 1 ]\nlearn outer q [ inner q ]\nPALETTE = { red: 0 }\nouter PALETTE", {.Constant_Changed_By_Verb})
+}
+
+@(test)
+test_a_call_with_the_wrong_number_of_values_names_the_parameters :: proc(t: ^testing.T) {
+	got := check_text("learn move_by dx dy [ move dx dy ]\nmove_by 5")
+	d := got.checked.diagnostics[0]
+	testing.expect_value(t, d.id, Message_Id.Wrong_Argument_Count)
+	testing.expect_value(t, d.args[3], "move_by 5 dy")
+}
+
+@(test)
+test_the_ir_of_a_call_points_at_its_version_and_the_body_has_its_gives :: proc(t: ^testing.T) {
+	got := check_text("learn double n [ give n * 2 ]\nx = double 4")
+	assign := got.checked.program.stmts[1].kind.(IR_Assign)
+	call := assign.value.kind.(IR_Call)
+	if testing.expect(t, call.instance != nil) {
+		testing.expect_value(t, call.instance.name, "double")
+		testing.expect(t, call.instance.gives)
+		testing.expect_value(t, len(call.instance.params), 1)
+		_, is_give := call.instance.body.stmts[0].kind.(IR_Give)
+		testing.expect(t, is_give)
+	}
+}
+
+@(test)
+test_a_verb_taught_in_another_file_is_counted_but_not_checked :: proc(t: ^testing.T) {
+	src := make_source("sketch.roci", "flock 1 2", 0, context.temp_allocator)
+	extra := []Taught_Verb{{name = "flock", params = {"a", "b"}}}
+	got := check(src, test_verbs(), extra, context.temp_allocator)
+	testing.expect_value(t, len(got.diagnostics), 0)
+	src2 := make_source("sketch.roci", "flock 1", 0, context.temp_allocator)
+	got2 := check(src2, test_verbs(), extra, context.temp_allocator)
+	testing.expect_value(t, got2.diagnostics[0].id, Message_Id.Wrong_Argument_Count)
+}

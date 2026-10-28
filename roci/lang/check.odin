@@ -40,6 +40,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		diags   = make([dynamic]Diagnostic, allocator),
 		sites   = make(map[int]int, 8, allocator),
 		walking = make([dynamic]string, allocator),
+		learn_order = make([dynamic]string, allocator),
 	}
 	// Two passes. A field assigned anywhere in the sketch belongs to the shape of the
 	// record, even to a line above it (section 5.3), so the first pass only settles
@@ -53,11 +54,19 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		c.frames = make([dynamic]Frame, allocator)
 		c.depth, c.deferred = 0, 0
 		clear(&c.walking)
+		c.learns = make(map[string]^Learn_Decl, 8, allocator)
+		clear(&c.learn_order)
+		c.instances = make([dynamic]^IR_Instance, allocator)
+		c.instance_keys = make(map[string]^IR_Instance, 8, allocator)
+		c.verb_locals = make([dynamic]^Symbol, allocator)
+		c.verb = nil
 		collect_assignments(&c, parsed.program.stmts)
+		collect_learns(&c, parsed.program.stmts)
 		stmts = make([dynamic]^IR_Stmt, allocator)
 		for s in parsed.program.stmts {
 			append(&stmts, check_stmt(&c, s))
 		}
+		check_unused_verbs(&c)
 	}
 	all := make([dynamic]Diagnostic, 0, len(parsed.diagnostics) + len(c.diags), allocator)
 	append(&all, ..parsed.diagnostics)
@@ -65,11 +74,22 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 	slice.stable_sort_by(all[:], proc(a, b: Diagnostic) -> bool {
 		return a.span.start < b.span.start
 	})
+	// A verb checked for several argument types can say the same thing twice.
+	unique := make([dynamic]Diagnostic, 0, len(all), allocator)
+	for d in all {
+		duplicate := false
+		for u in unique {
+			duplicate ||= u.id == d.id && u.span == d.span && u.args == d.args
+		}
+		if !duplicate {
+			append(&unique, d)
+		}
+	}
 	return Checked{
 		parsed      = parsed,
-		program     = IR_Program{stmts = stmts[:], symbols = c.order[:], types = types},
+		program     = IR_Program{stmts = stmts[:], symbols = c.order[:], instances = c.instances[:], types = types},
 		types       = types,
-		diagnostics = all[:],
+		diagnostics = unique[:],
 	}
 }
 
@@ -111,6 +131,12 @@ Checker :: struct {
 	report:   bool,             // false in the first pass, which only settles record shapes
 	sites:    map[int]int,      // where a record is made (its offset) to its shape
 	walking:  [dynamic]string,  // lists a `for each` is walking right now
+	learns:        map[string]^Learn_Decl, // the verbs taught at the top of the sketch
+	learn_order:   [dynamic]string,
+	instances:     [dynamic]^IR_Instance,  // the versions of taught verbs made so far
+	instance_keys: map[string]^IR_Instance,
+	verb_locals:   [dynamic]^Symbol,       // parameters and names made inside the taught verb being checked
+	verb:          ^Verb_Ctx,              // that verb, or nil outside one
 }
 
 @(private)
@@ -214,6 +240,11 @@ declare_local :: proc(c: ^Checker, name: string, kind: Symbol_Kind, type: Type_I
 @(private)
 lookup :: proc(c: ^Checker, name: string) -> ^Symbol {
 	#reverse for s in c.locals {
+		if s.name == name {
+			return s
+		}
+	}
+	#reverse for s in c.verb_locals {
 		if s.name == name {
 			return s
 		}
@@ -461,8 +492,12 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 			window = check_kind(c, k.window, T_WINDOW, "draw")
 		}
 		out.kind = IR_Draw{window = window, body = check_block(c, k.body, true)}
-	case Learn, Use, Give, Stop:
+	case Learn, Use:
 		out.kind = IR_Unchecked{}
+	case Give:
+		out.kind = check_give(c, k)
+	case Stop:
+		out.kind = IR_Stop{}
 	case Error_Stmt:
 		out.kind = IR_Error_Stmt{}
 	}
@@ -556,6 +591,12 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 		return IR_Error_Stmt{}
 	}
 	sym := lookup(c, name)
+	if sym == nil && c.verb != nil && len(k.target.parts) == 1 {
+		// A name made inside a taught verb that does not exist at top level is local to it (section 5.11).
+		sym = new(Symbol, c.alloc)
+		sym^ = Symbol{name = name, kind = .Local, type = fresh(c.types), first_write = span, scope = c.depth + 1}
+		append(&c.verb_locals, sym)
+	}
 	if sym == nil {
 		unknown_name(c, span, name)
 		return IR_Error_Stmt{}
@@ -585,6 +626,9 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 	if sym.kind == .Constant {
 		note(c, .Constant_Changed, span, name, "", "", fix(c, span, strings.to_lower(name, context.temp_allocator)))
 		return IR_Error_Stmt{}
+	}
+	if sym.kind == .Parameter {
+		sym.mutated = true
 	}
 	// Walk to the thing that has the last part: `ball.pos.x = 1` reads `ball.pos` first.
 	parts := k.target.parts

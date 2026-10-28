@@ -1,0 +1,12 @@
+── `sign` does not always give a value back ──────────── sketch.roci:1:1
+
+1 │ learn sign n [
+  │ ^^^^^^^^^^^^^^
+
+`sign` gives a value on some paths, but one path reaches the end without a `give`. A verb that gives has to give on every path, so add a `give` there too.
+
+Write:
+    learn sign n [
+      ...
+      give 1
+    ]
