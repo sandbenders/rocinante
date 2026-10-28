@@ -1,0 +1,22 @@
+GROUND: a number
+SWATCH: a number
+palettes: a list of records with name, sky, hill, grass, petals and moon
+chooser: a window
+garden: a window
+chosen: a number
+wind: a number
+calm: a number
+flowers: a list of records with at, size, petals and spin
+first_planted: a number
+x: a number
+p: a record with name, sky, hill, grass, petals and moon
+twinkle: a number
+sky_top: a colour
+moon_edge: a colour
+radius: a number
+far_hill: a colour
+near_hill: a colour
+base: a number
+tall: a number
+sway: a number
+shade: a number

@@ -27,7 +27,7 @@ Users never see threads. The core decides: rendering and windowing stay where SD
 
 - `window w h` and `window w h at x y` return a window handle.
 - Each window has its own `draw [ ... ]` block and command list.
-- Windows communicate with `send <window> <value>` and `on <window> receive <name> [ ... ]`. Messages are values (numbers, text, lists, records), delivered on the next frame. Internally: channels, no shared mutable state exposed.
+- Windows communicate with `send <window> <value>` and `on <window> receive <name> [ ... ]`. Messages are values (numbers, text, lists, records), delivered on the next frame. Internally: channels, no shared mutable state exposed. **What a message is** (decided 2026-10-28): the checker sees the whole program, so `msg` in `on w receive msg` has the type of every `send w ...` that names that window; a `send` to anything but a plain name could reach any window. Sends of different kinds make `msg` a mixed value that the handler tells apart while it runs, which is allowed because tagged messages are common. Two messages that are records of different fields (`send w { at: p }` and `send w { flash: 1 }`) have one shape with all the fields, so a handler reads the one it cares about and the others read 0 (§5.2).
 - On mobile, multiple windows become stacked or tabbed views. Decide the exact behaviour in Phase 8 and document it here.
 
 ### 4.6 Audio
@@ -574,6 +574,7 @@ star 100 points 7 spin 15
 - **Recursion** is allowed (trees, fractals, L-systems, as in Logo).
 - **Verbs see their parameters, their own local names, and the sketch's top-level names and constants.** Assigning a name inside a verb that doesn't exist at top level creates a local; assigning a top-level name changes it. The checker warns when a local name hides a top-level one.
 - **Sharing (decided 2026-10-23).** Numbers, vectors, colours and text are copied when passed or assigned. Lists and records are shared: a verb that changes a record changes the caller's record, which is what makes `learn step p [ p.pos = p.pos + p.vel ]` work, and what Processing users expect from objects and arrays. `b = a` with a record also shares; `b = copy a` makes an independent copy. Passing a constant (§5.1) to a verb that changes it is a load-time error. Because `b = a` sharing is the classic beginner trap, the checker adds a hint, not an error, when it sees a list or record changed through a second name ("`b` and `a` are the same list, so this also changes `a`. Use `copy a` for a separate one"), and the Phase 2 newcomer test probes it (decided 2026-10-27).
+- **Two hints that never stop a sketch** (decided 2026-10-28). Changing a list or record through a name made by `b = a` says the two are one value and shows `b = copy a`; the hint fires at the change, not at the assignment, so a harmless `b = a` stays quiet. A parameter, `with` word or loop variable named like a top-level variable is a warning, since inside it that name means the new one.
 - `learn`, `give`, `stop` and `with` are keywords, lowercase like all others (§5.1).
 
 ### 5.12 Game controllers and actions (decided 2026-10-24)

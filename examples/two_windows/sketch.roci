@@ -1,0 +1,35 @@
+# Two windows that talk: a control window and a canvas. Every frame the control
+# window sends the mouse position, scaled to the canvas, and a click sends a flash
+# that makes the canvas light up for a moment. The two kinds of message are records
+# of different fields, so the canvas reads one record that holds both.
+control = window 300 200 at 60 120
+title "control"
+canvas = window 520 420 at 400 80
+title "canvas"
+
+heard = { 260, 210 }
+flash_left = 0
+
+draw control [
+  background 40
+  place = { mouse.x / width * 520, mouse.y / height * 420 }
+  send canvas { at: place }
+  circle mouse 6 fill orange
+]
+
+on mouse down [ send canvas { flash: 1 } ]
+
+on canvas receive message [
+  if message.flash > 0 [ flash_left = 0.3 ] else [ heard = message.at ]
+]
+
+draw canvas [
+  if flash_left > 0 [
+    flash_left = flash_left - 1 / 60
+    background 245
+  ] else [
+    background 30
+  ]
+  fill tomato
+  circle heard 24
+]

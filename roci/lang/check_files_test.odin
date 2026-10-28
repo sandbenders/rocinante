@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: 0BSD
 //
 // Whole sketches that must check cleanly, with what each name is expected to be:
-// `tests/check/<name>.roci` and `<name>.types`. They check
-// against the real registry, so a verb that is removed or changed breaks them.
-// `ROCI_UPDATE_ERRORS=1` writes the `.types` files again.
+// `tests/check/<name>.roci` with `<name>.types`, and every example written in the
+// language, `examples/<name>/sketch.roci` with `sketch.types` beside it. They check
+// against the real registry, so a verb that is removed or changed breaks them, and
+// an example cannot rot. `ROCI_UPDATE_ERRORS=1` writes the `.types` files again.
 package lang
 
 import "../registry"
@@ -12,15 +13,17 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 
-@(test)
-test_the_sketches_in_tests_check_check_cleanly_and_have_the_expected_types :: proc(t: ^testing.T) {
+// Checks every sketch under `root` (only files called sketch.roci when `only_sketch`),
+// and compares what each name is with the `.types` file beside it. Gives how many.
+@(private = "file")
+check_corpus :: proc(t: ^testing.T, root: string, only_sketch: bool) -> int {
 	update := os.get_env("ROCI_UPDATE_ERRORS", context.temp_allocator) != ""
 	w: os.Walker
-	os.walker_init(&w, "tests/check")
+	os.walker_init(&w, root)
 	defer os.walker_destroy(&w)
 	count := 0
 	for fi in os.walker_walk(&w) {
-		if fi.type == .Directory || !strings.has_suffix(fi.name, ".roci") {
+		if fi.type == .Directory || !strings.has_suffix(fi.name, ".roci") || (only_sketch && fi.name != "sketch.roci") {
 			continue
 		}
 		count += 1
@@ -44,5 +47,16 @@ test_the_sketches_in_tests_check_check_cleanly_and_have_the_expected_types :: pr
 		}
 		testing.expectf(t, string(want) == got, "%s differs.\n--- expected\n%s\n--- got\n%s", path, string(want), got)
 	}
-	testing.expect(t, count > 0, "no sketches found: tests run from the repository root")
+	return count
+}
+
+@(test)
+test_the_sketches_in_tests_check_check_cleanly_and_have_the_expected_types :: proc(t: ^testing.T) {
+	testing.expect(t, check_corpus(t, "tests/check", false) > 0, "no sketches found: tests run from the repository root")
+}
+
+@(test)
+test_the_examples_written_in_the_language_check_cleanly :: proc(t: ^testing.T) {
+	// circle, two_windows and garden: the Phase 1 demos, now in the language.
+	testing.expect(t, check_corpus(t, "examples", true) >= 3, "the examples written in the language are missing")
 }

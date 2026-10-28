@@ -1,0 +1,5 @@
+control: a window
+canvas: a window
+heard: a vector of 2 numbers
+flash_left: a number
+place: a vector of 2 numbers
