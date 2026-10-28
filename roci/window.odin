@@ -13,12 +13,20 @@ import "platform"
 // it back; until the next `window` call, verbs outside any block act on it. The
 // first call replaces the default window: if the program has already
 // drawn something, the default window (with what it holds) becomes this one.
-window :: proc(width, height: int, at: Maybe([2]int) = nil) -> Window {
+// What can only be asked for when a window is made.
+Window_Flags :: struct {
+	hidden:      bool, // made but not shown until `set_visible`
+}
+
+window :: proc(width, height: int, at: Maybe([2]int) = nil, flags := Window_Flags{}) -> Window {
 	if the.default != nil && !the.default.explicit {
 		w := the.default
 		w.explicit = true
 		w.width, w.height = max(width, 1), max(height, 1)
-		set_resizable(w.id, true) // a restarted sketch decides again
+		reset_settings(w) // a restarted sketch decides again
+		if flags.hidden {
+			set_visible(w.id, false)
+		}
 		the.newest = w
 		if w.handle != nil {
 			platform.set_size(w.handle, w.width, w.height)
@@ -36,7 +44,10 @@ window :: proc(width, height: int, at: Maybe([2]int) = nil) -> Window {
 		ordered_remove(&the.reuse, 0)
 		w.explicit = true
 		w.width, w.height = max(width, 1), max(height, 1)
-		set_resizable(w.id, true)
+		reset_settings(w)
+		if flags.hidden {
+			set_visible(w.id, false)
+		}
 		delete(w.title)
 		w.title = strings.clone("rocinante")
 		if w.handle != nil {
@@ -53,7 +64,7 @@ window :: proc(width, height: int, at: Maybe([2]int) = nil) -> Window {
 		return w.id
 	}
 	start()
-	w := make_win(width, height, at, "rocinante")
+	w := make_win(width, height, at, "rocinante", flags)
 	w.explicit = true
 	the.newest = w
 	if the.default == nil {
@@ -269,4 +280,14 @@ window_is_resizable :: proc(w: Window) -> bool {
 		return !win.fixed
 	}
 	return false
+}
+
+// Fills the screen with the window you name, or puts it back.
+set_fullscreen :: proc(w: Window, on: bool) {
+	if win := win_for(w); win != nil {
+		win.fullscreen = on
+		if win.handle != nil {
+			platform.set_fullscreen(win.handle, on)
+		}
+	}
 }

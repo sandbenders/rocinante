@@ -1009,7 +1009,31 @@ test_shuffling_an_empty_list_and_a_one_item_list_is_fine :: proc(t: ^testing.T) 
 }
 
 @(test)
-test_resizable_false_fixes_a_window_and_a_verb_changes_it_later :: proc(t: ^testing.T) {
-	text := "a = window size 300 200 resizable false\nb = window size 100 100\nprint a.resizable\nprint b.resizable\nresizable a true\nresizable b false\nprint a.resizable\nprint b.resizable"
+test_resizable_false_fixes_a_window_and_assigning_the_property_changes_it_later :: proc(t: ^testing.T) {
+	text := "a = window size 300 200 resizable false\nb = window size 100 100\nprint a.resizable\nprint b.resizable\na.resizable = true\nb.resizable = false\nprint a.resizable\nprint b.resizable"
 	expect_printed(t, text, "false\ntrue\ntrue\nfalse")
+}
+
+@(test)
+test_every_window_word_is_a_property_that_reads_back_what_was_asked :: proc(t: ^testing.T) {
+	text := "p = window size 500 400\nw = window size 300 200 bordered false topmost true smallest 100 50 largest 800 600 ratio 1.5 alpha 200 focusable false visible false grab true parent p modal true\nprint w.bordered\nprint w.topmost\nprint w.smallest\nprint w.largest\nprint w.ratio\nprint w.alpha\nprint w.focusable\nprint w.visible\nprint w.grab\nprint w.modal\nprint (w.parent is p)"
+	expect_printed(t, text, "false\ntrue\n{ 100, 50 }\n{ 800, 600 }\n1.5\n200\nfalse\nfalse\ntrue\ntrue\ntrue")
+}
+
+@(test)
+test_assigning_a_windows_size_title_and_position_changes_it :: proc(t: ^testing.T) {
+	text := "w = window size 300 200 at 10 20 title \"a\"\nw.width = 640\nw.title = \"b\"\nw.at = { 50, 60 }\nprint w.width\nprint w.height\nprint w.title\nprint w.at"
+	expect_printed(t, text, "640\n200\nb\n{ 50, 60 }")
+}
+
+@(test)
+test_a_window_property_can_be_assigned_through_another_window_property :: proc(t: ^testing.T) {
+	text := "p = window size 500 400\nw = window size 300 200 parent p\nw.parent.width = 700\nprint p.width"
+	expect_printed(t, text, "700")
+}
+
+@(test)
+test_window_states_the_system_knows_read_false_without_a_system_window :: proc(t: ^testing.T) {
+	text := "w = window size 300 200\nprint w.focused\nprint w.hovered\nprint w.maximized\nprint w.minimized\nprint w.covered\nw.maximized = true\nw.focused = true"
+	expect_printed(t, text, "false\nfalse\nfalse\nfalse\nfalse")
 }

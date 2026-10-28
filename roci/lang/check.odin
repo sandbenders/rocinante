@@ -616,7 +616,7 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 	name := k.target.parts[0]
 	span := Span{s.span.file, s.span.start, s.span.start + len(name)}
 	value := check_expr(c, k.value, false)
-	if registry.is_reserved(name) && name != "size" {
+	if registry.is_reserved(name) && !registry.is_free_as_name(name) {
 		note(c, .Reserved_Name, span, name, "", "", fix(c, span, fmt.tprintf("my%s", name)))
 		return IR_Error_Stmt{}
 	}
@@ -687,8 +687,19 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 	label := text_at(c, Span{span.file, span.start, last_span.end})
 	#partial switch item.kind {
 	case .Window:
-		note(c, .Bad_Field, last_span, last, "a window", "A window's properties can be read but not changed this way. `title w \"text\"` renames one.", fix(c, last_span, "width"))
-		return IR_Error_Stmt{}
+		def, found := window_property(last)
+		if !found {
+			bad_window_property(c, last, last_span)
+			return IR_Error_Stmt{}
+		}
+		if !def.settable {
+			note(c, .Bad_Field, last_span, last, "a window", fmt.tprintf("`%s` can be read but not changed.", last), fix(c, last_span, "width"))
+			return IR_Error_Stmt{}
+		}
+		want := type_of_property(c, def)
+		if !unify(c.types, want, value.type) {
+			note(c, .Wrong_Kind_Here, k.value.span, label, describe(c.types, want), describe(c.types, value.type), fix(c, k.value.span, sample_of(c, want)))
+		}
 	case .Vector:
 		want := swizzle_type(c, item.a, last)
 		if want == T_ERROR {
@@ -898,22 +909,10 @@ check_field :: proc(c: ^Checker, base: ^IR, part: string, span: Span) -> ^IR {
 		note(c, .Bad_Field, span, part, "a colour", "A colour has r, g, b and a.", fix(c, span, "r"))
 		return error_ir(c, base.span)
 	case .Window:
-		for def in registry.WINDOW_PROPERTIES {
-			if def.name == part {
-				return new_ir(c, base.span, type_of_value(c, def), IR_Field{base = base, name = part})
-			}
+		if def, found := window_property(part); found {
+			return new_ir(c, base.span, type_of_property(c, def), IR_Field{base = base, name = part})
 		}
-		names := make([dynamic]string, context.temp_allocator)
-		for def in registry.WINDOW_PROPERTIES {
-			append(&names, def.name)
-		}
-		best, found := 3, "width"
-		for name in names {
-			if d := registry.edit_distance(part, name); d < best {
-				best, found = d, name
-			}
-		}
-		note(c, .Bad_Field, span, part, "a window", fmt.tprintf("A window has %s.", names_words(names[:])), fix(c, span, found))
+		bad_window_property(c, part, span)
 		return error_ir(c, base.span)
 	case .Record:
 		if field, found := shape_field(c.types, item.a, part); found {
@@ -947,4 +946,35 @@ check_style_option :: proc(c: ^Checker, o: Option_Use) -> IR_Option {
 		append(&args, ir)
 	}
 	return IR_Option{word = o.word, args = args[:]}
+}
+
+@(private)
+window_property :: proc(name: string) -> (def: registry.Property_Def, found: bool) {
+	for d in registry.WINDOW_PROPERTIES {
+		if d.name == name {
+			return d, true
+		}
+	}
+	return
+}
+
+@(private)
+type_of_property :: proc(c: ^Checker, def: registry.Property_Def) -> Type_Id {
+	return type_of_value(c, registry.Value_Def{def.name, def.kind, def.size})
+}
+
+// A property a window does not have: name the ones it has and the nearest.
+@(private)
+bad_window_property :: proc(c: ^Checker, part: string, span: Span) {
+	names := make([dynamic]string, context.temp_allocator)
+	for def in registry.WINDOW_PROPERTIES {
+		append(&names, def.name)
+	}
+	best, found := 3, "width"
+	for name in names {
+		if d := registry.edit_distance(part, name); d < best {
+			best, found = d, name
+		}
+	}
+	note(c, .Bad_Field, span, part, "a window", fmt.tprintf("A window has %s.", names_words(names[:])), fix(c, span, found))
 }

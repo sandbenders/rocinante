@@ -31,6 +31,7 @@ Window_Options :: struct {
 	width, height: int,
 	position:      Maybe([2]int), // none lets the system place it
 	resizable:     bool,
+	hidden:        bool, // made but not shown until `show_window`
 }
 
 // The size a sketch gets when it never calls `window`.
@@ -112,6 +113,7 @@ create_window :: proc(app: ^App, options: Window_Options) -> (window: ^Window, o
 	sdl.SetBooleanProperty(props, sdl.PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, options.resizable)
 	// Ask for every pixel the display has; sketches still draw in logical pixels.
 	sdl.SetBooleanProperty(props, sdl.PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, true)
+	sdl.SetBooleanProperty(props, sdl.PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, options.hidden)
 	if p, has := options.position.?; has {
 		sdl.SetNumberProperty(props, sdl.PROP_WINDOW_CREATE_X_NUMBER, i64(p.x))
 		sdl.SetNumberProperty(props, sdl.PROP_WINDOW_CREATE_Y_NUMBER, i64(p.y))
@@ -243,4 +245,88 @@ fail :: proc(app: ^App, what: string) -> bool {
 	delete(app.error)
 	app.error = message
 	return false
+}
+
+// ---- what a window is allowed and what it is doing ----
+
+set_bordered :: proc(window: ^Window, on: bool) {
+	sdl.SetWindowBordered(window.handle, on)
+}
+
+set_always_on_top :: proc(window: ^Window, on: bool) {
+	sdl.SetWindowAlwaysOnTop(window.handle, on)
+}
+
+// The smallest and largest size, in logical pixels; 0 means no limit.
+set_min_size :: proc(window: ^Window, width, height: int) {
+	sdl.SetWindowMinimumSize(window.handle, i32(width), i32(height))
+}
+
+set_max_size :: proc(window: ^Window, width, height: int) {
+	sdl.SetWindowMaximumSize(window.handle, i32(width), i32(height))
+}
+
+// The shape (width over height) the window keeps when resized; 0 for any.
+set_aspect_ratio :: proc(window: ^Window, ratio: f32) {
+	sdl.SetWindowAspectRatio(window.handle, ratio, ratio)
+}
+
+// How see-through the whole window is, 0 (gone) to 1 (solid).
+set_opacity :: proc(window: ^Window, opacity: f32) {
+	sdl.SetWindowOpacity(window.handle, opacity)
+}
+
+set_focusable :: proc(window: ^Window, on: bool) {
+	sdl.SetWindowFocusable(window.handle, on)
+}
+
+show_window :: proc(window: ^Window) {
+	sdl.ShowWindow(window.handle)
+}
+
+hide_window :: proc(window: ^Window) {
+	sdl.HideWindow(window.handle)
+}
+
+set_mouse_grab :: proc(window: ^Window, on: bool) {
+	sdl.SetWindowMouseGrab(window.handle, on)
+}
+
+set_parent :: proc(window, parent: ^Window) {
+	sdl.SetWindowParent(window.handle, parent.handle if parent != nil else nil)
+}
+
+set_modal :: proc(window: ^Window, on: bool) {
+	sdl.SetWindowModal(window.handle, on)
+}
+
+maximize_window :: proc(window: ^Window) {
+	sdl.MaximizeWindow(window.handle)
+}
+
+minimize_window :: proc(window: ^Window) {
+	sdl.MinimizeWindow(window.handle)
+}
+
+restore_window :: proc(window: ^Window) {
+	sdl.RestoreWindow(window.handle)
+}
+
+raise_window :: proc(window: ^Window) {
+	sdl.RaiseWindow(window.handle)
+}
+
+// What the system says about the window now.
+Window_State :: struct {
+	maximized, minimized, focused, hovered, covered: bool,
+	borderless, topmost, hidden:                     bool,
+}
+
+state :: proc(window: ^Window) -> Window_State {
+	flags := sdl.GetWindowFlags(window.handle)
+	return Window_State{
+		maximized = .MAXIMIZED in flags, minimized = .MINIMIZED in flags,
+		focused = .INPUT_FOCUS in flags, hovered = .MOUSE_FOCUS in flags, covered = .OCCLUDED in flags,
+		borderless = .BORDERLESS in flags, topmost = .ALWAYS_ON_TOP in flags, hidden = .HIDDEN in flags,
+	}
 }

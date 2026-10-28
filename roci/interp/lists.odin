@@ -15,7 +15,7 @@ import "core:unicode/utf8"
 
 is_language_verb :: proc(name: string) -> bool {
 	switch name {
-	case "add", "remove", "count", "item", "print", "copy", "resizable", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send":
+	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send":
 		return true
 	}
 	return false
@@ -107,10 +107,6 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		append(&it.printed, text)
 		if it.echo {
 			fmt.println(text)
-		}
-	case "resizable":
-		if w, ok := eval(it, call.args[0]).(roci.Window); ok {
-			roci.set_resizable(w, as_bool(eval(it, call.args[1])))
 		}
 	case "copy":
 		return deep_copy(it, eval(it, call.args[0]))

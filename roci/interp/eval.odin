@@ -213,8 +213,17 @@ read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
 		case "title":      return roci.window_title(w)
 		case "at":         return vec2(roci.window_position(w))
 		case "mouse":      return vec2(roci.window_mouse(w))
-		case "fullscreen": return roci.window_is_fullscreen(w)
-		case "resizable":  return roci.window_is_resizable(w)
+		case "fullscreen", "resizable", "bordered", "topmost", "visible", "focusable", "grab", "modal", "focused", "hovered", "maximized", "minimized", "covered":
+			return roci.window_flag(w, name)
+		case "alpha":    return roci.window_alpha(w)
+		case "ratio":    return roci.window_ratio(w)
+		case "smallest": return vec2(roci.window_smallest(w))
+		case "largest":  return vec2(roci.window_largest(w))
+		case "parent":
+			if owner := roci.window_parent(w); owner != 0 {
+				return owner
+			}
+			return nil
 		}
 		return nil
 	}
@@ -234,6 +243,16 @@ assign_path :: proc(it: ^Interp, base: Value, path: []string, value: Value) -> V
 		return value
 	}
 	#partial switch b in base {
+	case roci.Window:
+		// Assigning a window's property does what the connecting word of that name does.
+		if len(path) > 1 {
+			if child, is_window := read_field(it, base, path[0]).(roci.Window); is_window {
+				assign_path(it, child, path[1:], value)
+			}
+		} else {
+			set_window_property(it, b, path[0], value)
+		}
+		return base
 	case ^Record:
 		if b == nil {
 			return base

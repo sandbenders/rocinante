@@ -60,8 +60,8 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"alpha", "angle", "as", "at", "by", "fill", "font", "from", "height", "in",
-	"lines", "of", "radius", "resizable", "size", "start", "stops", "stroke", "style", "thickness", "title", "to", "width",
+	"alpha", "angle", "as", "at", "bordered", "by", "fill", "focusable", "font", "from", "fullscreen", "grab", "height", "in",
+	"largest", "lines", "modal", "of", "parent", "radius", "ratio", "resizable", "size", "smallest", "start", "stops", "stroke", "style", "thickness", "title", "to", "topmost", "visible", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.
@@ -99,27 +99,54 @@ VALUE_DEFS := [?]Value_Def{
 	{"width", .Number, 0},
 }
 
-// What can be read from a window value (`main_window.width`): the names and what
-// each is, in the order they are listed in messages and the manual. They are
-// read-only; `title w "text"` is how a window is renamed.
-WINDOW_PROPERTIES := [?]Value_Def{
-	{"width", .Number, 0},   // its width in pixels
-	{"height", .Number, 0},  // its height in pixels
-	{"title", .Text, 0},     // the title in its bar
-	{"at", .Vector, 2},      // where it is on the screen
-	{"mouse", .Vector, 2},   // where the mouse is in it
-	{"fullscreen", .Boolean, 0},
-	{"resizable", .Boolean, 0}, // whether its edges can be dragged to resize it
+// A property of a window value (`main_window.width`): what it is and whether a
+// sketch may change it by assigning (`main_window.width = 400`).
+Property_Def :: struct {
+	name:    string,
+	kind:    Kind,
+	size:    int, // the number of components of a vector, else 0
+	settable: bool,
+}
+
+// What can be read from a window value, in the order they are listed in messages
+// and the manual, and which of them can also be assigned. Reading asks the window
+// (or the system); assigning does what the connecting word of the same name does
+// when the window is made, so `resizable false` and `w.resizable = false` agree.
+WINDOW_PROPERTIES := [?]Property_Def{
+	{"width", .Number, 0, true},      // its width in pixels
+	{"height", .Number, 0, true},     // its height in pixels
+	{"title", .Text, 0, true},        // the title in its bar
+	{"at", .Vector, 2, true},         // where it is on the screen
+	{"mouse", .Vector, 2, false},     // where the mouse is in it
+	{"fullscreen", .Boolean, 0, true},
+	{"resizable", .Boolean, 0, true}, // whether its edges can be dragged to resize it
+	{"bordered", .Boolean, 0, true},  // whether it has a title bar and frame
+	{"topmost", .Boolean, 0, true},   // whether it stays above other windows
+	{"visible", .Boolean, 0, true},   // whether it is shown
+	{"alpha", .Number, 0, true},      // how solid the whole window is, 0 to 255
+	{"smallest", .Vector, 2, true},   // the smallest size it can be dragged to; 0 0 for no limit
+	{"largest", .Vector, 2, true},    // the largest size
+	{"ratio", .Number, 0, true},      // the shape (width over height) it keeps when resized; 0 for any
+	{"focusable", .Boolean, 0, true}, // whether it can take the keyboard
+	{"grab", .Boolean, 0, true},      // whether the mouse is kept inside it
+	{"modal", .Boolean, 0, true},     // whether it blocks its parent until closed
+	{"parent", .Window, 0, true},     // the window it belongs to
+	{"focused", .Boolean, 0, true},   // whether it has the keyboard; setting it true brings it to the front
+	{"maximized", .Boolean, 0, true}, // setting it true maximizes it and false restores it
+	{"minimized", .Boolean, 0, true},
+	{"hovered", .Boolean, 0, false},  // whether the mouse is over it
+	{"covered", .Boolean, 0, false},  // whether other windows hide it
 }
 
 // What a property gives, in words: "a number", "a vector of 2 numbers".
-property_words :: proc(def: Value_Def) -> string {
+property_words :: proc(def: Property_Def) -> string {
 	switch def.kind {
 	case .Number:  return "a number"
 	case .Text:    return "text"
 	case .Boolean: return "true or false"
 	case .Vector:  return "a vector of 2 numbers" if def.size == 2 else "a vector"
-	case .None, .List, .Block, .Window, .Name, .Gradient, .Any, .Expr_Block, .Colour: return "a value"
+	case .Window:  return "a window"
+	case .None, .List, .Block, .Name, .Gradient, .Any, .Expr_Block, .Colour: return "a value"
 	}
 	return "a value"
 }
@@ -127,6 +154,14 @@ property_words :: proc(def: Value_Def) -> string {
 // `width`, `height` and `size` are values and connecting words together, so they
 // stay free to use as parameter names.
 FREE_AS_PARAMETERS := [?]string{"height", "size", "width"}
+
+// Words only the settings of a window use, which stay free as names for anything
+// else (a `ratio`, a `parent`, `visible`): the parser takes one for a connecting
+// word only where a window call is due one.
+WINDOW_FREE_WORDS := [?]string{
+	"bordered", "focusable", "grab", "largest", "modal", "parent", "ratio", "resizable",
+	"smallest", "topmost", "visible",
+}
 
 // An `on` event and what follows its name: `on key "space" [ ... ]`, `on mouse down [ ... ]`.
 // `on w receive msg [ ... ]` is its own form, because a window comes first.

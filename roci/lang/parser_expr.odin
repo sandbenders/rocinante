@@ -155,7 +155,7 @@ is_stop_word :: proc(word: string) -> bool {
 	if slice.contains(registry.KEYWORDS[:], word) {
 		return word != "it" && word != "result"
 	}
-	return slice.contains(registry.CONNECTING_WORDS[:], word) && !slice.contains(registry.FREE_AS_PARAMETERS[:], word)
+	return slice.contains(registry.CONNECTING_WORDS[:], word) && !registry.is_free_as_parameter(word)
 }
 
 @(private)

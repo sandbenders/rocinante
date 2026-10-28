@@ -3,6 +3,6 @@
 2 │ x = w.widht
   │       ^^^^^
 
-A window has width, height, title, at, mouse, fullscreen and resizable.
+A window has width, height, title, at, mouse, fullscreen, resizable, bordered, topmost, visible, alpha, smallest, largest, ratio, focusable, grab, modal, parent, focused, maximized, minimized, hovered and covered.
 
 Write:  x = w.width

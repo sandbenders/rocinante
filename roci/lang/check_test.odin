@@ -973,15 +973,18 @@ test_a_property_a_window_does_not_have_names_the_ones_it_has :: proc(t: ^testing
 	parsed := check_text("w = window size 800 600\nx = w.widht\n")
 	for d in parsed.checked.diagnostics {
 		if d.id == .Bad_Field {
-			testing.expect(t, strings.contains(d.args[2], "width, height, title, at, mouse, fullscreen and resizable"))
+			testing.expect(t, strings.contains(d.args[2], "width, height, title, at, mouse, fullscreen, resizable"))
 			testing.expect_value(t, d.args[3], "x = w.width")
 		}
 	}
 }
 
 @(test)
-test_a_windows_properties_cannot_be_assigned :: proc(t: ^testing.T) {
-	expect_errors(t, "w = window size 800 600\nw.width = 100", {.Bad_Field})
+test_a_windows_properties_can_be_assigned_except_the_ones_that_are_only_read :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window size 800 600\nw.width = 100\nw.title = \"new\"\nw.at = { 10, 20 }\nw.resizable = false", {})
+	expect_errors(t, "w = window size 800 600\nw.mouse = { 1, 2 }", {.Bad_Field})
+	expect_errors(t, "w = window size 800 600\nw.width = \"wide\"", {.Wrong_Kind_Here})
+	expect_errors(t, "w = window size 800 600\nw.widht = 1", {.Bad_Field})
 }
 
 @(test)
@@ -992,8 +995,14 @@ test_shuffle_gives_a_list_of_the_same_kind_and_needs_a_list :: proc(t: ^testing.
 
 @(test)
 test_a_window_can_be_made_fixed_and_asked_whether_it_is :: proc(t: ^testing.T) {
-	expect_errors(t, "w = window size 300 200 resizable false\nr = w.resizable\nresizable w true\nif r [ quit ]", {})
+	expect_errors(t, "w = window size 300 200 resizable false\nr = w.resizable\nw.resizable = true\nif r [ quit ]", {})
 	expect_errors(t, "w = window size 300 200 resizable 3", {.Wrong_Argument_Kind})
-	expect_errors(t, "w = window size 300 200\nresizable w 3", {.Wrong_Argument_Kind})
 	expect_types(t, "w = window size 300 200 resizable false\nr = w.resizable", "w: a window\nr: true or false")
+}
+
+@(test)
+test_the_other_window_words_check_and_a_name_like_them_is_still_a_name :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window size 300 200 bordered false topmost true smallest 100 100 largest 800 600 ratio 1.5 alpha 200 focusable false visible true fullscreen false grab false modal false", {})
+	expect_errors(t, "main = window size 800 600\nd = window size 100 100 parent main modal true", {})
+	expect_errors(t, "ratio = 0.5\nvisible = true\nparent = 3\ncircle at 1 1 radius ratio", {})
 }

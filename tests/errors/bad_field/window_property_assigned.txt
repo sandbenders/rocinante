@@ -1,8 +1,8 @@
-── `title` is not a part of a window ─────────────────── sketch.roci:2:3
+── `mouse` is not a part of a window ─────────────────── sketch.roci:2:3
 
-2 │ w.title = "new"
+2 │ w.mouse = { 1, 2 }
   │   ^^^^^
 
-A window's properties can be read but not changed this way. `title w "text"` renames one.
+`mouse` can be read but not changed.
 
-Write:  w.width = "new"
+Write:  w.width = { 1, 2 }

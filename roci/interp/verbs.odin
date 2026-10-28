@@ -308,13 +308,12 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 				at = [2]int{int(as_number(x)), int(as_number(y))}
 			}
 		}
-		w := roci.window(int(n(a, 0)), int(n(a, 1)), at)
-		if text, found := option_value(it, call.options, "title"); found {
-			roci.title_window(w, as_text(text))
+		flags := roci.Window_Flags{}
+		if on, found := option_value(it, call.options, "visible"); found {
+			flags.hidden = !as_bool(on)
 		}
-		if on, found := option_value(it, call.options, "resizable"); found {
-			roci.set_resizable(w, as_bool(on))
-		}
+		w := roci.window(int(n(a, 0)), int(n(a, 1)), at, flags)
+		apply_window_options(it, w, call.options)
 		return w
 	case "title":
 		if call.shape == 0 {

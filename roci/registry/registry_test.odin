@@ -611,9 +611,37 @@ test_statements_have_forms_and_an_example :: proc(t: ^testing.T) {
 
 @(test)
 test_the_window_properties_are_listed_with_their_kinds :: proc(t: ^testing.T) {
-	testing.expect_value(t, len(WINDOW_PROPERTIES), 7)
+	testing.expect_value(t, len(WINDOW_PROPERTIES), 23)
 	for def in WINDOW_PROPERTIES {
 		testing.expectf(t, def.name != "" && def.kind != .None, "`%s` has no kind", def.name)
 	}
 	testing.expect_value(t, WINDOW_PROPERTIES[3].size, 2)
+}
+
+@(test)
+test_every_window_setting_that_can_be_asked_for_when_a_window_is_made_is_also_a_property :: proc(t: ^testing.T) {
+	window, _ := find_verb("window")
+	for option in window.shapes[0].options {
+		found := false
+		for def in WINDOW_PROPERTIES {
+			found ||= def.name == option.word
+		}
+		testing.expectf(t, found, "`%s` is a word of window but not a property", option.word)
+	}
+	// What can only be read.
+	for name in ([]string{"mouse", "hovered", "covered"}) {
+		for def in WINDOW_PROPERTIES {
+			if def.name == name {
+				testing.expectf(t, !def.settable, "`%s` should be read-only", name)
+			}
+		}
+	}
+}
+
+@(test)
+test_the_words_only_a_window_uses_stay_free_as_names :: proc(t: ^testing.T) {
+	for word in ([]string{"ratio", "parent", "visible", "grab", "smallest", "largest"}) {
+		testing.expectf(t, !is_reserved_name(word), "`%s` should be usable as a name", word)
+	}
+	testing.expect(t, is_reserved_name("circle"))
 }

@@ -46,6 +46,17 @@ Win :: struct {
 	previous:     [2]f64,
 	fullscreen:   bool,
 	fixed:        bool,             // its size cannot be changed by dragging its edges
+	borderless:   bool,             // no title bar or frame
+	topmost:      bool,
+	hidden:       bool,
+	unfocusable:  bool,
+	grabbed:      bool,             // the mouse is kept inside it
+	modal:        bool,
+	alpha:        f64,              // how solid the whole window is, 0 to 255
+	parent:       Window,
+	smallest:     [2]int,           // size limits; 0 for none
+	largest:      [2]int,
+	ratio:        f64,              // the shape it keeps when resized; 0 for any
 	position:     [2]int,           // where it was asked to be (a headless window has no screen)
 }
 
@@ -174,8 +185,10 @@ destroy_win :: proc(w: ^Win) {
 
 // Makes a window of the given logical size, on screen unless headless.
 @(private)
-make_win :: proc(width, height: int, position: Maybe([2]int), title: string) -> ^Win {
+make_win :: proc(width, height: int, position: Maybe([2]int), title: string, flags := Window_Flags{}) -> ^Win {
 	w := new(Win)
+	w.alpha = 255
+	w.hidden = flags.hidden
 	the.next_id += 1
 	w.id = Window(the.next_id)
 	w.width, w.height = width if width > 0 else DEFAULT_WIDTH, height if height > 0 else DEFAULT_HEIGHT
@@ -185,7 +198,7 @@ make_win :: proc(width, height: int, position: Maybe([2]int), title: string) -> 
 		w.position = p
 	}
 	if !the.headless {
-		handle, ok := platform.create_window(&the.app, {title = title, width = w.width, height = w.height, position = position, resizable = true})
+		handle, ok := platform.create_window(&the.app, {title = title, width = w.width, height = w.height, position = position, resizable = true, hidden = flags.hidden})
 		if !ok {
 			the.error = strings.clone(the.app.error)
 			fmt.eprintfln("rocinante: could not open a window: %s", the.app.error)
