@@ -220,6 +220,7 @@ sizes  = collect particles [ it.size * 2 ]    // one new value per item
 total  = combine scores from 0 [ result + it ]   // fold: `result` is the running value
 big    = find particles [ it.size > 20 ]      // the first match, or empty
 order  = sort particles by [ it.size ]        // sorted by what the block gives
+mixed  = shuffle particles                    // the same items in a random order (the run's seed repeats it)
 ```
 
   The block of these verbs holds **one expression** (decided 2026-10-28), not statements: `[ it.life > 0 ]`. It sits where the verb takes it, or after a connecting word (`combine scores from 0 [ result + it ]`, `sort particles by [ it.size ]`). `keep`, `skip` and `find` need a true-or-false expression, `collect` gives a list of what it gives, `sort` needs a number or text, and `combine` needs it to match the starting value.

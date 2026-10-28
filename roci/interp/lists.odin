@@ -5,6 +5,7 @@
 // with `it` and `result`), and `send`.
 package interp
 
+import "../"
 import "../lang"
 import "core:fmt"
 import "core:math"
@@ -14,7 +15,7 @@ import "core:unicode/utf8"
 
 is_language_verb :: proc(name: string) -> bool {
 	switch name {
-	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "send":
+	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send":
 		return true
 	}
 	return false
@@ -155,6 +156,17 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return result
 	case "sort":
 		return sort_list(it, call)
+	case "shuffle":
+		// A new list, mixed by the sketch's own random numbers (so a seed repeats it).
+		out := new_list(it)
+		if list := as_list(eval(it, call.args[0])); list != nil {
+			append(&out.items, ..list.items[:])
+			for i := len(out.items) - 1; i > 0; i -= 1 {
+				j := min(int(roci.random(f64(i + 1))), i)
+				out.items[i], out.items[j] = out.items[j], out.items[i]
+			}
+		}
+		return out
 	case "send":
 		send_message(it, eval(it, call.args[0]), eval(it, call.args[1]))
 	}

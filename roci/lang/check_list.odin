@@ -134,7 +134,7 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 			return T_ERROR, true
 		}
 		return element_of(c, list.type), true
-	case "copy":
+	case "copy", "shuffle":
 		return args[0].type, true
 	case "keep", "skip", "find", "collect":
 		if len(args) < 2 {

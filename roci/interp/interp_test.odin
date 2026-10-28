@@ -971,3 +971,39 @@ test_a_windows_size_follows_it_when_it_is_resized :: proc(t: ^testing.T) {
 	roci.step({platform.Resized{window = platform.Window_Id(first_window()), width = 640, height = 480}})
 	testing.expect_value(t, printed(p), "640")
 }
+
+@(test)
+test_shuffle_gives_a_new_list_with_the_same_items_in_another_order :: proc(t: ^testing.T) {
+	text := "xs = [ 1 2 3 4 5 6 7 8 ]\nys = shuffle xs\nprint xs\nprint (count ys)\nprint (combine ys from 0 [ result + it ])\nprint (ys is xs)"
+	p := run_text(t, text)
+	defer finish(p)
+	testing.expect_value(t, printed(p), "[ 1 2 3 4 5 6 7 8 ]\n8\n36\nfalse")
+}
+
+@(test)
+test_shuffle_repeats_with_the_same_seed_and_changes_with_another :: proc(t: ^testing.T) {
+	text := "print (shuffle [ 1 2 3 4 5 6 7 8 9 10 ])"
+	roci.start_headless(5)
+	a, _ := load("a.roci", text)
+	start(a)
+	first := printed(a)
+	destroy(a)
+	roci.shutdown()
+	roci.start_headless(5)
+	b, _ := load("b.roci", text)
+	start(b)
+	testing.expect_value(t, printed(b), first)
+	destroy(b)
+	roci.shutdown()
+	roci.start_headless(6)
+	c, _ := load("c.roci", text)
+	start(c)
+	testing.expect(t, printed(c) != first)
+	destroy(c)
+	roci.shutdown()
+}
+
+@(test)
+test_shuffling_an_empty_list_and_a_one_item_list_is_fine :: proc(t: ^testing.T) {
+	expect_printed(t, "print (shuffle [])\nprint (shuffle [ 7 ])", "[ ]\n[ 7 ]")
+}

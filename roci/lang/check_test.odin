@@ -983,3 +983,9 @@ test_a_property_a_window_does_not_have_names_the_ones_it_has :: proc(t: ^testing
 test_a_windows_properties_cannot_be_assigned :: proc(t: ^testing.T) {
 	expect_errors(t, "w = window size 800 600\nw.width = 100", {.Bad_Field})
 }
+
+@(test)
+test_shuffle_gives_a_list_of_the_same_kind_and_needs_a_list :: proc(t: ^testing.T) {
+	expect_types(t, "xs = [ red teal ]\nys = shuffle xs", "xs: a list of colours\nys: a list of colours")
+	expect_errors(t, "x = shuffle 3", {.Wrong_Argument_Kind})
+}
