@@ -855,6 +855,16 @@ Checked_Text :: struct {
 	checked: Checked,
 }
 
+// Several files joined and checked as one program, the way a sketch folder is.
+@(private)
+check_files :: proc(files: []File_Text) -> Checked_Text {
+	ordered := make([]File_Text, len(files), context.temp_allocator)
+	copy(ordered, files)
+	order_files(ordered)
+	src := join_sources(ordered, context.temp_allocator)
+	return Checked_Text{src, check(src, test_verbs(), nil, context.temp_allocator)}
+}
+
 @(private)
 check_text :: proc(text: string) -> Checked_Text {
 	src := make_source("sketch.roci", text, 0, context.temp_allocator)

@@ -1,0 +1,8 @@
+── `stars.roci` holds definitions only ────────────────── stars.roci:1:1
+
+1 │ circle at 100 100 radius 50
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A file next to sketch.roci holds verbs taught with `learn`, constants written in capitals and `use` lines. What runs is written in sketch.roci, or inside a verb, so splitting a sketch into files never changes what it does.
+
+In sketch.roci:  circle at 100 100 radius 50

@@ -33,7 +33,10 @@ Verb_Ctx :: struct {
 collect_learns :: proc(c: ^Checker, stmts: []^Stmt) {
 	for s in stmts {
 		if learn, ok := s.kind.(Learn); ok {
-			if _, exists := c.learns[learn.name]; !exists {
+			if first, exists := c.learns[learn.name]; exists {
+				file, pos := place_of(c.src, first.span.start)
+				note(c, .Verb_Twice, s.span, learn.name, fmt.tprintf("%s, line %d", file, pos.line), renamed_header(c, s.span, learn.name))
+			} else {
 				decl := new(Learn_Decl, c.alloc)
 				decl^ = Learn_Decl{span = s.span, learn = learn}
 				c.learns[learn.name] = decl
@@ -308,4 +311,16 @@ check_taught_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR 
 		note(c, .Result_Dropped, e.span, k.taught.name, "", "", fix(c, e.span, fmt.tprintf("answer = %s", text_at(c, e.span))))
 	}
 	return new_ir(c, e.span, type, IR_Call{taught = k.taught, instance = inst, args = args[:], options = options[:]})
+}
+
+// The `learn` line of a verb taught a second time, with a 2 after the name.
+@(private)
+renamed_header :: proc(c: ^Checker, span: Span, name: string) -> string {
+	text := span_text(c.src, span)
+	at := strings.index(text, name)
+	if at < 0 {
+		return name
+	}
+	at += span.start
+	return line_replacing(c.src, Span{span.file, at, at + len(name)}, fmt.tprintf("%s2", name), c.alloc)
 }

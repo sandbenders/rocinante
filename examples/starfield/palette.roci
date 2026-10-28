@@ -1,0 +1,9 @@
+// The colours and the verb the starfield draws with. This file holds definitions only:
+// what runs is written in sketch.roci.
+SKY = navy
+GLOW = gold
+
+learn star x y size [
+  fill GLOW
+  circle at x y radius size
+]

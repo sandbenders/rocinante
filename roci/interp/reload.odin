@@ -12,10 +12,12 @@
 package interp
 
 import "../"
+import "../folder"
 import "../lang"
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:time"
 import "../maths"
 import "../../tools/term"
 
@@ -31,12 +33,39 @@ Outcome :: enum u8 {
 @(thread_local)
 retired: [dynamic]^Interp
 
-// Remembers the file to watch, so changes to it are picked up.
+// Remembers the file to watch, so changes to it are picked up. A `sketch.roci` stands
+// for its whole folder: every .roci file there is watched, and so is the folder, for
+// files that appear or go.
 watch :: proc(p: ^Interp, path: string) {
 	p.path = strings.clone(path, p.long)
 	if t, err := os.modification_time_by_path(path); err == nil {
 		p.mtime = t
 	}
+	if is_sketch_path(path) {
+		p.program = true
+		if program, problem := folder.read_program(path); problem == "" {
+			remember_files(p, program.paths)
+		}
+	}
+}
+
+@(private)
+is_sketch_path :: proc(path: string) -> bool {
+	return path == "sketch.roci" || strings.has_suffix(path, "/sketch.roci")
+}
+
+// Remembers the files of the program and when each one last changed.
+@(private)
+remember_files :: proc(p: ^Interp, paths: []string) {
+	p.watched = make([]string, len(paths), p.long)
+	p.mtimes = make([]time.Time, len(paths), p.long)
+	for path, i in paths {
+		p.watched[i] = strings.clone(path, p.long)
+		if t, err := os.modification_time_by_path(path); err == nil {
+			p.mtimes[i] = t
+		}
+	}
+	p.scanned = time.now()
 }
 
 // The interpreter that is running now: a reload makes a new one.
@@ -214,7 +243,12 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> 
 // otherwise) and what happened. `restart` runs the sketch from its first line
 // even when its values could be kept (Ctrl+R).
 reload :: proc(p: ^Interp, text: string, restart := false) -> (^Interp, Outcome) {
-	n, ok := load(p.src.name, text)
+	return reload_files(p, {lang.File_Text{name = p.src.name, text = text}}, restart)
+}
+
+// The same for a program of several files, given in the order they are joined.
+reload_files :: proc(p: ^Interp, files: []lang.File_Text, restart := false) -> (^Interp, Outcome) {
+	n, ok := load_files(files)
 	if !ok {
 		set_problem(p, n)
 		destroy(n)
@@ -223,6 +257,12 @@ reload :: proc(p: ^Interp, text: string, restart := false) -> (^Interp, Outcome)
 	}
 	n.echo, n.budget, n.hook_frame = p.echo, p.budget, p.hook_frame
 	n.path, n.mtime = strings.clone(p.path, n.long), p.mtime
+	n.program, n.scanned = p.program, p.scanned
+	n.watched, n.mtimes = make([]string, len(p.watched), n.long), make([]time.Time, len(p.mtimes), n.long)
+	for path, i in p.watched {
+		n.watched[i] = strings.clone(path, n.long)
+	}
+	copy(n.mtimes, p.mtimes)
 
 	old_stmts, new_stmts := p.checked.program.stmts, n.checked.program.stmts
 	carry := make([]int, len(new_stmts), context.temp_allocator)
@@ -346,6 +386,9 @@ poll :: proc(p: ^Interp) -> ^Interp {
 	if p.path == "" {
 		return p
 	}
+	if p.program {
+		return poll_program(p)
+	}
 	t, err := os.modification_time_by_path(p.path)
 	if err != nil || t == p.mtime {
 		return p
@@ -370,6 +413,12 @@ poll :: proc(p: ^Interp) -> ^Interp {
 
 // Runs the sketch again from its first line, reading the file again when it is watched.
 restart :: proc(p: ^Interp) -> ^Interp {
+	if p.program {
+		if files, ok := read_watched_program(p); ok {
+			next, _ := reload_files(p, files, true)
+			return next
+		}
+	}
 	text := p.src.text
 	if p.path != "" {
 		if data, err := os.read_entire_file(p.path, context.temp_allocator); err == nil {
@@ -412,4 +461,60 @@ report_new_errors :: proc(p: ^Interp) {
 			fmt.eprintfln("%s", term.message(lang.render(p.src, lang.Diagnostic{id = e.id, span = e.span, args = e.args}, context.temp_allocator), term.err_colour))
 		}
 	}
+}
+
+// How often the folder of a program is listed for files that came or went.
+SCAN_EVERY :: 500 * time.Millisecond
+
+// The program as it is on disk now, or nothing when it cannot be read or has no sketch.roci.
+@(private)
+read_watched_program :: proc(p: ^Interp) -> (files: []lang.File_Text, ok: bool) {
+	program, problem := folder.read_program(p.path)
+	if problem != "" || len(program.files) == 0 || !is_sketch_path(program.files[len(program.files) - 1].name) {
+		return nil, false
+	}
+	remember_files(p, program.paths)
+	return program.files, true
+}
+
+// `poll` for a program: any of its files changing, or a file coming or going, reloads it.
+@(private)
+poll_program :: proc(p: ^Interp) -> ^Interp {
+	changed := false
+	for path, i in p.watched {
+		t, err := os.modification_time_by_path(path)
+		if err != nil || t != p.mtimes[i] {
+			changed = true
+		}
+	}
+	if !changed && time.diff(p.scanned, time.now()) >= SCAN_EVERY {
+		p.scanned = time.now()
+		listed := folder.roci_files(folder.root_of(p.path))
+		changed = len(listed) != len(p.watched)
+		for path in listed {
+			known := false
+			for w in p.watched {
+				known ||= w == path
+			}
+			changed ||= !known
+		}
+	}
+	if !changed {
+		return p
+	}
+	files, ok := read_watched_program(p)
+	if !ok {
+		return p
+	}
+	if lang.join_sources(files, context.temp_allocator).text == p.src.text {
+		// Saved back to the text that is running: the errors of the last save are gone.
+		if p.problem_title != "" {
+			p.problem_title, p.problem_lines = "", nil
+			update_overlay(p)
+			notice(p, "the errors are fixed")
+		}
+		return p
+	}
+	next, _ := reload_files(p, files)
+	return next
 }

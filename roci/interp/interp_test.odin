@@ -8,6 +8,7 @@ package interp
 
 import "../"
 import "../gfx"
+import "../folder"
 import "../lang"
 import "../platform"
 import "../registry"
@@ -1048,4 +1049,114 @@ test_alpha_is_a_percentage_in_the_language_and_a_byte_below_it :: proc(t: ^testi
 test_set_takes_a_pair_as_two_numbers_or_one_vector :: proc(t: ^testing.T) {
 	text := "p = { 100, 50 }\nw = window size 300 200\nset w smallest p at 7 8\nprint w.smallest\nprint w.at\nset w at p largest 900 700\nprint w.at\nprint w.largest"
 	expect_printed(t, text, "{ 100, 50 }\n{ 7, 8 }\n{ 100, 50 }\n{ 900, 700 }")
+}
+
+// ---- sketches of several files ----
+
+@(private = "file")
+expect_files_printed :: proc(t: ^testing.T, files: []lang.File_Text, want: string) {
+	roci.start_headless(1)
+	defer roci.shutdown()
+	p, ok := load_files(files)
+	defer destroy(p)
+	if !ok {
+		testing.expectf(t, false, "the program has errors: %s", lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator))
+		return
+	}
+	start(p)
+	roci.step()
+	testing.expect_value(t, printed(p), want)
+}
+
+@(test)
+test_a_verb_and_a_constant_taught_in_another_file_run :: proc(t: ^testing.T) {
+	expect_files_printed(t, {
+		{name = "moves.roci", text = "SPEED = 3\nlearn double n [ give n * SPEED ]\n"},
+		{name = "sketch.roci", text = "print (double 5)\nprint SPEED\n"},
+	}, "15\n3")
+}
+
+@(test)
+test_files_run_in_name_order_before_the_sketch_and_take_calls_in_any_order :: proc(t: ^testing.T) {
+	expect_files_printed(t, {
+		{name = "a.roci", text = "learn first [ print \"a\" ]\nlearn again [ second ]\n"},
+		{name = "b.roci", text = "learn second [ print \"b\" ]\n"},
+		{name = "sketch.roci", text = "again\nfirst\n"},
+	}, "b\na")
+}
+
+@(test)
+test_a_runtime_error_in_another_file_names_that_file :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	defer roci.shutdown()
+	p, ok := load_files({
+		{name = "maths.roci", text = "learn inverse n [ give 1 / n ]\n"},
+		{name = "sketch.roci", text = "x = inverse 0\n"},
+	})
+	defer destroy(p)
+	testing.expect(t, ok)
+	start(p)
+	testing.expect(t, len(p.errors) > 0)
+	testing.expect(t, strings.contains(report(p), "maths.roci:1:"))
+}
+
+@(test)
+test_a_change_to_a_second_file_reloads_the_program_and_a_new_file_joins_it :: proc(t: ^testing.T) {
+	root := "output/tests/interp_program"
+	_ = os.remove_all(root)
+	_ = os.make_directory_all(root)
+	sketch, moves := "output/tests/interp_program/sketch.roci", "output/tests/interp_program/moves.roci"
+	write_sketch(t, sketch, "n = 0\ndraw [\n  n = n + step_size\n  print n\n]\n")
+	write_sketch(t, moves, "learn unused_verb [ print 0 ]\nSTEP = 1\n")
+	// step_size is not defined yet: the program has an error and waits.
+	write_sketch(t, moves, "STEP = 1\nlearn unused_verb [ print 0 ]\n")
+	write_sketch(t, sketch, "n = 0\ndraw [\n  n = n + STEP\n  print n\n]\n")
+	roci.start_headless(1)
+	program, problem := folder.read_program(sketch)
+	testing.expect_value(t, problem, "")
+	p, ok := load_files(program.files)
+	testing.expect(t, ok)
+	watch(p, sketch)
+	start(p)
+	defer finish_all()
+	roci.step()
+	roci.step()
+	testing.expect_value(t, printed(p), "1\n2")
+	testing.expect(t, p.program)
+	testing.expect_value(t, len(p.watched), 2)
+
+	// The second file changes: the constant takes its new value at once, and n keeps running.
+	time.sleep(20 * time.Millisecond)
+	write_sketch(t, moves, "STEP = 10\nlearn unused_verb [ print 0 ]\n")
+	next := poll(p)
+	testing.expect(t, next != p)
+	roci.step()
+	testing.expect_value(t, printed(next), "12")
+
+	// A third file appears with a verb the sketch then uses.
+	time.sleep(600 * time.Millisecond)
+	write_sketch(t, "output/tests/interp_program/extra.roci", "learn shout n [ print n ]\n")
+	write_sketch(t, sketch, "n = 0\ndraw [\n  n = n + STEP\n  shout n\n]\n")
+	after := poll(next)
+	testing.expect(t, after != next)
+	testing.expect(t, !after.has_errors)
+	testing.expect_value(t, len(after.watched), 3)
+}
+
+@(test)
+test_the_starfield_example_of_two_files_draws_its_stars :: proc(t: ^testing.T) {
+	program, problem := folder.read_program("examples/starfield/sketch.roci")
+	testing.expect_value(t, problem, "")
+	testing.expect_value(t, len(program.files), 2)
+	roci.start_headless(1)
+	defer roci.shutdown()
+	p, ok := load_files(program.files)
+	defer destroy(p)
+	testing.expect(t, ok)
+	start(p)
+	roci.step()
+	testing.expect_value(t, len(p.errors), 0)
+	windows := roci.open_windows()
+	testing.expect_value(t, len(windows), 1)
+	testing.expect(t, len(roci.recorded(windows[0])) >= 40)
 }

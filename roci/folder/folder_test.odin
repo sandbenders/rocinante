@@ -199,3 +199,48 @@ test_the_lfs_patterns_are_binary_types_and_the_gitignore_leaves_out_what_is_writ
 		testing.expect(t, strings.has_prefix(pattern, "*."))
 	}
 }
+
+@(test)
+test_a_program_is_every_roci_file_of_the_folder_with_the_sketch_last :: proc(t: ^testing.T) {
+	root := fresh("program")
+	_ = os.make_directory_all(path_in(root, "parts"))
+	_ = os.make_directory_all(path_in(root, "libs/stars"))
+	_ = os.make_directory_all(path_in(root, "assets/data"))
+	_ = os.make_directory_all(path_in(root, "output"))
+	_ = os.make_directory_all(path_in(root, ".cache"))
+	for name in ([]string{"sketch.roci", "zebra.roci", "apple.roci", "parts/b.roci", "libs/stars/s.roci", "assets/data/x.roci", "output/o.roci", ".cache/c.roci", "notes.txt"}) {
+		testing.expect(t, os.write_entire_file(path_in(root, name), transmute([]byte)string("x = 1\n")) == nil)
+	}
+	program, problem := read_program(path_in(root, "sketch.roci"))
+	testing.expect_value(t, problem, "")
+	names := make([dynamic]string, context.temp_allocator)
+	for f in program.files {
+		append(&names, strings.trim_prefix(f.name, strings.concatenate({root, "/"}, context.temp_allocator)))
+	}
+	testing.expect_value(t, strings.join(names[:], " ", context.temp_allocator), "apple.roci parts/b.roci zebra.roci sketch.roci")
+	testing.expect_value(t, len(program.paths), 4)
+	testing.expect_value(t, program.paths[3], path_in(root, "sketch.roci"))
+	testing.expect_value(t, program.files[3].text, "x = 1\n")
+}
+
+@(test)
+test_a_sketch_alone_in_its_folder_is_a_program_of_one_file :: proc(t: ^testing.T) {
+	root := fresh("program_one")
+	_ = os.make_directory_all(root)
+	testing.expect(t, os.write_entire_file(path_in(root, "sketch.roci"), transmute([]byte)string("circle at 1 1 radius 2\n")) == nil)
+	program, problem := read_program(path_in(root, "sketch.roci"))
+	testing.expect_value(t, problem, "")
+	testing.expect_value(t, len(program.files), 1)
+}
+
+@(test)
+test_the_folder_of_a_sketch_path :: proc(t: ^testing.T) {
+	testing.expect_value(t, root_of("a/b/sketch.roci"), "a/b")
+	testing.expect_value(t, root_of("sketch.roci"), ".")
+	testing.expect_value(t, root_of("/sketch.roci"), "/")
+	testing.expect(t, is_foreign_folder("assets"))
+	testing.expect(t, is_foreign_folder("libs"))
+	testing.expect(t, is_foreign_folder("output"))
+	testing.expect(t, is_foreign_folder(".git"))
+	testing.expect(t, !is_foreign_folder("parts"))
+}

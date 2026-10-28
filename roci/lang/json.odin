@@ -33,7 +33,8 @@ json_escape :: proc(text: string, allocator := context.temp_allocator) -> string
 // One diagnostic as one line of JSON.
 diagnostic_json :: proc(src: Source, d: Diagnostic, allocator := context.temp_allocator) -> string {
 	entry := CATALOGUE[d.id]
-	start, end := position_of(src, d.span.start), position_of(src, d.span.end)
+	file_name, start := place_of(src, d.span.start)
+	_, end := place_of(src, d.span.end)
 	severity := "error"
 	switch entry.severity {
 	case .Error:   severity = "error"
@@ -46,7 +47,7 @@ diagnostic_json :: proc(src: Source, d: Diagnostic, allocator := context.temp_al
 	id := strings.to_lower(fmt.tprintf("%v", d.id), context.temp_allocator)
 	return fmt.aprintf(
 		`{{"file":"%s","line":%d,"column":%d,"end_line":%d,"end_column":%d,"id":"%s","severity":"%s","runtime":%v,"title":"%s","explanation":"%s","example":"%s"}}`,
-		json_escape(src.name), start.line, start.column, end.line, end.column, id, severity, is_runtime(d.id),
+		json_escape(file_name), start.line, start.column, end.line, end.column, id, severity, is_runtime(d.id),
 		json_escape(title), json_escape(explain), json_escape(example), allocator = allocator,
 	)
 }

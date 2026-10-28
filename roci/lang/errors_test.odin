@@ -18,7 +18,8 @@ ERRORS_DIR :: "tests/errors"
 Case :: struct {
 	id_folder: string,
 	name:      string,
-	path:      string, // without the extension
+	path:      string, // without the extension; for a folder of files, the folder
+	folder:    bool,   // a folder of several files; its text is `<folder>.txt` beside it
 }
 
 // The folder name of an id: `Missing_Close_Square` is `missing_close_square`.
@@ -43,6 +44,18 @@ find_cases :: proc() -> [dynamic]Case {
 		path := strings.clone(strings.trim_suffix(fi.fullpath, ".roci"), context.temp_allocator) // the walker reuses its buffer
 		parts := strings.split(path, "/", context.temp_allocator)
 		if len(parts) < 2 {
+			continue
+		}
+		// tests/errors/<id>/<case>.roci is one file; tests/errors/<id>/<case>/<file>.roci is a folder of them.
+		if len(parts) >= 4 && parts[len(parts) - 4] == "errors" {
+			folder := strings.join(parts[:len(parts) - 1], "/", context.temp_allocator)
+			seen := false
+			for existing in cases {
+				seen ||= existing.path == folder
+			}
+			if !seen {
+				append(&cases, Case{id_folder = parts[len(parts) - 3], name = parts[len(parts) - 2], path = folder, folder = true})
+			}
 			continue
 		}
 		append(&cases, Case{id_folder = parts[len(parts) - 2], name = parts[len(parts) - 1], path = path})
@@ -82,11 +95,10 @@ test_every_message_has_a_sketch_that_triggers_it_and_the_text_matches :: proc(t:
 		if !testing.expectf(t, id_found, "%s is in a folder that names no message", c.path) {
 			continue
 		}
-		data, read_err := os.read_entire_file(fmt.tprintf("%s.roci", c.path), context.temp_allocator)
-		if !testing.expectf(t, read_err == nil, "cannot read %s.roci", c.path) {
+		parsed, readable := check_case(t, c)
+		if !readable {
 			continue
 		}
-		parsed := check_text(string(data))
 		triggered := false
 		for d in parsed.checked.diagnostics {
 			if d.id == wanted {
@@ -119,13 +131,45 @@ test_every_message_has_a_sketch_that_triggers_it_and_the_text_matches :: proc(t:
 test_a_sketch_in_the_error_folder_triggers_only_the_messages_it_is_about :: proc(t: ^testing.T) {
 	// A case that sets off unrelated errors teaches nothing about its own message.
 	for c in find_cases() {
-		data, err := os.read_entire_file(fmt.tprintf("%s.roci", c.path), context.temp_allocator)
-		if err != nil {
+		parsed, readable := check_case(t, c)
+		if !readable {
 			continue
 		}
-		parsed := check_text(string(data))
 		for d in parsed.checked.diagnostics {
 			testing.expectf(t, folder_of(d.id) == c.id_folder || (c.id_folder == "extra_close" && d.id == .Missing_Close_Square), "%s.roci also triggers %v", c.path, d.id)
 		}
 	}
+}
+
+// The program of a case: one file, or the files of its folder joined.
+@(private = "file")
+check_case :: proc(t: ^testing.T, c: Case) -> (Checked_Text, bool) {
+	if !c.folder {
+		data, err := os.read_entire_file(fmt.tprintf("%s.roci", c.path), context.temp_allocator)
+		if !testing.expectf(t, err == nil, "cannot read %s.roci", c.path) {
+			return {}, false
+		}
+		return check_text(string(data)), true
+	}
+	files := make([dynamic]File_Text, context.temp_allocator)
+	handle, open_err := os.open(c.path)
+	if !testing.expectf(t, open_err == nil, "cannot open %s", c.path) {
+		return {}, false
+	}
+	defer os.close(handle)
+	entries, read_err := os.read_dir(handle, -1, context.temp_allocator)
+	if !testing.expectf(t, read_err == nil, "cannot read %s", c.path) {
+		return {}, false
+	}
+	for entry in entries {
+		if !strings.has_suffix(entry.name, ".roci") {
+			continue
+		}
+		data, err := os.read_entire_file(fmt.tprintf("%s/%s", c.path, entry.name), context.temp_allocator)
+		if !testing.expectf(t, err == nil, "cannot read %s/%s", c.path, entry.name) {
+			return {}, false
+		}
+		append(&files, File_Text{name = strings.clone(entry.name, context.temp_allocator), text = string(data)})
+	}
+	return check_files(files[:]), true
 }

@@ -5,12 +5,12 @@
 // so, and it leaves a file that has mistakes it cannot fix alone.
 package main
 
+import "../roci/folder"
 import "../roci/lang"
 import "../roci/registry"
 import "../tools/term"
 import "core:fmt"
 import "core:os"
-import "core:slice"
 import "core:strings"
 
 FMT_USAGE :: `roci fmt [file or folder]
@@ -19,37 +19,10 @@ FMT_USAGE :: `roci fmt [file or folder]
   formatted (but not assets, libs or output, which are not your own code); with a
   folder, the files in that one; with a file, only that file. Files are rewritten.`
 
-// Folders whose files are not the sketch's own code: its assets, the libraries
-// vendored into it, what it writes, and anything hidden (git's, the cache).
-@(private)
-skipped_folder :: proc(name: string) -> bool {
-	return name == "assets" || name == "libs" || name == "output" || strings.has_prefix(name, ".")
-}
-
 // Every .roci file in a folder, in the order of their names, without the folders a
 // sketch does not own.
-sketch_files :: proc(folder: string) -> []string {
-	files := make([dynamic]string, context.temp_allocator)
-	cwd, _ := os.get_working_directory(context.temp_allocator)
-	here := strings.concatenate({cwd, "/"}, context.temp_allocator)
-	w: os.Walker
-	os.walker_init(&w, folder)
-	defer os.walker_destroy(&w)
-	for fi in os.walker_walk(&w) {
-		if fi.type == .Directory {
-			if skipped_folder(fi.name) && fi.fullpath != folder {
-				os.walker_skip_dir(&w)
-			}
-			continue
-		}
-		if strings.has_suffix(fi.name, ".roci") {
-			// The walker gives full paths; show them from where we are.
-			shown := strings.trim_prefix(fi.fullpath, here)
-			append(&files, strings.clone(shown, context.temp_allocator))
-		}
-	}
-	slice.sort(files[:])
-	return files[:]
+sketch_files :: proc(root: string) -> []string {
+	return folder.roci_files(root)
 }
 
 // What formatting a text gave.
@@ -62,8 +35,8 @@ Fmt_Result :: struct {
 }
 
 // Formats `text`. Everything is made with the temporary allocator.
-fmt_text :: proc(name, text: string) -> Fmt_Result {
-	result := lang.format_text(name, text, registry.ALL_VERBS, context.temp_allocator)
+fmt_text :: proc(name, text: string, extra_taught: []lang.Taught_Verb = nil) -> Fmt_Result {
+	result := lang.format_text(name, text, registry.ALL_VERBS, context.temp_allocator, extra_taught)
 	if !result.ok {
 		report := lang.render_all(result.src, result.diagnostics, context.temp_allocator)
 		return Fmt_Result{report = report}
@@ -80,7 +53,7 @@ format_file :: proc(file: string, out, err: ^strings.Builder) -> int {
 		fmt.sbprintf(err, "I cannot read `%s`. Check the name, or run roci fmt in the folder that holds it.\n", file)
 		return 2
 	}
-	result := fmt_text(file, string(data))
+	result := fmt_text(file, string(data), verbs_of_the_other_files(file))
 	if !result.ok {
 		fmt.sbprintf(err, "%s\n", term.message(result.report, term.err_colour))
 		fmt.sbprintf(err, "%s%s\n", term.err_icon(.Cannot), term.err(fmt.tprintf("%s has mistakes I cannot format around, so I left it alone", file), .Bold_Red))
@@ -140,4 +113,24 @@ run_fmt :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		fmt.sbprintf(out, "%s\n", term.out(fmt.tprintf("%d files", len(files)), .Dim))
 	}
 	return worst
+}
+
+// The verbs taught in the other files of the sketch a file belongs to, so a call to
+// one of them is read the way it is when the sketch runs.
+@(private)
+verbs_of_the_other_files :: proc(file: string) -> []lang.Taught_Verb {
+	root, found := folder.program_root(file)
+	if !found {
+		return nil
+	}
+	taught := make([dynamic]lang.Taught_Verb, context.temp_allocator)
+	for other in folder.roci_files(root) {
+		if other == file {
+			continue
+		}
+		if data, err := os.read_entire_file(other, context.temp_allocator); err == nil {
+			append(&taught, ..lang.taught_in(other, string(data), context.temp_allocator))
+		}
+	}
+	return taught[:]
 }

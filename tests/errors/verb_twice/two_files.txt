@@ -1,0 +1,8 @@
+── `spin` is taught twice ────────────────────────────── sketch.roci:1:1
+
+1 │ learn spin n [ turn n ]
+  │ ^^^^^^^^^^^^^^^^^^^^^^^
+
+A verb has one definition, and `spin` is already taught in moves.roci, line 1. Rename one of them.
+
+Write:  learn spin2 n [ turn n ]

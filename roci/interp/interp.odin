@@ -73,6 +73,10 @@ Interp :: struct {
 	depth:     int,
 	path:      string, // the file being watched, or ""
 	mtime:     time.Time,
+	program:   bool,      // the watched file is a sketch.roci, and every .roci file of its folder is the program
+	watched:   []string,  // the program's files, in joining order
+	mtimes:    []time.Time, // when each of them was last changed, in the same order
+	scanned:   time.Time, // when the folder was last listed for new or removed files
 	notices:   [dynamic]string, // what reloads said
 	problem_title: string, // the first error of a reload that failed, shown while the old sketch runs
 	problem_lines: []string,
@@ -90,9 +94,15 @@ Interp :: struct {
 @(thread_local)
 current: ^Interp
 
-// Reads and checks a sketch. Check errors are in `p.checked.diagnostics`, and the
-// sketch does not run when there are any (`ok` is false). Free it with `destroy`.
+// Reads and checks a sketch of one file. See `load_files`.
 load :: proc(name, text: string) -> (p: ^Interp, ok: bool) {
+	return load_files({lang.File_Text{name = name, text = text}})
+}
+
+// Reads and checks a program of one or more files, given in the order they are joined
+// (`sketch.roci` last). Check errors are in `p.checked.diagnostics`, and the sketch
+// does not run when there are any (`ok` is false). Free it with `destroy`.
+load_files :: proc(files: []lang.File_Text) -> (p: ^Interp, ok: bool) {
 	p = new(Interp)
 	if err := virtual.arena_init_growing(&p.arena); err != nil {
 		return p, false
@@ -103,7 +113,16 @@ load :: proc(name, text: string) -> (p: ^Interp, ok: bool) {
 	}
 	p.hook_frame = -1
 	p.alloc = p.long
-	p.src = lang.make_source(strings.clone(name, p.long), strings.clone(text, p.long), 0, p.long)
+	kept := make([]lang.File_Text, len(files), p.long)
+	for f, i in files {
+		kept[i] = lang.File_Text{name = strings.clone(f.name, p.long), library = strings.clone(f.library, p.long), text = f.text}
+	}
+	if len(kept) == 1 {
+		kept[0].text = strings.clone(kept[0].text, p.long)
+		p.src = lang.make_source(kept[0].name, kept[0].text, 0, p.long)
+	} else {
+		p.src = lang.join_sources(kept, p.long) // copies every text
+	}
 	p.checked = lang.check(p.src, registry.ALL_VERBS, nil, p.long)
 	p.types = p.checked.program.types
 	p.globals = make(map[^lang.Symbol]Value, 32, p.long)

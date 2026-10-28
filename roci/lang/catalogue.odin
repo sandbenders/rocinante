@@ -34,6 +34,8 @@ Message_Id :: enum u8 {
 	Word_Outside_Brackets,
 	Set_Window,
 	Title_Of_Window,
+	Definitions_Only,
+	Verb_Twice,
 	// Brackets
 	Missing_Close_Square,
 	Missing_Close_Round,
@@ -150,6 +152,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Title_Of_Window = {.Error, "`title` names the window the code runs in",
 		"`title` takes only the text and names the window the code runs in. Another window is changed with `set`, then the window, then `title` and the text.",
 		"Write:", "{b}"},
+	.Definitions_Only = {.Error, "`{a}` holds definitions only",
+		"A file next to sketch.roci holds verbs taught with `learn`, constants written in capitals and `use` lines. What runs is written in sketch.roci, or inside a verb, so splitting a sketch into files never changes what it does.",
+		"In sketch.roci:", "{b}"},
+	.Verb_Twice = {.Error, "`{a}` is taught twice",
+		"A verb has one definition, and `{a}` is already taught in {b}. Rename one of them.",
+		"Write:", "{c}"},
 
 	.Missing_Close_Square = {.Error, "This block is never closed",
 		"The opening square bracket here has no closing one. {a}",

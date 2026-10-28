@@ -8,10 +8,10 @@
 package golden
 
 import "core:fmt"
-import "core:os"
 import "core:slice"
 
 import "../../roci"
+import "../../roci/folder"
 import "../../roci/gfx"
 import "../../roci/interp"
 
@@ -24,6 +24,7 @@ Example :: struct {
 EXAMPLES := [?]Example{
 	{"two_windows", 30, {1, 2}},
 	{"garden", 30, {1, 2}},
+	{"starfield", 5, {1}}, // two files: sketch.roci and palette.roci
 }
 
 // How many pixels may differ for a picture of this many: the scenes allow
@@ -50,14 +51,14 @@ run_examples :: proc(update: bool, only: []string) -> (ran, failures: int) {
 
 @(private = "file")
 run_example :: proc(example: Example, number: int, name: string, update: bool) -> bool {
-	data, err := os.read_entire_file(fmt.tprintf("examples/%s/sketch.roci", example.name), context.temp_allocator)
-	if err != nil {
+	program, problem := folder.read_program(fmt.tprintf("examples/%s/sketch.roci", example.name))
+	if problem != "" || len(program.files) == 0 {
 		report(name, false, "cannot read the sketch")
 		return false
 	}
 	roci.start_headless(1)
 	defer roci.shutdown()
-	p, ok := interp.load("sketch.roci", string(data))
+	p, ok := interp.load_files(program.files)
 	defer interp.destroy(p)
 	if !ok {
 		report(name, false, "the sketch has errors")

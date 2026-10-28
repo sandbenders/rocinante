@@ -65,6 +65,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		c.verb = nil
 		collect_assignments(&c, parsed.program.stmts)
 		collect_learns(&c, parsed.program.stmts)
+		check_definitions_only(&c, parsed.program.stmts)
 		stmts = make([dynamic]^IR_Stmt, allocator)
 		for s in parsed.program.stmts {
 			append(&stmts, check_stmt(&c, s))
@@ -184,7 +185,8 @@ fix :: proc(c: ^Checker, span: Span, replacement: string) -> string {
 
 @(private)
 line_number :: proc(c: ^Checker, span: Span) -> int {
-	return position_of(c.src, span.start).line
+	_, pos := place_of(c.src, span.start)
+	return pos.line
 }
 
 // ---- names ----
@@ -978,4 +980,30 @@ bad_window_property :: proc(c: ^Checker, part: string, span: Span) {
 		}
 	}
 	note(c, .Bad_Field, span, part, "a window", fmt.tprintf("A window has %s.", names_words(names[:])), fix(c, span, found))
+}
+
+// In a program of several files only `sketch.roci`, the last one, has statements
+// that run. The others hold verbs taught with `learn`, constants and `use` lines.
+@(private)
+check_definitions_only :: proc(c: ^Checker, stmts: []^Stmt) {
+	if len(c.src.parts) < 2 {
+		return
+	}
+	main_start := c.src.parts[len(c.src.parts) - 1].start
+	for s in stmts {
+		part, found := part_of(c.src, s.span.start)
+		if !found || part.start == main_start {
+			continue
+		}
+		allowed := false
+		#partial switch k in s.kind {
+		case Learn, Use, Error_Stmt:
+			allowed = true
+		case Assign:
+			allowed = len(k.target.parts) == 1 && is_constant_name(k.target.parts[0])
+		}
+		if !allowed {
+			note(c, .Definitions_Only, s.span, part.name, text_at(c, s.span))
+		}
+	}
 }

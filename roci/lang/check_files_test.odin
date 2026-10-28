@@ -33,6 +33,10 @@ check_corpus :: proc(t: ^testing.T, root: string, only_sketch: bool) -> int {
 			continue
 		}
 		src := make_source("sketch.roci", string(data), 0, context.temp_allocator)
+		if only_sketch {
+			// An example is the program of its whole folder, the way `roci run` reads it.
+			src = program_source(t, base, string(data))
+		}
 		checked := check(src, registry.ALL_VERBS, nil, context.temp_allocator)
 		testing.expectf(t, len(checked.diagnostics) == 0, "%s.roci should check cleanly:\n%s", base, render_all(src, checked.diagnostics, context.temp_allocator))
 		got := describe_names(checked, context.temp_allocator)
@@ -59,4 +63,31 @@ test_the_sketches_in_tests_check_check_cleanly_and_have_the_expected_types :: pr
 test_the_examples_written_in_the_language_check_cleanly :: proc(t: ^testing.T) {
 	// circle, two_windows and garden: the Phase 1 demos, now in the language.
 	testing.expect(t, check_corpus(t, "examples", true) >= 3, "the examples written in the language are missing")
+}
+
+// The source of the program a `sketch.roci` stands for: the .roci files beside it, in
+// joining order, with the sketch last.
+@(private = "file")
+program_source :: proc(t: ^testing.T, base: string, sketch_text: string) -> Source {
+	folder := base[:strings.last_index_byte(base, '/')]
+	files := make([dynamic]File_Text, context.temp_allocator)
+	handle, open_err := os.open(folder)
+	if !testing.expectf(t, open_err == nil, "cannot open %s", folder) {
+		return make_source("sketch.roci", sketch_text, 0, context.temp_allocator)
+	}
+	defer os.close(handle)
+	entries, _ := os.read_dir(handle, -1, context.temp_allocator)
+	for entry in entries {
+		if !strings.has_suffix(entry.name, ".roci") {
+			continue
+		}
+		text := sketch_text
+		if entry.name != "sketch.roci" {
+			data, _ := os.read_entire_file(fmt.tprintf("%s/%s", folder, entry.name), context.temp_allocator)
+			text = string(data)
+		}
+		append(&files, File_Text{name = strings.clone(entry.name, context.temp_allocator), text = text})
+	}
+	order_files(files[:])
+	return join_sources(files[:], context.temp_allocator)
 }

@@ -39,12 +39,12 @@ Printer :: struct {
 
 // Formats `text`. Gives `ok` false, with the messages, when the sketch has mistakes
 // the formatter cannot fix by itself: it only formats what it can read.
-format_text :: proc(name, text: string, verbs: []registry.Verb, allocator := context.allocator) -> Format_Result {
+format_text :: proc(name, text: string, verbs: []registry.Verb, allocator := context.allocator, extra_taught: []Taught_Verb = nil) -> Format_Result {
 	current := strings.clone(text, context.temp_allocator)
 	bracketed := 0
 	for _ in 0 ..< 50 {
 		src := make_source(name, current, 0, context.temp_allocator)
-		parsed := parse(src, verbs, nil, context.temp_allocator)
+		parsed := parse(src, verbs, extra_taught, context.temp_allocator)
 		blocking := make([dynamic]Diagnostic, context.temp_allocator)
 		fixes := make(map[int]string, 8, context.temp_allocator) // a line number and the line as it should be
 		for d in parsed.diagnostics {

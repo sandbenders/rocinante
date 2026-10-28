@@ -6,6 +6,7 @@
 // came from.
 package lang
 
+import "core:slice"
 import "core:strings"
 import "core:unicode/utf8"
 
@@ -22,11 +23,27 @@ Position :: struct {
 	line, column: int,
 }
 
+// One file of a program, before the files are joined.
+File_Text :: struct {
+	name:    string, // as shown in messages: "palette.roci", "libs/stars/stars.roci"
+	library: string, // the library it belongs to, empty for the sketch's own files
+	text:    string,
+}
+
+// Where one file begins in the joined text of a program.
+Part :: struct {
+	name:       string,
+	library:    string,
+	start:      int, // the byte offset of its first character
+	first_line: int, // the 1-based line of the joined text it starts on
+}
+
 Source :: struct {
 	file:        i32,
 	name:        string, // as shown in messages: "sketch.roci"
 	text:        string,
 	line_starts: []int, // the byte offset where each line begins
+	parts:       []Part, // the files of a joined program, in order; empty for one file
 }
 
 // `text` is not copied. The caller frees `line_starts` (an arena does it).
@@ -98,4 +115,64 @@ line_replacing :: proc(src: Source, span: Span, replacement: string, allocator :
 	strings.write_string(&b, replacement)
 	strings.write_string(&b, line[end:])
 	return strings.trim_space(strings.to_string(b))
+}
+
+// Joins the files of one program into a single source: their texts in the order
+// given, each followed by a line break, so every span stays a plain byte offset and
+// the parser and checker see the whole program at once. `parts` says where each file
+// begins, and the name of the source is the last file's (the sketch's own).
+join_sources :: proc(files: []File_Text, allocator := context.allocator) -> Source {
+	b := strings.builder_make(allocator)
+	parts := make([]Part, len(files), allocator)
+	line := 1
+	for f, i in files {
+		parts[i] = Part{name = f.name, library = f.library, start = strings.builder_len(b), first_line = line}
+		strings.write_string(&b, f.text)
+		strings.write_byte(&b, '\n')
+		line += 1 + strings.count(f.text, "\n")
+	}
+	src := make_source(files[len(files) - 1].name if len(files) > 0 else "sketch.roci", strings.to_string(b), 0, allocator)
+	src.parts = parts
+	return src
+}
+
+// The file that holds a byte offset, when the source is a joined program.
+part_of :: proc(src: Source, offset: int) -> (part: Part, found: bool) {
+	for p in src.parts {
+		if p.start <= offset {
+			part, found = p, true
+		}
+	}
+	return
+}
+
+// The file name and the line and column inside that file, for messages. A source of
+// one file gives its own name and the plain position.
+place_of :: proc(src: Source, offset: int) -> (name: string, pos: Position) {
+	pos = position_of(src, offset)
+	if part, found := part_of(src, offset); found {
+		pos.line -= part.first_line - 1
+		return part.name, pos
+	}
+	return src.name, pos
+}
+
+// Puts the files of a program in the order they are joined and run in: library files
+// first, then the sketch's other files, each group by name, and `sketch.roci` last.
+order_files :: proc(files: []File_Text) {
+	rank :: proc(f: File_Text) -> int {
+		switch {
+		case f.library != "":              return 0
+		case f.name == "sketch.roci":      return 2
+		case strings.has_suffix(f.name, "/sketch.roci"): return 2
+		}
+		return 1
+	}
+	slice.sort_by(files, proc(a, b: File_Text) -> bool {
+		ra, rb := rank(a), rank(b)
+		if ra != rb {
+			return ra < rb
+		}
+		return a.name < b.name
+	})
 }

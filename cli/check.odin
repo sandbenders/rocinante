@@ -8,7 +8,6 @@ import "../roci/lang"
 import "../roci/registry"
 import "../tools/term"
 import "core:fmt"
-import "core:os"
 import "core:strings"
 
 USAGE :: `roci check [file] [--tree] [--types] [--errors json]
@@ -33,7 +32,13 @@ Check_Result :: struct {
 // Parses and checks `text` as the sketch called `name`. The caller frees nothing: everything
 // comes from the allocator given, which should be an arena or the temporary one.
 check_text :: proc(name, text: string, show_tree: bool, show_types := false, allocator := context.temp_allocator) -> Check_Result {
-	src := lang.make_source(name, text, 0, allocator)
+	return check_files(name, {lang.File_Text{name = name, text = text}}, show_tree, show_types, allocator)
+}
+
+// The same for a program of several files, given in the order they are joined; `name`
+// is the sketch the summary is about.
+check_files :: proc(name: string, files: []lang.File_Text, show_tree: bool, show_types := false, allocator := context.temp_allocator) -> Check_Result {
+	src := lang.join_sources(files, allocator) if len(files) > 1 else lang.make_source(files[0].name, files[0].text, 0, allocator)
 	checked := lang.check(src, registry.ALL_VERBS, nil, allocator)
 	result := Check_Result{report = lang.render_all(src, checked.diagnostics, allocator), json = lang.diagnostics_json(src, checked.diagnostics, allocator)}
 	for d in checked.diagnostics {
@@ -128,12 +133,11 @@ run_check :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	if !found {
 		return 2
 	}
-	data, read_err := os.read_entire_file(file, context.temp_allocator)
-	if read_err != nil {
-		fmt.sbprintf(err, "I cannot read `%s`. Check the name, or run roci check in the folder that holds it.\n", file)
+	files, read_ok := read_files(file, "roci check", err)
+	if !read_ok {
 		return 2
 	}
-	result := check_text(file, string(data), parsed.tree, parsed.types)
+	result := check_files(file, files, parsed.tree, parsed.types)
 	if parsed.json {
 		fmt.sbprintf(out, "%s", result.json)
 		return 1 if result.errors > 0 else 0

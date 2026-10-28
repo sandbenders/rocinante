@@ -7,6 +7,7 @@
 package main
 
 import "../roci"
+import "../roci/folder"
 import "../roci/gfx"
 import "../roci/interp"
 import "../roci/lang"
@@ -124,9 +125,21 @@ run_text :: proc(
 	window := 1,
 	allocator := context.temp_allocator,
 ) -> Run_Result {
+	return run_files({lang.File_Text{name = name, text = text}}, frames, seed, want_picture, window, allocator)
+}
+
+// The same for a program of several files, given in the order they are joined.
+run_files :: proc(
+	files: []lang.File_Text,
+	frames: int,
+	seed: u64,
+	want_picture: bool,
+	window := 1,
+	allocator := context.temp_allocator,
+) -> Run_Result {
 	roci.start_headless(seed)
 	defer roci.shutdown()
-	p, ok := interp.load(name, text)
+	p, ok := interp.load_files(files)
 	defer interp.destroy(p)
 	result := Run_Result{}
 	if len(p.checked.diagnostics) > 0 {
@@ -198,21 +211,15 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	if !found {
 		return 2
 	}
-	data, read_err := os.read_entire_file(file, context.temp_allocator)
-	if read_err != nil {
-		fmt.sbprintf(
-			err,
-			"I cannot read `%s`. Check the name, or run roci run in the folder that holds it.\n",
-			file,
-		)
+	files, read_ok := read_files(file, "roci run", err)
+	if !read_ok {
 		return 2
 	}
 	if parsed.frames == 0 {
-		return run_windows(file, string(data), parsed.json, out, err)
+		return run_windows(file, files, parsed.json, out, err)
 	}
-	result := run_text(
-		file,
-		string(data),
+	result := run_files(
+		files,
 		parsed.frames,
 		parsed.seed,
 		parsed.screenshot != "",
@@ -246,8 +253,8 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 
 // Opens the windows and runs until they are closed.
 @(private)
-run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) -> int {
-	p, ok := interp.load(name, text)
+run_windows :: proc(name: string, files: []lang.File_Text, json: bool, out, err: ^strings.Builder) -> int {
+	p, ok := interp.load_files(files)
 	if len(p.checked.diagnostics) > 0 && (ok || json) {
 		if json {
 			fmt.sbprintf(
@@ -298,6 +305,34 @@ run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) 
 	return 0
 }
 
+// The files of the program a sketch file stands for: a `sketch.roci` is the program of
+// every .roci file in its folder (one folder is one program), and any other file runs
+// alone. Says what is wrong when one cannot be read.
+read_files :: proc(file: string, command: string, err: ^strings.Builder) -> (files: []lang.File_Text, ok: bool) {
+	if is_sketch_file(file) {
+		program, problem := folder.read_program(file)
+		if problem != "" {
+			fmt.sbprintf(err, "%s\n", problem)
+			return nil, false
+		}
+		if len(program.files) > 0 {
+			return program.files, true
+		}
+	}
+	data, read_err := os.read_entire_file(file, context.temp_allocator)
+	if read_err != nil {
+		fmt.sbprintf(err, "I cannot read `%s`. Check the name, or run %s in the folder that holds it.\n", file, command)
+		return nil, false
+	}
+	single := make([]lang.File_Text, 1, context.temp_allocator)
+	single[0] = lang.File_Text{name = file, text = string(data)}
+	return single, true
+}
+
+is_sketch_file :: proc(file: string) -> bool {
+	return file == "sketch.roci" || strings.has_suffix(file, "/sketch.roci")
+}
+
 // The sketch a name stands for: a file is itself, and a folder is the sketch.roci
 // inside it (one folder is one program). Says what is missing when there is none.
 sketch_file :: proc(name: string, err: ^strings.Builder) -> (file: string, ok: bool) {
@@ -317,7 +352,7 @@ HOT_RELOAD_HINT :: proc(file: string) -> string {
 	reload_key := "Cmd+R" when ODIN_OS == .Darwin else "Ctrl+R"
 	quit_key := "Cmd+Q" when ODIN_OS == .Darwin else "Ctrl+Q"
 	return fmt.tprintf(
-		"running %s. Save the source file and the sketch reloads, keeping its values where it can. %s runs it again from the first line, and %s quits.\nIt also auto recovers from errors.",
+		"running %s. Save the source file (any file of the sketch) and the sketch reloads, keeping its values where it can. %s runs it again from the first line, and %s quits.\nIt also auto recovers from errors.",
 		file,
 		reload_key,
 		quit_key,

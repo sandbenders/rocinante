@@ -79,3 +79,11 @@ skip_one_item :: proc(tokens: []Token, j: int) -> int {
 	}
 	return j
 }
+
+// The verbs a file teaches, read without parsing it: what another file of the same
+// program needs to know to read its calls (`extra_taught` of `parse`).
+taught_in :: proc(name, text: string, allocator := context.allocator) -> []Taught_Verb {
+	src := make_source(name, text, 0, allocator)
+	lexed := lex(src, allocator)
+	return prescan(src, lexed, allocator)
+}

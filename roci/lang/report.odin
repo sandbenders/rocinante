@@ -24,7 +24,8 @@ render :: proc(src: Source, d: Diagnostic, allocator := context.allocator) -> st
 	case .Hint:    title = fmt.tprintf("Hint: %s", title)
 	}
 	pos := position_of(src, d.span.start)
-	place := fmt.tprintf("%s:%d:%d", src.name, pos.line, pos.column)
+	file_name, local := place_of(src, d.span.start)
+	place := fmt.tprintf("%s:%d:%d", file_name, local.line, local.column)
 	head := fmt.tprintf("── %s ", title)
 	used := utf8.rune_count_in_string(head) + 1 + utf8.rune_count_in_string(place)
 	strings.write_string(&b, head)
@@ -35,7 +36,7 @@ render :: proc(src: Source, d: Diagnostic, allocator := context.allocator) -> st
 
 	// The source line, with carets under the span (to the end of the line if it runs on).
 	line := line_text(src, pos.line)
-	number := fmt.tprintf("%d", pos.line)
+	number := fmt.tprintf("%d", local.line)
 	gutter := strings.repeat(" ", len(number), context.temp_allocator)
 	fmt.sbprintf(&b, "%s │ %s\n", number, show_tabs(line))
 	line_start := src.line_starts[pos.line - 1]
@@ -95,9 +96,10 @@ plain_message :: proc(src: Source, d: Diagnostic, allocator := context.temp_allo
 	case .Hint:    title = fmt.aprintf("Hint: %s", title, allocator = allocator)
 	}
 	pos := position_of(src, d.span.start)
+	file_name, local := place_of(src, d.span.start)
 	out := make([dynamic]string, allocator)
-	append(&out, fmt.aprintf("%s:%d:%d", src.name, pos.line, pos.column, allocator = allocator))
-	append(&out, fmt.aprintf("%d | %s", pos.line, strings.trim_space(show_tabs(line_text(src, pos.line))), allocator = allocator))
+	append(&out, fmt.aprintf("%s:%d:%d", file_name, local.line, local.column, allocator = allocator))
+	append(&out, fmt.aprintf("%d | %s", local.line,strings.trim_space(show_tabs(line_text(src, pos.line))), allocator = allocator))
 	append(&out, "")
 	append(&out, strings.trim_space(fill_template(entry.explain, d.args, allocator)))
 	example := strings.trim_space(fill_template(entry.example, d.args, allocator))

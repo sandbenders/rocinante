@@ -118,3 +118,18 @@ test_fmt_of_a_folder_with_no_sketches_says_so :: proc(t: ^testing.T) {
 	testing.expect_value(t, run_fmt({root}, &out, &err), 2)
 	testing.expect(t, strings.contains(strings.to_string(err), "no .roci files"))
 }
+
+@(test)
+test_fmt_reads_a_call_to_a_verb_taught_in_another_file_of_the_sketch :: proc(t: ^testing.T) {
+	root := "output/tests/fmt_program"
+	_ = os.remove_all(root)
+	testing.expect(t, os.make_directory_all(root) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/fmt_program/moves.roci", transmute([]byte)string("learn star x y size [ circle at x y radius size ]\n")) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/fmt_program/sketch.roci", transmute([]byte)string("star   10 20 5\n")) == nil)
+	out, err: strings.Builder
+	strings.builder_init(&out, context.temp_allocator)
+	strings.builder_init(&err, context.temp_allocator)
+	testing.expect_value(t, run_fmt({root}, &out, &err), 0)
+	data, _ := os.read_entire_file("output/tests/fmt_program/sketch.roci", context.temp_allocator)
+	testing.expect_value(t, string(data), "star 10 20 5\n")
+}

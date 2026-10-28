@@ -132,3 +132,45 @@ test_a_folder_with_no_sketch_roci_is_the_only_folder_error :: proc(t: ^testing.T
 	testing.expect_value(t, run_check({root}, &out, &err), 2)
 	testing.expect(t, strings.contains(strings.to_string(err), "There is no sketch.roci"))
 }
+
+@(test)
+test_a_folder_of_several_files_is_one_program :: proc(t: ^testing.T) {
+	root := "output/tests/run_program"
+	_ = os.remove_all(root)
+	testing.expect(t, os.make_directory_all(root) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/run_program/moves.roci", transmute([]byte)string("SPEED = 4\nlearn faster n [ give n * SPEED ]\n")) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/run_program/sketch.roci", transmute([]byte)string("print (faster 5)\n")) == nil)
+	out, err: strings.Builder
+	strings.builder_init(&out, context.temp_allocator)
+	strings.builder_init(&err, context.temp_allocator)
+	testing.expect_value(t, run_run({root, "--frames", "1"}, &out, &err), 0)
+	testing.expect_value(t, strings.to_string(out), "20\n")
+	strings.builder_reset(&out)
+	testing.expect_value(t, run_check({root}, &out, &err), 0)
+	testing.expect(t, strings.contains(strings.to_string(out), "no problems"))
+
+	// A statement that runs, in a file that is not the sketch, is said with that file's name.
+	testing.expect(t, os.write_entire_file("output/tests/run_program/moves.roci", transmute([]byte)string("SPEED = 4\nprint \"hello\"\n")) == nil)
+	strings.builder_reset(&out)
+	testing.expect_value(t, run_check({root}, &out, &err), 1)
+	text := strings.to_string(out)
+	testing.expect(t, strings.contains(text, "moves.roci` holds definitions only"), text)
+	testing.expect(t, strings.contains(text, "run_program/moves.roci:2:1"), text)
+	strings.builder_reset(&out)
+	testing.expect_value(t, run_check({root, "--errors", "json"}, &out, &err), 1)
+	testing.expect(t, strings.contains(strings.to_string(out), "run_program/moves.roci"), strings.to_string(out))
+}
+
+@(test)
+test_a_single_file_that_is_not_sketch_roci_runs_alone_whatever_is_beside_it :: proc(t: ^testing.T) {
+	root := "output/tests/run_alone"
+	_ = os.remove_all(root)
+	testing.expect(t, os.make_directory_all(root) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/run_alone/other.roci", transmute([]byte)string("print 1\n")) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/run_alone/mine.roci", transmute([]byte)string("print 2\n")) == nil)
+	out, err: strings.Builder
+	strings.builder_init(&out, context.temp_allocator)
+	strings.builder_init(&err, context.temp_allocator)
+	testing.expect_value(t, run_run({"output/tests/run_alone/mine.roci", "--frames", "1"}, &out, &err), 0)
+	testing.expect_value(t, strings.to_string(out), "2\n")
+}

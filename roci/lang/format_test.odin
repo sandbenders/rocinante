@@ -179,15 +179,16 @@ test_formatting_every_example_and_check_sketch_is_stable_and_changes_no_meaning 
 			continue
 		}
 		original := string(data)
-		first := format_text(path, original, registry.ALL_VERBS, context.temp_allocator)
+		extra := taught_by_siblings(path)
+		first := format_text(path, original, registry.ALL_VERBS, context.temp_allocator, extra)
 		if !testing.expectf(t, first.ok, "%s: %s", path, render_all(first.src, first.diagnostics, context.temp_allocator)) {
 			continue
 		}
-		again := format_text(path, first.text, registry.ALL_VERBS, context.temp_allocator)
+		again := format_text(path, first.text, registry.ALL_VERBS, context.temp_allocator, extra)
 		testing.expectf(t, again.ok && again.text == first.text, "%s: formatting twice changed it", path)
 		// The same tree, and the same comments.
-		a := parse(make_source(path, original, 0, context.temp_allocator), registry.ALL_VERBS, nil, context.temp_allocator)
-		b := parse(make_source(path, first.text, 0, context.temp_allocator), registry.ALL_VERBS, nil, context.temp_allocator)
+		a := parse(make_source(path, original, 0, context.temp_allocator), registry.ALL_VERBS, extra, context.temp_allocator)
+		b := parse(make_source(path, first.text, 0, context.temp_allocator), registry.ALL_VERBS, extra, context.temp_allocator)
 		before := dump(make_source(path, original, 0, context.temp_allocator), a.program, context.temp_allocator)
 		after := dump(make_source(path, first.text, 0, context.temp_allocator), b.program, context.temp_allocator)
 		testing.expectf(t, before == after, "%s: the formatted sketch reads differently:\n%s", path, fmt.tprintf("--- before\n%s\n--- after\n%s", before, after))
@@ -277,4 +278,27 @@ test_a_trailing_comment_on_a_block_stays_and_the_blank_line_follows_it :: proc(t
 test_control_flow_does_not_get_blank_lines :: proc(t: ^testing.T) {
 	text := "x = 1\nif x is 1 [\n  quit\n]\nrepeat 3 [\n  quit\n]\ny = 2\n"
 	expect_formatted(t, text, text)
+}
+
+// The verbs the other .roci files in a sketch's folder teach, which its calls may use.
+@(private = "file")
+taught_by_siblings :: proc(path: string) -> []Taught_Verb {
+	folder := path[:strings.last_index_byte(path, '/')]
+	taught := make([dynamic]Taught_Verb, context.temp_allocator)
+	handle, open_err := os.open(folder)
+	if open_err != nil {
+		return nil
+	}
+	defer os.close(handle)
+	entries, _ := os.read_dir(handle, -1, context.temp_allocator)
+	for entry in entries {
+		other := fmt.tprintf("%s/%s", folder, entry.name)
+		if other == path || !strings.has_suffix(entry.name, ".roci") || !strings.contains(folder, "examples") {
+			continue
+		}
+		if data, err := os.read_entire_file(other, context.temp_allocator); err == nil {
+			append(&taught, ..taught_in(other, string(data), context.temp_allocator))
+		}
+	}
+	return taught[:]
 }
