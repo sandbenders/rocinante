@@ -5,7 +5,4 @@
 
 Nothing is open here, so there is nothing to close.
 
-For example:
-    repeat 3 [
-      circle 100 100 50
-    ]
+Without it:  circle 100 100 50

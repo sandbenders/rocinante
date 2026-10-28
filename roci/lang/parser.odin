@@ -15,6 +15,9 @@
 package lang
 
 import "../registry"
+import "core:fmt"
+import "core:strconv"
+import "core:strings"
 import "core:mem"
 
 Parse_Result :: struct {
@@ -110,11 +113,23 @@ report_lexer_problems :: proc(p: ^Parser, lexed: Lexed) {
 	for problem in lexed.problems {
 		text := span_text(p.src, problem.span)
 		switch problem.kind {
-		case .Unknown_Character: report(p, .Unknown_Character, problem.span, text)
-		case .Unterminated_Text: report(p, .Unterminated_Text, problem.span)
-		case .Bad_Escape:        report(p, .Bad_Escape, problem.span, text)
-		case .Bad_Number:        report(p, .Bad_Number, problem.span, text)
-		case .Bad_Colour:        report(p, .Bad_Colour, problem.span, text)
+		case .Unknown_Character:
+			report(p, .Unknown_Character, problem.span, text, line_with(p, problem.span, ""))
+		case .Unterminated_Text:
+			report(p, .Unterminated_Text, problem.span, "", insertion(p, problem.span.end, "\""))
+		case .Bad_Escape:
+			// Doubling the backslash writes it as itself.
+			report(p, .Bad_Escape, problem.span, text, insertion(p, problem.span.start, "\\"))
+		case .Bad_Number:
+			fixed := ""
+			if replacement, found := fixed_number(text); found {
+				fixed = line_with(p, problem.span, replacement)
+			}
+			report(p, .Bad_Number, problem.span, text, fixed)
+		case .Bad_Colour:
+			// One digit short or long: add the missing one (opaque, for the alpha).
+			missing := "0" if len(text) == 6 else "f"
+			report(p, .Bad_Colour, problem.span, text, line_with(p, problem.span, fmt.tprintf("%s%s", text, missing)))
 		}
 	}
 }
@@ -237,8 +252,28 @@ finish_statement :: proc(p: ^Parser, in_block: bool, mark: int) {
 		skip_line(p)
 		return
 	}
-	report(p, .Unexpected_Token, t.span, text_of(p, t))
+	report(p, .Unexpected_Token, t.span, text_of(p, t), line_split_at(p, t.span))
 	skip_line(p)
+}
+
+// What a malformed number was probably meant to be: `.5` is 0.5, `1_000` is 1000,
+// `1e3` is 1000. Nothing when there is no good guess.
+@(private)
+fixed_number :: proc(text: string) -> (replacement: string, found: bool) {
+	if strings.has_prefix(text, ".") {
+		return strings.concatenate({"0", text}, context.temp_allocator), true
+	}
+	if strings.has_suffix(text, ".") {
+		return text[:len(text) - 1], true
+	}
+	plain, _ := strings.replace_all(text, "_", "", context.temp_allocator)
+	if value, ok := strconv.parse_f64(plain); ok {
+		formatted := fmt.tprintf("%v", value)
+		if !strings.contains_any(formatted, "eE") {
+			return formatted, true
+		}
+	}
+	return "", false
 }
 
 // Each rule of docs/grammar.ebnf and the procedure that parses it. A test reads

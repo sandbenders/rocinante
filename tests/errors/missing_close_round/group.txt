@@ -5,4 +5,4 @@
 
 The opening round bracket here has no closing one. Round brackets make a group read as one thing, so each needs its closing bracket.
 
-For example:  circle (random width) 100 50
+Write:  circle (random width 100 50)

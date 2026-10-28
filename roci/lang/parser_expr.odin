@@ -187,7 +187,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 	if open := p.tokens[p.at]; open.kind == .Open_Round && open.spaces == 0 && info.max_args > 0 && skip_call_parentheses(p, first) {
 		return new_expr(p, span_from(p, first.span), Error_Expr{})
 	}
-	comma_reported := false
+	commas := make([dynamic]Span, context.temp_allocator)
 	for {
 		t := cur(p)
 		if call_ends_at(p, t) {
@@ -208,10 +208,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			if len(p.groups) > 0 && p.groups[len(p.groups) - 1] == .Curly {
 				break
 			}
-			if !comma_reported {
-				comma_reported = true
-				report(p, .Comma_In_Call, t.span)
-			}
+			append(&commas, t.span)
 			advance(p)
 			continue
 		}
@@ -263,6 +260,9 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			append(&option_args, parse_argument(p))
 		}
 		append(&options, Option_Use{word = word, span = Span{t.span.file, t.span.start, p.last_end}, args = option_args[:]})
+	}
+	if len(commas) > 0 {
+		report(p, .Comma_In_Call, commas[0], "", line_without(p, commas[:]))
 	}
 	call := Call{name = info.name, verb = info.verb, taught = info.taught, args = args[:], options = options[:]}
 	return new_expr(p, span_from(p, first.span), call)
@@ -381,7 +381,7 @@ parse_argument :: proc(p: ^Parser, expect_block := false, plain := false) -> ^Ex
 	}
 	// Nothing that can be an item: say so once, and step over it so parsing goes on.
 	if t.kind != .Newline && t.kind != .End_Of_File {
-		report(p, .Unexpected_Token, t.span, text_of(p, t))
+		report(p, .Unexpected_Token, t.span, text_of(p, t), line_split_at(p, t.span))
 		advance(p)
 	}
 	return new_expr(p, t.span, Error_Expr{})
@@ -394,12 +394,14 @@ parse_nested_call :: proc(p: ^Parser, info: Call_Info, used: int) -> ^Expr {
 	}
 	p.nest_depth += 1
 	defer p.nest_depth -= 1
-	if p.nest_depth >= 3 && !p.deep_shown {
-		p.deep_shown = true
-		report(p, .Deep_Nesting, cur(p).span)
-	}
+	start := cur(p).span
 	e := parse_call(p, info, used, true)
 	append(&p.wraps, e.span)
+	if p.nest_depth >= 3 && !p.deep_shown {
+		p.deep_shown = true
+		named := fmt.aprintf("value = %s\n%s", text_of_span(p, e.span), line_with(p, e.span, "value"), allocator = p.alloc)
+		report(p, .Deep_Nesting, start, "", named)
+	}
 	return e
 }
 
@@ -412,7 +414,7 @@ parse_path :: proc(p: ^Parser) -> ^Expr {
 		dot := advance(p)
 		t := cur(p)
 		if t.kind != .Name {
-			report(p, .Unexpected_Token, dot.span, ".")
+			report(p, .Unexpected_Token, dot.span, ".", line_without(p, {dot.span}))
 			break
 		}
 		append(&parts, text_of(p, advance(p)))
@@ -431,17 +433,32 @@ parse_group :: proc(p: ^Parser) -> ^Expr {
 			rounds += 1
 		}
 	}
-	if rounds >= 3 && !p.deep_shown {
-		p.deep_shown = true
-		report(p, .Deep_Nesting, open.span)
-	}
 	inner := parse_expression(p)
 	if cur(p).kind == .Close_Round {
 		advance(p)
 	} else {
-		report(p, .Missing_Close_Round, open.span)
+		report(p, .Missing_Close_Round, open.span, "", insertion(p, line_end_of(p, open.span), ")"))
 	}
-	return new_expr(p, span_from(p, open.span), Group{inner = inner})
+	group := new_expr(p, span_from(p, open.span), Group{inner = inner})
+	if rounds >= 3 && !p.deep_shown {
+		p.deep_shown = true
+		named := fmt.aprintf("value = %s\n%s", text_of_span(p, inner.span), line_with(p, group.span, "value"), allocator = p.alloc)
+		report(p, .Deep_Nesting, open.span, "", named)
+	}
+	return group
+}
+
+// The offset where the line holding `span` ends, for adding a closing bracket there.
+@(private)
+line_end_of :: proc(p: ^Parser, span: Span) -> int {
+	pos := position_of(p.src, span.start)
+	return p.src.line_starts[pos.line - 1] + len(strings.trim_right_space(line_text(p.src, pos.line)))
+}
+
+// The line with `text` put in at `offset`.
+@(private)
+insertion :: proc(p: ^Parser, offset: int, text: string) -> string {
+	return line_with(p, Span{p.src.file, offset, offset}, text)
 }
 
 @(private)
@@ -451,7 +468,7 @@ parse_vector_or_record :: proc(p: ^Parser) -> ^Expr {
 	defer pop(&p.groups)
 	items := make([dynamic]^Expr, p.alloc)
 	fields := make([dynamic]Field, p.alloc)
-	mixed_reported := false
+	mixed_at: Maybe(Span)
 	for {
 		t := cur(p)
 		if t.kind == .Close_Curly {
@@ -459,7 +476,7 @@ parse_vector_or_record :: proc(p: ^Parser) -> ^Expr {
 			break
 		}
 		if t.kind == .End_Of_File || is_closer(t.kind) || !is_argument_start(p, t) && t.kind != .Name && t.kind != .Minus_Prefix {
-			report(p, .Missing_Close_Curly, open.span)
+			report(p, .Missing_Close_Curly, open.span, "", insertion(p, line_end_of(p, open.span), " }"))
 			break
 		}
 		is_field := t.kind == .Name && peek_at(p, 1).kind == .Colon
@@ -471,9 +488,8 @@ parse_vector_or_record :: proc(p: ^Parser) -> ^Expr {
 		} else {
 			append(&items, parse_expression(p))
 		}
-		if len(items) > 0 && len(fields) > 0 && !mixed_reported {
-			mixed_reported = true
-			report(p, .Mixed_Braces, t.span)
+		if len(items) > 0 && len(fields) > 0 && mixed_at == nil {
+			mixed_at = t.span
 		}
 		next := cur(p)
 		switch {
@@ -482,8 +498,15 @@ parse_vector_or_record :: proc(p: ^Parser) -> ^Expr {
 		case next.kind == .Close_Curly:
 		case next.kind == .End_Of_File || is_closer(next.kind):
 		case is_argument_start(p, next):
-			report(p, .Missing_Comma, next.span)
+			report(p, .Missing_Comma, next.span, "", insertion(p, p.last_end, ","))
 		}
+	}
+	if at, mixed := mixed_at.?; mixed {
+		names := make([dynamic]Span, context.temp_allocator)
+		for f in fields {
+			append(&names, Span{f.span.file, f.span.start, f.value.span.start})
+		}
+		report(p, .Mixed_Braces, at, "", line_without(p, names[:]))
 	}
 	span := span_from(p, open.span)
 	if len(fields) > 0 && len(items) == 0 {
@@ -498,21 +521,24 @@ parse_list :: proc(p: ^Parser) -> ^Expr {
 	append(&p.groups, Group_Kind.List)
 	defer pop(&p.groups)
 	items := make([dynamic]^Expr, p.alloc)
-	comma_reported := false
+	commas := make([dynamic]Span, context.temp_allocator)
 	for {
 		t := cur(p)
 		#partial switch t.kind {
 		case .Close_Square:
 			advance(p)
+			if len(commas) > 0 {
+				report(p, .List_Comma, commas[0], "", line_without(p, commas[:]))
+			}
 			return new_expr(p, span_from(p, open.span), List_Lit{items = items[:]})
 		case .End_Of_File, .Close_Round, .Close_Curly:
-			report(p, .Missing_Close_Square, open.span, "A list ends with a closing square bracket.")
+			if len(commas) > 0 {
+				report(p, .List_Comma, commas[0], "", line_without(p, commas[:]))
+			}
+			report(p, .Missing_Close_Square, open.span, "A list ends with a closing square bracket.", insertion(p, line_end_of(p, open.span), " ]"))
 			return new_expr(p, span_from(p, open.span), List_Lit{items = items[:]})
 		case .Comma:
-			if !comma_reported {
-				comma_reported = true
-				report(p, .List_Comma, t.span)
-			}
+			append(&commas, t.span)
 			advance(p)
 			continue
 		}
@@ -649,7 +675,63 @@ line_with :: proc(p: ^Parser, span: Span, replacement: string) -> string {
 	line := line_text(p.src, pos.line)
 	start := span.start - p.src.line_starts[pos.line - 1]
 	end := clamp(span.end - p.src.line_starts[pos.line - 1], start, len(line))
-	return fmt.aprintf("%s%s%s", line[:start], replacement, line[end:], allocator = p.alloc)
+	return strings.trim_space(fmt.aprintf("%s%s%s", line[:start], replacement, line[end:], allocator = p.alloc))
+}
+
+// The line that holds the first span with every span taken out of it (the others
+// must be on the same line).
+@(private)
+line_without :: proc(p: ^Parser, spans: []Span) -> string {
+	if len(spans) == 0 {
+		return ""
+	}
+	pos := position_of(p.src, spans[0].start)
+	line_start := p.src.line_starts[pos.line - 1]
+	line := line_text(p.src, pos.line)
+	b := strings.builder_make(p.alloc)
+	at := 0
+	for span in spans {
+		start := clamp(span.start - line_start, at, len(line))
+		strings.write_string(&b, line[at:start])
+		at = clamp(span.end - line_start, start, len(line))
+		// Taking out a word between two spaces takes one of the spaces with it.
+		if start > 0 && at < len(line) && line[start - 1] == ' ' && line[at] == ' ' {
+			at += 1
+		}
+	}
+	strings.write_string(&b, line[at:])
+	return strings.trim_space(strings.to_string(b))
+}
+
+// The line that holds `at`, cut in two there: what comes before, and what comes
+// from it on. For showing a statement put on its own line.
+@(private)
+line_split_at :: proc(p: ^Parser, at: Span) -> string {
+	pos := position_of(p.src, at.start)
+	line := line_text(p.src, pos.line)
+	cut := clamp(at.start - p.src.line_starts[pos.line - 1], 0, len(line))
+	return fmt.aprintf("%s\n%s", strings.trim_space(line[:cut]), strings.trim_space(line[cut:]), allocator = p.alloc)
+}
+
+// Lines `first` to `last` of the sketch, as an example. A long stretch keeps its
+// first three and last three lines.
+@(private)
+lines_between :: proc(p: ^Parser, first, last: int) -> string {
+	lines := make([dynamic]string, context.temp_allocator)
+	for n in first ..= min(last, len(p.src.line_starts)) {
+		append(&lines, line_text(p.src, n))
+	}
+	for len(lines) > 1 && strings.trim_space(lines[len(lines) - 1]) == "" {
+		pop(&lines)
+	}
+	if len(lines) > 8 {
+		kept := make([dynamic]string, context.temp_allocator)
+		append(&kept, ..lines[:3])
+		append(&kept, "  ...")
+		append(&kept, ..lines[len(lines) - 3:])
+		return strings.join(kept[:], "\n", p.alloc)
+	}
+	return strings.join(lines[:], "\n", p.alloc)
 }
 
 // Reports the calls of a statement that need round brackets as one error, with the

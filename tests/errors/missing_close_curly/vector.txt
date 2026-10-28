@@ -5,4 +5,4 @@
 
 The opening curly bracket here has no closing one. A vector or a record ends with a closing curly bracket.
 
-For example:  p = { 10, 20 }
+Write:  p = { 10, 20 }

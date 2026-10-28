@@ -50,12 +50,12 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 		case "draw":   return parse_draw(p)
 		case "use":    return parse_use(p)
 		case "else":
-			report(p, .Else_Without_If, t.span)
+			report(p, .Else_Without_If, t.span, "", fmt.aprintf("if condition [ ... ]\n%s", line_with(p, t.span, "else"), allocator = p.alloc))
 			advance(p)
 			skip_line(p)
 			return Error_Stmt{}
 		case "to":
-			report(p, .To_Instead_Of_Learn, t.span)
+			report(p, .To_Instead_Of_Learn, t.span, "", line_with(p, t.span, "learn"))
 			skip_line(p)
 			return Error_Stmt{}
 		}
@@ -68,7 +68,7 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 		return unknown_word(p, t)
 	case .Colour:
 		text := text_of(p, t)
-		report(p, .Colour_At_Statement_Start, t.span, text, text[1:])
+		report(p, .Colour_At_Statement_Start, t.span, text, line_with(p, t.span, fmt.tprintf("# %s", text[1:])))
 		skip_line(p)
 		return Error_Stmt{}
 	case .Invalid:
@@ -76,7 +76,7 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 		skip_line(p)
 		return Error_Stmt{}
 	}
-	report(p, .Statement_Start, t.span, text_of(p, t))
+	report(p, .Statement_Start, t.span, text_of(p, t), line_without(p, {t.span}))
 	skip_line(p)
 	return Error_Stmt{}
 }
@@ -89,9 +89,22 @@ unknown_word :: proc(p: ^Parser, t: Token) -> Stmt_Kind {
 	if lower != word && is_known_word(p, lower) {
 		report(p, .Capital_Word, t.span, word, lower, line_with(p, t.span, lower))
 	} else if suggestion, found := registry.suggest(word); found {
-		report(p, .Unknown_Word, t.span, word, line_with(p, t.span, suggestion))
+		report(p, .Unknown_Word, t.span, word, line_with(p, t.span, suggestion), "Did you mean:")
 	} else {
-		report(p, .Unknown_Word, t.span, word)
+		// Maybe it is a word of the writer's own, not taught yet: show how, with as
+		// many names as there are values after it on the line.
+		count := 0
+		for i := p.at + 1; i < len(p.tokens) && count < 3; i += 1 {
+			#partial switch p.tokens[i].kind {
+			case .Newline, .End_Of_File, .Close_Square, .Close_Round, .Close_Curly:
+				i = len(p.tokens)
+				continue
+			}
+			count += 1
+		}
+		names := []string{"a", "b", "c"}
+		header := fmt.aprintf("learn %s %s", word, strings.join(names[:count], " ", context.temp_allocator), allocator = p.alloc)
+		report(p, .Unknown_Word, t.span, word, fmt.aprintf("%s [\n  ...\n]", strings.trim_space(header), allocator = p.alloc), "If it is a new word of yours, teach it first:")
 	}
 	skip_line(p)
 	return Error_Stmt{}
@@ -138,28 +151,26 @@ parse_block_after :: proc(p: ^Parser, keyword: string) -> (block: Block, ok: boo
 		if t.kind == .Newline || t.kind == .End_Of_File {
 			at = Span{t.span.file, p.last_end, p.last_end}
 		}
-		report(p, .Missing_Block, at, keyword, block_example(keyword))
+		report(p, .Missing_Block, at, keyword, block_around(p, at))
 		skip_line(p)
 		return {}, false
 	}
 	return parse_block(p), true
 }
 
+// The line with the block it is missing: what comes before the place, then a block
+// that holds what comes after it (or dots, when nothing does).
 @(private)
-block_example :: proc(keyword: string) -> string {
-	switch keyword {
-	case "if":     return "if mouse.x > 100 [\n  fill red\n]"
-	case "else":   return "if mouse.x > 100 [\n  fill red\n] else [\n  fill blue\n]"
-	case "repeat": return "repeat 4 [\n  circle 100 100 50\n]"
-	case "while":  return "while ready [\n  step\n]"
-	case "for":    return "for i from 1 to 10 [\n  circle (i * 10) 100 5\n]"
-	case "learn":  return "learn star size [\n  repeat 5 [ forward size  right 144 ]\n]"
-	case "with":   return "with fill cyan [\n  circle 100 100 50\n]"
-	case "every":  return "every 2 seconds [\n  circle 100 100 50\n]"
-	case "on":     return "on key \"space\" [\n  circle 100 100 50\n]"
-	case "draw":   return "draw [\n  circle mouse.x mouse.y 20\n]"
+block_around :: proc(p: ^Parser, at: Span) -> string {
+	pos := position_of(p.src, at.start)
+	line := line_text(p.src, pos.line)
+	cut := clamp(at.start - p.src.line_starts[pos.line - 1], 0, len(line))
+	head := strings.trim_space(line[:cut])
+	tail := strings.trim_space(line[cut:])
+	if tail == "" {
+		tail = "..."
 	}
-	return "repeat 4 [\n  circle 100 100 50\n]"
+	return fmt.aprintf("%s [\n  %s\n]", head, tail, allocator = p.alloc)
 }
 
 // The cursor is at the opening square bracket. Brackets that do not balance are
@@ -207,7 +218,15 @@ parse_block :: proc(p: ^Parser) -> Block {
 			last := position_of(p.src, p.last_end).line
 			hint = fmt.aprintf("Add the closing square bracket after the last line of the block, line %d.", last, allocator = p.alloc)
 		}
-		report(p, .Missing_Close_Square, open.span, hint)
+		last := position_of(p.src, p.last_end).line
+		fixed: string
+		indent := strings.repeat(" ", open_indent, context.temp_allocator)
+		if dedent_line > 0 {
+			fixed = fmt.aprintf("%s\n%s]\n%s", lines_between(p, open_line, dedent_line - 1), indent, line_text(p.src, dedent_line), allocator = p.alloc)
+		} else {
+			fixed = fmt.aprintf("%s\n%s]", lines_between(p, open_line, last), indent, allocator = p.alloc)
+		}
+		report(p, .Missing_Close_Square, open.span, hint, fixed)
 	}
 	return Block{span = span_from(p, open.span), stmts = stmts[:]}
 }
@@ -224,7 +243,14 @@ report_extra_close :: proc(p: ^Parser) {
 	if closed, ok := p.last_closed.?; ok && t.kind == .Close_Square {
 		hint = fmt.aprintf("The block that opened on line %d was already closed on line %d.", closed.open_line, closed.close_line, allocator = p.alloc)
 	}
-	report(p, .Extra_Close, t.span, which, hint)
+	// Without it: the line, or, when it held nothing else, the block that was complete already.
+	without := line_without(p, {t.span})
+	if without == "" {
+		if closed, ok := p.last_closed.?; ok && t.kind == .Close_Square {
+			without = lines_between(p, closed.open_line, closed.close_line)
+		}
+	}
+	report(p, .Extra_Close, t.span, which, hint, without)
 }
 
 // ---- the statements ----
@@ -298,6 +324,16 @@ parse_while :: proc(p: ^Parser) -> Stmt_Kind {
 	return While{cond = cond, body = body}
 }
 
+// The line with `word` put in where the cursor token is: before the token, or, at the
+// end of the line, after the last one.
+@(private)
+insert_word :: proc(p: ^Parser, t: Token, word: string) -> string {
+	if t.kind == .Newline || t.kind == .End_Of_File {
+		return insertion(p, p.last_end, fmt.tprintf(" %s", word))
+	}
+	return insertion(p, t.span.start, fmt.tprintf("%s ", word))
+}
+
 // Expects the word `word` next; says so and skips the line when it is not there.
 @(private)
 expect_word :: proc(p: ^Parser, word: string) -> bool {
@@ -310,7 +346,7 @@ expect_word :: proc(p: ^Parser, word: string) -> bool {
 	if t.kind == .Newline || t.kind == .End_Of_File {
 		at = Span{t.span.file, p.last_end, p.last_end}
 	}
-	report(p, .For_Missing_Word, at, word)
+	report(p, .For_Missing_Word, at, word, insert_word(p, t, word))
 	skip_line(p)
 	return false
 }
@@ -324,7 +360,7 @@ parse_for :: proc(p: ^Parser) -> Stmt_Kind {
 	}
 	name := cur(p)
 	if name.kind != .Name {
-		report(p, .For_Missing_Word, Span{name.span.file, p.last_end, p.last_end}, "a name")
+		report(p, .For_Missing_Word, Span{name.span.file, p.last_end, p.last_end}, "a name", insert_word(p, name, "i"))
 		skip_line(p)
 		return Error_Stmt{}
 	}
@@ -376,7 +412,7 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 		advance(p)
 		if !is_word(p, cur(p), "learn") {
 			t := cur(p)
-			report(p, .Learn_Missing_Name, t.span)
+			report(p, .Learn_Missing_Name, t.span, "", insertion(p, t.span.start, "learn "))
 			skip_line(p)
 			return Error_Stmt{}
 		}
@@ -384,14 +420,14 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 	learn := advance(p)
 	name := cur(p)
 	if name.kind != .Name || is_word(p, name, "with") {
-		report(p, .Learn_Missing_Name, learn.span)
+		report(p, .Learn_Missing_Name, learn.span, "", insertion(p, learn.span.end, " star"))
 		skip_line(p)
 		return Error_Stmt{}
 	}
 	advance(p)
 	verb_name := text_of(p, name)
 	if is_taken_name(p, verb_name) {
-		report(p, .Learn_Reserved_Name, name.span, verb_name)
+		report(p, .Learn_Reserved_Name, name.span, verb_name, line_with(p, name.span, fmt.tprintf("my%s", verb_name)))
 	}
 	params := make([dynamic]string, p.alloc)
 	for {
@@ -402,9 +438,9 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 		advance(p)
 		param := text_of(p, t)
 		if slice.contains(params[:], param) {
-			report(p, .Learn_Repeated_Parameter, t.span, param)
+			report(p, .Learn_Repeated_Parameter, t.span, param, line_with(p, t.span, fmt.tprintf("%s2", param)))
 		} else if is_taken_name(p, param) {
-			report(p, .Learn_Reserved_Name, t.span, param)
+			report(p, .Learn_Reserved_Name, t.span, param, line_with(p, t.span, fmt.tprintf("my%s", param)))
 		}
 		append(&params, param)
 	}
@@ -415,17 +451,17 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 			word := advance(p)
 			text := text_of(p, word)
 			if is_taken_name(p, text) {
-				report(p, .Learn_Reserved_Name, word.span, text)
+				report(p, .Learn_Reserved_Name, word.span, text, line_with(p, word.span, fmt.tprintf("my%s", text)))
 			}
 			if !is_argument_start(p, cur(p)) || call_ends_at(p, cur(p)) || cur(p).kind == .Open_Square {
-				report(p, .Learn_Default_Not_One_Item, word.span)
+				report(p, .Learn_Default_Not_One_Item, word.span, "", insertion(p, word.span.end, " 0"))
 				break
 			}
 			value := parse_argument(p, plain = true)
 			append(&defaults, Default{word = text, value = value})
 			// A second item where a word was due: `points 5 6`.
 			if next := cur(p); next.kind != .Name && next.kind != .Open_Square && is_argument_start(p, next) {
-				report(p, .Learn_Default_Not_One_Item, next.span)
+				report(p, .Learn_Default_Not_One_Item, next.span, "", line_without(p, {next.span}))
 				skip_to_block(p)
 				break
 			}
@@ -453,11 +489,18 @@ skip_to_block :: proc(p: ^Parser) {
 	}
 }
 
+// The statement as it would sit inside a verb of the writer's own.
+@(private)
+learn_around :: proc(p: ^Parser, at: Span) -> string {
+	line := strings.trim_space(line_text(p.src, position_of(p.src, at.start).line))
+	return fmt.aprintf("learn name [\n  %s\n]", line, allocator = p.alloc)
+}
+
 @(private)
 parse_give :: proc(p: ^Parser) -> Stmt_Kind {
 	give := advance(p)
 	if p.learn_depth == 0 {
-		report(p, .Give_Outside_Learn, give.span)
+		report(p, .Give_Outside_Learn, give.span, "", learn_around(p, give.span))
 	}
 	return Give{value = parse_expression(p)}
 }
@@ -466,7 +509,7 @@ parse_give :: proc(p: ^Parser) -> Stmt_Kind {
 parse_stop :: proc(p: ^Parser) -> Stmt_Kind {
 	stop := advance(p)
 	if p.learn_depth == 0 {
-		report(p, .Stop_Outside_Learn, stop.span)
+		report(p, .Stop_Outside_Learn, stop.span, "", learn_around(p, stop.span))
 	}
 	return Stop{}
 }
@@ -522,7 +565,13 @@ parse_every :: proc(p: ^Parser) -> Stmt_Kind {
 		if unit.kind == .Newline || unit.kind == .End_Of_File {
 			at = Span{unit.span.file, p.last_end, p.last_end}
 		}
-		report(p, .Every_Missing_Unit, at)
+		fixed := ""
+		if unit.kind == .Name {
+			fixed = line_with(p, unit.span, "seconds")
+		} else {
+			fixed = insert_word(p, unit, "seconds")
+		}
+		report(p, .Every_Missing_Unit, at, "", fixed)
 		skip_line(p)
 		return Error_Stmt{}
 	}
@@ -557,7 +606,13 @@ parse_use :: proc(p: ^Parser) -> Stmt_Kind {
 		if t.kind == .Newline || t.kind == .End_Of_File {
 			at = Span{t.span.file, p.last_end, p.last_end}
 		}
-		report(p, .Use_Needs_Text, at)
+		fixed := ""
+		if t.kind == .Newline || t.kind == .End_Of_File {
+			fixed = insertion(p, p.last_end, " \"flocking\"")
+		} else {
+			fixed = line_with(p, t.span, fmt.tprintf("\"%s\"", text_of(p, t)))
+		}
+		report(p, .Use_Needs_Text, at, "", fixed)
 		skip_line(p)
 		return Error_Stmt{}
 	}
@@ -636,8 +691,7 @@ parse_on :: proc(p: ^Parser) -> Stmt_Kind {
 		first := strings.split(e.name, " ", context.temp_allocator)[0]
 		if d := registry.edit_distance(word, first); word != "" && d < best {
 			best = d
-			arguments := " \"space\"" if len(e.params) > 0 else ""
-			example = fmt.aprintf("on %s%s [\n  ...\n]", e.name, arguments, allocator = p.alloc)
+			example = line_with(p, t.span, e.name)
 		}
 	}
 	at := on.span if word == "" else t.span

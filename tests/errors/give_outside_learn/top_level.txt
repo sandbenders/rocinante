@@ -5,7 +5,7 @@
 
 `give` hands a value back from a verb taught with `learn`. Outside one there is nothing to hand it back to.
 
-For example:
-    learn double n [
-      give n * 2
+Inside a verb of your own:
+    learn name [
+      give 3
     ]

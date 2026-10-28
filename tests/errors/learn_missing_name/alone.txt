@@ -5,7 +5,4 @@
 
 After `learn` comes the new word, then the names of what it takes.
 
-For example:
-    learn star size [
-      repeat 5 [ forward size  right 144 ]
-    ]
+Write:  learn star

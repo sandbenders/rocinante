@@ -5,4 +5,4 @@
 
 `42` cannot start a line. A line starts with a verb, a keyword or a name.
 
-For example:  circle 100 100 50
+Without it:  circle

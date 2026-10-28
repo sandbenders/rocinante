@@ -5,7 +5,4 @@
 
 A counting loop reads `for i from 1 to 10`, and a loop over a list reads `for each p in particles`.
 
-For example:
-    for i from 1 to 10 [
-      circle (i * 10) 100 5
-    ]
+Write:  for i from 1 to 10 [

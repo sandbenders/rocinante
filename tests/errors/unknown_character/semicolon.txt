@@ -5,4 +5,4 @@
 
 `;` is not part of the language. Words are made of letters, numbers of digits, and a hash starts a comment.
 
-For example:  circle 100 100 50  # a comment
+Without it:  circle 100 100 50

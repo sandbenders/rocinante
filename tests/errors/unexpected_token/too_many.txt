@@ -5,4 +5,6 @@
 
 A line holds one statement, and `60` comes after a complete one. Put it on its own line, or inside a one-line block separate statements with two spaces.
 
-For example:  repeat 3 [ step p  circle p.pos 3 ]
+On two lines:
+    circle 100 100 50
+    60

@@ -4,3 +4,8 @@
   │ ^^^^^
 
 A line starts with a verb, a keyword or a name, and I don't know `xyzzy`. Check the spelling, or teach the word with `learn`.
+
+If it is a new word of yours, teach it first:
+    learn xyzzy a b c [
+      ...
+    ]

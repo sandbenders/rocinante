@@ -5,7 +5,4 @@
 
 The language already uses `circle`, so it cannot be taught or used as a name here. Pick another one.
 
-For example:
-    learn mycircle size [
-      circle 100 100 size
-    ]
+Write:  learn mycircle size [

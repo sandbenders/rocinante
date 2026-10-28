@@ -5,4 +5,4 @@
 
 Write the name of the library as text.
 
-For example:  use "flocking"
+Write:  use "3"

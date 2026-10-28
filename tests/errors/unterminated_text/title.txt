@@ -5,4 +5,4 @@
 
 Text starts and ends with a double quote, and it has to end on the same line.
 
-For example:  title "hello"
+Write:  title "hello"

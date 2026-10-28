@@ -5,8 +5,7 @@
 
 `stop` ends a verb taught with `learn` early. Outside one there is nothing to end.
 
-For example:
-    learn grow_up n [
-      if n < 0 [ stop ]
-      circle 100 100 n
+Inside a verb of your own:
+    learn name [
+      stop
     ]

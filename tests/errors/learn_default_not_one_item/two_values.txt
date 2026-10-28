@@ -5,7 +5,4 @@
 
 After `with`, each optional word is followed by exactly one value, like `points 5`. Put anything bigger in round brackets.
 
-For example:
-    learn star size with points 5 spin 0 [
-      turn spin
-    ]
+Write:  learn star size with points 5 [

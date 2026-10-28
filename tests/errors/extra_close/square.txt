@@ -5,7 +5,7 @@
 
 Nothing is open here, so there is nothing to close. The block that opened on line 1 was already closed on line 3.
 
-For example:
+Without it:
     repeat 3 [
       circle 100 100 50
     ]

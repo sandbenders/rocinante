@@ -5,4 +5,4 @@
 
 The items of a list are written with spaces between them. Commas belong to vectors and records, which use curly brackets.
 
-For example:  [ 10 20 30 ]
+Write:  scores = [ 10 20 30 ]

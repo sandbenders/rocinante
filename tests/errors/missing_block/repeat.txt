@@ -5,7 +5,7 @@
 
 After `repeat` comes a block in square brackets: everything inside it belongs to the `repeat`.
 
-For example:
+With a block:
     repeat 4 [
       circle 100 100 50
     ]

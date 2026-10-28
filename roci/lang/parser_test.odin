@@ -600,7 +600,7 @@ test_unknown_word_gets_a_suggestion_when_one_is_close :: proc(t: ^testing.T) {
 	testing.expect_value(t, d.args[0], "circel")
 	testing.expect_value(t, d.args[1], "circle 100 100 50")
 	far := parse_text("xyzzy 1 2")
-	testing.expect_value(t, far.result.diagnostics[0].args[1], "")
+	testing.expect_value(t, far.result.diagnostics[0].args[1], "learn xyzzy a b [\n  ...\n]")
 }
 
 @(test)
@@ -775,7 +775,7 @@ test_an_unknown_event_suggests_the_closest_one :: proc(t: ^testing.T) {
 	got := parse_text("on mouse [ ]")
 	testing.expect_value(t, got.result.diagnostics[0].id, Message_Id.Unknown_Event)
 	got = parse_text("on kee [ ]")
-	testing.expect_value(t, got.result.diagnostics[0].args[2], "on key \"space\" [\n  ...\n]")
+	testing.expect_value(t, got.result.diagnostics[0].args[2], "on key [ ]")
 }
 
 // ---- prescan ----

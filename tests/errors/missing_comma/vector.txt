@@ -5,4 +5,4 @@
 
 Between the items of a vector or a record goes a comma.
 
-For example:  { 10, 20 }
+Write:  p = { 10, 20 }

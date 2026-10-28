@@ -51,12 +51,12 @@ render :: proc(src: Source, d: Diagnostic, allocator := context.allocator) -> st
 	example := fill_template(entry.example, d.args, context.temp_allocator)
 	if strings.trim_space(example) != "" {
 		if strings.contains_rune(example, '\n') {
-			fmt.sbprintf(&b, "\n%s\n", entry.label)
+			fmt.sbprintf(&b, "\n%s\n", fill_template(entry.label, d.args, context.temp_allocator))
 			for l in strings.split_lines(example, context.temp_allocator) {
 				fmt.sbprintf(&b, "    %s\n", l)
 			}
 		} else {
-			fmt.sbprintf(&b, "\n%s  %s\n", entry.label, example)
+			fmt.sbprintf(&b, "\n%s  %s\n", fill_template(entry.label, d.args, context.temp_allocator), example)
 		}
 	}
 	return strings.to_string(b)

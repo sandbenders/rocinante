@@ -88,6 +88,13 @@ test_every_message_has_a_sketch_that_triggers_it_and_the_text_matches :: proc(t:
 			}
 		}
 		testing.expectf(t, triggered, "%s.roci does not trigger %v", c.path, wanted)
+		// The example is made from the sketch itself, so every case must have one.
+		for d in parsed.result.diagnostics {
+			if d.id == wanted {
+				example := fill_template(CATALOGUE[d.id].example, d.args, context.temp_allocator)
+				testing.expectf(t, strings.trim_space(example) != "", "%s.roci: the message has no example", c.path)
+			}
+		}
 		got := render_all(parsed.src, parsed.result.diagnostics, context.temp_allocator)
 		txt := fmt.tprintf("%s.txt", c.path)
 		if update {

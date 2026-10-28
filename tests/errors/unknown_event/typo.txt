@@ -5,7 +5,4 @@
 
 `on` runs a block when something happens. The events I know are key, mouse down, mouse up, touch, resize, move, focus.
 
-For example:
-    on key "space" [
-      ...
-    ]
+Did you mean:  on key "space" [

@@ -5,4 +5,4 @@
 
 A number is digits with an optional fraction, like 10 or 0.5. Write the zero before the point, and leave out exponents and underscores.
 
-For example:  circle 0.5 1000 50
+Write:  circle 0.5 100 50
