@@ -30,7 +30,7 @@ test_the_sketches_in_tests_check_check_cleanly_and_have_the_expected_types :: pr
 			continue
 		}
 		src := make_source("sketch.roci", string(data), 0, context.temp_allocator)
-		checked := check(src, registry.VERBS, nil, context.temp_allocator)
+		checked := check(src, registry.ALL_VERBS, nil, context.temp_allocator)
 		testing.expectf(t, len(checked.diagnostics) == 0, "%s.roci should check cleanly:\n%s", base, render_all(src, checked.diagnostics, context.temp_allocator))
 		got := describe_names(checked, context.temp_allocator)
 		path := fmt.tprintf("%s.types", base)

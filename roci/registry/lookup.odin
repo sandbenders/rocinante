@@ -11,7 +11,7 @@ import "core:slice"
 import "core:strings"
 
 find_verb :: proc(name: string) -> (verb: ^Verb, ok: bool) {
-	return find_in(VERBS, name)
+	return find_in(ALL_VERBS, name)
 }
 
 find_in :: proc(verbs: []Verb, name: string) -> (verb: ^Verb, ok: bool) {
@@ -27,7 +27,7 @@ find_in :: proc(verbs: []Verb, name: string) -> (verb: ^Verb, ok: bool) {
 // before a word is read on its own (section 5.1). `words` are the words of a
 // line from the start of a statement. Gives the verb and how many words it used.
 match_phrase :: proc(words: []string) -> (verb: ^Verb, used: int) {
-	return match_phrase_in(VERBS, words)
+	return match_phrase_in(ALL_VERBS, words)
 }
 
 match_phrase_in :: proc(verbs: []Verb, words: []string) -> (verb: ^Verb, used: int) {
@@ -81,6 +81,9 @@ Shape_Result :: enum {
 accepts :: proc(want, got: Kind) -> bool {
 	// A Boxed value (kind Any) is checked while the sketch runs, so it fits anywhere.
 	if want == got || want == .Any || got == .Any {
+		return true
+	}
+	if want == .Expr_Block && got == .Block {
 		return true
 	}
 	return want == .Colour && (got == .Number || got == .List || got == .Gradient)
@@ -174,7 +177,7 @@ suggest :: proc(word: string) -> (suggestion: string, ok: bool) {
 		}
 	}
 	found: string
-	for v in VERBS {
+	for v in ALL_VERBS {
 		if word_count(v.name) == 1 {
 			consider(word, v.name, &best, &found)
 		}
@@ -218,7 +221,7 @@ is_reserved_name :: proc(word: string) -> bool {
 // The caller frees the slice.
 reserved_words :: proc(allocator := context.allocator) -> []string {
 	all := make([dynamic]string, allocator)
-	for v in VERBS {
+	for v in ALL_VERBS {
 		append(&all, v.name)
 	}
 	append(&all, ..KEYWORDS[:])

@@ -1,0 +1,8 @@
+── `add` needs the same kind of item as the list ─────── sketch.roci:2:5
+
+2 │ add "ten" to scores
+  │     ^^^^^
+
+The list holds a number, but this line gives `add` text. A list holds one kind of item.
+
+Write:  add 1 to scores

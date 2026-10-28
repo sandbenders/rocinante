@@ -83,6 +83,7 @@ IR_List :: struct {
 }
 
 IR_Record :: struct {
+	shape:  int, // the record's shape (types.shapes), the root of any merge
 	names:  []string,
 	values: []^IR,
 }
@@ -119,7 +120,8 @@ IR_Block :: struct {
 }
 
 IR_Block_Value :: struct {
-	block: IR_Block,
+	block:      IR_Block,
+	value_type: Type_Id, // for a block that holds one expression: what the expression gives
 }
 
 IR_Error :: struct {}

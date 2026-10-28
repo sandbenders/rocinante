@@ -33,14 +33,7 @@ check_expr :: proc(c: ^Checker, e: ^Expr, as_stmt: bool) -> ^IR {
 	case Vector_Lit:
 		return check_vector(c, e, k)
 	case Record_Lit:
-		names := make([dynamic]string, c.alloc)
-		values := make([dynamic]^IR, c.alloc)
-		for f in k.fields {
-			append(&names, f.name)
-			append(&values, check_expr(c, f.value, false))
-		}
-		// Records are shaped by use (section 5.3, step 3b); until then they are boxed.
-		return new_ir(c, e.span, T_BOXED, IR_Record{names = names[:], values = values[:]})
+		return check_record(c, e, k)
 	case List_Lit:
 		return check_list(c, e, k)
 	case Block_Lit:
@@ -55,6 +48,31 @@ check_expr :: proc(c: ^Checker, e: ^Expr, as_stmt: bool) -> ^IR {
 		return error_ir(c, e.span)
 	}
 	return error_ir(c, e.span)
+}
+
+// A record literal fixes the shape of every record made at this place (section 5.3).
+@(private)
+check_record :: proc(c: ^Checker, e: ^Expr, k: Record_Lit) -> ^IR {
+	shape, known := c.sites[e.span.start]
+	if !known {
+		shape = new_shape(c.types, c.alloc)
+		c.sites[e.span.start] = shape
+	}
+	names := make([dynamic]string, c.alloc)
+	values := make([dynamic]^IR, c.alloc)
+	for f in k.fields {
+		value := check_expr(c, f.value, false)
+		if existing, found := shape_field(c.types, shape, f.name); found {
+			if !unify(c.types, existing.type, value.type) {
+				note(c, .Kind_Conflict, f.span, f.name, describe(c.types, existing.type), describe(c.types, value.type), fix(c, f.value.span, sample_of(c, existing.type)))
+			}
+		} else {
+			add_field(c.types, shape, f.name, value.type)
+		}
+		append(&names, f.name)
+		append(&values, value)
+	}
+	return new_ir(c, e.span, record_of(c.types, shape), IR_Record{shape = shape, names = names[:], values = values[:]})
 }
 
 @(private)
@@ -245,7 +263,13 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 	verb := k.verb
 	args := make([dynamic]^IR, c.alloc)
 	kinds := make([dynamic]registry.Kind, context.temp_allocator)
+	list_type := T_ERROR // the first list among the arguments: what `it` is in a list verb's block
 	for a, i in k.args {
+		if block, is_block := a.kind.(Block_Lit); is_block && param_wants_expr_block(verb, len(k.args), i) {
+			append(&args, check_expr_block(c, a, block, list_type, T_ERROR))
+			append(&kinds, registry.Kind.Block)
+			continue
+		}
 		if is_word_slot(verb, len(k.args), i) {
 			if word, ok := as_word(c, a); ok {
 				append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
@@ -256,6 +280,9 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 		ir := check_expr(c, a, false)
 		append(&args, ir)
 		append(&kinds, registry_kind(c.types, ir.type))
+		if list_type == T_ERROR && kind_of(c.types, ir.type) == .List {
+			list_type = ir.type
+		}
 	}
 	// An argument that was already reported must not cause a second message.
 	for ir in args {
@@ -276,7 +303,7 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 		return error_ir(c, e.span)
 	}
 	shape := verb.shapes[index]
-	options := check_options(c, e.span, k, verb, shape)
+	options := check_options(c, e.span, k, verb, shape, list_type)
 	first_list := T_ERROR
 	for ir in args {
 		if kind_of(c.types, ir.type) == .List {
@@ -285,6 +312,9 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 		}
 	}
 	type := type_of_kind(c.types, shape.gives, first_list)
+	if special, handled := list_verb_type(c, verb, e, k, args[:], options); handled {
+		type = special
+	}
 	if !as_stmt && type == T_NONE {
 		note(c, .Value_Of_Nothing, e.span, verb.name, "", "", text_at(c, e.span))
 		return error_ir(c, e.span)
@@ -351,7 +381,7 @@ report_kinds :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Verb, args:
 }
 
 @(private)
-check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Verb, shape: registry.Shape) -> []IR_Option {
+check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Verb, shape: registry.Shape, list_type: Type_Id) -> []IR_Option {
 	out := make([dynamic]IR_Option, c.alloc)
 	seen := make([dynamic]string, context.temp_allocator)
 	for o in k.options {
@@ -372,6 +402,14 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 		append(&seen, o.word)
 		args := make([dynamic]^IR, c.alloc)
 		for a, i in o.args {
+			if i < len(def.kinds) && def.kinds[i] == .Expr_Block {
+				if block, is_block := a.kind.(Block_Lit); is_block {
+					// A running value (`combine ... from 0 [ result + it ]`) is the option's first argument.
+					result_type := args[0].type if i > 0 else T_ERROR
+					append(&args, check_expr_block(c, a, block, list_type, result_type))
+					continue
+				}
+			}
 			if i < len(def.kinds) && def.kinds[i] == .Name {
 				if word, ok := as_word(c, a); ok {
 					append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))

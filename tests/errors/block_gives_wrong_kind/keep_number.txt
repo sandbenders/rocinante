@@ -1,0 +1,8 @@
+── The block of `keep` has to give true or false ────── sketch.roci:2:19
+
+2 │ alive = keep ps [ it.x ]
+  │                   ^^^^
+
+Here it gives a number.
+
+Write:  alive = keep ps [ it.x > 0 ]

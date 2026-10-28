@@ -1,0 +1,2 @@
+ball = { pos: { 1, 2 }, vel: { 3, 4 } }
+x = ball.vell

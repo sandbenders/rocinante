@@ -221,6 +221,8 @@ big    = find particles [ it.size > 20 ]      # the first match, or empty
 order  = sort particles by [ it.size ]        # sorted by what the block gives
 ```
 
+  The block of these verbs holds **one expression** (decided 2026-10-28), not statements: `[ it.life > 0 ]`. It sits where the verb takes it, or after a connecting word (`combine scores from 0 [ result + it ]`, `sort particles by [ it.size ]`). `keep`, `skip` and `find` need a true-or-false expression, `collect` gives a list of what it gives, `sort` needs a number or text, and `combine` needs it to match the starting value.
+
   There is no pipe: chains are written one named step per line, which reads more clearly and fits one statement per line. `map` stays Processing's number-remapping verb, and `filter` stays an image effect. `collect` and the idea of plain-English list verbs come from Smalltalk. `it` and `result` are keywords, lowercase like all others (§5.1).
 
 ### 5.3 Typing: inferred and static (decided 2026-10-22)
@@ -670,6 +672,7 @@ The rules below fill the gaps the 2026-10-24 review found. Where they touch anot
 - **Drawing outside `draw`.** Drawing verbs inside an `on … receive` or other event block go into that window's next frame, in the order they ran.
 - **Conventions.** The origin is the top left with y pointing down. Positions and sizes are in logical pixels; HiDPI is automatic. Angles are in degrees everywhere, including `sin`, `cos`, `right` and `angle`; `pi` and `tau` exist for the radians-minded, with `radians` and `degrees` to convert. Time is in seconds. A gamepad stick or `dpad` y of -1 is up, matching the screen.
 - **Defaults.** Window 800 × 600, background light grey (230), fill white, stroke off, thickness 1, `fps` 60, font rocinante's default (§4.8). The first `window` call replaces the default window; a sketch that never calls `window` gets the default one.
+- **Fields.** A record's fields are those its literals give and those assigned anywhere in the sketch, even on a later line (decided 2026-10-28). Reading a field that none of them gives is an error with the fields there are ("did you mean `vel`?"), because a typo is far more likely than a field that is meant to read 0; a field some line gives reads 0 until set (§5.2). Records made in different places that meet in one list or one name become one shape with all their fields (§5.3).
 - **True and false.** `true` and `false` are built-in values (decided 2026-10-28), so a flag is `running = true` and `if running [ ... ]`; a comparison, `and`, `or` and `not` give them too, and a condition has to be one of them.
 - **Names.** Every built-in name is reserved, and so are the connecting words. A variable or `learn` parameter named like a built-in verb is a load-time error that suggests another name; `width`, `height` and `size` are the exception, because they are values and connecting words together (§5.1) and may be used as parameter names. The reserved-word list is generated from the core and published in the docs.
 - **`copy`** is deep: lists and records inside are copied too (§5.11).

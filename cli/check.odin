@@ -32,7 +32,7 @@ Check_Result :: struct {
 // comes from the allocator given, which should be an arena or the temporary one.
 check_text :: proc(name, text: string, show_tree: bool, show_types := false, allocator := context.temp_allocator) -> Check_Result {
 	src := lang.make_source(name, text, 0, allocator)
-	checked := lang.check(src, registry.VERBS, nil, allocator)
+	checked := lang.check(src, registry.ALL_VERBS, nil, allocator)
 	result := Check_Result{report = lang.render_all(src, checked.diagnostics, allocator)}
 	for d in checked.diagnostics {
 		switch lang.severity_of(d) {

@@ -1,0 +1,19 @@
+# Every list verb, and records that gain a field where they are changed.
+boids = []
+repeat 20 [ add { pos: anywhere, speed: random 5 } to boids ]
+for each b in boids [ b.tired = false ]
+
+fast = keep boids [ it.speed > 3 ]
+slow = skip boids [ it.speed > 3 ]
+speeds = collect boids [ it.speed * 2 ]
+total = combine speeds from 0 [ result + it ]
+leader = find boids [ it.speed > 4 ]
+order = sort boids by [ it.speed ]
+how_many = count boids
+first = item 1 of boids
+backup = copy boids
+names = [ "a" "b" ]
+add "c" to names
+remove "a" from names
+ready = fast is fast
+print total

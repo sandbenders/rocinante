@@ -25,6 +25,7 @@ Kind :: enum u8 {
 	Gradient, // made by `gradient`, or written as a list of colours where a colour goes
 	Any,
 	Boolean, // true or false: what a comparison gives
+	Expr_Block, // a [ ] that holds one expression, run for each item of a list (section 5.2)
 }
 
 Param :: struct {

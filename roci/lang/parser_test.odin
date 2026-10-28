@@ -8,7 +8,6 @@ import "core:testing"
 
 TEST_STEP := []registry.Param{{"distance", .Number}}
 TEST_TEXT_OPTIONS := []registry.Option{{"at", {.Number, .Number}, false}, {"size", {.Number}, false}}
-TEST_ADD_OPTIONS := []registry.Option{{"to", {.Name}, false}}
 TEST_PICTURE_OPTIONS := []registry.Option{{"width", {.Number}, false}}
 
 // The registry's verbs plus a few that later phases add (`text`, `add`, `forward`,
@@ -18,7 +17,6 @@ TEST_VERBS_EXTRA := []registry.Verb{
 	{"forward", {{TEST_STEP, nil, .None}}, "x"},
 	{"right", {{TEST_STEP, nil, .None}}, "x"},
 	{"text", {{{{"text", .Text}}, TEST_TEXT_OPTIONS, .None}}, "x"},
-	{"add", {{{{"item", .Any}}, TEST_ADD_OPTIONS, .None}}, "x"},
 	{"touching", {{{{"a", .Any}, {"b", .Any}}, nil, .None}}, "x"},
 	// Two shapes: `picture photo width 200` could read `width` as a value for the longer one.
 	{"picture", {
@@ -30,7 +28,7 @@ TEST_VERBS_EXTRA := []registry.Verb{
 @(private)
 test_verbs :: proc() -> []registry.Verb {
 	verbs := make([dynamic]registry.Verb, context.temp_allocator)
-	append(&verbs, ..registry.VERBS)
+	append(&verbs, ..registry.ALL_VERBS)
 	append(&verbs, ..TEST_VERBS_EXTRA)
 	return verbs[:]
 }
@@ -861,4 +859,40 @@ Checked_Text :: struct {
 check_text :: proc(text: string) -> Checked_Text {
 	src := make_source("sketch.roci", text, 0, context.temp_allocator)
 	return Checked_Text{src, check(src, test_verbs(), nil, context.temp_allocator)}
+}
+
+// ---- the blocks of the list verbs ----
+
+@(test)
+test_a_list_verb_takes_a_block_that_holds_one_expression :: proc(t: ^testing.T) {
+	expect_tree(t, "alive = keep particles [ it.life > 0 ]", "(assign alive (call keep (name particles) (block (> (path it life) (num 0)))))")
+	expect_tree(t, "calm = skip particles [ it.speed > 5 ]", "(assign calm (call skip (name particles) (block (> (path it speed) (num 5)))))")
+	expect_tree(t, "sizes = collect particles [ it.size * 2 ]", "(assign sizes (call collect (name particles) (block (* (path it size) (num 2)))))")
+	expect_tree(t, "big = find particles [ it.size > 20 ]", "(assign big (call find (name particles) (block (> (path it size) (num 20)))))")
+}
+
+@(test)
+test_combine_and_sort_take_their_block_after_a_connecting_word :: proc(t: ^testing.T) {
+	expect_tree(t, "total = combine scores from 0 [ result + it ]", "(assign total (call combine (name scores) (opt from (num 0) (block (+ (name result) (name it))))))")
+	expect_tree(t, "order = sort particles by [ it.size ]", "(assign order (call sort (name particles) (opt by (block (path it size)))))")
+}
+
+@(test)
+test_an_expression_block_may_span_lines_and_nest_calls :: proc(t: ^testing.T) {
+	expect_tree(t, "n = collect ps [\n  it.size * 2\n]", "(assign n (call collect (name ps) (block (* (path it size) (num 2)))))")
+	expect_tree(t, "d = collect ps [ dist it.a it.b ]", "(assign d (call collect (name ps) (block (call dist (path it a) (path it b)))))")
+	expect_tree(t, "k = keep ps [ it.life > 0 and it.size < 5 ]", "(assign k (call keep (name ps) (block (and (> (path it life) (num 0)) (< (path it size) (num 5))))))")
+}
+
+@(test)
+test_an_unclosed_expression_block_is_one_error :: proc(t: ^testing.T) {
+	expect_ids(t, "k = keep ps [ it.life > 0", {.Missing_Close_Square})
+}
+
+@(test)
+test_add_and_remove_use_their_connecting_words :: proc(t: ^testing.T) {
+	expect_tree(t, "add { x: 1 } to particles", "(call add (record x:(num 1)) (opt to (name particles)))")
+	expect_tree(t, "remove p from particles", "(call remove (name p) (opt from (name particles)))")
+	expect_tree(t, "first = item 1 of scores", "(assign first (call item (num 1) (opt of (name scores))))")
+	expect_tree(t, "n = count scores", "(assign n (call count (name scores)))")
 }

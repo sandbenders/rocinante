@@ -38,6 +38,23 @@ Type :: struct {
 Types :: struct {
 	items:    [dynamic]Type,
 	bindings: [dynamic]Type_Id, // by variable number; 0 while not bound (id 0 is Error)
+	shapes:   [dynamic]Shape,
+}
+
+// A field of a record shape and what it holds.
+Field_Info :: struct {
+	name: string,
+	type: Type_Id,
+}
+
+// A record shape (section 5.3): one per place a record is made, with the fields
+// that place gives it and every field assigned anywhere in the sketch, in the order
+// they were first seen. Shapes whose records meet (in one list, one name, one
+// argument) are merged into one with the union of the fields; `into` is where a
+// merged shape went, or -1.
+Shape :: struct {
+	fields: [dynamic]Field_Info,
+	into:   int,
 }
 
 // Ids of the types that need no parameter, in the order `types_init` makes them.
@@ -53,7 +70,7 @@ T_BLOCK :: Type_Id(8)
 T_BOXED :: Type_Id(9)
 
 types_init :: proc(allocator := context.allocator) -> Types {
-	ts := Types{items = make([dynamic]Type, allocator), bindings = make([dynamic]Type_Id, allocator)}
+	ts := Types{items = make([dynamic]Type, allocator), bindings = make([dynamic]Type_Id, allocator), shapes = make([dynamic]Shape, allocator)}
 	for kind in ([]Type_Kind{.Error, .None, .Number, .Text, .Boolean, .Colour, .Gradient, .Window, .Block, .Boxed}) {
 		append(&ts.items, Type{kind = kind})
 	}
@@ -85,7 +102,8 @@ fresh :: proc(ts: ^Types) -> Type_Id {
 	return intern(ts, .Variable, len(ts.bindings) - 1)
 }
 
-// Follows bound variables to what they stand for.
+// Follows bound variables to what they stand for. A record type always comes back
+// as the type of its shape's root, so merged shapes are one type.
 resolve :: proc(ts: ^Types, id: Type_Id) -> Type_Id {
 	id := id
 	for ts.items[id].kind == .Variable {
@@ -95,7 +113,74 @@ resolve :: proc(ts: ^Types, id: Type_Id) -> Type_Id {
 		}
 		id = bound
 	}
+	if ts.items[id].kind == .Record {
+		return intern(ts, .Record, shape_root(ts, ts.items[id].a))
+	}
 	return id
+}
+
+// ---- record shapes ----
+
+new_shape :: proc(ts: ^Types, allocator := context.allocator) -> int {
+	append(&ts.shapes, Shape{fields = make([dynamic]Field_Info, allocator), into = -1})
+	return len(ts.shapes) - 1
+}
+
+shape_root :: proc(ts: ^Types, shape: int) -> int {
+	shape := shape
+	for ts.shapes[shape].into >= 0 {
+		shape = ts.shapes[shape].into
+	}
+	return shape
+}
+
+record_of :: proc(ts: ^Types, shape: int) -> Type_Id {
+	return intern(ts, .Record, shape_root(ts, shape))
+}
+
+// The shape of a record type, or -1 when the type is not a record.
+shape_of :: proc(ts: ^Types, id: Type_Id) -> int {
+	resolved := resolve(ts, id)
+	if ts.items[resolved].kind != .Record {
+		return -1
+	}
+	return ts.items[resolved].a
+}
+
+shape_field :: proc(ts: ^Types, shape: int, name: string) -> (field: ^Field_Info, ok: bool) {
+	root := shape_root(ts, shape)
+	for &f in ts.shapes[root].fields {
+		if f.name == name {
+			return &f, true
+		}
+	}
+	return nil, false
+}
+
+// Gives the shape a field it did not have, starting as `type`.
+add_field :: proc(ts: ^Types, shape: int, name: string, type: Type_Id) {
+	root := shape_root(ts, shape)
+	append(&ts.shapes[root].fields, Field_Info{name = name, type = type})
+}
+
+// Makes the shape `b` part of `a`: every field of `b` joins `a`, and a field both
+// have must hold one kind of value. Records made in different places, then found
+// in one list, are the same kind of record from then on (section 5.15).
+merge_shapes :: proc(ts: ^Types, a, b: int) -> bool {
+	ra, rb := shape_root(ts, a), shape_root(ts, b)
+	if ra == rb {
+		return true
+	}
+	ok := true
+	ts.shapes[rb].into = ra
+	for f in ts.shapes[rb].fields {
+		if existing, found := shape_field(ts, ra, f.name); found {
+			ok = unify(ts, existing.type, f.type) && ok
+		} else {
+			append(&ts.shapes[ra].fields, f)
+		}
+	}
+	return ok
 }
 
 kind_of :: proc(ts: ^Types, id: Type_Id) -> Type_Kind {
@@ -111,6 +196,13 @@ occurs :: proc(ts: ^Types, variable: Type_Id, id: Type_Id) -> bool {
 		return true
 	}
 	item := ts.items[now]
+	if item.kind == .Record {
+		for f in ts.shapes[item.a].fields {
+			if occurs(ts, variable, f.type) {
+				return true
+			}
+		}
+	}
 	return item.kind == .List && occurs(ts, variable, Type_Id(item.a))
 }
 
@@ -139,6 +231,8 @@ unify :: proc(ts: ^Types, a, b: Type_Id) -> bool {
 		return true
 	case ka == .List && kb == .List:
 		return unify(ts, Type_Id(ts.items[x].a), Type_Id(ts.items[y].a))
+	case ka == .Record && kb == .Record:
+		return merge_shapes(ts, ts.items[x].a, ts.items[y].a)
 	}
 	return false
 }
@@ -171,7 +265,7 @@ type_of_kind :: proc(ts: ^Types, kind: registry.Kind, first_list: Type_Id = T_ER
 	case .Colour:   return T_COLOUR
 	case .Gradient: return T_GRADIENT
 	case .Window:   return T_WINDOW
-	case .Block:    return T_BLOCK
+	case .Block, .Expr_Block: return T_BLOCK
 	case .Name:     return T_TEXT
 	case .Vector:   return vector_of(ts, 2)
 	case .List:     return list_of(ts, T_BOXED)
@@ -186,7 +280,7 @@ type_of_kind :: proc(ts: ^Types, kind: registry.Kind, first_list: Type_Id = T_ER
 
 // What a message calls a type: "a number", "a vector of 2 numbers", "a list of text".
 // Plain words, never a type name (non-negotiable 2). The caller frees nothing (temporary).
-describe :: proc(ts: ^Types, id: Type_Id, shapes: []Shape = nil) -> string {
+describe :: proc(ts: ^Types, id: Type_Id) -> string {
 	now := resolve(ts, id)
 	item := ts.items[now]
 	switch item.kind {
@@ -207,7 +301,7 @@ describe :: proc(ts: ^Types, id: Type_Id, shapes: []Shape = nil) -> string {
 		if ts.items[element].kind == .Variable {
 			return "a list"
 		}
-		inner := describe(ts, element, shapes)
+		inner := describe(ts, element)
 		// "a list of a number" reads badly: say the plural.
 		plural: string
 		#partial switch ts.items[element].kind {
@@ -218,24 +312,22 @@ describe :: proc(ts: ^Types, id: Type_Id, shapes: []Shape = nil) -> string {
 		case .Text:     plural = "text"
 		case .Gradient: plural = "gradients"
 		case .Vector:   plural = fmt.tprintf("vectors of %d numbers", ts.items[element].a)
-		case .Record:   plural = "records"
+		case .Record:
+			plural = strings.concatenate({"records", inner[len("a record"):]}, context.temp_allocator) if strings.has_prefix(inner, "a record") else "empty records"
 		case .Boxed:    plural = "mixed values"
 		case:           plural = inner
 		}
 		return fmt.tprintf("a list of %s", plural)
 	case .Record:
-		if item.a >= 0 && item.a < len(shapes) {
-			names := strings.join(shapes[item.a].fields, " and ", context.temp_allocator)
-			return fmt.tprintf("a record with %s", names)
+		names := make([dynamic]string, context.temp_allocator)
+		for f in ts.shapes[item.a].fields {
+			append(&names, f.name)
 		}
-		return "a record"
+		switch len(names) {
+		case 0: return "an empty record"
+		case 1: return fmt.tprintf("a record with %s", names[0])
+		}
+		return fmt.tprintf("a record with %s and %s", strings.join(names[:len(names) - 1], ", ", context.temp_allocator), names[len(names) - 1])
 	}
 	return "a value"
-}
-
-// The kind of a Record's shape lives in shapes.odin (section 5.3, step 3b); until
-// then no type is a Record.
-Shape :: struct {
-	name:   string,
-	fields: []string,
 }

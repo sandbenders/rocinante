@@ -1,0 +1,8 @@
+── No record like this has `vell` ───────────────────── sketch.roci:2:10
+
+2 │ x = ball.vell
+  │          ^^^^
+
+This is a record with pos and vel. It has no field called `vell`, and no line of the sketch gives it one. The fields it has are pos and vel.
+
+Did you mean:  x = ball.vel

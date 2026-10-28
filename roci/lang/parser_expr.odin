@@ -80,11 +80,19 @@ find_callee :: proc(p: ^Parser) -> (info: Call_Info, used: int, ok: bool) {
 // some shape with that many arguments lists it).
 @(private)
 option_arity :: proc(info: Call_Info, word: string, given: int) -> (n: int, ok: bool) {
+	kinds, found := option_kinds(info, word, given)
+	return len(kinds), found
+}
+
+// The same, with what each argument of the word is: a block that holds an
+// expression (`from 0 [ result + it ]`) is read as one.
+@(private)
+option_kinds :: proc(info: Call_Info, word: string, given: int) -> (kinds: []registry.Kind, ok: bool) {
 	if info.taught != nil {
 		if given == len(info.taught.params) && slice.contains(info.taught.words, word) {
-			return 1, true
+			return TAUGHT_WORD_KINDS[:], true
 		}
-		return 0, false
+		return nil, false
 	}
 	for shape in info.verb.shapes {
 		if len(shape.params) != given {
@@ -92,21 +100,35 @@ option_arity :: proc(info: Call_Info, word: string, given: int) -> (n: int, ok: 
 		}
 		for option in shape.options {
 			if option.word == word {
-				return len(option.kinds), true
+				return option.kinds, true
 			}
 		}
 	}
-	return 0, false
+	return nil, false
 }
+
+// A word after `with` in a `learn` header takes one value of any kind.
+@(private)
+TAUGHT_WORD_KINDS := [1]registry.Kind{.Any}
 
 // Whether argument `index` of the verb is a block in some shape, so a `[ ]` there is one.
 @(private)
 param_is_block :: proc(info: Call_Info, index: int) -> bool {
+	return param_kind_is(info, index, .Block)
+}
+
+@(private)
+param_is_expr_block :: proc(info: Call_Info, index: int) -> bool {
+	return param_kind_is(info, index, .Expr_Block)
+}
+
+@(private)
+param_kind_is :: proc(info: Call_Info, index: int, kind: registry.Kind) -> bool {
 	if info.verb == nil {
 		return false
 	}
 	for shape in info.verb.shapes {
-		if index < len(shape.params) && shape.params[index].kind == .Block {
+		if index < len(shape.params) && shape.params[index].kind == kind {
 			return true
 		}
 	}
@@ -235,7 +257,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 		if !is_argument_start(p, t) {
 			break
 		}
-		append(&args, parse_argument(p, expect_block = param_is_block(info, len(args))))
+		append(&args, parse_argument(p, expect_block = param_is_block(info, len(args)), expr_block = param_is_expr_block(info, len(args))))
 	}
 	for !nested {
 		t := cur(p)
@@ -243,10 +265,11 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			break
 		}
 		word := text_of(p, t)
-		n, is_option := option_arity(info, word, len(args))
+		kinds, is_option := option_kinds(info, word, len(args))
 		if !is_option {
 			break
 		}
+		n := len(kinds)
 		if slice.contains(registry.VALUES[:], word) && option_could_be_value(info, len(args)) {
 			report(p, .Ambiguous_Word, t.span, word, line_with(p, t.span, fmt.tprintf("(%s)", word)))
 		}
@@ -257,7 +280,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			if call_ends_at(p, next) || !is_argument_start(p, next) {
 				break
 			}
-			append(&option_args, parse_argument(p))
+			append(&option_args, parse_argument(p, expr_block = kinds[len(option_args)] == .Expr_Block))
 		}
 		append(&options, Option_Use{word = word, span = Span{t.span.file, t.span.start, p.last_end}, args = option_args[:]})
 	}
@@ -340,7 +363,7 @@ option_could_be_value :: proc(info: Call_Info, given: int) -> bool {
 
 // One item (section 5.1). With `plain`, a word is only ever a name, as inside a list.
 @(private)
-parse_argument :: proc(p: ^Parser, expect_block := false, plain := false) -> ^Expr {
+parse_argument :: proc(p: ^Parser, expect_block := false, plain := false, expr_block := false) -> ^Expr {
 	t := cur(p)
 	#partial switch t.kind {
 	case .Number:
@@ -365,6 +388,9 @@ parse_argument :: proc(p: ^Parser, expect_block := false, plain := false) -> ^Ex
 	case .Open_Curly:
 		return parse_vector_or_record(p)
 	case .Open_Square:
+		if expr_block {
+			return parse_expr_block(p)
+		}
 		if expect_block {
 			block := parse_block(p)
 			return new_expr(p, block.span, Block_Lit{block = block})
@@ -513,6 +539,25 @@ parse_vector_or_record :: proc(p: ^Parser) -> ^Expr {
 		return new_expr(p, span, Record_Lit{fields = fields[:]})
 	}
 	return new_expr(p, span, Vector_Lit{items = items[:]})
+}
+
+// `[ it.life > 0 ]`: a block that holds one expression, for the list verbs (section
+// 5.2). The tree keeps it as a block with one statement that is that expression.
+@(private)
+parse_expr_block :: proc(p: ^Parser) -> ^Expr {
+	open := advance(p)
+	append(&p.groups, Group_Kind.List)
+	defer pop(&p.groups)
+	value := parse_expression(p)
+	if cur(p).kind == .Close_Square {
+		advance(p)
+	} else {
+		report(p, .Missing_Close_Square, open.span, "A block ends with a closing square bracket.", insertion(p, line_end_of(p, open.span), " ]"))
+	}
+	span := span_from(p, open.span)
+	stmts := make([]^Stmt, 1, p.alloc)
+	stmts[0] = new_stmt(p, value.span, Expr_Stmt{expr = value})
+	return new_expr(p, span, Block_Lit{block = Block{span = span, stmts = stmts}})
 }
 
 @(private)

@@ -80,6 +80,11 @@ Message_Id :: enum u8 {
 	Condition_Not_Boolean,
 	Wrong_Kind_Here,
 	Bad_Field,
+	Unknown_Field,
+	It_Outside_Block,
+	Wrong_Item_Kind,
+	Block_Gives_Wrong_Kind,
+	Changed_While_Walking,
 }
 
 Entry :: struct {
@@ -255,6 +260,21 @@ CATALOGUE := [Message_Id]Entry{
 		"Write:", "{d}"},
 	.Bad_Field = {.Error, "`{a}` is not a part of {b}",
 		"{c}",
+		"Write:", "{d}"},
+	.Unknown_Field = {.Error, "No record like this has `{a}`",
+		"This is {b}. It has no field called `{a}`, and no line of the sketch gives it one. {c}",
+		"Did you mean:", "{d}"},
+	.It_Outside_Block = {.Error, "`{a}` only works inside a list verb",
+		"`{a}` stands for the current item (or the running value) inside the block of keep, skip, collect, find, sort or combine. It has no meaning anywhere else.",
+		"For example:", "{d}"},
+	.Wrong_Item_Kind = {.Error, "`{a}` needs the same kind of item as the list",
+		"The list holds {b}, but this line gives `{a}` {c}. A list holds one kind of item.",
+		"Write:", "{d}"},
+	.Block_Gives_Wrong_Kind = {.Error, "The block of `{a}` has to give {b}",
+		"Here it gives {c}.",
+		"Write:", "{d}"},
+	.Changed_While_Walking = {.Error, "`{a}` changes while the loop walks it",
+		"A `for each` is going through `{a}` right now, and adding to it, taking from it or giving it a new value in the middle makes the walk lose its place. Walk a copy, then change the list.",
 		"Write:", "{d}"},
 }
 

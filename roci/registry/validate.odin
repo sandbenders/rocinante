@@ -30,7 +30,7 @@ Problem :: struct {
 }
 
 validate :: proc(allocator := context.allocator) -> []Problem {
-	return validate_verbs(VERBS, allocator)
+	return validate_verbs(ALL_VERBS, allocator)
 }
 
 // Every problem in `verbs`; empty when the table is sound. The caller frees the slice.

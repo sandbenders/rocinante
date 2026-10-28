@@ -72,7 +72,11 @@ option         = 'connecting word' { argument } ;
 
 (* One thing per argument (section 5.1). *)
 argument       = NUMBER | TEXT | COLOUR | path | group | vector_or_record | list | block
-               | sign argument ;
+               | expression_block | sign argument ;
+
+(* The block of a list verb: one expression, run for each item (section 5.2). It is
+   read where the verb's parameter or connecting word takes one. *)
+expression_block = "[" expression "]" ;
 group          = "(" expression ")" ;
 sign           = SIGN ;
 list           = "[" { argument } "]" ;

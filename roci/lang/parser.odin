@@ -305,6 +305,7 @@ GRAMMAR_RULES := [?]struct{rule, parser: string}{
 	{"group", "parse_group"},
 	{"sign", "parse_argument"},
 	{"list", "parse_list"},
+	{"expression_block", "parse_expr_block"},
 	{"vector_or_record", "parse_vector_or_record"},
 	{"item", "parse_vector_or_record"},
 	{"expression", "parse_expression"},

@@ -457,3 +457,31 @@ test_fill_stroke_and_background_take_the_gradient_words :: proc(t: ^testing.T) {
 		}
 	}
 }
+
+@(test)
+test_all_verbs_holds_the_api_verbs_and_the_language_verbs :: proc(t: ^testing.T) {
+	testing.expect_value(t, len(ALL_VERBS), len(VERBS) + len(LANGUAGE_VERBS))
+	for v in VERBS {
+		_, found := find_verb(v.name)
+		testing.expectf(t, found, "`%s` should be found", v.name)
+	}
+	for v in LANGUAGE_VERBS {
+		_, found := find_verb(v.name)
+		testing.expectf(t, found, "`%s` should be found", v.name)
+		_, in_api := find_in(VERBS, v.name)
+		testing.expectf(t, !in_api, "`%s` is a language verb: it must not be in VERBS, which the C ABI is made from", v.name)
+	}
+	// The language verbs are reserved words like any other.
+	testing.expect(t, is_reserved("keep"))
+	testing.expect(t, is_reserved_name("count"))
+}
+
+@(test)
+test_a_block_that_holds_an_expression_fits_where_a_block_is_taken :: proc(t: ^testing.T) {
+	testing.expect(t, accepts(.Expr_Block, .Block))
+	testing.expect(t, !accepts(.Expr_Block, .Number))
+	keep, _ := find_verb("keep")
+	i, result := shape_for(keep, {.List, .Block})
+	testing.expect_value(t, result, Shape_Result.Found)
+	testing.expect_value(t, i, 0)
+}

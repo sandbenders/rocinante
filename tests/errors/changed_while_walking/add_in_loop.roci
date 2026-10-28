@@ -1,0 +1,4 @@
+particles = []
+for each p in particles [
+  add p to particles
+]

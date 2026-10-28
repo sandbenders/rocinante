@@ -1,0 +1,2 @@
+ps = [ { 1, 2 } ]
+alive = keep ps [ it.x ]

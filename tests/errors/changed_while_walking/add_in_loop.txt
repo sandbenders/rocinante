@@ -1,0 +1,10 @@
+── `particles` changes while the loop walks it ──────── sketch.roci:3:12
+
+3 │   add p to particles
+  │            ^^^^^^^^^
+
+A `for each` is going through `particles` right now, and adding to it, taking from it or giving it a new value in the middle makes the walk lose its place. Walk a copy, then change the list.
+
+Write:
+    particles_copy = copy particles
+    for each item in particles_copy [ ... ]

@@ -1,0 +1,8 @@
+── `it` only works inside a list verb ────────────────── sketch.roci:1:5
+
+1 │ x = it.life * 2
+  │     ^^^^^^^
+
+`it` stands for the current item (or the running value) inside the block of keep, skip, collect, find, sort or combine. It has no meaning anywhere else.
+
+For example:  kept = collect list [ it.life ]

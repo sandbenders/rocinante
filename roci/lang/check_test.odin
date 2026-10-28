@@ -484,3 +484,114 @@ test_diagnostics_come_in_reading_order :: proc(t: ^testing.T) {
 		last = d.span.start
 	}
 }
+
+// ---- records and lists (step 3b) ----
+
+@(test)
+test_a_record_literal_makes_a_shape_and_its_fields_have_types :: proc(t: ^testing.T) {
+	expect_types(t, "ball = { pos: { 1, 2 }, size: 5, name: \"b\" }\nx = ball.pos\ny = ball.size\nz = ball.name", `
+ball: a record with pos, size and name
+x: a vector of 2 numbers
+y: a number
+z: text
+`)
+}
+
+@(test)
+test_a_field_assigned_anywhere_joins_the_shape_even_above :: proc(t: ^testing.T) {
+	// The read is above the assignment; the field still exists (two passes).
+	expect_errors(t, "ball = { x: 1 }\nc = ball.colour\nball.colour = red", {})
+	expect_types(t, "ball = { x: 1 }\nball.colour = red\nc = ball.colour", "ball: a record with x and colour\nc: a colour")
+}
+
+@(test)
+test_a_field_nothing_ever_gives_is_an_error_with_a_suggestion :: proc(t: ^testing.T) {
+	got := check_text("ball = { vel: 1 }\nx = ball.vell")
+	d := got.checked.diagnostics[0]
+	testing.expect_value(t, d.id, Message_Id.Unknown_Field)
+	testing.expect_value(t, d.args[3], "x = ball.vel")
+	expect_errors(t, "ball = { vel: 1 }\nball.vel = \"a\"", {.Wrong_Kind_Here})
+}
+
+@(test)
+test_nested_fields_are_followed :: proc(t: ^testing.T) {
+	expect_types(t, "b = { pos: { 1, 2 } }\nb.pos.x = 5\nq = b.pos.y", "b: a record with pos\nq: a number")
+	expect_errors(t, "b = { pos: { 1, 2 } }\nb.pos.z = 5", {.Bad_Field})
+	expect_errors(t, "b = { pos: { 1, 2 } }\nb.nope.x = 5", {.Unknown_Field})
+	expect_errors(t, "nothing.x = 5", {.Unknown_Name})
+}
+
+@(test)
+test_records_made_in_different_places_meet_in_one_list_with_all_the_fields :: proc(t: ^testing.T) {
+	expect_types(t, "ps = []\nadd { a: 1 } to ps\nadd { b: 2 } to ps", "ps: a list of records with a and b")
+	expect_errors(t, "ps = []\nadd { a: 1 } to ps\nadd { a: \"x\" } to ps", {.Kind_Conflict})
+}
+
+@(test)
+test_a_list_that_starts_empty_learns_its_items_from_add :: proc(t: ^testing.T) {
+	expect_types(t, "xs = []\nadd 1 to xs\nadd 2 to xs", "xs: a list of numbers")
+	expect_errors(t, "xs = []\nadd 1 to xs\nadd \"a\" to xs", {.Wrong_Item_Kind})
+	expect_errors(t, "xs = [ 1 2 ]\nremove \"a\" from xs", {.Wrong_Item_Kind})
+	expect_errors(t, "add 1 to 5", {.Wrong_Argument_Kind})
+}
+
+@(test)
+test_count_item_pick_and_copy_have_the_right_types :: proc(t: ^testing.T) {
+	expect_types(t, "xs = [ 1 2 3 ]\nn = count xs\nfirst = item 1 of xs\nc = copy xs\nr = pick xs", `
+xs: a list of numbers
+n: a number
+first: a number
+c: a list of numbers
+r: a number
+`)
+}
+
+@(test)
+test_list_verbs_check_their_block_with_it_and_result :: proc(t: ^testing.T) {
+	expect_types(t, `
+ps = [ { 1, 2 } { 3, 4 } ]
+a = keep ps [ it.x > 1 ]
+b = collect ps [ it.y * 2 ]
+s = combine b from 0 [ result + it ]
+f = find ps [ it.x is 3 ]
+o = sort ps by [ it.y ]
+`, `
+ps: a list of vectors of 2 numbers
+a: a list of vectors of 2 numbers
+b: a list of numbers
+s: a number
+f: a vector of 2 numbers
+o: a list of vectors of 2 numbers
+`)
+	expect_errors(t, "ps = [ 1 2 ]\nx = keep ps [ it ]", {.Block_Gives_Wrong_Kind})
+	expect_errors(t, "ps = [ 1 2 ]\nx = skip ps [ it + 1 ]", {.Block_Gives_Wrong_Kind})
+	expect_errors(t, "ps = [ 1 2 ]\nx = find ps [ it ]", {.Block_Gives_Wrong_Kind})
+	expect_errors(t, "ps = [ 1 2 ]\nx = combine ps from \"a\" [ result + it ]", {})
+	expect_errors(t, "ps = [ 1 2 ]\nx = combine ps from 0 [ \"a\" ]", {.Block_Gives_Wrong_Kind})
+	expect_errors(t, "ps = [ red teal ]\nx = sort ps by [ it ]", {.Block_Gives_Wrong_Kind})
+	expect_errors(t, "x = keep 5 [ it ]", {.Wrong_Argument_Kind})
+}
+
+@(test)
+test_it_and_result_exist_only_inside_the_blocks_that_give_them :: proc(t: ^testing.T) {
+	expect_errors(t, "x = it", {.It_Outside_Block})
+	expect_errors(t, "ps = [ 1 ]\nx = keep ps [ result > 0 ]", {.It_Outside_Block})
+	expect_errors(t, "ps = [ 1 ]\nx = combine ps from 0 [ result + it ]\ny = it", {.It_Outside_Block})
+	expect_errors(t, "it = 3", {.Reserved_Name})
+}
+
+@(test)
+test_a_list_cannot_change_while_for_each_walks_it :: proc(t: ^testing.T) {
+	expect_errors(t, "ps = [ 1 2 ]\nfor each p in ps [ add p to ps ]", {.Changed_While_Walking})
+	expect_errors(t, "ps = [ 1 2 ]\nfor each p in ps [ remove p from ps ]", {.Changed_While_Walking})
+	expect_errors(t, "ps = [ 1 2 ]\nfor each p in ps [ ps = [] ]", {.Changed_While_Walking})
+	// Another list, or a copy, is fine; so is changing it after the loop.
+	expect_errors(t, "ps = [ 1 2 ]\nqs = []\nfor each p in ps [ add p to qs ]\nadd 3 to ps", {})
+	expect_errors(t, "ps = [ 1 2 ]\nfor each p in copy ps [ add p to ps ]", {})
+}
+
+@(test)
+test_the_loop_variable_of_for_each_is_a_record_with_the_fields_of_the_list :: proc(t: ^testing.T) {
+	expect_errors(t, "ps = [ { x: 1 } ]\nfor each p in ps [ p.x = p.x + 1 ]", {})
+	expect_errors(t, "ps = [ { x: 1 } ]\nfor each p in ps [ q = p.nope ]", {.Unknown_Field})
+}

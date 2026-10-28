@@ -1,0 +1,12 @@
+boids: a list of records with pos, speed and tired
+fast: a list of records with pos, speed and tired
+slow: a list of records with pos, speed and tired
+speeds: a list of numbers
+total: a number
+leader: a record with pos, speed and tired
+order: a list of records with pos, speed and tired
+how_many: a number
+first: a record with pos, speed and tired
+backup: a list of records with pos, speed and tired
+names: a list of text
+ready: true or false

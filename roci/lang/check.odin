@@ -37,16 +37,27 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		verbs   = verbs,
 		alloc   = allocator,
 		types   = types,
-		globals = make(map[string]^Symbol, 16, allocator),
-		order   = make([dynamic]^Symbol, allocator),
-		locals  = make([dynamic]^Symbol, allocator),
-		frames  = make([dynamic]Frame, allocator),
 		diags   = make([dynamic]Diagnostic, allocator),
+		sites   = make(map[int]int, 8, allocator),
+		walking = make([dynamic]string, allocator),
 	}
-	collect_assignments(&c, parsed.program.stmts)
-	stmts := make([dynamic]^IR_Stmt, allocator)
-	for s in parsed.program.stmts {
-		append(&stmts, check_stmt(&c, s))
+	// Two passes. A field assigned anywhere in the sketch belongs to the shape of the
+	// record, even to a line above it (section 5.3), so the first pass only settles
+	// the shapes and reports nothing; the second is the one that counts.
+	stmts: [dynamic]^IR_Stmt
+	for pass in 0 ..< 2 {
+		c.report = pass == 1
+		c.globals = make(map[string]^Symbol, 16, allocator)
+		c.order = make([dynamic]^Symbol, allocator)
+		c.locals = make([dynamic]^Symbol, allocator)
+		c.frames = make([dynamic]Frame, allocator)
+		c.depth, c.deferred = 0, 0
+		clear(&c.walking)
+		collect_assignments(&c, parsed.program.stmts)
+		stmts = make([dynamic]^IR_Stmt, allocator)
+		for s in parsed.program.stmts {
+			append(&stmts, check_stmt(&c, s))
+		}
 	}
 	all := make([dynamic]Diagnostic, 0, len(parsed.diagnostics) + len(c.diags), allocator)
 	append(&all, ..parsed.diagnostics)
@@ -97,10 +108,16 @@ Checker :: struct {
 	diags:    [dynamic]Diagnostic,
 	depth:    int,              // how many blocks deep
 	deferred: int,              // how many blocks deep that run later (draw, on, every)
+	report:   bool,             // false in the first pass, which only settles record shapes
+	sites:    map[int]int,      // where a record is made (its offset) to its shape
+	walking:  [dynamic]string,  // lists a `for each` is walking right now
 }
 
 @(private)
 note :: proc(c: ^Checker, id: Message_Id, span: Span, a: string = "", b: string = "", c_: string = "", d: string = "") {
+	if !c.report {
+		return
+	}
 	append(&c.diags, Diagnostic{id = id, span = span, args = {a, b, c_, d}})
 }
 
@@ -143,8 +160,9 @@ collect_assignments :: proc(c: ^Checker, stmts: []^Stmt) {
 	for s in stmts {
 		switch k in s.kind {
 		case Assign:
+			// Only `name = ...` makes a name; `p.x = ...` changes one that exists.
 			name := k.target.parts[0]
-			if _, found := c.globals[name]; !found {
+			if _, found := c.globals[name]; !found && len(k.target.parts) == 1 {
 				declare_global(c, name, Span{s.span.file, s.span.start, s.span.start + len(name)})
 			}
 		case If:
@@ -284,7 +302,7 @@ kind_words :: proc(kind: registry.Kind) -> string {
 	case .Colour:   return "a colour"
 	case .Vector:   return "a vector"
 	case .List:     return "a list"
-	case .Block:    return "a block"
+	case .Block, .Expr_Block: return "a block"
 	case .Window:   return "a window"
 	case .Name:     return "a word"
 	case .Gradient: return "a gradient"
@@ -413,7 +431,13 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 		}
 		var := declare_local(c, k.var, .Loop, element, k.body.span)
 		mark := len(c.locals) - 1
+		walked := 0
+		if path, is_path := k.list.kind.(Path); is_path && len(path.parts) == 1 {
+			append(&c.walking, path.parts[0])
+			walked = 1
+		}
 		body := check_block(c, k.body, false)
+		resize(&c.walking, len(c.walking) - walked)
 		resize(&c.locals, mark)
 		out.kind = IR_For_Each{var = var, list = list, body = body}
 	case With:
@@ -533,9 +557,13 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 	}
 	sym := lookup(c, name)
 	if sym == nil {
+		unknown_name(c, span, name)
 		return IR_Error_Stmt{}
 	}
 	touch(c, sym)
+	if len(k.target.parts) == 1 && slice_contains(c.walking[:], name) {
+		changed_while_walking(c, name, span)
+	}
 	if len(k.target.parts) > 1 {
 		return check_field_assign(c, sym, span, k, value)
 	}
@@ -558,20 +586,45 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 		note(c, .Constant_Changed, span, name, "", "", fix(c, span, strings.to_lower(name, context.temp_allocator)))
 		return IR_Error_Stmt{}
 	}
-	base := resolve(c.types, sym.type)
+	// Walk to the thing that has the last part: `ball.pos.x = 1` reads `ball.pos` first.
+	parts := k.target.parts
+	current := sym.type
+	offset := len(name)
+	for part in parts[1:len(parts) - 1] {
+		part_span := Span{span.file, span.start + offset + 1, span.start + offset + 1 + len(part)}
+		offset += 1 + len(part)
+		stepped := check_field(c, new_ir(c, span, current, IR_Load{symbol = sym}), part, part_span)
+		current = stepped.type
+		if current == T_ERROR {
+			return IR_Error_Stmt{}
+		}
+	}
+	last := parts[len(parts) - 1]
+	last_span := Span{span.file, span.start + offset + 1, span.start + offset + 1 + len(last)}
+	base := resolve(c.types, current)
 	item := c.types.items[base]
-	if item.kind == .Vector && len(k.target.parts) == 2 {
-		part := k.target.parts[1]
-		want := swizzle_type(c, item.a, part)
+	label := text_at(c, Span{span.file, span.start, last_span.end})
+	#partial switch item.kind {
+	case .Vector:
+		want := swizzle_type(c, item.a, last)
 		if want == T_ERROR {
-			note(c, .Bad_Field, span, part, describe(c.types, base), vector_parts_help(item.a), "")
+			note(c, .Bad_Field, last_span, last, describe(c.types, base), vector_parts_help(item.a), fix(c, last_span, "x"))
 			return IR_Error_Stmt{}
 		}
 		if !unify(c.types, want, value.type) {
-			note(c, .Wrong_Kind_Here, k.value.span, fmt.tprintf("%s.%s", name, part), describe(c.types, want), describe(c.types, value.type), fix(c, k.value.span, sample_of(c, want)))
+			note(c, .Wrong_Kind_Here, k.value.span, label, describe(c.types, want), describe(c.types, value.type), fix(c, k.value.span, sample_of(c, want)))
+		}
+	case .Record:
+		if field, found := shape_field(c.types, item.a, last); found {
+			if !unify(c.types, field.type, value.type) {
+				note(c, .Wrong_Kind_Here, k.value.span, label, describe(c.types, field.type), describe(c.types, value.type), fix(c, k.value.span, sample_of(c, field.type)))
+			}
+		} else {
+			// A field assigned anywhere joins the shape of every record made at that place.
+			add_field(c.types, item.a, last, value.type)
 		}
 	}
-	return IR_Assign{target = sym, fields = k.target.parts[1:], value = value}
+	return IR_Assign{target = sym, fields = parts[1:], value = value}
 }
 
 // ---- names and fields in expressions ----
@@ -619,6 +672,9 @@ check_path :: proc(c: ^Checker, e: ^Expr, path: Path) -> ^IR {
 		base = new_ir(c, Span{e.span.file, e.span.start, e.span.start + len(word)}, type_of_value(c, def), IR_Builtin{name = word})
 	} else if colour, is_colour := maths.name_lookup(word); is_colour {
 		base = new_ir(c, Span{e.span.file, e.span.start, e.span.start + len(word)}, T_COLOUR, IR_Colour{value = colour})
+	} else if word == "it" || word == "result" {
+		note(c, .It_Outside_Block, e.span, word, "", "", fmt.tprintf("kept = collect list [ %s ]", text_at(c, e.span)))
+		return error_ir(c, e.span)
 	} else {
 		unknown_name(c, e.span, word)
 		return error_ir(c, e.span)
@@ -668,7 +724,29 @@ type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
 	return type_of_kind(c.types, def.kind)
 }
 
-// `base.part`: a part of a vector or colour. Boxed values take any part.
+// A field no record of this shape ever has, anywhere in the sketch: most likely a
+// typo, so it is an error that names the fields there are (section 5.3).
+@(private)
+unknown_field :: proc(c: ^Checker, record: Type_Id, part: string, span: Span) {
+	shape := c.types.items[record].a
+	names := make([dynamic]string, context.temp_allocator)
+	for f in c.types.shapes[shape].fields {
+		append(&names, f.name)
+	}
+	best, found := 3, ""
+	for name in names {
+		if d := registry.edit_distance(part, name); d < best {
+			best, found = d, name
+		}
+	}
+	if found == "" && len(names) > 0 {
+		found = names[0]
+	}
+	help := fmt.tprintf("The fields it has are %s.", names_words(names[:])) if len(names) > 0 else "It has no fields yet."
+	note(c, .Unknown_Field, span, part, describe(c.types, record), help, fix(c, span, found if found != "" else "x"))
+}
+
+// `base.part`: a part of a vector or colour, or a field of a record. Boxed values take any part.
 @(private)
 check_field :: proc(c: ^Checker, base: ^IR, part: string, span: Span) -> ^IR {
 	resolved := resolve(c.types, base.type)
@@ -686,6 +764,12 @@ check_field :: proc(c: ^Checker, base: ^IR, part: string, span: Span) -> ^IR {
 			return new_ir(c, base.span, T_NUMBER, IR_Swizzle{base = base, parts = part})
 		}
 		note(c, .Bad_Field, span, part, "a colour", "A colour has r, g, b and a.", fix(c, span, "r"))
+		return error_ir(c, base.span)
+	case .Record:
+		if field, found := shape_field(c.types, item.a, part); found {
+			return new_ir(c, base.span, field.type, IR_Field{base = base, name = part})
+		}
+		unknown_field(c, resolved, part, span)
 		return error_ir(c, base.span)
 	case .Boxed, .Variable, .Error:
 		return new_ir(c, base.span, T_BOXED if item.kind != .Error else T_ERROR, IR_Field{base = base, name = part})
