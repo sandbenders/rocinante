@@ -979,3 +979,15 @@ test_arithmetic_straight_after_a_complete_call_says_it_needs_brackets :: proc(t:
 	// Arithmetic in a place that takes an expression is fine as it was.
 	expect_ids(t, "x = 600/0.4\nif x > 1 + 2 [ print (x - 1) ]", {})
 }
+
+@(test)
+test_square_brackets_after_a_name_say_to_use_item_and_give_the_line :: proc(t: ^testing.T) {
+	expect_ids(t, "x = colors[1]", {.Index_Brackets})
+	expect_ids(t, "fill colors[1]", {.Index_Brackets})
+	expect_ids(t, "if colors[1] is red [ quit ]", {.Index_Brackets})
+	d := parse_text("fill colors[i + 1]").result.diagnostics[0]
+	testing.expect_value(t, d.args[0], "colors[i + 1]")
+	testing.expect_value(t, d.args[1], "fill (item (i + 1) of colors)")
+	// A list written after a name with a space is still a list, not an index.
+	expect_ids(t, "x = 1\nadd 1 to scores", {})
+}

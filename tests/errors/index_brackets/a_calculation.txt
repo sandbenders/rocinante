@@ -1,0 +1,8 @@
+── An item of a list is read with `item` ─────────────── sketch.roci:3:5
+
+3 │ x = colors[i + 1]
+  │     ^^^^^^^^^^^^^
+
+Square brackets write lists and blocks, so `colors[i + 1]` is not how to read an item. Say which item and of what: the first item is number 1.
+
+Write:  x = (item (i + 1) of colors)

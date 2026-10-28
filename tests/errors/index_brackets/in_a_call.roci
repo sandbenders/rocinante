@@ -1,0 +1,2 @@
+colors = [ red teal gold ]
+rect at 0 0 size 10 10 fill colors[1]

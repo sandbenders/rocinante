@@ -1,0 +1,2 @@
+bird = { wings: [ 1 2 ] }
+x = bird.wings[2]

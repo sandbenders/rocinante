@@ -492,7 +492,40 @@ parse_path :: proc(p: ^Parser) -> ^Expr {
 		}
 		append(&parts, text_of(p, advance(p)))
 	}
-	return new_expr(p, span_from(p, first.span), Path{parts = parts[:]})
+	path := new_expr(p, span_from(p, first.span), Path{parts = parts[:]})
+	// `colors[1]` is how other languages read an item; here it is `item 1 of colors`.
+	if open := cur(p); open.kind == .Open_Square && open.spaces == 0 {
+		depth, close := 0, -1
+		for i := p.at; i < len(p.tokens); i += 1 {
+			t := p.tokens[i]
+			if t.kind == .Newline || t.kind == .End_Of_File {
+				break
+			}
+			if t.kind == .Open_Square {
+				depth += 1
+			} else if t.kind == .Close_Square {
+				depth -= 1
+				if depth == 0 {
+					close = i
+					break
+				}
+			}
+		}
+		if close >= 0 {
+			index := strings.trim_space(p.src.text[open.span.end:p.tokens[close].span.start])
+			if index == "" {
+				index = "1"
+			} else if strings.contains_rune(index, ' ') {
+				index = strings.concatenate({"(", index, ")"}, context.temp_allocator)
+			}
+			whole := Span{first.span.file, first.span.start, p.tokens[close].span.end}
+			named := strings.join(parts[:], ".", context.temp_allocator)
+			report(p, .Index_Brackets, whole, span_text(p.src, whole), line_with(p, whole, fmt.tprintf("(item %s of %s)", index, named)))
+			p.at = close + 1
+			p.last_end = p.tokens[close].span.end
+		}
+	}
+	return path
 }
 
 @(private)

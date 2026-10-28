@@ -1,0 +1,8 @@
+── An item of a list is read with `item` ─────────────── sketch.roci:2:5
+
+2 │ x = bird.wings[2]
+  │     ^^^^^^^^^^^^^
+
+Square brackets write lists and blocks, so `bird.wings[2]` is not how to read an item. Say which item and of what: the first item is number 1.
+
+Write:  x = (item 2 of bird.wings)

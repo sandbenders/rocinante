@@ -1,0 +1,3 @@
+colors = [ red teal gold ]
+i = 2
+x = colors[i + 1]
