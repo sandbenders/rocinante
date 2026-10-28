@@ -942,3 +942,8 @@ test_an_event_can_name_its_window_first :: proc(t: ^testing.T) {
 	expect_errors(t, "w = window size 400 300\non w key 5 [ ]", {.Wrong_Kind_Here})
 	expect_errors(t, "w = window size 400 300\non w nothing [ ]", {.Unknown_Event})
 }
+
+@(test)
+test_a_field_that_starts_from_its_own_zero_has_a_kind :: proc(t: ^testing.T) {
+	expect_types(t, "ball = { a: 7 }\ndraw [\n  ball.b = ball.b + 2\n  print ball.b\n]", "ball: a record with a and b")
+}

@@ -691,7 +691,8 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 			}
 		} else {
 			// A field assigned anywhere joins the shape of every record made at that place.
-			add_field(c.types, item.a, last, value.type)
+			// A value that failed (it read this very field before it existed) gives the field a type to be found out, not the type of the failure.
+			add_field(c.types, item.a, last, value.type if value.type != T_ERROR else fresh(c.types))
 		}
 	}
 	return IR_Assign{target = sym, fields = parts[1:], value = value}

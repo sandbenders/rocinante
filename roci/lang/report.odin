@@ -82,3 +82,31 @@ show_tabs :: proc(line: string) -> string {
 	s, _ := strings.replace_all(line, "\t", " ", context.temp_allocator)
 	return s
 }
+
+// A diagnostic as a title and plain lines, for the error overlay: no box-drawing
+// characters (the overlay font has printable ASCII only), the place, the source
+// line, the explanation and the example.
+plain_message :: proc(src: Source, d: Diagnostic, allocator := context.temp_allocator) -> (title: string, lines: []string) {
+	entry := CATALOGUE[d.id]
+	title = fill_template(entry.title, d.args, allocator)
+	switch entry.severity {
+	case .Error:
+	case .Warning: title = fmt.aprintf("Warning: %s", title, allocator = allocator)
+	case .Hint:    title = fmt.aprintf("Hint: %s", title, allocator = allocator)
+	}
+	pos := position_of(src, d.span.start)
+	out := make([dynamic]string, allocator)
+	append(&out, fmt.aprintf("%s:%d:%d", src.name, pos.line, pos.column, allocator = allocator))
+	append(&out, fmt.aprintf("%d | %s", pos.line, strings.trim_space(show_tabs(line_text(src, pos.line))), allocator = allocator))
+	append(&out, "")
+	append(&out, strings.trim_space(fill_template(entry.explain, d.args, allocator)))
+	example := strings.trim_space(fill_template(entry.example, d.args, allocator))
+	if example != "" {
+		append(&out, "")
+		append(&out, fill_template(entry.label, d.args, allocator))
+		for l in strings.split_lines(example, allocator) {
+			append(&out, strings.concatenate({"    ", l}, allocator))
+		}
+	}
+	return title, out[:]
+}
