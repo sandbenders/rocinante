@@ -384,6 +384,12 @@ report_kinds :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Verb, args:
 				continue
 			}
 			need := fmt.tprintf("%s for `%s`", kind_words(param.kind), param.name)
+			// `random` makes numbers; a list is what `pick` takes an item from.
+			if verb.name == "random" && kinds[j] == .List {
+				example := fix(c, e.span, fmt.tprintf("pick %s", text_at(c, k.args[j].span)))
+				note(c, .Wrong_Argument_Kind, k.args[j].span, verb.name, need, describe(c.types, args[j].type), example)
+				return
+			}
 			note(c, .Wrong_Argument_Kind, k.args[j].span, verb.name, need, describe(c.types, args[j].type), fix(c, k.args[j].span, sample_for_kind(param.kind)))
 			return
 		}

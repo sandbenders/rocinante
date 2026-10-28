@@ -947,3 +947,16 @@ test_an_event_can_name_its_window_first :: proc(t: ^testing.T) {
 test_a_field_that_starts_from_its_own_zero_has_a_kind :: proc(t: ^testing.T) {
 	expect_types(t, "ball = { a: 7 }\ndraw [\n  ball.b = ball.b + 2\n  print ball.b\n]", "ball: a record with a and b")
 }
+
+@(test)
+test_random_given_a_list_suggests_pick_built_from_the_line :: proc(t: ^testing.T) {
+	parsed := check_text("colors = [ red teal ]\nbackground (random colors)\n")
+	found := false
+	for d in parsed.checked.diagnostics {
+		if d.id == .Wrong_Argument_Kind {
+			found = true
+			testing.expect_value(t, d.args[3], "background (pick colors)")
+		}
+	}
+	testing.expect(t, found)
+}

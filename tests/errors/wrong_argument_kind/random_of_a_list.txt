@@ -1,0 +1,8 @@
+── `random` needs a number for `limit` ──────────────── sketch.roci:2:20
+
+2 │ background (random colors)
+  │                    ^^^^^^
+
+Here it is given a list of colours.
+
+Write:  background (pick colors)
