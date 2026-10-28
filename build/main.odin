@@ -91,7 +91,7 @@ check_odin :: proc() -> bool {
 
 // Packages whose @(test) procedures `ci` runs, from the repository root (some
 // tests make fixtures under output/). Add each package here as it gets tests.
-TEST_PACKAGES :: []string{"build", "roci/geom", "roci", "roci/gfx", "roci/lang", "roci/maths", "roci/platform", "roci/registry", "spikes/codegen", "tools/term"}
+TEST_PACKAGES :: []string{"build", "roci/geom", "roci", "roci/gfx", "roci/lang", "roci/maths", "roci/platform", "roci/registry", "cli", "spikes/codegen", "tools/term"}
 
 // Where `odin test` writes each package's test program. Left to itself it writes
 // build.exe to the repository root, the very file `odin run build` is running
@@ -156,6 +156,7 @@ check_packages :: proc() -> bool {
 	}
 	// The spikes that build on any machine are type-checked; the Android and iOS
 	// ones need their SDKs and are built by hand (CLAUDE.md section 8).
+	ok = step("check roci command", {"odin", "check", "cli", "-vet", "-strict-style"}) && ok
 	ok = step("check header tool", {"odin", "check", "tools/header", "-vet", "-strict-style"}) && ok
 	ok = step("check benchmark example", {"odin", "check", "examples/benchmark", "-vet", "-strict-style"}) && ok
 	ok = step("check circle example", {"odin", "check", "examples/circle", "-vet", "-strict-style"}) && ok

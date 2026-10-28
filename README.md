@@ -101,7 +101,13 @@ odin run examples/shapes              # every shape, a circle follows the mouse
 odin run examples/benchmark -o:speed  # 100,000 circles a frame, with frame rate and timings
 ```
 
-Add `-- 3` to any of them to close the window after three seconds. `examples/c/circle.c` is the same circle through the C API (`include/roci.h`, checked by `tools/abi-check.sh`).
+Add `-- 3` to any of the examples to close the window after three seconds. `examples/c/circle.c` is the same circle through the C API (`include/roci.h`, checked by `tools/abi-check.sh`).
+
+The language is being built front first. `roci check` reads a sketch and reports every mistake in it; nothing runs a sketch yet:
+
+```
+odin run cli -- check sketch.roci [--tree]
+```
 
 ## Versions
 
