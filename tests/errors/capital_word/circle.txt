@@ -1,0 +1,8 @@
+── rocinante's words are written in lowercase ────────── sketch.roci:1:1
+
+1 │ Circle 100 100 50
+  │ ^^^^^^
+
+`Circle` is written with capitals. Did you mean `circle`?
+
+Did you mean:  circle 100 100 50

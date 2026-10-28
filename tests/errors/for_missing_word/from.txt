@@ -1,0 +1,11 @@
+── This for is missing `from` ────────────────────────── sketch.roci:1:7
+
+1 │ for i 1 to 10 [
+  │       ^
+
+A counting loop reads `for i from 1 to 10`, and a loop over a list reads `for each p in particles`.
+
+For example:
+    for i from 1 to 10 [
+      circle (i * 10) 100 5
+    ]

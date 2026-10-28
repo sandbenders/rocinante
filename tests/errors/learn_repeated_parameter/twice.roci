@@ -1,0 +1,3 @@
+learn move_by dx dx [
+  move dx dx
+]

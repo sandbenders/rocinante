@@ -1,0 +1,8 @@
+── This text never closes ────────────────────────────── sketch.roci:1:7
+
+1 │ title "hello
+  │       ^^^^^^
+
+Text starts and ends with a double quote, and it has to end on the same line.
+
+For example:  title "hello"

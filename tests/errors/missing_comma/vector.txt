@@ -1,0 +1,8 @@
+── Items in curly brackets are separated by commas ──── sketch.roci:1:10
+
+1 │ p = { 10 20 }
+  │          ^^
+
+Between the items of a vector or a record goes a comma.
+
+For example:  { 10, 20 }

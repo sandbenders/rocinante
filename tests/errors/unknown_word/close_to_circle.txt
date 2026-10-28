@@ -1,0 +1,8 @@
+── I don't know the word `circel` ────────────────────── sketch.roci:1:1
+
+1 │ circel 100 100 50
+  │ ^^^^^^
+
+A line starts with a verb, a keyword or a name, and I don't know `circel`. Check the spelling, or teach the word with `learn`.
+
+Did you mean:  circle 100 100 50

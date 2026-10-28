@@ -1,0 +1,11 @@
+── learn needs a name ────────────────────────────────── sketch.roci:1:1
+
+1 │ learn
+  │ ^^^^^
+
+After `learn` comes the new word, then the names of what it takes.
+
+For example:
+    learn star size [
+      repeat 5 [ forward size  right 144 ]
+    ]

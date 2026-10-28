@@ -1,0 +1,11 @@
+── give only works inside a verb you teach ───────────── sketch.roci:1:1
+
+1 │ give 3
+  │ ^^^^
+
+`give` hands a value back from a verb taught with `learn`. Outside one there is nothing to hand it back to.
+
+For example:
+    learn double n [
+      give n * 2
+    ]

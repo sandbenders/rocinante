@@ -1,0 +1,11 @@
+── every needs seconds or frames ─────────────────────── sketch.roci:1:9
+
+1 │ every 2 [
+  │         ^
+
+Say what to count: `every 2 seconds`, or `every 10 frames`.
+
+For example:
+    every 2 seconds [
+      circle 100 100 50
+    ]

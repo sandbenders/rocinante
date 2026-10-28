@@ -1,0 +1,11 @@
+── Teach a new word with learn ───────────────────────── sketch.roci:1:1
+
+1 │ to star size [
+  │ ^^
+
+rocinante does not use `to` for teaching a verb. Teach one with `learn`, then the new word, then what it takes.
+
+For example:
+    learn star size [
+      repeat 5 [ forward size  right 144 ]
+    ]

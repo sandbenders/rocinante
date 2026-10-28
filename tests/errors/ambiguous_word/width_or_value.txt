@@ -1,0 +1,6 @@
+── Warning: `width` could be read two ways ──────────── sketch.roci:1:15
+
+1 │ picture photo width 200
+  │               ^^^^^
+
+Here `width` is read as a connecting word. If you meant the value called `width`, put it in round brackets.

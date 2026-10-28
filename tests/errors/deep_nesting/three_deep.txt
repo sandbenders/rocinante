@@ -1,0 +1,10 @@
+── Hint: Three brackets deep is hard to read ─────────── sketch.roci:1:7
+
+1 │ x = (((1 + 2) * 3) + 4)
+  │       ^
+
+Give the inner value a name on the line above, and use the name here.
+
+For example:
+    x = random width
+    circle x 100 5

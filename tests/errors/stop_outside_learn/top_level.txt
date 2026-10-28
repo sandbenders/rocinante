@@ -1,0 +1,12 @@
+── stop only works inside a verb you teach ───────────── sketch.roci:1:1
+
+1 │ stop
+  │ ^^^^
+
+`stop` ends a verb taught with `learn` early. Outside one there is nothing to end.
+
+For example:
+    learn grow_up n [
+      if n < 0 [ stop ]
+      circle 100 100 n
+    ]

@@ -7,7 +7,7 @@
    Notation: `name = ... ;` defines a rule; `|` chooses; `[ x ]` is optional;
    `{ x }` is zero or more; `( x )` groups; `"x"` is the exact text; `'x'` is a
    word read from the registry or the sketch, described in the comment beside it;
-   `(* ... *)` is a comment. A rule's name is also its entry in the parser's
+   a comment is a star-and-bracket pair like this header. A rule's name is also its entry in the parser's
    GRAMMAR_RULES table, which a test compares with this file.
 
    Lexical rules (written in prose, implemented in roci/lang/lexer.odin):

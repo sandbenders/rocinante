@@ -1,0 +1,8 @@
+── Two values side by side ───────────────────────────── sketch.roci:1:7
+
+1 │ y = x -10
+  │       ^^^
+
+`-10` follows a value with nothing between them. If you meant to subtract, put a space after the minus sign.
+
+Write:  x - 10

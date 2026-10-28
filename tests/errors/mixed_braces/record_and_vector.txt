@@ -1,0 +1,10 @@
+── A vector or a record, not both ───────────────────── sketch.roci:1:13
+
+1 │ q = { x: 1, 2 }
+  │             ^
+
+Curly brackets with names, like x: 1, make a record. Curly brackets without names make a vector. One pair cannot be both.
+
+For example:
+    { x: 1, y: 2 }
+    { 1, 2 }

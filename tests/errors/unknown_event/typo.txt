@@ -1,0 +1,11 @@
+── I don't know the event `kee` ──────────────────────── sketch.roci:1:4
+
+1 │ on kee "space" [
+  │    ^^^
+
+`on` runs a block when something happens. The events I know are key, mouse down, mouse up, touch, resize, move, focus.
+
+For example:
+    on key "space" [
+      ...
+    ]

@@ -1,0 +1,11 @@
+── This closing round bracket has no opening one ────── sketch.roci:1:19
+
+1 │ circle 100 100 50 )
+  │                   ^
+
+Nothing is open here, so there is nothing to close.
+
+For example:
+    repeat 3 [
+      circle 100 100 50
+    ]

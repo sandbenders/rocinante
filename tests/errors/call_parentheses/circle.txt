@@ -1,0 +1,8 @@
+── A verb is not called with round brackets ──────────── sketch.roci:1:1
+
+1 │ circle(100, 100, 50)
+  │ ^^^^^^^^^^^^^^^^^^^^
+
+A verb is followed by its arguments, with no brackets and no commas. Round brackets are for grouping a value that needs working out.
+
+Write:  circle 100 100 50

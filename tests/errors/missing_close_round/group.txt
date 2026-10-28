@@ -1,0 +1,8 @@
+── This round bracket is never closed ────────────────── sketch.roci:1:8
+
+1 │ circle (random width 100 50
+  │        ^
+
+The opening round bracket here has no closing one. Round brackets make a group read as one thing, so each needs its closing bracket.
+
+For example:  circle (random width) 100 50

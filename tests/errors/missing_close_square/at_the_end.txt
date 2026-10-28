@@ -1,0 +1,11 @@
+── This block is never closed ───────────────────────── sketch.roci:1:10
+
+1 │ repeat 3 [
+  │          ^
+
+The opening square bracket here has no closing one. Add the closing square bracket after the last line of the block, line 3.
+
+For example:
+    repeat 3 [
+      circle 100 100 50
+    ]

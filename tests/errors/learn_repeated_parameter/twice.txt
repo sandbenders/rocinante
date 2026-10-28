@@ -1,0 +1,11 @@
+── `dx` appears twice ───────────────────────────────── sketch.roci:1:18
+
+1 │ learn move_by dx dx [
+  │                  ^^
+
+Each thing a verb takes needs its own name.
+
+For example:
+    learn move_by dx dy [
+      move dx dy
+    ]

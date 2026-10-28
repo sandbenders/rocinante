@@ -1,0 +1,8 @@
+── I don't know the escape `\q` ──────────────────────── sketch.roci:1:9
+
+1 │ title "a\qb"
+  │         ^^
+
+Inside text a backslash starts an escape. I know a quote (backslash and a quote), a backslash (two of them), a new line (backslash n) and a tab (backslash t).
+
+For example:  text "she said \"hi\"" at 20 20

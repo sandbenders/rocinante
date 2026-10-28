@@ -1,0 +1,8 @@
+── `1e3` is not a number I can read ──────────────────── sketch.roci:1:8
+
+1 │ circle 1e3 100 50
+  │        ^^^
+
+A number is digits with an optional fraction, like 10 or 0.5. Write the zero before the point, and leave out exponents and underscores.
+
+For example:  circle 0.5 1000 50

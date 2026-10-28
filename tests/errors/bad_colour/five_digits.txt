@@ -1,0 +1,8 @@
+── `#ff880` has the wrong number of digits for a colour ─── sketch.roci:1:6
+
+1 │ fill #ff880
+  │      ^^^^^^
+
+A colour written with a hash has 3, 4, 6 or 8 hex digits: red, green and blue, and transparency last.
+
+For example:  fill #ff8800

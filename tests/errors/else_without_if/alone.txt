@@ -1,0 +1,13 @@
+── An else needs an if before it ─────────────────────── sketch.roci:1:1
+
+1 │ else [
+  │ ^^^^
+
+An `else` continues an `if`: it goes right after the closing square bracket of the if's block.
+
+For example:
+    if mouse.x > 100 [
+      fill red
+    ] else [
+      fill blue
+    ]

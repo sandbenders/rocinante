@@ -1,0 +1,6 @@
+── I don't know the word `xyzzy` ─────────────────────── sketch.roci:1:1
+
+1 │ xyzzy 100 100 50
+  │ ^^^^^
+
+A line starts with a verb, a keyword or a name, and I don't know `xyzzy`. Check the spelling, or teach the word with `learn`.

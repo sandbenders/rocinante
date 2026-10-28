@@ -1,0 +1,10 @@
+── Arguments are not separated by commas ────────────── sketch.roci:1:11
+
+1 │ circle 100, 100, 50
+  │           ^
+
+Write the arguments one after another with spaces. Commas are only for vectors and records.
+
+For example:
+    circle 100 100 50
+    circle { 100, 100 } 50
