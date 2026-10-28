@@ -1,0 +1,8 @@
+── `to` belongs inside the brackets ─────────────────── sketch.roci:2:23
+
+2 │ print (random from 1) to 3
+  │                       ^^
+
+`to` goes with the call in the round brackets before it, so it is written inside them, before the closing round bracket.
+
+Write:  print (random from 1 to 3)

@@ -273,6 +273,26 @@ finish_statement :: proc(p: ^Parser, in_block: bool, mark: int) {
 			return
 		}
 	}
+	// A connecting word right after a closing round bracket belongs inside it: `(item 1) of colors`.
+	if t.kind == .Name && p.at > 0 && p.tokens[p.at - 1].kind == .Close_Round && slice.contains(registry.CONNECTING_WORDS[:], text_of(p, t)) {
+		close := p.tokens[p.at - 1]
+		word := advance(p)
+		end := word.span.end
+		if !call_ends_at(p, cur(p)) && is_argument_start(p, cur(p)) {
+			end = parse_argument(p).span.end
+		}
+		line := position_of(p.src, close.span.start).line
+		if position_of(p.src, end).line == line {
+			start := p.src.line_starts[line - 1]
+			text := line_text(p.src, line)
+			before := strings.trim_right_space(text[:close.span.start - start])
+			moved := text[word.span.start - start:end - start]
+			fixed := strings.concatenate({before, " ", moved, ")", text[end - start:]}, context.temp_allocator)
+			report(p, .Word_Outside_Brackets, word.span, text_of(p, word), strings.trim_space(fixed))
+			skip_line(p)
+			return
+		}
+	}
 	// A word that follows a call and is not one of its words, but is near one (or means one).
 	if call, has := call_of_statement.?; has && t.kind == .Name {
 		word := text_of(p, t)

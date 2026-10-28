@@ -31,6 +31,7 @@ Message_Id :: enum u8 {
 	Hash_Comment,
 	Unknown_Option,
 	Index_Brackets,
+	Word_Outside_Brackets,
 	// Brackets
 	Missing_Close_Square,
 	Missing_Close_Round,
@@ -134,6 +135,9 @@ CATALOGUE := [Message_Id]Entry{
 		"Written with `{c}`:", "{d}"},
 	.Index_Brackets = {.Error, "An item of a list is read with `item`",
 		"Square brackets write lists and blocks, so `{a}` is not how to read an item. Say which item and of what: the first item is number 1.",
+		"Write:", "{b}"},
+	.Word_Outside_Brackets = {.Error, "`{a}` belongs inside the brackets",
+		"`{a}` goes with the call in the round brackets before it, so it is written inside them, before the closing round bracket.",
 		"Write:", "{b}"},
 	.Hash_Comment = {.Error, "A comment starts with two slashes",
 		"A hash is for colours, like `#ff8800`. A comment starts with two slashes and runs to the end of the line.",

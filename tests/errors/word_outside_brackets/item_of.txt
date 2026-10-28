@@ -1,0 +1,8 @@
+── `of` belongs inside the brackets ─────────────────── sketch.roci:2:38
+
+2 │ rect at 0 0 size 10 10 fill (item 1) of colors
+  │                                      ^^
+
+`of` goes with the call in the round brackets before it, so it is written inside them, before the closing round bracket.
+
+Write:  rect at 0 0 size 10 10 fill (item 1 of colors)

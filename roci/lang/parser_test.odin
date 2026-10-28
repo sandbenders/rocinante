@@ -991,3 +991,13 @@ test_square_brackets_after_a_name_say_to_use_item_and_give_the_line :: proc(t: ^
 	// A list written after a name with a space is still a list, not an index.
 	expect_ids(t, "x = 1\nadd 1 to scores", {})
 }
+
+@(test)
+test_a_connecting_word_after_a_closing_bracket_says_to_move_the_bracket :: proc(t: ^testing.T) {
+	expect_ids(t, "rect at 0 0 size 10 10 fill (item 1) of colors", {.Word_Outside_Brackets})
+	d := parse_text("rect at 0 0 size 10 10 fill (item 1) of colors").result.diagnostics[0]
+	testing.expect_value(t, d.args[0], "of")
+	testing.expect_value(t, d.args[1], "rect at 0 0 size 10 10 fill (item 1 of colors)")
+	// Words that are not connecting words keep the plain message.
+	expect_ids(t, "print (1) banana", {.Unexpected_Token})
+}

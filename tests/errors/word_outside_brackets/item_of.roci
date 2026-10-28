@@ -1,0 +1,2 @@
+colors = [ red teal ]
+rect at 0 0 size 10 10 fill (item 1) of colors

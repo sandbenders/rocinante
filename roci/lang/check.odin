@@ -79,7 +79,18 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 	})
 	// A verb checked for several argument types can say the same thing twice.
 	unique := make([dynamic]Diagnostic, 0, len(all), allocator)
+	// A call cut short by a word that belongs inside its brackets is complete once the
+	// parser's fix is made, so what the checker says about the half call on that line is an echo.
+	cut_lines := make([dynamic]int, context.temp_allocator)
+	for d in parsed.diagnostics {
+		if d.id == .Word_Outside_Brackets {
+			append(&cut_lines, position_of(src, d.span.start).line)
+		}
+	}
 	for d in all {
+		if len(cut_lines) > 0 && slice.contains(cut_lines[:], position_of(src, d.span.start).line) && d.id != .Word_Outside_Brackets {
+			continue
+		}
 		duplicate := false
 		for u in unique {
 			duplicate ||= u.id == d.id && u.span == d.span && u.args == d.args
