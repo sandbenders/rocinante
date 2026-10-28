@@ -675,6 +675,9 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 	item := c.types.items[base]
 	label := text_at(c, Span{span.file, span.start, last_span.end})
 	#partial switch item.kind {
+	case .Window:
+		note(c, .Bad_Field, last_span, last, "a window", "A window's properties can be read but not changed this way. `title w \"text\"` renames one.", fix(c, last_span, "width"))
+		return IR_Error_Stmt{}
 	case .Vector:
 		want := swizzle_type(c, item.a, last)
 		if want == T_ERROR {
@@ -882,6 +885,24 @@ check_field :: proc(c: ^Checker, base: ^IR, part: string, span: Span) -> ^IR {
 			return new_ir(c, base.span, T_NUMBER, IR_Swizzle{base = base, parts = part})
 		}
 		note(c, .Bad_Field, span, part, "a colour", "A colour has r, g, b and a.", fix(c, span, "r"))
+		return error_ir(c, base.span)
+	case .Window:
+		for def in registry.WINDOW_PROPERTIES {
+			if def.name == part {
+				return new_ir(c, base.span, type_of_value(c, def), IR_Field{base = base, name = part})
+			}
+		}
+		names := make([dynamic]string, context.temp_allocator)
+		for def in registry.WINDOW_PROPERTIES {
+			append(&names, def.name)
+		}
+		best, found := 3, "width"
+		for name in names {
+			if d := registry.edit_distance(part, name); d < best {
+				best, found = d, name
+			}
+		}
+		note(c, .Bad_Field, span, part, "a window", fmt.tprintf("A window has %s.", names_words(names[:])), fix(c, span, found))
 		return error_ir(c, base.span)
 	case .Record:
 		if field, found := shape_field(c.types, item.a, part); found {

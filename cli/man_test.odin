@@ -72,3 +72,13 @@ test_help_and_a_bad_flag :: proc(t: ^testing.T) {
 	bad, _, _ := man("--oops")
 	testing.expect_value(t, bad, 1)
 }
+
+@(test)
+test_the_page_of_window_lists_what_a_window_is_like :: proc(t: ^testing.T) {
+	_, out, _ := man("window")
+	testing.expect(t, strings.contains(out, "what a window is like"))
+	testing.expect(t, strings.contains(out, "main_window.width"))
+	for def in registry.WINDOW_PROPERTIES {
+		testing.expectf(t, strings.contains(out, def.name), "`%s` is missing", def.name)
+	}
+}

@@ -99,6 +99,30 @@ VALUE_DEFS := [?]Value_Def{
 	{"width", .Number, 0},
 }
 
+// What can be read from a window value (`main_window.width`): the names and what
+// each is, in the order they are listed in messages and the manual. They are
+// read-only; `title w "text"` is how a window is renamed.
+WINDOW_PROPERTIES := [?]Value_Def{
+	{"width", .Number, 0},   // its width in pixels
+	{"height", .Number, 0},  // its height in pixels
+	{"title", .Text, 0},     // the title in its bar
+	{"at", .Vector, 2},      // where it is on the screen
+	{"mouse", .Vector, 2},   // where the mouse is in it
+	{"fullscreen", .Boolean, 0},
+}
+
+// What a property gives, in words: "a number", "a vector of 2 numbers".
+property_words :: proc(def: Value_Def) -> string {
+	switch def.kind {
+	case .Number:  return "a number"
+	case .Text:    return "text"
+	case .Boolean: return "true or false"
+	case .Vector:  return "a vector of 2 numbers" if def.size == 2 else "a vector"
+	case .None, .List, .Block, .Window, .Name, .Gradient, .Any, .Expr_Block, .Colour: return "a value"
+	}
+	return "a value"
+}
+
 // `width`, `height` and `size` are values and connecting words together, so they
 // stay free to use as parameter names.
 FREE_AS_PARAMETERS := [?]string{"height", "size", "width"}

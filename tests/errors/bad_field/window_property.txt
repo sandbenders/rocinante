@@ -1,0 +1,8 @@
+── `widht` is not a part of a window ─────────────────── sketch.roci:2:7
+
+2 │ x = w.widht
+  │       ^^^^^
+
+A window has width, height, title, at, mouse and fullscreen.
+
+Write:  x = w.width

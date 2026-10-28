@@ -1008,3 +1008,18 @@ test_ctrl_r_and_cmd_r_are_logged_as_a_restart :: proc(t: ^testing.T) {
 	step({platform.Key_Changed{window = platform.Window_Id(w), scancode = .R, down = true}})
 	testing.expect_value(t, happened()[0].kind, Happening.Key_Down)
 }
+
+@(test)
+test_a_window_can_be_asked_what_it_is_like :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(320, 200, [2]int{40, 60})
+	title(w, "hello")
+	testing.expect_value(t, window_size(w), [2]f64{320, 200})
+	testing.expect_value(t, window_title(w), "hello")
+	testing.expect_value(t, window_position(w), [2]f64{40, 60})
+	testing.expect_value(t, window_mouse(w), [2]f64{0, 0})
+	testing.expect(t, !window_is_fullscreen(w))
+	testing.expect_value(t, window_size(Window(99)), [2]f64{0, 0})
+	testing.expect_value(t, window_title(Window(99)), "")
+}

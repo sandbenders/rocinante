@@ -25,6 +25,9 @@ window :: proc(width, height: int, at: Maybe([2]int) = nil) -> Window {
 				platform.set_position(w.handle, p.x, p.y)
 			}
 		}
+		if p, has := at.?; has {
+			w.position = p
+		}
 		return w.id
 	}
 	if len(the.reuse) > 0 {
@@ -40,6 +43,9 @@ window :: proc(width, height: int, at: Maybe([2]int) = nil) -> Window {
 			if p, has := at.?; has {
 				platform.set_position(w.handle, p.x, p.y)
 			}
+		}
+		if p, has := at.?; has {
+			w.position = p
 		}
 		the.newest = w
 		return w.id
@@ -195,4 +201,50 @@ end_restart :: proc() {
 		close_window(w)
 	}
 	clear(&the.reuse)
+}
+
+// ---- what a window is like ----
+
+// A window's size in logical pixels, as `main_window.width` and `.height` read it.
+window_size :: proc(w: Window) -> [2]f64 {
+	if win := win_for(w); win != nil {
+		return {f64(win.width), f64(win.height)}
+	}
+	return {}
+}
+
+window_title :: proc(w: Window) -> string {
+	if win := win_for(w); win != nil {
+		return win.title
+	}
+	return ""
+}
+
+// Where the window is on the screen (`.at`): asked of the system when there is
+// one, else where the program put it.
+window_position :: proc(w: Window) -> [2]f64 {
+	win := win_for(w)
+	if win == nil {
+		return {}
+	}
+	if win.handle != nil {
+		x, y := platform.position(win.handle)
+		return {f64(x), f64(y)}
+	}
+	return {f64(win.position.x), f64(win.position.y)}
+}
+
+// Where the mouse is in that window (`.mouse`), whichever window the code runs in.
+window_mouse :: proc(w: Window) -> [2]f64 {
+	if win := win_for(w); win != nil {
+		return win.mouse
+	}
+	return {}
+}
+
+window_is_fullscreen :: proc(w: Window) -> bool {
+	if win := win_for(w); win != nil {
+		return win.fullscreen
+	}
+	return false
 }

@@ -206,6 +206,17 @@ component :: proc(v: Vec, letter: u8) -> f64 {
 
 @(private)
 read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
+	if w, is_window := base.(roci.Window); is_window {
+		switch name {
+		case "width":      return roci.window_size(w).x
+		case "height":     return roci.window_size(w).y
+		case "title":      return roci.window_title(w)
+		case "at":         return vec2(roci.window_position(w))
+		case "mouse":      return vec2(roci.window_mouse(w))
+		case "fullscreen": return roci.window_is_fullscreen(w)
+		}
+		return nil
+	}
 	if r := as_record(base); r != nil {
 		if at := field_index(it, r.shape, name); at >= 0 {
 			return r.fields[at]

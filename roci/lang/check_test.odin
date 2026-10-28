@@ -960,3 +960,26 @@ test_random_given_a_list_suggests_pick_built_from_the_line :: proc(t: ^testing.T
 	}
 	testing.expect(t, found)
 }
+
+@(test)
+test_a_window_has_properties_that_can_be_read :: proc(t: ^testing.T) {
+	expect_types(t, "w = window size 800 600\nsize_now = w.width + w.height\nname = w.title\nplace = w.at\nm = w.mouse\nfull = w.fullscreen", "w: a window\nsize_now: a number\nname: text\nplace: a vector of 2 numbers\nm: a vector of 2 numbers\nfull: true or false")
+	expect_errors(t, "w = window size 800 600\ncircle at w.mouse radius w.width", {})
+}
+
+@(test)
+test_a_property_a_window_does_not_have_names_the_ones_it_has :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window size 800 600\nx = w.widht", {.Bad_Field})
+	parsed := check_text("w = window size 800 600\nx = w.widht\n")
+	for d in parsed.checked.diagnostics {
+		if d.id == .Bad_Field {
+			testing.expect(t, strings.contains(d.args[2], "width, height, title, at, mouse and fullscreen"))
+			testing.expect_value(t, d.args[3], "x = w.width")
+		}
+	}
+}
+
+@(test)
+test_a_windows_properties_cannot_be_assigned :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window size 800 600\nw.width = 100", {.Bad_Field})
+}

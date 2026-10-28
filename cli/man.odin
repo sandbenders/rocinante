@@ -51,6 +51,13 @@ man_verb_text :: proc(verb: ^registry.Verb) -> string {
 			fmt.sbprintf(&b, "      %s %s\n", term.out("gives", .Dim), entry.gives)
 		}
 	}
+	if page.name == "window" {
+		fmt.sbprintf(&b, "\n  %s\n", term.out("what a window is like", .Bold_Cyan))
+		fmt.sbprintf(&b, "    read it from the window you made, as in main_window.width:\n")
+		for def in registry.WINDOW_PROPERTIES {
+			fmt.sbprintf(&b, "    %s %s\n", term.out(term.pad(def.name, 12), .Green), registry.property_words(def))
+		}
+	}
 	return strings.to_string(b)
 }
 

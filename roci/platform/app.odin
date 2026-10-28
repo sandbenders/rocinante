@@ -186,6 +186,15 @@ set_position :: proc(window: ^Window, x, y: int) {
 	sdl.SetWindowPosition(window.handle, i32(x), i32(y))
 }
 
+// Where the window is on the screen, in logical pixels from the top left.
+position :: proc(window: ^Window) -> (x, y: int) {
+	px, py: i32
+	if sdl.GetWindowPosition(window.handle, &px, &py) {
+		return int(px), int(py)
+	}
+	return 0, 0
+}
+
 set_title :: proc(window: ^Window, title: string) {
 	sdl.SetWindowTitle(window.handle, strings.clone_to_cstring(title, context.temp_allocator))
 }

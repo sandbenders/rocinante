@@ -45,6 +45,7 @@ Win :: struct {
 	mouse:        [2]f64,           // where the mouse is in this window, and where it was a frame ago
 	previous:     [2]f64,
 	fullscreen:   bool,
+	position:     [2]int,           // where it was asked to be (a headless window has no screen)
 }
 
 Sketch :: struct {
@@ -179,6 +180,9 @@ make_win :: proc(width, height: int, position: Maybe([2]int), title: string) -> 
 	w.width, w.height = width if width > 0 else DEFAULT_WIDTH, height if height > 0 else DEFAULT_HEIGHT
 	w.title = strings.clone(title)
 	w.alive = true
+	if p, has := position.?; has {
+		w.position = p
+	}
 	if !the.headless {
 		handle, ok := platform.create_window(&the.app, {title = title, width = w.width, height = w.height, position = position, resizable = true})
 		if !ok {

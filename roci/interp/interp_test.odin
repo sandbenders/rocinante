@@ -944,3 +944,30 @@ test_a_sketch_opened_with_errors_waits_and_runs_when_the_file_is_fixed :: proc(t
 	testing.expect_value(t, title, "")
 	testing.expect(t, len(roci.open_windows()) >= 1)
 }
+
+// ---- window properties ----
+
+@(test)
+test_a_window_can_be_asked_for_its_size_title_position_and_mouse :: proc(t: ^testing.T) {
+	text := "a = window size 320 200 at 40 60 title \"first\"\nb = window size 100 50 title \"second\"\nprint a.width\nprint a.height\nprint a.title\nprint a.at\nprint b.width\nprint a.fullscreen\nprint a.mouse"
+	expect_printed(t, text, "320\n200\nfirst\n{ 40, 60 }\n100\nfalse\n{ 0, 0 }")
+}
+
+@(test)
+test_one_windows_code_can_read_another_windows_mouse_and_size :: proc(t: ^testing.T) {
+	text := "a = window size 300 200\nb = window size 500 400\ndraw a [\n  print b.mouse\n  print b.width\n]"
+	p := run_text(t, text)
+	defer finish(p)
+	windows := roci.open_windows()
+	roci.step({platform.Mouse_Moved{window = platform.Window_Id(windows[1]), x = 12, y = 34}})
+	testing.expect_value(t, printed(p), "{ 12, 34 }\n500")
+}
+
+@(test)
+test_a_windows_size_follows_it_when_it_is_resized :: proc(t: ^testing.T) {
+	text := "w = window size 300 200\ndraw w [ print w.width ]"
+	p := run_text(t, text)
+	defer finish(p)
+	roci.step({platform.Resized{window = platform.Window_Id(first_window()), width = 640, height = 480}})
+	testing.expect_value(t, printed(p), "640")
+}

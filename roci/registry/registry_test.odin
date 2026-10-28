@@ -608,3 +608,12 @@ test_statements_have_forms_and_an_example :: proc(t: ^testing.T) {
 	_, missing := find_statement("circle")
 	testing.expect(t, !missing)
 }
+
+@(test)
+test_the_window_properties_are_listed_with_their_kinds :: proc(t: ^testing.T) {
+	testing.expect_value(t, len(WINDOW_PROPERTIES), 6)
+	for def in WINDOW_PROPERTIES {
+		testing.expectf(t, def.name != "" && def.kind != .None, "`%s` has no kind", def.name)
+	}
+	testing.expect_value(t, WINDOW_PROPERTIES[3].size, 2)
+}

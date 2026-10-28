@@ -1,0 +1,8 @@
+── `title` is not a part of a window ─────────────────── sketch.roci:2:3
+
+2 │ w.title = "new"
+  │   ^^^^^
+
+A window's properties can be read but not changed this way. `title w "text"` renames one.
+
+Write:  w.width = "new"
