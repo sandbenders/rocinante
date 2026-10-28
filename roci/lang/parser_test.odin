@@ -970,3 +970,12 @@ test_a_word_that_is_nothing_like_one_of_the_calls_words_stays_a_plain_unexpected
 	// A word from an earlier line's call is not offered for a later statement.
 	expect_ids(t, "circle at 1 1 radius 5\nx = 1 color", {.Unexpected_Token})
 }
+
+@(test)
+test_arithmetic_straight_after_a_complete_call_says_it_needs_brackets :: proc(t: ^testing.T) {
+	expect_ids(t, "print 600/0.4", {.Needs_Brackets})
+	expect_ids(t, "print 1 + 2 * 3", {.Needs_Brackets})
+	expect_ids(t, "rect at 0 0 size 800 600/0.4 fill blue", {.Needs_Brackets})
+	// Arithmetic in a place that takes an expression is fine as it was.
+	expect_ids(t, "x = 600/0.4\nif x > 1 + 2 [ print (x - 1) ]", {})
+}

@@ -270,6 +270,9 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			break
 		}
 		append(&args, parse_argument(p, expect_block = param_is_block(info, len(args)), expr_block = param_is_expr_block(info, len(args))))
+		if !nested {
+			p.last_value = args[len(args) - 1].span
+		}
 	}
 	for !nested {
 		t := cur(p)
@@ -318,6 +321,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 				append(&p.wraps, value.span)
 			}
 			append(&option_args, value)
+			p.last_value = value.span
 		}
 		append(&options, Option_Use{word = word, span = Span{t.span.file, t.span.start, p.last_end}, args = option_args[:]})
 	}

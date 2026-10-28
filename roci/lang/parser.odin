@@ -97,6 +97,7 @@ Parser :: struct {
 	nest_depth:  int,
 	deep_shown:  bool,
 	last_closed: Maybe(Closed_Block),
+	last_value:  Maybe(Span), // the last argument of the last call, for wrapping arithmetic that follows it
 	last_call:   Maybe(Call_Info), // the call that ended the statement just parsed, to say what its words are
 }
 
@@ -242,7 +243,8 @@ skip_line :: proc(p: ^Parser) {
 @(private)
 finish_statement :: proc(p: ^Parser, in_block: bool, mark: int) {
 	call_of_statement := p.last_call
-	p.last_call = nil
+	value_of_statement := p.last_value
+	p.last_call, p.last_value = nil, nil
 	t := p.tokens[p.at]
 	#partial switch t.kind {
 	case .Newline, .End_Of_File, .Close_Square, .Close_Round, .Close_Curly:
@@ -255,6 +257,21 @@ finish_statement :: proc(p: ^Parser, in_block: bool, mark: int) {
 		// Either the statement already said what is wrong, or the lexer did.
 		skip_line(p)
 		return
+	}
+	// Arithmetic after the last value of a call (`print 600 / 0.4`) belongs in round brackets.
+	if _, has := call_of_statement.?; has && is_binary_operator(t.kind) {
+		if last, found := value_of_statement.?; found {
+			mark_wraps := len(p.wraps)
+			end := last
+			for is_binary_operator(cur(p).kind) {
+				advance(p)
+				end = parse_argument(p).span
+			}
+			append(&p.wraps, span_join(last, end))
+			flush_wraps(p, mark_wraps)
+			skip_line(p)
+			return
+		}
 	}
 	// A word that follows a call and is not one of its words, but is near one (or means one).
 	if call, has := call_of_statement.?; has && t.kind == .Name {

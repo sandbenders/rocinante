@@ -1,0 +1,8 @@
+── This value needs brackets ────────────────────────── sketch.roci:1:22
+
+1 │ rect at 0 0 size 800 600/0.4 fill blue
+  │                      ^^^^^^^
+
+`600/0.4` works out a value, so when it sits inside another call, wrap it in round brackets so it reads as one thing. Or let `roci fmt` add them for you.
+
+Write:  rect at 0 0 size 800 (600/0.4) fill blue

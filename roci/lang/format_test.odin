@@ -218,3 +218,10 @@ test_every_example_of_a_statement_in_the_manual_reads_without_a_syntax_error :: 
 		}
 	}
 }
+
+@(test)
+test_arithmetic_after_the_last_value_of_a_call_is_put_in_brackets_and_spaced :: proc(t: ^testing.T) {
+	expect_formatted(t, "rect at 0 0 size 800 600/0.4 fill blue\n", "rect at 0 0 size 800 (600 / 0.4) fill blue\n")
+	expect_formatted(t, "print 600/0.4\n", "print (600 / 0.4)\n")
+	expect_formatted(t, "print 600 / 0.4 + 1\n", "print (600 / 0.4 + 1)\n")
+}
