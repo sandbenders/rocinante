@@ -299,7 +299,7 @@ HOT_RELOAD_HINT :: proc(file: string) -> string {
 	reload_key := "Cmd+R" when ODIN_OS == .Darwin else "Ctrl+R"
 	quit_key := "Cmd+Q" when ODIN_OS == .Darwin else "Ctrl+Q"
 	return fmt.tprintf(
-		"running %s. Save the source file and the sketch reloads, keeping its values where it can. %s runs it again from the first line, and %s quits. \nIt also auto recovers from errors.",
+		"running %s. Save the source file and the sketch reloads, keeping its values where it can. %s runs it again from the first line, and %s quits.\nIt also auto recovers from errors.",
 		file,
 		reload_key,
 		quit_key,
