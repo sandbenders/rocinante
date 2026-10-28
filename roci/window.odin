@@ -6,6 +6,7 @@
 package roci
 
 import "core:strings"
+import "gfx"
 import "platform"
 
 // Opens a window of the given logical size, optionally at a position, and gives
@@ -52,7 +53,19 @@ title_text :: proc(text: string) {
 }
 
 // Sets the current window's title.
-title :: proc{title_text}
+// Sets the title of a window by name, wherever it is called from.
+title_window :: proc(w: Window, text: string) {
+	if win := win_for(w); win != nil {
+		delete(win.title)
+		win.title = strings.clone(text)
+		if win.handle != nil {
+			platform.set_title(win.handle, text)
+		}
+	}
+}
+
+// Sets a window's title: the current one, or the one named first.
+title :: proc{title_text, title_window}
 
 // Fills the screen with the current window, or puts it back.
 fullscreen :: proc(on := true) {
@@ -102,4 +115,28 @@ width :: proc() -> f64 {
 // Height of the current window in logical pixels (`height`).
 height :: proc() -> f64 {
 	return f64(current_win().height)
+}
+
+// What a window has recorded for its frame, whole commands, for tests and tools.
+recorded :: proc(w: Window, allocator := context.temp_allocator) -> []gfx.Command {
+	win := win_for(w)
+	if win == nil {
+		return nil
+	}
+	out := make([]gfx.Command, len(win.list.commands), allocator)
+	for i in 0 ..< len(out) {
+		out[i] = gfx.command_at(&win.list, i)
+	}
+	return out
+}
+
+// The windows that are open, in the order they were made.
+open_windows :: proc(allocator := context.temp_allocator) -> []Window {
+	out := make([dynamic]Window, 0, len(the.windows), allocator)
+	for w in the.windows {
+		if w.alive {
+			append(&out, w.id)
+		}
+	}
+	return out[:]
 }

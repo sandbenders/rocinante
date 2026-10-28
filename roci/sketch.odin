@@ -76,6 +76,9 @@ Sketch :: struct {
 	keys:         [512]bool, // by SDL scancode
 	buttons:      bit_set[platform.Mouse_Button],
 	wheel:        [2]f64,   // scrolled during the last frame
+	shot_app:     platform.App, // the graphics a headless sketch starts for its first picture
+	shot_renderer: gfx.Renderer,
+	shot_ready:   bool,
 }
 
 @(thread_local)
@@ -134,6 +137,10 @@ shutdown :: proc() {
 	if the.started && !the.headless {
 		gfx.renderer_destroy(&the.renderer)
 		platform.shutdown(&the.app)
+	}
+	if the.shot_ready {
+		gfx.renderer_destroy(&the.shot_renderer)
+		platform.shutdown(&the.shot_app)
 	}
 	delete(the.error)
 	the = {}

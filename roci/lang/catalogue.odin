@@ -92,6 +92,11 @@ Message_Id :: enum u8 {
 	Shared_Change,
 	Name_Hides,
 	Labels_Needed,
+	// What goes wrong while a sketch runs (found by the interpreter, never by the checker)
+	Index_Out_Of_Range,
+	Division_By_Zero,
+	Recursion_Too_Deep,
+	Runs_Too_Long,
 }
 
 Entry :: struct {
@@ -304,6 +309,18 @@ CATALOGUE := [Message_Id]Entry{
 	.Changed_While_Walking = {.Error, "`{a}` changes while the loop walks it",
 		"A `for each` is going through `{a}` right now, and adding to it, taking from it or giving it a new value in the middle makes the walk lose its place. Walk a copy, then change the list.",
 		"Write:", "{d}"},
+	.Index_Out_Of_Range = {.Error, "There is no item {c} in `{a}`",
+		"`{a}` has {b} in it, so item {c} is not there. Items are numbered from 1, and the sketch carries on with an empty value. Check the count first.",
+		"Check first:", "{d}"},
+	.Division_By_Zero = {.Error, "This divides by zero",
+		"The number you divide by is 0 here, and nothing can be divided by 0. The sketch carries on with 0 as the answer. Check the number first.",
+		"Check first:", "{d}"},
+	.Recursion_Too_Deep = {.Error, "`{a}` calls itself too many times",
+		"`{a}` went {b} calls deep without finishing, so it was stopped. A verb that calls itself needs a way to stop, a test that ends the calls.",
+		"Add a way out:", "{d}"},
+	.Runs_Too_Long = {.Error, "This took too long",
+		"The sketch spent more than {b} seconds on one frame, so it was stopped and the last good frame stays on screen. A loop that never ends, or one that is far too big, does this.",
+		"Make it smaller:", "{d}"},
 }
 
 // Replaces `{a}`, `{b}` and `{c}` in a template. Anything else, braces included,
@@ -342,4 +359,15 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 		}
 	}
 	return false
+}
+
+// A message about something that happens while a sketch runs. The checker never
+// gives one, so the tests of the checker's messages leave them to the interpreter.
+is_runtime :: proc(id: Message_Id) -> bool {
+	#partial switch id {
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long:
+		return true
+	case:
+		return false
+	}
 }

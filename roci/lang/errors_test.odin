@@ -37,6 +37,9 @@ find_cases :: proc() -> [dynamic]Case {
 		if fi.type == .Directory || !strings.has_suffix(fi.name, ".roci") {
 			continue
 		}
+		if strings.contains(fi.fullpath, "/runtime/") {
+			continue
+		}
 		path := strings.clone(strings.trim_suffix(fi.fullpath, ".roci"), context.temp_allocator) // the walker reuses its buffer
 		parts := strings.split(path, "/", context.temp_allocator)
 		if len(parts) < 2 {
@@ -54,6 +57,9 @@ test_every_message_has_a_sketch_that_triggers_it_and_the_text_matches :: proc(t:
 	update := os.get_env("ROCI_UPDATE_ERRORS", context.temp_allocator) != ""
 
 	for id in Message_Id {
+		if is_runtime(id) {
+			continue // the interpreter's tests run these
+		}
 		found := 0
 		for c in cases {
 			if c.id_folder == folder_of(id) {
