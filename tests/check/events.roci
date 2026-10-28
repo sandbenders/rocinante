@@ -1,4 +1,4 @@
-# Blocks that run later may use names given further down the sketch.
+// Blocks that run later may use names given further down the sketch.
 draw [
   background 0
   fill tint

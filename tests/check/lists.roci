@@ -1,4 +1,4 @@
-# Every list verb, and records that gain a field where they are changed.
+// Every list verb, and records that gain a field where they are changed.
 boids = []
 repeat 20 [ add { pos: anywhere, speed: random 5 } to boids ]
 for each b in boids [ b.tired = false ]

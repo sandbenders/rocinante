@@ -48,6 +48,7 @@ Lex_Problem_Kind :: enum u8 {
 	Bad_Escape,
 	Bad_Number,
 	Bad_Colour,
+	Hash_Comment, // a hash that is not a colour, where a comment was meant
 }
 
 Lex_Problem :: struct {
@@ -55,7 +56,7 @@ Lex_Problem :: struct {
 	span: Span,
 }
 
-// A `#` comment, kept apart from the tokens so `roci fmt` can put it back.
+// A `//` comment, kept apart from the tokens so `roci fmt` can put it back.
 Comment :: struct {
 	span:     Span, // from the `#` to the end of the line
 	own_line: bool, // nothing but spaces before it on its line

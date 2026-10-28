@@ -78,7 +78,7 @@ test_the_smallest_program_parses_to_one_call :: proc(t: ^testing.T) {
 
 @(test)
 test_an_empty_file_and_a_file_of_comments_are_empty_programs :: proc(t: ^testing.T) {
-	for text in ([]string{"", "\n\n", "# nothing here\n# or here"}) {
+	for text in ([]string{"", "\n\n", "// nothing here\n// or here"}) {
 		got := parse_text(text)
 		testing.expect_value(t, len(got.result.program.stmts), 0)
 		testing.expect_value(t, len(got.result.diagnostics), 0)
@@ -499,7 +499,7 @@ test_every_on_draw_and_use :: proc(t: ^testing.T) {
 
 @(test)
 test_the_whole_core_syntax_sketch_of_section_5_4_parses_cleanly :: proc(t: ^testing.T) {
-	text := `# comments start with a hash
+	text := `// comments start with two slashes
 x = 10
 name = "Ada"
 SPEED = 4

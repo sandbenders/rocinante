@@ -3,6 +3,6 @@
 1 │ #add this later
   │ ^^^^
 
-`#add` is read as a colour, but a line has to start with a word. If you meant a comment, leave a space after the hash.
+`#add` is read as a colour, but a line has to start with a word. If you meant a comment, start it with two slashes, not a hash.
 
-Did you mean:  # add this later
+Did you mean:  // add this later

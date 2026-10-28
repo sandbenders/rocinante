@@ -162,7 +162,7 @@ Playing and recording video uses no FFmpeg (its licensing conflicts with §3 unl
 - One statement per line. No terminators. (Decided 2026-10-24: inside a `[ ]` block that fits on one line, statements may be separated by two spaces, as in `[ step p  circle p.pos 3 ]`; `roci fmt` keeps a block on one line only when it is short and otherwise puts one statement per line.)
 - **Labels for geometry, no commas between arguments** (decided 2026-10-28, after comparing how other languages write calls: Ruby, Nim, Elixir and Perl use commas because their arguments are free expressions and pay for it with spacing and precedence traps; Logo, NetLogo, Rebol and Clojure style use none; no study compares the two for novices, and the nearest evidence, Kotlin and Swift guidance, is to label same-typed numbers). A call never takes commas between its arguments, and `circle (100,100,50)` and `rgb (20,24,70)` are not forms: round brackets stay around a whole call, `(rgb 20 24 70)`, and a stray comma is a teaching error. **Geometry is written with labels**, so a number is never mistaken for another and the line reads as what it draws: `circle at 100 100 radius 50`, `circle at mouse radius 20`, `ellipse at x y size w h`, `rect at x y size w h`, `square at x y size s`, `point at x y`, `line from x y to x y`, `arc at x y size w h from a to b`; `triangle` and `quad` take their corners as vectors, `triangle { 0, 0 } { 50, 0 } { 25, 40 }`. `at`, `from` and `to` take two numbers or one vector. The labelled words may come in any order, and `roci fmt` writes them in the order above, so there is one form on disk; a positional geometry call is a teaching error that shows the labelled line. Pairs are vectors (`{ 320, 220 }`) and `rgb`, `move`, `turn`, `mix`, `noise` and the other non-geometry verbs stay positional. The registry's shapes keep the ordered inputs the C API and the typed IR use; a table of label forms in `roci/registry` says how the language writes them (`radius` and `title` joined the connecting words). A record spread over lines needs no commas: a field that starts a line with `name:` is separated from the one above by the line break (commas stay legal on one line), and `roci fmt` writes one record per line.
 - **Comments, colours and spacing** (decided 2026-10-28; the grammar is `docs/grammar.ebnf`).
-  - **`#` is a comment or a colour.** A `#` followed by exactly 3, 4, 6 or 8 hex digits and then a space, a bracket, a comma or the end of the line is a colour (`#ff8800`); any other `#` starts a comment that runs to the end of the line. A hash and 5 or 7 hex digits is a colour with an error, since it is plainly a typo. A colour at the start of a statement (`#add`) gets a hint to write `# add`, and `roci fmt` always writes comments as `# text`.
+  - **`//` is a comment, `#` is a colour** (decided 2026-10-28; this replaced `#` for both, because a hash that had to be told apart from a colour by what followed it made every tool repeat that rule, and an editor could not colour `x = #a9b8f2` and `x = # a9b8f2` correctly). `//` starts a comment that runs to the end of the line, on its own line or after code; `/` is still division and there is no integer division, so the two never meet. A `#` followed by exactly 3, 4, 6 or 8 hex digits and then a space, a bracket, a comma or the end of the line is a colour (`#ff8800`); any other number of hex digits is a colour with an error that shows the nearest right length. A `#` that is not a colour is a teaching error that shows the line with `//` instead, and a colour at the start of a statement (`#add`) gets the same fix. `roci fmt` always writes comments as `// text`.
   - **Two spaces end a call inside a one-line block.** While the parser collects a call's arguments inside `[ ]`, a token with two or more spaces before it on the same line ends the call, so `[ step p  q = 1 ]` is two statements. Spacing means nothing anywhere else (indentation is free, below).
   - **Numbers** are digits with an optional fraction: `.5`, `5.`, `1e3` and `1_000` are teaching errors. **Text** takes the escapes `\"`, `\\`, `\n` and `\t`. **Names** are letters of any script, digits and underscores, starting with a letter.
   - **`every`** counts in `seconds` or `frames` (`second` and `frame` for 1): `every 2 seconds [ ... ]`, `every 10 frames [ ... ]`.
@@ -214,12 +214,12 @@ Deliberate differences from Odin:
 - **A light functional layer for lists** (decided 2026-10-24), as verbs that take a block. Inside the block, `it` is the current item. Each gives a new list or value and leaves the original alone:
 
 ```
-alive  = keep particles [ it.life > 0 ]       # the items that pass
-calm   = skip particles [ it.speed > 5 ]      # the items that don't
-sizes  = collect particles [ it.size * 2 ]    # one new value per item
-total  = combine scores from 0 [ result + it ]   # fold: `result` is the running value
-big    = find particles [ it.size > 20 ]      # the first match, or empty
-order  = sort particles by [ it.size ]        # sorted by what the block gives
+alive  = keep particles [ it.life > 0 ]       // the items that pass
+calm   = skip particles [ it.speed > 5 ]      // the items that don't
+sizes  = collect particles [ it.size * 2 ]    // one new value per item
+total  = combine scores from 0 [ result + it ]   // fold: `result` is the running value
+big    = find particles [ it.size > 20 ]      // the first match, or empty
+order  = sort particles by [ it.size ]        // sorted by what the block gives
 ```
 
   The block of these verbs holds **one expression** (decided 2026-10-28), not statements: `[ it.life > 0 ]`. It sits where the verb takes it, or after a connecting word (`combine scores from 0 [ result + it ]`, `sort particles by [ it.size ]`). `keep`, `skip` and `find` need a true-or-false expression, `collect` gives a list of what it gives, `sort` needs a number or text, and `combine` needs it to match the starting value.
@@ -242,22 +242,22 @@ order  = sort particles by [ it.size ]        # sorted by what the block gives
 ### 5.4 Core syntax (draft)
 
 ```
-# comments start with a hash
+// comments start with two slashes
 
-x = 10                      # variables: just assign
+x = 10                      // variables: just assign
 name = "Ada"
-SPEED = 4                   # all capitals: a constant, can never change
-COLOURS = [ red orange teal ]   # constant list: readable, never modified
-points = [ { 10, 20 } { 30, 40 } ]   # lists
-p = { x: 10, y: 20 }        # records; access with p.x
+SPEED = 4                   // all capitals: a constant, can never change
+COLOURS = [ red orange teal ]   // constant list: readable, never modified
+points = [ { 10, 20 } { 30, 40 } ]   // lists
+p = { x: 10, y: 20 }        // records; access with p.x
 
-learn star size [           # teach a new verb, Logo style (§5.11)
+learn star size [           // teach a new verb, Logo style (§5.11)
   repeat 5 [ forward size  right 144 ]
 ]
 
-learn double n [ give n * 2 ]   # `give` hands back a value
+learn double n [ give n * 2 ]   // `give` hands back a value
 
-star 100                    # use it like any built-in
+star 100                    // use it like any built-in
 y = double 21
 
 if mouse.x > width / 2 [ fill red ] else [ fill blue ]
@@ -266,21 +266,21 @@ repeat 10 [ circle at (random width) (random height) radius 5 ]
 for i from 1 to 10 [ line from 0 (i * 10) to width (i * 10) ]
 for each p in points [ circle at p radius 10 ]
 
-draw [ ... ]                # runs every frame (default window)
-draw w [ ... ]              # runs every frame for window w
+draw [ ... ]                // runs every frame (default window)
+draw w [ ... ]              // runs every frame for window w
 on key "space" [ ... ]
-on w key "space" [ ... ]     # only in window w, as with receive
+on w key "space" [ ... ]     // only in window w, as with receive
 on mouse down [ ... ]
 on touch [ ... ]
 on w receive msg [ ... ]
 every 2 seconds [ ... ]
 
-v = { 3, 4 }                # vectors: braces and commas, no names
-u = v * 2 + { 1, 1 }        # arithmetic and swizzles
+v = { 3, 4 }                // vectors: braces and commas, no names
+u = v * 2 + { 1, 1 }        // arithmetic and swizzles
 circle at v.xy radius 10
-circle at anywhere radius 5 # a random point in the window
-r = random from 1 to 3      # a random number in a range
-c = pick COLOURS            # a random item from a list
+circle at anywhere radius 5 // a random point in the window
+r = random from 1 to 3      // a random number in a range
+c = pick COLOURS            // a random item from a list
 ```
 
 A complete particle sketch in this style (lists of records, verbs, no objects):
@@ -351,16 +351,16 @@ Widgets live in `ui [ ]` blocks (default window) or `ui w [ ]` (window `w`). Eac
 
 ```
 ui [
-  size   = slider "size" 10 200          # number in a range
-  speed  = knob "speed" 0 1              # rotary, for audio-visual work
-  trails = toggle "trails"               # true / false
-  name   = textbox "title"               # one line of text
-  notes  = textbox "notes" lines 4       # multi-line
+  size   = slider "size" 10 200          // number in a range
+  speed  = knob "speed" 0 1              // rotary, for audio-visual work
+  trails = toggle "trails"               // true / false
+  name   = textbox "title"               // one line of text
+  notes  = textbox "notes" lines 4       // multi-line
   shape  = dropdown "shape" [ "circle" "square" "star" ]
-  mode   = choice "mode" [ "draw" "erase" ]   # radio buttons
+  mode   = choice "mode" [ "draw" "erase" ]   // radio buttons
   tint   = colorpicker "tint"
-  pos    = xypad "position"              # 2D pad, returns a vector
-  count  = number "count" 1 1000         # numeric field with steppers
+  pos    = xypad "position"              // 2D pad, returns a vector
+  count  = number "count" 1 1000         // numeric field with steppers
   if button "clear" [ particles = [] ]
   label ("fps: " + fps)
   progress loaded
@@ -377,8 +377,8 @@ Layout and grouping:
 
 ```
 ui [
-  panel "controls" [                     # titled, collapsible group
-    row [ button "play"  button "stop" ]  # side by side
+  panel "controls" [                     // titled, collapsible group
+    row [ button "play"  button "stop" ]  // side by side
     size = slider "size" 10 200
   ]
   tabs [
@@ -386,7 +386,7 @@ ui [
     tab "colour" [ ... ]
   ]
   menu "file" [ if item "save" [ save "frame.png" ] ]
-  tip "drag to move"                     # tooltip for the previous widget
+  tip "drag to move"                     // tooltip for the previous widget
 ]
 ```
 
@@ -461,19 +461,19 @@ Words:
 **Gradients** (decided 2026-10-24). Wherever a colour goes in `fill`, `stroke` or `background`, a list of colours makes a gradient. The colours are spaced evenly unless `stops` says otherwise.
 
 ```
-fill [ red orange teal ]                      # linear, left to right
-fill [ red orange teal ] angle 90             # linear, top to bottom
-fill [ red orange teal ] stops [ 0 20 100 ]   # uneven steps, in percent along the way
-fill [ white black ] as radial                # from the centre outwards
-fill [ white black ] as radial at 30 30       # centre at 30% across, 30% down the shape
-fill [ red yellow red ] as conic angle 45     # sweeping round the centre
-fill [ red blue ] in rgb                      # mixed in RGB, like Processing
+fill [ red orange teal ]                      // linear, left to right
+fill [ red orange teal ] angle 90             // linear, top to bottom
+fill [ red orange teal ] stops [ 0 20 100 ]   // uneven steps, in percent along the way
+fill [ white black ] as radial                // from the centre outwards
+fill [ white black ] as radial at 30 30       // centre at 30% across, 30% down the shape
+fill [ red yellow red ] as conic angle 45     // sweeping round the centre
+fill [ red blue ] in rgb                      // mixed in RGB, like Processing
 background [ navy black ] angle 90
 stroke [ white cyan ]
 
-sunset = gradient [ orange purple ] angle 90  # a gradient is a value
+sunset = gradient [ orange purple ] angle 90  // a gradient is a value
 circle at 100 100 radius 50 fill sunset
-glow = { fill: sunset, stroke: white }        # and works in named styles
+glow = { fill: sunset, stroke: white }        // and works in named styles
 ```
 
 - **Kinds:** `as linear` (the default), `as radial`, `as conic`.
@@ -488,12 +488,12 @@ glow = { fill: sunset, stroke: white }        # and works in named styles
 
 ```
 photo = load "cat.png"
-fill photo                       # cover: fill the shape, crop what overflows
+fill photo                       // cover: fill the shape, crop what overflows
 circle at 200 200 radius 150
-square at 20 20 size 100 fill photo as fit       # whole image inside, empty bands if needed
-rect at 0 0 size 400 100 fill photo as stretch   # distort to fit exactly
-rect at 0 0 size width height fill pattern as tile size 64   # repeat at 64 pixels
-square at 50 50 size 300 fill photo as center   # original size, centred, no scaling
+square at 20 20 size 100 fill photo as fit       // whole image inside, empty bands if needed
+rect at 0 0 size 400 100 fill photo as stretch   // distort to fit exactly
+rect at 0 0 size width height fill pattern as tile size 64   // repeat at 64 pixels
+square at 50 50 size 300 fill photo as center   // original size, centred, no scaling
 text "rocinante" at 20 200 size 96 fill webcam
 ```
 
@@ -512,8 +512,8 @@ Creative coders shouldn't think about modules until they want to share something
 **Other people's code: `use`, vendored into the sketch.**
 
 ```
-use "flocking"                             # short name from the index
-use "github.com/someone/noise-tools"       # any git URL
+use "flocking"                             // short name from the index
+use "github.com/someone/noise-tools"       // any git URL
 
 draw [ flock birds ]
 ```
@@ -585,10 +585,10 @@ star 100 points 7 spin 15
 Gamepads, joysticks and other controllers work in every sketch with no setup, through SDL3's gamepad and joystick APIs, with hot-plugging on every platform.
 
 ```
-p = gamepad                       # the first connected gamepad, or empty
-circle at (p.leftstick.x * 100 + 200) 300 radius 20   # sticks are vectors from -1 to 1
-if p.bottom [ jump ]              # buttons are true while held
-for each pad in gamepads [ … ]    # every connected gamepad
+p = gamepad                       // the first connected gamepad, or empty
+circle at (p.leftstick.x * 100 + 200) 300 radius 20   // sticks are vectors from -1 to 1
+if p.bottom [ jump ]              // buttons are true while held
+for each pad in gamepads [ … ]    // every connected gamepad
 ```
 
 - **Gamepads** follow SDL3's model: buttons are named by where they are on the pad, not by the letter printed on them, because the same position says A on one pad and B or ✕ on another. rocinante gives SDL3's positions friendlier names (decided 2026-10-24):
@@ -611,9 +611,9 @@ for each pad in gamepads [ … ]    # every connected gamepad
 
 ```
 bind "jump" to "pad bottom"
-bind "jump" to "key space"          # several bindings, any of them works
+bind "jump" to "key space"          // several bindings, any of them works
 bind "move" to "pad leftstick"
-bind "move" to "keys w a s d"       # four keys become a vector, bound by physical position
+bind "move" to "keys w a s d"       // four keys become a vector, bound by physical position
 on press "jump" [ … ]
 if held "fire" [ … ]
 pos = pos + (direction "move") * SPEED
@@ -642,10 +642,10 @@ ball   = { pos: { 200, 100 }, radius: 10, vel: { 2, 3 } }
 paddle = { pos: { 180, 380 }, size: { 80, 12 } }
 
 if touching ball paddle [ ball.vel.y = -ball.vel.y ]
-c = contact ball paddle            # { point, normal, depth }, or empty
+c = contact ball paddle            // { point, normal, depth }, or empty
 for each b in (hits ball bricks) [ remove b from bricks ]
 if inside mouse paddle [ … ]
-h = cast { from: eye, to: target } walls   # first thing along a line
+h = cast { from: eye, to: target } walls   // first thing along a line
 ```
 
 - **Verbs:** `touching a b` (true or false), `contact a b` (where they touch, the direction to push apart and how far, or empty), `hits a list` (every item in a list that touches `a`), `inside point shape` and `cast segment list` (the first hit along a line, with its point and normal).

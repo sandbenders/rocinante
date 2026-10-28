@@ -1,0 +1,8 @@
+── A comment starts with two slashes ────────────────── sketch.roci:1:29
+
+1 │ circle at 100 100 radius 50 # the circle
+  │                             ^
+
+A hash is for colours, like `#ff8800`. A comment starts with two slashes and runs to the end of the line.
+
+Write:  circle at 100 100 radius 50 // the circle

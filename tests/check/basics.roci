@@ -1,4 +1,4 @@
-# Names, numbers, text, colours, vectors and calls: everything step 3a checks.
+// Names, numbers, text, colours, vectors and calls: everything step 3a checks.
 x = 10
 name = "Ada"
 SPEED = 4

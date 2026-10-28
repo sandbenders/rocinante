@@ -28,6 +28,7 @@ Message_Id :: enum u8 {
 	Bad_Number,
 	Bad_Colour,
 	Colour_At_Statement_Start,
+	Hash_Comment,
 	// Brackets
 	Missing_Close_Square,
 	Missing_Close_Round,
@@ -109,7 +110,7 @@ Entry :: struct {
 
 CATALOGUE := [Message_Id]Entry{
 	.Unknown_Character = {.Error, "I don't know this character",
-		"`{a}` is not part of the language. Words are made of letters, numbers of digits, and a hash starts a comment.",
+		"`{a}` is not part of the language. Words are made of letters, numbers of digits, and two slashes start a comment.",
 		"Without it:", "{b}"},
 	.Unterminated_Text = {.Error, "This text never closes",
 		"Text starts and ends with a double quote, and it has to end on the same line.",
@@ -124,8 +125,11 @@ CATALOGUE := [Message_Id]Entry{
 		"A colour written with a hash has 3, 4, 6 or 8 hex digits: red, green and blue, and transparency last.",
 		"Write:", "{b}"},
 	.Colour_At_Statement_Start = {.Error, "A line cannot start with a colour",
-		"`{a}` is read as a colour, but a line has to start with a word. If you meant a comment, leave a space after the hash.",
+		"`{a}` is read as a colour, but a line has to start with a word. If you meant a comment, start it with two slashes, not a hash.",
 		"Did you mean:", "{b}"},
+	.Hash_Comment = {.Error, "A comment starts with two slashes",
+		"A hash is for colours, like `#ff8800`. A comment starts with two slashes and runs to the end of the line.",
+		"Write:", "{b}"},
 
 	.Missing_Close_Square = {.Error, "This block is never closed",
 		"The opening square bracket here has no closing one. {a}",

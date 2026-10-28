@@ -14,8 +14,9 @@
      NUMBER   digits, optionally a dot and digits: 10, 0.5. Not .5, 5., 1e3 or 1_000.
      TEXT     a double quote, characters, a double quote; \" \\ \n \t are the escapes.
      COLOUR   a hash and 3, 4, 6 or 8 hex digits, then a space, a bracket, a comma
-              or the end of the line. Any other hash starts a comment to the end of
-              the line (decided 2026-10-28).
+              or the end of the line. Any other count of hex digits is a colour with a
+              problem; a hash that is not a colour is a problem too.
+     COMMENT  two slashes and the rest of the line (decided 2026-10-28).
      NAME     a letter, then letters, digits and underscores (letters of any script).
               A NAME in capitals only is a constant.
      NEWLINE  a line break. Newlines are free inside ( ), { } and a list [ ];

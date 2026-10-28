@@ -232,14 +232,14 @@ test_file_numbers_are_carried_in_every_span :: proc(t: ^testing.T) {
 
 @(test)
 test_a_comment_runs_to_the_end_of_the_line_and_is_kept_apart :: proc(t: ^testing.T) {
-	text := "# first\ncircle 1 2 3  # the circle\n#"
+	text := "// first\ncircle 1 2 3  // the circle\n//"
 	_, lexed, src := kinds_of(text)
 	testing.expect_value(t, len(lexed.comments), 3)
-	testing.expect_value(t, span_text(src, lexed.comments[0].span), "# first")
+	testing.expect_value(t, span_text(src, lexed.comments[0].span), "// first")
 	testing.expect_value(t, lexed.comments[0].own_line, true)
-	testing.expect_value(t, span_text(src, lexed.comments[1].span), "# the circle")
+	testing.expect_value(t, span_text(src, lexed.comments[1].span), "// the circle")
 	testing.expect_value(t, lexed.comments[1].own_line, false)
-	testing.expect_value(t, span_text(src, lexed.comments[2].span), "#")
+	testing.expect_value(t, span_text(src, lexed.comments[2].span), "//")
 	testing.expect_value(t, lexed.comments[2].own_line, true)
 	testing.expect_value(t, len(lexed.problems), 0)
 	expect_kinds(t, text, {.Name, .Number, .Number, .Number, .End_Of_File})
@@ -247,8 +247,8 @@ test_a_comment_runs_to_the_end_of_the_line_and_is_kept_apart :: proc(t: ^testing
 
 @(test)
 test_a_comment_at_the_end_of_a_crlf_line_drops_the_carriage_return :: proc(t: ^testing.T) {
-	_, lexed, src := kinds_of("fill red # note\r\ncircle 1 2 3")
-	testing.expect_value(t, span_text(src, lexed.comments[0].span), "# note")
+	_, lexed, src := kinds_of("fill red // note\r\ncircle 1 2 3")
+	testing.expect_value(t, span_text(src, lexed.comments[0].span), "// note")
 }
 
 @(test)
@@ -265,17 +265,29 @@ test_hash_with_hex_digits_is_a_colour_only_at_the_right_length_and_end :: proc(t
 }
 
 @(test)
-test_hash_with_anything_else_is_a_comment :: proc(t: ^testing.T) {
-	for text in ([]string{"#todo", "# fff", "#ggg", "#ff88zz", "#ff8800x", "#12", "#1", "#fff.", "#bad1x"}) {
+test_a_hash_that_is_not_a_colour_is_a_problem_and_the_rest_of_the_line_a_comment :: proc(t: ^testing.T) {
+	for text in ([]string{"#todo", "# fff", "#ggg", "#ff88zz", "#ff8800x", "#fff.", "#bad1x", "# a note"}) {
 		_, lexed, _ := kinds_of(text)
-		testing.expectf(t, len(lexed.comments) == 1, "`%s` should be a comment", text)
+		testing.expectf(t, len(lexed.comments) == 1, "`%s` should leave the rest as a comment", text)
 		testing.expectf(t, len(lexed.tokens) == 1, "`%s` should leave only the end token", text)
+		if testing.expectf(t, len(lexed.problems) == 1, "`%s` should be one problem", text) {
+			testing.expect_value(t, lexed.problems[0].kind, Lex_Problem_Kind.Hash_Comment)
+		}
 	}
 }
 
 @(test)
-test_a_colour_of_five_or_seven_digits_is_a_colour_with_a_problem :: proc(t: ^testing.T) {
-	for text in ([]string{"#ff880", "#ff88000"}) {
+test_two_slashes_start_a_comment_anywhere_but_in_text_and_one_slash_divides :: proc(t: ^testing.T) {
+	expect_kinds(t, "x = 10 // speed\ny = 4 / 2", {.Name, .Equals, .Number, .Name, .Equals, .Number, .Slash, .Number, .End_Of_File})
+	expect_kinds(t, "\"a // b\"", {.Text, .End_Of_File})
+	_, lexed, _ := kinds_of("fill #ff8800 // orange")
+	testing.expect_value(t, len(lexed.comments), 1)
+	testing.expect_value(t, len(lexed.problems), 0)
+}
+
+@(test)
+test_a_colour_with_a_wrong_number_of_digits_is_a_colour_with_a_problem :: proc(t: ^testing.T) {
+	for text in ([]string{"#ff880", "#ff88000", "#12", "#1", "#ff8800000"}) {
 		got, lexed, _ := kinds_of(text)
 		testing.expect_value(t, got[0], Token_Kind.Colour)
 		if testing.expect_value(t, len(lexed.problems), 1) {
@@ -294,7 +306,7 @@ test_text_keeps_its_quotes_in_the_token :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_text_may_hold_a_hash_and_brackets :: proc(t: ^testing.T) {
+test_text_may_hold_a_hash_slashes_and_brackets :: proc(t: ^testing.T) {
 	expect_kinds(t, "\"# not a comment [ ]\"", {.Text, .End_Of_File})
 }
 
@@ -410,7 +422,7 @@ test_a_dot_after_a_number_before_a_name_is_left_alone :: proc(t: ^testing.T) {
 @(test)
 test_lexing_a_whole_sketch_ends_with_the_end_token_and_no_problems :: proc(t: ^testing.T) {
 	text := strings.join([]string{
-		"# a sketch",
+		"// a sketch",
 		"x = 10",
 		"learn star size [",
 		"  repeat 5 [ forward size  right 144 ]",

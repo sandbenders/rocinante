@@ -127,9 +127,9 @@ report_lexer_problems :: proc(p: ^Parser, lexed: Lexed) {
 			}
 			report(p, .Bad_Number, problem.span, text, fixed)
 		case .Bad_Colour:
-			// One digit short or long: add the missing one (opaque, for the alpha).
-			missing := "0" if len(text) == 6 else "f"
-			report(p, .Bad_Colour, problem.span, text, line_with(p, problem.span, fmt.tprintf("%s%s", text, missing)))
+			report(p, .Bad_Colour, problem.span, text, line_with(p, problem.span, fixed_colour(text)))
+		case .Hash_Comment:
+			report(p, .Hash_Comment, problem.span, text, line_with(p, problem.span, "//"))
 		}
 	}
 }
@@ -316,4 +316,22 @@ GRAMMAR_RULES := [?]struct{rule, parser: string}{
 	{"product", "parse_product"},
 	{"unary", "parse_unary"},
 	{"operand", "parse_unary"},
+}
+
+// A colour with the nearest right number of digits: one or two are padded to three,
+// five gets a zero and seven an opaque alpha, and one that is too long is cut to eight.
+@(private)
+fixed_colour :: proc(text: string) -> string {
+	digits := len(text) - 1
+	switch {
+	case digits < 3:
+		return fmt.tprintf("%s%s", text, strings.repeat("0", 3 - digits, context.temp_allocator))
+	case digits == 5:
+		return fmt.tprintf("%s0", text)
+	case digits == 7:
+		return fmt.tprintf("%sf", text)
+	case digits > 8:
+		return text[:9]
+	}
+	return text
 }

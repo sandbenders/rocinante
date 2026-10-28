@@ -1,7 +1,7 @@
-# Two windows that talk: a control window and a canvas. Every frame the control
-# window sends the mouse position, scaled to the canvas, and a click sends a flash
-# that makes the canvas light up for a moment. The two kinds of message are records
-# of different fields, so the canvas reads one record that holds both.
+// Two windows that talk: a control window and a canvas. Every frame the control
+// window sends the mouse position, scaled to the canvas, and a click sends a flash
+// that makes the canvas light up for a moment. The two kinds of message are records
+// of different fields, so the canvas reads one record that holds both.
 control = window size 300 200 at 60 120 title "control"
 canvas = window size 520 420 at 400 80 title "canvas"
 

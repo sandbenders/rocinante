@@ -106,6 +106,10 @@ previous_kind :: proc(l: ^Lexer) -> Token_Kind {
 lex_one :: proc(l: ^Lexer) {
 	i := l.at
 	c := l.text[i]
+	if c == '/' && i + 1 < len(l.text) && l.text[i + 1] == '/' {
+		lex_comment(l)
+		return
+	}
 	switch c {
 	case ' ', '\t':
 		l.spaces += 1
@@ -243,10 +247,11 @@ first_rune :: proc(s: string) -> rune {
 	return r
 }
 
-// A `#` is a colour when hex digits follow it and a bracket, a comma, a space or
-// the end of the line comes after them; anything else is a comment (decided
-// 2026-10-28). The right lengths are 3, 4, 6 and 8; 5 and 7 are plainly a typo,
-// so they are a colour with a problem rather than a silent comment.
+// A `#` starts a colour: hex digits follow it and a bracket, a comma, a space or
+// the end of the line comes after them. The right lengths are 3, 4, 6 and 8; any
+// other count of hex digits is a colour with a problem. A hash that is not a
+// colour is a habit from other languages, so it is a problem too (a comment starts
+// with two slashes) and the rest of the line is read as the comment it meant.
 @(private)
 lex_hash :: proc(l: ^Lexer) {
 	start := l.at
@@ -267,19 +272,23 @@ lex_hash :: proc(l: ^Lexer) {
 	}
 	follows_ok := end >= len(l.text) || is_blank_or_end(l, end) || strings.contains_rune("[](){},", rune(l.text[end]))
 	if all_hex && follows_ok {
+		l.line_empty = false
 		switch len(run) {
 		case 3, 4, 6, 8:
-			l.line_empty = false
-			emit(l, .Colour, start, end)
-			return
-		case 5, 7:
-			l.line_empty = false
+		case:
 			problem(l, .Bad_Colour, start, end)
-			emit(l, .Colour, start, end)
-			return
 		}
+		emit(l, .Colour, start, end)
+		return
 	}
-	// A comment: to the end of the line, without the line break.
+	problem(l, .Hash_Comment, start, start + 1)
+	lex_comment(l)
+}
+
+// A comment: to the end of the line, without the line break.
+@(private)
+lex_comment :: proc(l: ^Lexer) {
+	start := l.at
 	stop := start
 	for stop < len(l.text) && l.text[stop] != '\n' {
 		stop += 1

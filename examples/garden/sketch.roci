@@ -1,12 +1,12 @@
-# A night garden: two windows that talk, every kind of shape, gradients,
-# transforms, noise and random, the mouse and the keyboard. Grass sways in a wind
-# of noise, flowers turn, stars twinkle, a firefly follows the mouse, and a click
-# plants a flower. The palette window recolours the garden and sets the wind
-# through messages; both kinds are one record of fields the garden reads.
-#
-# Next to the Odin version this one has no text labels (text comes with the text
-# verbs), no held-key or held-button state (so no dragging the wind bar and no
-# calm-while-held), and no scale to fit the window.
+// A night garden: two windows that talk, every kind of shape, gradients,
+// transforms, noise and random, the mouse and the keyboard. Grass sways in a wind
+// of noise, flowers turn, stars twinkle, a firefly follows the mouse, and a click
+// plants a flower. The palette window recolours the garden and sets the wind
+// through messages; both kinds are one record of fields the garden reads.
+//
+// Next to the Odin version this one has no text labels (text comes with the text
+// verbs), no held-key or held-button state (so no dragging the wind bar and no
+// calm-while-held), and no scale to fit the window.
 GROUND = 470
 SWATCH = 80
 
@@ -46,7 +46,7 @@ calm = 1
 flowers = []
 
 learn plant place [
-  # A whole number of petals (a fraction would leave a gap in the ring): the part after the point is cut off.
+  // A whole number of petals (a fraction would leave a gap in the ring): the part after the point is cut off.
   petal_count = 5 + random 4
   add { at: place, size: random from 10 to 22, petals: petal_count - petal_count % 1, spin: random from -40 to 40 } to flowers
 ]
@@ -55,7 +55,7 @@ seed 3
 repeat 7 [ plant { random from 60 to 740, random from (GROUND + 30) to 570 } ]
 first_planted = count flowers
 
-# ---- the palette window ----
+// ---- the palette window ----
 
 draw chooser [
   background 30
@@ -88,7 +88,7 @@ on chooser key "1" [ send garden { palette: 1 } ]
 on chooser key "2" [ send garden { palette: 2 } ]
 on chooser key "3" [ send garden { palette: 3 } ]
 
-# ---- the garden ----
+// ---- the garden ----
 
 on garden receive message [
   if message.palette > 0 [ chosen = message.palette ]

@@ -68,7 +68,7 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 		return unknown_word(p, t)
 	case .Colour:
 		text := text_of(p, t)
-		report(p, .Colour_At_Statement_Start, t.span, text, line_with(p, t.span, fmt.tprintf("# %s", text[1:])))
+		report(p, .Colour_At_Statement_Start, t.span, text, line_with(p, t.span, fmt.tprintf("// %s", text[1:])))
 		skip_line(p)
 		return Error_Stmt{}
 	case .Invalid:
