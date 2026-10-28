@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Golden-image tests: every scene in scenes.odin is drawn
+// Golden-image tests: the examples written in the language (examples.odin) and every scene in scenes.odin are drawn
 // offscreen through the real renderer and compared with a reference picture in
 // this folder. It needs SDL3 and a GPU driver; `ci` runs it on Mesa's software
 // Vulkan (lavapipe), where the references are drawn (build/golden.odin). It is a
@@ -153,11 +153,14 @@ run :: proc() -> bool {
 			report(scene.name, true, fmt.tprintf("%d pixels off, worst channel %d", diff.differing_pixels, diff.worst_channel))
 		}
 	}
+	example_ran, example_failures := run_examples(update, only[:])
+	ran += example_ran
+	failures += example_failures
 	if ran == 0 {
 		fmt.eprintln("golden: no scene by that name")
 		return false
 	}
-	fmt.printfln("golden: %d scenes, %d failed", ran, failures)
+	fmt.printfln("golden: %d pictures, %d failed", ran, failures)
 	return failures == 0
 }
 

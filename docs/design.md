@@ -307,6 +307,7 @@ draw [
   - If it checks, verbs, `draw` blocks, event blocks and `ui` blocks switch to the new code on the next frame.
   - A top-level variable keeps its running value unless the line that defines it changed, or the kind of value it holds changed; then that line runs again.
   - Records keep their values when their shape gains a field; the new field starts at its zero value (§5.2). When a shape loses a field or a field changes kind, the variables holding those records start again from their defining lines.
+  - A line that opens a window or draws while the sketch sets itself up cannot run a second time on top of the first, so when one of those lines is added, changed or removed the sketch restarts from its first line instead (the windows stay open), and the message says so (decided 2026-10-28).
   - Constants (all-capital names, §5.1) always take the value written in the source, so editing `SPEED = 4` to `SPEED = 8` takes effect at once while variables keep their running values.
   - UI values are remembered as before (§4.8).
   - `Ctrl+R` in a sketch window (`Cmd+R` on macOS) restarts the sketch from scratch: every variable from its defining line, every top-level statement again. UI values are kept; `forget ui` clears them.
