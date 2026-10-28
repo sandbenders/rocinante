@@ -122,7 +122,7 @@ my-sketch/
 
 - write `sketch.roci` (formatted, with the circle), `assets/` and its subfolders (each with an empty `.keep` file so git keeps them), `output/` and `.gitignore` (ignoring `output/` and roci's local cache);
 - if git is installed, run `git init` and make a first commit; without git, say so in one line and carry on;
-- **offer Git LFS** for large binary assets. On yes, and if `git lfs` is installed, track common audio, video, 3D, machine-learning and large image types (`*.wav`, `*.aiff`, `*.flac`, `*.mp4`, `*.mov`, `*.glb`, `*.fbx`, `*.tflite`, `*.litertlm`, `*.exr`, `*.psd`, list to be finalised in Phase 2) with `git lfs track`, which writes `.gitattributes`, and commit that file. If Git LFS isn't installed, explain in plain words how to get it and continue without it. Git LFS is a separate, user-installed tool; rocinante neither bundles nor depends on it (§3).
+- **offer Git LFS** for large binary assets. On yes, and if `git lfs` is installed, track common audio, video, 3D, machine-learning and large image types (`*.wav`, `*.aiff`, `*.flac`, `*.mp4`, `*.mov`, `*.glb`, `*.fbx`, `*.tflite`, `*.litertlm`, `*.exr`, `*.psd`; finalised 2026-10-28 as `LFS_PATTERNS` in `roci/folder`: audio `wav aiff flac mp3 ogg`, video `mp4 mov webm mkv`, 3D `glb fbx`, models `tflite litertlm`, pictures `exr psd tif tiff`) with `git lfs track`, which writes `.gitattributes`, and commit that file. If Git LFS isn't installed, explain in plain words how to get it and continue without it. Git LFS is a separate, user-installed tool; rocinante neither bundles nor depends on it (§3).
 
 ### 4.10 Machine learning (decided 2026-10-24)
 

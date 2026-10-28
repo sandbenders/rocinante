@@ -107,6 +107,8 @@ The language is being built front first. `roci check` reads a sketch and reports
 
 ```
 odin run cli -- check sketch.roci [--tree]
+odin run cli -- new mysketch                           # a sketch folder, with git; roci init does it in this folder
+odin run cli -- add cat.png                            # copy a file into assets/images
 odin run cli -- man rect                               # how a verb is written (no word: every verb)
 odin run cli -- fmt                                    # writes every .roci file here in the house style
 odin run cli -- run examples/garden/sketch.roci        # opens the windows

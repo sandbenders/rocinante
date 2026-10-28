@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The `roci` command. So far it can `check`, `run` and `fmt` a sketch;
+// The `roci` command. It makes sketch folders (`new`, `init`, `add`) and can `check`, `run`, `fmt` and `man` a sketch;
 // package, doctor and the rest arrive with their phases.
 //
 //     odin run cli -- check [file] [--tree]
@@ -14,6 +14,9 @@ import "core:strings"
 COMMANDS :: `roci, a small language for sketches.
 
   roci check [file]    read a sketch and say what is wrong with it
+  roci new <name>      make a sketch folder
+  roci init            make the sketch files in this folder
+  roci add <file>      copy a file into the sketch's assets/
   roci run [file]      run a sketch; with --frames N, without a window
   roci fmt [file]      write a sketch in the house style
   roci man [word]      how a verb or statement is written
@@ -33,6 +36,12 @@ main :: proc() {
 	switch os.args[1] {
 	case "check":
 		code = run_check(os.args[2:], &out, &err)
+	case "new":
+		code = run_new(os.args[2:], &out, &err)
+	case "init":
+		code = run_init(os.args[2:], ".", &out, &err)
+	case "add":
+		code = run_add(os.args[2:], ".", &out, &err)
 	case "run":
 		code = run_run(os.args[2:], &out, &err)
 	case "fmt":

@@ -159,3 +159,8 @@ is_caret_line :: proc(line: string) -> bool {
 	bar := strings.index(line, "│")
 	return bar >= 0 && strings.has_prefix(strings.trim_left_space(line[bar + len("│"):]), "^")
 }
+
+// Whether standard input is a terminal, so a question has someone to ask.
+in_terminal :: proc() -> bool {
+	return terminal.is_terminal(os.stdin)
+}
