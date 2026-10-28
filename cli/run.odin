@@ -40,13 +40,22 @@ Run_Args :: struct {
 }
 
 parse_run_args :: proc(args: []string) -> Run_Args {
-	result := Run_Args{file = "sketch.roci", seed = 1, window = 1, ok = true}
+	result := Run_Args {
+		file   = "sketch.roci",
+		seed   = 1,
+		window = 1,
+		ok     = true,
+	}
 	have_file := false
 	i := 0
 	for i < len(args) {
 		arg := args[i]
 		switch {
-		case arg == "--frames" || arg == "--screenshot" || arg == "--seed" || arg == "--window" || arg == "--errors":
+		case arg == "--frames" ||
+		     arg == "--screenshot" ||
+		     arg == "--seed" ||
+		     arg == "--window" ||
+		     arg == "--errors":
 			if i + 1 >= len(args) {
 				return Run_Args{ok = false, bad = arg}
 			}
@@ -107,7 +116,14 @@ Run_Result :: struct {
 
 // Runs `text` headless for `frames` frames. The caller frees nothing: everything
 // is made with the allocator given, which should be the temporary one.
-run_text :: proc(name, text: string, frames: int, seed: u64, want_picture: bool, window := 1, allocator := context.temp_allocator) -> Run_Result {
+run_text :: proc(
+	name, text: string,
+	frames: int,
+	seed: u64,
+	want_picture: bool,
+	window := 1,
+	allocator := context.temp_allocator,
+) -> Run_Result {
 	roci.start_headless(seed)
 	defer roci.shutdown()
 	p, ok := interp.load(name, text)
@@ -128,7 +144,10 @@ run_text :: proc(name, text: string, frames: int, seed: u64, want_picture: bool,
 	if want_picture {
 		windows := roci.open_windows()
 		if window > len(windows) {
-			result.problem = fmt.tprintf("the sketch has no window %d to take a picture of", window)
+			result.problem = fmt.tprintf(
+				"the sketch has no window %d to take a picture of",
+				window,
+			)
 		} else if image, drawn := roci.picture(windows[window - 1]); drawn {
 			defer delete(image.pixels)
 			if png, encoded := gfx.png_encode(image, allocator); encoded {
@@ -145,12 +164,22 @@ run_text :: proc(name, text: string, frames: int, seed: u64, want_picture: bool,
 		result.printed[i] = strings.clone(line, allocator)
 	}
 	if len(p.errors) > 0 {
-		result.report = strings.concatenate({result.report, interp.report(p, allocator)}, allocator)
+		result.report = strings.concatenate(
+			{result.report, interp.report(p, allocator)},
+			allocator,
+		)
 		runtime := make([]lang.Diagnostic, len(p.errors), allocator)
 		for e, i in p.errors {
-			runtime[i] = lang.Diagnostic{id = e.id, span = e.span, args = e.args}
+			runtime[i] = lang.Diagnostic {
+				id   = e.id,
+				span = e.span,
+				args = e.args,
+			}
 		}
-		result.json = strings.concatenate({result.json, lang.diagnostics_json(p.src, runtime, allocator)}, allocator)
+		result.json = strings.concatenate(
+			{result.json, lang.diagnostics_json(p.src, runtime, allocator)},
+			allocator,
+		)
 		result.code = 3
 	}
 	return result
@@ -167,13 +196,24 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	}
 	data, read_err := os.read_entire_file(parsed.file, context.temp_allocator)
 	if read_err != nil {
-		fmt.sbprintf(err, "I cannot read `%s`. Check the name, or run roci run in the folder that holds it.\n", parsed.file)
+		fmt.sbprintf(
+			err,
+			"I cannot read `%s`. Check the name, or run roci run in the folder that holds it.\n",
+			parsed.file,
+		)
 		return 2
 	}
 	if parsed.frames == 0 {
 		return run_windows(parsed.file, string(data), parsed.json, out, err)
 	}
-	result := run_text(parsed.file, string(data), parsed.frames, parsed.seed, parsed.screenshot != "", parsed.window)
+	result := run_text(
+		parsed.file,
+		string(data),
+		parsed.frames,
+		parsed.seed,
+		parsed.screenshot != "",
+		parsed.window,
+	)
 	// With JSON the messages are the output, so what the sketch prints moves aside.
 	lines_to := err if parsed.json else out
 	for line in result.printed {
@@ -206,9 +246,20 @@ run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) 
 	p, ok := interp.load(name, text)
 	if len(p.checked.diagnostics) > 0 && (ok || json) {
 		if json {
-			fmt.sbprintf(out, "%s", lang.diagnostics_json(p.src, p.checked.diagnostics, context.temp_allocator))
+			fmt.sbprintf(
+				out,
+				"%s",
+				lang.diagnostics_json(p.src, p.checked.diagnostics, context.temp_allocator),
+			)
 		} else {
-			fmt.sbprintf(err, "%s\n", term.message(lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator), term.err_colour))
+			fmt.sbprintf(
+				err,
+				"%s\n",
+				term.message(
+					lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator),
+					term.err_colour,
+				),
+			)
 		}
 	}
 	if !ok && json {
@@ -219,7 +270,11 @@ run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) 
 	// Messages go to the console as they happen, so there is nothing to print at the end.
 	p.echo = !json
 	if !json {
-		fmt.eprintfln("%s %s", term.err("rocinante:", .Bold_Cyan), term.err(HOT_RELOAD_HINT(name), .Cyan))
+		fmt.eprintfln(
+			"%s %s",
+			term.err("rocinante:", .Bold_Cyan),
+			term.err(HOT_RELOAD_HINT(name), .Cyan),
+		)
 	}
 	interp.watch(p, name)
 	interp.start(p)
@@ -243,5 +298,10 @@ run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) 
 HOT_RELOAD_HINT :: proc(file: string) -> string {
 	reload_key := "Cmd+R" when ODIN_OS == .Darwin else "Ctrl+R"
 	quit_key := "Cmd+Q" when ODIN_OS == .Darwin else "Ctrl+Q"
-	return fmt.tprintf("running %s. Save the file and the sketch reloads, keeping its values where it can. %s runs it again from the first line, and %s quits.", file, reload_key, quit_key)
+	return fmt.tprintf(
+		"running %s. Save the source file and the sketch reloads, keeping its values where it can. %s runs it again from the first line, and %s quits. \nIt also auto recovers from errors.",
+		file,
+		reload_key,
+		quit_key,
+	)
 }
