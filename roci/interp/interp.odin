@@ -97,7 +97,7 @@ load :: proc(name, text: string) -> (p: ^Interp, ok: bool) {
 	}
 	p.hook_frame = -1
 	p.alloc = p.long
-	p.src = lang.make_source(name, text, 0, p.long)
+	p.src = lang.make_source(strings.clone(name, p.long), strings.clone(text, p.long), 0, p.long)
 	p.checked = lang.check(p.src, registry.ALL_VERBS, nil, p.long)
 	p.types = p.checked.program.types
 	p.globals = make(map[^lang.Symbol]Value, 32, p.long)

@@ -691,3 +691,23 @@ test_the_garden_example_reacts_to_keys_and_clicks :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(p.errors), 0)
 	testing.expect(t, len(roci.recorded(windows[1])) > before) // a flower was planted
 }
+
+// A running app frees the temporary memory after every frame, so nothing the
+// sketch keeps may live there: the examples must run the same with it freed.
+@(test)
+test_the_examples_run_the_same_when_the_temporary_memory_is_freed_each_frame :: proc(t: ^testing.T) {
+	for name in ([]string{"garden", "two_windows"}) {
+		roci.start_headless(1)
+		text := strings.clone(example_text(name), context.temp_allocator)
+		p, ok := load("sketch.roci", text)
+		testing.expect(t, ok)
+		start(p)
+		free_all(context.temp_allocator) // the source text goes with it
+		for _ in 0 ..< 20 {
+			roci.step()
+			free_all(context.temp_allocator)
+		}
+		testing.expectf(t, len(p.errors) == 0, "%s: %s", name, report(p, context.temp_allocator))
+		finish(p)
+	}
+}
