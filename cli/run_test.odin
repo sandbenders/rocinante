@@ -100,3 +100,35 @@ test_the_hint_names_the_file_and_the_reload_and_quit_keys :: proc(t: ^testing.T)
 	testing.expect(t, strings.contains(hint, "+R runs it again"))
 	testing.expect(t, strings.contains(hint, "+Q quits"))
 }
+
+@(test)
+test_a_folder_is_run_and_checked_through_its_sketch_roci :: proc(t: ^testing.T) {
+	root := "output/tests/run_folder"
+	_ = os.remove_all(root)
+	testing.expect(t, os.make_directory_all(root) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/run_folder/sketch.roci", transmute([]byte)string("print \"from the folder\"\n")) == nil)
+	out, err: strings.Builder
+	strings.builder_init(&out, context.temp_allocator)
+	strings.builder_init(&err, context.temp_allocator)
+	testing.expect_value(t, run_run({root, "--frames", "1"}, &out, &err), 0)
+	testing.expect_value(t, strings.to_string(out), "from the folder\n")
+	strings.builder_reset(&out)
+	testing.expect_value(t, run_check({strings.concatenate({root, "/"}, context.temp_allocator)}, &out, &err), 0)
+	testing.expect(t, strings.contains(strings.to_string(out), "run_folder/sketch.roci: no problems"))
+}
+
+@(test)
+test_a_folder_with_no_sketch_roci_is_the_only_folder_error :: proc(t: ^testing.T) {
+	root := "output/tests/run_folder_empty"
+	_ = os.remove_all(root)
+	testing.expect(t, os.make_directory_all(root) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/run_folder_empty/other.roci", transmute([]byte)string("print 1\n")) == nil)
+	out, err: strings.Builder
+	strings.builder_init(&out, context.temp_allocator)
+	strings.builder_init(&err, context.temp_allocator)
+	testing.expect_value(t, run_run({root, "--frames", "1"}, &out, &err), 2)
+	testing.expect(t, strings.contains(strings.to_string(err), "There is no sketch.roci in `output/tests/run_folder_empty`"))
+	strings.builder_reset(&err)
+	testing.expect_value(t, run_check({root}, &out, &err), 2)
+	testing.expect(t, strings.contains(strings.to_string(err), "There is no sketch.roci"))
+}

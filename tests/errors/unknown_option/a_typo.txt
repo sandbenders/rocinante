@@ -1,0 +1,8 @@
+── `circle` has no word `thicknes`. Did you mean `thickness`? ─── sketch.roci:1:29
+
+1 │ circle at 100 100 radius 50 thicknes 3
+  │                             ^^^^^^^^
+
+`circle` does not take a word `thicknes` after its values, and `thickness` is the one that is nearest or means the same.
+
+Written with `thickness`:  circle at 100 100 radius 50 thickness 3

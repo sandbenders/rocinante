@@ -325,6 +325,9 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 		report(p, .Comma_In_Call, commas[0], "", line_without(p, commas[:]))
 	}
 	call := Call{name = info.name, verb = info.verb, taught = info.taught, args = args[:], options = options[:]}
+	if !nested {
+		p.last_call = info
+	}
 	return new_expr(p, span_from(p, first.span), call)
 }
 

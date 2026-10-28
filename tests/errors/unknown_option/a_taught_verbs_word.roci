@@ -1,0 +1,4 @@
+learn star size with points 5 [
+  repeat points [ circle at 1 1 radius size ]
+]
+star 100 pionts 7

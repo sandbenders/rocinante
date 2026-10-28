@@ -19,6 +19,7 @@ import "core:fmt"
 import "core:strconv"
 import "core:strings"
 import "core:mem"
+import "core:slice"
 
 Parse_Result :: struct {
 	program:     Program,
@@ -96,6 +97,7 @@ Parser :: struct {
 	nest_depth:  int,
 	deep_shown:  bool,
 	last_closed: Maybe(Closed_Block),
+	last_call:   Maybe(Call_Info), // the call that ended the statement just parsed, to say what its words are
 }
 
 @(private)
@@ -239,6 +241,8 @@ skip_line :: proc(p: ^Parser) {
 // (the leftovers are then its echo), and the rest of the line is skipped.
 @(private)
 finish_statement :: proc(p: ^Parser, in_block: bool, mark: int) {
+	call_of_statement := p.last_call
+	p.last_call = nil
 	t := p.tokens[p.at]
 	#partial switch t.kind {
 	case .Newline, .End_Of_File, .Close_Square, .Close_Round, .Close_Curly:
@@ -252,8 +256,79 @@ finish_statement :: proc(p: ^Parser, in_block: bool, mark: int) {
 		skip_line(p)
 		return
 	}
+	// A word that follows a call and is not one of its words, but is near one (or means one).
+	if call, has := call_of_statement.?; has && t.kind == .Name {
+		word := text_of(p, t)
+		if suggestion, found := suggest_option(call, word); found {
+			report(p, .Unknown_Option, t.span, word, call.name, suggestion, line_with(p, t.span, suggestion))
+			skip_line(p)
+			return
+		}
+	}
 	report(p, .Unexpected_Token, t.span, text_of(p, t), line_split_at(p, t.span))
 	skip_line(p)
+}
+
+// Words people from other tools reach for, and the connecting word that means it here.
+@(private)
+OPTION_SYNONYMS := [?][2]string{
+	{"color", "fill"}, {"colour", "fill"}, {"colors", "fill"}, {"colours", "fill"},
+	{"outline", "stroke"}, {"border", "stroke"}, {"edge", "stroke"},
+	{"weight", "thickness"}, {"strokeweight", "thickness"}, {"linewidth", "thickness"},
+	{"opacity", "alpha"}, {"transparency", "alpha"},
+}
+
+// The connecting words a call can be written with: those of every shape of a
+// built-in verb, the label words of a geometry verb, or the `with` words of a taught one.
+@(private)
+option_words_of :: proc(call: Call_Info) -> []string {
+	words := make([dynamic]string, context.temp_allocator)
+	if call.verb != nil {
+		for shape in call.verb.shapes {
+			for option in shape.options {
+				if !slice.contains(words[:], option.word) {
+					append(&words, option.word)
+				}
+			}
+		}
+		for form in registry.label_forms(call.verb.name) {
+			for w in form.words {
+				if !slice.contains(words[:], w.word) {
+					append(&words, w.word)
+				}
+			}
+		}
+	}
+	if call.taught != nil {
+		append(&words, ..call.taught.words)
+	}
+	return words[:]
+}
+
+// The word the writer most likely meant: what it is commonly called elsewhere, or
+// the nearest of the call's own words (one or two letters away).
+@(private)
+suggest_option :: proc(call: Call_Info, word: string) -> (suggestion: string, found: bool) {
+	words := option_words_of(call)
+	if len(words) == 0 {
+		return
+	}
+	lowered := strings.to_lower(word, context.temp_allocator)
+	for pair in OPTION_SYNONYMS {
+		if pair[0] == lowered && slice.contains(words, pair[1]) {
+			return pair[1], true
+		}
+	}
+	if len(word) < 3 {
+		return
+	}
+	best := 3
+	for candidate in words {
+		if d := registry.edit_distance(lowered, candidate); d < best && len(candidate) >= 2 {
+			best, suggestion, found = d, candidate, true
+		}
+	}
+	return
 }
 
 // What a malformed number was probably meant to be: `.5` is 0.5, `1_000` is 1000,

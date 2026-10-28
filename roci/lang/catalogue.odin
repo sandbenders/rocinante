@@ -29,6 +29,7 @@ Message_Id :: enum u8 {
 	Bad_Colour,
 	Colour_At_Statement_Start,
 	Hash_Comment,
+	Unknown_Option,
 	// Brackets
 	Missing_Close_Square,
 	Missing_Close_Round,
@@ -127,6 +128,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Colour_At_Statement_Start = {.Error, "A line cannot start with a colour",
 		"`{a}` is read as a colour, but a line has to start with a word. If you meant a comment, start it with two slashes, not a hash.",
 		"Did you mean:", "{b}"},
+	.Unknown_Option = {.Error, "`{b}` has no word `{a}`. Did you mean `{c}`?",
+		"`{b}` does not take a word `{a}` after its values, and `{c}` is the one that is nearest or means the same.",
+		"Written with `{c}`:", "{d}"},
 	.Hash_Comment = {.Error, "A comment starts with two slashes",
 		"A hash is for colours, like `#ff8800`. A comment starts with two slashes and runs to the end of the line.",
 		"Write:", "{b}"},

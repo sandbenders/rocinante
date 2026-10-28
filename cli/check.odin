@@ -124,12 +124,16 @@ run_check :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		fmt.sbprintf(err, "I don't know `%s`.\n\n%s\n", parsed.bad, USAGE)
 		return 2
 	}
-	data, read_err := os.read_entire_file(parsed.file, context.temp_allocator)
-	if read_err != nil {
-		fmt.sbprintf(err, "I cannot read `%s`. Check the name, or run roci check in the folder that holds it.\n", parsed.file)
+	file, found := sketch_file(parsed.file, err)
+	if !found {
 		return 2
 	}
-	result := check_text(parsed.file, string(data), parsed.tree, parsed.types)
+	data, read_err := os.read_entire_file(file, context.temp_allocator)
+	if read_err != nil {
+		fmt.sbprintf(err, "I cannot read `%s`. Check the name, or run roci check in the folder that holds it.\n", file)
+		return 2
+	}
+	result := check_text(file, string(data), parsed.tree, parsed.types)
 	if parsed.json {
 		fmt.sbprintf(out, "%s", result.json)
 		return 1 if result.errors > 0 else 0

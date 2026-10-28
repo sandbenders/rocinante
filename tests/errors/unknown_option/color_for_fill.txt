@@ -1,0 +1,8 @@
+── `rect` has no word `color`. Did you mean `fill`? ─── sketch.roci:1:25
+
+1 │ rect at 0 0 size 30 800 color blue
+  │                         ^^^^^
+
+`rect` does not take a word `color` after its values, and `fill` is the one that is nearest or means the same.
+
+Written with `fill`:  rect at 0 0 size 30 800 fill blue

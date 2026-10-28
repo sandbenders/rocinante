@@ -194,20 +194,24 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		fmt.sbprintf(err, "I don't know `%s`.\n\n%s\n", parsed.bad, RUN_USAGE)
 		return 2
 	}
-	data, read_err := os.read_entire_file(parsed.file, context.temp_allocator)
+	file, found := sketch_file(parsed.file, err)
+	if !found {
+		return 2
+	}
+	data, read_err := os.read_entire_file(file, context.temp_allocator)
 	if read_err != nil {
 		fmt.sbprintf(
 			err,
 			"I cannot read `%s`. Check the name, or run roci run in the folder that holds it.\n",
-			parsed.file,
+			file,
 		)
 		return 2
 	}
 	if parsed.frames == 0 {
-		return run_windows(parsed.file, string(data), parsed.json, out, err)
+		return run_windows(file, string(data), parsed.json, out, err)
 	}
 	result := run_text(
-		parsed.file,
+		file,
 		string(data),
 		parsed.frames,
 		parsed.seed,
@@ -292,6 +296,20 @@ run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) 
 		}
 	}
 	return 0
+}
+
+// The sketch a name stands for: a file is itself, and a folder is the sketch.roci
+// inside it (one folder is one program). Says what is missing when there is none.
+sketch_file :: proc(name: string, err: ^strings.Builder) -> (file: string, ok: bool) {
+	if !os.is_directory(name) {
+		return name, true
+	}
+	file = strings.concatenate({strings.trim_right(name, "/"), "/sketch.roci"}, context.temp_allocator)
+	if !os.exists(file) {
+		fmt.sbprintf(err, "There is no sketch.roci in `%s`. A folder is run through its sketch.roci.\n", name)
+		return "", false
+	}
+	return file, true
 }
 
 // What `roci run` tells you when the windows open.

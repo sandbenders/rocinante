@@ -948,3 +948,25 @@ test_a_record_field_on_its_own_line_needs_no_comma :: proc(t: ^testing.T) {
 test_records_one_per_line_in_a_list :: proc(t: ^testing.T) {
 	expect_tree(t, "flowers = [\n  {\n    size: 1\n    spin: 2\n  }\n  { size: 3, spin: 4 }\n]", "(assign flowers (list (record size:(num 1) spin:(num 2)) (record size:(num 3) spin:(num 4))))")
 }
+
+@(test)
+test_a_word_after_a_call_that_means_one_of_its_words_is_said_so :: proc(t: ^testing.T) {
+	// What people call things elsewhere, and a slip of a letter or two.
+	for text in ([]string{"rect at 0 0 size 30 800 color blue", "rect at 0 0 size 3 3 colour blue", "circle at 1 1 radius 5 outline white", "circle at 1 1 radius 5 weight 3", "circle at 1 1 radius 5 opacity 3", "circle at 1 1 radius 5 thicknes 3", "circle at 1 1 radius 5 fil red"}) {
+		got := parse_text(text)
+		if testing.expectf(t, len(got.result.diagnostics) == 1, "`%s`: %d messages", text, len(got.result.diagnostics)) {
+			testing.expectf(t, got.result.diagnostics[0].id == .Unknown_Option, "`%s`: %v", text, got.result.diagnostics[0].id)
+		}
+	}
+	d := parse_text("rect at 0 0 size 30 800 color blue").result.diagnostics[0]
+	testing.expect_value(t, d.args[2], "fill")
+	testing.expect_value(t, d.args[3], "rect at 0 0 size 30 800 fill blue")
+}
+
+@(test)
+test_a_word_that_is_nothing_like_one_of_the_calls_words_stays_a_plain_unexpected_word :: proc(t: ^testing.T) {
+	expect_ids(t, "circle at 1 1 radius 5 banana", {.Unexpected_Token})
+	expect_ids(t, "x = 1 2", {.Unexpected_Token})
+	// A word from an earlier line's call is not offered for a later statement.
+	expect_ids(t, "circle at 1 1 radius 5\nx = 1 color", {.Unexpected_Token})
+}
