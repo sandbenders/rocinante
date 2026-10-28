@@ -251,7 +251,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			break
 		}
 		if slice.contains(registry.VALUES[:], word) && option_could_be_value(info, len(args)) {
-			report(p, .Ambiguous_Word, t.span, word)
+			report(p, .Ambiguous_Word, t.span, word, line_with(p, t.span, fmt.tprintf("(%s)", word)))
 		}
 		advance(p)
 		option_args := make([dynamic]^Expr, p.alloc)

@@ -4,3 +4,5 @@
   │               ^^^^^
 
 Here `width` is read as a connecting word. If you meant the value called `width`, put it in round brackets.
+
+To mean the value:  picture photo (width) 200

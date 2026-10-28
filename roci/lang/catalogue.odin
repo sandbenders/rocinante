@@ -146,7 +146,7 @@ CATALOGUE := [Message_Id]Entry{
 		"Did you mean:", "{b}"},
 	.Ambiguous_Word = {.Warning, "`{a}` could be read two ways",
 		"Here `{a}` is read as a connecting word. If you meant the value called `{a}`, put it in round brackets.",
-		"", ""},
+		"To mean the value:", "{b}"},
 
 	.Statement_Start = {.Error, "A line has to start with a word",
 		"`{a}` cannot start a line. A line starts with a verb, a keyword or a name.",
