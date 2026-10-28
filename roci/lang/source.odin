@@ -3,14 +3,14 @@
 // The language front end: text in, a tree with spans on
 // every node out. This file holds the text of one source file and the spans that
 // point into it, so every token, node, error and runtime command can say where it
-// came from (section 5.14).
+// came from.
 package lang
 
 import "core:strings"
 import "core:unicode/utf8"
 
 // Where something is in a file: byte offsets, `end` one past the last byte. `file`
-// numbers the files of one program (a sketch and its other files, section 5.10).
+// numbers the files of one program (a sketch and its other files).
 Span :: struct {
 	file:       i32,
 	start, end: int,

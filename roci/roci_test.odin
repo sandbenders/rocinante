@@ -50,7 +50,7 @@ test_a_verb_makes_the_default_window :: proc(t: ^testing.T) {
 
 @(test)
 test_the_smallest_program_is_one_circle :: proc(t: ^testing.T) {
-	// `circle 100 100 50` (non-negotiable 1): nothing set up, one window, one picture.
+	// `circle 100 100 50`: nothing set up, one window, one picture.
 	begin()
 	defer finish()
 	circle(100, 100, 50)

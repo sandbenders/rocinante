@@ -4,10 +4,10 @@
 // verbs in this package act on the *current window*: the default window while
 // the program sets itself up, and the window whose `draw` block is running while a
 // frame is drawn. Style and transform state live on each window's command list
-// and reset at the start of every frame (section 5.9).
+// and reset at the start of every frame.
 //
 // Everything runs on the thread that started the sketch, which is where SDL wants
-// its video calls (section 4.4). The state is thread-local, so tests that run
+// its video calls. The state is thread-local, so tests that run
 // in parallel threads each have their own sketch. A sketch can also run
 // headless, with no SDL and no window, drawing nothing to the screen but
 // recording everything: that is how the tests, the golden scenes and the
@@ -21,7 +21,7 @@ import "gfx"
 import "maths"
 import "platform"
 
-// The size a sketch gets when it never calls `window` (section 5.15).
+// The size a sketch gets when it never calls `window`.
 DEFAULT_WIDTH :: 800
 DEFAULT_HEIGHT :: 600
 
@@ -92,9 +92,9 @@ start_headless :: proc(seed: u64 = 0) {
 }
 
 // Starts the graphics, once. The first verb that needs a window calls this, so a
-// sketch of one line works with nothing set up (non-negotiable 1). When the
+// sketch of one line works with nothing set up. When the
 // graphics cannot start, the sketch carries on headless and `last_error` says why:
-// a sketch never crashes (non-negotiable 3).
+// a sketch never crashes.
 start :: proc() -> bool {
 	if the.started {
 		return !the.failed

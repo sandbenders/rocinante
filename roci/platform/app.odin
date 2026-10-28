@@ -33,7 +33,7 @@ Window_Options :: struct {
 	resizable:     bool,
 }
 
-// The size a sketch gets when it never calls `window` (section 5.15).
+// The size a sketch gets when it never calls `window`.
 DEFAULT_WIDTH :: 800
 DEFAULT_HEIGHT :: 600
 

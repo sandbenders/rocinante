@@ -61,9 +61,9 @@ program_loop :: proc() -> Program {
 	}
 }
 
-// A list of records changed in place, as in the particle sketch (section 5.4).
+// A list of records changed in place, as in the particle sketch.
 // The second `for each` shows that the changes made through `p` stayed in the
-// list, because records are shared (section 5.11).
+// list, because records are shared.
 program_records :: proc() -> Program {
 	fields := []string{"x", "vy"}
 	return Program{

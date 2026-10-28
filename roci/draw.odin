@@ -2,7 +2,7 @@
 //
 // The drawing verbs: shapes, style, colour,
 // transforms and scopes. They do not draw; each records a command in the current
-// window's list, and the renderer draws the frame at its end (section 4.3). The
+// window's list, and the renderer draws the frame at its end. The
 // names are the registry's, in Odin's spelling (a verb with several shapes is a
 // procedure group), and `api_names` in api_table.odin says which Odin procedure
 // answers each registry verb.
@@ -25,7 +25,7 @@ Paint :: union {
 	Gradient,
 }
 
-// Style for one element only (section 5.9, "style one element"): whatever is
+// Style for one element only: whatever is
 // set here applies to that shape and leaves the current style alone.
 Look :: struct {
 	fill:      Paint,
@@ -311,7 +311,7 @@ mix_numbers :: proc(a, b, amount: f64) -> f64 {
 // Blends two colours (in Oklab unless asked) or two numbers.
 mix :: proc{mix_colours, mix_numbers}
 
-// A gradient from at least one and at most 16 colours (section 5.9). A bad one is
+// A gradient from at least one and at most 16 colours. A bad one is
 // an empty gradient, which fills with nothing.
 gradient :: proc(colours: []Colour, kind := gfx.Gradient_Kind.Linear, angle := f64(0), space := maths.Mix_Space.Oklab, stops: []f32 = nil, centre := [2]f32{50, 50}) -> Gradient {
 	g, _ := gfx.gradient_make(colours, kind, f32(angle), space, stops, centre)

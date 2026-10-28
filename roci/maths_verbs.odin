@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: 0BSD
 //
 // Numbers, randomness and noise as verbs. Random numbers come from the sketch's one generator, so
-// `seed 42` makes a sketch repeat itself exactly, interpreted or compiled
-// (section 4.7); noise comes from the same seed. Angles are in degrees
-// everywhere (section 5.15).
+// `seed 42` makes a sketch repeat itself exactly, interpreted or compiled;
+// noise comes from the same seed. Angles are in degrees
+// everywhere.
 package roci
 
 import "core:math"

@@ -10,7 +10,7 @@ Env :: struct {
 	numbers: map[string]f64,
 	lists:   map[string][dynamic]^Record,
 	// Names bound by `for each`. They point at the list's own items, because
-	// records are shared, not copied (section 5.11).
+	// records are shared, not copied.
 	records: map[string]^Record,
 }
 

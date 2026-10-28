@@ -3,7 +3,7 @@
 // Colours. A colour is four numbers, red, green, blue
 // and alpha, every one from 0 to 255 (decided 2026-10-23); values outside that
 // are clamped. Because a colour is an Odin array, `c * 0.5` and `a + b` work
-// element by element, as section 5.2 promises. `hsb` also uses 0-255 for all
+// element by element, as the language promises. `hsb` also uses 0-255 for all
 // three channels; `oklch` follows its CSS notation (lightness 0-1, chroma,
 // hue in degrees). Mixing is done in Oklab by default, which keeps gradients
 // even and avoids muddy middles (Ottosson, https://bottosson.github.io/posts/oklab/).

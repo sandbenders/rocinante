@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
 // Expressions and calls: the part of the parser that decides where a call ends
-// and what a missing bracket looks like (section 5.7).
+// and what a missing bracket looks like.
 package lang
 
 import "../registry"
@@ -76,7 +76,7 @@ find_callee :: proc(p: ^Parser) -> (info: Call_Info, used: int, ok: bool) {
 }
 
 // Whether `word` is a connecting word of this call once `given` arguments are in,
-// and how many arguments it takes (section 5.1: a connecting word counts only when
+// and how many arguments it takes (a connecting word counts only when
 // some shape with that many arguments lists it).
 @(private)
 option_arity :: proc(info: Call_Info, word: string, given: int) -> (n: int, ok: bool) {
@@ -137,7 +137,7 @@ param_kind_is :: proc(info: Call_Info, index: int, kind: registry.Kind) -> bool 
 
 // Words that end a call because they can never be an argument: keywords (except
 // `it` and `result`, which are values) and the connecting words that are not also
-// values (section 5.1).
+// values.
 @(private)
 is_stop_word :: proc(word: string) -> bool {
 	if slice.contains(registry.KEYWORDS[:], word) {
@@ -291,7 +291,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 	return new_expr(p, span_from(p, first.span), call)
 }
 
-// `circle(100, 100, 50)`: a verb is not called with round brackets (section 5.1).
+// `circle(100, 100, 50)`: a verb is not called with round brackets.
 // Says so, with the call written the right way, and steps over the brackets.
 @(private)
 skip_call_parentheses :: proc(p: ^Parser, verb: Token) -> bool {
@@ -361,7 +361,7 @@ option_could_be_value :: proc(info: Call_Info, given: int) -> bool {
 
 // ---- arguments ----
 
-// One item (section 5.1). With `plain`, a word is only ever a name, as inside a list.
+// One item. With `plain`, a word is only ever a name, as inside a list.
 @(private)
 parse_argument :: proc(p: ^Parser, expect_block := false, plain := false, expr_block := false) -> ^Expr {
 	t := cur(p)
@@ -591,7 +591,7 @@ parse_list :: proc(p: ^Parser) -> ^Expr {
 	}
 }
 
-// ---- expressions (section 5.15) ----
+// ---- expressions ----
 
 @(private)
 parse_expression :: proc(p: ^Parser) -> ^Expr {
@@ -780,7 +780,7 @@ lines_between :: proc(p: ^Parser, first, last: int) -> string {
 }
 
 // Reports the calls of a statement that need round brackets as one error, with the
-// line as it should be written (section 5.7).
+// line as it should be written.
 @(private)
 flush_wraps :: proc(p: ^Parser, mark: int) {
 	if len(p.wraps) <= mark {

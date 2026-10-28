@@ -229,7 +229,7 @@ test_names_the_language_already_uses_cannot_be_assigned :: proc(t: ^testing.T) {
 	expect_errors(t, "circle = 3", {.Reserved_Name})
 	expect_errors(t, "width = 3", {.Reserved_Name})
 	expect_errors(t, "red = 3", {.Reserved_Name})
-	// `size` is both a value and a connecting word and stays free (section 5.15).
+	// `size` is both a value and a connecting word and stays free.
 	expect_errors(t, "size = 3", {})
 }
 

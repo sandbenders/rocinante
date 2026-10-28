@@ -51,7 +51,7 @@ validate_verbs :: proc(verbs: []Verb, allocator := context.allocator) -> []Probl
 			}
 		}
 		// Verbs may share a name with a connecting word (`fill`, `stroke`), because a
-		// word is a connecting word only after the required arguments (section 5.1).
+		// word is a connecting word only after the required arguments.
 		// Keywords, values and colour names may not be verbs.
 		_, is_colour := maths.name_lookup(v.name)
 		if slice.contains(KEYWORDS[:], v.name) || slice.contains(VALUES[:], v.name) || is_colour {

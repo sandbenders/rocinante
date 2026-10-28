@@ -92,7 +92,7 @@ can_package :: proc(target: Target, host: string) -> bool {
 }
 
 // For every target: can this computer build it? Says so first, before any tool
-// is looked for, as the section 7 rule asks.
+// is looked for, as the packaging rules ask.
 report_targets :: proc(host: string) {
 	fmt.printfln("%s", term.out(fmt.tprintf("this computer is %s", host_label(host)), .Bold_Cyan))
 	for target in TARGETS {

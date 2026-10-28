@@ -36,7 +36,7 @@ Token :: struct {
 	span:   Span,
 	// How many spaces or tabs came before it on its line. For the first token of a
 	// line that is the indentation, which the parser reads only to explain bracket
-	// mistakes (section 5.1); two or more inside a one-line block end a call (§5.7).
+	// mistakes; two or more inside a one-line block end a call.
 	spaces: int,
 }
 

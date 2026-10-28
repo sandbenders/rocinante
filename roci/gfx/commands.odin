@@ -9,7 +9,7 @@
 //
 // Style and transform state live on the list: `fill`, `move` and the rest change
 // what later commands record, and `begin_frame` puts everything back to the
-// defaults, so one frame never leaks into the next (section 5.9).
+// defaults, so one frame never leaks into the next.
 package gfx
 
 import "../geom"
@@ -29,7 +29,7 @@ Kind :: enum u8 {
 	Text, // the overlay font (font.odin); see `debug_text`
 }
 
-// What a position means (section 5.9, "Origin"). `Default` is each shape's own
+// What a position means. `Default` is each shape's own
 // habit: circles, ellipses and arcs are centred on their point, the others
 // start at their corner (see `is_centred`).
 Origin :: enum u8 {
@@ -150,7 +150,7 @@ destroy :: proc(list: ^Command_List) {
 // ---- recording ----
 
 // Whether a number can be drawn. A sketch can produce NaN or infinity (0/0), and
-// the canvas must not crash (non-negotiable 3), so such commands are dropped.
+// the canvas must not crash, so such commands are dropped.
 finite :: proc "contextless" (values: ..f32) -> bool {
 	// v * 0 is 0 (or -0) for every finite v and NaN for infinity and NaN, so this is
 	// one multiply and one comparison a value with no branches: every shape a
@@ -242,7 +242,7 @@ arc :: proc(list: ^Command_List, x, y, width, height, start, stop: f32, origin :
 	return record(list, .Arc, origin, {x, y, abs(width), abs(height), start, stop, 0, 0})
 }
 
-// Text in the overlay font (section 8, Phase 1; real text comes in Phase 3), in the
+// Text in the overlay font (real text comes later), in the
 // fill colour, with its top left corner at (x, y). `scale` makes every character
 // 8 x scale pixels wide; whole numbers look best. Lines break at `\n`. Gives false
 // when a number is not finite or `scale` is not a size that can be drawn; empty
@@ -264,7 +264,7 @@ debug_text :: proc(list: ^Command_List, text: string, x, y: f32, scale: f32 = 2)
 }
 
 // `background` paints the whole window, so everything recorded before it is
-// hidden and is dropped; later commands draw on top (section 5.9).
+// hidden and is dropped; later commands draw on top.
 background :: proc(list: ^Command_List, colour: maths.Colour) {
 	clear(&list.commands)
 	list.background = colour

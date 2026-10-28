@@ -32,7 +32,7 @@ kind_name :: proc "contextless" (kind: Kind) -> string {
 
 // Whether the position of a command is the middle of its shape. Circles,
 // ellipses and arcs default to it, as in Processing; the rest start at their
-// corner. `as center` and `as corner` override either habit (section 5.9).
+// corner. `as center` and `as corner` override either habit.
 is_centred :: proc "contextless" (c: Command) -> bool {
 	switch c.origin {
 	case .Center: return true

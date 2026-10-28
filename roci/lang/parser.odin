@@ -7,7 +7,7 @@
 // becomes an Error_Stmt, the error goes in the diagnostics, and parsing goes on
 // at the next line or the end of the block, so one pass reports every error.
 //
-// How a call ends is the heart of it (section 5.1). A verb takes at most as many
+// How a call ends is the heart of it. A verb takes at most as many
 // arguments as its largest shape; each is one item (a literal, a name, a group in
 // round brackets, a vector, a list or a block); a connecting word starts an option
 // only when some shape with that many arguments lists it; and a call also ends at
@@ -277,8 +277,8 @@ fixed_number :: proc(text: string) -> (replacement: string, found: bool) {
 }
 
 // Each rule of docs/grammar.ebnf and the procedure that parses it. A test reads
-// the grammar file and fails when a rule is missing here, or the other way round
-// (section 5.14), so the grammar and the parser cannot drift apart.
+// the grammar file and fails when a rule is missing here, or the other way round,
+// so the grammar and the parser cannot drift apart.
 GRAMMAR_RULES := [?]struct{rule, parser: string}{
 	{"program", "parse"},
 	{"statement", "parse_statement"},

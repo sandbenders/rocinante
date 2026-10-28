@@ -3,8 +3,8 @@
 // The C ABI: every verb
 // as a plain C function, so a program in C (or anything that can call C) draws with
 // the same words and the same behaviour as one in Odin. Each function here is
-// exported under its C name and calls the Odin verb; none has any logic of its own
-// (non-negotiable 7). The header `include/roci.h` is generated from the verb
+// exported under its C name and calls the Odin verb; none has any logic of its own.
+// The header `include/roci.h` is generated from the verb
 // registry and ABI_TABLE by abi_header.odin, so the prototypes cannot drift from
 // the registry; tests check the table against the registry and against the types
 // of the exported procedures.

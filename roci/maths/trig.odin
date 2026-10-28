@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Sine and cosine of angles in degrees (section 5.15: angles are degrees
-// everywhere), the one implementation the verbs, `turn` and both back ends call
-// (section 4.7). Our own code rather than the C library's, so a sketch gets the
+// Sine and cosine of angles in degrees (angles are degrees
+// everywhere), the one implementation the verbs, `turn` and both back ends call.
+// Our own code rather than the C library's, so a sketch gets the
 // same numbers on every system, and faster, because a sketch may call these for
 // every shape it draws.
 //
@@ -93,7 +93,7 @@ cos_small :: proc "contextless" (degrees: f64) -> f64 {
 }
 
 // Sine of an angle in degrees: exact at right angles, never -0, and 0 for NaN and
-// infinity (a sketch's runtime failures give a usable number, section 5.15).
+// infinity (a sketch's runtime failures give a usable number).
 sin_deg :: proc "contextless" (degrees: f64) -> f64 {
 	quarter, rest, ok := quarter_turns(degrees)
 	if !ok {

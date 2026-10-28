@@ -72,7 +72,7 @@ Add :: struct {
 }
 
 // `for each p in particles [ ... ]`. `p` shares each item rather than copying
-// it (section 5.11), so changes made through it stay in the list.
+// it, so changes made through it stay in the list.
 For_Each :: struct {
 	var, list: string,
 	body:      []Stmt,
@@ -96,7 +96,7 @@ Stmt :: union {
 	Set_Field,
 }
 
-// A record shape: one per place a record is made (section 5.3). Every field
+// A record shape: one per place a record is made. Every field
 // is a number in this spike.
 Shape :: struct {
 	name:   string,

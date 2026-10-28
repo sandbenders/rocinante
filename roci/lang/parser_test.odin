@@ -764,7 +764,7 @@ test_for_every_on_use_and_learn_headers_are_checked :: proc(t: ^testing.T) {
 	expect_ids(t, "learn star size with points 5 6 [ ]", {.Learn_Default_Not_One_Item})
 	expect_ids(t, "learn star size with points [ ]", {.Learn_Default_Not_One_Item})
 	expect_ids(t, "learn star size with fill 5 [ ]", {.Learn_Reserved_Name})
-	// `width`, `height` and `size` may be parameters (section 5.15).
+	// `width`, `height` and `size` may be parameters.
 	expect_ids(t, "learn box width height [ ]", {})
 }
 
@@ -833,7 +833,7 @@ test_every_message_is_complete_and_keeps_brackets_out_of_the_words :: proc(t: ^t
 	for entry, id in CATALOGUE {
 		testing.expectf(t, entry.title != "" && entry.explain != "", "%v has no title or explanation", id)
 		testing.expectf(t, entry.example == "" || entry.label != "", "%v has an example with no label", id)
-		// A screen reader says "closing square bracket", never a bare one (section 5.7).
+		// A screen reader says "closing square bracket", never a bare one.
 		for text in ([]string{entry.title, entry.explain}) {
 			testing.expectf(t, !strings.contains_any(text, "[]"), "%v: the words of a message must not hold a bare square bracket: %s", id, text)
 		}

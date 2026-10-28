@@ -3,7 +3,7 @@
 // Spike 3: a hand-written typed-IR fragment is
 // run by a small interpreter and turned into Odin source, which is built with
 // the pinned Odin and run. Both must print exactly the same thing, which is
-// non-negotiable 7 in miniature. Run it from the repository root:
+// the rule that a sketch behaves the same interpreted and compiled, in miniature. Run it from the repository root:
 //
 //     odin run spikes/codegen -- check     interpret, generate, build, compare
 //     odin run spikes/codegen -- doctor    say which targets this computer can build, and look for the toolchain

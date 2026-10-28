@@ -17,12 +17,12 @@
               or the end of the line. Any other hash starts a comment to the end of
               the line (decided 2026-10-28).
      NAME     a letter, then letters, digits and underscores (letters of any script).
-              A NAME in capitals only is a constant (section 5.1).
+              A NAME in capitals only is a constant.
      NEWLINE  a line break. Newlines are free inside ( ), { } and a list [ ];
               a block [ ] may span lines too, but its statements end at line ends.
      A minus is a sign (written "-" below as SIGN) when a space comes before it and
      none after, or nothing that could be subtracted from comes before it
-     (section 5.15); otherwise it is the operator "-".
+; otherwise it is the operator "-".
 *)
 
 program        = { statement } ;
@@ -60,21 +60,21 @@ draw_statement  = "draw" [ argument ] block ;
 use_statement   = "use" TEXT ;
 
 (* The event phrases and what follows them are the registry's EVENTS; the second
-   form is `on w receive msg [ ... ]` (section 4.5). *)
+   form is `on w receive msg [ ... ]`. *)
 on_statement    = "on" ( 'event phrase' { argument } | argument "receive" NAME ) block ;
 
-(* A call: a verb, matched as a phrase longest first (section 5.1), then its
+(* A call: a verb, matched as a phrase longest first, then its
    required arguments, then connecting words. Which shape of a verb group is meant
-   is the checker's choice, by count and then kinds (section 5.2); the parser only
+   is the checker's choice, by count and then kinds; the parser only
    needs the largest count any shape takes and the options any shape lists. *)
 call           = 'verb' { argument } { option } ;
 option         = 'connecting word' { argument } ;
 
-(* One thing per argument (section 5.1). *)
+(* One thing per argument. *)
 argument       = NUMBER | TEXT | COLOUR | path | group | vector_or_record | list | block
                | expression_block | sign argument ;
 
-(* The block of a list verb: one expression, run for each item (section 5.2). It is
+(* The block of a list verb: one expression, run for each item. It is
    read where the verb's parameter or connecting word takes one. *)
 expression_block = "[" expression "]" ;
 group          = "(" expression ")" ;

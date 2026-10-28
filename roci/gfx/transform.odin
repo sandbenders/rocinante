@@ -7,7 +7,7 @@
 //     x' = a*x + c*y + e
 //     y' = b*x + d*y + f
 //
-// The origin is the top left with y pointing down (section 5.15), so a positive
+// The origin is the top left with y pointing down, so a positive
 // turn goes clockwise on screen, like the turtle's `right`. Angles are degrees.
 package gfx
 

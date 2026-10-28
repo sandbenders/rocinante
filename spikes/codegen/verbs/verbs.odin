@@ -2,7 +2,7 @@
 //
 // The spike's stand-in for the core's verbs. The
 // interpreter and the generated Odin both call these same procedures, which is
-// what keeps their behaviour identical (non-negotiable 7). The real core draws;
+// what keeps their behaviour identical. The real core draws;
 // this one writes a line per call, so two runs can be compared exactly.
 package verbs
 

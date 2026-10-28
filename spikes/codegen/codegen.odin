@@ -5,7 +5,7 @@
 // its .roci line (the spike's stand-in for source mapping), and verbs are
 // called by the same names the interpreter uses. A record shape becomes a plain
 // struct and a list of records a dynamic array of it, which is the fast layout
-// section 5.2 promises.
+// the language promises.
 package codegen_spike
 
 import "core:fmt"
@@ -37,7 +37,7 @@ generate :: proc(p: Program) -> string {
 
 	fmt.sbprintln(&b, "main :: proc() {")
 
-	// A name assigned anywhere in a sketch is sketch-wide (section 5.15), so
+	// A name assigned anywhere in a sketch is sketch-wide, so
 	// every assigned name and every list is declared once at the top, empty.
 	names: [dynamic]string
 	defer delete(names)
@@ -147,7 +147,7 @@ emit_body :: proc(b: ^strings.Builder, body: []Stmt, depth: int, file: string, s
 			}
 			fmt.sbprintfln(b, "%s) // %s:%d", "}", file, s.line)
 		case For_Each:
-			// By reference, because records are shared (section 5.11).
+			// By reference, because records are shared.
 			fmt.sbprintfln(b, "for &%s in %s %s // %s:%d", s.var, s.list, "{", file, s.line)
 			emit_body(b, s.body, depth + 1, file, shapes)
 			indent(b, depth)

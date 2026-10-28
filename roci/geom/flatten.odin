@@ -114,8 +114,8 @@ flatten_curve :: proc(out: ^[dynamic]Point, p0, p1, p2, p3: Point, tightness := 
 
 // Points along the arc of an ellipse centred on (cx, cy) with radii rx and ry,
 // from angle `start` to angle `stop` in degrees. Angles grow clockwise on the
-// screen (y points down), starting from the right, like the turtle's `right`
-// (section 5.15). A stop before the start goes round the long way, so 350 to 10
+// screen (y points down), starting from the right, like the turtle's `right`.
+// A stop before the start goes round the long way, so 350 to 10
 // is the 20 degrees across the right side; a sweep of 360 or more is the whole
 // ellipse; equal angles give nothing. Both ends are included, and the result
 // stays within `tolerance` of the true ellipse.

@@ -1,4 +1,4 @@
-# The particle sketch of section 5.4: a list of records, added to, walked and changed.
+# The particle sketch: a list of records, added to, walked and changed.
 particles = []
 repeat 200 [ add { pos: { random width, 0 }, vel: { 0, random 3 }, life: 100 } to particles ]
 

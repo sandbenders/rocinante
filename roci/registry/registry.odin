@@ -4,14 +4,14 @@
 // table that says, for every verb the core offers, its name, the shapes its
 // arguments can take, the connecting words after them, whether it gives a value
 // and a one-line description. The checker's "did you mean", the reserved-word
-// list (section 5.15), the docs reference, language-server completion and the
+// list, the docs reference, language-server completion and the
 // C header are all made from this table, so none of them can drift from the
 // core. The verbs themselves are in package roci; a test there checks that every
 // entry here has a procedure.
 package registry
 
 // What an argument or a result is. The checker works with these, never with
-// Odin types (users never see types, non-negotiable 2).
+// Odin types (users never see types).
 Kind :: enum u8 {
 	None, // gives nothing: the verb is a statement
 	Number,
@@ -25,7 +25,7 @@ Kind :: enum u8 {
 	Gradient, // made by `gradient`, or written as a list of colours where a colour goes
 	Any,
 	Boolean, // true or false: what a comparison gives
-	Expr_Block, // a [ ] that holds one expression, run for each item of a list (section 5.2)
+	Expr_Block, // a [ ] that holds one expression, run for each item of a list
 }
 
 Param :: struct {
@@ -43,7 +43,7 @@ Option :: struct {
 
 // One way to call a verb: the required arguments in order, then the connecting
 // words that may follow, and what the call gives back (.None for a statement).
-// A verb with several shapes is a verb group (section 5.2); the result can differ
+// A verb with several shapes is a verb group; the result can differ
 // by shape, as `mix` gives a colour from colours and a number from numbers.
 Shape :: struct {
 	params:  []Param,
@@ -57,14 +57,14 @@ Verb :: struct {
 	doc:    string,
 }
 
-// The connecting words (section 5.1). This list is closed: a verb's options must
-// come from it, and a taught verb adds its own only through `with` (section 5.11).
+// The connecting words. This list is closed: a verb's options must
+// come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
 	"alpha", "angle", "as", "at", "by", "fill", "font", "from", "height", "in",
 	"lines", "of", "size", "start", "stops", "stroke", "style", "thickness", "to", "width",
 }
 
-// Words the language itself uses, which no verb or name may take (section 5.15).
+// Words the language itself uses, which no verb or name may take.
 KEYWORDS := [?]string{
 	"and", "draw", "each", "else", "every", "for", "give", "hidden", "if", "is", "it", "learn",
 	"not", "on", "or", "receive", "repeat", "result", "stop", "use", "while", "with",
@@ -100,11 +100,11 @@ VALUE_DEFS := [?]Value_Def{
 }
 
 // `width`, `height` and `size` are values and connecting words together, so they
-// stay free to use as parameter names (sections 5.1 and 5.15).
+// stay free to use as parameter names.
 FREE_AS_PARAMETERS := [?]string{"height", "size", "width"}
 
 // An `on` event and what follows its name: `on key "space" [ ... ]`, `on mouse down [ ... ]`.
-// `on w receive msg [ ... ]` is its own form, because a window comes first (section 4.5).
+// `on w receive msg [ ... ]` is its own form, because a window comes first.
 Event :: struct {
 	name:   string, // lowercase; several words for `mouse down`
 	params: []Kind,

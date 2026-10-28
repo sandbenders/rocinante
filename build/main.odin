@@ -4,8 +4,8 @@
 //
 //     odin run build -- <command>
 //
-// `ci` runs exactly what both pipelines run, so nothing lives only in YAML
-//. `ci --fast` is the part the pre-push hook runs.
+// `ci` runs exactly what both pipelines run, so nothing lives only in YAML.
+// `ci --fast` is the part the pre-push hook runs.
 package build
 
 import "core:fmt"
@@ -127,7 +127,7 @@ ci :: proc(fast: bool) -> bool {
 }
 
 // The unit tests again, built optimised (-o:speed, as the benchmark is measured):
-// a sketch must behave the same however it was built (non-negotiable 7), so the
+// a sketch must behave the same however it was built, so the
 // optimiser must not change a result, which holds only while nothing uses
 // fast-math. The full `ci` only, because building every package optimised takes
 // about a minute.

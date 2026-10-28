@@ -9,7 +9,7 @@
 // A Shape is {params, options, gives}; a Verb is {name, shapes, doc}.
 package registry
 
-// The style words every drawing verb accepts (section 5.9). `as` after the
+// The style words every drawing verb accepts. `as` after the
 // required arguments is the origin: `as center` or `as corner`.
 STYLE_OPTIONS := []Option{
 	{"fill", {.Colour}, false},

@@ -23,7 +23,7 @@ Metrics :: struct {
 // phone's content scale (2.6 on a Pixel 9) only as the display scale, so a sketch
 // would draw in tiny pixels where an iPhone, whose windows are in points, shows
 // the same sketch three times bigger. There the canvas is the window divided by
-// that scale, so `width` and `height` mean the same on every phone (section 5.15).
+// that scale, so `width` and `height` mean the same on every phone.
 WINDOW_IS_IN_PIXELS :: ODIN_PLATFORM_SUBTARGET == .Android
 
 // How many device pixels make one logical pixel when SDL's own window size is in

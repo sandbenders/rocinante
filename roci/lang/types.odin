@@ -26,7 +26,7 @@ Type_Kind :: enum u8 {
 	Vector,   // `a` is the number of components
 	List,     // `a` is the element's type
 	Record,   // `a` is the shape's number
-	Boxed,    // the fallback of section 5.3: any value, checked while the sketch runs
+	Boxed,    // the fallback for what inference cannot decide: any value, checked while the sketch runs
 	Variable, // `a` is the variable's number
 }
 
@@ -47,7 +47,7 @@ Field_Info :: struct {
 	type: Type_Id,
 }
 
-// A record shape (section 5.3): one per place a record is made, with the fields
+// A record shape: one per place a record is made, with the fields
 // that place gives it and every field assigned anywhere in the sketch, in the order
 // they were first seen. Shapes whose records meet (in one list, one name, one
 // argument) are merged into one with the union of the fields; `into` is where a
@@ -165,7 +165,7 @@ add_field :: proc(ts: ^Types, shape: int, name: string, type: Type_Id) {
 
 // Makes the shape `b` part of `a`: every field of `b` joins `a`, and a field both
 // have must hold one kind of value. Records made in different places, then found
-// in one list, are the same kind of record from then on (section 5.15).
+// in one list, are the same kind of record from then on.
 merge_shapes :: proc(ts: ^Types, a, b: int) -> bool {
 	ra, rb := shape_root(ts, a), shape_root(ts, b)
 	if ra == rb {
@@ -209,7 +209,7 @@ occurs :: proc(ts: ^Types, variable: Type_Id, id: Type_Id) -> bool {
 // Makes the two types one, binding variables as needed. False when they cannot
 // be the same; nothing is bound then that was not already. An Error type fits
 // everything, so a mistake already reported does not cause more. A Boxed value
-// fits any type (the fallback of section 5.3).
+// fits any type (the fallback for what inference cannot decide).
 unify :: proc(ts: ^Types, a, b: Type_Id) -> bool {
 	x, y := resolve(ts, a), resolve(ts, b)
 	if x == y {
@@ -237,7 +237,7 @@ unify :: proc(ts: ^Types, a, b: Type_Id) -> bool {
 	return false
 }
 
-// The kind the registry uses for a verb's parameter, for choosing a shape (section 5.2).
+// The kind the registry uses for a verb's parameter, for choosing a shape.
 registry_kind :: proc(ts: ^Types, id: Type_Id) -> registry.Kind {
 	#partial switch kind_of(ts, id) {
 	case .Number:   return .Number
@@ -279,7 +279,7 @@ type_of_kind :: proc(ts: ^Types, kind: registry.Kind, first_list: Type_Id = T_ER
 }
 
 // What a message calls a type: "a number", "a vector of 2 numbers", "a list of text".
-// Plain words, never a type name (non-negotiable 2). The caller frees nothing (temporary).
+// Plain words, never a type name. The caller frees nothing (temporary).
 describe :: proc(ts: ^Types, id: Type_Id) -> string {
 	now := resolve(ts, id)
 	item := ts.items[now]

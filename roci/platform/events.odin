@@ -32,7 +32,7 @@ Modifiers :: bit_set[Modifier]
 Quit :: struct {}
 
 // The window's close button, or the system's request to close it. Nothing is
-// closed yet: the sketch decides (non-negotiable 3 keeps the canvas alive).
+// closed yet: the sketch decides (the canvas never crashes).
 Close_Requested :: struct {
 	window: Window_Id,
 }

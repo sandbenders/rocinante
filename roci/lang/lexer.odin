@@ -2,7 +2,7 @@
 //
 // Text to tokens. The lexer never stops
 // at a mistake: it records the problem, still makes a token, and goes on, so the
-// parser can report every error of a file in one pass (section 5.7). It knows no
+// parser can report every error of a file in one pass. It knows no
 // verbs and no keywords; every word is a Name, and the parser reads the registry.
 package lang
 

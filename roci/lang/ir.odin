@@ -6,7 +6,7 @@
 // registry verb and the shape of its group that was chosen. Nothing here is a
 // tree of strings.
 //
-// Phase 7's optimisation passes (section 4.7) need a few facts the interpreter
+// Phase 7's optimisation passes need a few facts the interpreter
 // ignores: the variables a block captures (`captures`), and the lists changed
 // inside a loop (`changed_lists`, step 3b). They are carried, not used.
 package lang
@@ -16,13 +16,13 @@ import "../registry"
 
 Symbol_Kind :: enum u8 {
 	Variable,
-	Constant, // written in capitals: assigned once, never changed (section 5.1)
+	Constant, // written in capitals: assigned once, never changed
 	Loop,     // the name of a `for` loop
 	Item,     // `it` inside a list verb's block
 	Result,   // `result` inside `combine`'s block
 	Message,  // the name of a message in `on w receive msg`
 	Parameter, // a parameter of a taught verb
-	Local,    // a name made inside a taught verb that does not exist at top level (section 5.11)
+	Local,    // a name made inside a taught verb that does not exist at top level
 }
 
 Symbol :: struct {
@@ -240,8 +240,7 @@ IR_Default :: struct {
 	value:  ^IR,
 }
 
-// One version of a taught verb, for one tuple of argument types (section 5.3 and
-// 4.7): a record shape makes its own, so compiled code gets one plain procedure
+// One version of a taught verb, for one tuple of argument types : a record shape makes its own, so compiled code gets one plain procedure
 // per shape. A verb nobody calls is checked once with mixed parameters and marked
 // `unused`.
 IR_Instance :: struct {

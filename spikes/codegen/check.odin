@@ -6,7 +6,7 @@ import "core:fmt"
 // A minimal stand-in for the checker: every verb exists and gets the right
 // number of arguments, every name is set before it is read, and lists and
 // records are used with the shape they were made with. The real checker also
-// infers types and gives errors in plain words (section 5.7).
+// infers types and gives errors in plain words.
 Checker :: struct {
 	shapes:  []Shape,
 	numbers: map[string]bool,

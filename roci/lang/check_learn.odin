@@ -43,8 +43,8 @@ collect_learns :: proc(c: ^Checker, stmts: []^Stmt) {
 	}
 }
 
-// Whether a `give` appears anywhere in the body: that is what makes a verb give
-// (section 5.11), so it is known before the body is checked.
+// Whether a `give` appears anywhere in the body: that is what makes a verb give,
+// so it is known before the body is checked.
 @(private)
 has_give :: proc(stmts: []^Stmt) -> bool {
 	for s in stmts {
@@ -210,7 +210,7 @@ check_give :: proc(c: ^Checker, k: Give) -> IR_Stmt_Kind {
 	return IR_Give{value = value}
 }
 
-// Verbs nobody called are checked once with mixed parameters (section 5.3), so a
+// Verbs nobody called are checked once with mixed parameters, so a
 // mistake in them is still found.
 @(private)
 check_unused_verbs :: proc(c: ^Checker) {

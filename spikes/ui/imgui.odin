@@ -2,8 +2,8 @@
 //
 // The few Dear ImGui calls Spike 4 needs, declared by hand against the C API
 // that dear_bindings generated (dcimgui.h, v0.26 for Dear ImGui v1.93.0). The
-// real bindings will be generated from dear_bindings' JSON description
-//; this is just enough to prove the pipeline.
+// real bindings will be generated from dear_bindings' JSON description;
+// this is just enough to prove the pipeline.
 package spike_ui
 
 import sdl "vendor:sdl3"

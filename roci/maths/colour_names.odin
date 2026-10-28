@@ -2,7 +2,7 @@
 //
 // The CSS named colours (CSS Color Module Level 4, section "Named Colors",
 // https://www.w3.org/TR/css-color-4/#named-colors), which are rocinante's colour
-// words. Language words use US spelling (section 5.15),
+// words. Language words use US spelling,
 // so the table holds `gray` and not `grey`; `us_spelling` turns a British
 // spelling into the word to suggest. Sorted by name.
 package maths

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Whole sketches that must check cleanly, with what each name is expected to be
-//: `tests/check/<name>.roci` and `<name>.types`. They check
+// Whole sketches that must check cleanly, with what each name is expected to be:
+// `tests/check/<name>.roci` and `<name>.types`. They check
 // against the real registry, so a verb that is removed or changed breaks them.
 // `ROCI_UPDATE_ERRORS=1` writes the `.types` files again.
 package lang

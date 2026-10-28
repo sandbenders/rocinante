@@ -24,7 +24,7 @@ Style :: struct {
 	stroke_paint: Gradient_Ref,
 }
 
-// What every frame starts with (section 5.15): white fill, no outline,
+// What every frame starts with: white fill, no outline,
 // thickness 1, fully opaque, round caps and mitred corners (Processing's defaults).
 DEFAULT_STYLE :: Style{
 	fill      = {255, 255, 255, 255},
@@ -37,7 +37,7 @@ DEFAULT_STYLE :: Style{
 	join      = .Miter,
 }
 
-// A window's background when nothing sets one: light grey, 230 (section 5.15).
+// A window's background when nothing sets one: light grey, 230.
 DEFAULT_BACKGROUND :: maths.Colour{230, 230, 230, 255}
 
 // A colour as the GPU wants it: 0 to 1 per channel, with the style's alpha folded in.

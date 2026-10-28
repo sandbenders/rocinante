@@ -24,7 +24,7 @@ find_in :: proc(verbs: []Verb, name: string) -> (verb: ^Verb, ok: bool) {
 }
 
 // The multi-word verbs are a fixed table of phrases matched longest first,
-// before a word is read on its own (section 5.1). `words` are the words of a
+// before a word is read on its own. `words` are the words of a
 // line from the start of a statement. Gives the verb and how many words it used.
 match_phrase :: proc(words: []string) -> (verb: ^Verb, used: int) {
 	return match_phrase_in(ALL_VERBS, words)
@@ -77,7 +77,7 @@ Shape_Result :: enum {
 
 // Whether an argument of kind `got` can go where a parameter of kind `want` is
 // expected. A colour parameter also takes a number (a grey), a list of colours
-// and a gradient (a gradient is a paint like any colour, section 5.9).
+// and a gradient (a gradient is a paint like any colour).
 accepts :: proc(want, got: Kind) -> bool {
 	// A Boxed value (kind Any) is checked while the sketch runs, so it fits anywhere.
 	if want == got || want == .Any || got == .Any {
@@ -90,7 +90,7 @@ accepts :: proc(want, got: Kind) -> bool {
 }
 
 // Picks the shape of a verb group for these argument kinds: first by count,
-// then by kinds (section 5.2). A shape that matches exactly wins over one that
+// then by kinds. A shape that matches exactly wins over one that
 // only fits through `accepts`, so `mix 1 2 0.5` is the number shape even though
 // a colour could be a grey.
 shape_for :: proc(verb: ^Verb, kinds: []Kind) -> (index: int, result: Shape_Result) {
@@ -199,7 +199,7 @@ suggest :: proc(word: string) -> (suggestion: string, ok: bool) {
 
 // Whether the language already uses this word: a verb (the whole name of a
 // multi-word verb), a keyword, a built-in value, a connecting word or a colour
-// name (section 5.15).
+// name.
 is_reserved :: proc(word: string) -> bool {
 	if _, found := find_verb(word); found {
 		return true
@@ -212,12 +212,12 @@ is_reserved :: proc(word: string) -> bool {
 }
 
 // Whether a sketch may not use this word as a variable or parameter name. The
-// words that are both values and connecting words stay free (section 5.15).
+// words that are both values and connecting words stay free.
 is_reserved_name :: proc(word: string) -> bool {
 	return is_reserved(word) && !slice.contains(FREE_AS_PARAMETERS[:], word)
 }
 
-// Every reserved word, sorted and without repeats, for the docs (section 5.15).
+// Every reserved word, sorted and without repeats, for the docs.
 // The caller frees the slice.
 reserved_words :: proc(allocator := context.allocator) -> []string {
 	all := make([dynamic]string, allocator)

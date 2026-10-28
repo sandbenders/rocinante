@@ -174,7 +174,7 @@ block_around :: proc(p: ^Parser, at: Span) -> string {
 }
 
 // The cursor is at the opening square bracket. Brackets that do not balance are
-// explained with the indentation (section 5.1): indentation never changes what a
+// explained with the indentation: indentation never changes what a
 // sketch means, but it shows where the writer thought the block ended.
 @(private)
 parse_block :: proc(p: ^Parser) -> Block {

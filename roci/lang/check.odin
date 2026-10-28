@@ -3,9 +3,9 @@
 // The checker: it reads the tree the
 // parser made, works out what every name and expression is, and builds the typed
 // IR. Every error a user sees about names, kinds and calls comes from here or
-// from the parser, so `roci run` and `roci package` say the same thing (§4.7).
+// from the parser, so `roci run` and `roci package` say the same thing.
 //
-// Types are inferred, never written (§5.3). Every name that is assigned anywhere
+// Types are inferred, never written. Every name that is assigned anywhere
 // in the sketch starts with an unknown type that the first assignment settles; a
 // later assignment of another kind is an error in plain words. Taught verbs,
 // records shaped by use and the list verbs are step 3b; until then a taught verb's
@@ -43,7 +43,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		learn_order = make([dynamic]string, allocator),
 	}
 	// Two passes. A field assigned anywhere in the sketch belongs to the shape of the
-	// record, even to a line above it (section 5.3), so the first pass only settles
+	// record, even to a line above it, so the first pass only settles
 	// the shapes and reports nothing; the second is the one that counts.
 	stmts: [dynamic]^IR_Stmt
 	for pass in 0 ..< 2 {
@@ -180,7 +180,7 @@ is_constant_name :: proc(name: string) -> bool {
 }
 
 // Every name assigned anywhere in the sketch (outside taught verbs) is a sketch-wide
-// name from the start, with a type to be found out (section 5.15 scope rule).
+// name from the start, with a type to be found out (the scope rule).
 @(private)
 collect_assignments :: proc(c: ^Checker, stmts: []^Stmt) {
 	for s in stmts {
@@ -253,7 +253,7 @@ lookup :: proc(c: ^Checker, name: string) -> ^Symbol {
 }
 
 // Notes that a block reads or writes `s`, so each block that reaches outside itself
-// can list what it captures (section 4.7, for Phase 7's optimisation passes).
+// can list what it captures (for the code generator's optimisation passes).
 @(private)
 touch :: proc(c: ^Checker, s: ^Symbol) {
 	for &f in c.frames {
@@ -592,7 +592,7 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 	}
 	sym := lookup(c, name)
 	if sym == nil && c.verb != nil && len(k.target.parts) == 1 {
-		// A name made inside a taught verb that does not exist at top level is local to it (section 5.11).
+		// A name made inside a taught verb that does not exist at top level is local to it.
 		sym = new(Symbol, c.alloc)
 		sym^ = Symbol{name = name, kind = .Local, type = fresh(c.types), first_write = span, scope = c.depth + 1}
 		append(&c.verb_locals, sym)
@@ -769,7 +769,7 @@ type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
 }
 
 // A field no record of this shape ever has, anywhere in the sketch: most likely a
-// typo, so it is an error that names the fields there are (section 5.3).
+// typo, so it is an error that names the fields there are.
 @(private)
 unknown_field :: proc(c: ^Checker, record: Type_Id, part: string, span: Span) {
 	shape := c.types.items[record].a

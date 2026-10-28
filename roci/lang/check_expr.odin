@@ -50,7 +50,7 @@ check_expr :: proc(c: ^Checker, e: ^Expr, as_stmt: bool) -> ^IR {
 	return error_ir(c, e.span)
 }
 
-// A record literal fixes the shape of every record made at this place (section 5.3).
+// A record literal fixes the shape of every record made at this place.
 @(private)
 check_record :: proc(c: ^Checker, e: ^Expr, k: Record_Lit) -> ^IR {
 	shape, known := c.sites[e.span.start]
@@ -110,7 +110,7 @@ check_list :: proc(c: ^Checker, e: ^Expr, k: List_Lit) -> ^IR {
 		}
 		append(&items, ir)
 	}
-	// Different kinds in one list are allowed: the list holds mixed values (section 5.3).
+	// Different kinds in one list are allowed: the list holds mixed values.
 	if mixed {
 		element = T_BOXED
 	}
@@ -176,8 +176,8 @@ check_binary :: proc(c: ^Checker, e: ^Expr, k: Binary) -> ^IR {
 	return new_ir(c, e.span, type, IR_Binary{op = k.op, lhs = lhs, rhs = rhs})
 }
 
-// What `lhs op rhs` gives, from section 5.15 and the array programming of section
-// 5.2: numbers with numbers, vectors with vectors of the same size or with a
+// What `lhs op rhs` gives, from the operator rules and the array programming of the
+// language: numbers with numbers, vectors with vectors of the same size or with a
 // number, colours with numbers, and text joins with anything through plus.
 @(private)
 binary_type :: proc(c: ^Checker, op: Binary_Op, l, r: Type_Id) -> (Type_Id, bool) {

@@ -96,7 +96,7 @@ Option_Use :: struct {
 }
 
 // A verb and what follows it. A verb group's shape is the checker's choice (by
-// count, then kinds, section 5.2), so a call keeps only the arguments it was
+// count, then kinds), so a call keeps only the arguments it was
 // written with. `verb` is the registry's row for a built-in and `taught` the
 // header for a verb taught with `learn`; exactly one is set.
 Call :: struct {
@@ -131,7 +131,7 @@ Expr :: struct {
 }
 
 // `learn star size with points 5 [ ... ]`, read ahead of the parse so that calls
-// before the `learn` know how many arguments it takes (section 5.14).
+// before the `learn` know how many arguments it takes.
 Taught_Verb :: struct {
 	name:   string,
 	params: []string,
