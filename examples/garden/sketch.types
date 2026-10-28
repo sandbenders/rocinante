@@ -13,7 +13,7 @@ p: a record with name, sky, hill, grass, petals and moon
 twinkle: a number
 sky_top: a colour
 moon_edge: a colour
-radius: a number
+ring: a number
 far_hill: a colour
 near_hill: a colour
 base: a number

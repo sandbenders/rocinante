@@ -10,12 +10,15 @@
 GROUND = 470
 SWATCH = 80
 
+# i know we decided to do not have commas as separator. but looking at the code now, from a human perspective, it looks hard to follow.
 palettes = [
   { name: "dusk", sky: [ (rgb 20 24 70) (rgb 210 90 110) ], hill: [ (rgb 30 60 40) (rgb 60 90 60) ], grass: (rgb 120 190 110), petals: [ gold tomato ], moon: (rgb 255 240 200) }
   { name: "moon", sky: [ (rgb 5 8 25) (rgb 40 60 120) ], hill: [ (rgb 20 30 50) (rgb 40 55 80) ], grass: (rgb 90 140 160), petals: [ white lightskyblue ], moon: (rgb 220 230 255) }
   { name: "dawn", sky: [ (rgb 110 170 230) (rgb 255 210 160) ], hill: [ (rgb 70 130 60) (rgb 140 180 90) ], grass: (rgb 80 160 70), petals: [ hotpink purple ], moon: (rgb 255 250 230) }
 ]
 
+# fabrizio: here it is confusing. we set two windows, 'chooser' and 'garden', but the title lines seem to do not have any connection to the windows. it is is just a line after them.
+# and if i want to rename 'chooser' later?
 chooser = window 320 220 at 60 120
 title "palette"
 garden = window 800 600 at 420 80
@@ -117,10 +120,10 @@ draw garden [
   caps butt
   thickness 7
   for i from 0 to 5 [
-    radius = 360 - i * 7
+    ring = 360 - i * 7
     stroke (item (i + 1) of [ tomato orange gold mediumseagreen dodgerblue mediumpurple ])
     alpha 110
-    arc 260 (GROUND + 40) (radius * 2) (radius * 2) 180 360
+    arc 260 (GROUND + 40) (ring * 2) (ring * 2) 180 360
   ]
   alpha 255
 

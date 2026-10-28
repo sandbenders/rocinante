@@ -61,7 +61,7 @@ Verb :: struct {
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
 	"alpha", "angle", "as", "at", "by", "fill", "font", "from", "height", "in",
-	"lines", "of", "size", "start", "stops", "stroke", "style", "thickness", "to", "width",
+	"lines", "of", "radius", "size", "start", "stops", "stroke", "style", "thickness", "title", "to", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.

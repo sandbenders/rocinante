@@ -485,3 +485,80 @@ test_a_block_that_holds_an_expression_fits_where_a_block_is_taken :: proc(t: ^te
 	testing.expect_value(t, result, Shape_Result.Found)
 	testing.expect_value(t, i, 0)
 }
+
+// ---- how geometry is written (labels) ----
+
+@(test)
+test_every_label_form_names_a_real_shape_and_covers_each_input_once :: proc(t: ^testing.T) {
+	for form in LABELS {
+		verb, found := find_verb(form.verb)
+		if !testing.expectf(t, found, "`%s` has label forms but is not a verb", form.verb) {
+			continue
+		}
+		if !testing.expectf(t, form.shape >= 0 && form.shape < len(verb.shapes), "`%s` has no shape %d", form.verb, form.shape) {
+			continue
+		}
+		inputs := len(verb.shapes[form.shape].params)
+		if len(form.words) == 0 {
+			continue // a shape written positionally
+		}
+		covered := make([]int, inputs, context.temp_allocator)
+		for w in form.words {
+			testing.expectf(t, slice.contains(CONNECTING_WORDS[:], w.word), "`%s` shape %d: `%s` is not a connecting word", form.verb, form.shape, w.word)
+			for i in w.first ..< w.first + w.count {
+				if i < inputs {
+					covered[i] += 1
+				} else {
+					testing.expectf(t, false, "`%s` shape %d: `%s` writes input %d, which does not exist", form.verb, form.shape, w.word, i)
+				}
+			}
+		}
+		for n, i in covered {
+			testing.expectf(t, n == 1, "`%s` shape %d: input %d (`%s`) is written %d times", form.verb, form.shape, i, verb.shapes[form.shape].params[i].name, n)
+		}
+	}
+}
+
+@(test)
+test_two_forms_of_a_verb_do_not_write_the_same_inputs_the_same_way :: proc(t: ^testing.T) {
+	for a, i in LABELS {
+		for b in LABELS[i + 1:] {
+			testing.expectf(t, !(a.verb == b.verb && a.shape == b.shape), "`%s` shape %d is listed twice", a.verb, a.shape)
+		}
+	}
+}
+
+@(test)
+test_a_verb_with_label_forms_accepts_only_the_listed_shapes :: proc(t: ^testing.T) {
+	testing.expect(t, language_shape("circle", 0))
+	testing.expect(t, language_shape("circle", 1))
+	testing.expect(t, !language_shape("triangle", 0)) // six numbers: C only
+	testing.expect(t, language_shape("triangle", 1))
+	testing.expect(t, language_shape("rgb", 0)) // no rows: positional
+	words, ok := label_words("circle", 0)
+	testing.expect(t, ok)
+	testing.expect_value(t, len(words), 2)
+	_, listed := label_words("quad", 0)
+	testing.expect(t, !listed)
+	positional, positional_ok := label_words("triangle", 1)
+	testing.expect(t, positional_ok && len(positional) == 0)
+	testing.expect_value(t, label_max_count("circle", "at"), 2)
+	testing.expect_value(t, label_max_count("circle", "radius"), 1)
+	testing.expect(t, is_label_word("rect", "size"))
+	testing.expect(t, !is_label_word("rect", "fill"))
+}
+
+@(test)
+test_title_can_name_a_window_and_window_takes_a_title :: proc(t: ^testing.T) {
+	title, _ := find_verb("title")
+	testing.expect_value(t, len(title.shapes), 2)
+	i, result := shape_for(title, {.Window, .Text})
+	testing.expect_value(t, result, Shape_Result.Found)
+	testing.expect_value(t, i, 1)
+	window, _ := find_verb("window")
+	has_title := false
+	for o in window.shapes[0].options {
+		has_title ||= o.word == "title"
+	}
+	testing.expect(t, has_title)
+}

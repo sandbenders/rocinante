@@ -29,7 +29,7 @@ GRADIENT_OPTIONS := []Option{
 	{"in", {.Name}, false},
 }
 
-WINDOW_OPTIONS := []Option{{"at", {.Number, .Number}, false}}
+WINDOW_OPTIONS := []Option{{"at", {.Number, .Number}, false}, {"title", {.Text}, false}}
 ALPHA_OPTION := []Option{{"alpha", {.Number}, false}}
 NOISE_OPTIONS := []Option{{"as", {.Name}, false}} // `as simplex`; Perlin is the default
 RANDOM_RANGE := []Option{{"from", {.Number}, true}, {"to", {.Number}, true}}
@@ -39,7 +39,10 @@ VERBS := []Verb{
 	{"window", {
 		{{{"width", .Number}, {"height", .Number}}, WINDOW_OPTIONS, .Window},
 	}, "Opens a window of the given size, optionally at a position, and gives it back."},
-	{"title", {{{{"text", .Text}}, nil, .None}}, "Sets the window's title."},
+	{"title", {
+		{{{"text", .Text}}, nil, .None},
+		{{{"window", .Window}, {"text", .Text}}, nil, .None},
+	}, "Sets the window's title."},
 	{"fullscreen", {{{}, nil, .None}}, "Makes the window fill the screen."},
 	{"quit", {{{}, nil, .None}}, "Closes the sketch."},
 	{"background", {{{{"colour", .Colour}}, GRADIENT_OPTIONS, .None}}, "Fills the whole window with a colour or a gradient."},
