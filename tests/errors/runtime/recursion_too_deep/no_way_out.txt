@@ -1,0 +1,8 @@
+── `spin` calls itself too many times ───────────────── sketch.roci:2:12
+
+2 │   give 1 + (spin (n + 1))
+  │            ^^^^^^^^^^^^^^
+
+`spin` went 100 calls deep without finishing, so it was stopped. A verb that calls itself needs a way to stop, a test that ends the calls.
+
+Add a way out:  if n < 20 [ give 1 + (spin (n + 1)) ]

@@ -1,0 +1,8 @@
+── This divides by zero ──────────────────────────────── sketch.roci:2:8
+
+2 │ wide = 600 / columns
+  │        ^^^^^^^^^^^^^
+
+The number you divide by is 0 here, and nothing can be divided by 0. The sketch carries on with 0 as the answer. Check the number first.
+
+Check first:  if columns is not 0 [ wide = 600 / columns ]

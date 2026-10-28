@@ -1,0 +1,3 @@
+scores = [ 10 20 30 ]
+last = item 4 of scores
+circle at 100 100 radius last

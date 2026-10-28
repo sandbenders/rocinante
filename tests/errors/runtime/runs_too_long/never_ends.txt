@@ -1,0 +1,8 @@
+── This took too long ────────────────────────────────── sketch.roci:2:1
+
+2 │ while true [
+  │ ^^^^^^^^^^^^
+
+The sketch spent more than 0.05 seconds on one frame, so it was stopped and the last good frame stays on screen. A loop that never ends, or one that is far too big, does this.
+
+Make it smaller:  repeat 100 [ ... ]

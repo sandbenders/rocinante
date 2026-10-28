@@ -1,0 +1,535 @@
+// SPDX-License-Identifier: 0BSD
+//
+// Tests of the interpreter, run headless: a sketch is read, checked and run with
+// no window, then its printed output and the commands it recorded are looked at.
+// Every test starts its own sketch (the sketch state is thread-local, so tests that
+// run in parallel never meet).
+package interp
+
+import "../"
+import "../gfx"
+import "../lang"
+import "../registry"
+import "core:fmt"
+import "core:os"
+import "core:strings"
+import "core:testing"
+
+// Runs `text` for `frames` frames. The caller frees it with `finish`.
+run_text :: proc(t: ^testing.T, text: string, frames := 0, loc := #caller_location) -> ^Interp {
+	roci.start_headless(1)
+	p, ok := load("test.roci", text)
+	if !ok {
+		testing.expectf(t, false, "the sketch has errors:\n%s", lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator), loc = loc)
+		return p
+	}
+	start(p)
+	for _ in 0 ..< frames {
+		roci.step()
+	}
+	return p
+}
+
+finish :: proc(p: ^Interp) {
+	destroy(p)
+	roci.shutdown()
+}
+
+// Everything the sketch printed, one line each.
+printed :: proc(p: ^Interp) -> string {
+	return strings.join(p.printed[:], "\n", context.temp_allocator)
+}
+
+expect_printed :: proc(t: ^testing.T, text: string, want: string, frames := 0, loc := #caller_location) {
+	p := run_text(t, text, frames, loc)
+	defer finish(p)
+	testing.expect_value(t, printed(p), want, loc = loc)
+}
+
+first_window :: proc() -> roci.Window {
+	return roci.open_windows()[0]
+}
+
+// ---- the smallest programs ----
+
+@(test)
+test_the_smallest_program_draws_one_circle :: proc(t: ^testing.T) {
+	p := run_text(t, "circle at 100 100 radius 50")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 1)
+	testing.expect_value(t, commands[0].kind, gfx.Kind.Circle)
+	testing.expect_value(t, [3]f32{commands[0].args[0], commands[0].args[1], commands[0].args[2]}, [3]f32{100, 100, 50})
+}
+
+@(test)
+test_a_sketch_with_check_errors_does_not_run :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	p, ok := load("test.roci", "circel at 1 1 radius 5")
+	defer finish(p)
+	testing.expect(t, !ok)
+	start(p)
+	testing.expect_value(t, len(roci.open_windows()), 0)
+}
+
+@(test)
+test_a_draw_block_runs_every_frame :: proc(t: ^testing.T) {
+	p := run_text(t, "n = 0\ndraw [\n  n = n + 1\n  print n\n]", 3)
+	defer finish(p)
+	testing.expect_value(t, printed(p), "1\n2\n3")
+}
+
+@(test)
+test_drawing_in_a_draw_block_starts_each_frame_empty :: proc(t: ^testing.T) {
+	p := run_text(t, "draw [\n  circle at 10 10 radius 5\n]", 4)
+	defer finish(p)
+	testing.expect_value(t, len(roci.recorded(first_window())), 1)
+}
+
+// ---- numbers, text and operators ----
+
+@(test)
+test_arithmetic_follows_the_usual_order :: proc(t: ^testing.T) {
+	expect_printed(t, "print (2 + 3 * 4)\nprint ((2 + 3) * 4)\nprint (10 - 4 - 3)\nprint (7 / 2)\nprint (7 % 3)\nprint (-7 % 3)", "14\n20\n3\n3.5\n1\n2")
+}
+
+@(test)
+test_comparisons_and_logic :: proc(t: ^testing.T) {
+	expect_printed(t, "print (1 < 2)\nprint (2 <= 1)\nprint (3 is 3)\nprint (3 is not 3)\nprint (true and false)\nprint (true or false)\nprint (not true)", "true\nfalse\ntrue\nfalse\nfalse\ntrue\nfalse")
+}
+
+@(test)
+test_and_and_or_leave_the_right_side_alone_when_the_left_decides :: proc(t: ^testing.T) {
+	expect_printed(t, "n = 0\nlearn bump [\n  n = n + 1\n  give true\n]\nok = false and bump\nok = true or bump\nprint n", "0")
+}
+
+@(test)
+test_text_joins_with_plus_and_shows_numbers_plainly :: proc(t: ^testing.T) {
+	expect_printed(t, "print (\"fps: \" + 60)\nprint (1.5 + \" cats\")\nprint (\"a\" + \"b\")", "fps: 60\n1.5 cats\nab")
+}
+
+@(test)
+test_vectors_do_array_arithmetic_and_swizzles :: proc(t: ^testing.T) {
+	text := "v = { 1, 2 }\nprint (v + { 10, 20 })\nprint (v * 3)\nprint (2 * v)\nprint v.x\nprint v.yx\nw = { 1, 2, 3 }\nprint w.zy"
+	expect_printed(t, text, "{ 11, 22 }\n{ 3, 6 }\n{ 2, 4 }\n1\n{ 2, 1 }\n{ 3, 2 }")
+}
+
+@(test)
+test_colours_do_arithmetic_and_keep_to_0_through_255 :: proc(t: ^testing.T) {
+	text := "c = rgb 100 200 250\nd = c * 2\nprint d.r\nprint d.g\nprint d.b\nprint c.a"
+	expect_printed(t, text, "200\n255\n255\n255")
+}
+
+@(test)
+test_a_part_of_a_vector_can_be_set :: proc(t: ^testing.T) {
+	expect_printed(t, "v = { 1, 2 }\nv.x = 9\nprint v\nv.yx = { 5, 6 }\nprint v", "{ 9, 2 }\n{ 6, 5 }")
+}
+
+@(test)
+test_dividing_by_zero_gives_0_and_a_runtime_error_and_the_sketch_goes_on :: proc(t: ^testing.T) {
+	p := run_text(t, "x = 0\nprint (5 / x)\nprint (5 % x)\nprint 1")
+	defer finish(p)
+	testing.expect_value(t, printed(p), "0\n0\n1")
+	testing.expect_value(t, len(p.errors), 2)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Division_By_Zero)
+}
+
+@(test)
+test_built_in_values :: proc(t: ^testing.T) {
+	expect_printed(t, "print width\nprint height\nprint (pi > 3.14)\nprint (tau > 6.28)\nprint frame", "800\n600\ntrue\ntrue\n0")
+}
+
+// ---- statements ----
+
+@(test)
+test_if_and_else :: proc(t: ^testing.T) {
+	expect_printed(t, "if 1 < 2 [ print \"yes\" ] else [ print \"no\" ]\nif 2 < 1 [ print \"yes\" ] else [ print \"no\" ]\nif 2 < 1 [ print \"never\" ]", "yes\nno")
+}
+
+@(test)
+test_repeat_counts_and_ignores_a_count_below_one :: proc(t: ^testing.T) {
+	expect_printed(t, "n = 0\nrepeat 3 [ n = n + 1 ]\nrepeat 0 [ n = n + 100 ]\nrepeat -2 [ n = n + 100 ]\nrepeat 2.9 [ n = n + 10 ]\nprint n", "23")
+}
+
+@(test)
+test_for_counts_up_down_and_by_a_step :: proc(t: ^testing.T) {
+	text := "for i from 1 to 3 [ print i ]\nfor i from 3 to 1 [ print i ]\nfor i from 0 to 1 by 0.25 [ print i ]\nfor i from 1 to 0 by 1 [ print i ]"
+	expect_printed(t, text, "1\n2\n3\n3\n2\n1\n0\n0.25\n0.5\n0.75\n1")
+}
+
+@(test)
+test_while_loops_until_its_condition_is_false :: proc(t: ^testing.T) {
+	expect_printed(t, "n = 1\nwhile n < 100 [ n = n * 2 ]\nprint n", "128")
+}
+
+@(test)
+test_for_each_walks_a_list_and_changes_records_in_it :: proc(t: ^testing.T) {
+	text := "ps = [ { x: 1 } { x: 2 } ]\nfor each p in ps [ p.x = p.x * 10 ]\nfor each p in ps [ print p.x ]"
+	expect_printed(t, text, "10\n20")
+}
+
+@(test)
+test_for_each_writes_a_changed_vector_back_to_the_list :: proc(t: ^testing.T) {
+	text := "vs = [ { 1, 2 } { 3, 4 } ]\nfor each v in vs [ v.x = 0 ]\nprint vs"
+	expect_printed(t, text, "[ { 0, 2 } { 0, 4 } ]")
+}
+
+@(test)
+test_with_styles_a_block_and_puts_the_style_back :: proc(t: ^testing.T) {
+	p := run_text(t, "with fill red thickness 4 [\n  circle at 10 10 radius 5\n]\ncircle at 20 20 radius 5")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 2)
+	testing.expect_value(t, commands[0].style.fill, [4]f32{255, 0, 0, 255})
+	testing.expect(t, commands[1].style.fill != commands[0].style.fill)
+}
+
+@(test)
+test_push_puts_the_transform_back :: proc(t: ^testing.T) {
+	p := run_text(t, "push [\n  move 100 0\n  circle at 0 0 radius 5\n]\ncircle at 0 0 radius 5")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect(t, commands[0].transform != commands[1].transform)
+}
+
+// ---- taught verbs ----
+
+@(test)
+test_a_taught_verb_gives_a_value :: proc(t: ^testing.T) {
+	expect_printed(t, "learn double n [ give n * 2 ]\nprint (double 21)\nprint (double (double 1))", "42\n4")
+}
+
+@(test)
+test_stop_ends_a_verb_early_and_give_ends_it_from_inside_a_loop :: proc(t: ^testing.T) {
+	text := "learn first_big list [\n  for each x in list [\n    if x > 10 [ give x ]\n  ]\n  give 0\n]\nlearn greet name [\n  if name is \"\" [ stop ]\n  print (\"hi \" + name)\n]\nprint (first_big [ 1 20 30 ])\nprint (first_big [ 1 2 ])\ngreet \"\"\ngreet \"ada\""
+	expect_printed(t, text, "20\n0\nhi ada")
+}
+
+@(test)
+test_optional_words_take_their_defaults_and_can_be_given :: proc(t: ^testing.T) {
+	text := "learn show n with times 2 [ print (n * times) ]\nshow 5\nshow 5 times 3"
+	expect_printed(t, text, "10\n15")
+}
+
+@(test)
+test_verbs_can_call_themselves :: proc(t: ^testing.T) {
+	text := "learn factorial n [\n  if n <= 1 [ give 1 ]\n  give n * (factorial (n - 1))\n]\nprint (factorial 5)"
+	expect_printed(t, text, "120")
+}
+
+@(test)
+test_a_verb_never_ending_in_calls_is_stopped_and_the_sketch_goes_on :: proc(t: ^testing.T) {
+	p := run_text(t, "learn forever n [ give 1 + (forever (n + 1)) ]\nprint (forever 1)\nprint \"after\"")
+	defer finish(p)
+	testing.expect_value(t, printed(p), "100\nafter")
+	testing.expect_value(t, len(p.errors), 1)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Recursion_Too_Deep)
+}
+
+@(test)
+test_a_name_made_inside_a_verb_is_its_own :: proc(t: ^testing.T) {
+	text := "learn work n [\n  inner = n + 1\n  give inner\n]\nprint (work 1)\nprint (work 5)"
+	expect_printed(t, text, "2\n6")
+}
+
+@(test)
+test_a_verb_changes_the_callers_record :: proc(t: ^testing.T) {
+	text := "learn step p [ p.pos = p.pos + p.vel ]\nball = { pos: { 0, 0 }, vel: { 1, 2 } }\nstep ball\nstep ball\nprint ball.pos"
+	expect_printed(t, text, "{ 2, 4 }")
+}
+
+@(test)
+test_one_verb_works_for_records_of_different_shapes :: proc(t: ^testing.T) {
+	text := "learn nudge p [ p.x = p.x + 1 ]\na = { x: 1, y: 5 }\nb = { x: 10, name: \"b\" }\nnudge a\nnudge b\nprint a.x\nprint b.x"
+	expect_printed(t, text, "2\n11")
+}
+
+// ---- lists and records ----
+
+@(test)
+test_add_remove_count_and_item :: proc(t: ^testing.T) {
+	text := "l = [ 1 2 3 ]\nadd 4 to l\nremove 2 from l\nprint l\nprint (count l)\nprint (item 2 of l)"
+	expect_printed(t, text, "[ 1 3 4 ]\n3\n3")
+}
+
+@(test)
+test_remove_takes_the_very_item_before_an_equal_one :: proc(t: ^testing.T) {
+	text := "a = { v: 1 }\nb = { v: 1 }\nl = [ a b ]\nremove b from l\nb.v = 7\nprint a.v\nprint (count l)"
+	expect_printed(t, text, "1\n1")
+}
+
+@(test)
+test_records_and_lists_are_shared_and_copy_makes_one_of_its_own :: proc(t: ^testing.T) {
+	text := "a = [ 1 2 ]\nb = a\nadd 3 to b\nprint (count a)\nc = copy a\nadd 4 to c\nprint (count a)\nprint (count c)"
+	expect_printed(t, text, "3\n3\n4")
+}
+
+@(test)
+test_a_record_field_never_set_reads_as_zero :: proc(t: ^testing.T) {
+	text := "p = { a: 1 }\nif p.a > 5 [ p.b = \"x\" ]\nprint p.a\nprint (p.b + \"|\")"
+	expect_printed(t, text, "1\n|")
+}
+
+@(test)
+test_a_record_in_a_record_changes_through_the_path :: proc(t: ^testing.T) {
+	text := "ball = { pos: { 1, 2 }, tag: { n: 1 } }\nball.pos.x = 9\nball.tag.n = 5\nprint ball.pos\nprint ball.tag.n"
+	expect_printed(t, text, "{ 9, 2 }\n5")
+}
+
+@(test)
+test_keep_skip_collect_find_and_combine :: proc(t: ^testing.T) {
+	text := "xs = [ 1 2 3 4 5 ]\nprint (keep xs [ it > 2 ])\nprint (skip xs [ it > 2 ])\nprint (collect xs [ it * it ])\nprint (find xs [ it > 3 ])\nprint (combine xs from 0 [ result + it ])\nprint (combine xs from 1 [ result * it ])"
+	expect_printed(t, text, "[ 3 4 5 ]\n[ 1 2 ]\n[ 1 4 9 16 25 ]\n4\n15\n120")
+}
+
+@(test)
+test_sort_orders_by_the_block_and_leaves_the_original_alone :: proc(t: ^testing.T) {
+	text := "xs = [ { n: 3 } { n: 1 } { n: 2 } ]\nsorted = sort xs by [ it.n ]\nfor each s in sorted [ print s.n ]\nfor each x in xs [ print x.n ]"
+	expect_printed(t, text, "1\n2\n3\n3\n1\n2")
+}
+
+@(test)
+test_find_with_no_match_gives_an_empty_value :: proc(t: ^testing.T) {
+	expect_printed(t, "found = find [ 1 2 3 ] [ it > 5 ]\nprint (found is 0)", "false")
+}
+
+@(test)
+test_sort_by_text_and_a_list_that_is_a_block_of_a_list_verb_in_a_list_verb :: proc(t: ^testing.T) {
+	text := "names = [ \"bo\" \"al\" \"cy\" ]\nprint (sort names by [ it ])\nbig = keep [ 1 2 3 ] [ it > (count (keep [ 5 6 ] [ it > 5 ])) ]\nprint big"
+	expect_printed(t, text, "[ al bo cy ]\n[ 2 3 ]")
+}
+
+@(test)
+test_an_item_that_is_not_there_is_empty_and_says_so_once :: proc(t: ^testing.T) {
+	p := run_text(t, "l = [ 1 2 ]\nrepeat 3 [ print (item 5 of l) ]\nprint (item 0 of l)")
+	defer finish(p)
+	testing.expect_value(t, printed(p), "0\n0\n0\n0")
+	testing.expect_value(t, len(p.errors), 2)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Index_Out_Of_Range)
+}
+
+@(test)
+test_a_list_made_in_a_frame_is_kept_when_stored_in_the_sketch :: proc(t: ^testing.T) {
+	text := "flowers = []\ndraw [\n  add { n: frame } to flowers\n  stash = collect flowers [ it.n ]\n]\non mouse down [ ]\n"
+	p := run_text(t, text, 5)
+	defer finish(p)
+	list := as_list(p.globals[p.checked.program.symbols[0]])
+	testing.expect(t, list != nil)
+	testing.expect_value(t, len(list.items), 5)
+	testing.expect(t, as_record(list.items[4]).long)
+}
+
+// ---- drawing through the verbs ----
+
+@(test)
+test_a_labelled_shape_draws_what_the_odin_call_draws :: proc(t: ^testing.T) {
+	p := run_text(t, "rect at 10 20 size 30 40 fill red\nellipse at { 1, 2 } size { 3, 4 }\nline from 0 0 to 5 5\npoint at 1 2\nsquare at 5 5 size 9\ntriangle { 0, 0 } { 5, 0 } { 0, 5 }\nquad { 0, 0 } { 5, 0 } { 5, 5 } { 0, 5 }\narc at 50 50 size 20 20 from 0 to 90")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	kinds := make([dynamic]gfx.Kind, context.temp_allocator)
+	for c in commands {
+		append(&kinds, c.kind)
+	}
+	testing.expect_value(t, len(commands), 8)
+	testing.expect_value(t, kinds[0], gfx.Kind.Rect)
+	testing.expect_value(t, kinds[1], gfx.Kind.Ellipse)
+	testing.expect_value(t, kinds[2], gfx.Kind.Line)
+	testing.expect_value(t, kinds[3], gfx.Kind.Point)
+	testing.expect_value(t, kinds[7], gfx.Kind.Arc)
+	testing.expect_value(t, [4]f32{commands[0].args[0], commands[0].args[1], commands[0].args[2], commands[0].args[3]}, [4]f32{10, 20, 30, 40})
+}
+
+@(test)
+test_style_verbs_set_the_style_for_what_follows :: proc(t: ^testing.T) {
+	p := run_text(t, "fill orange\nstroke white\nthickness 3\ncircle at 1 1 radius 1\nno fill\nno stroke\ncircle at 2 2 radius 1")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, commands[0].style.fill, [4]f32{255, 165, 0, 255})
+	testing.expect_value(t, commands[0].style.thickness, f32(3))
+	testing.expect(t, !commands[1].style.fill_on)
+	testing.expect(t, !commands[1].style.stroke_on)
+}
+
+@(test)
+test_a_gradient_from_a_list_and_from_the_gradient_verb :: proc(t: ^testing.T) {
+	p := run_text(t, "background [ red blue ] angle 90\nfill (gradient [ red blue ] as radial)\ncircle at 1 1 radius 5\nfill [ red teal ]\ncircle at 1 1 radius 5\nfill red angle 3\ncircle at 1 1 radius 5")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 3) // the background is not a command of its own
+	testing.expect(t, commands[0].style.fill_paint != commands[1].style.fill_paint)
+	testing.expect(t, commands[1].style.fill_paint != commands[2].style.fill_paint)
+}
+
+@(test)
+test_a_named_style_is_a_record_of_style_words :: proc(t: ^testing.T) {
+	p := run_text(t, "glow = { fill: cyan, thickness: 6 }\ncircle at 1 1 radius 5 style glow\nwith glow [ circle at 2 2 radius 5 ]")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, commands[0].style.thickness, f32(6))
+	testing.expect_value(t, commands[1].style.thickness, f32(6))
+	testing.expect_value(t, commands[0].style.fill, [4]f32{0, 255, 255, 255})
+}
+
+@(test)
+test_colour_verbs_and_mix :: proc(t: ^testing.T) {
+	text := "c = rgb 10 20 30 alpha 40\nprint c.a\nprint (mix 0 10 0.5)\nm = mix red blue 0\nprint m.r\nh = hsb 0 255 255\nprint h.r"
+	expect_printed(t, text, "40\n5\n255\n255")
+}
+
+@(test)
+test_maths_verbs :: proc(t: ^testing.T) {
+	text := "print (map 5 0 10 0 100)\nprint (clamp 15 0 10)\nprint (dist { 0, 0 } { 3, 4 })\nprint (dist 0 0 3 4)\nprint (abs -3)\nprint (sqrt 16)\nprint (sin 90)\nprint (cos 0)"
+	expect_printed(t, text, "50\n10\n5\n5\n3\n4\n1\n1")
+}
+
+@(test)
+test_random_follows_the_seed_and_stays_in_range :: proc(t: ^testing.T) {
+	text := "seed 5\na = random 100\nseed 5\nb = random 100\nprint (a is b)\nr = random from 10 to 20\nprint (r >= 10 and r <= 20)\nprint (pick [ 7 7 7 ])\nprint ((noise 1.5) >= 0)"
+	expect_printed(t, text, "true\ntrue\n7\ntrue")
+}
+
+@(test)
+test_windows_open_with_a_size_a_position_and_a_title :: proc(t: ^testing.T) {
+	p := run_text(t, "w = window size 320 220 at 60 120 title \"palette\"\ncircle at 10 10 radius 5\ntitle w \"renamed\"\nv = window size 200 100\ndraw v [ circle at 1 1 radius 1 ]", 1)
+	defer finish(p)
+	testing.expect_value(t, len(roci.open_windows()), 2)
+	testing.expect_value(t, len(roci.recorded(roci.open_windows()[0])), 1)
+	testing.expect_value(t, len(roci.recorded(roci.open_windows()[1])), 1)
+}
+
+// ---- runtime failures never stop the sketch ----
+
+@(test)
+test_a_block_that_runs_far_too_long_is_stopped_and_the_frame_is_kept :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	p, ok := load("test.roci", "circle at 5 5 radius 5\nwhile true [ n = 1 ]\ncircle at 9 9 radius 5")
+	defer finish(p)
+	testing.expect(t, ok)
+	// A short limit for the test: the same check, a smaller budget.
+	p.budget = 0.05
+	start(p)
+	testing.expect_value(t, len(roci.recorded(first_window())), 1)
+	testing.expect_value(t, len(p.errors), 1)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Runs_Too_Long)
+}
+
+@(test)
+test_the_report_names_each_runtime_error_in_the_error_format :: proc(t: ^testing.T) {
+	p := run_text(t, "x = 0\nprint (5 / x)")
+	defer finish(p)
+	text := report(p, context.temp_allocator)
+	testing.expect(t, strings.contains(text, "divides by zero"))
+	testing.expect(t, strings.contains(text, "2 │ print (5 / x)"))
+	testing.expect(t, strings.contains(text, "if x is not 0 [ print (5 / x) ]"))
+}
+
+@(test)
+test_a_name_not_given_a_value_yet_reads_as_the_zero_of_its_kind :: proc(t: ^testing.T) {
+	text := "draw [\n  print later\n]\nlater = 5\n"
+	expect_printed(t, text, "5", 1)
+}
+
+@(test)
+test_every_registry_verb_that_is_a_statement_or_a_value_has_a_way_to_run :: proc(t: ^testing.T) {
+	// Each core verb is handled by the interpreter or by its language verbs, so a
+	// verb added to the registry cannot be silently ignored.
+	for verb in registry.ALL_VERBS {
+		testing.expectf(t, handled(verb.name), "the interpreter does not run `%s`", verb.name)
+	}
+}
+
+// ---- the examples ----
+
+example_text :: proc(name: string) -> string {
+	data, err := os.read_entire_file(fmt.tprintf("examples/%s/sketch.roci", name), context.temp_allocator)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+@(test)
+test_the_circle_example_draws_what_the_odin_example_draws :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("circle"), 2)
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 1)
+	testing.expect_value(t, commands[0].kind, gfx.Kind.Circle)
+	testing.expect_value(t, [3]f32{commands[0].args[0], commands[0].args[1], commands[0].args[2]}, [3]f32{100, 100, 50})
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_the_garden_example_runs_without_a_runtime_error :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("garden"), 30)
+	defer finish(p)
+	windows := roci.open_windows()
+	testing.expect_value(t, len(windows), 2)
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect(t, len(roci.recorded(windows[0])) >= 5)  // the palette: three swatches, a bar, a knob
+	testing.expect(t, len(roci.recorded(windows[1])) > 300) // stars, moon, grass, flowers, firefly
+}
+
+@(test)
+test_the_two_windows_example_runs_without_a_runtime_error :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("two_windows"), 10)
+	defer finish(p)
+	testing.expect_value(t, len(roci.open_windows()), 2)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// ---- the runtime messages ----
+
+RUNTIME_ERRORS_DIR :: "tests/errors/runtime"
+
+// A sketch in tests/errors/runtime/<id>/ must set off that message, and the message
+// it renders must be the text beside it (ROCI_UPDATE_ERRORS=1 writes the files again).
+@(test)
+test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing.T) {
+	update := os.get_env("ROCI_UPDATE_ERRORS", context.temp_allocator) != ""
+	for id in lang.Message_Id {
+		if !lang.is_runtime(id) {
+			continue
+		}
+		folder := fmt.tprintf("%s/%s", RUNTIME_ERRORS_DIR, strings.to_lower(fmt.tprintf("%v", id), context.temp_allocator))
+		entries, read_err := os.read_all_directory_by_path(folder, context.temp_allocator)
+		if !testing.expectf(t, read_err == nil, "message %v has no folder %s", id, folder) {
+			continue
+		}
+		found := 0
+		for entry in entries {
+			if !strings.has_suffix(entry.name, ".roci") {
+				continue
+			}
+			found += 1
+			path := fmt.tprintf("%s/%s", folder, strings.trim_suffix(entry.name, ".roci"))
+			data, err := os.read_entire_file(fmt.tprintf("%s.roci", path), context.temp_allocator)
+			if !testing.expectf(t, err == nil, "cannot read %s.roci", path) {
+				continue
+			}
+			roci.start_headless(1)
+			p, ok := load("sketch.roci", string(data))
+			testing.expectf(t, ok, "%s.roci has check errors", path)
+			p.budget = 0.05 // the same check as a real run, with a smaller budget
+			start(p)
+			triggered := false
+			for e in p.errors {
+				triggered ||= e.id == id
+			}
+			testing.expectf(t, triggered, "%s.roci does not set off %v", path, id)
+			got := report(p, context.temp_allocator)
+			finish(p)
+			txt := fmt.tprintf("%s.txt", path)
+			if update {
+				testing.expectf(t, os.write_entire_file(txt, transmute([]byte)got) == nil, "cannot write %s", txt)
+				continue
+			}
+			want, want_err := os.read_entire_file(txt, context.temp_allocator)
+			if !testing.expectf(t, want_err == nil, "%s is missing: run with ROCI_UPDATE_ERRORS=1 to write it", txt) {
+				continue
+			}
+			testing.expectf(t, string(want) == got, "%s differs.\n--- expected\n%s\n--- got\n%s", txt, string(want), got)
+		}
+		testing.expectf(t, found > 0, "message %v has no sketch in %s", id, folder)
+	}
+}

@@ -1,0 +1,8 @@
+── There is no item 4 in `scores` ────────────────────── sketch.roci:2:8
+
+2 │ last = item 4 of scores
+  │        ^^^^^^^^^^^^^^^^
+
+`scores` has 3 items in it, so item 4 is not there. Items are numbered from 1, and the sketch carries on with an empty value. Check the count first.
+
+Check first:  if count scores >= 4 [ last = item 4 of scores ]
