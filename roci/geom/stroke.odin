@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Turning a polyline into the triangles of its stroke (CLAUDE.md section 5.9:
-// `thickness`, `caps`, `joins`). A stroke is a strip of quads along the line, a
+// Turning a polyline into the triangles of its stroke (`thickness`, `caps`, `joins`). A stroke is a strip of quads along the line, a
 // wedge at each corner and a cap at each open end. At the inside of a corner the
 // two quads meet at the point where their edges cross (the "inner miter"), so
 // triangles do not overlap and a see-through stroke does not darken at its

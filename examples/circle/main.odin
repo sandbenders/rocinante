@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The smallest sketch (CLAUDE.md section 1): one circle. It opens the default
+// The smallest sketch: one circle. It opens the default
 // window, draws it and keeps the window open until it is closed, with nothing set
 // up. This is rocinante's first regression test, and it must work for ever.
 //

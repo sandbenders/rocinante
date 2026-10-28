@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Verbs taught with `learn` (CLAUDE.md sections 5.3, 5.11 and 4.7). A taught verb
+// Verbs taught with `learn`. A taught verb
 // is checked once for each distinct tuple of argument types, so `step p` used with
 // two record shapes makes two versions, as compiled code will have (one plain
 // procedure per shape). The parameters take their types from the call; a verb that

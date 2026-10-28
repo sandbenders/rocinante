@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Gradients (CLAUDE.md section 5.9): a list of colours in `fill`, `stroke` or
+// Gradients: a list of colours in `fill`, `stroke` or
 // `background` that shade into each other, linearly, from the middle outwards or
 // round a point, mixed in Oklab unless asked otherwise. Positions are fractions
 // of the shape's own bounding box, so a gradient fits a circle, a rectangle or a

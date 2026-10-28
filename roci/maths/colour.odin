@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Colours (CLAUDE.md section 5.9). A colour is four numbers, red, green, blue
+// Colours. A colour is four numbers, red, green, blue
 // and alpha, every one from 0 to 255 (decided 2026-10-23); values outside that
 // are clamped. Because a colour is an Odin array, `c * 0.5` and `a + b` work
 // element by element, as section 5.2 promises. `hsb` also uses 0-255 for all

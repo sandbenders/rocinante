@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Golden-image tests (CLAUDE.md section 9): every scene in scenes.odin is drawn
+// Golden-image tests: every scene in scenes.odin is drawn
 // offscreen through the real renderer and compared with a reference picture in
 // this folder. It needs SDL3 and a GPU driver; `ci` runs it on Mesa's software
 // Vulkan (lavapipe), where the references are drawn (build/golden.odin). It is a

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The error catalogue's own tests (CLAUDE.md sections 5.7 and 9): every message
+// The error catalogue's own tests: every message
 // id has at least one sketch in tests/errors/<id>/ that triggers it, with the
 // exact text it must produce beside it (`<case>.roci` and `<case>.txt`). The
 // messages are reviewed like features, so a change to one shows up in the diff of

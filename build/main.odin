@@ -5,7 +5,7 @@
 //     odin run build -- <command>
 //
 // `ci` runs exactly what both pipelines run, so nothing lives only in YAML
-// (CLAUDE.md section 11). `ci --fast` is the part the pre-push hook runs.
+//. `ci --fast` is the part the pre-push hook runs.
 package build
 
 import "core:fmt"
@@ -19,7 +19,7 @@ USAGE :: `usage: odin run build -- <command>
 
 commands:
   ci [--fast]   run the checks the pipelines run (--fast: the pre-push subset)
-  licences      check dependency licences (CLAUDE.md section 3)
+  licences      check dependency licences
   odin          check the installed Odin against ODIN_VERSION
 `
 
@@ -155,7 +155,7 @@ check_packages :: proc() -> bool {
 		ok = step(fmt.tprintf("unit tests: %s", package_dir), {"odin", "test", package_dir, "-vet", "-strict-style", out}) && ok
 	}
 	// The spikes that build on any machine are type-checked; the Android and iOS
-	// ones need their SDKs and are built by hand (CLAUDE.md section 8).
+	// ones need their SDKs and are built by hand.
 	ok = step("check roci command", {"odin", "check", "cli", "-vet", "-strict-style"}) && ok
 	ok = step("check header tool", {"odin", "check", "tools/header", "-vet", "-strict-style"}) && ok
 	ok = step("check benchmark example", {"odin", "check", "examples/benchmark", "-vet", "-strict-style"}) && ok

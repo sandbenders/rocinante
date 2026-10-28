@@ -3,7 +3,7 @@
 #
 # Spike 2, Android: builds the Odin library, compiles SDL's Java glue, and
 # assembles, signs and (with --install) installs an APK. Written for the spike;
-# `roci package android` will do this itself (CLAUDE.md section 7).
+# `roci package android` will do this itself.
 #
 # Needs, as environment variables:
 #   SDL_ANDROID_LIB   folder holding libSDL3.so built for arm64-v8a with the NDK

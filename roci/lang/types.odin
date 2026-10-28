@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The types the checker works with (CLAUDE.md section 5.3). Users never write
+// The types the checker works with. Users never write
 // one and never see the word: messages say "a number" or "a list of vectors".
 // Types are interned in a table, so two equal types are the same id and compare
 // as integers. A type variable stands for a type not known yet and is bound by

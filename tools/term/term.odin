@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Coloured terminal output for the build script and `roci` (CLAUDE.md section 3:
-// output is for people). Colour is on only when the stream is a terminal, the
+// Coloured terminal output for the build script and `roci` (output is for people). Colour is on only when the stream is a terminal, the
 // terminal can show it and NO_COLOR is not set (Odin's core:terminal decides
 // the last two); piped output, files and pipelines stay plain text, and the
 // words are the same either way, so nothing depends on colour to be understood.

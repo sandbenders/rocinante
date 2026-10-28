@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: 0BSD
 #
-# Licences of every dependency that can ship (CLAUDE.md section 3), checked by
+# Licences of every dependency that can ship, checked by
 # `odin run build -- licences`. One entry per line: <what> <SPDX id>.
 #
 #   vendor:<package>   a package of Odin's vendor: collection that sketches may import

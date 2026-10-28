@@ -3,8 +3,7 @@
 // Tests for everything that needs no window: event translation, the size
 // sums, the present-mode choice and the window list. The procedures that call
 // SDL itself (`init`, `create_window`, `set_vsync` and the rest) need a display
-// and a GPU, so they are checked by hand with examples/window, as CLAUDE.md
-// says for all window code.
+// and a GPU, so they are checked by hand with examples/window, like all the window code.
 package platform
 
 import "core:testing"

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The syntax tree (CLAUDE.md section 5.14). Every node has a span, so errors,
+// The syntax tree. Every node has a span, so errors,
 // highlighting, the source map for generated Odin and runtime commands can all
 // point back at `.roci` text. The parser allocates the whole tree from the
 // allocator it is given (an arena per parse), so freeing it is one call.

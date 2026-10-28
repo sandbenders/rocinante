@@ -1,6 +1,6 @@
 (* SPDX-License-Identifier: 0BSD
 
-   The grammar of rocinante (CLAUDE.md section 5.14). It is the grammar itself, not
+   The grammar of rocinante. It is the grammar itself, not
    a second design document: when a rule changes, change it here, in the parser
    and in the section of docs/design.md that decided it, in the same commit.
 

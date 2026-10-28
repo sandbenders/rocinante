@@ -14,8 +14,7 @@
 //
 // Pipelines are made the first time they are needed, for the format of the
 // target being drawn to, and a pipeline that cannot be made is reported once and
-// not retried every frame, so a broken shader never takes the window down
-// (CLAUDE.md section 4.3, non-negotiable 3).
+// not retried every frame, so a broken shader never takes the window down.
 package gfx
 
 import "core:mem"

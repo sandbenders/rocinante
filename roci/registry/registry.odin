@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The verb registry (CLAUDE.md section 4.7, "the verb registry is data"): one
+// The verb registry: one
 // table that says, for every verb the core offers, its name, the shapes its
 // arguments can take, the connecting words after them, whether it gives a value
 // and a one-line description. The checker's "did you mean", the reserved-word
@@ -75,7 +75,7 @@ VALUES := [?]string{
 	"anywhere", "false", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "tau", "time", "true", "width",
 }
 
-// What each built-in value is, for the checker (CLAUDE.md section 5.3). `size` is
+// What each built-in value is, for the checker. `size` is
 // the number of components of a vector and 0 for everything else.
 Value_Def :: struct {
 	name: string,

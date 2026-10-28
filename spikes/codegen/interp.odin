@@ -19,7 +19,7 @@ eval :: proc(e: Expr, env: ^Env) -> f64 {
 	case Number:
 		return f64(v)
 	case Var:
-		return env.numbers[v.name] // an unset name reads as 0 (CLAUDE.md section 5.2)
+		return env.numbers[v.name] // an unset name reads as 0
 	case Binary:
 		lhs := eval(v.lhs^, env)
 		rhs := eval(v.rhs^, env)

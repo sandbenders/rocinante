@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The language front end (CLAUDE.md section 4.7): text in, a tree with spans on
+// The language front end: text in, a tree with spans on
 // every node out. This file holds the text of one source file and the spans that
 // point into it, so every token, node, error and runtime command can say where it
 // came from (section 5.14).

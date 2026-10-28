@@ -3,7 +3,7 @@
 // What a window tells the sketch, as plain values. SDL's own event union is
 // translated here, in one pure procedure, so the layers above never touch SDL
 // events and the translation can be tested without a window. Positions are in
-// window coordinates ("logical pixels", CLAUDE.md section 5.15): on a Retina or
+// window coordinates ("logical pixels"): on a Retina or
 // scaled display a window is still 800 wide, however many device pixels that is.
 package platform
 
@@ -90,7 +90,7 @@ Wheel :: struct {
 }
 
 // A key by where it is on the keyboard, not by the letter on it, so AZERTY
-// works for `keys w a s d` (CLAUDE.md section 5.12).
+// works for `keys w a s d`.
 Key_Changed :: struct {
 	window:   Window_Id,
 	scancode: sdl.Scancode,

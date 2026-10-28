@@ -1,9 +1,9 @@
 #!/bin/sh
 # SPDX-License-Identifier: 0BSD
 #
-# Spike 4 on Windows (CLAUDE.md section 8): the same as setup.sh, with MSVC.
+# Spike 4 on Windows: the same as setup.sh, with MSVC.
 # cl and lib must be on the PATH, so load the Build Tools in a plain cmd window
-# and start Git Bash in that same window (the Windows gotcha in CLAUDE.md):
+# and start Git Bash in that same window:
 #
 #     call "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 #     "C:\Program Files\Git\bin\bash.exe" --login -i

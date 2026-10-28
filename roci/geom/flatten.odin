@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Flattening curves into straight segments (CLAUDE.md section 6, "Shapes and
-// curves"): the GPU draws triangles, so every curve becomes a polyline whose
+// Flattening curves into straight segments: the GPU draws triangles, so every curve becomes a polyline whose
 // points are never further than `tolerance` from the true curve. Everything here
 // is plain maths on f64 points, with no GPU and no allocation beyond the output
 // array, so it is exact, deterministic and testable. Tolerance is in the units of
@@ -96,7 +95,7 @@ flatten_quadratic :: proc(out: ^[dynamic]Point, p0, p1, p2: Point, tolerance := 
 }
 
 // The Bezier controls of the Catmull-Rom curve between p1 and p2, with p0 and p3
-// as its neighbours (Processing's curve(), CLAUDE.md section 6). `tightness` 0 is
+// as its neighbours (Processing's curve()). `tightness` 0 is
 // the standard curve, 1 pulls it to straight lines, and -1 loosens it.
 curve_controls :: proc "contextless" (p0, p1, p2, p3: Point, tightness: f64) -> (c1, c2: Point) {
 	s := (1 - tightness) / 6

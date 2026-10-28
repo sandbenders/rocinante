@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Windows (CLAUDE.md sections 4.5 and 6, "Window, app loop"). `window 800 600`
+// Windows. `window 800 600`
 // opens one; each can have its own `draw` block and its own messages. A sketch
 // that never calls `window` gets the default window, 800 x 600.
 package roci
@@ -66,7 +66,7 @@ fullscreen :: proc(on := true) {
 // Turns waiting for the display's refresh on or off for the current window (it is
 // on by default). Without it frames may tear but come as fast as the computer can
 // make them, which is how the benchmark measures headroom. A computer that cannot
-// do that stays on vsync (CLAUDE.md section 6, `vsync`).
+// do that stays on vsync.
 vsync :: proc(on := true) {
 	w := current_win()
 	if w.handle != nil {

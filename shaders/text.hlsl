@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The text shader (CLAUDE.md section 8, Phase 1): draws the overlay font, one
+// The text shader: draws the overlay font, one
 // instanced quad per character, from a texture that holds the glyphs in a grid
 // (roci/gfx/font.odin). The instance is Glyph_Instance in roci/gfx/batch.odin: a
 // transform from glyph pixels (a glyph is 8 x 8) to canvas pixels, a colour and a

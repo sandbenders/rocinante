@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// A night garden, the demo sketch of Phase 1 (CLAUDE.md section 8): two windows
+// A night garden, the demo sketch of Phase 1: two windows
 // that talk, every kind of shape, gradients, transforms, noise and random, the
 // mouse and the keyboard, all through the public API.
 //

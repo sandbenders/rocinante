@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Typed IR to Odin source (CLAUDE.md section 4.7). The output has to be
+// Typed IR to Odin source. The output has to be
 // readable: names come from the sketch, each statement carries a comment with
 // its .roci line (the spike's stand-in for source mapping), and verbs are
 // called by the same names the interpreter uses. A record shape becomes a plain

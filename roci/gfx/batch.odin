@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The batcher (CLAUDE.md section 4.3): turns a frame's command list into the
+// The batcher: turns a frame's command list into the
 // fewest instanced GPU draws that give the same picture. Painting is in order,
 // so only neighbouring commands that use the same pipeline can share a draw.
 //

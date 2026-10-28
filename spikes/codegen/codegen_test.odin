@@ -394,7 +394,7 @@ test_op_text :: proc(t: ^testing.T) {
 	testing.expect_value(t, op_text(.Div), "/")
 }
 
-// the stand-in doctor: which host can build which target (CLAUDE.md section 7)
+// the stand-in doctor: which host can build which target
 
 HOSTS :: []string{"linux-amd64", "linux-arm64", "freebsd-amd64", "freebsd-arm64", "macos-arm64", "macos-amd64", "windows-amd64", "windows-arm64"}
 

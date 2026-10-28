@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Messages between windows (CLAUDE.md section 4.5): `send` puts a value in a
+// Messages between windows: `send` puts a value in a
 // window's inbox and the window's `on_receive` handler gets it on the next frame.
 // A message is a value, copied when it is sent (numbers, text, true or false, a
 // vector, or a list of values), so no window ever sees another's memory.

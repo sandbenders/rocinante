@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The sketch both phones run in Phase 1 (CLAUDE.md section 8, step 8): written
+// The sketch both phones run in Phase 1: written
 // against the public API in package roci, so it exercises the window, the
 // renderer's shapes, mesh and text pipelines and the input path on a real device.
 // A circle follows the finger (touch arrives as the mouse), a ring of small

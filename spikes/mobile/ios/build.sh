@@ -5,8 +5,7 @@
 # into an executable for the iPhone, and wraps it in a tiny Xcode project whose
 # only job is to make the .app and sign it (Xcode creates and renews the
 # development certificate and provisioning profile for a free Apple ID). Needs
-# a Mac with full Xcode. `roci package ios` will do this itself (CLAUDE.md
-# section 7).
+# a Mac with full Xcode. `roci package ios` will do this itself.
 #
 # Environment:
 #   SDL_IOS_LIB   folder holding libSDL3.a built for the iPhone (arm64)

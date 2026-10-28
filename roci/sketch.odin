@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The state of a running sketch (CLAUDE.md section 4.1: the public API sits on
-// top of platform, gfx and maths). A sketch is one program with some windows. The
+// The state of a running sketch (the public API sits on top of platform, gfx and maths). A sketch is one program with some windows. The
 // verbs in this package act on the *current window*: the default window while
 // the program sets itself up, and the window whose `draw` block is running while a
 // frame is drawn. Style and transform state live on each window's command list

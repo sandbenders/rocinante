@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The AccessKit bridge in miniature (CLAUDE.md section 4.8): the spike's three
+// The AccessKit bridge in miniature: the spike's three
 // widgets are described to the platform's accessibility API from rocinante's
 // own records (role, label, value, bounds, focus), not from Dear ImGui, which
 // keeps none of that. A screen reader's requests (press, increment, decrement,

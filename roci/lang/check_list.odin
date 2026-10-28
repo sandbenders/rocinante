@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Lists and the light functional layer for them (CLAUDE.md sections 5.2 and 5.15):
+// Lists and the light functional layer for them:
 // `add`, `remove`, `item`, `copy`, and `keep skip collect combine find sort`, whose
 // blocks hold one expression with `it` (and `result`) in scope.
 package lang

@@ -29,7 +29,7 @@ exprs :: proc(items: ..Expr) -> []Expr {
 	return slice.clone(items)
 }
 
-// The first project regression test (CLAUDE.md section 1): one line, one circle.
+// The first project regression test: one line, one circle.
 program_circle :: proc() -> Program {
 	return Program{
 		name   = "circle",

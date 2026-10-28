@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: 0BSD
 #
-# Spike 4 (CLAUDE.md section 8): fetch the pinned Dear ImGui and dear_bindings,
+# Spike 4: fetch the pinned Dear ImGui and dear_bindings,
 # generate the C API (dcimgui) with the SDL3 and SDL_GPU backends, and build it
 # into .cache/ui/libroci_ui.a for the spike to link. Nothing here is committed:
 # .cache/ is ignored by git. Needs git, a C++ compiler (c++), ar and python3

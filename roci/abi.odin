@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The C ABI (CLAUDE.md section 1: "a public Odin API, with a C ABI"): every verb
+// The C ABI: every verb
 // as a plain C function, so a program in C (or anything that can call C) draws with
 // the same words and the same behaviour as one in Odin. Each function here is
 // exported under its C name and calls the Odin verb; none has any logic of its own

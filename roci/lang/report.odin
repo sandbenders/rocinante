@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
-// A diagnostic as people read it, in the format of CLAUDE.md section 5.7 (modelled
-// on Elm's): a title line with the place, the source line with the words marked,
+// A diagnostic as people read it, in the Elm style (modelled
+// on Elm's compiler errors): a title line with the place, the source line with the words marked,
 // the explanation and an example that would work. Plain text; `roci` paints it
 // through tools/term when it prints to a terminal.
 package lang

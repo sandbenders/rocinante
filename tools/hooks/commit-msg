@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: 0BSD
-# Safety net for section 11 of CLAUDE.md: remove assistant co-author trailers
+# Safety net: remove assistant co-author trailers
 # and session links from a commit message, in case a tool adds them.
 f="$1"
 tmp="$(mktemp)"

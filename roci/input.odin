@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Mouse and keyboard as values (CLAUDE.md section 6, "Input"): `mouse`, `pmouse`,
+// Mouse and keyboard as values: `mouse`, `pmouse`,
 // `wheel`, and keys by name. Keys are read by where they are on the keyboard, not
 // by the letter printed on them, so `key_down("w")` is the same physical key on an
 // AZERTY keyboard (section 5.12). Positions are in logical pixels of the window

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The mesh shader (CLAUDE.md section 4.3): draws the triangles that package geom
+// The mesh shader: draws the triangles that package geom
 // makes on the CPU for quads, arcs and outlines with mitred or bevelled corners.
 // Each vertex has a position on the canvas (logical pixels, origin top left) and
 // a colour with straight alpha (or a gradient, see gradient.hlsli); the output is

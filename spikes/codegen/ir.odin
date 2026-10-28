@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// A hand-written fragment of the typed IR (CLAUDE.md section 4.7). The real IR
+// A hand-written fragment of the typed IR. The real IR
 // is produced by the checker and carries a type on every node and a source span
 // everywhere; this fragment has numbers and lists of records of numbers only,
 // and a line number per statement.

@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: 0BSD
 #
-# Compiles rocinante's internal shaders (CLAUDE.md section 4.3) from HLSL to the
+# Compiles rocinante's internal shaders from HLSL to the
 # formats the GPU backends take, into shaders/compiled/, which is committed so
 # building rocinante needs none of these tools. Run it from anywhere after
 # changing a .hlsl file, on a Mac or Linux computer:

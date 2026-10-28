@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The verbs of Phase 1 (CLAUDE.md section 8): the window, 2D shapes, style,
+// The verbs of Phase 1: the window, 2D shapes, style,
 // colour, transforms, maths, randomness and noise. Later phases add rows here
 // in the same place as the verb itself. Every table is a package-level variable,
 // because a constant slice of structs that hold slices is rebuilt on the stack

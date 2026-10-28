@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The app loop (CLAUDE.md section 4.1): `run` shows the sketch's windows and keeps
+// The app loop: `run` shows the sketch's windows and keeps
 // them open until the sketch quits. Each pass is one `step`: events in, messages
 // delivered, every window's `draw` block run, the frame drawn. `step` is also how
 // a headless sketch is driven by tests and benchmarks, with the events and the
@@ -148,7 +148,7 @@ handle_event :: proc(event: platform.Event) {
 		if code > 0 && code < len(the.keys) {
 			the.keys[code] = e.down
 		}
-		// Cmd+Q and Ctrl+Q quit; Escape does not (CLAUDE.md section 10): it leaves the widgets.
+		// Cmd+Q and Ctrl+Q quit; Escape does not: it leaves the widgets.
 		if e.down && !e.repeat && e.scancode == .Q && (.Ctrl in e.mods || .Super in e.mods) {
 			the.quit = true
 		}

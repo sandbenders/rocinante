@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The spike's version of `roci doctor` (CLAUDE.md sections 4.7 and 7): find the
+// The spike's version of `roci doctor`: find the
 // pieces `roci package` needs on this machine and, for each missing one, say
 // in plain words how to get it. Only the macOS branch has been run so far; the
 // others follow the tools Odin's install guide names and are untested.
@@ -33,7 +33,7 @@ report :: proc(what: string, found: string, ok: bool, fix: string) -> bool {
 	return ok
 }
 
-// Which computers can package which target (CLAUDE.md section 7). iOS and
+// Which computers can package which target. iOS and
 // Android are targets only; desktop targets are packaged on their own system.
 Target :: struct {
 	name:  string,

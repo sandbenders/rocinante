@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Hashes of commands (CLAUDE.md section 4.3: "geometry that does not change
-// between frames is detected (hash of command + parameters)"). A batch whose
+// Hashes of commands: geometry that does not change between frames is detected
+// (hash of command and parameters). A batch whose
 // hash is the same as last frame's can reuse the GPU buffer it uploaded then.
 // FNV-1a style (an exclusive-or and a multiply per 64-bit word) over the values,
 // field by field, so padding bytes never matter. The

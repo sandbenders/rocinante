@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Statements and blocks (CLAUDE.md sections 5.4, 5.5, 5.8 and 5.11).
+// Statements and blocks.
 package lang
 
 import "../registry"

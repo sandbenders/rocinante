@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
 // Expressions and calls: the part of the parser that decides where a call ends
-// (CLAUDE.md section 5.1) and what a missing bracket looks like (section 5.7).
+// and what a missing bracket looks like (section 5.7).
 package lang
 
 import "../registry"

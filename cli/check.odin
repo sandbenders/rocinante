@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
-// `roci check`: read a sketch, parse it and say what is wrong, in the format of
-// CLAUDE.md section 5.7. For now it stops at the parser; the checker and type
-// inference join it in the next step, and `roci run` after that.
+// `roci check`: read a sketch, parse and check it, and say what is wrong in the
+// format of the error messages. `roci run` comes after it.
 package main
 
 import "../roci/lang"

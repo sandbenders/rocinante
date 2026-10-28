@@ -864,7 +864,7 @@ draw_many_circles :: proc() {
 
 @(test)
 test_a_hundred_thousand_circles_are_one_draw_and_a_steady_frame_allocates_nothing :: proc(t: ^testing.T) {
-	// Work counts are exact on every machine (CLAUDE.md section 9): the pipelines compare
+	// Work counts are exact on every machine: the pipelines compare
 	// these where timing would be too noisy.
 	begin()
 	defer finish()

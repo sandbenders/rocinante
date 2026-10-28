@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The shapes shader (CLAUDE.md section 4.3): one instanced quad per shape, with
+// The shapes shader: one instanced quad per shape, with
 // the shape worked out from a signed distance in the fragment shader. Circles,
 // ellipses, rectangles, lines and triangles all go through here, so any number of
 // them in a row is one draw. The instance layout is Instance in roci/gfx/batch.odin.

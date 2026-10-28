@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: 0BSD
-# Fast local check before pushing (section 11 of CLAUDE.md). It runs the fast
+# Fast local check before pushing. It runs the fast
 # part of the build script's `ci` command once the build script exists.
 root="$(git rev-parse --show-toplevel)"
 cd "$root" || exit 1

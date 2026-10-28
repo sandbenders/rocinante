@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: 0BSD
 # Installs the Odin release named in ODIN_VERSION from Odin's official GitHub
 # releases (Linux amd64 and arm64). Used by both pipelines so they cannot
-# drift apart (CLAUDE.md section 11). Usage: tools/ci/install-odin.sh <dir>
+# drift apart. Usage: tools/ci/install-odin.sh <dir>
 # Afterwards add <dir> to PATH. Needs curl and tar; Odin itself needs clang.
 set -eu
 dest="${1:?usage: install-odin.sh <dir>}"

@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: 0BSD
 #
-# Checks the C ABI end to end (CLAUDE.md section 1): builds package roci as a shared
+# Checks the C ABI end to end: builds package roci as a shared
 # library, checks that the functions it exports are exactly the ones include/roci.h
 # declares, and builds examples/c/circle.c against the header and the library. Pass
 # `--run` to run the C example for 2 seconds as well (it opens a window).

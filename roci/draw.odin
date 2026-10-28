@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The drawing verbs (CLAUDE.md sections 5.8 and 6): shapes, style, colour,
+// The drawing verbs: shapes, style, colour,
 // transforms and scopes. They do not draw; each records a command in the current
 // window's list, and the renderer draws the frame at its end (section 4.3). The
 // names are the registry's, in Odin's spelling (a verb with several shapes is a

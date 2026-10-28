@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Reads the `learn` headers of a file before it is parsed (CLAUDE.md section
-// 5.14): a taught verb fixes how many arguments a call takes and which
+// Reads the `learn` headers of a file before it is parsed: a taught verb fixes how many arguments a call takes and which
 // connecting words follow, and a call may come before the `learn` that teaches
 // the verb. Mistakes in a header are not reported here; the parse of the `learn`
 // statement itself reports them, so each is reported once.

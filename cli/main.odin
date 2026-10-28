@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The `roci` command (CLAUDE.md section 7). So far it can only `check` a sketch;
+// The `roci` command. So far it can only `check` a sketch;
 // run, fmt, package, doctor and the rest arrive with their phases.
 //
 //     odin run cli -- check [file] [--tree]

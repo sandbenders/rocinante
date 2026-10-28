@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Gradient lookup, shared by shapes.hlsl and mesh.hlsl (CLAUDE.md section 5.9).
+// Gradient lookup, shared by shapes.hlsl and mesh.hlsl.
 // The CPU bakes every gradient of the frame into one texture (roci/gfx/gradient.odin):
 // gradient n has a row of 256 colours at row 2n and its parameters at row 2n + 1,
 // texel 0: the kind (0 linear, 1 radial, 2 conic), the angle as a fraction of a

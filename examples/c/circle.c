@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: 0BSD
  *
- * The smallest rocinante sketch, in C (CLAUDE.md section 1): one circle. Build
+ * The smallest rocinante sketch, in C: one circle. Build
  * and run it with tools/c-example.sh, or by hand:
  *
  *     odin build roci -build-mode:shared -no-entry-point -out:output/libroci.dylib   (.so on Linux)

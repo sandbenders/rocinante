@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
 // Verbs that the interpreter provides and the Odin and C APIs do not: lists and
-// the light functional layer for them (CLAUDE.md sections 5.2 and 5.15). They are
+// the light functional layer for them. They are
 // in a table of their own so the API and the C header, which are made from VERBS,
 // keep to the verbs that have a procedure; the language, the checker and the docs
 // see ALL_VERBS, which holds both.

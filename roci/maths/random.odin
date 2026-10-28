@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The one random number generator (CLAUDE.md section 4.7, determinism rules).
+// The one random number generator.
 // The interpreter and the compiled sketch both call it, so the same seed gives
 // the same picture. It is SplittableRandom (Steele, Lea and Flood, "Fast
 // Splittable Pseudorandom Number Generators", OOPSLA 2014): a counter that

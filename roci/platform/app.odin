@@ -6,7 +6,7 @@
 // handles the renderer needs. Replaces Spike 1 (spikes/desktop).
 //
 // Threads: SDL wants its video calls on the thread that called `init`; the app
-// loop runs there (CLAUDE.md section 4.4).
+// loop runs there.
 package platform
 
 import "core:strings"

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Expressions and calls for the checker (CLAUDE.md sections 5.1, 5.2 and 5.15).
+// Expressions and calls for the checker.
 package lang
 
 import "../maths"

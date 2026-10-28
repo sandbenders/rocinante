@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Which Odin procedure answers each verb of the registry (CLAUDE.md section 4.7,
-// "the verb registry is data"). The registry names verbs the way the language
+// Which Odin procedure answers each verb of the registry. The registry names verbs the way the language
 // spells them; Odin cannot always use the same name (`abs` and `clamp` are builtin,
 // `map` is a type, `push` needs a `pop`), so this table says what each one is
 // called here. A test checks that every registry verb has an entry and that no

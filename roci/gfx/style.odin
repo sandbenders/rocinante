@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The style a shape is drawn with (CLAUDE.md section 5.9): what fills it, what
+// The style a shape is drawn with: what fills it, what
 // outlines it and how thick, and how transparent both are. A command keeps the
 // style that was current when it was recorded, so a later change never reaches
 // back. Gradients and image fills join the fill in later phases.

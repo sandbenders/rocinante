@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The error catalogue (CLAUDE.md section 5.7). It is data: each message has an
+// The error catalogue. It is data: each message has an
 // id, a plain explanation and an example that would work, so messages can be
 // translated later by replacing this table and nothing else. A message must make
 // sense read aloud by a screen reader, so the title and the explanation never

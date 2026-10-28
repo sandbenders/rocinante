@@ -1,8 +1,8 @@
 #!/bin/sh
 # SPDX-License-Identifier: 0BSD
 # Builds and installs the latest stable SDL3 release from source, for the
-# pipelines that have no recent enough package (Ubuntu 24.04 has no SDL3 at all;
-# CLAUDE.md section 11). Decided 2026-10-27: always the latest release, cached
+# pipelines that have no recent enough package (Ubuntu 24.04 has no SDL3 at all).
+# Decided 2026-10-27: always the latest release, cached
 # by the workflow under a key that holds the release's tag, so a new release
 # rebuilds and an unchanged one costs nothing.
 #

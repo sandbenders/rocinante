@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Two windows that talk (CLAUDE.md section 4.5): a small control window and a
+// Two windows that talk: a small control window and a
 // canvas. Every frame the control window sends the mouse position over it to the
 // canvas, which draws a circle there; clicking in the control window sends the
 // word "flash", which makes the canvas background light up for a moment.

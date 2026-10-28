@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Spike 2, Android half (CLAUDE.md section 8, Phase 0): an Odin shared library
+// Spike 2, Android half: an Odin shared library
 // that SDL's Java activity loads and starts. The sketch is in
 // ../shared. Build and install it with spikes/mobile/android/build.sh.
 package spike_android

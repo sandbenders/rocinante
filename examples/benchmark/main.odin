@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The circle benchmark (CLAUDE.md section 2, non-negotiable 6; Phase 1's exit):
+// The circle benchmark:
 // 100,000 circles a frame, each drawn by the public API with fill changes along
 // the way, moving with the clock, which should hold 60 frames a second on a
 // mid-range laptop GPU. It prints the time a frame takes and where it goes, and

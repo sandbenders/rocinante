@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The parser (CLAUDE.md sections 5.1, 5.7 and 5.14): a hand-written recursive
+// The parser: a hand-written recursive
 // descent over the lexer's tokens. It knows no verb by name; everything it knows
 // about the core comes from the registry table it is given, and everything about
 // taught verbs from the prescan. It never stops at a mistake: a broken statement

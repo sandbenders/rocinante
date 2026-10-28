@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The golden images in `ci` (CLAUDE.md section 9). The references in tests/golden
+// The golden images in `ci`. The references in tests/golden
 // are drawn on Mesa's software Vulkan (lavapipe), so `ci` draws the scenes there
 // too, whatever GPU the computer has: it points the Vulkan loader at lavapipe's
 // manifests alone and starts SDL with no display. Where lavapipe is missing

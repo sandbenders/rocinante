@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// 2D transforms (CLAUDE.md section 5.9, "Transforms": move, turn, grow, shear).
+// 2D transforms: move, turn, grow and shear.
 // A transform is the top two rows of a 3x3 matrix, enough for anything a 2D
 // sketch does to the canvas:
 //

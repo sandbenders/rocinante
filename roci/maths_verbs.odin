@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Numbers, randomness and noise as verbs (CLAUDE.md section 6, "Math" and
-// "Randomness, noise"). Random numbers come from the sketch's one generator, so
+// Numbers, randomness and noise as verbs. Random numbers come from the sketch's one generator, so
 // `seed 42` makes a sketch repeat itself exactly, interpreted or compiled
 // (section 4.7); noise comes from the same seed. Angles are in degrees
 // everywhere (section 5.15).

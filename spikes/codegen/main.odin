@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Spike 3 (CLAUDE.md section 8, Phase 0): a hand-written typed-IR fragment is
+// Spike 3: a hand-written typed-IR fragment is
 // run by a small interpreter and turned into Odin source, which is built with
 // the pinned Odin and run. Both must print exactly the same thing, which is
 // non-negotiable 7 in miniature. Run it from the repository root:

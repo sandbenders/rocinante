@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The checker (CLAUDE.md sections 5.1, 5.3, 5.11 and 5.15): it reads the tree the
+// The checker: it reads the tree the
 // parser made, works out what every name and expression is, and builds the typed
 // IR. Every error a user sees about names, kinds and calls comes from here or
 // from the parser, so `roci run` and `roci package` say the same thing (§4.7).

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The overlay font (CLAUDE.md section 8, Phase 1): a small built-in bitmap font so
+// The overlay font: a small built-in bitmap font so
 // the error overlay and debug output can put words on the screen before Phase 3
 // brings real text (section 4.3). It covers printable ASCII, in 8 x 8 pixel cells
 // (glyph pictures in font_data.odin, public domain), and is drawn by the text

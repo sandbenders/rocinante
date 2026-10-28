@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The typed IR (CLAUDE.md sections 4.7 and 5.14): what the checker makes of a
+// The typed IR: what the checker makes of a
 // sketch and what the interpreter runs and the code generator reads. Every node
 // has a type and a span; names are resolved to symbols; a verb call carries the
 // registry verb and the shape of its group that was chosen. Nothing here is a

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
 // A command describes itself: what it is, where it sits on the canvas, how big
-// it is and what colour. Screen readers (CLAUDE.md section 4.8, "accessible
-// canvas") and the error overlay read this; nothing has to know the shape of
+// it is and what colour. Screen readers and the error overlay read this; nothing has to know the shape of
 // the drawing code.
 package gfx
 

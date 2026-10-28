@@ -4,8 +4,7 @@
 // layered ("fractal") noise built on Perlin. This is Perlin's improved noise (Perlin, "Improving Noise", SIGGRAPH
 // 2002: the quintic fade curve and the twelve edge gradients). The permutation
 // table comes from the seed, so the same seed gives the same landscape, and the
-// interpreter and compiled sketches share this one implementation (CLAUDE.md
-// section 4.7). Results run from 0 to 1, like Processing's noise().
+// interpreter and compiled sketches share this one implementation. Results run from 0 to 1, like Processing's noise().
 //
 // Simplex noise is Gustavson's ("Simplex noise demystified", 2005): the same
 // idea on a skewed grid of triangles, tetrahedra and their four-dimensional

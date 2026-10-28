@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Turning filled outlines into triangles (CLAUDE.md section 4.3, "vector
-// tessellation": our own Odin implementation, decided 2026-10-27). The method is
+// Turning filled outlines into triangles. The method is
 // the classic one: contours that sit inside others are holes, each hole is joined
 // to its outline by a zero-width bridge (Eberly, "Triangulation by Ear Clipping"),
 // and the one polygon that results is cut into triangles by clipping off "ears".

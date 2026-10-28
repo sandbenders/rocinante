@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The command list (CLAUDE.md section 4.3). Drawing verbs do not draw: they
+// The command list. Drawing verbs do not draw: they
 // append a command to their window's list, and at the end of the frame the
 // batcher turns the list into a few instanced GPU draws. A command is plain data
 // that describes itself (its kind, where it is, how big, what colour), so the

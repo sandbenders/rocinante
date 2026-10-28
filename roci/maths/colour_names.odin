@@ -2,7 +2,7 @@
 //
 // The CSS named colours (CSS Color Module Level 4, section "Named Colors",
 // https://www.w3.org/TR/css-color-4/#named-colors), which are rocinante's colour
-// words (CLAUDE.md section 5.9). Language words use US spelling (section 5.15),
+// words. Language words use US spelling (section 5.15),
 // so the table holds `gray` and not `grey`; `us_spelling` turns a British
 // spelling into the word to suggest. Sorted by name.
 package maths
@@ -13,7 +13,7 @@ Named_Colour :: struct {
 }
 
 // A variable, not a constant: a constant slice of structs that hold slices is
-// rebuilt on the stack at each use (CLAUDE.md, shell and tool gotchas).
+// rebuilt on the stack at each use.
 NAMED_COLOURS := [?]Named_Colour{
 	{"aliceblue", 0xf0f8ff},
 	{"antiquewhite", 0xfaebd7},

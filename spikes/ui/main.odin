@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Spike 4 (CLAUDE.md section 8, Phase 0): Dear ImGui, through the C API that
+// Spike 4: Dear ImGui, through the C API that
 // dear_bindings generates, drawn by its SDL3 and SDL_GPU backends into an SDL3
 // window, from Odin. A slider, a button and a text box. The text box is where
 // IME composition is tried by hand; the screen-reader half comes after this.

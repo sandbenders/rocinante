@@ -147,7 +147,7 @@ licence_problems :: proc(table: map[string]string, imports: map[string]string, d
 		id := table[name]
 		lower := strings.to_lower(id, context.temp_allocator)
 		if strings.contains(lower, "gpl") {
-			append(&errors, fmt.aprintf("%s is %s. GPL, LGPL and AGPL code may not ship (CLAUDE.md section 3).", name, id))
+			append(&errors, fmt.aprintf("%s is %s. GPL, LGPL and AGPL code may not ship.", name, id))
 		} else if contains(NOTICE_LICENCES, id) {
 			append(&warnings, fmt.aprintf("%s is %s; a source notice must ship with packaged sketches.", name, id))
 		} else if !contains(ALLOWED_LICENCES, id) {
