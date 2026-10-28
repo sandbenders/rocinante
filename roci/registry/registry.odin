@@ -64,8 +64,8 @@ CONNECTING_WORDS := [?]string{
 
 // Words the language itself uses, which no verb or name may take (section 5.15).
 KEYWORDS := [?]string{
-	"and", "each", "else", "every", "for", "give", "hidden", "if", "is", "it", "learn",
-	"not", "on", "or", "repeat", "result", "stop", "use", "while", "with",
+	"and", "draw", "each", "else", "every", "for", "give", "hidden", "if", "is", "it", "learn",
+	"not", "on", "or", "receive", "repeat", "result", "stop", "use", "while", "with",
 }
 
 // Built-in values: names that stand for a value and take no arguments.
@@ -76,3 +76,26 @@ VALUES := [?]string{
 // `width`, `height` and `size` are values and connecting words together, so they
 // stay free to use as parameter names (sections 5.1 and 5.15).
 FREE_AS_PARAMETERS := [?]string{"height", "size", "width"}
+
+// An `on` event and what follows its name: `on key "space" [ ... ]`, `on mouse down [ ... ]`.
+// `on w receive msg [ ... ]` is its own form, because a window comes first (section 4.5).
+Event :: struct {
+	name:   string, // lowercase; several words for `mouse down`
+	params: []Kind,
+	doc:    string,
+}
+
+EVENTS := []Event{
+	{"key", {.Text}, "Runs when the named key goes down."},
+	{"mouse down", {}, "Runs when a mouse button goes down."},
+	{"mouse up", {}, "Runs when a mouse button comes up."},
+	{"touch", {}, "Runs when a finger touches the screen."},
+	{"resize", {}, "Runs when the window changes size."},
+	{"move", {}, "Runs when the window moves."},
+	{"focus", {}, "Runs when the window gains or loses focus."},
+}
+
+// What `every 2 seconds [ ... ]` and `every 10 frames [ ... ]` count in. The
+// singular is for 1. These are positional, like connecting words: only the word
+// after the number of `every` is a unit, so they stay free as names.
+EVERY_UNITS := [?]string{"frame", "frames", "second", "seconds"}

@@ -402,3 +402,27 @@ test_is_plain_name_rules :: proc(t: ^testing.T) {
 		testing.expect(t, !is_plain_name(bad), bad)
 	}
 }
+
+// ---- events and units ----
+
+@(test)
+test_event_names_and_every_units_are_plain_lowercase_words :: proc(t: ^testing.T) {
+	for e, i in EVENTS {
+		testing.expect(t, is_plain_name(e.name), e.name)
+		testing.expectf(t, e.doc != "", "event `%s` has no description", e.name)
+		for other in EVENTS[:i] {
+			testing.expectf(t, other.name != e.name, "event `%s` is listed twice", e.name)
+		}
+	}
+	testing.expect(t, slice.is_sorted(EVERY_UNITS[:]), "keep the units sorted")
+	for u in EVERY_UNITS {
+		testing.expect(t, is_plain_name(u), u)
+	}
+}
+
+@(test)
+test_draw_and_receive_are_reserved_so_no_name_can_take_them :: proc(t: ^testing.T) {
+	testing.expect(t, is_reserved("draw"))
+	testing.expect(t, is_reserved("receive"))
+	testing.expect(t, is_reserved_name("draw"))
+}

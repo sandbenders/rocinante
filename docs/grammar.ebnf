@@ -1,0 +1,91 @@
+(* SPDX-License-Identifier: 0BSD
+
+   The grammar of rocinante (CLAUDE.md section 5.14). It is the grammar itself, not
+   a second design document: when a rule changes, change it here, in the parser
+   and in the section of docs/design.md that decided it, in the same commit.
+
+   Notation: `name = ... ;` defines a rule; `|` chooses; `[ x ]` is optional;
+   `{ x }` is zero or more; `( x )` groups; `"x"` is the exact text; `'x'` is a
+   word read from the registry or the sketch, described in the comment beside it;
+   `(* ... *)` is a comment. A rule's name is also its entry in the parser's
+   GRAMMAR_RULES table, which a test compares with this file.
+
+   Lexical rules (written in prose, implemented in roci/lang/lexer.odin):
+     NUMBER   digits, optionally a dot and digits: 10, 0.5. Not .5, 5., 1e3 or 1_000.
+     TEXT     a double quote, characters, a double quote; \" \\ \n \t are the escapes.
+     COLOUR   a hash and 3, 4, 6 or 8 hex digits, then a space, a bracket, a comma
+              or the end of the line. Any other hash starts a comment to the end of
+              the line (decided 2026-10-28).
+     NAME     a letter, then letters, digits and underscores (letters of any script).
+              A NAME in capitals only is a constant (section 5.1).
+     NEWLINE  a line break. Newlines are free inside ( ), { } and a list [ ];
+              a block [ ] may span lines too, but its statements end at line ends.
+     A minus is a sign (written "-" below as SIGN) when a space comes before it and
+     none after, or nothing that could be subtracted from comes before it
+     (section 5.15); otherwise it is the operator "-".
+*)
+
+program        = { statement } ;
+
+statement      = [ NEWLINE ] ( assignment | if_statement | repeat_statement
+               | while_statement | for_statement | for_each_statement
+               | learn_statement | give_statement | stop_statement | with_statement
+               | every_statement | on_statement | draw_statement | use_statement
+               | call ) NEWLINE ;
+
+block          = "[" { statement } "]" ;
+
+assignment     = path "=" expression ;
+path           = NAME { "." NAME } ;
+
+if_statement   = "if" expression block [ "else" ( if_statement | block ) ] ;
+repeat_statement = "repeat" argument block ;
+while_statement  = "while" expression block ;
+for_statement    = "for" NAME "from" expression "to" expression [ "by" expression ] block ;
+for_each_statement = "for" "each" NAME "in" expression block ;
+
+(* Section 5.11. Each parameter is a NAME; after `with`, each default is a NAME and
+   one item. `hidden` keeps a library's helper out of the sketch's reach. *)
+learn_statement = [ "hidden" ] "learn" NAME { NAME } [ "with" { NAME argument } ] block ;
+give_statement  = "give" expression ;
+stop_statement  = "stop" ;
+
+(* Section 5.9: style words, or a record that holds them. *)
+with_statement  = "with" ( style_words | argument ) block ;
+style_words     = option { option } ;
+
+(* Section 5.5 and 5.8; the unit is one of the registry's EVERY_UNITS. *)
+every_statement = "every" argument 'unit' block ;
+draw_statement  = "draw" [ argument ] block ;
+use_statement   = "use" TEXT ;
+
+(* The event phrases and what follows them are the registry's EVENTS; the second
+   form is `on w receive msg [ ... ]` (section 4.5). *)
+on_statement    = "on" ( 'event phrase' { argument } | argument "receive" NAME ) block ;
+
+(* A call: a verb, matched as a phrase longest first (section 5.1), then its
+   required arguments, then connecting words. Which shape of a verb group is meant
+   is the checker's choice, by count and then kinds (section 5.2); the parser only
+   needs the largest count any shape takes and the options any shape lists. *)
+call           = 'verb' { argument } { option } ;
+option         = 'connecting word' { argument } ;
+
+(* One thing per argument (section 5.1). *)
+argument       = NUMBER | TEXT | COLOUR | path | group | vector_or_record | list | block
+               | sign argument ;
+group          = "(" expression ")" ;
+sign           = SIGN ;
+list           = "[" { argument } "]" ;
+vector_or_record = "{" [ item { "," item } ] "}" ;
+item           = expression | NAME ":" expression ;
+
+(* Section 5.15, tightest first. A call used as an operand takes the argument
+   items that follow it, so `random width + 10` is `(random width) + 10`. *)
+expression     = or_expression ;
+or_expression  = and_expression { "or" and_expression } ;
+and_expression = comparison { "and" comparison } ;
+comparison     = sum { ( "<" | "<=" | ">" | ">=" | "is" | "is" "not" ) sum } ;
+sum            = product { ( "+" | "-" ) product } ;
+product        = unary { ( "*" | "/" | "%" ) unary } ;
+unary          = ( "not" | SIGN ) unary | operand ;
+operand        = call | argument ;
