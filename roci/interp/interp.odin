@@ -61,13 +61,17 @@ Interp :: struct {
 	items:     [dynamic]Value, // `it`, innermost last
 	results:   [dynamic]Value, // `result`, innermost last
 	draws:     map[roci.Window]^lang.IR_Block,
+	handlers:  [dynamic]Handler,
+	inbox:     [2][dynamic]Message, // [msg_now] is what arrives this frame, the other what is sent now
+	msg_arenas: [2]virtual.Arena, // the memory of each inbox
+	msg_now:   int,
+	hook_frame: int,
 	errors:    [dynamic]Runtime_Error,
 	seen:      map[int]bool, // the errors said once: id and place
 	printed:   [dynamic]string,
 	echo:      bool, // `print` also writes to the console
 	depth:     int,
 	pending:   Flow, // a `stop` or `give` that ran inside a block a verb ran for its statement
-	last_key:  string, // the key last pressed
 	ops:       int,
 	budget:    f64, // seconds one block may run
 	started:   time.Tick, // when the block being run began
@@ -88,6 +92,10 @@ load :: proc(name, text: string) -> (p: ^Interp, ok: bool) {
 		return p, false
 	}
 	p.long = virtual.arena_allocator(&p.arena)
+	for i in 0 ..< 2 {
+		_ = virtual.arena_init_growing(&p.msg_arenas[i])
+	}
+	p.hook_frame = -1
 	p.alloc = p.long
 	p.src = lang.make_source(name, text, 0, p.long)
 	p.checked = lang.check(p.src, registry.ALL_VERBS, nil, p.long)
@@ -104,6 +112,12 @@ destroy :: proc(p: ^Interp) {
 	if current == p {
 		current = nil
 	}
+	for i in 0 ..< 2 {
+		delete(p.inbox[i])
+		virtual.arena_destroy(&p.msg_arenas[i])
+	}
+	delete(p.handlers)
+	roci.set_frame_hook(nil)
 	delete(p.items)
 	delete(p.results)
 	delete(p.errors)
@@ -124,6 +138,7 @@ start :: proc(p: ^Interp) {
 	frame := Frame{}
 	defer delete(frame.slots)
 	p.frame = &frame
+	roci.set_frame_hook(frame_hook)
 	begin_block(p)
 	exec_stmts(p, p.checked.program.stmts)
 	p.frame = nil
@@ -144,13 +159,16 @@ draw_trampoline :: proc() {
 
 // Runs one block the app loop asked for (a `draw` block, later an event) with its
 // own frame, its values in the frame's memory, and a time limit.
-run_block :: proc(p: ^Interp, block: ^lang.IR_Block) {
+run_block :: proc(p: ^Interp, block: ^lang.IR_Block, bind: ^lang.Symbol = nil, value: Value = nil) {
 	saved_alloc, saved_frame := p.alloc, p.frame
 	p.alloc = context.temp_allocator
 	frame := Frame{}
 	frame.slots = make([dynamic]Slot, 0, 8, context.temp_allocator)
 	p.frame = &frame
 	p.depth = 0
+	if bind != nil {
+		append(&frame.slots, Slot{bind, value})
+	}
 	begin_block(p)
 	exec_stmts(p, block.stmts)
 	p.alloc, p.frame = saved_alloc, saved_frame

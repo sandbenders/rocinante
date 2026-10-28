@@ -157,7 +157,7 @@ builtin_value :: proc(it: ^Interp, name: string) -> Value {
 	case "anywhere":
 		return vec2(roci.anywhere())
 	case "key":
-		return it.last_key
+		return roci.last_key()
 	case "true":
 		return true
 	case "false":

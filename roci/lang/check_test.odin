@@ -934,3 +934,11 @@ test_the_call_parentheses_example_uses_labels_for_geometry :: proc(t: ^testing.T
 	testing.expect_value(t, got.checked.diagnostics[0].id, Message_Id.Call_Parentheses)
 	testing.expect_value(t, got.checked.diagnostics[0].args[0], "circle at 100 100 radius 50")
 }
+
+@(test)
+test_an_event_can_name_its_window_first :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window size 400 300\non w key \"a\" [ circle at mouse radius 5 ]\non w mouse down [ ]", {})
+	expect_errors(t, "x = 3\non x mouse down [ ]", {.Wrong_Kind_Here})
+	expect_errors(t, "w = window size 400 300\non w key 5 [ ]", {.Wrong_Kind_Here})
+	expect_errors(t, "w = window size 400 300\non w nothing [ ]", {.Unknown_Event})
+}

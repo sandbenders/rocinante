@@ -622,7 +622,7 @@ parse_use :: proc(p: ^Parser) -> Stmt_Kind {
 
 // The event phrase at the cursor, matched longest first: `mouse down`, `key`.
 @(private)
-match_event :: proc(p: ^Parser) -> (event: ^registry.Event, used: int) {
+match_event :: proc(p: ^Parser, from := 0) -> (event: ^registry.Event, used: int) {
 	for &e in registry.EVENTS {
 		words := strings.split(e.name, " ", context.temp_allocator)
 		if len(words) <= used {
@@ -630,7 +630,7 @@ match_event :: proc(p: ^Parser) -> (event: ^registry.Event, used: int) {
 		}
 		matched := true
 		for w, i in words {
-			t := p.tokens[min(p.at + i, len(p.tokens) - 1)]
+			t := p.tokens[min(p.at + from + i, len(p.tokens) - 1)]
 			if t.kind != .Name || text_of(p, t) != w {
 				matched = false
 				break
@@ -646,6 +646,12 @@ match_event :: proc(p: ^Parser) -> (event: ^registry.Event, used: int) {
 @(private)
 parse_on :: proc(p: ^Parser) -> Stmt_Kind {
 	on := advance(p)
+	window: ^Expr
+	if t := cur(p); t.kind == .Name && !is_word(p, peek_at(p, 1), "receive") {
+		if event, _ := match_event(p, 1); event != nil {
+			window = parse_argument(p, plain = true)
+		}
+	}
 	if event, used := match_event(p); event != nil {
 		for _ in 0 ..< used {
 			advance(p)
@@ -661,11 +667,11 @@ parse_on :: proc(p: ^Parser) -> Stmt_Kind {
 		if !ok {
 			return Error_Stmt{}
 		}
-		return On{event = event.name, args = args[:], body = body}
+		return On{event = event.name, args = args[:], window = window, body = body}
 	}
 	t := cur(p)
 	if t.kind == .Name && is_word(p, peek_at(p, 1), "receive") {
-		window := parse_argument(p, plain = true)
+		target := parse_argument(p, plain = true)
 		advance(p) // receive
 		message := cur(p)
 		if message.kind != .Name {
@@ -678,7 +684,7 @@ parse_on :: proc(p: ^Parser) -> Stmt_Kind {
 		if !ok {
 			return Error_Stmt{}
 		}
-		return On{window = window, message = text_of(p, message), body = body}
+		return On{window = target, message = text_of(p, message), body = body}
 	}
 	names := make([dynamic]string, context.temp_allocator)
 	for e in registry.EVENTS {

@@ -27,7 +27,7 @@ Users never see threads. The core decides: rendering and windowing stay where SD
 
 - `window size w h` and `window size w h at x y title "t"` return a window handle; `title w "t"` changes one later, and a bare `title "t"` names the current window.
 - Each window has its own `draw [ ... ]` block and command list.
-- Windows communicate with `send <window> <value>` and `on <window> receive <name> [ ... ]`. Messages are values (numbers, text, lists, records), delivered on the next frame. Internally: channels, no shared mutable state exposed. **What a message is** (decided 2026-10-28): the checker sees the whole program, so `msg` in `on w receive msg` has the type of every `send w ...` that names that window; a `send` to anything but a plain name could reach any window. Sends of different kinds make `msg` a mixed value that the handler tells apart while it runs, which is allowed because tagged messages are common. Two messages that are records of different fields (`send w { at: p }` and `send w { flash: 1 }`) have one shape with all the fields, so a handler reads the one it cares about and the others read 0 (§5.2).
+- Windows communicate with `send <window> <value>` and `on <window> receive <name> [ ... ]`. Messages are values (numbers, text, lists, records), delivered on the next frame. Input events can name their window first (`on garden key "space"`, `on chooser mouse down`), and without one run in whichever window the event happened in (decided 2026-10-28). Internally: channels, no shared mutable state exposed. **What a message is** (decided 2026-10-28): the checker sees the whole program, so `msg` in `on w receive msg` has the type of every `send w ...` that names that window; a `send` to anything but a plain name could reach any window. Sends of different kinds make `msg` a mixed value that the handler tells apart while it runs, which is allowed because tagged messages are common. Two messages that are records of different fields (`send w { at: p }` and `send w { flash: 1 }`) have one shape with all the fields, so a handler reads the one it cares about and the others read 0 (§5.2).
 - On mobile, multiple windows become stacked or tabbed views. Decide the exact behaviour in Phase 8 and document it here.
 
 ### 4.6 Audio
@@ -269,6 +269,7 @@ for each p in points [ circle at p radius 10 ]
 draw [ ... ]                # runs every frame (default window)
 draw w [ ... ]              # runs every frame for window w
 on key "space" [ ... ]
+on w key "space" [ ... ]     # only in window w, as with receive
 on mouse down [ ... ]
 on touch [ ... ]
 on w receive msg [ ... ]

@@ -9,11 +9,13 @@ package interp
 import "../"
 import "../gfx"
 import "../lang"
+import "../platform"
 import "../registry"
 import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:testing"
+import sdl "vendor:sdl3"
 
 // Runs `text` for `frames` frames. The caller frees it with `finish`.
 run_text :: proc(t: ^testing.T, text: string, frames := 0, loc := #caller_location) -> ^Interp {
@@ -532,4 +534,160 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 		}
 		testing.expectf(t, found > 0, "message %v has no sketch in %s", id, folder)
 	}
+}
+
+// ---- events, timers and messages ----
+
+key_event :: proc(w: roci.Window, code: sdl.Scancode, down := true) -> platform.Event {
+	return platform.Key_Changed{window = platform.Window_Id(w), scancode = code, down = down}
+}
+
+click_event :: proc(w: roci.Window, x, y: f32, down := true) -> platform.Event {
+	return platform.Mouse_Button_Changed{window = platform.Window_Id(w), button = .Left, down = down, clicks = 1, x = x, y = y}
+}
+
+@(test)
+test_on_key_runs_for_that_key_only_and_once_a_press :: proc(t: ^testing.T) {
+	p := run_text(t, "on key \"a\" [ print \"a\" ]\non key \"b\" [ print \"b\" ]\ncircle at 1 1 radius 1")
+	defer finish(p)
+	w := first_window()
+	roci.step({key_event(w, .A), key_event(w, .C)})
+	roci.step({key_event(w, .A, false)})
+	roci.step({key_event(w, .B), key_event(w, .A)})
+	testing.expect_value(t, printed(p), "a\nb\na")
+}
+
+@(test)
+test_a_key_repeat_is_not_a_press :: proc(t: ^testing.T) {
+	p := run_text(t, "on key \"a\" [ print \"a\" ]\ncircle at 1 1 radius 1")
+	defer finish(p)
+	roci.step({platform.Key_Changed{window = platform.Window_Id(first_window()), scancode = .A, down = true, repeat = true}})
+	testing.expect_value(t, len(p.printed), 0)
+}
+
+@(test)
+test_an_event_that_names_a_window_runs_only_for_that_window :: proc(t: ^testing.T) {
+	text := "a = window size 100 100\nb = window size 100 100\non a mouse down [ print \"a\" ]\non b mouse down [ print \"b\" ]\non mouse down [ print \"any\" ]"
+	p := run_text(t, text)
+	defer finish(p)
+	windows := roci.open_windows()
+	roci.step({click_event(windows[1], 5, 5)})
+	testing.expect_value(t, printed(p), "b\nany")
+}
+
+@(test)
+test_the_mouse_in_an_event_is_the_mouse_of_the_window_it_happened_in :: proc(t: ^testing.T) {
+	text := "a = window size 100 100\nb = window size 100 100\non b mouse down [ print mouse ]"
+	p := run_text(t, text)
+	defer finish(p)
+	windows := roci.open_windows()
+	roci.step({click_event(windows[1], 40, 60)})
+	testing.expect_value(t, printed(p), "{ 40, 60 }")
+}
+
+@(test)
+test_the_key_value_is_the_key_pressed_last :: proc(t: ^testing.T) {
+	p := run_text(t, "on key \"x\" [ print key ]\non key \"y\" [ print key ]\ncircle at 1 1 radius 1")
+	defer finish(p)
+	roci.step({key_event(first_window(), .Y)})
+	roci.step({key_event(first_window(), .X)})
+	testing.expect_value(t, printed(p), "y\nx")
+}
+
+@(test)
+test_drawing_in_an_event_lands_in_that_frame_before_the_draw_block :: proc(t: ^testing.T) {
+	p := run_text(t, "draw [\n  circle at 2 2 radius 2\n]\non mouse down [ circle at 1 1 radius 1 ]")
+	defer finish(p)
+	roci.step({click_event(first_window(), 0, 0)})
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 2)
+	testing.expect_value(t, commands[0].args[2], f32(1)) // the event's circle came first
+}
+
+@(test)
+test_drawing_in_an_event_with_no_draw_block_stays :: proc(t: ^testing.T) {
+	p := run_text(t, "on mouse down [ circle at 1 1 radius 1 ]\nbackground 0")
+	defer finish(p)
+	roci.step({click_event(first_window(), 0, 0)})
+	roci.step({click_event(first_window(), 0, 0)})
+	roci.step()
+	testing.expect_value(t, len(roci.recorded(first_window())), 2)
+}
+
+@(test)
+test_every_runs_after_its_interval_in_frames_and_in_seconds :: proc(t: ^testing.T) {
+	p := run_text(t, "every 3 frames [ print \"f\" ]\nevery 1 second [ print \"s\" ]\ncircle at 1 1 radius 1")
+	defer finish(p)
+	for _ in 0 ..< 7 {
+		roci.step()
+	}
+	testing.expect_value(t, printed(p), "f\nf")
+	for _ in 0 ..< 60 {
+		roci.step()
+	}
+	count := 0
+	for line in p.printed {
+		if line == "s" {
+			count += 1
+		}
+	}
+	testing.expect_value(t, count, 1)
+}
+
+@(test)
+test_a_message_arrives_on_the_next_frame_in_order_and_is_a_copy :: proc(t: ^testing.T) {
+	text := "a = window size 100 100\nb = window size 100 100\nsent = { n: 1 }\ndraw a [\n  if frame is 0 [\n    send b sent\n    send b { n: 2 }\n    sent.n = 9\n  ]\n]\non b receive m [ print m.n ]"
+	p := run_text(t, text)
+	defer finish(p)
+	roci.step()
+	testing.expect_value(t, len(p.printed), 0)
+	roci.step()
+	roci.step()
+	testing.expect_value(t, printed(p), "1\n2")
+}
+
+@(test)
+test_a_message_sent_while_setting_up_arrives_on_the_first_frame :: proc(t: ^testing.T) {
+	p := run_text(t, "w = window size 10 10\nsend w 5\non w receive m [ print m ]")
+	defer finish(p)
+	roci.step()
+	testing.expect_value(t, printed(p), "5")
+}
+
+@(test)
+test_a_receive_handler_can_keep_what_it_hears :: proc(t: ^testing.T) {
+	text := "w = window size 10 10\nheard = { n: 0 }\nsend w { n: 7 }\non w receive m [ heard = m ]\nevery 1 frames [ print heard.n ]"
+	p := run_text(t, text)
+	defer finish(p)
+	roci.step()
+	roci.step()
+	roci.step()
+	roci.step()
+	testing.expect_value(t, printed(p), "7\n7\n7")
+}
+
+@(test)
+test_the_two_windows_example_passes_the_mouse_and_a_flash :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("two_windows"), 2)
+	defer finish(p)
+	windows := roci.open_windows()
+	roci.step({click_event(windows[0], 30, 20)})
+	roci.step()
+	testing.expect_value(t, len(p.errors), 0)
+	commands := roci.recorded(windows[1])
+	testing.expect_value(t, len(commands), 1)
+	testing.expect_value(t, [2]f32{commands[0].args[0], commands[0].args[1]}, [2]f32{52, 42}) // the mouse, scaled to the canvas
+}
+
+@(test)
+test_the_garden_example_reacts_to_keys_and_clicks :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("garden"), 3)
+	defer finish(p)
+	windows := roci.open_windows()
+	before := len(roci.recorded(windows[1]))
+	roci.step({click_event(windows[1], 300, 520), key_event(windows[0], ._2)})
+	roci.step()
+	roci.step()
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect(t, len(roci.recorded(windows[1])) > before) // a flower was planted
 }

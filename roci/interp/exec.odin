@@ -82,7 +82,14 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 			it.draws[window] = &draw.body
 		}
 		roci.draw_window(window, draw_trampoline)
-	case lang.IR_On, lang.IR_Every:
+	case lang.IR_On:
+		if on, is_on := &s.kind.(lang.IR_On); is_on {
+			register_on(it, on)
+		}
+	case lang.IR_Every:
+		if every, is_every := &s.kind.(lang.IR_Every); is_every {
+			register_every(it, every)
+		}
 	case lang.IR_Give:
 		if it.frame != nil {
 			it.frame.result = eval(it, k.value)

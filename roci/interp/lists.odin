@@ -156,8 +156,7 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case "sort":
 		return sort_list(it, call)
 	case "send":
-		// Messages come with the events in the app loop.
-		eval_args(it, call.args)
+		send_message(it, eval(it, call.args[0]), eval(it, call.args[1]))
 	}
 	return nil
 }

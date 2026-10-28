@@ -537,6 +537,9 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 				append(&args, check_kind(c, a, expected, fmt.tprintf("on %s", k.event)))
 			}
 		}
+		if k.window != nil {
+			result.window = check_kind(c, k.window, T_WINDOW, "on")
+		}
 		result.args = args[:]
 		result.body = check_block(c, k.body, true)
 		return result

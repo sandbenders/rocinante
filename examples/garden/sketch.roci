@@ -70,7 +70,7 @@ draw chooser [
   circle at (16 + wind * 288) 175 radius 9 fill (rgb 240 240 240)
 ]
 
-on mouse down [
+on chooser mouse down [
   for i from 1 to 3 [
     x = 16 + (i - 1) * (SWATCH + 20)
     if mouse.x >= x and mouse.x < x + SWATCH and mouse.y >= 44 and mouse.y < 44 + SWATCH [
@@ -82,9 +82,9 @@ on mouse down [
   ]
 ]
 
-on key "1" [ send garden { palette: 1 } ]
-on key "2" [ send garden { palette: 2 } ]
-on key "3" [ send garden { palette: 3 } ]
+on chooser key "1" [ send garden { palette: 1 } ]
+on chooser key "2" [ send garden { palette: 2 } ]
+on chooser key "3" [ send garden { palette: 3 } ]
 
 # ---- the garden ----
 
@@ -93,8 +93,8 @@ on garden receive message [
   if message.wind > 0 [ wind = message.wind ]
 ]
 
-on key "space" [ calm = 0.15 ]
-on key "c" [ flowers = keep flowers [ it.size > 30 ] ]
+on garden key "space" [ calm = 0.15 ]
+on garden key "c" [ flowers = keep flowers [ it.size > 30 ] ]
 
 learn draw_flower flower look [
   stroke (mix look.grass black 0.3)
@@ -171,6 +171,6 @@ draw garden [
   circle at mouse radius 3 fill (rgb 255 255 220)
 ]
 
-on mouse down [
+on garden mouse down [
   if mouse.y > GROUND - 20 [ plant mouse ]
 ]

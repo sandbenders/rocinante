@@ -15,7 +15,7 @@ draw control [
   circle at mouse radius 6 fill orange
 ]
 
-on mouse down [ send canvas { flash: 1 } ]
+on control mouse down [ send canvas { flash: 1 } ]
 
 on canvas receive message [
   if message.flash > 0 [ flash_left = 0.3 ] else [ heard = message.at ]

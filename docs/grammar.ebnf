@@ -59,9 +59,9 @@ every_statement = "every" argument 'unit' block ;
 draw_statement  = "draw" [ argument ] block ;
 use_statement   = "use" TEXT ;
 
-(* The event phrases and what follows them are the registry's EVENTS; the second
+(* The event phrases and what follows them are the registry's EVENTS; a window may come first (`on garden key "space"`), and the second
    form is `on w receive msg [ ... ]`. *)
-on_statement    = "on" ( 'event phrase' { argument } | argument "receive" NAME ) block ;
+on_statement    = "on" ( [ argument ] 'event phrase' { argument } | argument "receive" NAME ) block ;
 
 (* A call: a verb, matched as a phrase longest first, then its
    required arguments, then connecting words. Which shape of a verb group is meant

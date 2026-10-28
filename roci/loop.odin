@@ -57,8 +57,10 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 	for w in the.windows {
 		w.previous = w.mouse
 	}
+	clear(&the.log)
 	the.wheel = 0
 	for event in events {
+		note_event(event)
 		handle_event(event)
 	}
 	// The windows may close while a frame runs, so go by a copy of the list.
@@ -72,6 +74,11 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 		deliver_messages(w)
 		if w.draw != nil {
 			gfx.begin_frame(&w.list)
+		}
+		if the.hook != nil {
+			the.hook(w.id)
+		}
+		if w.draw != nil {
 			w.draw()
 			gfx.end_frame(&w.list)
 		}
@@ -136,6 +143,13 @@ handle_event :: proc(event: platform.Event) {
 			the.focused = w
 		}
 	case platform.Mouse_Button_Changed:
+		if w := win_for_platform(e.window); w != nil {
+			w.mouse = {f64(e.x), f64(e.y)}
+			if w.handle != nil {
+				w.mouse /= platform.input_scale(w.handle)
+			}
+			the.focused = w
+		}
 		if e.down {
 			the.buttons += {e.button}
 		} else {
