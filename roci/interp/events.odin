@@ -74,6 +74,7 @@ event_name :: proc(kind: roci.Happening) -> string {
 	case .Resize:     return "resize"
 	case .Move:       return "move"
 	case .Focus:      return "focus"
+	case .Restart:    return ""
 	}
 	return ""
 }
@@ -91,6 +92,22 @@ frame_hook :: proc(w: roci.Window) {
 		virtual.arena_free_all(&p.msg_arenas[old])
 		clear(&p.inbox[old])
 		p.msg_now = 1 - old
+		free_retired()
+		for happening in roci.happened() {
+			if happening.kind == .Restart {
+				restart(p)
+				frame_hook(w)
+				return
+			}
+		}
+		if next := poll(p); next != p {
+			frame_hook(w)
+			return
+		}
+		if p.reported < len(p.errors) {
+			update_overlay(p)
+			report_new_errors(p)
+		}
 	}
 	for &h in p.handlers {
 		if h.kind == .Receive && h.window == w {

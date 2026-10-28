@@ -15,6 +15,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:testing"
+import "core:time"
 import sdl "vendor:sdl3"
 
 // Runs `text` for `frames` frames. The caller frees it with `finish`.
@@ -710,4 +711,180 @@ test_the_examples_run_the_same_when_the_temporary_memory_is_freed_each_frame :: 
 		testing.expectf(t, len(p.errors) == 0, "%s: %s", name, report(p, context.temp_allocator))
 		finish(p)
 	}
+}
+
+// ---- reload, restart and the overlay ----
+
+finish_all :: proc() {
+	shutdown()
+	roci.shutdown()
+}
+
+// Runs a sketch, reloads it with `after`, and gives the interpreter that runs now.
+reloaded :: proc(t: ^testing.T, before, after: string, frames := 2, loc := #caller_location) -> (^Interp, Outcome) {
+	p := run_text(t, before, frames, loc)
+	return reload(p, after)
+}
+
+@(test)
+test_a_line_that_did_not_change_keeps_its_value_across_a_reload :: proc(t: ^testing.T) {
+	n, outcome := reloaded(t, "n = 0\ndraw [\n  n = n + 1\n]", "n = 0\ndraw [\n  n = n + 1\n  print n\n]", 5)
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	roci.step()
+	testing.expect_value(t, printed(n), "6")
+}
+
+@(test)
+test_a_changed_line_runs_again_and_a_constant_takes_the_new_text :: proc(t: ^testing.T) {
+	n, outcome := reloaded(t, "x = 1\nSPEED = 4\nkept = 10\ndraw [ kept = kept + 1 ]", "x = 2\nSPEED = 8\nkept = 10\ndraw [ kept = kept + 1\n  print (x + SPEED + kept) ]", 3)
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	roci.step()
+	testing.expect_value(t, printed(n), "24") // x is 2, SPEED 8 and kept went on from 13 to 14
+}
+
+@(test)
+test_a_record_that_gains_a_field_keeps_its_values :: proc(t: ^testing.T) {
+	before := "ball = { a: 7 }\ndraw [ ball.a = ball.a + 1 ]"
+	after := "ball = { a: 7 }\ndraw [\n  ball.b = ball.b + 2\n  print ball.a\n  print ball.b\n]"
+	n, outcome := reloaded(t, before, after, 3)
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	roci.step()
+	testing.expect_value(t, printed(n), "10\n2") // a kept at 10, the new field starts at 0
+}
+
+@(test)
+test_a_record_that_loses_a_field_starts_again_from_its_line :: proc(t: ^testing.T) {
+	before := "ball = { a: 7, b: 1 }\ndraw [ ball.a = ball.a + 1 ]"
+	after := "ball = { a: 7 }\ndraw [\n  print ball.a\n]"
+	n, outcome := reloaded(t, before, after, 3)
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	testing.expect(t, strings.contains(n.notices[0], "ball"))
+	roci.step()
+	testing.expect_value(t, printed(n), "7")
+}
+
+@(test)
+test_a_name_that_changes_kind_is_not_carried_and_the_reload_says_so :: proc(t: ^testing.T) {
+	n, outcome := reloaded(t, "draw [ y = 5 ]", "draw [ y = \"five\" ]\n", 2)
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	testing.expect(t, strings.contains(n.notices[0], "lost: y"))
+}
+
+@(test)
+test_the_reload_says_how_many_values_it_kept :: proc(t: ^testing.T) {
+	n, _ := reloaded(t, "a = 1\nb = 2\ndraw [ ]", "a = 1\nb = 2\ndraw [ circle at 1 1 radius 1 ]")
+	defer finish_all()
+	testing.expect_value(t, n.notices[0], "reloaded: 2 values kept")
+}
+
+@(test)
+test_text_with_errors_leaves_the_old_sketch_running_under_the_overlay :: proc(t: ^testing.T) {
+	p := run_text(t, "n = 0\ndraw [\n  n = n + 1\n  print n\n]", 2)
+	same, outcome := reload(p, "n = 0\ndraw [\n  circel at 1 1 radius 5\n]")
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Failed)
+	testing.expect(t, same == p)
+	title, lines := roci.overlay_text()
+	testing.expect(t, strings.contains(title, "circel"))
+	testing.expect(t, len(lines) > 3)
+	roci.step()
+	testing.expect_value(t, printed(p), "1\n2\n3")
+	// Fixing it clears the overlay and carries the value over.
+	fixed, ok := reload(p, "n = 0\ndraw [\n  n = n + 1\n  print (n * 10)\n]")
+	testing.expect_value(t, ok, Outcome.Reloaded)
+	title, _ = roci.overlay_text()
+	testing.expect_value(t, title, "")
+	roci.step()
+	testing.expect_value(t, printed(fixed), "40")
+}
+
+@(test)
+test_a_runtime_error_is_shown_over_the_sketch_and_the_sketch_goes_on :: proc(t: ^testing.T) {
+	p := run_text(t, "zero = 0\ndraw [\n  circle at 5 5 radius (10 / zero)\n  print 1\n]", 3)
+	defer finish_all()
+	title, _ := roci.overlay_text()
+	testing.expect(t, strings.contains(title, "divides by zero"), title)
+	testing.expect_value(t, len(p.printed), 3)
+}
+
+@(test)
+test_a_changed_line_that_opens_a_window_restarts_and_keeps_the_windows_open :: proc(t: ^testing.T) {
+	before := "w = window size 200 100\nn = 5\ndraw w [ n = n + 1 ]"
+	after := "w = window size 300 120\nn = 5\ndraw w [ n = n + 1\n  print n ]"
+	p := run_text(t, before, 3)
+	opened := roci.open_windows()
+	n, outcome := reload(p, after)
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Restarted)
+	testing.expect_value(t, len(roci.open_windows()), 1)
+	testing.expect_value(t, roci.open_windows()[0], opened[0])
+	roci.step()
+	testing.expect_value(t, printed(n), "6") // started again from its first line
+}
+
+@(test)
+test_a_changed_line_that_draws_restarts_without_drawing_twice :: proc(t: ^testing.T) {
+	p := run_text(t, "circle at 1 1 radius 1\ncircle at 2 2 radius 2")
+	n, outcome := reload(p, "circle at 1 1 radius 1\ncircle at 2 2 radius 9")
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Restarted)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 2)
+	testing.expect_value(t, commands[1].args[2], f32(9))
+	_ = n
+}
+
+@(test)
+test_unchanged_set_up_lines_are_not_run_again :: proc(t: ^testing.T) {
+	p := run_text(t, "circle at 1 1 radius 1\nx = 1")
+	_, outcome := reload(p, "circle at 1 1 radius 1\nx = 2")
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	testing.expect_value(t, len(roci.recorded(first_window())), 1)
+}
+
+@(test)
+test_a_forced_restart_runs_everything_from_the_first_line_and_the_windows_stay :: proc(t: ^testing.T) {
+	p := run_text(t, "n = 0\ndraw [\n  n = n + 1\n  print n\n]", 3)
+	n := restart(p)
+	defer finish_all()
+	testing.expect(t, n != p)
+	roci.step()
+	testing.expect_value(t, printed(n), "1")
+	testing.expect_value(t, len(roci.open_windows()), 1)
+}
+
+@(test)
+test_ctrl_r_restarts_the_running_sketch :: proc(t: ^testing.T) {
+	p := run_text(t, "n = 0\ndraw [\n  n = n + 1\n  print n\n]", 3)
+	defer finish_all()
+	roci.step({platform.Key_Changed{window = platform.Window_Id(first_window()), scancode = .R, down = true, mods = {.Ctrl}}})
+	running := active()
+	testing.expect(t, running != p)
+	testing.expect_value(t, printed(running), "1") // the draw block ran once in the restarted sketch
+}
+
+@(test)
+test_saving_the_watched_file_reloads_the_sketch :: proc(t: ^testing.T) {
+	_ = os.make_directory_all("output/tests")
+	path := "output/tests/watched_sketch.roci"
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)string("n = 0\ndraw [\n  n = n + 1\n]\n")) == nil)
+	p, _ := load(path, "n = 0\ndraw [\n  n = n + 1\n]\n")
+	roci.start_headless(1)
+	watch(p, path)
+	start(p)
+	defer finish_all()
+	roci.step()
+	testing.expect(t, poll(p) == p) // nothing changed
+	time.sleep(20 * time.Millisecond)
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)string("n = 0\ndraw [\n  n = n + 1\n  print n\n]\n")) == nil)
+	next := poll(p)
+	testing.expect(t, next != p)
+	roci.step()
+	testing.expect_value(t, printed(next), "2")
 }

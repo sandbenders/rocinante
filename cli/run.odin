@@ -15,19 +15,23 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 
-RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--seed N]
+RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [--seed N] [--errors json]
 
   file        the sketch to run; sketch.roci when left out
   --frames N  run N frames with no window, then stop
   --screenshot out.png
               with --frames, save a picture of the last frame
   --window N  which window the picture is of, counting from 1 (the first by default)
-  --seed N    the seed of the random numbers when the sketch gives none (1 by default)`
+  --seed N    the seed of the random numbers when the sketch gives none (1 by default)
+  --errors json
+              print every message as one line of JSON on standard output (and what the
+              sketch prints on standard error), for tools`
 
 Run_Args :: struct {
 	file:       string,
 	frames:     int,
 	screenshot: string,
+	json:       bool, // messages as lines of JSON
 	window:     int, // which window the picture is of, counting from 1
 	seed:       u64,
 	ok:         bool,
@@ -41,7 +45,7 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 	for i < len(args) {
 		arg := args[i]
 		switch {
-		case arg == "--frames" || arg == "--screenshot" || arg == "--seed" || arg == "--window":
+		case arg == "--frames" || arg == "--screenshot" || arg == "--seed" || arg == "--window" || arg == "--errors":
 			if i + 1 >= len(args) {
 				return Run_Args{ok = false, bad = arg}
 			}
@@ -54,6 +58,11 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 					return Run_Args{ok = false, bad = value}
 				}
 				result.frames = n
+			case "--errors":
+				if value != "json" {
+					return Run_Args{ok = false, bad = value}
+				}
+				result.json = true
 			case "--window":
 				n, parsed := strconv.parse_int(value)
 				if !parsed || n < 1 {
@@ -88,6 +97,7 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 // What running a sketch gave: its printed lines, the messages, and the picture.
 Run_Result :: struct {
 	code:    int, // 0 ran, 1 the sketch has errors, 3 it ran and hit a runtime error
+	json:    string, // the same messages, a line of JSON each
 	report:  string, // check messages, then runtime errors, ready to print
 	printed: []string,
 	picture: []u8, // a PNG of the last frame, when asked for and the graphics could draw it
@@ -104,6 +114,7 @@ run_text :: proc(name, text: string, frames: int, seed: u64, want_picture: bool,
 	result := Run_Result{}
 	if len(p.checked.diagnostics) > 0 {
 		result.report = lang.render_all(p.src, p.checked.diagnostics, allocator)
+		result.json = lang.diagnostics_json(p.src, p.checked.diagnostics, allocator)
 	}
 	if !ok {
 		result.code = 1
@@ -134,6 +145,11 @@ run_text :: proc(name, text: string, frames: int, seed: u64, want_picture: bool,
 	}
 	if len(p.errors) > 0 {
 		result.report = strings.concatenate({result.report, interp.report(p, allocator)}, allocator)
+		runtime := make([]lang.Diagnostic, len(p.errors), allocator)
+		for e, i in p.errors {
+			runtime[i] = lang.Diagnostic{id = e.id, span = e.span, args = e.args}
+		}
+		result.json = strings.concatenate({result.json, lang.diagnostics_json(p.src, runtime, allocator)}, allocator)
 		result.code = 3
 	}
 	return result
@@ -154,13 +170,17 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		return 2
 	}
 	if parsed.frames == 0 {
-		return run_windows(parsed.file, string(data), out, err)
+		return run_windows(parsed.file, string(data), parsed.json, out, err)
 	}
 	result := run_text(parsed.file, string(data), parsed.frames, parsed.seed, parsed.screenshot != "", parsed.window)
+	// With JSON the messages are the output, so what the sketch prints moves aside.
+	lines_to := err if parsed.json else out
 	for line in result.printed {
-		fmt.sbprintf(out, "%s\n", line)
+		fmt.sbprintf(lines_to, "%s\n", line)
 	}
-	if result.report != "" {
+	if parsed.json {
+		fmt.sbprintf(out, "%s", result.json)
+	} else if result.report != "" {
 		fmt.sbprintf(err, "%s\n", result.report)
 	}
 	code := result.code
@@ -181,23 +201,30 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 
 // Opens the windows and runs until they are closed.
 @(private)
-run_windows :: proc(name, text: string, out, err: ^strings.Builder) -> int {
+run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) -> int {
 	p, ok := interp.load(name, text)
-	defer interp.destroy(p)
 	if len(p.checked.diagnostics) > 0 {
-		fmt.sbprintf(err, "%s\n", lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator))
+		if json {
+			fmt.sbprintf(out, "%s", lang.diagnostics_json(p.src, p.checked.diagnostics, context.temp_allocator))
+		} else {
+			fmt.sbprintf(err, "%s\n", lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator))
+		}
 	}
 	if !ok {
+		interp.destroy(p)
 		return 1
 	}
-	p.echo = true
+	// The sketch is watched: saving the file reloads it, and Ctrl+R or Cmd+R runs it again.
+	// Messages go to the console as they happen, so there is nothing to print at the end.
+	p.echo = !json
+	interp.watch(p, name)
 	interp.start(p)
+	defer interp.shutdown()
 	if !roci.run() {
 		fmt.sbprintf(err, "I could not open a window on this computer.\n")
 		return 3
 	}
-	if len(p.errors) > 0 {
-		fmt.sbprintf(err, "%s\n", interp.report(p, context.temp_allocator))
+	if running := interp.active(); running != nil && len(running.errors) > 0 {
 		return 3
 	}
 	return 0

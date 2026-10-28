@@ -71,6 +71,12 @@ Interp :: struct {
 	printed:   [dynamic]string,
 	echo:      bool, // `print` also writes to the console
 	depth:     int,
+	path:      string, // the file being watched, or ""
+	mtime:     time.Time,
+	notices:   [dynamic]string, // what reloads said
+	problem_title: string, // the first error of a reload that failed, shown while the old sketch runs
+	problem_lines: []string,
+	reported:  int, // runtime errors already said on the console
 	pending:   Flow, // a `stop` or `give` that ran inside a block a verb ran for its statement
 	ops:       int,
 	budget:    f64, // seconds one block may run
@@ -111,14 +117,15 @@ load :: proc(name, text: string) -> (p: ^Interp, ok: bool) {
 destroy :: proc(p: ^Interp) {
 	if current == p {
 		current = nil
+		roci.set_frame_hook(nil)
 	}
 	for i in 0 ..< 2 {
 		delete(p.inbox[i])
 		virtual.arena_destroy(&p.msg_arenas[i])
 	}
 	delete(p.handlers)
-	roci.set_frame_hook(nil)
 	delete(p.items)
+	delete(p.notices)
 	delete(p.results)
 	delete(p.errors)
 	delete(p.printed)

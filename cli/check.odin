@@ -11,13 +11,16 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-USAGE :: `roci check [file] [--tree] [--types]
+USAGE :: `roci check [file] [--tree] [--types] [--errors json]
 
   file     the sketch to read; sketch.roci when left out
   --types  also print what each name in the sketch holds
-  --tree   also print the syntax tree, for people working on the language`
+  --tree   also print the syntax tree, for people working on the language
+  --errors json
+           print every message as one line of JSON instead, for tools`
 
 Check_Result :: struct {
+	json:     string, // the messages, a line of JSON each
 	report:   string, // every message, ready to print; empty when there is nothing to say
 	summary:  string, // one line: no problems, or how many
 	tree:     string, // the syntax tree, when asked for
@@ -32,7 +35,7 @@ Check_Result :: struct {
 check_text :: proc(name, text: string, show_tree: bool, show_types := false, allocator := context.temp_allocator) -> Check_Result {
 	src := lang.make_source(name, text, 0, allocator)
 	checked := lang.check(src, registry.ALL_VERBS, nil, allocator)
-	result := Check_Result{report = lang.render_all(src, checked.diagnostics, allocator)}
+	result := Check_Result{report = lang.render_all(src, checked.diagnostics, allocator), json = lang.diagnostics_json(src, checked.diagnostics, allocator)}
 	for d in checked.diagnostics {
 		switch lang.severity_of(d) {
 		case .Error:   result.errors += 1
@@ -78,6 +81,7 @@ Check_Args :: struct {
 	file:  string,
 	tree:  bool,
 	types: bool,
+	json:  bool,
 	ok:   bool, // false for a flag it does not know, or more than one file
 	bad:  string,
 }
@@ -85,12 +89,20 @@ Check_Args :: struct {
 parse_check_args :: proc(args: []string) -> Check_Args {
 	result := Check_Args{file = "sketch.roci", ok = true}
 	have_file := false
-	for arg in args {
+	i := 0
+	for i < len(args) {
+		arg := args[i]
 		switch {
 		case arg == "--tree":
 			result.tree = true
 		case arg == "--types":
 			result.types = true
+		case arg == "--errors":
+			if i + 1 >= len(args) || args[i + 1] != "json" {
+				return Check_Args{ok = false, bad = args[i + 1] if i + 1 < len(args) else arg}
+			}
+			result.json = true
+			i += 1
 		case strings.has_prefix(arg, "-"):
 			return Check_Args{ok = false, bad = arg}
 		case have_file:
@@ -99,6 +111,7 @@ parse_check_args :: proc(args: []string) -> Check_Args {
 			result.file = arg
 			have_file = true
 		}
+		i += 1
 	}
 	return result
 }
@@ -117,6 +130,10 @@ run_check :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		return 2
 	}
 	result := check_text(parsed.file, string(data), parsed.tree, parsed.types)
+	if parsed.json {
+		fmt.sbprintf(out, "%s", result.json)
+		return 1 if result.errors > 0 else 0
+	}
 	if result.report != "" {
 		fmt.sbprintf(out, "%s\n", result.report)
 	}
