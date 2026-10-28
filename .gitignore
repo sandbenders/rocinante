@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: 0BSD
 .cache/
 output/
+/cli.bin
+/cli.exe
 /codegen
 /build.exe
 /codegen.exe
