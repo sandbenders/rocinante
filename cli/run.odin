@@ -10,6 +10,7 @@ import "../roci"
 import "../roci/gfx"
 import "../roci/interp"
 import "../roci/lang"
+import "../tools/term"
 import "core:fmt"
 import "core:os"
 import "core:strconv"
@@ -181,7 +182,7 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	if parsed.json {
 		fmt.sbprintf(out, "%s", result.json)
 	} else if result.report != "" {
-		fmt.sbprintf(err, "%s\n", result.report)
+		fmt.sbprintf(err, "%s\n", term.message(result.report, term.err_colour))
 	}
 	code := result.code
 	if parsed.screenshot != "" {
@@ -207,7 +208,7 @@ run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) 
 		if json {
 			fmt.sbprintf(out, "%s", lang.diagnostics_json(p.src, p.checked.diagnostics, context.temp_allocator))
 		} else {
-			fmt.sbprintf(err, "%s\n", lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator))
+			fmt.sbprintf(err, "%s\n", term.message(lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator), term.err_colour))
 		}
 	}
 	if !ok {
@@ -217,6 +218,9 @@ run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) 
 	// The sketch is watched: saving the file reloads it, and Ctrl+R or Cmd+R runs it again.
 	// Messages go to the console as they happen, so there is nothing to print at the end.
 	p.echo = !json
+	if !json {
+		fmt.eprintfln("%s %s", term.err("rocinante:", .Bold_Cyan), term.err(HOT_RELOAD_HINT(name), .Cyan))
+	}
 	interp.watch(p, name)
 	interp.start(p)
 	defer interp.shutdown()
@@ -228,4 +232,11 @@ run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) 
 		return 3
 	}
 	return 0
+}
+
+// What `roci run` tells you when the windows open.
+HOT_RELOAD_HINT :: proc(file: string) -> string {
+	reload_key := "Cmd+R" when ODIN_OS == .Darwin else "Ctrl+R"
+	quit_key := "Cmd+Q" when ODIN_OS == .Darwin else "Ctrl+Q"
+	return fmt.tprintf("running %s. Save the file and the sketch reloads, keeping its values where it can. %s runs it again from the first line, and %s quits.", file, reload_key, quit_key)
 }

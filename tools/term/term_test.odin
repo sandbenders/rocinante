@@ -77,3 +77,20 @@ test_icon_on_ends_with_a_space_and_differs :: proc(t: ^testing.T) {
 		}
 	}
 }
+
+@(test)
+test_a_message_is_painted_by_the_part_it_is :: proc(t: ^testing.T) {
+	text := "── I don't know the word `x` ──── a.roci:1:1\n\n1 │ x 1\n  │ ^\n\nSay it better.\n\nDid you mean:  circle at 1 1 radius 1\n"
+	painted := message(text, true)
+	testing.expect(t, strings.contains(painted, "\x1b[1;31m── I don't know"))
+	testing.expect(t, strings.contains(painted, "\x1b[31m  │ ^"))
+	testing.expect(t, strings.contains(painted, "Did you mean:"))
+	testing.expect(t, strings.contains(painted, "Say it better.\n"))
+	testing.expect_value(t, message(text, false), text)
+}
+
+@(test)
+test_a_warning_and_a_hint_have_their_own_colours :: proc(t: ^testing.T) {
+	testing.expect(t, strings.contains(message("── Warning: x ──", true), code(.Yellow)))
+	testing.expect(t, strings.contains(message("── Hint: x ──", true), code(.Cyan)))
+}

@@ -17,6 +17,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "../maths"
+import "../../tools/term"
 
 Outcome :: enum u8 {
 	Unchanged, // nothing to do
@@ -72,7 +73,11 @@ shutdown :: proc() {
 notice :: proc(p: ^Interp, text: string) {
 	append(&p.notices, strings.clone(text, p.long))
 	if p.echo {
-		fmt.eprintfln("rocinante: %s", text)
+		style := term.Style.Green
+		if strings.has_prefix(text, "restarted") {
+			style = .Yellow
+		}
+		fmt.eprintfln("%s %s", term.err("rocinante:", .Bold_Cyan), term.err(text, style))
 	}
 }
 
@@ -226,7 +231,7 @@ reload :: proc(p: ^Interp, text: string, restart := false) -> (^Interp, Outcome)
 				p.problem_lines[i] = strings.clone(l, p.long)
 			}
 			if p.echo {
-				fmt.eprintfln("rocinante: the sketch has errors, so the last good version keeps running\n\n%s", lang.render_all(n.src, n.checked.diagnostics, context.temp_allocator))
+				fmt.eprintfln("%s %s\n\n%s", term.err("rocinante:", .Bold_Cyan), term.err("the sketch has errors, so the last good version keeps running", .Yellow), term.message(lang.render_all(n.src, n.checked.diagnostics, context.temp_allocator), term.err_colour))
 			}
 		}
 		destroy(n)
@@ -386,7 +391,7 @@ report_new_errors :: proc(p: ^Interp) {
 		e := p.errors[p.reported]
 		p.reported += 1
 		if p.echo {
-			fmt.eprintfln("%s", lang.render(p.src, lang.Diagnostic{id = e.id, span = e.span, args = e.args}, context.temp_allocator))
+			fmt.eprintfln("%s", term.message(lang.render(p.src, lang.Diagnostic{id = e.id, span = e.span, args = e.args}, context.temp_allocator), term.err_colour))
 		}
 	}
 }

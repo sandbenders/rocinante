@@ -91,3 +91,12 @@ test_run_run_runs_a_file_and_prints_what_the_sketch_printed :: proc(t: ^testing.
 	testing.expect_value(t, strings.to_string(out), "hello\n")
 	testing.expect_value(t, strings.to_string(err), "")
 }
+
+@(test)
+test_the_hint_names_the_file_and_the_reload_and_quit_keys :: proc(t: ^testing.T) {
+	hint := HOT_RELOAD_HINT("garden.roci")
+	testing.expect(t, strings.contains(hint, "garden.roci"))
+	testing.expect(t, strings.contains(hint, "reloads"))
+	testing.expect(t, strings.contains(hint, "+R runs it again"))
+	testing.expect(t, strings.contains(hint, "+Q quits"))
+}

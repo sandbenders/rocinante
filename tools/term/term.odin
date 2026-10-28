@@ -8,6 +8,7 @@ package term
 
 import "core:fmt"
 import "core:os"
+import "core:strings"
 import "core:terminal"
 import "core:terminal/ansi"
 
@@ -110,4 +111,51 @@ out_icon :: proc(i: Icon) -> string {
 
 err_icon :: proc(i: Icon) -> string {
 	return icon(i, err_colour)
+}
+
+// Paints an error message as `roci` writes it (a title line of dashes, the source
+// line with its carets, an explanation and an example) so the parts can be told
+// apart: the title in bold red (yellow for a warning, cyan for a hint), the carets
+// in red, the label of the example in green and the example itself in green. The
+// words are the same with or without colour, which is how pipes and the pipelines
+// see them.
+message :: proc(text: string, on: bool) -> string {
+	if !on {
+		return text
+	}
+	b := strings.builder_make(context.temp_allocator)
+	for line, i in strings.split_lines(text, context.temp_allocator) {
+		if i > 0 {
+			strings.write_string(&b, "\n")
+		}
+		trimmed := strings.trim_left_space(line)
+		switch {
+		case strings.has_prefix(line, "── "):
+			style := Style.Bold_Red
+			if strings.has_prefix(line, "── Warning:") {
+				style = .Yellow
+			} else if strings.has_prefix(line, "── Hint:") {
+				style = .Cyan
+			}
+			strings.write_string(&b, paint(line, style, true))
+		case is_caret_line(line):
+			strings.write_string(&b, paint(line, .Red, true))
+		case strings.has_prefix(line, "    ") && trimmed != "":
+			strings.write_string(&b, paint(line, .Green, true))
+		case strings.contains(line, ":  ") && !strings.contains(line, "│"):
+			at := strings.index(line, ":  ")
+			strings.write_string(&b, paint(line[:at + 1], .Bold_Green, true))
+			strings.write_string(&b, paint(line[at + 1:], .Green, true))
+		case:
+			strings.write_string(&b, line)
+		}
+	}
+	return strings.to_string(b)
+}
+
+// The line under the source line that points at it: `  │   ^^^^`.
+@(private)
+is_caret_line :: proc(line: string) -> bool {
+	bar := strings.index(line, "│")
+	return bar >= 0 && strings.has_prefix(strings.trim_left_space(line[bar + len("│"):]), "^")
 }

@@ -135,7 +135,7 @@ run_check :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		return 1 if result.errors > 0 else 0
 	}
 	if result.report != "" {
-		fmt.sbprintf(out, "%s\n", result.report)
+		fmt.sbprintf(out, "%s\n", term.message(result.report, term.out_colour))
 	}
 	if result.types != "" {
 		fmt.sbprintf(out, "%s\n", strings.trim_space(result.types))
