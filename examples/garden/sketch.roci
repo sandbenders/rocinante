@@ -48,7 +48,12 @@ flowers = []
 learn plant place [
   // A whole number of petals (a fraction would leave a gap in the ring): the part after the point is cut off.
   petal_count = 5 + random 4
-  add { at: place, size: random from 10 to 22, petals: petal_count - petal_count % 1, spin: random from -40 to 40 } to flowers
+  add {
+    at: place
+    size: random from 10 to 22
+    petals: petal_count - petal_count % 1
+    spin: random from -40 to 40
+  } to flowers
 ]
 
 seed 3

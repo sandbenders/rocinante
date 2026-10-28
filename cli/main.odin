@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The `roci` command. So far it can `check` and `run` a sketch;
-// fmt, package, doctor and the rest arrive with their phases.
+// The `roci` command. So far it can `check`, `run` and `fmt` a sketch;
+// package, doctor and the rest arrive with their phases.
 //
 //     odin run cli -- check [file] [--tree]
 package main
@@ -15,6 +15,7 @@ COMMANDS :: `roci, a small language for sketches.
 
   roci check [file]    read a sketch and say what is wrong with it
   roci run [file]      run a sketch; with --frames N, without a window
+  roci fmt [file]      write a sketch in the house style
 
 More commands arrive as the language does.`
 
@@ -33,6 +34,8 @@ main :: proc() {
 		code = run_check(os.args[2:], &out, &err)
 	case "run":
 		code = run_run(os.args[2:], &out, &err)
+	case "fmt":
+		code = run_fmt(os.args[2:], &out, &err)
 	case "help", "--help", "-h":
 		fmt.println(COMMANDS)
 		code = 0
