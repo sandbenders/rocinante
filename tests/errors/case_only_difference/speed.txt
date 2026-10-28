@@ -1,0 +1,8 @@
+── Warning: `Speed` and `speed` differ only in capitals ─── sketch.roci:2:1
+
+2 │ Speed = 2
+  │ ^^^^^
+
+They are two different names, which is almost always a typo. If you meant the same one, spell it the same way.
+
+Write:  speed = 2

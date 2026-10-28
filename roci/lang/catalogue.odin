@@ -5,8 +5,8 @@
 // translated later by replacing this table and nothing else. A message must make
 // sense read aloud by a screen reader, so the title and the explanation never
 // hold a bare bracket: they say "closing square bracket". Only the example, which
-// is code, may. `{a}`, `{b}` and `{c}` stand for the three words a diagnostic
-// carries (a name, a line of the sketch, a suggestion).
+// is code, may. `{a}`, `{b}`, `{c}` and `{d}` stand for the four words a diagnostic
+// carries (a name, what was found, what was expected, a line of the sketch fixed).
 //
 // Every id has at least one sketch in tests/errors/<id>/ with the message it must
 // produce, and a test fails when one is missing.
@@ -64,6 +64,22 @@ Message_Id :: enum u8 {
 	Learn_Reserved_Name,
 	Learn_Repeated_Parameter,
 	Learn_Default_Not_One_Item,
+	// What the checker found (step 3)
+	Unknown_Name,
+	No_Value_Yet,
+	Kind_Conflict,
+	Constant_Changed,
+	Reserved_Name,
+	Case_Only_Difference,
+	Value_Of_Nothing,
+	Wrong_Argument_Count,
+	Wrong_Argument_Kind,
+	Missing_Required_Word,
+	Word_Twice,
+	Operator_Types,
+	Condition_Not_Boolean,
+	Wrong_Kind_Here,
+	Bad_Field,
 }
 
 Entry :: struct {
@@ -194,11 +210,57 @@ CATALOGUE := [Message_Id]Entry{
 	.Learn_Default_Not_One_Item = {.Error, "A default is one value",
 		"After `with`, each optional word is followed by exactly one value, like `points 5`. Put anything bigger in round brackets.",
 		"Write:", "{b}"},
+
+	.Unknown_Name = {.Error, "I don't know the name `{a}`",
+		"`{a}` is not a name you have given a value, and it is not a verb or a built-in value either. {b}",
+		"{c}", "{d}"},
+	.No_Value_Yet = {.Error, "`{a}` has no value yet",
+		"`{a}` is given its value further down the sketch, but this line runs first, so it has nothing to use. Give it a value above this line.",
+		"Write:", "{d}"},
+	.Kind_Conflict = {.Error, "`{a}` keeps one kind of value",
+		"`{a}` holds {b}, but here it is given {c}. A name keeps one kind of value; use a new name for {c}.",
+		"Write:", "{d}"},
+	.Constant_Changed = {.Error, "`{a}` is a constant",
+		"`{a}` is written in capitals, so it is a constant: it is given a value once and can never change. If it has to change, write it in lowercase.",
+		"Write:", "{d}"},
+	.Reserved_Name = {.Error, "`{a}` is already a word",
+		"The language already uses `{a}` for something else, so it cannot be the name of a value. Pick another name.",
+		"Write:", "{d}"},
+	.Case_Only_Difference = {.Warning, "`{a}` and `{b}` differ only in capitals",
+		"They are two different names, which is almost always a typo. If you meant the same one, spell it the same way.",
+		"Write:", "{d}"},
+	.Value_Of_Nothing = {.Error, "`{a}` does not give a value back",
+		"`{a}` draws or changes something, but it has nothing to hand back, so it cannot be used as a value. Use it on a line of its own.",
+		"Write:", "{d}"},
+	.Wrong_Argument_Count = {.Error, "`{a}` takes {b}",
+		"This line gives `{a}` {c}.",
+		"For example:", "{d}"},
+	.Wrong_Argument_Kind = {.Error, "`{a}` needs {b}",
+		"Here it is given {c}.",
+		"Write:", "{d}"},
+	.Missing_Required_Word = {.Error, "`{a}` needs `{b}`",
+		"`{a}` is not complete without its `{b}` part.",
+		"Write:", "{d}"},
+	.Word_Twice = {.Error, "`{b}` is used twice",
+		"A call takes each connecting word once. The second `{b}` is not needed.",
+		"Write:", "{d}"},
+	.Operator_Types = {.Error, "I cannot work this out",
+		"`{a}` does not work with {b} and {c}. Numbers go with numbers, vectors with vectors of the same size or with a number, and text joins with anything using plus.",
+		"Write:", "{d}"},
+	.Condition_Not_Boolean = {.Error, "A condition has to be true or false",
+		"`{a}` asks a question, so what follows it has to be a comparison like `x > 10`, or a name that holds true or false. Here it is {b}.",
+		"Write:", "{d}"},
+	.Wrong_Kind_Here = {.Error, "`{a}` needs {b} here",
+		"Here it is given {c}.",
+		"Write:", "{d}"},
+	.Bad_Field = {.Error, "`{a}` is not a part of {b}",
+		"{c}",
+		"Write:", "{d}"},
 }
 
 // Replaces `{a}`, `{b}` and `{c}` in a template. Anything else, braces included,
 // stays as it is. The caller frees the result.
-fill_template :: proc(template: string, args: [3]string, allocator := context.allocator) -> string {
+fill_template :: proc(template: string, args: [4]string, allocator := context.allocator) -> string {
 	b := strings.builder_make(0, len(template) + 16, allocator)
 	for i := 0; i < len(template); i += 1 {
 		if template[i] == '{' && i + 2 < len(template) && template[i + 2] == '}' {
@@ -206,6 +268,7 @@ fill_template :: proc(template: string, args: [3]string, allocator := context.al
 			case 'a': strings.write_string(&b, args[0]); i += 2; continue
 			case 'b': strings.write_string(&b, args[1]); i += 2; continue
 			case 'c': strings.write_string(&b, args[2]); i += 2; continue
+			case 'd': strings.write_string(&b, args[3]); i += 2; continue
 			}
 		}
 		strings.write_byte(&b, template[i])
@@ -216,7 +279,7 @@ fill_template :: proc(template: string, args: [3]string, allocator := context.al
 Diagnostic :: struct {
 	id:   Message_Id,
 	span: Span,
-	args: [3]string,
+	args: [4]string,
 }
 
 severity_of :: proc(d: Diagnostic) -> Severity {

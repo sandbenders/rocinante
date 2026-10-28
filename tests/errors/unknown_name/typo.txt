@@ -1,0 +1,8 @@
+── I don't know the name `sped` ──────────────────────── sketch.roci:2:5
+
+2 │ x = sped + 1
+  │     ^^^^
+
+`sped` is not a name you have given a value, and it is not a verb or a built-in value either. Check the spelling.
+
+Did you mean:  x = speed + 1

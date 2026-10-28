@@ -1,0 +1,441 @@
+// SPDX-License-Identifier: 0BSD
+//
+// Expressions and calls for the checker (CLAUDE.md sections 5.1, 5.2 and 5.15).
+package lang
+
+import "../maths"
+import "../registry"
+import "core:fmt"
+import "core:strconv"
+import "core:strings"
+
+// `as_stmt` is a call on a line of its own: it may give nothing. As part of an
+// expression it must give a value.
+@(private)
+check_expr :: proc(c: ^Checker, e: ^Expr, as_stmt: bool) -> ^IR {
+	switch k in e.kind {
+	case Number_Lit:
+		return new_ir(c, e.span, T_NUMBER, IR_Number{value = k.value})
+	case Text_Lit:
+		return new_ir(c, e.span, T_TEXT, IR_Text{value = k.value})
+	case Colour_Lit:
+		colour, ok := maths.hex_parse(k.text)
+		if !ok {
+			return error_ir(c, e.span)
+		}
+		return new_ir(c, e.span, T_COLOUR, IR_Colour{value = colour})
+	case Path:
+		return check_path(c, e, k)
+	case Group:
+		inner := check_expr(c, k.inner, false)
+		inner.span = e.span
+		return inner
+	case Vector_Lit:
+		return check_vector(c, e, k)
+	case Record_Lit:
+		names := make([dynamic]string, c.alloc)
+		values := make([dynamic]^IR, c.alloc)
+		for f in k.fields {
+			append(&names, f.name)
+			append(&values, check_expr(c, f.value, false))
+		}
+		// Records are shaped by use (section 5.3, step 3b); until then they are boxed.
+		return new_ir(c, e.span, T_BOXED, IR_Record{names = names[:], values = values[:]})
+	case List_Lit:
+		return check_list(c, e, k)
+	case Block_Lit:
+		return new_ir(c, e.span, T_BLOCK, IR_Block_Value{block = check_block(c, k.block, false)})
+	case Unary:
+		return check_unary(c, e, k)
+	case Binary:
+		return check_binary(c, e, k)
+	case Call:
+		return check_call(c, e, k, as_stmt)
+	case Error_Expr:
+		return error_ir(c, e.span)
+	}
+	return error_ir(c, e.span)
+}
+
+@(private)
+check_vector :: proc(c: ^Checker, e: ^Expr, k: Vector_Lit) -> ^IR {
+	items := make([dynamic]^IR, c.alloc)
+	ok := true
+	for item in k.items {
+		ir := check_expr(c, item, false)
+		if !unify(c.types, ir.type, T_NUMBER) {
+			note(c, .Wrong_Kind_Here, item.span, "a vector", "numbers", describe(c.types, ir.type), fix(c, item.span, "0"))
+			ok = false
+		}
+		append(&items, ir)
+	}
+	if len(k.items) < 2 || len(k.items) > 4 {
+		text := "an empty pair of curly brackets" if len(k.items) == 0 else fmt.tprintf("%d numbers", len(k.items))
+		note(c, .Wrong_Kind_Here, e.span, "a vector", "2, 3 or 4 numbers", text, fix(c, e.span, "{ 0, 0 }"))
+		return error_ir(c, e.span)
+	}
+	if !ok {
+		return error_ir(c, e.span)
+	}
+	return new_ir(c, e.span, vector_of(c.types, len(k.items)), IR_Vector{items = items[:]})
+}
+
+@(private)
+check_list :: proc(c: ^Checker, e: ^Expr, k: List_Lit) -> ^IR {
+	items := make([dynamic]^IR, c.alloc)
+	element := fresh(c.types)
+	mixed := false
+	for item in k.items {
+		ir := check_expr(c, item, false)
+		if !unify(c.types, element, ir.type) {
+			mixed = true
+		}
+		append(&items, ir)
+	}
+	// Different kinds in one list are allowed: the list holds mixed values (section 5.3).
+	if mixed {
+		element = T_BOXED
+	}
+	return new_ir(c, e.span, list_of(c.types, element), IR_List{items = items[:]})
+}
+
+// ---- operators ----
+
+@(private)
+check_unary :: proc(c: ^Checker, e: ^Expr, k: Unary) -> ^IR {
+	operand := check_expr(c, k.operand, false)
+	switch kind_of(c.types, operand.type) {
+	case .Error:
+		return error_ir(c, e.span)
+	case .Variable:
+		unify(c.types, operand.type, T_BOOLEAN if k.op == .Not else T_NUMBER)
+	case .Boxed:
+		return new_ir(c, e.span, T_BOXED, IR_Unary{op = k.op, operand = operand})
+	case .Boolean:
+		if k.op == .Not {
+			return new_ir(c, e.span, T_BOOLEAN, IR_Unary{op = k.op, operand = operand})
+		}
+	case .Number, .Vector, .Colour:
+		if k.op == .Negate {
+			return new_ir(c, e.span, operand.type, IR_Unary{op = k.op, operand = operand})
+		}
+	case .None, .Text, .Gradient, .Window, .Block, .List, .Record:
+	}
+	if kind_of(c.types, operand.type) == .Number && k.op == .Negate || kind_of(c.types, operand.type) == .Boolean && k.op == .Not {
+		return new_ir(c, e.span, resolve(c.types, operand.type), IR_Unary{op = k.op, operand = operand})
+	}
+	word := "-" if k.op == .Negate else "not"
+	sample := "1" if k.op == .Negate else "true"
+	note(c, .Operator_Types, e.span, word, describe(c.types, operand.type), "nothing else", fix(c, e.span, fmt.tprintf("%s %s", word, sample) if k.op == .Not else fmt.tprintf("-%s", sample)))
+	return error_ir(c, e.span)
+}
+
+@(private)
+check_binary :: proc(c: ^Checker, e: ^Expr, k: Binary) -> ^IR {
+	lhs := check_expr(c, k.lhs, false)
+	rhs := check_expr(c, k.rhs, false)
+	type, ok := binary_type(c, k.op, lhs.type, rhs.type)
+	if !ok {
+		left_text, right_text := text_at(c, k.lhs.span), text_at(c, k.rhs.span)
+		word := OPERATOR_WORDS[k.op]
+		left_kind := kind_of(c.types, lhs.type)
+		replacement: string
+		switch {
+		case k.op == .And || k.op == .Or:
+			// One side is not true or false: say it with a comparison.
+			replacement = fmt.tprintf("%s %s true", left_text, word) if left_kind == .Boolean else fmt.tprintf("true %s %s", word, right_text)
+		case k.op == .Is || k.op == .Is_Not:
+			replacement = fmt.tprintf("%s %s %s", left_text, word, sample_of(c, lhs.type))
+		case left_kind == .Number || left_kind == .Vector || left_kind == .Colour:
+			// The right side does not fit the left one (or the sizes differ): give it one that does.
+			replacement = fmt.tprintf("%s %s %s", left_text, word, sample_of(c, lhs.type))
+		case:
+			replacement = fmt.tprintf("1 %s %s", word, right_text)
+		}
+		note(c, .Operator_Types, e.span, OPERATOR_WORDS[k.op], describe(c.types, lhs.type), describe(c.types, rhs.type), fix(c, e.span, replacement))
+		return error_ir(c, e.span)
+	}
+	return new_ir(c, e.span, type, IR_Binary{op = k.op, lhs = lhs, rhs = rhs})
+}
+
+// What `lhs op rhs` gives, from section 5.15 and the array programming of section
+// 5.2: numbers with numbers, vectors with vectors of the same size or with a
+// number, colours with numbers, and text joins with anything through plus.
+@(private)
+binary_type :: proc(c: ^Checker, op: Binary_Op, l, r: Type_Id) -> (Type_Id, bool) {
+	lk, rk := kind_of(c.types, l), kind_of(c.types, r)
+	if lk == .Error || rk == .Error {
+		return T_ERROR, true
+	}
+	switch op {
+	case .And, .Or:
+		return T_BOOLEAN, unify(c.types, l, T_BOOLEAN) && unify(c.types, r, T_BOOLEAN)
+	case .Is, .Is_Not:
+		return T_BOOLEAN, unify(c.types, l, r)
+	case .Less, .Less_Equal, .Greater, .Greater_Equal:
+		return T_BOOLEAN, unify(c.types, l, T_NUMBER) && unify(c.types, r, T_NUMBER)
+	case .Modulo:
+		return T_NUMBER, unify(c.types, l, T_NUMBER) && unify(c.types, r, T_NUMBER)
+	case .Add, .Subtract, .Multiply, .Divide:
+	}
+	// A value not known yet takes the type of the other side.
+	if lk == .Variable || rk == .Variable {
+		if lk == .Variable && rk == .Variable {
+			unify(c.types, l, T_NUMBER)
+			unify(c.types, r, T_NUMBER)
+			return T_NUMBER, true
+		}
+		unify(c.types, l, r)
+		return resolve(c.types, l), true
+	}
+	if lk == .Boxed || rk == .Boxed {
+		return T_BOXED, true
+	}
+	if op == .Add && (lk == .Text || rk == .Text) {
+		return T_TEXT, true
+	}
+	switch {
+	case lk == .Number && rk == .Number:
+		return T_NUMBER, true
+	case lk == .Vector && rk == .Vector:
+		lv, rv := resolve(c.types, l), resolve(c.types, r)
+		return lv, lv == rv
+	case lk == .Colour && rk == .Colour && (op == .Add || op == .Subtract):
+		return T_COLOUR, true
+	case (op == .Multiply || op == .Divide) && rk == .Number && (lk == .Vector || lk == .Colour):
+		return resolve(c.types, l), true
+	case op == .Multiply && lk == .Number && (rk == .Vector || rk == .Colour):
+		return resolve(c.types, r), true
+	}
+	return T_ERROR, false
+}
+
+// ---- calls ----
+
+// The registry's Name parameters take a plain word (`as center`, `caps round`): is
+// this argument one, whichever shape the group ends up with?
+@(private)
+is_word_slot :: proc(verb: ^registry.Verb, given, index: int) -> bool {
+	for shape in verb.shapes {
+		if len(shape.params) == given && index < len(shape.params) && shape.params[index].kind == .Name {
+			return true
+		}
+	}
+	return false
+}
+
+// A bare word that is not a name of the sketch, where a call takes a word.
+@(private)
+as_word :: proc(c: ^Checker, e: ^Expr) -> (word: string, ok: bool) {
+	path, is_path := e.kind.(Path)
+	if !is_path || len(path.parts) != 1 {
+		return
+	}
+	if lookup(c, path.parts[0]) != nil {
+		return
+	}
+	return path.parts[0], true
+}
+
+@(private)
+check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
+	if k.taught != nil {
+		return check_taught_call(c, e, k)
+	}
+	verb := k.verb
+	args := make([dynamic]^IR, c.alloc)
+	kinds := make([dynamic]registry.Kind, context.temp_allocator)
+	for a, i in k.args {
+		if is_word_slot(verb, len(k.args), i) {
+			if word, ok := as_word(c, a); ok {
+				append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
+				append(&kinds, registry.Kind.Name)
+				continue
+			}
+		}
+		ir := check_expr(c, a, false)
+		append(&args, ir)
+		append(&kinds, registry_kind(c.types, ir.type))
+	}
+	// An argument that was already reported must not cause a second message.
+	for ir in args {
+		if ir.type == T_ERROR {
+			return check_options_only(c, e, k, args[:])
+		}
+	}
+	index, found := registry.shape_for(verb, kinds[:])
+	switch found {
+	case .Found:
+	case .Ambiguous:
+		index = first_fitting(verb, kinds[:])
+	case .Wrong_Count:
+		report_count(c, e, k, verb)
+		return error_ir(c, e.span)
+	case .Wrong_Kinds:
+		report_kinds(c, e, k, verb, args[:], kinds[:])
+		return error_ir(c, e.span)
+	}
+	shape := verb.shapes[index]
+	options := check_options(c, e.span, k, verb, shape)
+	first_list := T_ERROR
+	for ir in args {
+		if kind_of(c.types, ir.type) == .List {
+			first_list = ir.type
+			break
+		}
+	}
+	type := type_of_kind(c.types, shape.gives, first_list)
+	if !as_stmt && type == T_NONE {
+		note(c, .Value_Of_Nothing, e.span, verb.name, "", "", text_at(c, e.span))
+		return error_ir(c, e.span)
+	}
+	return new_ir(c, e.span, type, IR_Call{verb = verb, shape = index, args = args[:], options = options})
+}
+
+@(private)
+first_fitting :: proc(verb: ^registry.Verb, kinds: []registry.Kind) -> int {
+	for shape, i in verb.shapes {
+		if len(shape.params) != len(kinds) {
+			continue
+		}
+		fits := true
+		for param, j in shape.params {
+			fits &&= registry.accepts(param.kind, kinds[j])
+		}
+		if fits {
+			return i
+		}
+	}
+	return 0
+}
+
+// A call with an argument already in error: its options are still checked for
+// their own mistakes, but the call gives an Error type.
+@(private)
+check_options_only :: proc(c: ^Checker, e: ^Expr, k: Call, args: []^IR) -> ^IR {
+	for o in k.options {
+		for a in o.args {
+			check_expr(c, a, false)
+		}
+	}
+	return error_ir(c, e.span)
+}
+
+@(private)
+report_count :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Verb) {
+	// The example keeps the values the writer gave and names the ones still missing.
+	nearest := verb.shapes[nearest_shape(verb.shapes, len(k.args))]
+	words := make([dynamic]string, context.temp_allocator)
+	append(&words, verb.name)
+	for param, i in nearest.params {
+		append(&words, text_at(c, k.args[i].span) if i < len(k.args) else param.name)
+	}
+	note(c, .Wrong_Argument_Count, e.span, verb.name, takes_words(verb.shapes), count_words(len(k.args)), fix(c, e.span, strings.join(words[:], " ", context.temp_allocator)))
+}
+
+@(private)
+report_kinds :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Verb, args: []^IR, kinds: []registry.Kind) {
+	for shape in verb.shapes {
+		if len(shape.params) != len(args) {
+			continue
+		}
+		for param, j in shape.params {
+			if registry.accepts(param.kind, kinds[j]) {
+				continue
+			}
+			need := fmt.tprintf("%s for `%s`", kind_words(param.kind), param.name)
+			note(c, .Wrong_Argument_Kind, k.args[j].span, verb.name, need, describe(c.types, args[j].type), fix(c, k.args[j].span, sample_for_kind(param.kind)))
+			return
+		}
+	}
+}
+
+@(private)
+check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Verb, shape: registry.Shape) -> []IR_Option {
+	out := make([dynamic]IR_Option, c.alloc)
+	seen := make([dynamic]string, context.temp_allocator)
+	for o in k.options {
+		def: registry.Option
+		found := false
+		for d in shape.options {
+			if d.word == o.word {
+				def, found = d, true
+			}
+		}
+		if !found {
+			continue
+		}
+		if slice_contains(seen[:], o.word) {
+			note(c, .Word_Twice, o.span, verb.name, o.word, "", line_replacing(c.src, Span{o.span.file, o.span.start - 1, o.span.end}, "", c.alloc))
+			continue
+		}
+		append(&seen, o.word)
+		args := make([dynamic]^IR, c.alloc)
+		for a, i in o.args {
+			if i < len(def.kinds) && def.kinds[i] == .Name {
+				if word, ok := as_word(c, a); ok {
+					append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
+					continue
+				}
+			}
+			ir := check_expr(c, a, false)
+			if i < len(def.kinds) && ir.type != T_ERROR && !registry.accepts(def.kinds[i], registry_kind(c.types, ir.type)) {
+				need := fmt.tprintf("%s after `%s`", kind_words(def.kinds[i]), o.word)
+				note(c, .Wrong_Argument_Kind, a.span, verb.name, need, describe(c.types, ir.type), fix(c, a.span, sample_for_kind(def.kinds[i])))
+			}
+			append(&args, ir)
+		}
+		append(&out, IR_Option{word = o.word, args = args[:]})
+	}
+	for d in shape.options {
+		if d.required && !slice_contains(seen[:], d.word) {
+			note(c, .Missing_Required_Word, call_span, verb.name, d.word, "", fix(c, call_span, fmt.tprintf("%s %s 0", text_at(c, call_span), d.word)))
+		}
+	}
+	return out[:]
+}
+
+@(private)
+slice_contains :: proc(items: []string, item: string) -> bool {
+	for i in items {
+		if i == item {
+			return true
+		}
+	}
+	return false
+}
+
+// A call of a verb taught with `learn` (step 3b checks the body and gives the real
+// type): the arguments are checked and counted, the result is a mixed value.
+@(private)
+check_taught_call :: proc(c: ^Checker, e: ^Expr, k: Call) -> ^IR {
+	args := make([dynamic]^IR, c.alloc)
+	for a in k.args {
+		append(&args, check_expr(c, a, false))
+	}
+	options := make([dynamic]IR_Option, c.alloc)
+	for o in k.options {
+		values := make([dynamic]^IR, c.alloc)
+		for a in o.args {
+			append(&values, check_expr(c, a, false))
+		}
+		append(&options, IR_Option{word = o.word, args = values[:]})
+	}
+	if len(k.args) != len(k.taught.params) {
+		names := make([dynamic]string, context.temp_allocator)
+		takes := fmt.tprintf("%s (%s)", count_words(len(k.taught.params)), names_words(k.taught.params)) if len(k.taught.params) > 0 else "no values"
+		append(&names, k.taught.name)
+		for param, i in k.taught.params {
+			append(&names, text_at(c, k.args[i].span) if i < len(k.args) else param)
+		}
+		note(c, .Wrong_Argument_Count, e.span, k.taught.name, takes, count_words(len(k.args)), fix(c, e.span, strings.join(names[:], " ", context.temp_allocator)))
+		return error_ir(c, e.span)
+	}
+	return new_ir(c, e.span, T_BOXED, IR_Call{taught = k.taught, args = args[:], options = options[:]})
+}
+
+// Used by tests and `roci check --types`.
+parse_number_text :: proc(text: string) -> f64 {
+	value, _ := strconv.parse_f64(text)
+	return value
+}

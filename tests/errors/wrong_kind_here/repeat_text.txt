@@ -1,0 +1,8 @@
+── `repeat` needs a number here ──────────────────────── sketch.roci:1:8
+
+1 │ repeat "x" [
+  │        ^^^
+
+Here it is given text.
+
+Write:  repeat 1 [

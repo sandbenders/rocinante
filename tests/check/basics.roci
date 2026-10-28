@@ -1,0 +1,34 @@
+# Names, numbers, text, colours, vectors and calls: everything step 3a checks.
+x = 10
+name = "Ada"
+SPEED = 4
+ratio = 0.5
+v = { 3, 4 }
+u = v * 2 + { 1, 1 }
+c = rgb 255 136 0
+sky = gradient [ navy black ] angle 90
+p = mouse
+dx = p.x - width / 2
+corner = u.xy
+hit = dx > 3 and x is 10
+
+window 800 600 at 100 100
+background [ navy black ] angle 90
+fill c
+alpha 200
+circle p 20
+circle x (x * 2) 50 fill [ red teal ]
+rect 0 0 width height fill red
+caps round
+joins bevel
+r = random from 1 to 3
+n = noise x 0.5 as simplex
+pick_one = pick [ red orange teal ]
+
+if hit [ fill red ] else [ fill blue ]
+repeat 10 [ circle (random width) (random height) 5 ]
+for i from 1 to 10 [ line 0 (i * 10) width (i * 10) ]
+for each q in [ { 10, 20 } { 30, 40 } ] [ circle q 10 ]
+with fill cyan thickness 2 [
+  circle 100 100 50
+]

@@ -24,6 +24,7 @@ Kind :: enum u8 {
 	Name, // a plain word such as `center` after `as`
 	Gradient, // made by `gradient`, or written as a list of colours where a colour goes
 	Any,
+	Boolean, // true or false: what a comparison gives
 }
 
 Param :: struct {
@@ -70,7 +71,31 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "tau", "time", "width",
+	"anywhere", "false", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "tau", "time", "true", "width",
+}
+
+// What each built-in value is, for the checker (CLAUDE.md section 5.3). `size` is
+// the number of components of a vector and 0 for everything else.
+Value_Def :: struct {
+	name: string,
+	kind: Kind,
+	size: int,
+}
+
+VALUE_DEFS := [?]Value_Def{
+	{"anywhere", .Vector, 2}, // a random point in the window
+	{"false", .Boolean, 0},
+	{"fps", .Number, 0},
+	{"frame", .Number, 0},
+	{"height", .Number, 0},
+	{"key", .Text, 0}, // the name of the key last pressed
+	{"mouse", .Vector, 2},
+	{"pi", .Number, 0},
+	{"pmouse", .Vector, 2}, // where the mouse was a frame ago
+	{"tau", .Number, 0},
+	{"time", .Number, 0}, // seconds since the sketch started
+	{"true", .Boolean, 0},
+	{"width", .Number, 0},
 }
 
 // `width`, `height` and `size` are values and connecting words together, so they

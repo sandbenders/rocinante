@@ -1,3 +1,4 @@
+score = 1
 if score = 10 [
   fill red
 ]

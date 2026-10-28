@@ -1,0 +1,8 @@
+── `circle` takes 3 values (x, y and radius) or 2 values (position and radius) ─── sketch.roci:1:1
+
+1 │ circle 100
+  │ ^^^^^^^^^^
+
+This line gives `circle` 1 value.
+
+For example:  circle 100 radius

@@ -1,0 +1,8 @@
+── A condition has to be true or false ───────────────── sketch.roci:2:4
+
+2 │ if x [
+  │    ^
+
+`if` asks a question, so what follows it has to be a comparison like `x > 10`, or a name that holds true or false. Here it is a number.
+
+Write:  if x > 0 [

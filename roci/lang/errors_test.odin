@@ -80,22 +80,22 @@ test_every_message_has_a_sketch_that_triggers_it_and_the_text_matches :: proc(t:
 		if !testing.expectf(t, read_err == nil, "cannot read %s.roci", c.path) {
 			continue
 		}
-		parsed := parse_text(string(data))
+		parsed := check_text(string(data))
 		triggered := false
-		for d in parsed.result.diagnostics {
+		for d in parsed.checked.diagnostics {
 			if d.id == wanted {
 				triggered = true
 			}
 		}
 		testing.expectf(t, triggered, "%s.roci does not trigger %v", c.path, wanted)
 		// The example is made from the sketch itself, so every case must have one.
-		for d in parsed.result.diagnostics {
+		for d in parsed.checked.diagnostics {
 			if d.id == wanted {
 				example := fill_template(CATALOGUE[d.id].example, d.args, context.temp_allocator)
 				testing.expectf(t, strings.trim_space(example) != "", "%s.roci: the message has no example", c.path)
 			}
 		}
-		got := render_all(parsed.src, parsed.result.diagnostics, context.temp_allocator)
+		got := render_all(parsed.src, parsed.checked.diagnostics, context.temp_allocator)
 		txt := fmt.tprintf("%s.txt", c.path)
 		if update {
 			testing.expectf(t, os.write_entire_file(txt, transmute([]byte)got) == nil, "cannot write %s", txt)
@@ -117,8 +117,8 @@ test_a_sketch_in_the_error_folder_triggers_only_the_messages_it_is_about :: proc
 		if err != nil {
 			continue
 		}
-		parsed := parse_text(string(data))
-		for d in parsed.result.diagnostics {
+		parsed := check_text(string(data))
+		for d in parsed.checked.diagnostics {
 			testing.expectf(t, folder_of(d.id) == c.id_folder || (c.id_folder == "extra_close" && d.id == .Missing_Close_Square), "%s.roci also triggers %v", c.path, d.id)
 		}
 	}

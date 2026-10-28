@@ -1,0 +1,8 @@
+── `clear` does not give a value back ────────────────── sketch.roci:1:5
+
+1 │ x = clear
+  │     ^^^^^
+
+`clear` draws or changes something, but it has nothing to hand back, so it cannot be used as a value. Use it on a line of its own.
+
+Write:  clear

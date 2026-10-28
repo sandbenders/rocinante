@@ -1,0 +1,2 @@
+p = mouse
+q = p.z

@@ -42,7 +42,7 @@ VERBS := []Verb{
 	{"title", {{{{"text", .Text}}, nil, .None}}, "Sets the window's title."},
 	{"fullscreen", {{{}, nil, .None}}, "Makes the window fill the screen."},
 	{"quit", {{{}, nil, .None}}, "Closes the sketch."},
-	{"background", {{{{"colour", .Colour}}, nil, .None}}, "Fills the whole window with a colour or a gradient."},
+	{"background", {{{{"colour", .Colour}}, GRADIENT_OPTIONS, .None}}, "Fills the whole window with a colour or a gradient."},
 	{"clear", {{{}, nil, .None}}, "Empties the window, leaving it transparent."},
 
 	// 2D shapes
@@ -83,9 +83,9 @@ VERBS := []Verb{
 	}, "Draws part of an ellipse, between two angles in degrees."},
 
 	// Style
-	{"fill", {{{{"colour", .Colour}}, nil, .None}}, "Sets the colour of areas from now on."},
+	{"fill", {{{{"colour", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the colour of areas from now on."},
 	{"no fill", {{{}, nil, .None}}, "Turns area colour off from now on."},
-	{"stroke", {{{{"colour", .Colour}}, nil, .None}}, "Sets the colour of outlines and lines from now on."},
+	{"stroke", {{{{"colour", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the colour of outlines and lines from now on."},
 	{"no stroke", {{{}, nil, .None}}, "Turns outlines off from now on."},
 	{"thickness", {{{{"pixels", .Number}}, nil, .None}}, "Sets the width of outlines and lines, in pixels."},
 	{"alpha", {{{{"amount", .Number}}, nil, .None}}, "Sets how transparent fill and stroke are, 0 to 255."},

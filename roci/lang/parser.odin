@@ -104,8 +104,8 @@ text_of :: proc(p: ^Parser, t: Token) -> string {
 }
 
 @(private)
-report :: proc(p: ^Parser, id: Message_Id, span: Span, a: string = "", b: string = "", c: string = "") {
-	append(&p.diags, Diagnostic{id = id, span = span, args = {a, b, c}})
+report :: proc(p: ^Parser, id: Message_Id, span: Span, a: string = "", b: string = "", c: string = "", d: string = "") {
+	append(&p.diags, Diagnostic{id = id, span = span, args = {a, b, c, d}})
 }
 
 @(private)

@@ -1,0 +1,5 @@
+frames_seen: a number
+size: a number
+pos: a vector of 2 numbers
+tint: a colour
+w: a window

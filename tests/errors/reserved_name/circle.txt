@@ -1,0 +1,8 @@
+── `circle` is already a word ────────────────────────── sketch.roci:1:1
+
+1 │ circle = 3
+  │ ^^^^^^
+
+The language already uses `circle` for something else, so it cannot be the name of a value. Pick another name.
+
+Write:  mycircle = 3

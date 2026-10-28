@@ -1,0 +1,8 @@
+── `x` keeps one kind of value ───────────────────────── sketch.roci:2:1
+
+2 │ x = "ten"
+  │ ^
+
+`x` holds a number, set on line 1, but here it is given text. A name keeps one kind of value; use a new name for text.
+
+Write:  x2 = "ten"

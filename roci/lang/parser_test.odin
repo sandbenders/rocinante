@@ -825,9 +825,9 @@ test_hints_and_warnings_are_labelled :: proc(t: ^testing.T) {
 
 @(test)
 test_fill_template_replaces_only_its_own_markers :: proc(t: ^testing.T) {
-	got := fill_template("{a} and {b} and {c} but not { a } or {d} or {", {"one", "two", "three"}, context.temp_allocator)
-	testing.expect_value(t, got, "one and two and three but not { a } or {d} or {")
-	testing.expect_value(t, fill_template("", {}, context.temp_allocator), "")
+	got := fill_template("{a} and {b} and {c} and {d} but not { a } or {e} or {", {"one", "two", "three", "four"}, context.temp_allocator)
+	testing.expect_value(t, got, "one and two and three and four but not { a } or {e} or {")
+	testing.expect_value(t, fill_template("", {"", "", "", ""}, context.temp_allocator), "")
 }
 
 @(test)
@@ -849,4 +849,16 @@ test_parsing_the_same_text_twice_gives_the_same_tree :: proc(t: ^testing.T) {
 	a, b := parse_text(text), parse_text(text)
 	testing.expect_value(t, a.tree, b.tree)
 	testing.expect_value(t, fmt.tprintf("%v", len(a.result.diagnostics)), fmt.tprintf("%v", len(b.result.diagnostics)))
+}
+
+@(private)
+Checked_Text :: struct {
+	src:     Source,
+	checked: Checked,
+}
+
+@(private)
+check_text :: proc(text: string) -> Checked_Text {
+	src := make_source("sketch.roci", text, 0, context.temp_allocator)
+	return Checked_Text{src, check(src, test_verbs(), nil, context.temp_allocator)}
 }

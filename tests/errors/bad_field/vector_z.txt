@@ -1,0 +1,8 @@
+── `z` is not a part of a vector of 2 numbers ────────── sketch.roci:2:7
+
+2 │ q = p.z
+  │       ^
+
+A vector of 2 numbers has x and y.
+
+Write:  q = p.x

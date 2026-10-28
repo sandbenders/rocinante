@@ -79,7 +79,8 @@ Shape_Result :: enum {
 // expected. A colour parameter also takes a number (a grey), a list of colours
 // and a gradient (a gradient is a paint like any colour, section 5.9).
 accepts :: proc(want, got: Kind) -> bool {
-	if want == got || want == .Any {
+	// A Boxed value (kind Any) is checked while the sketch runs, so it fits anywhere.
+	if want == got || want == .Any || got == .Any {
 		return true
 	}
 	return want == .Colour && (got == .Number || got == .List || got == .Gradient)

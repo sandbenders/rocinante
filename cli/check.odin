@@ -12,27 +12,29 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-USAGE :: `roci check [file] [--tree]
+USAGE :: `roci check [file] [--tree] [--types]
 
   file     the sketch to read; sketch.roci when left out
+  --types  also print what each name in the sketch holds
   --tree   also print the syntax tree, for people working on the language`
 
 Check_Result :: struct {
 	report:   string, // every message, ready to print; empty when there is nothing to say
 	summary:  string, // one line: no problems, or how many
 	tree:     string, // the syntax tree, when asked for
+	types:    string, // what each name holds, when asked for
 	errors:   int,
 	warnings: int,
 	hints:    int,
 }
 
-// Parses `text` as the sketch called `name`. The caller frees nothing: everything
+// Parses and checks `text` as the sketch called `name`. The caller frees nothing: everything
 // comes from the allocator given, which should be an arena or the temporary one.
-check_text :: proc(name, text: string, show_tree: bool, allocator := context.temp_allocator) -> Check_Result {
+check_text :: proc(name, text: string, show_tree: bool, show_types := false, allocator := context.temp_allocator) -> Check_Result {
 	src := lang.make_source(name, text, 0, allocator)
-	parsed := lang.parse(src, registry.VERBS, nil, allocator)
-	result := Check_Result{report = lang.render_all(src, parsed.diagnostics, allocator)}
-	for d in parsed.diagnostics {
+	checked := lang.check(src, registry.VERBS, nil, allocator)
+	result := Check_Result{report = lang.render_all(src, checked.diagnostics, allocator)}
+	for d in checked.diagnostics {
 		switch lang.severity_of(d) {
 		case .Error:   result.errors += 1
 		case .Warning: result.warnings += 1
@@ -40,7 +42,10 @@ check_text :: proc(name, text: string, show_tree: bool, allocator := context.tem
 		}
 	}
 	if show_tree {
-		result.tree = lang.dump(src, parsed.program, allocator)
+		result.tree = lang.dump(src, checked.parsed.program, allocator)
+	}
+	if show_types {
+		result.types = lang.describe_names(checked, allocator)
 	}
 	result.summary = summarise(name, result)
 	return result
@@ -71,8 +76,9 @@ summarise :: proc(name: string, r: Check_Result) -> string {
 
 // What `roci check` was asked to do, from the words after the command.
 Check_Args :: struct {
-	file: string,
-	tree: bool,
+	file:  string,
+	tree:  bool,
+	types: bool,
 	ok:   bool, // false for a flag it does not know, or more than one file
 	bad:  string,
 }
@@ -84,6 +90,8 @@ parse_check_args :: proc(args: []string) -> Check_Args {
 		switch {
 		case arg == "--tree":
 			result.tree = true
+		case arg == "--types":
+			result.types = true
 		case strings.has_prefix(arg, "-"):
 			return Check_Args{ok = false, bad = arg}
 		case have_file:
@@ -109,9 +117,12 @@ run_check :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		fmt.sbprintf(err, "I cannot read `%s`. Check the name, or run roci check in the folder that holds it.\n", parsed.file)
 		return 2
 	}
-	result := check_text(parsed.file, string(data), parsed.tree)
+	result := check_text(parsed.file, string(data), parsed.tree, parsed.types)
 	if result.report != "" {
 		fmt.sbprintf(out, "%s\n", result.report)
+	}
+	if result.types != "" {
+		fmt.sbprintf(out, "%s\n", strings.trim_space(result.types))
 	}
 	if result.tree != "" {
 		fmt.sbprintf(out, "%s\n", strings.trim_space(result.tree))

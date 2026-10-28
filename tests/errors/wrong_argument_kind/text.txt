@@ -1,0 +1,8 @@
+── `circle` needs a number for `y` ──────────────────── sketch.roci:1:12
+
+1 │ circle 100 "two" 50
+  │            ^^^^^
+
+Here it is given text.
+
+Write:  circle 100 0 50

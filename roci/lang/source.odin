@@ -6,6 +6,7 @@
 // came from (section 5.14).
 package lang
 
+import "core:strings"
 import "core:unicode/utf8"
 
 // Where something is in a file: byte offsets, `end` one past the last byte. `file`
@@ -83,4 +84,18 @@ span_text :: proc(src: Source, span: Span) -> string {
 // The smallest span that holds both.
 span_join :: proc(a, b: Span) -> Span {
 	return Span{file = a.file, start = min(a.start, b.start), end = max(a.end, b.end)}
+}
+
+// The line that holds `span`, with the span's text replaced, for the example in a
+// message. Leading and trailing spaces are dropped. The caller frees the result.
+line_replacing :: proc(src: Source, span: Span, replacement: string, allocator := context.allocator) -> string {
+	pos := position_of(src, span.start)
+	line := line_text(src, pos.line)
+	start := clamp(span.start - src.line_starts[pos.line - 1], 0, len(line))
+	end := clamp(span.end - src.line_starts[pos.line - 1], start, len(line))
+	b := strings.builder_make(allocator)
+	strings.write_string(&b, line[:start])
+	strings.write_string(&b, replacement)
+	strings.write_string(&b, line[end:])
+	return strings.trim_space(strings.to_string(b))
 }

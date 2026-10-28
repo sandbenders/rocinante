@@ -1,0 +1,8 @@
+── I cannot work this out ────────────────────────────── sketch.roci:1:5
+
+1 │ v = { 1, 2 } + { 1, 2, 3 }
+  │     ^^^^^^^^^^^^^^^^^^^^^^
+
+`+` does not work with a vector of 2 numbers and a vector of 3 numbers. Numbers go with numbers, vectors with vectors of the same size or with a number, and text joins with anything using plus.
+
+Write:  v = { 1, 2 } + { 0, 0 }

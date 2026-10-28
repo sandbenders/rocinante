@@ -1,0 +1,8 @@
+── `random` needs `to` ───────────────────────────────── sketch.roci:1:5
+
+1 │ x = random from 1
+  │     ^^^^^^^^^^^^^
+
+`random` is not complete without its `to` part.
+
+Write:  x = random from 1 to 0

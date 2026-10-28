@@ -1,0 +1,10 @@
+── `b` has no value yet ──────────────────────────────── sketch.roci:1:5
+
+1 │ a = b
+  │     ^
+
+`b` is given its value further down the sketch, but this line runs first, so it has nothing to use. Give it a value above this line.
+
+Write:
+    b = 0
+    a = b

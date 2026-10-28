@@ -1,6 +1,6 @@
-── A condition asks, it does not assign ─────────────── sketch.roci:1:10
+── A condition asks, it does not assign ─────────────── sketch.roci:2:10
 
-1 │ if score = 10 [
+2 │ if score = 10 [
   │          ^
 
 A single equals sign gives a name a value. To ask whether two things are the same, write `is`.

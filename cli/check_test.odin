@@ -107,3 +107,20 @@ test_run_check_prints_the_tree_after_the_messages :: proc(t: ^testing.T) {
 	text := strings.to_string(out)
 	testing.expect(t, strings.contains(text, "(call circle (num 1) (num 2) (num 3))\n"), text)
 }
+
+@(test)
+test_the_checker_runs_after_the_parser_and_types_can_be_printed :: proc(t: ^testing.T) {
+	r := check_text("a.roci", "x = 10\nx = \"ten\"\ncircle x 1 2\n", false, true)
+	testing.expect_value(t, r.errors, 1)
+	testing.expect(t, strings.contains(r.report, "`x` keeps one kind of value"), r.report)
+	testing.expect_value(t, strings.trim_space(r.types), "x: a number")
+	clean := check_text("a.roci", "w = 800\nv = { 1, 2 }\n", false, true)
+	testing.expect_value(t, clean.types, "w: a number\nv: a vector of 2 numbers\n")
+}
+
+@(test)
+test_the_types_flag_is_read :: proc(t: ^testing.T) {
+	a := parse_check_args({"--types", "my.roci"})
+	testing.expect(t, a.ok && a.types)
+	testing.expect_value(t, a.file, "my.roci")
+}

@@ -426,3 +426,34 @@ test_draw_and_receive_are_reserved_so_no_name_can_take_them :: proc(t: ^testing.
 	testing.expect(t, is_reserved("receive"))
 	testing.expect(t, is_reserved_name("draw"))
 }
+
+@(test)
+test_every_built_in_value_has_a_kind_and_the_tables_agree :: proc(t: ^testing.T) {
+	testing.expect_value(t, len(VALUE_DEFS), len(VALUES))
+	for def in VALUE_DEFS {
+		testing.expectf(t, slice.contains(VALUES[:], def.name), "`%s` is in VALUE_DEFS but not in VALUES", def.name)
+		testing.expectf(t, def.kind != .None && def.kind != .Any, "`%s` has no real kind", def.name)
+		testing.expectf(t, (def.kind == .Vector) == (def.size > 0), "`%s`: a vector has a size and nothing else does", def.name)
+	}
+	for name in VALUES {
+		found := false
+		for def in VALUE_DEFS {
+			found ||= def.name == name
+		}
+		testing.expectf(t, found, "`%s` is in VALUES but has no definition", name)
+	}
+}
+
+@(test)
+test_fill_stroke_and_background_take_the_gradient_words :: proc(t: ^testing.T) {
+	for name in ([]string{"fill", "stroke", "background"}) {
+		verb, _ := find_verb(name)
+		words := make([dynamic]string, context.temp_allocator)
+		for option in verb.shapes[0].options {
+			append(&words, option.word)
+		}
+		for word in ([]string{"angle", "stops", "as", "at", "in"}) {
+			testing.expectf(t, slice.contains(words[:], word), "`%s` should take `%s`", name, word)
+		}
+	}
+}
