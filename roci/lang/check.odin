@@ -41,6 +41,8 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		sites   = make(map[int]int, 8, allocator),
 		walking = make([dynamic]string, allocator),
 		learn_order = make([dynamic]string, allocator),
+		msg_types   = make(map[string]Type_Id, 8, allocator),
+		msg_mixed   = make(map[string]bool, 8, allocator),
 	}
 	// Two passes. A field assigned anywhere in the sketch belongs to the shape of the
 	// record, even to a line above it, so the first pass only settles
@@ -137,6 +139,8 @@ Checker :: struct {
 	instance_keys: map[string]^IR_Instance,
 	verb_locals:   [dynamic]^Symbol,       // parameters and names made inside the taught verb being checked
 	verb:          ^Verb_Ctx,              // that verb, or nil outside one
+	msg_types:     map[string]Type_Id,     // what is sent to each window, by the name that is sent to (check_messages.odin)
+	msg_mixed:     map[string]bool,        // windows that are sent different kinds of value
 }
 
 @(private)
@@ -526,7 +530,7 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 		return result
 	}
 	result.window = check_kind(c, k.window, T_WINDOW, "on")
-	message := declare_local(c, k.message, .Message, T_BOXED, k.body.span)
+	message := declare_local(c, k.message, .Message, message_type(c, window_key(k.window)), k.body.span)
 	mark := len(c.locals) - 1
 	result.message = message
 	result.body = check_block(c, k.body, true)

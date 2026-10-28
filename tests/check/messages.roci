@@ -1,0 +1,12 @@
+# Two windows: a palette window sends tagged messages and a wind number, and the
+# garden reads them. What `m` is comes from every send that can reach the window.
+palette = window 200 300
+garden = window 800 600
+send garden [ "palette" 2 ]
+send garden [ "wind" 7 ]
+send palette 1
+
+on garden receive m [ last_message = m ]
+on palette receive taps_now [ taps = taps + taps_now ]
+last_message = [ "none" 0 ]
+taps = 0

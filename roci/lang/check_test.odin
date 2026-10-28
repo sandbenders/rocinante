@@ -738,3 +738,43 @@ test_a_verb_taught_in_another_file_is_counted_but_not_checked :: proc(t: ^testin
 	got2 := check(src2, test_verbs(), extra, context.temp_allocator)
 	testing.expect_value(t, got2.diagnostics[0].id, Message_Id.Wrong_Argument_Count)
 }
+
+// ---- messages between windows (step 3c) ----
+
+@(test)
+test_a_handler_gets_the_type_of_what_is_sent_to_its_window :: proc(t: ^testing.T) {
+	expect_types(t, "w = window 400 300\nsend w 5\non w receive m [ total = m + 1 ]\ntotal = 0", "w: a window\ntotal: a number")
+	// The handler is above its sender: the first pass still finds the type.
+	expect_types(t, "w = window 400 300\non w receive m [ total = m + 1 ]\ntotal = 0\nsend w 5", "w: a window\ntotal: a number")
+	expect_errors(t, "w = window 400 300\nsend w \"calm\"\non w receive m [ total = m + 1 ]\ntotal = 0", {.Kind_Conflict})
+}
+
+@(test)
+test_a_record_that_is_sent_reaches_the_handler_with_its_shape :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window 400 300\nsend w { wind: 0.7 }\non w receive m [ speed = m.wind ]\nspeed = 0", {})
+	expect_errors(t, "w = window 400 300\nsend w { wind: 0.7 }\non w receive m [ speed = m.gust ]\nspeed = 0", {.Unknown_Field})
+}
+
+@(test)
+test_different_kinds_sent_to_one_window_make_a_mixed_message :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window 400 300\nsend w 1\nsend w \"calm\"\non w receive m [ x = m ]\nx = 0", {})
+	expect_errors(t, "w = window 400 300\nsend w [ \"palette\" 2 ]\non w receive m [ x = item 1 of m ]\nx = 0", {})
+}
+
+@(test)
+test_two_windows_have_their_own_message_types :: proc(t: ^testing.T) {
+	expect_errors(t, "a = window 100 100\nb = window 100 100\nsend a 1\nsend b \"x\"\non a receive m [ n = m + 1 ]\non b receive m [ s = m + \"!\" ]\nn = 0\ns = \"\"", {})
+	expect_errors(t, "a = window 100 100\nb = window 100 100\nsend a 1\nsend b \"x\"\non b receive m [ n = m + 1 ]\nn = 0", {.Kind_Conflict})
+}
+
+@(test)
+test_a_send_to_something_that_is_not_a_window_is_an_error :: proc(t: ^testing.T) {
+	expect_errors(t, "send nowhere 5", {.Unknown_Name})
+	expect_errors(t, "x = 3\nsend x 5", {.Wrong_Argument_Kind})
+	expect_errors(t, "w = window 100 100\nsend w", {.Wrong_Argument_Count})
+}
+
+@(test)
+test_a_send_to_a_window_in_a_list_reaches_every_handler :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window 100 100\nv = window 100 100\nsend (pick [ v w ]) 5\non w receive m [ n = m + 1 ]\nn = 0", {})
+}
