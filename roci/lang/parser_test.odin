@@ -1001,3 +1001,13 @@ test_a_connecting_word_after_a_closing_bracket_says_to_move_the_bracket :: proc(
 	// Words that are not connecting words keep the plain message.
 	expect_ids(t, "print (1) banana", {.Unexpected_Token})
 }
+
+@(test)
+test_extra_spaces_after_an_equals_sign_or_between_words_mean_nothing_in_a_block_over_lines :: proc(t: ^testing.T) {
+	expect_ids(t, "draw [\n  colors=      shuffle [ 1 2 ]\n  circle at 1    1 radius    2\n]\n", {})
+	// In a block written on one line, two spaces still end a call.
+	expect_ids(t, "draw [ circle at 1 1 radius 2  circle at 3 3 radius 2 ]\n", {})
+	expect_ids(t, "x=      3\n", {})
+	expect_ids(t, "draw [ x =    3  y = 4 ]\n", {})
+	expect_ids(t, "draw [ x = ]\n", {.Nothing_After_Equals})
+}

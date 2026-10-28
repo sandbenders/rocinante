@@ -92,6 +92,7 @@ Parser :: struct {
 	alloc:       mem.Allocator,
 	diags:       [dynamic]Diagnostic,
 	groups:      [dynamic]Group_Kind, // what is open: a block, a group, a vector, a list
+	one_line:    bool, // the block being parsed opens and closes on one line, where two spaces end a call
 	learn_depth: int,
 	wraps:       [dynamic]Span, // calls that need round brackets, in this statement
 	nest_depth:  int,

@@ -133,7 +133,8 @@ parse_assignment :: proc(p: ^Parser) -> Stmt_Kind {
 	path := target.kind.(Path)
 	equals := advance(p)
 	next := cur(p)
-	if call_ends_at(p, next) {
+	// Spaces after the equals sign mean nothing, even in a block on one line.
+	if next.kind == .Newline || next.kind == .End_Of_File || next.kind == .Close_Square || next.kind == .Close_Round || next.kind == .Close_Curly {
 		report(p, .Nothing_After_Equals, equals.span, text_of_span(p, target.span))
 		return Error_Stmt{}
 	}
@@ -176,6 +177,27 @@ block_around :: proc(p: ^Parser, at: Span) -> string {
 // The cursor is at the opening square bracket. Brackets that do not balance are
 // explained with the indentation: indentation never changes what a
 // sketch means, but it shows where the writer thought the block ended.
+// Does the block whose opening bracket was just read close on the same line? Only
+// there do two spaces end a call; in a block over several lines a line break does.
+@(private)
+block_is_on_one_line :: proc(p: ^Parser) -> bool {
+	depth := 1
+	for i := p.at; i < len(p.tokens); i += 1 {
+		#partial switch p.tokens[i].kind {
+		case .Newline, .End_Of_File:
+			return false
+		case .Open_Square:
+			depth += 1
+		case .Close_Square:
+			depth -= 1
+			if depth == 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 @(private)
 parse_block :: proc(p: ^Parser) -> Block {
 	open := advance(p)
@@ -184,6 +206,9 @@ parse_block :: proc(p: ^Parser) -> Block {
 	open_indent := indent_of_line(p, open_index)
 	append(&p.groups, Group_Kind.Block)
 	defer pop(&p.groups)
+	saved_one_line := p.one_line
+	p.one_line = block_is_on_one_line(p)
+	defer p.one_line = saved_one_line
 	stmts := make([dynamic]^Stmt, p.alloc)
 	dedent_line := 0
 	closed := false

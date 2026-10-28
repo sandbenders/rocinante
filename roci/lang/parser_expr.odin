@@ -202,7 +202,7 @@ call_ends_at :: proc(p: ^Parser, t: Token) -> bool {
 	case .Newline, .End_Of_File, .Close_Square, .Close_Round, .Close_Curly:
 		return true
 	}
-	return t.spaces >= 2 && !starts_line(p, p.at) && len(p.groups) > 0 && p.groups[len(p.groups) - 1] == .Block
+	return t.spaces >= 2 && !starts_line(p, p.at) && len(p.groups) > 0 && p.groups[len(p.groups) - 1] == .Block && p.one_line
 }
 
 // ---- calls ----
