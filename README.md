@@ -107,6 +107,7 @@ The language is being built front first. `roci check` reads a sketch and reports
 
 ```
 odin run cli -- check sketch.roci [--tree]
+odin run cli -- man rect                               # how a verb is written (no word: every verb)
 odin run cli -- fmt                                    # writes every .roci file here in the house style
 odin run cli -- run examples/garden/sketch.roci        # opens the windows
 odin run cli -- run sketch.roci --frames 60 --screenshot out.png   # headless, saves the last frame

@@ -562,3 +562,49 @@ test_title_can_name_a_window_and_window_takes_a_title :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, has_title)
 }
+
+@(test)
+test_every_verb_has_a_manual_page_with_an_entry_for_each_way_to_write_it :: proc(t: ^testing.T) {
+	for &verb in ALL_VERBS {
+		page := manual_page(&verb)
+		testing.expectf(t, len(page.entries) > 0, "`%s` has no manual entry", verb.name)
+		testing.expect_value(t, page.name, verb.name)
+		for entry in page.entries {
+			testing.expectf(t, strings.has_prefix(entry.syntax, verb.name), "`%s` does not start with the verb", entry.syntax)
+			testing.expectf(t, strings.has_prefix(entry.example, verb.name), "`%s` does not start with the verb", entry.example)
+		}
+	}
+}
+
+@(test)
+test_the_manual_writes_geometry_with_labels_and_lists_the_optional_words :: proc(t: ^testing.T) {
+	rect, _ := find_verb("rect")
+	page := manual_page(rect)
+	testing.expect_value(t, len(page.entries), 2)
+	testing.expect(t, strings.has_prefix(page.entries[0].syntax, "rect at x y size width height [fill colour]"))
+	testing.expect_value(t, page.entries[0].example, "rect at 100 100 size 50 50")
+	circle, _ := find_verb("circle")
+	testing.expect_value(t, manual_page(circle).entries[0].example, "circle at 100 100 radius 50")
+	triangle, _ := find_verb("triangle")
+	testing.expect_value(t, len(manual_page(triangle).entries), 1) // the six-number form is only for C
+}
+
+@(test)
+test_a_required_connecting_word_is_not_in_square_brackets :: proc(t: ^testing.T) {
+	random, _ := find_verb("random")
+	page := manual_page(random)
+	testing.expect_value(t, page.entries[1].syntax, "random from number to number")
+	add, _ := find_verb("add")
+	testing.expect_value(t, manual_page(add).entries[0].syntax, "add item to list")
+}
+
+@(test)
+test_statements_have_forms_and_an_example :: proc(t: ^testing.T) {
+	for doc in STATEMENT_DOCS {
+		testing.expectf(t, len(doc.forms) > 0 && doc.example != "" && doc.doc != "", "`%s` is missing something", doc.name)
+	}
+	_, found := find_statement("repeat")
+	testing.expect(t, found)
+	_, missing := find_statement("circle")
+	testing.expect(t, !missing)
+}

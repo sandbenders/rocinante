@@ -193,3 +193,28 @@ test_formatting_every_example_and_check_sketch_is_stable_and_changes_no_meaning 
 		testing.expect_value(t, len(a.lexed.comments), len(b.lexed.comments))
 	}
 }
+
+@(test)
+test_every_example_of_the_manual_is_a_sketch_that_checks :: proc(t: ^testing.T) {
+	for &verb in registry.ALL_VERBS {
+		for entry in registry.manual_page(&verb).entries {
+			// The examples name a window `w`, so one is made first.
+			text := fmt.tprintf("w = window size 100 100\n%s\n", entry.example)
+			parsed := check_text(text)
+			for d in parsed.checked.diagnostics {
+				testing.expectf(t, severity_of(d) != .Error, "`%s`: %v", entry.example, d.id)
+			}
+		}
+	}
+}
+
+@(test)
+test_every_example_of_a_statement_in_the_manual_reads_without_a_syntax_error :: proc(t: ^testing.T) {
+	for doc in registry.STATEMENT_DOCS {
+		src := make_source("man.roci", fmt.tprintf("%s\n", doc.example), 0, context.temp_allocator)
+		parsed := parse(src, registry.ALL_VERBS, nil, context.temp_allocator)
+		for d in parsed.diagnostics {
+			testing.expectf(t, severity_of(d) != .Error, "`%s`: %v", doc.example, d.id)
+		}
+	}
+}

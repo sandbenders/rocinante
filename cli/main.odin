@@ -16,6 +16,7 @@ COMMANDS :: `roci, a small language for sketches.
   roci check [file]    read a sketch and say what is wrong with it
   roci run [file]      run a sketch; with --frames N, without a window
   roci fmt [file]      write a sketch in the house style
+  roci man [word]      how a verb or statement is written
 
 More commands arrive as the language does.`
 
@@ -36,6 +37,8 @@ main :: proc() {
 		code = run_run(os.args[2:], &out, &err)
 	case "fmt":
 		code = run_fmt(os.args[2:], &out, &err)
+	case "man":
+		code = run_man(os.args[2:], &out, &err)
 	case "help", "--help", "-h":
 		fmt.println(COMMANDS)
 		code = 0
