@@ -16,9 +16,9 @@ Read [MANIFESTO.md](MANIFESTO.md) for why it exists.
 
 ## Status
 
-Early. There is no language yet, so `.roci` files and the `roci` command do not exist; you cannot run the sketch above. What does run is the engine underneath, through its Odin API (and a C API): windows on a GPU device, 2D shapes with styles, gradients, transforms, colour, random numbers and noise, mouse and keyboard, several windows that send each other messages, and a small text path for debugging. It draws on macOS (Metal), Linux and FreeBSD (Vulkan), Windows (Direct3D 12), and on an iPhone and an Android phone, and 100,000 circles a frame hold about 60 frames a second on the computers tried so far.
+Early. The language exists in pieces: `roci check` reads and checks a `.roci` sketch, and `roci run` runs one, but only the drawing, the verbs, lists and records, and taught verbs so far (a sketch cannot yet react to the mouse or keys, use `every`, or send messages between windows, and does not reload when you save). Under it is the engine, which also has an Odin API (and a C API): windows on a GPU device, 2D shapes with styles, gradients, transforms, colour, random numbers and noise, mouse and keyboard, several windows that send each other messages, and a small text path for debugging. It draws on macOS (Metal), Linux and FreeBSD (Vulkan), Windows (Direct3D 12), and on an iPhone and an Android phone, and 100,000 circles a frame hold about 60 frames a second on the computers tried so far.
 
-Phase 0 (2026-10-27) tested the riskiest parts with four spikes: a window and GPU device on every desktop system, a shader-drawn circle on a real iPhone and a real Android phone, generating Odin from a typed IR, and Dear ImGui with a screen reader. Phase 1, the window and the 2D core, is built and measured on all of them. The next phase is the language itself: the parser, the checker, the interpreter and `roci run`. The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
+Phase 0 (2026-10-27) tested the riskiest parts with four spikes: a window and GPU device on every desktop system, a shader-drawn circle on a real iPhone and a real Android phone, generating Odin from a typed IR, and Dear ImGui with a screen reader. Phase 1, the window and the 2D core, is built and measured on all of them. Phase 2, the language itself, has its parser, checker and interpreter; events, live reload and the error overlay come next. The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
 
 ## What it will look like
 
@@ -103,10 +103,12 @@ odin run examples/benchmark -o:speed  # 100,000 circles a frame, with frame rate
 
 Add `-- 3` to any of the examples to close the window after three seconds. `examples/c/circle.c` is the same circle through the C API (`include/roci.h`, checked by `tools/abi-check.sh`).
 
-The language is being built front first. `roci check` reads a sketch and reports every mistake in it; nothing runs a sketch yet:
+The language is being built front first. `roci check` reads a sketch and reports every mistake in it, and `roci run` runs it (the examples are written in the language as `sketch.roci` files):
 
 ```
 odin run cli -- check sketch.roci [--tree]
+odin run cli -- run examples/garden/sketch.roci        # opens the windows
+odin run cli -- run sketch.roci --frames 60 --screenshot out.png   # headless, saves the last frame
 ```
 
 ## Versions
