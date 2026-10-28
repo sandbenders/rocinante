@@ -138,35 +138,69 @@ comment_text :: proc(p: ^Printer, c: Comment) -> string {
 // ---- statements ----
 
 // The statements of a block or of the whole sketch, one to a line, with the
-// comments that sit before `end` and the blank lines that were between them. Each
-// line ends with a line break.
+// comments that sit before `end` and the blank lines that were between them (one at
+// most). A `learn`, `draw`, `on` or `every` that comes out over several lines also
+// gets a blank line before it and after it, so the structure of a sketch stands
+// out; a comment right above one belongs to it, so the blank line goes above the
+// comment. Each line ends with a line break.
 @(private)
 stmts_text :: proc(p: ^Printer, stmts: []^Stmt, level: int, end: int) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	previous_end := -1 // the line the last thing written ended on in the source
-	write_comments :: proc(p: ^Printer, b: ^strings.Builder, before: int, level: int, previous_end: ^int) {
+	previous_spaced := false // the last statement written was a block that gets blank lines around it
+	// Writes the comments before `before`; the one at `attached` starts the group that
+	// belongs to the statement after them, and needs a blank line before it when `gap_before` is set.
+	write_comments :: proc(p: ^Printer, b: ^strings.Builder, before: int, level: int, previous_end: ^int, previous_spaced: ^bool, attached: int, gap_before: bool) {
 		for p.next < len(p.comments) && p.comments[p.next].span.start < before {
-			c := p.comments[p.next]
+			index := p.next
+			c := p.comments[index]
 			p.next += 1
 			start := src_line(p, c.span.start)
-			if previous_end^ >= 0 && start > previous_end^ + 1 {
+			wants_gap := previous_end^ >= 0 && (start > previous_end^ + 1 || previous_spaced^ || (index == attached && gap_before))
+			if wants_gap {
 				strings.write_string(b, "\n")
 			}
 			strings.write_string(b, indent_text(level))
 			strings.write_string(b, comment_text(p, c))
 			strings.write_string(b, "\n")
 			previous_end^ = start
+			previous_spaced^ = false
 		}
 	}
 	for s in stmts {
-		write_comments(p, &b, s.span.start, level, &previous_end)
+		// The comments before this statement, and which of them are right above it.
+		first_comment := p.next
+		after_comments := first_comment
+		for after_comments < len(p.comments) && p.comments[after_comments].span.start < s.span.start {
+			after_comments += 1
+		}
 		start := src_line(p, s.span.start)
-		if previous_end >= 0 && start > previous_end + 1 {
+		attached := after_comments // none
+		expected := start - 1
+		for i := after_comments - 1; i >= first_comment; i -= 1 {
+			c := p.comments[i]
+			if !c.own_line || src_line(p, c.span.start) != expected {
+				break
+			}
+			attached = i
+			expected -= 1
+		}
+		// The statement is formatted first, past its comments, to know whether it comes out over lines.
+		p.next = after_comments
+		text := stmt_text(p, s, level)
+		after_statement := p.next
+		p.next = first_comment
+		spaced := is_spaced_kind(s) && strings.contains_rune(text, '\n')
+		write_comments(p, &b, s.span.start, level, &previous_end, &previous_spaced, attached, spaced)
+		p.next = after_statement
+		has_attached := attached < after_comments
+		wants_gap := previous_end >= 0 && (start > previous_end + 1 || previous_spaced || (spaced && !has_attached))
+		if wants_gap && !(has_attached && start == previous_end + 1 && !previous_spaced) {
 			strings.write_string(&b, "\n")
 		}
 		finish := last_line(p, s.span)
 		strings.write_string(&b, indent_text(level))
-		strings.write_string(&b, stmt_text(p, s, level))
+		strings.write_string(&b, text)
 		// A comment after the statement on its last line stays there.
 		if p.next < len(p.comments) {
 			c := p.comments[p.next]
@@ -178,9 +212,20 @@ stmts_text :: proc(p: ^Printer, stmts: []^Stmt, level: int, end: int) -> string 
 		}
 		strings.write_string(&b, "\n")
 		previous_end = finish
+		previous_spaced = spaced
 	}
-	write_comments(p, &b, end, level, &previous_end)
+	write_comments(p, &b, end, level, &previous_end, &previous_spaced, len(p.comments), false)
 	return strings.to_string(b)
+}
+
+// The statements that stand out from what is around them when they take several lines.
+@(private)
+is_spaced_kind :: proc(s: ^Stmt) -> bool {
+	#partial switch _ in s.kind {
+	case Learn, Draw, On, Every:
+		return true
+	}
+	return false
 }
 
 @(private)

@@ -120,6 +120,7 @@ test_every_kind_of_statement_is_written_in_its_one_form :: proc(t: ^testing.T) {
 	text := `hidden learn star size with points 5 spin 0 [
   give size * 2
 ]
+
 for i from 1 to 10 by 2 [ quit ]
 for each p in ps [ quit ]
 while x < 3 [ x = x + 1 ]
@@ -224,4 +225,56 @@ test_arithmetic_after_the_last_value_of_a_call_is_put_in_brackets_and_spaced :: 
 	expect_formatted(t, "rect at 0 0 size 800 600/0.4 fill blue\n", "rect at 0 0 size 800 (600 / 0.4) fill blue\n")
 	expect_formatted(t, "print 600/0.4\n", "print (600 / 0.4)\n")
 	expect_formatted(t, "print 600 / 0.4 + 1\n", "print (600 / 0.4 + 1)\n")
+}
+
+@(test)
+test_a_block_over_several_lines_gets_a_blank_line_before_and_after :: proc(t: ^testing.T) {
+	text := "x = 1\nlearn star size [\n  give size * 2\n]\ny = 2\ndraw [\n  circle at 1 1 radius 2\n]\non key \"a\" [\n  quit\n]\nevery 2 seconds [\n  y = 1\n]\nz = 3\n"
+	want := "x = 1\n\nlearn star size [\n  give size * 2\n]\n\ny = 2\n\ndraw [\n  circle at 1 1 radius 2\n]\n\non key \"a\" [\n  quit\n]\n\nevery 2 seconds [\n  y = 1\n]\n\nz = 3\n"
+	expect_formatted(t, text, want)
+}
+
+@(test)
+test_one_line_blocks_next_to_each_other_stay_together :: proc(t: ^testing.T) {
+	text := "on key \"a\" [ quit ]\non key \"b\" [ quit ]\non key \"c\" [ quit ]\n"
+	expect_formatted(t, text, text)
+	// And a one-line block next to a statement that is not a block gets no blank line.
+	expect_formatted(t, "x = 1\non key \"a\" [ quit ]\ny = 2\n", "x = 1\non key \"a\" [ quit ]\ny = 2\n")
+}
+
+@(test)
+test_a_one_line_block_that_is_too_long_is_broken_and_then_gets_its_blank_lines :: proc(t: ^testing.T) {
+	long := "x = 1\non key \"a\" [ circle at 100 100 radius 50 fill red  circle at 200 200 radius 50 fill red  circle at 300 300 radius 50 fill red ]\ny = 2\n"
+	out := formatted(t, long)
+	testing.expect(t, strings.contains(out, "x = 1\n\non key \"a\" [\n"))
+	testing.expect(t, strings.contains(out, "]\n\ny = 2\n"))
+}
+
+@(test)
+test_two_blocks_in_a_row_have_one_blank_line_between_and_no_blank_lines_at_the_edges_of_a_block :: proc(t: ^testing.T) {
+	text := "draw [\n  on key \"a\" [\n    quit\n  ]\n  on key \"b\" [\n    quit\n  ]\n]\ndraw [\n  background 0\n]\n"
+	want := "draw [\n  on key \"a\" [\n    quit\n  ]\n\n  on key \"b\" [\n    quit\n  ]\n]\n\ndraw [\n  background 0\n]\n"
+	expect_formatted(t, text, want)
+	// More blank lines in the sketch are cut to one.
+	expect_formatted(t, "draw [\n  background 0\n]\n\n\n\ndraw [\n  background 1\n]\n", "draw [\n  background 0\n]\n\ndraw [\n  background 1\n]\n")
+}
+
+@(test)
+test_a_comment_right_above_a_block_stays_with_it_and_the_blank_line_goes_above_the_comment :: proc(t: ^testing.T) {
+	text := "x = 1\n// the star\n// verb\nlearn star size [\n  give size * 2\n]\n// after\ny = 2\n"
+	want := "x = 1\n\n// the star\n// verb\nlearn star size [\n  give size * 2\n]\n\n// after\ny = 2\n"
+	expect_formatted(t, text, want)
+	// A comment with a blank line between it and the block is its own thing.
+	expect_formatted(t, "// about the sketch\n\ndraw [\n  background 0\n]\n", "// about the sketch\n\ndraw [\n  background 0\n]\n")
+}
+
+@(test)
+test_a_trailing_comment_on_a_block_stays_and_the_blank_line_follows_it :: proc(t: ^testing.T) {
+	expect_formatted(t, "draw [\n  background 0\n] // the picture\ny = 1\n", "draw [\n  background 0\n]  // the picture\n\ny = 1\n")
+}
+
+@(test)
+test_control_flow_does_not_get_blank_lines :: proc(t: ^testing.T) {
+	text := "x = 1\nif x is 1 [\n  quit\n]\nrepeat 3 [\n  quit\n]\ny = 2\n"
+	expect_formatted(t, text, text)
 }

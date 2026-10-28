@@ -5,6 +5,7 @@ draw [
   circle at pos radius size
   frames_seen = frames_seen + 1
 ]
+
 on key "space" [ size = size + 10 ]
 on mouse down [ pos = mouse ]
 every 2 seconds [ tint = red ]

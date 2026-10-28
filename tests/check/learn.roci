@@ -2,10 +2,12 @@
 // defaults, local names, recursion and a verb used with two record shapes.
 learn step p [ p.pos = p.pos + p.vel ]
 learn double n [ give n * 2 ]
+
 learn fact n [
   if n < 2 [ give 1 ]
   give n * fact (n - 1)
 ]
+
 learn star size with points 5 spin 0 [
   turns = points + spin
   repeat points [ circle at 100 100 radius size ]
