@@ -204,14 +204,14 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 @(private)
 run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) -> int {
 	p, ok := interp.load(name, text)
-	if len(p.checked.diagnostics) > 0 {
+	if len(p.checked.diagnostics) > 0 && (ok || json) {
 		if json {
 			fmt.sbprintf(out, "%s", lang.diagnostics_json(p.src, p.checked.diagnostics, context.temp_allocator))
 		} else {
 			fmt.sbprintf(err, "%s\n", term.message(lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator), term.err_colour))
 		}
 	}
-	if !ok {
+	if !ok && json {
 		interp.destroy(p)
 		return 1
 	}
@@ -228,8 +228,13 @@ run_windows :: proc(name, text: string, json: bool, out, err: ^strings.Builder) 
 		fmt.sbprintf(err, "I could not open a window on this computer.\n")
 		return 3
 	}
-	if running := interp.active(); running != nil && len(running.errors) > 0 {
-		return 3
+	if running := interp.active(); running != nil {
+		if running.has_errors {
+			return 1 // it was never fixed
+		}
+		if len(running.errors) > 0 {
+			return 3
+		}
 	}
 	return 0
 }

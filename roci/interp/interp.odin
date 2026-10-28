@@ -137,15 +137,18 @@ destroy :: proc(p: ^Interp) {
 // drawing is recorded and each `draw` block is handed to the app loop. Does
 // nothing for a sketch with check errors.
 start :: proc(p: ^Interp) {
+	current = p
+	roci.set_frame_hook(frame_hook)
 	if p.has_errors {
+		// It does not run, but the file is still watched, and the overlay says why.
+		set_problem(p, p)
+		update_overlay(p)
 		return
 	}
-	current = p
 	p.alloc = p.long
 	frame := Frame{}
 	defer delete(frame.slots)
 	p.frame = &frame
-	roci.set_frame_hook(frame_hook)
 	begin_block(p)
 	exec_stmts(p, p.checked.program.stmts)
 	p.frame = nil

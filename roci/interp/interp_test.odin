@@ -888,3 +888,59 @@ test_saving_the_watched_file_reloads_the_sketch :: proc(t: ^testing.T) {
 	roci.step()
 	testing.expect_value(t, printed(next), "2")
 }
+
+write_sketch :: proc(t: ^testing.T, path, text: string) {
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)text) == nil)
+}
+
+@(test)
+test_saving_the_working_text_back_clears_the_errors_of_the_last_save :: proc(t: ^testing.T) {
+	_ = os.make_directory_all("output/tests")
+	path := "output/tests/recover_sketch.roci"
+	good := "n = 0\ndraw [\n  n = n + 1\n]\n"
+	write_sketch(t, path, good)
+	p, _ := load(path, good)
+	roci.start_headless(1)
+	watch(p, path)
+	start(p)
+	defer finish_all()
+	roci.step()
+	time.sleep(20 * time.Millisecond)
+	write_sketch(t, path, "n = 0\ndraw [\n  circel at 1 1 radius 1\n]\n")
+	testing.expect(t, poll(p) == p)
+	title, _ := roci.overlay_text()
+	testing.expect(t, strings.contains(title, "circel"))
+	time.sleep(20 * time.Millisecond)
+	write_sketch(t, path, good) // the fix is to undo the change
+	testing.expect(t, poll(p) == p)
+	title, _ = roci.overlay_text()
+	testing.expect_value(t, title, "")
+	testing.expect_value(t, p.problem_title, "")
+}
+
+@(test)
+test_a_sketch_opened_with_errors_waits_and_runs_when_the_file_is_fixed :: proc(t: ^testing.T) {
+	_ = os.make_directory_all("output/tests")
+	path := "output/tests/open_broken_sketch.roci"
+	write_sketch(t, path, "circel at 1 1 radius 1\n")
+	roci.start_headless(1)
+	data, _ := os.read_entire_file(path, context.temp_allocator)
+	p, ok := load(path, string(data))
+	testing.expect(t, !ok)
+	watch(p, path)
+	start(p)
+	defer finish_all()
+	roci.step()
+	title, _ := roci.overlay_text()
+	testing.expect(t, strings.contains(title, "circel"))
+	time.sleep(20 * time.Millisecond)
+	write_sketch(t, path, "n = 0\ndraw [\n  n = n + 1\n  print n\n]\n")
+	next := poll(p)
+	testing.expect(t, next != p)
+	testing.expect(t, !next.has_errors)
+	roci.step()
+	testing.expect_value(t, printed(next), "1")
+	title, _ = roci.overlay_text()
+	testing.expect_value(t, title, "")
+	testing.expect(t, len(roci.open_windows()) >= 1)
+}

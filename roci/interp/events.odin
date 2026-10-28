@@ -82,7 +82,7 @@ event_name :: proc(kind: roci.Happening) -> string {
 // Put into each window's frame by the app loop.
 frame_hook :: proc(w: roci.Window) {
 	p := current
-	if p == nil || p.has_errors {
+	if p == nil {
 		return
 	}
 	if roci.frame_count() != p.hook_frame {

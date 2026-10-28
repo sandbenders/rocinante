@@ -216,24 +216,7 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> 
 reload :: proc(p: ^Interp, text: string, restart := false) -> (^Interp, Outcome) {
 	n, ok := load(p.src.name, text)
 	if !ok {
-		first := n.checked.diagnostics[0]
-		for d in n.checked.diagnostics {
-			if lang.severity_of(d) == .Error {
-				first = d
-				break
-			}
-		}
-		title, lines := lang.plain_message(n.src, first)
-		if title != p.problem_title {
-			p.problem_title = strings.clone(title, p.long)
-			p.problem_lines = make([]string, len(lines), p.long)
-			for l, i in lines {
-				p.problem_lines[i] = strings.clone(l, p.long)
-			}
-			if p.echo {
-				fmt.eprintfln("%s %s\n\n%s", term.err("rocinante:", .Bold_Cyan), term.err("the sketch has errors, so the last good version keeps running", .Yellow), term.message(lang.render_all(n.src, n.checked.diagnostics, context.temp_allocator), term.err_colour))
-			}
-		}
+		set_problem(p, n)
 		destroy(n)
 		update_overlay(p)
 		return p, .Failed
@@ -244,7 +227,8 @@ reload :: proc(p: ^Interp, text: string, restart := false) -> (^Interp, Outcome)
 	old_stmts, new_stmts := p.checked.program.stmts, n.checked.program.stmts
 	carry := make([]int, len(new_stmts), context.temp_allocator)
 	used := make([]bool, len(old_stmts), context.temp_allocator)
-	need_restart := restart
+	// A sketch that never ran (it had errors when it was opened) has nothing to carry over.
+	need_restart := restart || p.has_errors
 	for s, i in new_stmts {
 		carry[i] = -1
 		written := statement_text(n, s)
@@ -268,7 +252,7 @@ reload :: proc(p: ^Interp, text: string, restart := false) -> (^Interp, Outcome)
 		roci.begin_restart()
 		start(n)
 		roci.end_restart()
-		notice(n, "restarted: the sketch runs again from its first line" if restart else "restarted: a line that opens a window or draws changed, so the sketch runs again from its first line")
+		notice(n, "the errors are fixed: the sketch runs from its first line" if p.has_errors else "restarted: the sketch runs again from its first line" if restart else "restarted: a line that opens a window or draws changed, so the sketch runs again from its first line")
 		append(&retired, p)
 		update_overlay(n)
 		return n, .Restarted
@@ -332,6 +316,31 @@ reload :: proc(p: ^Interp, text: string, restart := false) -> (^Interp, Outcome)
 	return n, .Reloaded
 }
 
+// Remembers the first error of `bad` (a sketch that did not check) to show over the
+// running one, and says so on the console, once for each message.
+set_problem :: proc(p, bad: ^Interp) {
+	first := bad.checked.diagnostics[0]
+	for d in bad.checked.diagnostics {
+		if lang.severity_of(d) == .Error {
+			first = d
+			break
+		}
+	}
+	title, lines := lang.plain_message(bad.src, first)
+	if title == p.problem_title {
+		return
+	}
+	p.problem_title = strings.clone(title, p.long)
+	p.problem_lines = make([]string, len(lines), p.long)
+	for l, i in lines {
+		p.problem_lines[i] = strings.clone(l, p.long)
+	}
+	if p.echo {
+		what := "the sketch has errors, so nothing runs until they are fixed" if p.has_errors else "the sketch has errors, so the last good version keeps running"
+		fmt.eprintfln("%s %s\n\n%s", term.err("rocinante:", .Bold_Cyan), term.err(what, .Yellow), term.message(lang.render_all(bad.src, bad.checked.diagnostics, context.temp_allocator), term.err_colour))
+	}
+}
+
 // Checks the sketch file for a change and reloads it. Gives the interpreter to use.
 poll :: proc(p: ^Interp) -> ^Interp {
 	if p.path == "" {
@@ -343,7 +352,16 @@ poll :: proc(p: ^Interp) -> ^Interp {
 	}
 	p.mtime = t
 	data, read_err := os.read_entire_file(p.path, context.temp_allocator)
-	if read_err != nil || string(data) == p.src.text {
+	if read_err != nil {
+		return p
+	}
+	if string(data) == p.src.text {
+		// Saved back to the text that is running: the errors of the last save are gone.
+		if p.problem_title != "" {
+			p.problem_title, p.problem_lines = "", nil
+			update_overlay(p)
+			notice(p, "the errors are fixed")
+		}
 		return p
 	}
 	next, _ := reload(p, string(data))
