@@ -17,6 +17,7 @@ Happening :: enum u8 {
 	Resize,
 	Move,
 	Focus,
+	Restart, // Ctrl+R or Cmd+R
 }
 
 Happened :: struct {
@@ -76,6 +77,10 @@ note_event :: proc(event: platform.Event) {
 	switch e in event {
 	case platform.Key_Changed:
 		if w := win_for_platform(e.window); w != nil && e.down && !e.repeat {
+			if e.scancode == .R && (.Ctrl in e.mods || .Super in e.mods) {
+				log_event(.Restart, w)
+				return
+			}
 			if name := name_for_scancode(e.scancode); name != "" {
 				the.last_key = name
 				log_event(.Key_Down, w, name)

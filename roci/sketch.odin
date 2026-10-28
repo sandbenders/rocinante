@@ -79,6 +79,9 @@ Sketch :: struct {
 	log:          [dynamic]Happened, // what happened in the frame in progress
 	last_key:     string,
 	hook:         proc(w: Window), // run for each window in each frame
+	overlay_title: string, // what the error overlay says, or "" for none
+	overlay_lines: [dynamic]string,
+	reuse:        [dynamic]^Win, // windows of the last run a restart gives to the first `window` calls
 	shot_app:     platform.App, // the graphics a headless sketch starts for its first picture
 	shot_renderer: gfx.Renderer,
 	shot_ready:   bool,
@@ -146,6 +149,9 @@ shutdown :: proc() {
 		platform.shutdown(&the.shot_app)
 	}
 	delete(the.log)
+	set_overlay("", nil)
+	delete(the.overlay_lines)
+	delete(the.reuse)
 	delete(the.error)
 	the = {}
 }

@@ -27,6 +27,23 @@ window :: proc(width, height: int, at: Maybe([2]int) = nil) -> Window {
 		}
 		return w.id
 	}
+	if len(the.reuse) > 0 {
+		w := the.reuse[0]
+		ordered_remove(&the.reuse, 0)
+		w.explicit = true
+		w.width, w.height = max(width, 1), max(height, 1)
+		delete(w.title)
+		w.title = strings.clone("rocinante")
+		if w.handle != nil {
+			platform.set_size(w.handle, w.width, w.height)
+			platform.set_title(w.handle, "rocinante")
+			if p, has := at.?; has {
+				platform.set_position(w.handle, p.x, p.y)
+			}
+		}
+		the.newest = w
+		return w.id
+	}
 	start()
 	w := make_win(width, height, at, "rocinante")
 	w.explicit = true
@@ -139,4 +156,43 @@ open_windows :: proc(allocator := context.temp_allocator) -> []Window {
 		}
 	}
 	return out[:]
+}
+
+// ---- starting the sketch again ----
+
+// Gets the windows ready for a sketch that runs again from its first line: their
+// drawing, `draw` blocks and messages are forgotten, and the first `window` calls
+// take the windows that are already open (in the order they were made) instead of
+// opening new ones, so a restart does not make the windows jump. Close what is
+// left over with `end_restart`.
+begin_restart :: proc() {
+	clear(&the.reuse)
+	first := true
+	for w in the.windows {
+		if !w.alive {
+			continue
+		}
+		gfx.begin_frame(&w.list)
+		w.draw, w.on_receive = nil, nil
+		for m in w.inbox {
+			value_destroy(m)
+		}
+		clear(&w.inbox)
+		if first {
+			w.explicit = false
+			the.default = w
+			first = false
+		} else {
+			append(&the.reuse, w)
+		}
+	}
+	the.newest, the.current = nil, nil
+}
+
+// Closes the windows the restarted sketch did not ask for.
+end_restart :: proc() {
+	for w in the.reuse {
+		close_window(w)
+	}
+	clear(&the.reuse)
 }

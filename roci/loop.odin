@@ -92,6 +92,11 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 // the batches are still built (it is the CPU's share of the frame).
 @(private)
 show_frame :: proc(w: ^Win) {
+	marked := gfx.mark(&w.list)
+	defer gfx.rewind(&w.list, marked)
+	if the.overlay_title != "" {
+		draw_overlay(w)
+	}
 	canvas := [2]f32{f32(w.width), f32(w.height)}
 	if w.handle != nil {
 		m := platform.window_metrics(w.handle)

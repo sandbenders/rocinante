@@ -439,3 +439,26 @@ test_every_style_and_transform_change_reaches_the_next_command :: proc(t: ^testi
 		destroy(&list)
 	}
 }
+
+@(test)
+test_a_list_can_be_rewound_to_a_mark :: proc(t: ^testing.T) {
+	list: Command_List
+	defer destroy(&list)
+	begin_frame(&list)
+	circle(&list, 1, 1, 1)
+	m := mark(&list)
+	push(&list, .Style)
+	set_fill(&list, {1, 2, 3, 255})
+	rect(&list, 0, 0, 5, 5)
+	debug_text(&list, "hi", 0, 0, 1)
+	background(&list, {9, 9, 9, 255})
+	rewind(&list, m)
+	testing.expect_value(t, len(list.commands), 1)
+	testing.expect_value(t, len(list.saved), 0)
+	testing.expect_value(t, len(list.text), 0)
+	testing.expect_value(t, list.style, DEFAULT_STYLE)
+	testing.expect_value(t, list.background, DEFAULT_BACKGROUND)
+	// And recording goes on from there.
+	circle(&list, 2, 2, 2)
+	testing.expect_value(t, len(list.commands), 2)
+}

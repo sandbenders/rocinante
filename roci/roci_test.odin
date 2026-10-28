@@ -936,3 +936,75 @@ test_a_draw_block_still_draws_into_its_own_window :: proc(t: ^testing.T) {
 	testing.expect_value(t, which_window[0], a)
 	testing.expect_value(t, len(commands_of(a)), 1)
 }
+
+// ---- the overlay, restarts and Ctrl+R ----
+
+@(test)
+test_the_overlay_is_drawn_over_the_frame_and_taken_off_again :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	circle(10, 10, 5)
+	step()
+	plain := the.windows[0].batcher.stats.instances
+	set_overlay("Something is wrong", {"Line one of the explanation."})
+	step()
+	testing.expect(t, the.windows[0].batcher.stats.instances > plain)
+	testing.expect_value(t, len(recorded(the.windows[0].id)), 1) // the sketch's own commands only
+	title, lines := overlay_text()
+	testing.expect_value(t, title, "Something is wrong")
+	testing.expect_value(t, len(lines), 1)
+	set_overlay("", nil)
+	step()
+	testing.expect_value(t, the.windows[0].batcher.stats.instances, plain)
+}
+
+@(test)
+test_wrap_text_cuts_at_spaces_and_keeps_short_text_whole :: proc(t: ^testing.T) {
+	testing.expect_value(t, len(wrap_text("short", 20)), 1)
+	lines := wrap_text("the quick brown fox jumps over", 12)
+	testing.expect_value(t, len(lines), 3)
+	testing.expect_value(t, lines[0], "the quick")
+	testing.expect_value(t, lines[1], "brown fox")
+	testing.expect_value(t, lines[2], "jumps over")
+	long := wrap_text("abcdefghijklmnopqrstuvwxyz", 10)
+	testing.expect_value(t, long[0], "abcdefghij")
+}
+
+@(test)
+test_a_restart_gives_the_open_windows_to_the_new_run_and_closes_the_rest :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	a := window(100, 100)
+	b := window(200, 200)
+	circle(5, 5, 5)
+	draw(b, proc() {})
+	begin_restart()
+	testing.expect_value(t, len(recorded(a)), 0)
+	testing.expect(t, win_for(b).draw == nil)
+	first := window(300, 120)
+	testing.expect_value(t, first, a) // the first window is reused and resized
+	testing.expect_value(t, win_for(a).width, 300)
+	end_restart()
+	testing.expect_value(t, len(open_windows()), 1)
+	begin_restart()
+	x := window(50, 50)
+	y := window(60, 60)
+	end_restart()
+	testing.expect_value(t, x, a)
+	testing.expect(t, y != a)
+	testing.expect_value(t, len(open_windows()), 2)
+}
+
+@(test)
+test_ctrl_r_and_cmd_r_are_logged_as_a_restart :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(100, 100)
+	step({platform.Key_Changed{window = platform.Window_Id(w), scancode = .R, down = true, mods = {.Ctrl}}})
+	testing.expect_value(t, len(happened()), 1)
+	testing.expect_value(t, happened()[0].kind, Happening.Restart)
+	step({platform.Key_Changed{window = platform.Window_Id(w), scancode = .R, down = true, mods = {.Super}}})
+	testing.expect_value(t, happened()[0].kind, Happening.Restart)
+	step({platform.Key_Changed{window = platform.Window_Id(w), scancode = .R, down = true}})
+	testing.expect_value(t, happened()[0].kind, Happening.Key_Down)
+}

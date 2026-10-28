@@ -417,3 +417,38 @@ pop :: proc(list: ^Command_List) -> bool {
 	}
 	return true
 }
+
+// ---- marks ----
+
+// Where a list was, so what was recorded after it can be taken back: the error
+// overlay is drawn over a frame, shown, and then removed so a window that keeps its
+// commands from frame to frame does not collect one overlay a frame.
+List_Mark :: struct {
+	commands, looks, text, gradients, saved: int,
+	style:            Style,
+	transform:        Transform,
+	look_changed:     bool,
+	span:             Span,
+	background:       maths.Colour,
+	background_paint: Gradient_Ref,
+}
+
+mark :: proc(list: ^Command_List) -> List_Mark {
+	return List_Mark{
+		commands = len(list.commands), looks = len(list.looks), text = len(list.text),
+		gradients = len(list.gradients), saved = len(list.saved),
+		style = list.style, transform = list.transform, look_changed = list.look_changed,
+		span = list.span, background = list.background, background_paint = list.background_paint,
+	}
+}
+
+// Puts the list back as it was at `m`.
+rewind :: proc(list: ^Command_List, m: List_Mark) {
+	resize(&list.commands, m.commands)
+	resize(&list.looks, m.looks)
+	resize(&list.text, m.text)
+	resize(&list.gradients, m.gradients)
+	resize(&list.saved, m.saved)
+	list.style, list.transform, list.look_changed, list.span = m.style, m.transform, m.look_changed, m.span
+	list.background, list.background_paint = m.background, m.background_paint
+}
