@@ -15,7 +15,7 @@ hit = dx > 3 and x is 10
 window size 800 600 at 100 100
 background [ navy black ] angle 90
 fill c
-alpha 200
+alpha 80
 circle at p radius 20
 circle at x (x * 2) radius 50 fill [ red teal ]
 rect at 0 0 size width height fill red

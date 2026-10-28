@@ -123,7 +123,7 @@ WINDOW_PROPERTIES := [?]Property_Def{
 	{"bordered", .Boolean, 0, true},  // whether it has a title bar and frame
 	{"topmost", .Boolean, 0, true},   // whether it stays above other windows
 	{"visible", .Boolean, 0, true},   // whether it is shown
-	{"alpha", .Number, 0, true},      // how solid the whole window is, 0 to 255
+	{"alpha", .Number, 0, true},      // how solid the whole window is, 0 (gone) to 100 (solid)
 	{"smallest", .Vector, 2, true},   // the smallest size it can be dragged to; 0 0 for no limit
 	{"largest", .Vector, 2, true},    // the largest size
 	{"ratio", .Number, 0, true},      // the shape (width over height) it keeps when resized; 0 for any

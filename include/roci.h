@@ -161,7 +161,7 @@ void roci_no_stroke(void);
 /* Sets the width of outlines and lines, in pixels. */
 void roci_thickness(double pixels);
 
-/* Sets how transparent fill and stroke are, 0 to 255. */
+/* Sets how solid fill and stroke are: 0 (gone) to 100 (solid) in the language, 0 to 255 in the Odin and C APIs. */
 void roci_alpha(double amount);
 
 /* Sets how lines and points end from now on: butt, round or square. */

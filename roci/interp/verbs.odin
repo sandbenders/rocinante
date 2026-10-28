@@ -209,7 +209,7 @@ make_look :: proc(it: ^Interp, options: []lang.IR_Option) -> (look: roci.Look, o
 		case "thickness":
 			look.thickness = as_number(eval(it, o.args[0]))
 		case "alpha":
-			look.alpha = as_number(eval(it, o.args[0]))
+			look.alpha = alpha_to_byte(as_number(eval(it, o.args[0])))
 		case "style":
 			merge_style_record(it, &look, eval(it, o.args[0]))
 		case "as":
@@ -242,7 +242,7 @@ merge_style_record :: proc(it: ^Interp, look: ^roci.Look, v: Value) {
 		case "thickness":
 			look.thickness = as_number(r.fields[i])
 		case "alpha":
-			look.alpha = as_number(r.fields[i])
+			look.alpha = alpha_to_byte(as_number(r.fields[i]))
 		}
 	}
 }
@@ -398,7 +398,7 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case "thickness":
 		roci.thickness(n(a, 0))
 	case "alpha":
-		roci.alpha(n(a, 0))
+		roci.alpha(alpha_to_byte(n(a, 0)))
 	case "caps":
 		switch as_text(a[0]) {
 		case "butt":   roci.caps(.Butt)
@@ -415,7 +415,7 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case "rgb", "hsb", "oklch":
 		alpha := 255.0
 		if v, found := option_value(it, call.options, "alpha"); found {
-			alpha = as_number(v)
+			alpha = alpha_to_byte(as_number(v))
 		}
 		switch verb.name {
 		case "rgb":   return roci.rgb(n(a, 0), n(a, 1), n(a, 2), alpha)

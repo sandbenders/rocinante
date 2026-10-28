@@ -128,13 +128,13 @@ draw garden [
   caps round
   for i from 1 to 70 [
     twinkle = noise (i * 3.1) (time * 2)
-    stroke (rgb 255 255 255 alpha (120 + 135 * twinkle))
+    stroke (rgb 255 255 255 alpha (47 + 53 * twinkle))
     thickness (1 + 2 * twinkle)
     point at (random 800) (random (GROUND - 60))
   ]
 
   no stroke
-  circle at 660 110 radius 90 fill (gradient [ p.moon (rgb 255 255 255 alpha 0) p.moon ] as conic angle (time * 20)) alpha 70
+  circle at 660 110 radius 90 fill (gradient [ p.moon (rgb 255 255 255 alpha 0) p.moon ] as conic angle (time * 20)) alpha 27
   sky_top = item 1 of p.sky
   moon_edge = mix p.moon sky_top 0.4
   circle at 660 110 radius 46 fill (gradient [ p.moon moon_edge ] as radial)
@@ -145,10 +145,10 @@ draw garden [
   for i from 0 to 5 [
     ring = 360 - i * 7
     stroke (item (i + 1) of [ tomato orange gold mediumseagreen dodgerblue mediumpurple ])
-    alpha 110
+    alpha 43
     arc at 260 (GROUND + 40) size (ring * 2) (ring * 2) from 180 to 360
   ]
-  alpha 255
+  alpha 100
 
   no stroke
   far_hill = item 2 of p.hill
@@ -170,11 +170,11 @@ draw garden [
 
   for each flower in flowers [ draw_flower flower p ]
 
-  stroke (rgb 255 250 150 alpha 160)
+  stroke (rgb 255 250 150 alpha 63)
   thickness 3
   line from pmouse to mouse
   no stroke
-  circle at mouse radius 14 fill (gradient [ (rgb 255 250 150 alpha 200) (rgb 255 250 150 alpha 0) ] as radial)
+  circle at mouse radius 14 fill (gradient [ (rgb 255 250 150 alpha 78) (rgb 255 250 150 alpha 0) ] as radial)
   circle at mouse radius 3 fill (rgb 255 255 220)
 ]
 

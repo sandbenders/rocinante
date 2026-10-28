@@ -120,7 +120,7 @@ test_vectors_do_array_arithmetic_and_swizzles :: proc(t: ^testing.T) {
 @(test)
 test_colours_do_arithmetic_and_keep_to_0_through_255 :: proc(t: ^testing.T) {
 	text := "c = rgb 100 200 250\nd = c * 2\nprint d.r\nprint d.g\nprint d.b\nprint c.a"
-	expect_printed(t, text, "200\n255\n255\n255")
+	expect_printed(t, text, "200\n255\n255\n100")
 }
 
 @(test)
@@ -1016,8 +1016,8 @@ test_resizable_false_fixes_a_window_and_assigning_the_property_changes_it_later 
 
 @(test)
 test_every_window_word_is_a_property_that_reads_back_what_was_asked :: proc(t: ^testing.T) {
-	text := "p = window size 500 400\nw = window size 300 200 bordered false topmost true smallest 100 50 largest 800 600 ratio 1.5 alpha 200 focusable false visible false grab true parent p modal true\nprint w.bordered\nprint w.topmost\nprint w.smallest\nprint w.largest\nprint w.ratio\nprint w.alpha\nprint w.focusable\nprint w.visible\nprint w.grab\nprint w.modal\nprint (w.parent is p)"
-	expect_printed(t, text, "false\ntrue\n{ 100, 50 }\n{ 800, 600 }\n1.5\n200\nfalse\nfalse\ntrue\ntrue\ntrue")
+	text := "p = window size 500 400\nw = window size 300 200 bordered false topmost true smallest 100 50 largest 800 600 ratio 1.5 alpha 80 focusable false visible false grab true parent p modal true\nprint w.bordered\nprint w.topmost\nprint w.smallest\nprint w.largest\nprint w.ratio\nprint w.alpha\nprint w.focusable\nprint w.visible\nprint w.grab\nprint w.modal\nprint (w.parent is p)"
+	expect_printed(t, text, "false\ntrue\n{ 100, 50 }\n{ 800, 600 }\n1.5\n80\nfalse\nfalse\ntrue\ntrue\ntrue")
 }
 
 @(test)
@@ -1036,4 +1036,10 @@ test_a_window_property_can_be_assigned_through_another_window_property :: proc(t
 test_window_states_the_system_knows_read_false_without_a_system_window :: proc(t: ^testing.T) {
 	text := "w = window size 300 200\nprint w.focused\nprint w.hovered\nprint w.maximized\nprint w.minimized\nprint w.covered\nw.maximized = true\nw.focused = true"
 	expect_printed(t, text, "false\nfalse\nfalse\nfalse\nfalse")
+}
+
+@(test)
+test_alpha_is_a_percentage_in_the_language_and_a_byte_below_it :: proc(t: ^testing.T) {
+	text := "c = rgb 10 20 30 alpha 50\nprint c.a\nc.a = 25\nprint c.a\nd = rgb 1 2 3 alpha 400\nprint d.a\ne = rgb 1 2 3\nprint e.a\nw = window size 100 100 alpha 40\nprint w.alpha\nw.alpha = 100\nprint w.alpha"
+	expect_printed(t, text, "50\n25\n100\n100\n40\n100")
 }

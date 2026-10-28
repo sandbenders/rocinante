@@ -188,7 +188,7 @@ swizzle :: proc(base: Value, parts: string) -> Value {
 			case 'r': return f64(b.r)
 			case 'g': return f64(b.g)
 			case 'b': return f64(b.b)
-			case 'a': return f64(b.a)
+			case 'a': return byte_to_alpha(f64(b.a))
 			}
 		}
 	}
@@ -215,7 +215,7 @@ read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
 		case "mouse":      return vec2(roci.window_mouse(w))
 		case "fullscreen", "resizable", "bordered", "topmost", "visible", "focusable", "grab", "modal", "focused", "hovered", "maximized", "minimized", "covered":
 			return roci.window_flag(w, name)
-		case "alpha":    return roci.window_alpha(w)
+		case "alpha":    return byte_to_alpha(roci.window_alpha(w))
 		case "ratio":    return roci.window_ratio(w)
 		case "smallest": return vec2(roci.window_smallest(w))
 		case "largest":  return vec2(roci.window_largest(w))
@@ -290,7 +290,7 @@ assign_path :: proc(it: ^Interp, base: Value, path: []string, value: Value) -> V
 			case 'r': out.r = n
 			case 'g': out.g = n
 			case 'b': out.b = n
-			case 'a': out.a = n
+			case 'a': out.a = f32(alpha_to_byte(f64(n)))
 			}
 		}
 		return out

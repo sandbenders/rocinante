@@ -443,7 +443,7 @@ Words:
 - `fill`: colour of areas and text. `no fill` turns it off.
 - `stroke`: colour of outlines and lines. `no stroke` turns it off.
 - `thickness`: stroke width in pixels (not `strokeWeight`, and not `width`, which already means size).
-- `alpha`: transparency, applied to fill and stroke.
+- `alpha`: how solid fill and stroke are, 0 (gone) to 100 (solid), applied to fill and stroke.
 - `font`: a font file in the sketch's `assets/` (§4.9) or a system font name; `size` sets text size in pixels; `weight` (`light`, `regular`, `bold`, or a number) is optional.
 - `caps`, `joins`, `blend`: as in the parity map (§6).
 - Precedence: per-element words override `with` blocks, which override the current style.
@@ -454,8 +454,8 @@ Words:
 - Names: the CSS named colours (`red`, `orange`, `teal`, …).
 - Hex: `#ff8800`, or `#ff880080` with alpha.
 - One number for grey: `fill 0`, `background 30`.
-- `rgb r g b`, `hsb h s b`, `oklch l c h`; any of them may be followed by `alpha a`.
-- **Range: every colour channel is 0–255** (decided 2026-10-23), including grey, `rgb`, `hsb` and `alpha`: `fill red alpha 128` is half transparent. One rule, familiar to Processing users. The only exception is `oklch`, which follows its standard CSS notation (lightness 0–1, chroma, hue in degrees) because its whole point is matching that standard.
+- `rgb r g b`, `hsb h s b`, `oklch l c h`; any of them may be followed by `alpha a`, a percentage.
+- **Range: every colour channel is 0–255** (decided 2026-10-23), including grey, `rgb` and `hsb`, **except alpha, which is a percentage from 0 (gone) to 100 (solid)** (decided 2026-10-29): `fill red alpha 50` is half transparent, and `c.a` reads back 0 to 100. Alpha is how much of the picture shows, which people think of as a percentage (gradient `stops` are percentages too); the Odin API and the C ABI keep 0–255 and only the language converts. A hex colour keeps its alpha byte (`#ff880080`). The only exception is `oklch`, which follows its standard CSS notation (lightness 0–1, chroma, hue in degrees) because its whole point is matching that standard.
 - Values outside 0–255 are clamped, with a gentle warning from the checker when it can see the value at load time.
 - Colours are values: `c = rgb 255 136 0`, `mix c blue 0.5`, `c * 0.5` (§5.2 array programming).
 
@@ -697,7 +697,7 @@ Goal: everything the core and standard add-ons of Processing, openFrameworks (0.
 | Display | `displayWidth/Height`, `displayDensity`, `pixelDensity`, `cursor`, `noCursor`, `smooth` | screen size, `ofHideCursor` | Display | automatic HiDPI, `screens` (every connected display, with `width`, `height`, `density`), `cursor`, `smooth` (on by default; `no smooth` for pixel art), `orientation` on mobile | 1 |
 | 2D primitives | `arc`, `circle`, `ellipse`, `line`, `point`, `quad`, `rect`, `square`, `triangle` | ofGraphics draw functions | 2D Graphics | same names | 1 |
 | Style | `fill`, `noFill`, `stroke`, `noStroke`, `strokeWeight`, `strokeCap`, `strokeJoin`, `ellipseMode`, `rectMode`, `push`/`pop` | `ofSetColor`, `ofFill`, `ofSetLineWidth` | gl::color | `fill`, `no fill`, `stroke`, `no stroke`, `thickness`, `alpha`, `caps`, `joins`; per-element style words; `with … [ ]` and `push [ ]` scopes; named styles as records; gradients (`fill [ red teal ] angle 90`, `as radial`, `as conic`) (§5.9) | 1 |
-| Color | `color`, `colorMode`, `lerpColor`, `red`/`green`/`blue`/`alpha`, `hue`/`saturation`/`brightness`, `background`, `clear` | `ofColor` | Color | CSS names (`red`), hex (`#ff8800`), grey number, `rgb`, `hsb`, `oklch`, `alpha`, `mix`, `background`, `clear`; channels 0–255 (§5.9). Because `red`, `green` and `blue` are colour names, a colour's channels are read as fields (`c.r`, `c.g`, `c.b`, `c.a`) and `hue c`, `saturation c`, `brightness c` are verbs | 1 |
+| Color | `color`, `colorMode`, `lerpColor`, `red`/`green`/`blue`/`alpha`, `hue`/`saturation`/`brightness`, `background`, `clear` | `ofColor` | Color | CSS names (`red`), hex (`#ff8800`), grey number, `rgb`, `hsb`, `oklch`, `alpha`, `mix`, `background`, `clear`; channels 0–255 and alpha 0–100 (§5.9). Because `red`, `green` and `blue` are colour names, a colour's channels are read as fields (`c.r`, `c.g`, `c.b`, `c.a`) and `hue c`, `saturation c`, `brightness c` are verbs | 1 |
 | Transform | `translate`, `rotate`, `rotateX/Y/Z`, `scale`, `shearX/Y`, `applyMatrix`, `pushMatrix`/`popMatrix`, `resetMatrix` | `ofTranslate`, `ofRotate`, `ofScale`, `ofNode` | gl::translate etc. | `move`, `turn`, `grow`, `shear`, block-scoped with `push [ ]` | 1 |
 | Shapes and curves | `beginShape`/`vertex`/`endShape`, contours, `bezier`, `bezierVertex`, `curve`, `curveVertex`, `quadraticVertex`, detail/tightness, `PShape`, `createShape` | `ofPath`, `ofPolyline` | Path2d, Shape2d | `shape [ ]`, `vertex`, `bezier`, `curve`, `hole [ ]`, `path`, `polyline` with resample/smooth/simplify; `point on` a curve or bezier at a position along it, and its direction there (Processing's `bezierPoint`/`bezierTangent`) | 1 to 3 |
 | Turtle | (none) | (none) | (none) | `forward`, `back`, `left`, `right`, `pen up/down`, `home`, 3D turtle | 2 |

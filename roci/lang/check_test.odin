@@ -1002,7 +1002,7 @@ test_a_window_can_be_made_fixed_and_asked_whether_it_is :: proc(t: ^testing.T) {
 
 @(test)
 test_the_other_window_words_check_and_a_name_like_them_is_still_a_name :: proc(t: ^testing.T) {
-	expect_errors(t, "w = window size 300 200 bordered false topmost true smallest 100 100 largest 800 600 ratio 1.5 alpha 200 focusable false visible true fullscreen false grab false modal false", {})
+	expect_errors(t, "w = window size 300 200 bordered false topmost true smallest 100 100 largest 800 600 ratio 1.5 alpha 80 focusable false visible true fullscreen false grab false modal false", {})
 	expect_errors(t, "main = window size 800 600\nd = window size 100 100 parent main modal true", {})
 	expect_errors(t, "ratio = 0.5\nvisible = true\nparent = 3\ncircle at 1 1 radius ratio", {})
 }

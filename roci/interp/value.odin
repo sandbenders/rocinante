@@ -350,7 +350,7 @@ format :: proc(it: ^Interp, v: Value, allocator := context.temp_allocator, depth
 		strings.write_string(&b, " }")
 		return strings.to_string(b)
 	case maths.Colour:
-		return strings.concatenate({"rgb ", format_number(f64(x.r), allocator), " ", format_number(f64(x.g), allocator), " ", format_number(f64(x.b), allocator), " alpha ", format_number(f64(x.a), allocator)}, allocator)
+		return strings.concatenate({"rgb ", format_number(f64(x.r), allocator), " ", format_number(f64(x.g), allocator), " ", format_number(f64(x.b), allocator), " alpha ", format_number(byte_to_alpha(f64(x.a)), allocator)}, allocator)
 	case roci.Window:
 		return strings.concatenate({"window ", format_number(f64(x), allocator)}, allocator)
 	case ^roci.Gradient:
@@ -381,4 +381,15 @@ format :: proc(it: ^Interp, v: Value, allocator := context.temp_allocator, depth
 		return strings.to_string(b)
 	}
 	return ""
+}
+
+// The language writes alpha as a percentage (0 gone, 100 solid) while colours and
+// the Odin API keep every channel 0 to 255.
+alpha_to_byte :: proc(percent: f64) -> f64 {
+	return clamp(percent, 0, 100) * 255 / 100
+}
+
+// The other way, rounded so a byte that came from a whole percentage reads back whole.
+byte_to_alpha :: proc(byte: f64) -> f64 {
+	return math.round(byte * 100 / 255 * 10000) / 10000
 }

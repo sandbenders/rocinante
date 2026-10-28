@@ -52,7 +52,7 @@ apply_window_options :: proc(it: ^Interp, w: roci.Window, options: []lang.IR_Opt
 		roci.set_ratio(w, as_number(v))
 	}
 	if v, found := option_value(it, options, "alpha"); found {
-		roci.set_window_alpha(w, as_number(v))
+		roci.set_window_alpha(w, alpha_to_byte(as_number(v)))
 	}
 	if v, found := option_value(it, options, "parent"); found {
 		if owner, ok := v.(roci.Window); ok {
@@ -78,7 +78,7 @@ set_window_property :: proc(it: ^Interp, w: roci.Window, name: string, value: Va
 	case "bordered":   roci.set_bordered(w, as_bool(value))
 	case "topmost":    roci.set_topmost(w, as_bool(value))
 	case "visible":    roci.set_visible(w, as_bool(value))
-	case "alpha":      roci.set_window_alpha(w, as_number(value))
+	case "alpha":      roci.set_window_alpha(w, alpha_to_byte(as_number(value)))
 	case "smallest":
 		limit := as_pair(value)
 		roci.set_smallest(w, int(limit.x), int(limit.y))
