@@ -778,3 +778,46 @@ test_a_send_to_something_that_is_not_a_window_is_an_error :: proc(t: ^testing.T)
 test_a_send_to_a_window_in_a_list_reaches_every_handler :: proc(t: ^testing.T) {
 	expect_errors(t, "w = window 100 100\nv = window 100 100\nsend (pick [ v w ]) 5\non w receive m [ n = m + 1 ]\nn = 0", {})
 }
+
+// ---- hints (step 3c) ----
+
+@(test)
+test_changing_a_shared_list_or_record_gets_a_hint :: proc(t: ^testing.T) {
+	got := check_text("ball = { x: 1 }\nother = ball\nother.x = 5")
+	if testing.expect_value(t, len(got.checked.diagnostics), 1) {
+		d := got.checked.diagnostics[0]
+		testing.expect_value(t, d.id, Message_Id.Shared_Change)
+		testing.expect_value(t, d.args[0], "other")
+		testing.expect_value(t, d.args[1], "ball")
+		testing.expect_value(t, d.args[3], "other = copy ball")
+		testing.expect(t, !has_errors(got.checked.diagnostics), "a hint does not stop a sketch")
+	}
+	// Through the other name too, and for a list changed with `add`.
+	expect_errors(t, "ball = { x: 1 }\nother = ball\nball.x = 5", {.Shared_Change})
+	expect_errors(t, "xs = [ 1 ]\nys = xs\nadd 2 to ys", {.Shared_Change})
+}
+
+@(test)
+test_a_plain_assignment_that_is_never_changed_or_is_copied_stays_quiet :: proc(t: ^testing.T) {
+	expect_errors(t, "ball = { x: 1 }\nother = ball\ny = other.x", {})
+	expect_errors(t, "ball = { x: 1 }\nother = copy ball\nother.x = 5", {})
+	expect_errors(t, "a = 1\nb = a\nb = 5", {})
+	// Numbers are copied, so changing one does not change the other.
+	expect_errors(t, "v = { 1, 2 }\nw = v\nw.x = 5", {})
+}
+
+@(test)
+test_a_name_that_hides_a_top_level_name_gets_a_warning :: proc(t: ^testing.T) {
+	got := check_text("size = 10\nlearn star size [ circle 1 2 size ]\nstar 5")
+	if testing.expect_value(t, len(got.checked.diagnostics), 1) {
+		d := got.checked.diagnostics[0]
+		testing.expect_value(t, d.id, Message_Id.Name_Hides)
+		testing.expect_value(t, d.args[3], "learn star size2 [ circle 1 2 size ]")
+		testing.expect(t, !has_errors(got.checked.diagnostics))
+	}
+	expect_errors(t, "i = 3\nfor i from 1 to 3 [ ]", {.Name_Hides})
+	expect_errors(t, "p = 1\nfor each p in [ 1 2 ] [ ]", {.Name_Hides})
+	expect_errors(t, "points = 3\nlearn star size with points 5 [ circle 1 2 size ]\nstar 1", {.Name_Hides})
+	expect_errors(t, "learn star n [ circle 1 2 n ]\nstar 1", {})
+	expect_errors(t, "for i from 1 to 3 [ ]\nfor i from 1 to 3 [ ]", {})
+}

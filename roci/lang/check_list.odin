@@ -113,8 +113,11 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 					if slice_contains(c.walking[:], path.parts[0]) {
 						changed_while_walking(c, path.parts[0], o.args[0].span)
 					}
-					if sym := lookup(c, path.parts[0]); sym != nil && sym.kind == .Parameter {
-						sym.mutated = true
+					if sym := lookup(c, path.parts[0]); sym != nil {
+						if sym.kind == .Parameter {
+							sym.mutated = true
+						}
+						note_mutation(c, sym, o.args[0].span)
 					}
 				}
 			}

@@ -20,6 +20,6 @@ for each f in fish [ step f ]
 
 a = double 21
 v = double { 1, 2 }
-n = fact 5
+five = fact 5
 star 100
 star 50 points 7 spin 15

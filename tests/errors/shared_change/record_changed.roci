@@ -1,0 +1,3 @@
+ball = { x: 1 }
+other = ball
+other.x = 5

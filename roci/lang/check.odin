@@ -61,6 +61,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		c.instances = make([dynamic]^IR_Instance, allocator)
 		c.instance_keys = make(map[string]^IR_Instance, 8, allocator)
 		c.verb_locals = make([dynamic]^Symbol, allocator)
+		c.aliases = make([dynamic]Alias, allocator)
 		c.verb = nil
 		collect_assignments(&c, parsed.program.stmts)
 		collect_learns(&c, parsed.program.stmts)
@@ -109,6 +110,14 @@ describe_names :: proc(r: Checked, allocator := context.allocator) -> string {
 	return strings.to_string(b)
 }
 
+// `b = a`: the two names hold one list or record (section on sharing), until `b` is
+// given a copy. Kept so a change through either name can say so.
+@(private)
+Alias :: struct {
+	a, b:  ^Symbol, // the source, and the name that was made from it
+	value: Span,    // where `a` was written in `b = a`
+}
+
 // ---- state ----
 
 @(private)
@@ -139,6 +148,7 @@ Checker :: struct {
 	instance_keys: map[string]^IR_Instance,
 	verb_locals:   [dynamic]^Symbol,       // parameters and names made inside the taught verb being checked
 	verb:          ^Verb_Ctx,              // that verb, or nil outside one
+	aliases:       [dynamic]Alias,         // `b = a` of a list or record: two names, one value
 	msg_types:     map[string]Type_Id,     // what is sent to each window, by the name that is sent to (check_messages.odin)
 	msg_mixed:     map[string]bool,        // windows that are sent different kinds of value
 }
@@ -445,6 +455,7 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 		if k.by != nil {
 			by = check_kind(c, k.by, T_NUMBER, "for")
 		}
+		check_hiding(c, k.var, s.span)
 		var := declare_local(c, k.var, .Loop, T_NUMBER, k.body.span)
 		mark := len(c.locals) - 1
 		body := check_block(c, k.body, false)
@@ -464,6 +475,7 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 			note(c, .Wrong_Kind_Here, k.list.span, "for each", "a list", describe(c.types, list.type), fix(c, k.list.span, "[ 1 2 3 ]"))
 			element = T_ERROR
 		}
+		check_hiding(c, k.var, s.span)
 		var := declare_local(c, k.var, .Loop, element, k.body.span)
 		mark := len(c.locals) - 1
 		walked := 0
@@ -621,6 +633,12 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 		note(c, .Kind_Conflict, span, name, prior, describe(c.types, value.type), fix(c, span, fmt.tprintf("%s2", name)))
 	}
 	sym.written = true
+	if load, is_load := value.kind.(IR_Load); is_load && load.symbol != sym {
+		kind := kind_of(c.types, value.type)
+		if kind == .List || kind == .Record {
+			append(&c.aliases, Alias{a = load.symbol, b = sym, value = k.value.span})
+		}
+	}
 	return IR_Assign{target = sym, value = value}
 }
 
@@ -634,6 +652,7 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 	if sym.kind == .Parameter {
 		sym.mutated = true
 	}
+	note_mutation(c, sym, span)
 	// Walk to the thing that has the last part: `ball.pos.x = 1` reads `ball.pos` first.
 	parts := k.target.parts
 	current := sym.type
@@ -673,6 +692,53 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 		}
 	}
 	return IR_Assign{target = sym, fields = parts[1:], value = value}
+}
+
+// A list or record is changed through `sym`: if it was made by `b = a`, say that the
+// other name changes too (a hint, so the sketch still runs).
+@(private)
+note_mutation :: proc(c: ^Checker, sym: ^Symbol, span: Span) {
+	for alias in c.aliases {
+		other: ^Symbol
+		switch sym {
+		case alias.a: other = alias.b
+		case alias.b: other = alias.a
+		}
+		if other != nil {
+			copy_text := fmt.tprintf("copy %s", alias.a.name)
+			note(c, .Shared_Change, span, sym.name, other.name, "", fix(c, alias.value, copy_text))
+			return
+		}
+	}
+}
+
+// The span of the whole word `word` in the line that holds `near`, from `near` on.
+@(private)
+word_span :: proc(c: ^Checker, near: Span, word: string) -> Span {
+	pos := position_of(c.src, near.start)
+	line := line_text(c.src, pos.line)
+	line_start := c.src.line_starts[pos.line - 1]
+	from := clamp(near.start - line_start, 0, len(line))
+	for i := from; i + len(word) <= len(line); i += 1 {
+		if line[i:i + len(word)] != word {
+			continue
+		}
+		before_ok := i == 0 || !is_name_rune(rune(line[i - 1]))
+		after_ok := i + len(word) == len(line) || !is_name_rune(rune(line[i + len(word)]))
+		if before_ok && after_ok {
+			return Span{near.file, line_start + i, line_start + i + len(word)}
+		}
+	}
+	return near
+}
+
+// A name made inside a verb or loop with the name of a top-level variable hides it.
+@(private)
+check_hiding :: proc(c: ^Checker, name: string, near: Span) {
+	if _, found := c.globals[name]; found {
+		span := word_span(c, near, name)
+		note(c, .Name_Hides, span, name, "", "", fix(c, span, fmt.tprintf("%s2", name)))
+	}
 }
 
 // ---- names and fields in expressions ----

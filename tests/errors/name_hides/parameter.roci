@@ -1,0 +1,5 @@
+size = 10
+learn star size [
+  circle 100 100 size
+]
+star 50

@@ -1,0 +1,8 @@
+── Warning: `size` hides a name of the sketch ───────── sketch.roci:2:12
+
+2 │ learn star size [
+  │            ^^^^
+
+`size` is also a name you give a value to at the top of the sketch. In here, `size` means this one, and the other cannot be reached. A different name avoids mixing the two up.
+
+Write:  learn star size2 [

@@ -89,6 +89,8 @@ Message_Id :: enum u8 {
 	Give_Kinds_Differ,
 	Constant_Changed_By_Verb,
 	Result_Dropped,
+	Shared_Change,
+	Name_Hides,
 }
 
 Entry :: struct {
@@ -288,6 +290,12 @@ CATALOGUE := [Message_Id]Entry{
 		"Write:", "{d}"},
 	.Result_Dropped = {.Warning, "`{a}` gives a value back, and nothing uses it",
 		"This line calls `{a}` and throws its result away, which is usually a mistake. Keep the value in a name.",
+		"Write:", "{d}"},
+	.Shared_Change = {.Hint, "`{a}` and `{b}` are the same value",
+		"`{a}` and `{b}` are one list or record, so changing it through `{a}` changes it through `{b}` too. If you wanted a separate one, copy it where it is made.",
+		"Write:", "{d}"},
+	.Name_Hides = {.Warning, "`{a}` hides a name of the sketch",
+		"`{a}` is also a name you give a value to at the top of the sketch. In here, `{a}` means this one, and the other cannot be reached. A different name avoids mixing the two up.",
 		"Write:", "{d}"},
 	.Changed_While_Walking = {.Error, "`{a}` changes while the loop walks it",
 		"A `for each` is going through `{a}` right now, and adding to it, taking from it or giving it a new value in the middle makes the walk lose its place. Walk a copy, then change the list.",

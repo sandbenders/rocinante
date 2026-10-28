@@ -1,0 +1,8 @@
+── Hint: `other` and `ball` are the same value ───────── sketch.roci:3:1
+
+3 │ other.x = 5
+  │ ^^^^^
+
+`other` and `ball` are one list or record, so changing it through `other` changes it through `ball` too. If you wanted a separate one, copy it where it is made.
+
+Write:  other = copy ball

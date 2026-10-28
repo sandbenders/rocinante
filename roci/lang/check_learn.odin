@@ -160,6 +160,7 @@ instantiate :: proc(c: ^Checker, decl: ^Learn_Decl, arg_types: []Type_Id, unused
 
 	params := make([dynamic]^Symbol, c.alloc)
 	for name, i in learn.params {
+		check_hiding(c, name, decl.span)
 		s := new(Symbol, c.alloc)
 		s^ = Symbol{name = name, kind = .Parameter, type = arg_types[i], written = true, scope = c.depth + 1, first_write = decl.span}
 		append(&params, s)
@@ -167,6 +168,7 @@ instantiate :: proc(c: ^Checker, decl: ^Learn_Decl, arg_types: []Type_Id, unused
 	}
 	defaults := make([dynamic]IR_Default, c.alloc)
 	for d in learn.defaults {
+		check_hiding(c, d.word, decl.span)
 		value := check_expr(c, d.value, false)
 		s := new(Symbol, c.alloc)
 		s^ = Symbol{name = d.word, kind = .Parameter, type = value.type, written = true, scope = c.depth + 1, first_write = decl.span}
