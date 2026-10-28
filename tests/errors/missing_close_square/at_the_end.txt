@@ -7,6 +7,6 @@ The opening square bracket here has no closing one. Add the closing square brack
 
 Write:
     repeat 3 [
-      circle 100 100 50
-      circle 200 200 50
+      circle at 100 100 radius 50
+      circle at 200 200 radius 50
     ]

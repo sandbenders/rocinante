@@ -1,8 +1,8 @@
-── I don't know this character ──────────────────────── sketch.roci:1:19
+── I don't know this character ──────────────────────── sketch.roci:1:29
 
-1 │ circle 100 100 50 ;
-  │                   ^
+1 │ circle at 100 100 radius 50 ;
+  │                             ^
 
 `;` is not part of the language. Words are made of letters, numbers of digits, and a hash starts a comment.
 
-Without it:  circle 100 100 50
+Without it:  circle at 100 100 radius 50

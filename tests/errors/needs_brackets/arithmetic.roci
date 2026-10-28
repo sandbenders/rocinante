@@ -1,2 +1,2 @@
 x = 1
-circle x + 1 100 50
+circle at x + 1 100 radius 50

@@ -1,0 +1,8 @@
+── `window` is written with labels ───────────────────── sketch.roci:1:1
+
+1 │ window 800 600 at 10 10
+  │ ^^^^^^^^^^^^^^^^^^^^^^^
+
+Shapes are written with the word size in front of their values, so a number is never mistaken for another and the line reads as what it draws.
+
+Write:  window size 800 600 at 10 10

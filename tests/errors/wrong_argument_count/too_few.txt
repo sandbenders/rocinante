@@ -1,8 +1,8 @@
-── `circle` takes 3 values (x, y and radius) or 2 values (position and radius) ─── sketch.roci:1:1
+── `mix` takes 3 values (first, second and amount) or 3 values (first, second and amount) ─── sketch.roci:1:5
 
-1 │ circle 100
-  │ ^^^^^^^^^^
+1 │ x = mix 1 2
+  │     ^^^^^^^
 
-This line gives `circle` 1 value.
+This line gives `mix` 2 values.
 
-For example:  circle 100 radius
+For example:  x = mix 1 2 amount

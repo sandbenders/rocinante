@@ -91,6 +91,7 @@ Message_Id :: enum u8 {
 	Result_Dropped,
 	Shared_Change,
 	Name_Hides,
+	Labels_Needed,
 }
 
 Entry :: struct {
@@ -296,6 +297,9 @@ CATALOGUE := [Message_Id]Entry{
 		"Write:", "{d}"},
 	.Name_Hides = {.Warning, "`{a}` hides a name of the sketch",
 		"`{a}` is also a name you give a value to at the top of the sketch. In here, `{a}` means this one, and the other cannot be reached. A different name avoids mixing the two up.",
+		"Write:", "{d}"},
+	.Labels_Needed = {.Error, "`{a}` is written with labels",
+		"Shapes are written with {b} in front of their values, so a number is never mistaken for another and the line reads as what it draws.",
 		"Write:", "{d}"},
 	.Changed_While_Walking = {.Error, "`{a}` changes while the loop walks it",
 		"A `for each` is going through `{a}` right now, and adding to it, taking from it or giving it a new value in the middle makes the walk lose its place. Walk a copy, then change the list.",

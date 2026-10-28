@@ -7,6 +7,6 @@ The opening square bracket here has no closing one. Line 3 starts no deeper than
 
 Write:
     repeat 3 [
-      circle 100 100 50
+      circle at 100 100 radius 50
     ]
     fill red

@@ -7,5 +7,5 @@ Nothing is open here, so there is nothing to close. The block that opened on lin
 
 Without it:
     repeat 3 [
-      circle 100 100 50
+      circle at 100 100 radius 50
     ]

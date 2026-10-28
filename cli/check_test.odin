@@ -8,7 +8,7 @@ import "core:testing"
 
 @(test)
 test_a_clean_sketch_has_no_problems :: proc(t: ^testing.T) {
-	r := check_text("sketch.roci", "circle 100 100 50\n", false)
+	r := check_text("sketch.roci", "circle at 100 100 radius 50\n", false)
 	testing.expect_value(t, r.errors, 0)
 	testing.expect_value(t, r.report, "")
 	testing.expect_value(t, r.summary, "sketch.roci: no problems")
@@ -17,7 +17,7 @@ test_a_clean_sketch_has_no_problems :: proc(t: ^testing.T) {
 
 @(test)
 test_errors_are_counted_and_the_summary_says_how_many :: proc(t: ^testing.T) {
-	r := check_text("a.roci", "circel 1 2 3\ncircle random width random height 5\n", false)
+	r := check_text("a.roci", "circel 1 2 3\ncircle at random width random height radius 5\n", false)
 	testing.expect_value(t, r.errors, 2)
 	testing.expect_value(t, r.summary, "a.roci: 2 errors")
 	testing.expect(t, strings.contains(r.report, "I don't know the word `circel`"), r.report)
@@ -36,8 +36,8 @@ test_one_error_is_not_plural_and_warnings_and_hints_are_counted_apart :: proc(t:
 
 @(test)
 test_the_tree_is_printed_only_when_asked_for :: proc(t: ^testing.T) {
-	r := check_text("a.roci", "circle 1 2 3\n", true)
-	testing.expect_value(t, strings.trim_space(r.tree), "(call circle (num 1) (num 2) (num 3))")
+	r := check_text("a.roci", "circle at 1 2 radius 3\n", true)
+	testing.expect_value(t, strings.trim_space(r.tree), "(call circle (opt at (num 1) (num 2)) (opt radius (num 3)))")
 }
 
 @(test)
@@ -73,7 +73,7 @@ test_run_check_exit_codes :: proc(t: ^testing.T) {
 	strings.builder_init(&out, context.temp_allocator)
 	strings.builder_init(&err, context.temp_allocator)
 
-	good := make_sketch("good.roci", "circle 100 100 50\n")
+	good := make_sketch("good.roci", "circle at 100 100 radius 50\n")
 	testing.expect_value(t, run_check({good}, &out, &err), 0)
 	testing.expect(t, strings.contains(strings.to_string(out), "no problems"), strings.to_string(out))
 	testing.expect_value(t, strings.to_string(err), "")
@@ -102,15 +102,15 @@ test_run_check_prints_the_tree_after_the_messages :: proc(t: ^testing.T) {
 	out, err: strings.Builder
 	strings.builder_init(&out, context.temp_allocator)
 	strings.builder_init(&err, context.temp_allocator)
-	path := make_sketch("tree.roci", "circle 1 2 3\n")
+	path := make_sketch("tree.roci", "circle at 1 2 radius 3\n")
 	testing.expect_value(t, run_check({path, "--tree"}, &out, &err), 0)
 	text := strings.to_string(out)
-	testing.expect(t, strings.contains(text, "(call circle (num 1) (num 2) (num 3))\n"), text)
+	testing.expect(t, strings.contains(text, "(call circle (opt at (num 1) (num 2)) (opt radius (num 3)))\n"), text)
 }
 
 @(test)
 test_the_checker_runs_after_the_parser_and_types_can_be_printed :: proc(t: ^testing.T) {
-	r := check_text("a.roci", "x = 10\nx = \"ten\"\ncircle x 1 2\n", false, true)
+	r := check_text("a.roci", "x = 10\nx = \"ten\"\ncircle at x 1 radius 2\n", false, true)
 	testing.expect_value(t, r.errors, 1)
 	testing.expect(t, strings.contains(r.report, "`x` keeps one kind of value"), r.report)
 	testing.expect_value(t, strings.trim_space(r.types), "x: a number")

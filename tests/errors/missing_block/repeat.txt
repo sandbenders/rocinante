@@ -1,11 +1,11 @@
 ── `repeat` needs a block ───────────────────────────── sketch.roci:1:10
 
-1 │ repeat 4 circle 100 100 50
+1 │ repeat 4 circle at 100 100 radius 50
   │          ^^^^^^
 
 After `repeat` comes a block in square brackets: everything inside it belongs to the `repeat`.
 
 With a block:
     repeat 4 [
-      circle 100 100 50
+      circle at 100 100 radius 50
     ]

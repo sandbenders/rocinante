@@ -287,9 +287,18 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 		}
 		advance(p)
 		option_args := make([dynamic]^Expr, p.alloc)
-		for _ in 0 ..< n {
+		for len(option_args) < n {
 			next := cur(p)
-			if call_ends_at(p, next) || !is_argument_start(p, next) {
+			if call_ends_at(p, next) {
+				break
+			}
+			// A comma between the values of a word: one error for the call, as in the arguments.
+			if next.kind == .Comma && !(len(p.groups) > 0 && p.groups[len(p.groups) - 1] == .Curly) {
+				append(&commas, next.span)
+				advance(p)
+				continue
+			}
+			if !is_argument_start(p, next) {
 				break
 			}
 			// `rect at p size 10 20`: `size` is a value in places, but here it starts the next word.
@@ -298,7 +307,17 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 					break
 				}
 			}
-			append(&option_args, parse_argument(p, expr_block = kinds[len(option_args)] == .Expr_Block))
+			value := parse_argument(p, expr_block = kinds[len(option_args)] == .Expr_Block)
+			// Arithmetic where values are still due: `at x + 1 100` needs brackets.
+			if len(option_args) + 1 < n && is_binary_operator(cur(p).kind) {
+				for is_binary_operator(cur(p).kind) {
+					op := advance(p)
+					rhs := parse_argument(p)
+					value = new_expr(p, span_join(value.span, rhs.span), Binary{op = binary_op_of(op.kind), lhs = value, rhs = rhs})
+				}
+				append(&p.wraps, value.span)
+			}
+			append(&option_args, value)
 		}
 		append(&options, Option_Use{word = word, span = Span{t.span.file, t.span.start, p.last_end}, args = option_args[:]})
 	}
@@ -341,6 +360,9 @@ skip_call_parentheses :: proc(p: ^Parser, verb: Token) -> bool {
 	fields := strings.fields(words, context.temp_allocator)
 	whole := Span{verb.span.file, verb.span.start, p.tokens[close].span.end}
 	fixed := fmt.aprintf("%s %s", text_of(p, verb), strings.join(fields, " ", context.temp_allocator), allocator = p.alloc)
+	if labelled, ok := registry.write_with_labels(text_of(p, verb), fields); ok {
+		fixed = strings.clone(labelled, p.alloc)
+	}
 	report(p, .Call_Parentheses, whole, fixed)
 	for p.at <= close {
 		advance(p)

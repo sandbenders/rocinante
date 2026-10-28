@@ -2,7 +2,7 @@
 draw [
   background 0
   fill tint
-  circle pos size
+  circle at pos radius size
   frames_seen = frames_seen + 1
 ]
 on key "space" [ size = size + 10 ]
@@ -15,6 +15,6 @@ pos = { 100, 100 }
 tint = teal
 frames_seen = 0
 
-w = window 400 300
-draw w [ circle 10 10 5 ]
+w = window size 400 300
+draw w [ circle at 10 10 radius 5 ]
 on w receive message [ size = size + 1 ]

@@ -118,7 +118,7 @@ p: a vector of 2 numbers
 
 @(test)
 test_the_smallest_program_checks_cleanly :: proc(t: ^testing.T) {
-	expect_types(t, "circle 100 100 50", "")
+	expect_types(t, "circle at 100 100 radius 50", "")
 }
 
 @(test)
@@ -175,9 +175,9 @@ d: a number
 test_a_name_is_read_before_it_is_written_only_when_the_sketch_runs_it_first :: proc(t: ^testing.T) {
 	expect_errors(t, "a = b\nb = 1", {.No_Value_Yet})
 	// Blocks that run later may use names given further down.
-	expect_errors(t, "draw [ circle x 100 50 ]\nx = 10", {})
+	expect_errors(t, "draw [ circle at x 100 radius 50 ]\nx = 10", {})
 	expect_errors(t, "on key \"a\" [ y = x ]\nx = 1\ny = 2", {})
-	expect_errors(t, "every 1 second [ circle x 1 2 ]\nx = 1", {})
+	expect_errors(t, "every 1 second [ circle at x 1 radius 2 ]\nx = 1", {})
 	// A loop runs where it is written.
 	expect_errors(t, "repeat 2 [ y = x ]\nx = 1\ny = 2", {.No_Value_Yet})
 }
@@ -189,13 +189,13 @@ test_unknown_names_get_a_suggestion_from_the_sketch_first :: proc(t: ^testing.T)
 	testing.expect_value(t, d.id, Message_Id.Unknown_Name)
 	testing.expect_value(t, d.args[0], "sped")
 	testing.expect_value(t, d.args[3], "x = speed + 1")
-	far := check_text("circle zzz 100 50")
-	testing.expect_value(t, far.checked.diagnostics[0].args[3], "zzz = 0\ncircle zzz 100 50")
+	far := check_text("circle at zzz 100 radius 50")
+	testing.expect_value(t, far.checked.diagnostics[0].args[3], "zzz = 0\ncircle at zzz 100 radius 50")
 }
 
 @(test)
 test_colour_names_and_built_in_values_are_names :: proc(t: ^testing.T) {
-	expect_errors(t, "fill red\ncircle mouse.x mouse.y 5\nx = pi + tau + fps + frame + time + width + height\nk = key\nflag = true", {})
+	expect_errors(t, "fill red\ncircle at mouse.x mouse.y radius 5\nx = pi + tau + fps + frame + time + width + height\nk = key\nflag = true", {})
 }
 
 @(test)
@@ -295,7 +295,7 @@ test_operators_that_do_not_fit_are_one_error_with_a_fix :: proc(t: ^testing.T) {
 @(test)
 test_a_mistake_inside_an_expression_is_reported_once :: proc(t: ^testing.T) {
 	expect_errors(t, "x = (yy + 1) * 2 + 3", {.Unknown_Name})
-	expect_errors(t, "circle yy 1 2 fill zz", {.Unknown_Name, .Unknown_Name})
+	expect_errors(t, "circle at yy 1 radius 2 fill zz", {.Unknown_Name, .Unknown_Name})
 }
 
 // ---- control flow ----
@@ -323,32 +323,32 @@ test_counts_and_bounds_have_to_be_numbers :: proc(t: ^testing.T) {
 
 @(test)
 test_a_loop_variable_exists_only_inside_its_loop :: proc(t: ^testing.T) {
-	expect_errors(t, "for i from 1 to 3 [ circle i i 5 ]", {})
-	expect_errors(t, "for i from 1 to 3 [ ]\ncircle i 1 2", {.Unknown_Name})
+	expect_errors(t, "for i from 1 to 3 [ circle at i i radius 5 ]", {})
+	expect_errors(t, "for i from 1 to 3 [ ]\ncircle at i 1 radius 2", {.Unknown_Name})
 	// The same name may be used again by another loop.
-	expect_errors(t, "for i from 1 to 3 [ ]\nfor i from 1 to 3 [ circle i 1 2 ]", {})
+	expect_errors(t, "for i from 1 to 3 [ ]\nfor i from 1 to 3 [ circle at i 1 radius 2 ]", {})
 }
 
 @(test)
 test_for_each_gives_its_name_the_type_of_the_items :: proc(t: ^testing.T) {
-	expect_errors(t, "ps = [ { 1, 2 } { 3, 4 } ]\nfor each p in ps [ circle p 5 ]", {})
-	expect_errors(t, "ps = [ { 1, 2 } { 3, 4 } ]\nfor each p in ps [ circle p \"a\" ]", {.Wrong_Argument_Kind})
+	expect_errors(t, "ps = [ { 1, 2 } { 3, 4 } ]\nfor each p in ps [ circle at p radius 5 ]", {})
+	expect_errors(t, "ps = [ { 1, 2 } { 3, 4 } ]\nfor each p in ps [ circle at p radius \"a\" ]", {.Wrong_Argument_Kind})
 	expect_errors(t, "for each p in 5 [ ]", {.Wrong_Kind_Here})
 }
 
 @(test)
 test_draw_every_and_on_blocks_are_checked :: proc(t: ^testing.T) {
-	expect_errors(t, "draw [ background 0\n  circle mouse 20 ]", {})
+	expect_errors(t, "draw [ background 0\n  circle at mouse radius 20 ]", {})
 	expect_errors(t, "draw 3 [ ]", {.Wrong_Kind_Here})
-	expect_errors(t, "w = window 400 300\ndraw w [ ]\non w receive m [ x = m ]\nx = 1", {})
+	expect_errors(t, "w = window size 400 300\ndraw w [ ]\non w receive m [ x = m ]\nx = 1", {})
 	expect_errors(t, "on key 5 [ ]", {.Wrong_Kind_Here})
-	expect_errors(t, "on mouse down [ circle mouse 5 ]", {})
+	expect_errors(t, "on mouse down [ circle at mouse radius 5 ]", {})
 	expect_errors(t, "x = 3\non x receive m [ ]", {.Wrong_Kind_Here})
 }
 
 @(test)
 test_with_checks_its_style_words :: proc(t: ^testing.T) {
-	expect_errors(t, "with fill cyan thickness 2 [ circle 1 2 3 ]", {})
+	expect_errors(t, "with fill cyan thickness 2 [ circle at 1 2 radius 3 ]", {})
 	expect_errors(t, "with fill \"a\" [ ]", {.Wrong_Argument_Kind})
 	expect_errors(t, "glow = { fill: cyan }\nwith glow [ ]", {})
 }
@@ -357,30 +357,30 @@ test_with_checks_its_style_words :: proc(t: ^testing.T) {
 
 @(test)
 test_a_verb_group_picks_its_shape_by_count_then_kinds :: proc(t: ^testing.T) {
-	expect_errors(t, "circle 1 2 3\ncircle mouse 5\nx = mix 1 2 0.5\nc = mix red blue 0.5", {})
+	expect_errors(t, "circle at 1 2 radius 3\ncircle at mouse radius 5\nx = mix 1 2 0.5\nc = mix red blue 0.5", {})
 	expect_types(t, "x = mix 1 2 0.5\nc = mix red blue 0.5", "x: a number\nc: a colour")
 }
 
 @(test)
 test_the_wrong_number_of_arguments_names_what_the_verb_takes :: proc(t: ^testing.T) {
-	got := check_text("circle 100")
+	got := check_text("dist 1")
 	d := got.checked.diagnostics[0]
 	testing.expect_value(t, d.id, Message_Id.Wrong_Argument_Count)
-	testing.expect_value(t, d.args[1], "3 values (x, y and radius) or 2 values (position and radius)")
+	testing.expect_value(t, d.args[1], "4 values (x1, y1, x2 and y2) or 2 values (a and b)")
 	testing.expect_value(t, d.args[2], "1 value")
-	testing.expect_value(t, d.args[3], "circle 100 radius")
+	testing.expect_value(t, d.args[3], "dist 1 b")
 	expect_errors(t, "background", {.Wrong_Argument_Count})
 	expect_errors(t, "x = random", {.Missing_Required_Word, .Missing_Required_Word})
 }
 
 @(test)
 test_the_wrong_kind_of_argument_names_the_parameter :: proc(t: ^testing.T) {
-	got := check_text("circle 100 \"two\" 50")
+	got := check_text("rgb 100 \"two\" 50")
 	d := got.checked.diagnostics[0]
 	testing.expect_value(t, d.id, Message_Id.Wrong_Argument_Kind)
-	testing.expect_value(t, d.args[1], "a number for `y`")
+	testing.expect_value(t, d.args[1], "a number for `green`")
 	testing.expect_value(t, d.args[2], "text")
-	testing.expect_value(t, d.args[3], "circle 100 0 50")
+	testing.expect_value(t, d.args[3], "rgb 100 0 50")
 	// A grey number, a gradient list and a colour all fit a colour parameter.
 	expect_errors(t, "fill 128\nfill [ red teal ]\nfill red\nbackground (gradient [ red teal ])", {})
 	expect_errors(t, "fill \"red\"", {.Wrong_Argument_Kind})
@@ -389,18 +389,18 @@ test_the_wrong_kind_of_argument_names_the_parameter :: proc(t: ^testing.T) {
 @(test)
 test_a_call_that_gives_nothing_cannot_be_a_value :: proc(t: ^testing.T) {
 	expect_errors(t, "x = clear", {.Value_Of_Nothing})
-	expect_errors(t, "x = circle 1 2 3", {.Value_Of_Nothing})
-	expect_errors(t, "circle (clear) 2 3", {.Value_Of_Nothing})
+	expect_errors(t, "x = circle at 1 2 radius 3", {.Value_Of_Nothing})
+	expect_errors(t, "circle at (clear) 2 radius 3", {.Value_Of_Nothing})
 }
 
 @(test)
 test_connecting_words_are_checked_for_kind_repeats_and_required_ones :: proc(t: ^testing.T) {
-	expect_errors(t, "window 800 600 at 100 100", {})
-	expect_errors(t, "window 800 600 at \"a\" 100", {.Wrong_Argument_Kind})
-	expect_errors(t, "circle 1 2 3 fill red fill blue", {.Word_Twice})
+	expect_errors(t, "window size 800 600 at 100 100", {})
+	expect_errors(t, "window size 800 600 at \"a\" 100", {.Wrong_Argument_Kind})
+	expect_errors(t, "circle at 1 2 radius 3 fill red fill blue", {.Word_Twice})
 	expect_errors(t, "x = random from 1", {.Missing_Required_Word})
 	expect_errors(t, "x = random from 1 to 3", {})
-	expect_errors(t, "circle 1 2 3 as center fill red", {})
+	expect_errors(t, "circle at 1 2 radius 3 as center fill red", {})
 	expect_errors(t, "fill [ red teal ] angle 90 as radial", {})
 }
 
@@ -417,12 +417,12 @@ test_a_picked_item_has_the_type_of_the_list :: proc(t: ^testing.T) {
 
 @(test)
 test_a_window_is_a_value :: proc(t: ^testing.T) {
-	expect_types(t, "w = window 800 600", "w: a window")
+	expect_types(t, "w = window size 800 600", "w: a window")
 }
 
 @(test)
 test_a_verb_taught_with_learn_is_not_checked_yet_but_its_calls_are_counted :: proc(t: ^testing.T) {
-	expect_errors(t, "learn star size [ circle 1 2 size ]\nstar 100", {})
+	expect_errors(t, "learn star size [ circle at 1 2 radius size ]\nstar 100", {})
 	expect_errors(t, "learn star size [ ]\nstar 100 200", {.Unexpected_Token})
 	got := check_text("learn star size [ ]\nstar")
 	testing.expect_value(t, got.checked.diagnostics[0].id, Message_Id.Wrong_Argument_Count)
@@ -433,7 +433,7 @@ test_a_verb_taught_with_learn_is_not_checked_yet_but_its_calls_are_counted :: pr
 
 @(test)
 test_a_sketch_with_parse_errors_is_still_checked_without_extra_noise :: proc(t: ^testing.T) {
-	expect_errors(t, "circel 1 2 3\ncircle 4 5 6", {.Unknown_Word})
+	expect_errors(t, "circel 1 2 3\ncircle at 4 5 radius 6", {.Unknown_Word})
 	expect_errors(t, "x = \ny = x", {.Nothing_After_Equals, .Unknown_Name})
 }
 
@@ -459,7 +459,7 @@ test_blocks_list_what_they_capture :: proc(t: ^testing.T) {
 
 @(test)
 test_calls_carry_the_shape_that_was_chosen :: proc(t: ^testing.T) {
-	got := check_text("circle mouse 5")
+	got := check_text("circle at mouse radius 5")
 	call := got.checked.program.stmts[0].kind.(IR_Expr_Stmt).expr.kind.(IR_Call)
 	testing.expect_value(t, call.shape, 1)
 	testing.expect_value(t, call.verb.name, "circle")
@@ -468,7 +468,7 @@ test_calls_carry_the_shape_that_was_chosen :: proc(t: ^testing.T) {
 
 @(test)
 test_checking_the_same_sketch_twice_gives_the_same_answer :: proc(t: ^testing.T) {
-	text := "x = 10\ndraw [ circle x x 5 ]\nfor i from 1 to 3 [ x = x + i ]\n"
+	text := "x = 10\ndraw [ circle at x x radius 5 ]\nfor i from 1 to 3 [ x = x + i ]\n"
 	a, b := check_text(text), check_text(text)
 	testing.expect_value(t, describe_names(a.checked, context.temp_allocator), describe_names(b.checked, context.temp_allocator))
 	testing.expect_value(t, len(a.checked.diagnostics), len(b.checked.diagnostics))
@@ -612,8 +612,8 @@ instances_of :: proc(got: Checked_Text, name: string) -> int {
 @(test)
 test_a_taught_verb_takes_its_parameter_types_from_the_call :: proc(t: ^testing.T) {
 	expect_types(t, "learn double n [ give n * 2 ]\na = double 21\nv = double { 1, 2 }", "a: a number\nv: a vector of 2 numbers")
-	expect_errors(t, "learn show n [ circle 1 2 n ]\nshow 5", {})
-	expect_errors(t, "learn show n [ circle 1 2 n ]\nshow \"a\"", {.Wrong_Argument_Kind})
+	expect_errors(t, "learn show n [ circle at 1 2 radius n ]\nshow 5", {})
+	expect_errors(t, "learn show n [ circle at 1 2 radius n ]\nshow \"a\"", {.Wrong_Argument_Kind})
 }
 
 @(test)
@@ -635,8 +635,8 @@ test_a_verb_used_with_two_record_shapes_gets_two_versions :: proc(t: ^testing.T)
 @(test)
 test_a_verb_nobody_calls_is_still_checked :: proc(t: ^testing.T) {
 	expect_errors(t, "learn lonely a [ x = nothing_here + 1 ]", {.Unknown_Name})
-	expect_errors(t, "learn lonely a [ circle 1 2 a ]", {})
-	got := check_text("learn lonely a [ circle 1 2 a ]")
+	expect_errors(t, "learn lonely a [ circle at 1 2 radius a ]", {})
+	got := check_text("learn lonely a [ circle at 1 2 radius a ]")
 	testing.expect_value(t, len(got.checked.program.instances), 1)
 	testing.expect(t, got.checked.program.instances[0].unused)
 }
@@ -644,7 +644,7 @@ test_a_verb_nobody_calls_is_still_checked :: proc(t: ^testing.T) {
 @(test)
 test_recursion_ends_and_settles_the_result_from_the_gives :: proc(t: ^testing.T) {
 	expect_types(t, "learn fact n [\n  if n < 2 [ give 1 ]\n  give n * fact (n - 1)\n]\nx = fact 5", "x: a number")
-	got := check_text("learn tree n [ if n > 0 [ circle 1 2 n\n  tree (n - 1) ] ]\ntree 5")
+	got := check_text("learn tree n [ if n > 0 [ circle at 1 2 radius n\n  tree (n - 1) ] ]\ntree 5")
 	testing.expect_value(t, len(got.checked.diagnostics), 0)
 	testing.expect_value(t, instances_of(got, "tree"), 1)
 }
@@ -659,12 +659,12 @@ test_names_made_inside_a_verb_are_local_and_top_level_names_are_changed :: proc(
 
 @(test)
 test_a_verb_reads_top_level_names_given_further_down :: proc(t: ^testing.T) {
-	expect_errors(t, "learn f n [ circle n n size ]\nf 1\nsize = 5", {})
+	expect_errors(t, "learn f n [ circle at n n radius size ]\nf 1\nsize = 5", {})
 }
 
 @(test)
 test_defaults_with_words_are_typed_and_the_call_may_change_them :: proc(t: ^testing.T) {
-	expect_errors(t, "learn star size with points 5 spin 0 [ repeat points [ circle 1 2 size ]\n  turn spin ]\nstar 100\nstar 50 points 7 spin 15\nstar 1 spin 2", {})
+	expect_errors(t, "learn star size with points 5 spin 0 [ repeat points [ circle at 1 2 radius size ]\n  turn spin ]\nstar 100\nstar 50 points 7 spin 15\nstar 1 spin 2", {})
 	expect_errors(t, "learn star size with points 5 [ repeat points [ ] ]\nstar 100 points \"a\"", {.Wrong_Argument_Kind})
 }
 
@@ -687,11 +687,11 @@ test_every_give_of_a_verb_gives_the_same_kind_of_value :: proc(t: ^testing.T) {
 
 @(test)
 test_a_verb_with_and_without_give_is_used_the_right_way :: proc(t: ^testing.T) {
-	expect_errors(t, "learn star size [ circle 1 2 size ]\nx = star 3", {.Value_Of_Nothing})
+	expect_errors(t, "learn star size [ circle at 1 2 radius size ]\nx = star 3", {.Value_Of_Nothing})
 	expect_errors(t, "learn double n [ give n * 2 ]\ndouble 3", {.Result_Dropped})
 	got := check_text("learn double n [ give n * 2 ]\ndouble 3")
 	testing.expect(t, !has_errors(got.checked.diagnostics))
-	expect_errors(t, "learn star size [ circle 1 2 size ]\nstar 3", {})
+	expect_errors(t, "learn star size [ circle at 1 2 radius size ]\nstar 3", {})
 }
 
 @(test)
@@ -700,7 +700,7 @@ test_a_constant_cannot_be_given_to_a_verb_that_changes_it :: proc(t: ^testing.T)
 	expect_errors(t, "learn tint p [ p.red = 255 ]\npalette = { red: 0 }\ntint palette", {})
 	expect_errors(t, "learn fill_up xs [ add 1 to xs ]\nNUMBERS = [ 1 ]\nfill_up NUMBERS", {.Constant_Changed_By_Verb})
 	// A constant given to a verb that only reads it is fine, and so is a copy.
-	expect_errors(t, "learn show p [ circle p.x p.x 5 ]\nP = { x: 1 }\nshow P", {})
+	expect_errors(t, "learn show p [ circle at p.x p.x radius 5 ]\nP = { x: 1 }\nshow P", {})
 	expect_errors(t, "learn tint p [ p.red = 255 ]\nPALETTE = { red: 0 }\ntint (copy PALETTE)", {})
 	// The change is passed along: a parameter handed on to a verb that changes it.
 	expect_errors(t, "learn inner p [ p.red = 1 ]\nlearn outer q [ inner q ]\nPALETTE = { red: 0 }\nouter PALETTE", {.Constant_Changed_By_Verb})
@@ -743,40 +743,40 @@ test_a_verb_taught_in_another_file_is_counted_but_not_checked :: proc(t: ^testin
 
 @(test)
 test_a_handler_gets_the_type_of_what_is_sent_to_its_window :: proc(t: ^testing.T) {
-	expect_types(t, "w = window 400 300\nsend w 5\non w receive m [ total = m + 1 ]\ntotal = 0", "w: a window\ntotal: a number")
+	expect_types(t, "w = window size 400 300\nsend w 5\non w receive m [ total = m + 1 ]\ntotal = 0", "w: a window\ntotal: a number")
 	// The handler is above its sender: the first pass still finds the type.
-	expect_types(t, "w = window 400 300\non w receive m [ total = m + 1 ]\ntotal = 0\nsend w 5", "w: a window\ntotal: a number")
-	expect_errors(t, "w = window 400 300\nsend w \"calm\"\non w receive m [ total = m + 1 ]\ntotal = 0", {.Kind_Conflict})
+	expect_types(t, "w = window size 400 300\non w receive m [ total = m + 1 ]\ntotal = 0\nsend w 5", "w: a window\ntotal: a number")
+	expect_errors(t, "w = window size 400 300\nsend w \"calm\"\non w receive m [ total = m + 1 ]\ntotal = 0", {.Kind_Conflict})
 }
 
 @(test)
 test_a_record_that_is_sent_reaches_the_handler_with_its_shape :: proc(t: ^testing.T) {
-	expect_errors(t, "w = window 400 300\nsend w { wind: 0.7 }\non w receive m [ speed = m.wind ]\nspeed = 0", {})
-	expect_errors(t, "w = window 400 300\nsend w { wind: 0.7 }\non w receive m [ speed = m.gust ]\nspeed = 0", {.Unknown_Field})
+	expect_errors(t, "w = window size 400 300\nsend w { wind: 0.7 }\non w receive m [ speed = m.wind ]\nspeed = 0", {})
+	expect_errors(t, "w = window size 400 300\nsend w { wind: 0.7 }\non w receive m [ speed = m.gust ]\nspeed = 0", {.Unknown_Field})
 }
 
 @(test)
 test_different_kinds_sent_to_one_window_make_a_mixed_message :: proc(t: ^testing.T) {
-	expect_errors(t, "w = window 400 300\nsend w 1\nsend w \"calm\"\non w receive m [ x = m ]\nx = 0", {})
-	expect_errors(t, "w = window 400 300\nsend w [ \"palette\" 2 ]\non w receive m [ x = item 1 of m ]\nx = 0", {})
+	expect_errors(t, "w = window size 400 300\nsend w 1\nsend w \"calm\"\non w receive m [ x = m ]\nx = 0", {})
+	expect_errors(t, "w = window size 400 300\nsend w [ \"palette\" 2 ]\non w receive m [ x = item 1 of m ]\nx = 0", {})
 }
 
 @(test)
 test_two_windows_have_their_own_message_types :: proc(t: ^testing.T) {
-	expect_errors(t, "a = window 100 100\nb = window 100 100\nsend a 1\nsend b \"x\"\non a receive m [ n = m + 1 ]\non b receive m [ s = m + \"!\" ]\nn = 0\ns = \"\"", {})
-	expect_errors(t, "a = window 100 100\nb = window 100 100\nsend a 1\nsend b \"x\"\non b receive m [ n = m + 1 ]\nn = 0", {.Kind_Conflict})
+	expect_errors(t, "a = window size 100 100\nb = window size 100 100\nsend a 1\nsend b \"x\"\non a receive m [ n = m + 1 ]\non b receive m [ s = m + \"!\" ]\nn = 0\ns = \"\"", {})
+	expect_errors(t, "a = window size 100 100\nb = window size 100 100\nsend a 1\nsend b \"x\"\non b receive m [ n = m + 1 ]\nn = 0", {.Kind_Conflict})
 }
 
 @(test)
 test_a_send_to_something_that_is_not_a_window_is_an_error :: proc(t: ^testing.T) {
 	expect_errors(t, "send nowhere 5", {.Unknown_Name})
 	expect_errors(t, "x = 3\nsend x 5", {.Wrong_Argument_Kind})
-	expect_errors(t, "w = window 100 100\nsend w", {.Wrong_Argument_Count})
+	expect_errors(t, "w = window size 100 100\nsend w", {.Wrong_Argument_Count})
 }
 
 @(test)
 test_a_send_to_a_window_in_a_list_reaches_every_handler :: proc(t: ^testing.T) {
-	expect_errors(t, "w = window 100 100\nv = window 100 100\nsend (pick [ v w ]) 5\non w receive m [ n = m + 1 ]\nn = 0", {})
+	expect_errors(t, "w = window size 100 100\nv = window size 100 100\nsend (pick [ v w ]) 5\non w receive m [ n = m + 1 ]\nn = 0", {})
 }
 
 // ---- hints (step 3c) ----
@@ -808,16 +808,129 @@ test_a_plain_assignment_that_is_never_changed_or_is_copied_stays_quiet :: proc(t
 
 @(test)
 test_a_name_that_hides_a_top_level_name_gets_a_warning :: proc(t: ^testing.T) {
-	got := check_text("size = 10\nlearn star size [ circle 1 2 size ]\nstar 5")
+	got := check_text("size = 10\nlearn star size [ circle at 1 2 radius size ]\nstar 5")
 	if testing.expect_value(t, len(got.checked.diagnostics), 1) {
 		d := got.checked.diagnostics[0]
 		testing.expect_value(t, d.id, Message_Id.Name_Hides)
-		testing.expect_value(t, d.args[3], "learn star size2 [ circle 1 2 size ]")
+		testing.expect_value(t, d.args[3], "learn star size2 [ circle at 1 2 radius size ]")
 		testing.expect(t, !has_errors(got.checked.diagnostics))
 	}
 	expect_errors(t, "i = 3\nfor i from 1 to 3 [ ]", {.Name_Hides})
 	expect_errors(t, "p = 1\nfor each p in [ 1 2 ] [ ]", {.Name_Hides})
-	expect_errors(t, "points = 3\nlearn star size with points 5 [ circle 1 2 size ]\nstar 1", {.Name_Hides})
-	expect_errors(t, "learn star n [ circle 1 2 n ]\nstar 1", {})
+	expect_errors(t, "points = 3\nlearn star size with points 5 [ circle at 1 2 radius size ]\nstar 1", {.Name_Hides})
+	expect_errors(t, "learn star n [ circle at 1 2 radius n ]\nstar 1", {})
 	expect_errors(t, "for i from 1 to 3 [ ]\nfor i from 1 to 3 [ ]", {})
+}
+
+// ---- geometry written with labels ----
+
+@(test)
+test_a_labelled_call_builds_the_arguments_in_input_order :: proc(t: ^testing.T) {
+	got := check_text("circle radius 5 at 1 2")
+	call := got.checked.program.stmts[0].kind.(IR_Expr_Stmt).expr.kind.(IR_Call)
+	testing.expect_value(t, len(got.checked.diagnostics), 0)
+	testing.expect_value(t, call.shape, 0)
+	if testing.expect_value(t, len(call.args), 3) {
+		testing.expect_value(t, call.args[0].kind.(IR_Number).value, 1)
+		testing.expect_value(t, call.args[1].kind.(IR_Number).value, 2)
+		testing.expect_value(t, call.args[2].kind.(IR_Number).value, 5)
+	}
+	vector := check_text("circle at mouse radius 5")
+	testing.expect_value(t, vector.checked.program.stmts[0].kind.(IR_Expr_Stmt).expr.kind.(IR_Call).shape, 1)
+}
+
+@(test)
+test_every_geometry_verb_has_a_labelled_form_that_checks :: proc(t: ^testing.T) {
+	expect_errors(t, `
+circle at 1 2 radius 3
+circle at mouse radius 3
+ellipse at 1 2 size 3 4
+ellipse at mouse size { 3, 4 }
+rect at 1 2 size 3 4
+rect at mouse size { 3, 4 } fill red
+square at 1 2 size 3
+square at mouse size 3
+line from 1 2 to 3 4
+line from mouse to pmouse
+point at 1 2
+point at mouse
+arc at 1 2 size 3 4 from 5 to 6
+triangle { 0, 0 } { 5, 0 } { 2, 4 }
+quad { 0, 0 } { 5, 0 } { 5, 5 } { 0, 5 }
+w = window size 800 600 at 10 10 title "x"
+`, {})
+}
+
+@(test)
+test_a_positional_geometry_call_says_how_to_write_it_with_labels :: proc(t: ^testing.T) {
+	cases := [][2]string{
+		{"circle 100 100 50 fill red", "circle at 100 100 radius 50 fill red"},
+		{"circle mouse 5", "circle at mouse radius 5"},
+		{"rect 1 2 3 4", "rect at 1 2 size 3 4"},
+		{"line 0 0 10 10", "line from 0 0 to 10 10"},
+		{"point 3 4", "point at 3 4"},
+		{"square 1 2 3", "square at 1 2 size 3"},
+		{"arc 1 2 3 4 5 6", "arc at 1 2 size 3 4 from 5 to 6"},
+		{"w = window 800 600", "w = window size 800 600"},
+	}
+	for c in cases {
+		got := check_text(c[0])
+		if testing.expectf(t, len(got.checked.diagnostics) >= 1, "`%s` gave no message", c[0]) {
+			d := got.checked.diagnostics[0]
+			testing.expectf(t, d.id == .Labels_Needed, "`%s`: %v", c[0], d.id)
+			testing.expect_value(t, d.args[3], c[1])
+		}
+	}
+}
+
+@(test)
+test_a_missing_or_wrong_label_names_what_is_needed :: proc(t: ^testing.T) {
+	expect_errors(t, "circle at 1 2", {.Missing_Required_Word})
+	expect_errors(t, "circle radius 3", {.Missing_Required_Word})
+	expect_errors(t, "circle", {.Missing_Required_Word})
+	expect_errors(t, "rect at 1 2", {.Missing_Required_Word})
+	expect_errors(t, "circle at 1 2 radius \"a\"", {.Wrong_Argument_Kind})
+	expect_errors(t, "circle at 1 radius 5", {.Wrong_Argument_Kind})
+	expect_errors(t, "rect at 1 2 size 3", {.Wrong_Argument_Kind})
+	expect_errors(t, "circle at 1 2 radius 3 at 4 5", {.Word_Twice})
+	expect_errors(t, "x = circle at 1 2 radius 3", {.Value_Of_Nothing})
+	// What else the call says is still read.
+	expect_errors(t, "circle at yy 1 radius 2 fill zz", {.Unknown_Name, .Unknown_Name})
+	got := check_text("circle at 1 2")
+	testing.expect_value(t, got.checked.diagnostics[0].args[3], "circle at 1 2 radius 0")
+	bare := check_text("circle")
+	testing.expect_value(t, bare.checked.diagnostics[0].args[3], "circle at 0 0 radius 0")
+}
+
+@(test)
+test_a_triangle_or_quad_is_written_with_vectors_only :: proc(t: ^testing.T) {
+	got := check_text("quad 0 0 5 0 5 5 0 5")
+	if testing.expect(t, len(got.checked.diagnostics) > 0) {
+		d := got.checked.diagnostics[0]
+		testing.expect_value(t, d.id, Message_Id.Wrong_Argument_Kind)
+		testing.expect_value(t, d.args[3], "quad { 0, 0 } { 5, 0 } { 5, 5 } { 0, 5 }")
+	}
+	expect_errors(t, "triangle 0 0 5 0 2 4", {.Wrong_Argument_Kind})
+}
+
+@(test)
+test_a_window_takes_its_title_in_the_call_and_a_verb_names_the_window_later :: proc(t: ^testing.T) {
+	expect_types(t, "w = window size 800 600 title \"garden\"\ntitle w \"new\"\ntitle \"current\"", "w: a window")
+	expect_errors(t, "title 5 \"x\"", {.Wrong_Argument_Kind})
+	expect_errors(t, "window size 800 600 title 5", {.Wrong_Argument_Kind})
+}
+
+@(test)
+test_commas_between_the_values_of_a_label_are_one_error_with_the_fix :: proc(t: ^testing.T) {
+	got := check_text("circle at 100, 100 radius 50")
+	d := got.checked.diagnostics[0]
+	testing.expect_value(t, d.id, Message_Id.Comma_In_Call)
+	testing.expect_value(t, d.args[1], "circle at 100 100 radius 50")
+}
+
+@(test)
+test_the_call_parentheses_example_uses_labels_for_geometry :: proc(t: ^testing.T) {
+	got := check_text("circle(100, 100, 50)")
+	testing.expect_value(t, got.checked.diagnostics[0].id, Message_Id.Call_Parentheses)
+	testing.expect_value(t, got.checked.diagnostics[0].args[0], "circle at 100 100 radius 50")
 }

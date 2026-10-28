@@ -7,6 +7,6 @@ draw [
   for each p in particles [
     p.pos = p.pos + p.vel
     p.life = p.life - 1
-    circle p.pos 3
+    circle at p.pos radius 3
   ]
 ]

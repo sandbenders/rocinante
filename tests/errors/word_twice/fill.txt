@@ -1,8 +1,8 @@
-── `fill` is used twice ─────────────────────────────── sketch.roci:1:23
+── `fill` is used twice ─────────────────────────────── sketch.roci:1:33
 
-1 │ circle 1 2 3 fill red fill blue
-  │                       ^^^^^^^^^
+1 │ circle at 1 2 radius 3 fill red fill blue
+  │                                 ^^^^^^^^^
 
 A call takes each connecting word once. The second `fill` is not needed.
 
-Write:  circle 1 2 3 fill red
+Write:  circle at 1 2 radius 3 fill red

@@ -1,7 +1,7 @@
-# Two windows: a palette window sends tagged messages and a wind number, and the
+# Two windows: a palette window size sends tagged messages and a wind number, and the
 # garden reads them. What `m` is comes from every send that can reach the window.
-palette = window 200 300
-garden = window 800 600
+palette = window size 200 300
+garden = window size 800 600
 send garden [ "palette" 2 ]
 send garden [ "wind" 7 ]
 send palette 1

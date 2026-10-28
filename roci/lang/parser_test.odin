@@ -679,7 +679,7 @@ test_call_parentheses_are_one_error_with_the_call_written_right :: proc(t: ^test
 	if testing.expect_value(t, len(got.result.diagnostics), 1) {
 		d := got.result.diagnostics[0]
 		testing.expect_value(t, d.id, Message_Id.Call_Parentheses)
-		testing.expect_value(t, d.args[0], "circle 100 100 50")
+		testing.expect_value(t, d.args[0], "circle at 100 100 radius 50")
 		testing.expect_value(t, d.span, Span{0, 0, 20})
 	}
 	// A space before the bracket is a group, which is allowed.

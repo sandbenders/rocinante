@@ -1,8 +1,8 @@
-── This value needs brackets ─────────────────────────── sketch.roci:2:8
+── This value needs brackets ────────────────────────── sketch.roci:2:11
 
-2 │ circle x + 1 100 50
-  │        ^^^^^
+2 │ circle at x + 1 100 radius 50
+  │           ^^^^^
 
 `x + 1` works out a value, so when it sits inside another call, wrap it in round brackets so it reads as one thing. Or let `roci fmt` add them for you.
 
-Write:  circle (x + 1) 100 50
+Write:  circle at (x + 1) 100 radius 50

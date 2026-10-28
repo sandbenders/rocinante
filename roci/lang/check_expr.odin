@@ -261,6 +261,11 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 		return check_taught_call(c, e, k, as_stmt)
 	}
 	verb := k.verb
+	if registry.has_label_forms(verb.name) {
+		if ir, handled := check_labelled(c, e, k, as_stmt); handled {
+			return ir
+		}
+	}
 	args := make([dynamic]^IR, c.alloc)
 	kinds := make([dynamic]registry.Kind, context.temp_allocator)
 	list_type := T_ERROR // the first list among the arguments: what `it` is in a list verb's block
@@ -300,6 +305,11 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 		return error_ir(c, e.span)
 	case .Wrong_Kinds:
 		report_kinds(c, e, k, verb, args[:], kinds[:])
+		return error_ir(c, e.span)
+	}
+	if !registry.language_shape(verb.name, index) {
+		// A shape only the C API has (six numbers for a triangle): the language writes points as vectors.
+		report_vectors_needed(c, e, k, verb)
 		return error_ir(c, e.span)
 	}
 	shape := verb.shapes[index]

@@ -1,1 +1,1 @@
-repeat 4 circle 100 100 50
+repeat 4 circle at 100 100 radius 50

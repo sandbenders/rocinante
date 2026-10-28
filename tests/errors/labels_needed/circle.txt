@@ -1,0 +1,8 @@
+── `circle` is written with labels ───────────────────── sketch.roci:1:1
+
+1 │ circle 100 100 50 fill red
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Shapes are written with the words at and radius in front of their values, so a number is never mistaken for another and the line reads as what it draws.
+
+Write:  circle at 100 100 radius 50 fill red

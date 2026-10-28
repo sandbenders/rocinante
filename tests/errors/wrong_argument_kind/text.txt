@@ -1,8 +1,8 @@
-── `circle` needs a number for `y` ──────────────────── sketch.roci:1:12
+── `rgb` needs a number for `green` ──────────────────── sketch.roci:1:9
 
-1 │ circle 100 "two" 50
-  │            ^^^^^
+1 │ rgb 100 "two" 50
+  │         ^^^^^
 
 Here it is given text.
 
-Write:  circle 100 0 50
+Write:  rgb 100 0 50

@@ -11,6 +11,8 @@
 // positionally, as before (`rgb 20 24 70`, `move 10 20`).
 package registry
 
+import "core:strings"
+
 // One connecting word of a form: it writes `count` inputs starting at input
 // `first` (`at` writes inputs 0 and 1, or just input 0 when it takes a vector).
 Label_Word :: struct {
@@ -126,4 +128,27 @@ label_max_count :: proc(verb: string, word: string) -> int {
 		}
 	}
 	return most
+}
+
+// A call of the verb written with labels from its values in input order, for the
+// shape that takes this many: `circle` with `100 100 50` gives `circle at 100 100
+// radius 50`. False when the verb has no labelled form with that many inputs.
+write_with_labels :: proc(verb: string, values: []string, allocator := context.temp_allocator) -> (text: string, ok: bool) {
+	found, has := find_verb(verb)
+	if !has {
+		return "", false
+	}
+	for form in LABELS {
+		if form.verb != verb || len(form.words) == 0 || len(found.shapes[form.shape].params) != len(values) {
+			continue
+		}
+		parts := make([dynamic]string, allocator)
+		append(&parts, verb)
+		for w in form.words {
+			append(&parts, w.word)
+			append(&parts, ..values[w.first:w.first + w.count])
+		}
+		return strings.join(parts[:], " ", allocator), true
+	}
+	return "", false
 }

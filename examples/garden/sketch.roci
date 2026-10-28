@@ -10,19 +10,35 @@
 GROUND = 470
 SWATCH = 80
 
-# i know we decided to do not have commas as separator. but looking at the code now, from a human perspective, it looks hard to follow.
 palettes = [
-  { name: "dusk", sky: [ (rgb 20 24 70) (rgb 210 90 110) ], hill: [ (rgb 30 60 40) (rgb 60 90 60) ], grass: (rgb 120 190 110), petals: [ gold tomato ], moon: (rgb 255 240 200) }
-  { name: "moon", sky: [ (rgb 5 8 25) (rgb 40 60 120) ], hill: [ (rgb 20 30 50) (rgb 40 55 80) ], grass: (rgb 90 140 160), petals: [ white lightskyblue ], moon: (rgb 220 230 255) }
-  { name: "dawn", sky: [ (rgb 110 170 230) (rgb 255 210 160) ], hill: [ (rgb 70 130 60) (rgb 140 180 90) ], grass: (rgb 80 160 70), petals: [ hotpink purple ], moon: (rgb 255 250 230) }
+  {
+    name: "dusk"
+    sky: [ (rgb 20 24 70) (rgb 210 90 110) ]
+    hill: [ (rgb 30 60 40) (rgb 60 90 60) ]
+    grass: (rgb 120 190 110)
+    petals: [ gold tomato ]
+    moon: (rgb 255 240 200)
+  }
+  {
+    name: "moon"
+    sky: [ (rgb 5 8 25) (rgb 40 60 120) ]
+    hill: [ (rgb 20 30 50) (rgb 40 55 80) ]
+    grass: (rgb 90 140 160)
+    petals: [ white lightskyblue ]
+    moon: (rgb 220 230 255)
+  }
+  {
+    name: "dawn"
+    sky: [ (rgb 110 170 230) (rgb 255 210 160) ]
+    hill: [ (rgb 70 130 60) (rgb 140 180 90) ]
+    grass: (rgb 80 160 70)
+    petals: [ hotpink purple ]
+    moon: (rgb 255 250 230)
+  }
 ]
 
-# fabrizio: here it is confusing. we set two windows, 'chooser' and 'garden', but the title lines seem to do not have any connection to the windows. it is is just a line after them.
-# and if i want to rename 'chooser' later?
-chooser = window 320 220 at 60 120
-title "palette"
-garden = window 800 600 at 420 80
-title "garden"
+chooser = window size 320 220 at 60 120 title "palette"
+garden = window size 800 600 at 420 80 title "garden"
 
 chosen = 1
 wind = 0.5
@@ -45,13 +61,13 @@ draw chooser [
     x = 16 + (i - 1) * (SWATCH + 20)
     p = item i of palettes
     if i is chosen [
-      rect x 44 SWATCH SWATCH fill (gradient p.sky angle 90) stroke white thickness 3
+      rect at x 44 size SWATCH SWATCH fill (gradient p.sky angle 90) stroke white thickness 3
     ] else [
-      rect x 44 SWATCH SWATCH fill (gradient p.sky angle 90)
+      rect at x 44 size SWATCH SWATCH fill (gradient p.sky angle 90)
     ]
   ]
-  rect 16 170 288 10 fill [ (rgb 80 80 80) skyblue ]
-  circle (16 + wind * 288) 175 9 fill (rgb 240 240 240)
+  rect at 16 170 size 288 10 fill [ (rgb 80 80 80) skyblue ]
+  circle at (16 + wind * 288) 175 radius 9 fill (rgb 240 240 240)
 ]
 
 on mouse down [
@@ -83,16 +99,16 @@ on key "c" [ flowers = keep flowers [ it.size > 30 ] ]
 learn draw_flower flower look [
   stroke (mix look.grass black 0.3)
   thickness 2
-  line flower.at (flower.at + { 0, 40 })
+  line from flower.at to (flower.at + { 0, 40 })
   push [
     move flower.at
     turn (time * flower.spin)
     no stroke
     repeat flower.petals [
       turn (360 / flower.petals)
-      ellipse 0 (flower.size * -0.7) (flower.size * 0.6) (flower.size * 1.3) fill (gradient look.petals angle 270)
+      ellipse at 0 (flower.size * -0.7) size (flower.size * 0.6) (flower.size * 1.3) fill (gradient look.petals angle 270)
     ]
-    circle 0 0 (flower.size * 0.3) fill gold stroke saddlebrown thickness 2
+    circle at 0 0 radius (flower.size * 0.3) fill gold stroke saddlebrown thickness 2
   ]
 ]
 
@@ -107,14 +123,14 @@ draw garden [
     twinkle = noise (i * 3.1) (time * 2)
     stroke (rgb 255 255 255 alpha (120 + 135 * twinkle))
     thickness (1 + 2 * twinkle)
-    point (random 800) (random (GROUND - 60))
+    point at (random 800) (random (GROUND - 60))
   ]
 
   no stroke
-  circle 660 110 90 fill (gradient [ p.moon (rgb 255 255 255 alpha 0) p.moon ] as conic angle (time * 20)) alpha 70
+  circle at 660 110 radius 90 fill (gradient [ p.moon (rgb 255 255 255 alpha 0) p.moon ] as conic angle (time * 20)) alpha 70
   sky_top = item 1 of p.sky
   moon_edge = mix p.moon sky_top 0.4
-  circle 660 110 46 fill (gradient [ p.moon moon_edge ] as radial)
+  circle at 660 110 radius 46 fill (gradient [ p.moon moon_edge ] as radial)
 
   no fill
   caps butt
@@ -123,14 +139,14 @@ draw garden [
     ring = 360 - i * 7
     stroke (item (i + 1) of [ tomato orange gold mediumseagreen dodgerblue mediumpurple ])
     alpha 110
-    arc 260 (GROUND + 40) (ring * 2) (ring * 2) 180 360
+    arc at 260 (GROUND + 40) size (ring * 2) (ring * 2) from 180 to 360
   ]
   alpha 255
 
   no stroke
   far_hill = item 2 of p.hill
   fill (gradient [ far_hill (item 1 of p.hill) ] angle 90)
-  quad -2000 (GROUND + 100) 2800 (GROUND - 140) 2800 3000 -2000 3000
+  quad { -2000, GROUND + 100 } { 2800, GROUND - 140 } { 2800, 3000 } { -2000, 3000 }
 
   near_hill = item 1 of p.hill
   caps round
@@ -142,17 +158,17 @@ draw garden [
     sway = (noise (i * 0.05) (time * 0.6) - 0.5) * 60 * wind * calm
     shade = (i % 5) / 8
     stroke (mix p.grass near_hill shade)
-    line x base (x + sway) (base - tall)
+    line from x base to (x + sway) (base - tall)
   ]
 
   for each flower in flowers [ draw_flower flower p ]
 
   stroke (rgb 255 250 150 alpha 160)
   thickness 3
-  line pmouse mouse
+  line from pmouse to mouse
   no stroke
-  circle mouse 14 fill (gradient [ (rgb 255 250 150 alpha 200) (rgb 255 250 150 alpha 0) ] as radial)
-  circle mouse 3 fill (rgb 255 255 220)
+  circle at mouse radius 14 fill (gradient [ (rgb 255 250 150 alpha 200) (rgb 255 250 150 alpha 0) ] as radial)
+  circle at mouse radius 3 fill (rgb 255 255 220)
 ]
 
 on mouse down [

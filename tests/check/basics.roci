@@ -12,13 +12,13 @@ dx = p.x - width / 2
 corner = u.xy
 hit = dx > 3 and x is 10
 
-window 800 600 at 100 100
+window size 800 600 at 100 100
 background [ navy black ] angle 90
 fill c
 alpha 200
-circle p 20
-circle x (x * 2) 50 fill [ red teal ]
-rect 0 0 width height fill red
+circle at p radius 20
+circle at x (x * 2) radius 50 fill [ red teal ]
+rect at 0 0 size width height fill red
 caps round
 joins bevel
 r = random from 1 to 3
@@ -26,9 +26,9 @@ n = noise x 0.5 as simplex
 pick_one = pick [ red orange teal ]
 
 if hit [ fill red ] else [ fill blue ]
-repeat 10 [ circle (random width) (random height) 5 ]
-for i from 1 to 10 [ line 0 (i * 10) width (i * 10) ]
-for each q in [ { 10, 20 } { 30, 40 } ] [ circle q 10 ]
+repeat 10 [ circle at (random width) (random height) radius 5 ]
+for i from 1 to 10 [ line from 0 (i * 10) to width (i * 10) ]
+for each q in [ { 10, 20 } { 30, 40 } ] [ circle at q radius 10 ]
 with fill cyan thickness 2 [
-  circle 100 100 50
+  circle at 100 100 radius 50
 ]

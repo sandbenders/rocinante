@@ -1,10 +1,10 @@
-── I don't know the name `zzz` ───────────────────────── sketch.roci:1:8
+── I don't know the name `zzz` ──────────────────────── sketch.roci:1:11
 
-1 │ circle zzz 100 50
-  │        ^^^
+1 │ circle at zzz 100 radius 50
+  │           ^^^
 
 `zzz` is not a name you have given a value, and it is not a verb or a built-in value either. Give it a value first.
 
 Give it a value first:
     zzz = 0
-    circle zzz 100 50
+    circle at zzz 100 radius 50

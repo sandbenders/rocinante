@@ -1,10 +1,10 @@
-── I did not expect this here ───────────────────────── sketch.roci:1:19
+── I did not expect this here ───────────────────────── sketch.roci:1:29
 
-1 │ circle 100 100 50 60
-  │                   ^^
+1 │ circle at 100 100 radius 50 60
+  │                             ^^
 
 A line holds one statement, and `60` comes after a complete one. Put it on its own line, or inside a one-line block separate statements with two spaces.
 
 On two lines:
-    circle 100 100 50
+    circle at 100 100 radius 50
     60

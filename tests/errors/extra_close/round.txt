@@ -1,8 +1,8 @@
-── This closing round bracket has no opening one ────── sketch.roci:1:19
+── This closing round bracket has no opening one ────── sketch.roci:1:29
 
-1 │ circle 100 100 50 )
-  │                   ^
+1 │ circle at 100 100 radius 50 )
+  │                             ^
 
 Nothing is open here, so there is nothing to close.
 
-Without it:  circle 100 100 50
+Without it:  circle at 100 100 radius 50

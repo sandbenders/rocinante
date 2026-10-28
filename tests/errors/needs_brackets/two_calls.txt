@@ -1,8 +1,8 @@
-── This value needs brackets ─────────────────────────── sketch.roci:1:8
+── This value needs brackets ────────────────────────── sketch.roci:1:11
 
-1 │ circle random width random height 5
-  │        ^^^^^^^^^^^^
+1 │ circle at random width random height radius 5
+  │           ^^^^^^^^^^^^
 
 `random width` works out a value, so when it sits inside another call, wrap it in round brackets so it reads as one thing. Or let `roci fmt` add them for you.
 
-Write:  circle (random width) (random height) 5
+Write:  circle at (random width) (random height) radius 5
