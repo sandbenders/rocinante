@@ -18,6 +18,7 @@ window :: proc(width, height: int, at: Maybe([2]int) = nil) -> Window {
 		w := the.default
 		w.explicit = true
 		w.width, w.height = max(width, 1), max(height, 1)
+		set_resizable(w.id, true) // a restarted sketch decides again
 		the.newest = w
 		if w.handle != nil {
 			platform.set_size(w.handle, w.width, w.height)
@@ -35,6 +36,7 @@ window :: proc(width, height: int, at: Maybe([2]int) = nil) -> Window {
 		ordered_remove(&the.reuse, 0)
 		w.explicit = true
 		w.width, w.height = max(width, 1), max(height, 1)
+		set_resizable(w.id, true)
 		delete(w.title)
 		w.title = strings.clone("rocinante")
 		if w.handle != nil {
@@ -245,6 +247,26 @@ window_mouse :: proc(w: Window) -> [2]f64 {
 window_is_fullscreen :: proc(w: Window) -> bool {
 	if win := win_for(w); win != nil {
 		return win.fullscreen
+	}
+	return false
+}
+
+// Lets a window be resized by dragging its edges (the default), or fixes it at the
+// size it has. The sketch itself can still change the size.
+set_resizable :: proc(w: Window, on: bool) {
+	win := win_for(w)
+	if win == nil {
+		return
+	}
+	win.fixed = !on
+	if win.handle != nil {
+		platform.set_resizable(win.handle, on)
+	}
+}
+
+window_is_resizable :: proc(w: Window) -> bool {
+	if win := win_for(w); win != nil {
+		return !win.fixed
 	}
 	return false
 }

@@ -214,6 +214,7 @@ read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
 		case "at":         return vec2(roci.window_position(w))
 		case "mouse":      return vec2(roci.window_mouse(w))
 		case "fullscreen": return roci.window_is_fullscreen(w)
+		case "resizable":  return roci.window_is_resizable(w)
 		}
 		return nil
 	}

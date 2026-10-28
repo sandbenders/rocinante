@@ -312,6 +312,9 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		if text, found := option_value(it, call.options, "title"); found {
 			roci.title_window(w, as_text(text))
 		}
+		if on, found := option_value(it, call.options, "resizable"); found {
+			roci.set_resizable(w, as_bool(on))
+		}
 		return w
 	case "title":
 		if call.shape == 0 {

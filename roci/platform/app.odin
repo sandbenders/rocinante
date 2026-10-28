@@ -195,6 +195,12 @@ position :: proc(window: ^Window) -> (x, y: int) {
 	return 0, 0
 }
 
+// Lets the window be resized by its edges, or fixes it at the size it has. The
+// sketch can still resize it itself.
+set_resizable :: proc(window: ^Window, on: bool) {
+	sdl.SetWindowResizable(window.handle, on)
+}
+
 set_title :: proc(window: ^Window, title: string) {
 	sdl.SetWindowTitle(window.handle, strings.clone_to_cstring(title, context.temp_allocator))
 }

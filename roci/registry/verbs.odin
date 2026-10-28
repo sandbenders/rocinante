@@ -29,7 +29,7 @@ GRADIENT_OPTIONS := []Option{
 	{"in", {.Name}, false},
 }
 
-WINDOW_OPTIONS := []Option{{"at", {.Number, .Number}, false}, {"title", {.Text}, false}}
+WINDOW_OPTIONS := []Option{{"at", {.Number, .Number}, false}, {"title", {.Text}, false}, {"resizable", {.Boolean}, false}}
 ALPHA_OPTION := []Option{{"alpha", {.Number}, false}}
 NOISE_OPTIONS := []Option{{"as", {.Name}, false}} // `as simplex`; Perlin is the default
 RANDOM_RANGE := []Option{{"from", {.Number}, true}, {"to", {.Number}, true}}

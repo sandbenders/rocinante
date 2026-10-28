@@ -61,7 +61,7 @@ Verb :: struct {
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
 	"alpha", "angle", "as", "at", "by", "fill", "font", "from", "height", "in",
-	"lines", "of", "radius", "size", "start", "stops", "stroke", "style", "thickness", "title", "to", "width",
+	"lines", "of", "radius", "resizable", "size", "start", "stops", "stroke", "style", "thickness", "title", "to", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.
@@ -109,6 +109,7 @@ WINDOW_PROPERTIES := [?]Value_Def{
 	{"at", .Vector, 2},      // where it is on the screen
 	{"mouse", .Vector, 2},   // where the mouse is in it
 	{"fullscreen", .Boolean, 0},
+	{"resizable", .Boolean, 0}, // whether its edges can be dragged to resize it
 }
 
 // What a property gives, in words: "a number", "a vector of 2 numbers".

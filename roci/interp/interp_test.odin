@@ -1007,3 +1007,9 @@ test_shuffle_repeats_with_the_same_seed_and_changes_with_another :: proc(t: ^tes
 test_shuffling_an_empty_list_and_a_one_item_list_is_fine :: proc(t: ^testing.T) {
 	expect_printed(t, "print (shuffle [])\nprint (shuffle [ 7 ])", "[ ]\n[ 7 ]")
 }
+
+@(test)
+test_resizable_false_fixes_a_window_and_a_verb_changes_it_later :: proc(t: ^testing.T) {
+	text := "a = window size 300 200 resizable false\nb = window size 100 100\nprint a.resizable\nprint b.resizable\nresizable a true\nresizable b false\nprint a.resizable\nprint b.resizable"
+	expect_printed(t, text, "false\ntrue\ntrue\nfalse")
+}

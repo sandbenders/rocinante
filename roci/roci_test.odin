@@ -1023,3 +1023,30 @@ test_a_window_can_be_asked_what_it_is_like :: proc(t: ^testing.T) {
 	testing.expect_value(t, window_size(Window(99)), [2]f64{0, 0})
 	testing.expect_value(t, window_title(Window(99)), "")
 }
+
+@(test)
+test_a_window_can_be_fixed_at_its_size_and_freed_again :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(300, 200)
+	testing.expect(t, window_is_resizable(w))
+	set_resizable(w, false)
+	testing.expect(t, !window_is_resizable(w))
+	set_resizable(w, true)
+	testing.expect(t, window_is_resizable(w))
+	set_resizable(Window(99), false) // a window that is not there is ignored
+	testing.expect(t, !window_is_resizable(Window(99)))
+}
+
+@(test)
+test_a_restart_makes_the_reused_windows_resizable_again :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(300, 200)
+	set_resizable(w, false)
+	begin_restart()
+	again := window(300, 200)
+	testing.expect_value(t, again, w)
+	testing.expect(t, window_is_resizable(again))
+	end_restart()
+}

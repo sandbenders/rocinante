@@ -45,6 +45,7 @@ Win :: struct {
 	mouse:        [2]f64,           // where the mouse is in this window, and where it was a frame ago
 	previous:     [2]f64,
 	fullscreen:   bool,
+	fixed:        bool,             // its size cannot be changed by dragging its edges
 	position:     [2]int,           // where it was asked to be (a headless window has no screen)
 }
 

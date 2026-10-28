@@ -973,7 +973,7 @@ test_a_property_a_window_does_not_have_names_the_ones_it_has :: proc(t: ^testing
 	parsed := check_text("w = window size 800 600\nx = w.widht\n")
 	for d in parsed.checked.diagnostics {
 		if d.id == .Bad_Field {
-			testing.expect(t, strings.contains(d.args[2], "width, height, title, at, mouse and fullscreen"))
+			testing.expect(t, strings.contains(d.args[2], "width, height, title, at, mouse, fullscreen and resizable"))
 			testing.expect_value(t, d.args[3], "x = w.width")
 		}
 	}
@@ -988,4 +988,12 @@ test_a_windows_properties_cannot_be_assigned :: proc(t: ^testing.T) {
 test_shuffle_gives_a_list_of_the_same_kind_and_needs_a_list :: proc(t: ^testing.T) {
 	expect_types(t, "xs = [ red teal ]\nys = shuffle xs", "xs: a list of colours\nys: a list of colours")
 	expect_errors(t, "x = shuffle 3", {.Wrong_Argument_Kind})
+}
+
+@(test)
+test_a_window_can_be_made_fixed_and_asked_whether_it_is :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window size 300 200 resizable false\nr = w.resizable\nresizable w true\nif r [ quit ]", {})
+	expect_errors(t, "w = window size 300 200 resizable 3", {.Wrong_Argument_Kind})
+	expect_errors(t, "w = window size 300 200\nresizable w 3", {.Wrong_Argument_Kind})
+	expect_types(t, "w = window size 300 200 resizable false\nr = w.resizable", "w: a window\nr: true or false")
 }
