@@ -19,7 +19,7 @@ And I also believe that computer coding should be **A FUN ACTIVITY** first and f
 ## The Manifesto
 
 ```
-circle 100 100 50
+circle at 100 100 radius 50
 ```
 
 That is a complete rocinante program. Run it and a window opens with a circle in it. No setup function, no imports, no build file, no semicolon. If you understand that line, you can start.
@@ -57,8 +57,8 @@ Coding has become bureaucracy. Most of what we type is ceremony that serves the 
 ## What it feels like
 
 ```
-w  = window 800 600
-w2 = window 400 400 at 900 100
+w  = window size 800 600
+w2 = window size 400 400 at 900 100
 
 draw w [
   background 0
@@ -67,7 +67,7 @@ draw w [
   send w2 mouse
 ]
 
-on w2 receive m [ circle m.x m.y 20 ]
+on w2 receive m [ circle at m.x m.y radius 20 ]
 ```
 
 Two windows. One draws a star with a turtle and passes the mouse to the other, which follows it with a circle. Every line in it is about the picture.

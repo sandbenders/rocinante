@@ -5,7 +5,7 @@
 > Miguel de Cervantes, _El ingenioso hidalgo don Quijote de la Mancha_, Part I, Chapter 1 (1605)[^expanse]
 
 ```
-circle 100 100 50
+circle at 100 100 radius 50
 ```
 
 That line is a complete rocinante sketch. Run it and a window opens with a circle in it.
@@ -30,7 +30,7 @@ learn step p [ p.pos = p.pos + p.vel ]
 
 draw [
   background 0
-  for each p in particles [ step p  circle p.pos 3 ]
+  for each p in particles [ step p  circle at p.pos radius 3 ]
 ]
 ```
 
@@ -38,7 +38,7 @@ There are no semicolons and no setup function. Blocks use `[ ]`, `{ a, b }` is a
 
 ```
 ui [ size = slider "size" 10 200 ]
-draw [ circle 200 200 size ]
+draw [ circle at 200 200 radius size ]
 ```
 
 ## How it works

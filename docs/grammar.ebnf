@@ -80,7 +80,9 @@ expression_block = "[" expression "]" ;
 group          = "(" expression ")" ;
 sign           = SIGN ;
 list           = "[" { argument } "]" ;
-vector_or_record = "{" [ item { "," item } ] "}" ;
+(* A record field that starts a new line needs no comma before it; commas stay
+   legal, and a vector's items always take commas (decided 2026-10-28). *)
+vector_or_record = "{" [ item { [ "," ] item } ] "}" ;
 item           = expression | NAME ":" expression ;
 
 (* Section 5.15, tightest first. A call used as an operand takes the argument

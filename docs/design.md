@@ -25,7 +25,7 @@ Users never see threads. The core decides: rendering and windowing stay where SD
 
 ### 4.5 Multi-window and messaging
 
-- `window w h` and `window w h at x y` return a window handle.
+- `window size w h` and `window size w h at x y title "t"` return a window handle; `title w "t"` changes one later, and a bare `title "t"` names the current window.
 - Each window has its own `draw [ ... ]` block and command list.
 - Windows communicate with `send <window> <value>` and `on <window> receive <name> [ ... ]`. Messages are values (numbers, text, lists, records), delivered on the next frame. Internally: channels, no shared mutable state exposed. **What a message is** (decided 2026-10-28): the checker sees the whole program, so `msg` in `on w receive msg` has the type of every `send w ...` that names that window; a `send` to anything but a plain name could reach any window. Sends of different kinds make `msg` a mixed value that the handler tells apart while it runs, which is allowed because tagged messages are common. Two messages that are records of different fields (`send w { at: p }` and `send w { flash: 1 }`) have one shape with all the fields, so a handler reads the one it cares about and the others read 0 (§5.2).
 - On mobile, multiple windows become stacked or tabbed views. Decide the exact behaviour in Phase 8 and document it here.
@@ -92,7 +92,7 @@ A sketch that has files lives in a sketch folder. Everything it ships with is in
 
 ```
 my-sketch/
-  sketch.roci          # roci new starts it with: circle 100 100 50
+  sketch.roci          # roci new starts it with: circle at 100 100 radius 50
   assets/
     images/  sounds/  videos/  fonts/  3d-models/  ml-models/  shaders/  data/
   output/              # saved frames, recordings, exports, build logs; ignored by git
@@ -160,6 +160,7 @@ Playing and recording video uses no FFmpeg (its licensing conflicts with §3 unl
 ### 5.1 Design principles
 
 - One statement per line. No terminators. (Decided 2026-10-24: inside a `[ ]` block that fits on one line, statements may be separated by two spaces, as in `[ step p  circle p.pos 3 ]`; `roci fmt` keeps a block on one line only when it is short and otherwise puts one statement per line.)
+- **Labels for geometry, no commas between arguments** (decided 2026-10-28, after comparing how other languages write calls: Ruby, Nim, Elixir and Perl use commas because their arguments are free expressions and pay for it with spacing and precedence traps; Logo, NetLogo, Rebol and Clojure style use none; no study compares the two for novices, and the nearest evidence, Kotlin and Swift guidance, is to label same-typed numbers). A call never takes commas between its arguments, and `circle (100,100,50)` and `rgb (20,24,70)` are not forms: round brackets stay around a whole call, `(rgb 20 24 70)`, and a stray comma is a teaching error. **Geometry is written with labels**, so a number is never mistaken for another and the line reads as what it draws: `circle at 100 100 radius 50`, `circle at mouse radius 20`, `ellipse at x y size w h`, `rect at x y size w h`, `square at x y size s`, `point at x y`, `line from x y to x y`, `arc at x y size w h from a to b`; `triangle` and `quad` take their corners as vectors, `triangle { 0, 0 } { 50, 0 } { 25, 40 }`. `at`, `from` and `to` take two numbers or one vector. The labelled words may come in any order, and `roci fmt` writes them in the order above, so there is one form on disk; a positional geometry call is a teaching error that shows the labelled line. Pairs are vectors (`{ 320, 220 }`) and `rgb`, `move`, `turn`, `mix`, `noise` and the other non-geometry verbs stay positional. The registry's shapes keep the ordered inputs the C API and the typed IR use; a table of label forms in `roci/registry` says how the language writes them (`radius` and `title` joined the connecting words). A record spread over lines needs no commas: a field that starts a line with `name:` is separated from the one above by the line break (commas stay legal on one line), and `roci fmt` writes one record per line.
 - **Comments, colours and spacing** (decided 2026-10-28; the grammar is `docs/grammar.ebnf`).
   - **`#` is a comment or a colour.** A `#` followed by exactly 3, 4, 6 or 8 hex digits and then a space, a bracket, a comma or the end of the line is a colour (`#ff8800`); any other `#` starts a comment that runs to the end of the line. A hash and 5 or 7 hex digits is a colour with an error, since it is plainly a typo. A colour at the start of a statement (`#add`) gets a hint to write `# add`, and `roci fmt` always writes comments as `# text`.
   - **Two spaces end a call inside a one-line block.** While the parser collects a call's arguments inside `[ ]`, a token with two or more spaces before it on the same line ends the call, so `[ step p  q = 1 ]` is two statements. Spacing means nothing anywhere else (indentation is free, below).
@@ -169,11 +170,11 @@ Playing and recording video uses no FFmpeg (its licensing conflicts with §3 unl
 - **One thing per argument** (decided 2026-10-23). Each argument of a verb is a single visible item: a number, text, a name (including built-in values such as `width`, `mouse` and `pi`, and verbs that take no arguments such as `anywhere`), a field (`p.pos`), a `{ }` or `[ ]` literal, or a group in round brackets. A call that takes arguments, or a calculation, used as an argument goes in round brackets: `circle (random width) (random height) 5`, `slider "size" 10 (width / 2)`. The rule turns the readable habit into the grammar, so nested calls never depend on the reader counting arities.
   - **Full expressions are free wherever there is no argument list:** after `=`, after `give`, in `if` and `while` conditions, as the count of `repeat`, and between the commas of vector and record literals (§5.2). So `{ random width, 0 }` needs no brackets, and `x = random width + 10` means `(random width) + 10`: calls bind tighter than arithmetic, as in NetLogo.
   - **Connecting words belong to the call whose brackets they sit in**, so `add (random from 1 to 3) to scores` can't confuse its two `to`s.
-  - **`roci fmt` adds missing brackets** when the reading is unique (every verb involved has one shape): `circle random width random height 5` becomes `circle (random width) (random height) 5`. It writes subtraction with spaces (`x - 10`) and negative numbers without (`-10`), so the two never look alike.
+  - **`roci fmt` adds missing brackets** when the reading is unique (every verb involved has one shape): `circle at random width random height radius 5` becomes `circle at (random width) (random height) radius 5`. It writes subtraction with spaces (`x - 10`) and negative numbers without (`-10`), so the two never look alike.
   - **Without the formatter, a missing bracket is a load-time error that shows the bracketed line** (§5.7). When brackets nest three deep, the checker adds a hint (not an error) suggesting a name on the line above: `x = random width`.
   - No pipes, no dot calls (`width.random`) and no commas between arguments. `.` stays for fields and library names (§5.10). List chains are named steps, not pipes (§5.2).
   - Rationale and sources: Logo, NetLogo, Rebol, Smalltalk, Odin and the paren-free languages surveyed all show that fixed arity solves the parser's problem but not the reader's. No study measures nested-call readability directly, so the Phase 2 newcomer test checks this rule (§8).
-- Optional arguments are introduced by small connecting words, never by position: `window 800 600 at 100 100`, `text "hi" at 20 20 size 32`, `image photo at 0 0 width 200`. The connecting words form a short, fixed list (start with: `at`, `size`, `width`, `height`, `from`, `to`, `by`, `in`, `start`, `lines`, `angle`, `stops`, `as`, plus the style words in §5.9: `fill`, `stroke`, `thickness`, `alpha`, `font`, `style`). `to` is only ever a connecting word (`for i from 1 to 10`, `add x to particles`); verbs are defined with `learn` (§5.11).
+- Optional arguments are introduced by small connecting words, never by position: `window size 800 600 at 100 100 title "garden"`, `text "hi" at 20 20 size 32`, `image photo at 0 0 width 200`. The connecting words form a short, fixed list (start with: `at`, `size`, `width`, `height`, `from`, `to`, `by`, `in`, `start`, `lines`, `angle`, `stops`, `as`, plus the style words in §5.9: `fill`, `stroke`, `thickness`, `alpha`, `font`, `style`). `to` is only ever a connecting word (`for i from 1 to 10`, `add x to particles`); verbs are defined with `learn` (§5.11).
 - **A connecting word is one only after the call's required arguments are filled** (decided 2026-10-24). While a verb still has an open required slot, a word that is also a built-in value or a user name (`width`, `height`, `size`) is read as a value: `rect 0 0 width height fill pattern` reads `width` and `height` as the last two required arguments, then `fill` as a connecting word. The same holds for parameters of `learn` (`learn star size [ … ]`). The checker warns when the other reading would also have been valid.
 - **Multi-word verbs** (`pen up`, `no fill`, `look at`, `ask file`, `forget ui`, `on mouse down`, `draw into`, `image button`, `export svg`, `hidden learn`, `for each`) are a fixed table of phrases, matched longest-first before a word is read on its own. The table is part of the core and is listed in the docs; user verbs are always one word.
 - **`[ ]` is a block or a list by position** (decided 2026-10-24): where the verb's parameter takes a block (`repeat`, `if`, `draw`, `learn`) it is a block; after `=`, as a verb's list parameter, or as a colour list it is a list. Lists have no commas and vectors do (`[ 1 2 ]` against `{ 1, 2 }`); the Phase 2 newcomer test watches for this mix-up. Logo's brackets held code and data alike, and readers had to work out which; so the checker gives a teaching error whenever a list turns up where a block is expected, and the reverse (decided 2026-10-27).
@@ -202,7 +203,7 @@ Borrowed from Odin (see the Odin FAQ in References):
 
 - **Vector literals.** A vector is written with braces and commas, like Odin's compound literals: `{ x, y }` or `{ x, y, z }`. Braces with `name:` fields are a record; braces without names are a vector. There is no `vec` verb. Each item between commas may be any expression, so `{ random width, 0 }` needs no brackets (§5.1).
 - **Array programming.** Vectors and colours support arithmetic directly: `pos = pos + vel`, `c = c * 0.5`, `v * 2 + { 1, 1 }`. Swizzles: `p.xy`, `p.zyx`. These map one to one onto Odin's own array programming in generated code, and `{ a, b }` maps onto Odin's context-typed `{a, b}`.
-- **Explicit verb groups.** One verb name may accept several argument shapes (`circle 100 100 50` and `circle p 50`). The shapes are declared together in one place, in the core and in user code. Because every argument is one item (§5.1), the parser finds where a call ends without knowing types; the checker then picks the shape by argument count first, then by argument kinds. Two shapes in one group may not share both count and kinds: declaring them is a load-time error, in the core or in `learn` (decided 2026-10-23).
+- **Explicit verb groups.** One verb name may accept several argument shapes (`circle at 100 100 radius 50` and `circle at p radius 50`). The shapes are declared together in one place, in the core and in user code. Because every argument is one item (§5.1), the parser finds where a call ends without knowing types; the checker then picks the shape by argument count first, then by argument kinds. Two shapes in one group may not share both count and kinds: declaring them is a load-time error, in the core or in `learn` (decided 2026-10-23).
 - **Useful zero values.** A record field that was never set reads as 0 (or empty text, empty list). Reading it is never an error.
 - **No exceptions.** A failing operation (missing file, bad URL) shows the error overlay, yields an empty value and lets the sketch continue. Users can test for emptiness (`if photo is empty [ … ]`); there is no try/catch.
 - **Implicit context.** Style and transform state (fill, stroke, thickness, transform, font, blend) is an implicit context, reset at the start of every `draw` frame and scoped by `with [ ]` (style, §5.9) and `push [ ]` (style and transforms).
@@ -261,9 +262,9 @@ y = double 21
 
 if mouse.x > width / 2 [ fill red ] else [ fill blue ]
 
-repeat 10 [ circle (random width) (random height) 5 ]
-for i from 1 to 10 [ line 0 (i * 10) width (i * 10) ]
-for each p in points [ circle p 10 ]
+repeat 10 [ circle at (random width) (random height) radius 5 ]
+for i from 1 to 10 [ line from 0 (i * 10) to width (i * 10) ]
+for each p in points [ circle at p radius 10 ]
 
 draw [ ... ]                # runs every frame (default window)
 draw w [ ... ]              # runs every frame for window w
@@ -275,8 +276,8 @@ every 2 seconds [ ... ]
 
 v = { 3, 4 }                # vectors: braces and commas, no names
 u = v * 2 + { 1, 1 }        # arithmetic and swizzles
-circle v.xy 10
-circle anywhere 5           # a random point in the window
+circle at v.xy radius 10
+circle at anywhere radius 5 # a random point in the window
 r = random from 1 to 3      # a random number in a range
 c = pick COLOURS            # a random item from a list
 ```
@@ -291,7 +292,7 @@ learn step p [ p.pos = p.pos + p.vel ]
 
 draw [
   background 0
-  for each p in particles [ step p  circle p.pos 3 ]
+  for each p in particles [ step p  circle at p.pos radius 3 ]
 ]
 ```
 
@@ -323,19 +324,19 @@ Format, modelled on Elm:
 3 │ circel 100 100 50
   │ ^^^^^^
 
-Did you mean:  circle 100 100 50
+Did you mean:  circle at 100 100 radius 50
 ```
 
 ```
 ── This value needs brackets ─────────────────────── sketch.roci:4:8
 
-4 │ circle random width random height 5
+4 │ circle at random width random height radius 5
   │        ^^^^^^^^^^^^
 
 `random width` works out a number, so when it sits inside `circle`,
 wrap it in round brackets so it reads as one thing:
 
-    circle (random width) (random height) 5
+    circle at (random width) (random height) radius 5
 
 Or let `roci fmt` add them for you.
 ```
@@ -366,7 +367,7 @@ ui [
 draw [
   background 0
   fill tint
-  circle pos.x pos.y size
+  circle at pos.x pos.y radius size
 ]
 ```
 
@@ -406,14 +407,14 @@ fill orange
 stroke white
 thickness 3
 font "Inter" size 24
-circle 100 100 50
+circle at 100 100 radius 50
 text "hello" at 20 20
 ```
 
 **2. Style one element.** The same words as connecting words apply to that element only and leave the current style untouched:
 
 ```
-circle 100 100 50 fill red stroke white thickness 3
+circle at 100 100 radius 50 fill red stroke white thickness 3
 text "title" at 20 20 font "Mono" size 32 fill gray
 ```
 
@@ -421,8 +422,8 @@ text "title" at 20 20 font "Mono" size 32 fill gray
 
 ```
 with fill cyan thickness 2 [
-  circle 100 100 50
-  rect 200 80 40 40
+  circle at 100 100 radius 50
+  rect at 200 80 size 40 40
 ]
 ```
 
@@ -430,7 +431,7 @@ with fill cyan thickness 2 [
 
 ```
 glow = { fill: cyan, stroke: white, thickness: 2 }
-circle 100 100 50 style glow
+circle at 100 100 radius 50 style glow
 with glow [ ... ]
 ```
 
@@ -443,7 +444,7 @@ Words:
 - `font`: a font file in the sketch's `assets/` (§4.9) or a system font name; `size` sets text size in pixels; `weight` (`light`, `regular`, `bold`, or a number) is optional.
 - `caps`, `joins`, `blend`: as in the parity map (§6).
 - Precedence: per-element words override `with` blocks, which override the current style.
-- **Origin** (decided 2026-10-24). `rect`, `circle` (and the other 2D shapes), `image`, `square` and `ellipse` take `as center` or `as corner` to say what their position means: `rect 200 200 80 40 as center` puts the middle of the rectangle at 200, 200; `as corner` is the default for `rect`, `square` and `image`, the top left, as in Processing; `circle`, `ellipse` and `arc` default to `as center`, also as in Processing (decided 2026-10-27). One shared pair of words replaces Processing's `rectMode`, `ellipseMode`, `imageMode` and `shapeMode`, and it is per element, so nothing sticks from one line to the next. `as` already carries fill modes (`fill photo as center`, `fill [ red teal ] as radial`), so the rule is positional (§5.1): an `as` directly after a shape's required arguments is its origin, and an `as` after a `fill` or `stroke` value belongs to that value. `circle 100 100 50 as center fill photo as cover` reads one way: the first `as` is the origin and the second is the fill mode. A circle, an ellipse and an arc are already centred, so `as center` only matters for the shapes that default to a corner, and `as corner` is how to place a circle or an ellipse by its top left.
+- **Origin** (decided 2026-10-24). `rect`, `circle` (and the other 2D shapes), `image`, `square` and `ellipse` take `as center` or `as corner` to say what their position means: `rect at 200 200 size 80 40 as center` puts the middle of the rectangle at 200, 200; `as corner` is the default for `rect`, `square` and `image`, the top left, as in Processing; `circle`, `ellipse` and `arc` default to `as center`, also as in Processing (decided 2026-10-27). One shared pair of words replaces Processing's `rectMode`, `ellipseMode`, `imageMode` and `shapeMode`, and it is per element, so nothing sticks from one line to the next. `as` already carries fill modes (`fill photo as center`, `fill [ red teal ] as radial`), so the rule is positional (§5.1): an `as` directly after a shape's required arguments is its origin, and an `as` after a `fill` or `stroke` value belongs to that value. `circle at 100 100 radius 50 as center fill photo as cover` reads one way: the first `as` is the origin and the second is the fill mode. A circle, an ellipse and an arc are already centred, so `as center` only matters for the shapes that default to a corner, and `as corner` is how to place a circle or an ellipse by its top left.
 
 **Colours** are accepted anywhere a colour goes:
 
@@ -469,7 +470,7 @@ background [ navy black ] angle 90
 stroke [ white cyan ]
 
 sunset = gradient [ orange purple ] angle 90  # a gradient is a value
-circle 100 100 50 fill sunset
+circle at 100 100 radius 50 fill sunset
 glow = { fill: sunset, stroke: white }        # and works in named styles
 ```
 
@@ -478,7 +479,7 @@ glow = { fill: sunset, stroke: white }        # and works in named styles
 - **Steps:** any number of colours, each a full colour value (`#ff8800`, `rgb …`, a name, with alpha). `stops` gives each colour's position as a percentage, one per colour.
 - **Geometry follows the shape.** Positions are percentages of the element's bounding box, so a gradient fits a circle, a rectangle or a line of text without arithmetic.
 - **Mixing:** colours are mixed in Oklab by default, which keeps gradients even and avoids muddy middles; `in rgb` gives Processing's look and `in oklch` mixes along the hue.
-- With per-element style words, a bare list works (`circle 100 100 50 fill [ red teal ]`). A gradient with options is named first or wrapped: `fill (gradient [ red teal ] angle 90)`, because connecting words belong to the call they sit in (§5.1).
+- With per-element style words, a bare list works (`circle at 100 100 radius 50 fill [ red teal ]`). A gradient with options is named first or wrapped: `fill (gradient [ red teal ] angle 90)`, because connecting words belong to the call they sit in (§5.1).
 - Gradients are drawn on the GPU in one pass per element, like solid colours.
 
 **Images, video and canvases as fills** (decided 2026-10-24). `fill` also takes an image, a canvas, a movie or the webcam. The element becomes a mask: the image shows only inside the shape, including text.
@@ -486,11 +487,11 @@ glow = { fill: sunset, stroke: white }        # and works in named styles
 ```
 photo = load "cat.png"
 fill photo                       # cover: fill the shape, crop what overflows
-circle 200 200 150
-square 20 20 100 fill photo as fit       # whole image inside, empty bands if needed
-rect 0 0 400 100 fill photo as stretch   # distort to fit exactly
-rect 0 0 width height fill pattern as tile size 64   # repeat at 64 pixels
-square 50 50 300 fill photo as center   # original size, centred, no scaling
+circle at 200 200 radius 150
+square at 20 20 size 100 fill photo as fit       # whole image inside, empty bands if needed
+rect at 0 0 size 400 100 fill photo as stretch   # distort to fit exactly
+rect at 0 0 size width height fill pattern as tile size 64   # repeat at 64 pixels
+square at 50 50 size 300 fill photo as center   # original size, centred, no scaling
 text "rocinante" at 20 200 size 96 fill webcam
 ```
 
@@ -583,7 +584,7 @@ Gamepads, joysticks and other controllers work in every sketch with no setup, th
 
 ```
 p = gamepad                       # the first connected gamepad, or empty
-circle (p.leftstick.x * 100 + 200) 300 20   # sticks are vectors from -1 to 1
+circle at (p.leftstick.x * 100 + 200) 300 radius 20   # sticks are vectors from -1 to 1
 if p.bottom [ jump ]              # buttons are true while held
 for each pad in gamepads [ … ]    # every connected gamepad
 ```
