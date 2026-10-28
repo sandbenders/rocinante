@@ -896,3 +896,55 @@ test_add_and_remove_use_their_connecting_words :: proc(t: ^testing.T) {
 	expect_tree(t, "first = item 1 of scores", "(assign first (call item (num 1) (opt of (name scores))))")
 	expect_tree(t, "n = count scores", "(assign n (call count (name scores)))")
 }
+
+// ---- geometry written with labels ----
+
+@(test)
+test_a_circle_is_written_with_at_and_radius :: proc(t: ^testing.T) {
+	expect_tree(t, "circle at 100 100 radius 50", "(call circle (opt at (num 100) (num 100)) (opt radius (num 50)))")
+	expect_tree(t, "circle at mouse radius 20", "(call circle (opt at (name mouse)) (opt radius (num 20)))")
+	expect_tree(t, "circle radius 20 at 5 5", "(call circle (opt radius (num 20)) (opt at (num 5) (num 5)))")
+}
+
+@(test)
+test_labels_take_their_values_up_to_the_next_label :: proc(t: ^testing.T) {
+	expect_tree(t, "rect at 20 30 size 100 150", "(call rect (opt at (num 20) (num 30)) (opt size (num 100) (num 150)))")
+	// `size` is also a value, but after `at p` it starts the next word.
+	expect_tree(t, "rect at p size 10 20", "(call rect (opt at (name p)) (opt size (num 10) (num 20)))")
+	expect_tree(t, "rect at x 44 size width height", "(call rect (opt at (name x) (num 44)) (opt size (name width) (name height)))")
+	expect_tree(t, "line from 0 0 to 100 100", "(call line (opt from (num 0) (num 0)) (opt to (num 100) (num 100)))")
+	expect_tree(t, "arc at 260 510 size 720 720 from 180 to 360", "(call arc (opt at (num 260) (num 510)) (opt size (num 720) (num 720)) (opt from (num 180)) (opt to (num 360)))")
+	expect_tree(t, "point at 10 20", "(call point (opt at (num 10) (num 20)))")
+	expect_tree(t, "square at 20 30 size 100", "(call square (opt at (num 20) (num 30)) (opt size (num 100)))")
+}
+
+@(test)
+test_style_words_follow_the_labels :: proc(t: ^testing.T) {
+	expect_tree(t, "circle at 100 100 radius 50 fill red stroke white thickness 3", "(call circle (opt at (num 100) (num 100)) (opt radius (num 50)) (opt fill (name red)) (opt stroke (name white)) (opt thickness (num 3)))")
+	expect_tree(t, "rect at 0 0 size width height fill (gradient p.sky angle 90)", "(call rect (opt at (num 0) (num 0)) (opt size (name width) (name height)) (opt fill (group (call gradient (path p sky) (opt angle (num 90))))))")
+}
+
+@(test)
+test_a_window_takes_its_size_position_and_title_as_words :: proc(t: ^testing.T) {
+	expect_tree(t, "w = window size 800 600 at 100 100 title \"garden\"", "(assign w (call window (opt size (num 800) (num 600)) (opt at (num 100) (num 100)) (opt title (text \"garden\"))))")
+	expect_tree(t, "title w \"new name\"", "(call title (name w) (text \"new name\"))")
+	expect_tree(t, "title \"hello\"", "(call title (text \"hello\"))")
+}
+
+@(test)
+test_the_old_positional_form_is_still_read_so_the_checker_can_say_what_to_write :: proc(t: ^testing.T) {
+	expect_tree(t, "circle 100 100 50", "(call circle (num 100) (num 100) (num 50))")
+}
+
+@(test)
+test_a_record_field_on_its_own_line_needs_no_comma :: proc(t: ^testing.T) {
+	expect_tree(t, "p = {\n  name: \"dusk\"\n  size: 5\n  pos: { 1, 2 }\n}", "(assign p (record name:(text \"dusk\") size:(num 5) pos:(vec (num 1) (num 2))))")
+	// Commas stay legal, and a line break is no separator between vector items.
+	expect_tree(t, "p = { a: 1, b: 2 }", "(assign p (record a:(num 1) b:(num 2)))")
+	expect_ids(t, "v = {\n  1\n  2\n}", {.Missing_Comma})
+}
+
+@(test)
+test_records_one_per_line_in_a_list :: proc(t: ^testing.T) {
+	expect_tree(t, "flowers = [\n  {\n    size: 1\n    spin: 2\n  }\n  { size: 3, spin: 4 }\n]", "(assign flowers (list (record size:(num 1) spin:(num 2)) (record size:(num 3) spin:(num 4))))")
+}

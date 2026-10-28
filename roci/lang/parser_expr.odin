@@ -94,8 +94,16 @@ option_kinds :: proc(info: Call_Info, word: string, given: int) -> (kinds: []reg
 		}
 		return nil, false
 	}
+	// A label word writes inputs of the verb (`circle at 100 100 radius 50`): as many
+	// items as it writes in its longest form, which the checker then sorts out.
+	if registry.is_label_word(info.verb.name, word) {
+		return LABEL_KINDS[:registry.label_max_count(info.verb.name, word)], true
+	}
+	// A verb written with labels takes no positional values, so its other words (`fill`, `at`,
+	// `title`) belong to any of its forms.
+	labelled := given == 0 && registry.has_label_forms(info.verb.name)
 	for shape in info.verb.shapes {
-		if len(shape.params) != given {
+		if len(shape.params) != given && !labelled {
 			continue
 		}
 		for option in shape.options {
@@ -106,6 +114,10 @@ option_kinds :: proc(info: Call_Info, word: string, given: int) -> (kinds: []reg
 	}
 	return nil, false
 }
+
+// What the items after a label word are, until the checker knows the form.
+@(private)
+LABEL_KINDS := [4]registry.Kind{.Any, .Any, .Any, .Any}
 
 // A word after `with` in a `learn` header takes one value of any kind.
 @(private)
@@ -279,6 +291,12 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			next := cur(p)
 			if call_ends_at(p, next) || !is_argument_start(p, next) {
 				break
+			}
+			// `rect at p size 10 20`: `size` is a value in places, but here it starts the next word.
+			if next.kind == .Name {
+				if _, starts_option := option_kinds(info, text_of(p, next), len(args)); starts_option {
+					break
+				}
 			}
 			append(&option_args, parse_argument(p, expr_block = kinds[len(option_args)] == .Expr_Block))
 		}
@@ -523,6 +541,8 @@ parse_vector_or_record :: proc(p: ^Parser) -> ^Expr {
 			advance(p)
 		case next.kind == .Close_Curly:
 		case next.kind == .End_Of_File || is_closer(next.kind):
+		case next.kind == .Name && peek_at(p, 1).kind == .Colon && starts_line(p, p.at):
+			// A field on its own line: the line break separates it from the one before.
 		case is_argument_start(p, next):
 			report(p, .Missing_Comma, next.span, "", insertion(p, p.last_end, ","))
 		}
