@@ -294,6 +294,20 @@ finish_statement :: proc(p: ^Parser, in_block: bool, mark: int) {
 			return
 		}
 	}
+	// `title w "x"` from before `set`: the window and the text move after `set`.
+	if call, has := call_of_statement.?; has && call.name == "title" {
+		line := position_of(p.src, t.span.start).line
+		start := p.src.line_starts[line - 1]
+		text := line_text(p.src, line)
+		if at := strings.index(text, "title"); at >= 0 && len(strings.trim_space(text[:at])) == 0 && at + 5 < t.span.start - start {
+			window := strings.trim_space(text[at + 5:t.span.start - start])
+			rest := strings.trim_space(text[t.span.start - start:])
+			fixed := strings.concatenate({text[:at], "set ", window, " title ", rest}, context.temp_allocator)
+			report(p, .Title_Of_Window, t.span, text_of(p, t), strings.trim_space(fixed))
+			skip_line(p)
+			return
+		}
+	}
 	// A word that follows a call and is not one of its words, but is near one (or means one).
 	if call, has := call_of_statement.?; has && t.kind == .Name {
 		word := text_of(p, t)

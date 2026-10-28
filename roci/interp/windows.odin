@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The settings of a window: the connecting words of `window` and the verbs that
-// name a window to change one later (`resizable w false`, `maximize w`). Both go to
-// the same procedures of package roci.
+// The settings of a window: the connecting words of `window` and of `set`, which
+// changes a window later (`set w resizable false`). Both go to the same
+// procedures of package roci.
 package interp
 
 import "../"
@@ -40,13 +40,11 @@ apply_window_options :: proc(it: ^Interp, w: roci.Window, options: []lang.IR_Opt
 	if on, found := flag(it, options, "fullscreen"); found {
 		roci.set_fullscreen(w, on)
 	}
-	if x, found := option_value(it, options, "smallest", 0); found {
-		y, _ := option_value(it, options, "smallest", 1)
-		roci.set_smallest(w, int(as_number(x)), int(as_number(y)))
+	if limit, found := option_pair(it, options, "smallest"); found {
+		roci.set_smallest(w, int(limit.x), int(limit.y))
 	}
-	if x, found := option_value(it, options, "largest", 0); found {
-		y, _ := option_value(it, options, "largest", 1)
-		roci.set_largest(w, int(as_number(x)), int(as_number(y)))
+	if limit, found := option_pair(it, options, "largest"); found {
+		roci.set_largest(w, int(limit.x), int(limit.y))
 	}
 	if v, found := option_value(it, options, "ratio"); found {
 		roci.set_ratio(w, as_number(v))
@@ -61,8 +59,8 @@ apply_window_options :: proc(it: ^Interp, w: roci.Window, options: []lang.IR_Opt
 	}
 }
 
-// `main_window.width = 400`, `control.resizable = false`: the property is set the
-// way the connecting word of the same name sets it.
+// `set main_window width 400`: the property is set the way the connecting word of
+// the same name sets it.
 @(private)
 set_window_property :: proc(it: ^Interp, w: roci.Window, name: string, value: Value) {
 	size := roci.window_size(w)
@@ -110,4 +108,41 @@ set_window_property :: proc(it: ^Interp, w: roci.Window, name: string, value: Va
 			roci.restore(w)
 		}
 	}
+}
+
+// `set w size 400 300 resizable false`: each word written changes the window the way
+// assigning the property of the same name does, in the order written.
+@(private)
+set_window :: proc(it: ^Interp, target: Value, options: []lang.IR_Option) {
+	w, is_window := target.(roci.Window)
+	if !is_window {
+		return
+	}
+	for o in options {
+		switch {
+		case len(o.args) == 0:
+		case o.word == "size":
+			if len(o.args) == 2 {
+				roci.set_window_size(w, int(as_number(eval(it, o.args[0]))), int(as_number(eval(it, o.args[1]))))
+			}
+		case len(o.args) == 2:
+			set_window_property(it, w, o.word, vec2({as_number(eval(it, o.args[0])), as_number(eval(it, o.args[1]))}))
+		case:
+			set_window_property(it, w, o.word, eval(it, o.args[0]))
+		}
+	}
+}
+
+// A pair of numbers written as two numbers or as one vector (`smallest 100 50`, `smallest p`).
+@(private)
+option_pair :: proc(it: ^Interp, options: []lang.IR_Option, word: string) -> (pair: [2]f64, found: bool) {
+	first, has := option_value(it, options, word, 0)
+	if !has {
+		return
+	}
+	if _, is_vec := first.(Vec); is_vec {
+		return as_pair(first), true
+	}
+	second, _ := option_value(it, options, word, 1)
+	return {as_number(first), as_number(second)}, true
 }

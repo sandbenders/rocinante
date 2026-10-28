@@ -60,8 +60,8 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"alpha", "angle", "as", "at", "bordered", "by", "fill", "focusable", "font", "from", "fullscreen", "grab", "height", "in",
-	"largest", "lines", "modal", "of", "parent", "radius", "ratio", "resizable", "size", "smallest", "start", "stops", "stroke", "style", "thickness", "title", "to", "topmost", "visible", "width",
+	"alpha", "angle", "as", "at", "bordered", "by", "fill", "focusable", "focused", "font", "from", "fullscreen", "grab", "height", "in",
+	"largest", "lines", "maximized", "minimized", "modal", "of", "parent", "radius", "ratio", "resizable", "size", "smallest", "start", "stops", "stroke", "style", "thickness", "title", "to", "topmost", "visible", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.
@@ -100,7 +100,7 @@ VALUE_DEFS := [?]Value_Def{
 }
 
 // A property of a window value (`main_window.width`): what it is and whether a
-// sketch may change it by assigning (`main_window.width = 400`).
+// sketch may change it with `set` (`set main_window width 400`).
 Property_Def :: struct {
 	name:    string,
 	kind:    Kind,
@@ -110,8 +110,8 @@ Property_Def :: struct {
 
 // What can be read from a window value, in the order they are listed in messages
 // and the manual, and which of them can also be assigned. Reading asks the window
-// (or the system); assigning does what the connecting word of the same name does
-// when the window is made, so `resizable false` and `w.resizable = false` agree.
+// (or the system); `set` does what the connecting word of the same name does
+// when the window is made, so `resizable false` and `set w resizable false` agree.
 WINDOW_PROPERTIES := [?]Property_Def{
 	{"width", .Number, 0, true},      // its width in pixels
 	{"height", .Number, 0, true},     // its height in pixels
@@ -159,8 +159,8 @@ FREE_AS_PARAMETERS := [?]string{"height", "size", "width"}
 // else (a `ratio`, a `parent`, `visible`): the parser takes one for a connecting
 // word only where a window call is due one.
 WINDOW_FREE_WORDS := [?]string{
-	"bordered", "focusable", "grab", "largest", "modal", "parent", "ratio", "resizable",
-	"smallest", "topmost", "visible",
+	"bordered", "focusable", "focused", "grab", "largest", "maximized", "minimized", "modal", "parent", "ratio",
+	"resizable", "smallest", "topmost", "visible",
 }
 
 // An `on` event and what follows its name: `on key "space" [ ... ]`, `on mouse down [ ... ]`.

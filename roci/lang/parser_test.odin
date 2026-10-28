@@ -927,7 +927,7 @@ test_style_words_follow_the_labels :: proc(t: ^testing.T) {
 @(test)
 test_a_window_takes_its_size_position_and_title_as_words :: proc(t: ^testing.T) {
 	expect_tree(t, "w = window size 800 600 at 100 100 title \"garden\"", "(assign w (call window (opt size (num 800) (num 600)) (opt at (num 100) (num 100)) (opt title (text \"garden\"))))")
-	expect_tree(t, "title w \"new name\"", "(call title (name w) (text \"new name\"))")
+	expect_tree(t, "set w title \"new name\"", "(call set (name w) (opt title (text \"new name\")))")
 	expect_tree(t, "title \"hello\"", "(call title (text \"hello\"))")
 }
 

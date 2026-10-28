@@ -914,9 +914,9 @@ test_a_triangle_or_quad_is_written_with_vectors_only :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_a_window_takes_its_title_in_the_call_and_a_verb_names_the_window_later :: proc(t: ^testing.T) {
-	expect_types(t, "w = window size 800 600 title \"garden\"\ntitle w \"new\"\ntitle \"current\"", "w: a window")
-	expect_errors(t, "title 5 \"x\"", {.Wrong_Argument_Kind})
+test_a_window_takes_its_title_in_the_call_and_set_changes_it_later :: proc(t: ^testing.T) {
+	expect_types(t, "w = window size 800 600 title \"garden\"\nset w title \"new\"\ntitle \"current\"", "w: a window")
+	expect_errors(t, "title 5", {.Wrong_Argument_Kind})
 	expect_errors(t, "window size 800 600 title 5", {.Wrong_Argument_Kind})
 }
 
@@ -980,11 +980,15 @@ test_a_property_a_window_does_not_have_names_the_ones_it_has :: proc(t: ^testing
 }
 
 @(test)
-test_a_windows_properties_can_be_assigned_except_the_ones_that_are_only_read :: proc(t: ^testing.T) {
-	expect_errors(t, "w = window size 800 600\nw.width = 100\nw.title = \"new\"\nw.at = { 10, 20 }\nw.resizable = false", {})
+test_a_windows_properties_are_changed_with_set_and_assigning_them_teaches_it :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window size 800 600\nset w width 100 title \"new\" at { 10, 20 } resizable false size 400 300", {})
+	expect_errors(t, "w = window size 800 600\nset w alpha 50 smallest 100 100 maximized true", {})
+	expect_errors(t, "w = window size 800 600\nw.width = 100", {.Set_Window})
 	expect_errors(t, "w = window size 800 600\nw.mouse = { 1, 2 }", {.Bad_Field})
-	expect_errors(t, "w = window size 800 600\nw.width = \"wide\"", {.Wrong_Kind_Here})
+	expect_errors(t, "w = window size 800 600\nset w width \"wide\"", {.Wrong_Argument_Kind})
 	expect_errors(t, "w = window size 800 600\nw.widht = 1", {.Bad_Field})
+	expect_errors(t, "set 5 width 100", {.Wrong_Argument_Kind})
+	expect_errors(t, "w = window size 800 600\nset w mouse 1", {.Unexpected_Token})
 }
 
 @(test)
@@ -995,7 +999,7 @@ test_shuffle_gives_a_list_of_the_same_kind_and_needs_a_list :: proc(t: ^testing.
 
 @(test)
 test_a_window_can_be_made_fixed_and_asked_whether_it_is :: proc(t: ^testing.T) {
-	expect_errors(t, "w = window size 300 200 resizable false\nr = w.resizable\nw.resizable = true\nif r [ quit ]", {})
+	expect_errors(t, "w = window size 300 200 resizable false\nr = w.resizable\nset w resizable true\nif r [ quit ]", {})
 	expect_errors(t, "w = window size 300 200 resizable 3", {.Wrong_Argument_Kind})
 	expect_types(t, "w = window size 300 200 resizable false\nr = w.resizable", "w: a window\nr: true or false")
 }

@@ -1,0 +1,8 @@
+── A window is changed with `set` ────────────────────── sketch.roci:2:1
+
+2 │ control.resizable = false
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`control.resizable` is a setting of a window. A window that is open is changed with the verb `set`, then the window, then the settings as in `window`.
+
+Write:  set control resizable false

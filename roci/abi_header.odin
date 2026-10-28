@@ -36,7 +36,6 @@ ABI_NOT_IN_C := [?]Abi_Skip{
 	{"pick", 0, "takes a list; no C form yet"},
 	{"push", 0, "takes a block; C has roci_push and roci_pop"},
 	{"random", 1, "`random from 1 to 3` is roci_random_between"},
-	{"title", 1, "C names the window it changes with roci_current_window and the current-window rule"},
 }
 
 // Filled when the program starts: `typeid_of` is not a constant, and a table this

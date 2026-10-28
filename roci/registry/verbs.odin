@@ -46,6 +46,30 @@ WINDOW_OPTIONS := []Option{
 	{"parent", {.Window}, false},
 	{"modal", {.Boolean}, false},
 }
+// What `set` changes on a window that is open: the words of `window` and the others a window can be read for.
+SET_OPTIONS := []Option{
+	{"size", {.Number, .Number}, false},
+	{"width", {.Number}, false},
+	{"height", {.Number}, false},
+	{"at", {.Number, .Number}, false},
+	{"title", {.Text}, false},
+	{"fullscreen", {.Boolean}, false},
+	{"resizable", {.Boolean}, false},
+	{"bordered", {.Boolean}, false},
+	{"topmost", {.Boolean}, false},
+	{"visible", {.Boolean}, false},
+	{"alpha", {.Number}, false},
+	{"smallest", {.Number, .Number}, false},
+	{"largest", {.Number, .Number}, false},
+	{"ratio", {.Number}, false},
+	{"focusable", {.Boolean}, false},
+	{"grab", {.Boolean}, false},
+	{"parent", {.Window}, false},
+	{"modal", {.Boolean}, false},
+	{"focused", {.Boolean}, false},
+	{"maximized", {.Boolean}, false},
+	{"minimized", {.Boolean}, false},
+}
 ALPHA_OPTION := []Option{{"alpha", {.Number}, false}}
 NOISE_OPTIONS := []Option{{"as", {.Name}, false}} // `as simplex`; Perlin is the default
 RANDOM_RANGE := []Option{{"from", {.Number}, true}, {"to", {.Number}, true}}
@@ -55,10 +79,7 @@ VERBS := []Verb{
 	{"window", {
 		{{{"width", .Number}, {"height", .Number}}, WINDOW_OPTIONS, .Window},
 	}, "Opens a window of the given size, optionally at a position, and gives it back."},
-	{"title", {
-		{{{"text", .Text}}, nil, .None},
-		{{{"window", .Window}, {"text", .Text}}, nil, .None},
-	}, "Sets the window's title."},
+	{"title", {{{{"text", .Text}}, nil, .None}}, "Sets the title of the window the code runs in. Another window is changed with `set`."},
 	{"fullscreen", {{{}, nil, .None}}, "Makes the window fill the screen."},
 	{"quit", {{{}, nil, .None}}, "Closes the sketch."},
 	{"background", {{{{"colour", .Colour}}, GRADIENT_OPTIONS, .None}}, "Fills the whole window with a colour or a gradient."},

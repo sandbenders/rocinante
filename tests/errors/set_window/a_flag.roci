@@ -1,0 +1,2 @@
+control = window size 300 200
+control.resizable = false

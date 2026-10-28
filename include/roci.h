@@ -41,7 +41,7 @@ roci_window_id roci_window(double width, double height);
 /* Opens a window at a position on the screen and gives it back. */
 roci_window_id roci_window_at(double width, double height, double x, double y);
 
-/* Sets the window's title. */
+/* Sets the title of the window the code runs in. Another window is changed with `set`. */
 void roci_title(const char *text);
 
 /* Makes the window fill the screen. */

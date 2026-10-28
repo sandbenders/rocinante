@@ -316,11 +316,7 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		apply_window_options(it, w, call.options)
 		return w
 	case "title":
-		if call.shape == 0 {
-			roci.title_text(as_text(a[0]))
-		} else if w, ok := a[0].(roci.Window); ok {
-			roci.title_window(w, as_text(a[1]))
-		}
+		roci.title_text(as_text(a[0]))
 	case "fullscreen":
 		roci.fullscreen()
 	case "quit":

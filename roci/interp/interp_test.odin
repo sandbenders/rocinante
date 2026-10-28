@@ -393,7 +393,7 @@ test_random_follows_the_seed_and_stays_in_range :: proc(t: ^testing.T) {
 
 @(test)
 test_windows_open_with_a_size_a_position_and_a_title :: proc(t: ^testing.T) {
-	p := run_text(t, "w = window size 320 220 at 60 120 title \"palette\"\ncircle at 10 10 radius 5\ntitle w \"renamed\"\nv = window size 200 100\ndraw v [ circle at 1 1 radius 1 ]", 1)
+	p := run_text(t, "w = window size 320 220 at 60 120 title \"palette\"\ncircle at 10 10 radius 5\nset w title \"renamed\"\nv = window size 200 100\ndraw v [ circle at 1 1 radius 1 ]", 1)
 	defer finish(p)
 	testing.expect_value(t, len(roci.open_windows()), 2)
 	testing.expect_value(t, len(roci.recorded(roci.open_windows()[0])), 1)
@@ -1009,8 +1009,8 @@ test_shuffling_an_empty_list_and_a_one_item_list_is_fine :: proc(t: ^testing.T) 
 }
 
 @(test)
-test_resizable_false_fixes_a_window_and_assigning_the_property_changes_it_later :: proc(t: ^testing.T) {
-	text := "a = window size 300 200 resizable false\nb = window size 100 100\nprint a.resizable\nprint b.resizable\na.resizable = true\nb.resizable = false\nprint a.resizable\nprint b.resizable"
+test_resizable_false_fixes_a_window_and_set_changes_it_later :: proc(t: ^testing.T) {
+	text := "a = window size 300 200 resizable false\nb = window size 100 100\nprint a.resizable\nprint b.resizable\nset a resizable true\nset b resizable false\nprint a.resizable\nprint b.resizable"
 	expect_printed(t, text, "false\ntrue\ntrue\nfalse")
 }
 
@@ -1021,25 +1021,31 @@ test_every_window_word_is_a_property_that_reads_back_what_was_asked :: proc(t: ^
 }
 
 @(test)
-test_assigning_a_windows_size_title_and_position_changes_it :: proc(t: ^testing.T) {
-	text := "w = window size 300 200 at 10 20 title \"a\"\nw.width = 640\nw.title = \"b\"\nw.at = { 50, 60 }\nprint w.width\nprint w.height\nprint w.title\nprint w.at"
+test_set_changes_a_windows_size_title_and_position :: proc(t: ^testing.T) {
+	text := "w = window size 300 200 at 10 20 title \"a\"\nset w width 640 title \"b\" at { 50, 60 }\nprint w.width\nprint w.height\nprint w.title\nprint w.at"
 	expect_printed(t, text, "640\n200\nb\n{ 50, 60 }")
 }
 
 @(test)
-test_a_window_property_can_be_assigned_through_another_window_property :: proc(t: ^testing.T) {
-	text := "p = window size 500 400\nw = window size 300 200 parent p\nw.parent.width = 700\nprint p.width"
+test_set_can_name_a_window_through_another_window_property :: proc(t: ^testing.T) {
+	text := "p = window size 500 400\nw = window size 300 200 parent p\nset w.parent width 700\nprint p.width"
 	expect_printed(t, text, "700")
 }
 
 @(test)
 test_window_states_the_system_knows_read_false_without_a_system_window :: proc(t: ^testing.T) {
-	text := "w = window size 300 200\nprint w.focused\nprint w.hovered\nprint w.maximized\nprint w.minimized\nprint w.covered\nw.maximized = true\nw.focused = true"
+	text := "w = window size 300 200\nprint w.focused\nprint w.hovered\nprint w.maximized\nprint w.minimized\nprint w.covered\nset w maximized true\nset w focused true"
 	expect_printed(t, text, "false\nfalse\nfalse\nfalse\nfalse")
 }
 
 @(test)
 test_alpha_is_a_percentage_in_the_language_and_a_byte_below_it :: proc(t: ^testing.T) {
-	text := "c = rgb 10 20 30 alpha 50\nprint c.a\nc.a = 25\nprint c.a\nd = rgb 1 2 3 alpha 400\nprint d.a\ne = rgb 1 2 3\nprint e.a\nw = window size 100 100 alpha 40\nprint w.alpha\nw.alpha = 100\nprint w.alpha"
+	text := "c = rgb 10 20 30 alpha 50\nprint c.a\nc.a = 25\nprint c.a\nd = rgb 1 2 3 alpha 400\nprint d.a\ne = rgb 1 2 3\nprint e.a\nw = window size 100 100 alpha 40\nprint w.alpha\nset w alpha 100\nprint w.alpha"
 	expect_printed(t, text, "50\n25\n100\n100\n40\n100")
+}
+
+@(test)
+test_set_takes_a_pair_as_two_numbers_or_one_vector :: proc(t: ^testing.T) {
+	text := "p = { 100, 50 }\nw = window size 300 200\nset w smallest p at 7 8\nprint w.smallest\nprint w.at\nset w at p largest 900 700\nprint w.at\nprint w.largest"
+	expect_printed(t, text, "{ 100, 50 }\n{ 7, 8 }\n{ 100, 50 }\n{ 900, 700 }")
 }

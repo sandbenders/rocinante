@@ -1,0 +1,8 @@
+── `title` names the window the code runs in ─────────── sketch.roci:2:9
+
+2 │ title w "palette"
+  │         ^^^^^^^^^
+
+`title` takes only the text and names the window the code runs in. Another window is changed with `set`, then the window, then `title` and the text.
+
+Write:  set w title "palette"

@@ -83,12 +83,12 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 	// parser's fix is made, so what the checker says about the half call on that line is an echo.
 	cut_lines := make([dynamic]int, context.temp_allocator)
 	for d in parsed.diagnostics {
-		if d.id == .Word_Outside_Brackets {
+		if d.id == .Word_Outside_Brackets || d.id == .Title_Of_Window {
 			append(&cut_lines, position_of(src, d.span.start).line)
 		}
 	}
 	for d in all {
-		if len(cut_lines) > 0 && slice.contains(cut_lines[:], position_of(src, d.span.start).line) && d.id != .Word_Outside_Brackets {
+		if len(cut_lines) > 0 && slice.contains(cut_lines[:], position_of(src, d.span.start).line) && d.id != .Word_Outside_Brackets && d.id != .Title_Of_Window {
 			continue
 		}
 		duplicate := false
@@ -696,10 +696,11 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 			note(c, .Bad_Field, last_span, last, "a window", fmt.tprintf("`%s` can be read but not changed.", last), fix(c, last_span, "width"))
 			return IR_Error_Stmt{}
 		}
-		want := type_of_property(c, def)
-		if !unify(c.types, want, value.type) {
-			note(c, .Wrong_Kind_Here, k.value.span, label, describe(c.types, want), describe(c.types, value.type), fix(c, k.value.span, sample_of(c, want)))
-		}
+		// A window is changed with `set`: show the writer's own line that way.
+		window_text := text_at(c, Span{span.file, span.start, last_span.start - 1})
+		whole := Span{span.file, span.start, k.value.span.end}
+		note(c, .Set_Window, whole, label, "", "", fix(c, whole, fmt.tprintf("set %s %s %s", window_text, last, text_at(c, k.value.span))))
+		return IR_Error_Stmt{}
 	case .Vector:
 		want := swizzle_type(c, item.a, last)
 		if want == T_ERROR {

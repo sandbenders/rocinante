@@ -433,7 +433,9 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 				}
 			}
 			ir := check_expr(c, a, false)
-			if i < len(def.kinds) && ir.type != T_ERROR && !registry.accepts(def.kinds[i], registry_kind(c.types, ir.type)) {
+			// A pair of numbers (`at 10 20`) may be written as one vector (`at p`).
+			is_pair := len(def.kinds) == 2 && def.kinds[0] == .Number && def.kinds[1] == .Number && len(o.args) == 1 && registry_kind(c.types, ir.type) == .Vector
+			if !is_pair && i < len(def.kinds) && ir.type != T_ERROR && !registry.accepts(def.kinds[i], registry_kind(c.types, ir.type)) {
 				need := fmt.tprintf("%s after `%s`", kind_words(def.kinds[i]), o.word)
 				note(c, .Wrong_Argument_Kind, a.span, verb.name, need, describe(c.types, ir.type), fix(c, a.span, sample_for_kind(def.kinds[i])))
 			}

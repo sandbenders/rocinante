@@ -82,3 +82,10 @@ test_the_page_of_window_lists_what_a_window_is_like :: proc(t: ^testing.T) {
 		testing.expectf(t, strings.contains(out, def.name), "`%s` is missing", def.name)
 	}
 }
+
+@(test)
+test_the_page_of_set_lists_what_a_window_is_like :: proc(t: ^testing.T) {
+	_, out, _ := man("set")
+	testing.expect(t, strings.contains(out, "what a window is like"))
+	testing.expect(t, strings.contains(out, "set main_window width 400"))
+}

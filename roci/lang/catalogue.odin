@@ -32,6 +32,8 @@ Message_Id :: enum u8 {
 	Unknown_Option,
 	Index_Brackets,
 	Word_Outside_Brackets,
+	Set_Window,
+	Title_Of_Window,
 	// Brackets
 	Missing_Close_Square,
 	Missing_Close_Round,
@@ -141,6 +143,12 @@ CATALOGUE := [Message_Id]Entry{
 		"Write:", "{b}"},
 	.Hash_Comment = {.Error, "A comment starts with two slashes",
 		"A hash is for colours, like `#ff8800`. A comment starts with two slashes and runs to the end of the line.",
+		"Write:", "{b}"},
+	.Set_Window = {.Error, "A window is changed with `set`",
+		"`{a}` is a setting of a window. A window that is open is changed with the verb `set`, then the window, then the settings as in `window`.",
+		"Write:", "{d}"},
+	.Title_Of_Window = {.Error, "`title` names the window the code runs in",
+		"`title` takes only the text and names the window the code runs in. Another window is changed with `set`, then the window, then `title` and the text.",
 		"Write:", "{b}"},
 
 	.Missing_Close_Square = {.Error, "This block is never closed",

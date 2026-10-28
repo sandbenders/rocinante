@@ -15,7 +15,7 @@ import "core:unicode/utf8"
 
 is_language_verb :: proc(name: string) -> bool {
 	switch name {
-	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send":
+	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send", "set":
 		return true
 	}
 	return false
@@ -169,6 +169,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return out
 	case "send":
 		send_message(it, eval(it, call.args[0]), eval(it, call.args[1]))
+	case "set":
+		set_window(it, eval(it, call.args[0]), call.options)
 	}
 	return nil
 }

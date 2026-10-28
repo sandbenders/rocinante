@@ -549,12 +549,18 @@ test_a_verb_with_label_forms_accepts_only_the_listed_shapes :: proc(t: ^testing.
 }
 
 @(test)
-test_title_can_name_a_window_and_window_takes_a_title :: proc(t: ^testing.T) {
+test_title_names_the_current_window_and_window_and_set_take_a_title :: proc(t: ^testing.T) {
 	title, _ := find_verb("title")
-	testing.expect_value(t, len(title.shapes), 2)
-	i, result := shape_for(title, {.Window, .Text})
-	testing.expect_value(t, result, Shape_Result.Found)
-	testing.expect_value(t, i, 1)
+	testing.expect_value(t, len(title.shapes), 1)
+	_, result := shape_for(title, {.Window, .Text})
+	testing.expect(t, result != Shape_Result.Found)
+	set, found := find_verb("set")
+	testing.expect(t, found)
+	word_found := false
+	for o in set.shapes[0].options {
+		word_found ||= o.word == "title"
+	}
+	testing.expect(t, word_found)
 	window, _ := find_verb("window")
 	has_title := false
 	for o in window.shapes[0].options {
@@ -644,4 +650,17 @@ test_the_words_only_a_window_uses_stay_free_as_names :: proc(t: ^testing.T) {
 		testing.expectf(t, !is_reserved_name(word), "`%s` should be usable as a name", word)
 	}
 	testing.expect(t, is_reserved_name("circle"))
+}
+
+@(test)
+test_set_has_a_word_for_every_property_that_can_be_changed :: proc(t: ^testing.T) {
+	set, found := find_verb("set")
+	testing.expect(t, found)
+	for def in WINDOW_PROPERTIES {
+		has := false
+		for o in set.shapes[0].options {
+			has ||= o.word == def.name
+		}
+		testing.expectf(t, has == def.settable, "`%s`: set has the word is %v but settable is %v", def.name, has, def.settable)
+	}
 }

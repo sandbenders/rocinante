@@ -20,6 +20,7 @@ LANGUAGE_VERBS := []Verb{
 	{"remove", {{LIST_ITEM, {{"from", {.List}, true}}, .None}}, "Takes an item out of a list: `remove p from particles`."},
 	{"count", {{LIST_PARAM, nil, .Number}}, "How many items a list has."},
 	{"item", {{{{"index", .Number}}, {{"of", {.List}, true}}, .Any}}, "The item at a place in a list, counting from 1: `item 1 of scores`."},
+	{"set", {{{{"window", .Window}}, SET_OPTIONS, .None}}, "Changes a window that is open, with the words of `window`: `set w size 400 300 resizable false`."},
 	{"send", {{{{"window", .Window}, {"value", .Any}}, nil, .None}}, "Sends a value to a window; it arrives on that window's next frame: `send w 5`."},
 	{"print", {{{{"value", .Any}}, nil, .None}}, "Writes a value to the console."},
 	{"copy", {{{{"value", .Any}}, nil, .Any}}, "An independent copy of a list or record, and everything inside it."},
