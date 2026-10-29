@@ -1172,3 +1172,33 @@ test_a_library_in_libs_runs_with_its_hidden_helper_and_the_sketch_wins_a_clash :
 	testing.expect_value(t, problem, "")
 	expect_files_printed(t, program.files, "8\nmy glow\nlibrary glow\nlibrary glow")
 }
+
+// ---- rounding, and what is held down ----
+
+@(test)
+test_floor_round_and_ceil_give_whole_numbers_and_round_is_still_a_word_for_caps :: proc(t: ^testing.T) {
+	text := "print (floor 2.7)\nprint (floor -2.1)\nprint (round 2.5)\nprint (round -2.5)\nprint (ceil 2.1)\nprint (ceil -0.5)\nx = round 2.4 + 1\nprint x\nn = 7\nprint (floor n / 2)\ncaps round\njoins round\ncircle at 1 1 radius 2 fill red"
+	expect_printed(t, text, "2\n-3\n3\n-3\n3\n0\n3\n3.5")
+}
+
+@(test)
+test_pressed_is_true_while_a_button_is_held_in_the_window_the_code_runs_in :: proc(t: ^testing.T) {
+	p := run_text(t, "a = window size 100 100\nb = window size 100 100\ndraw a [ print pressed ]\ndraw b [ print (not pressed) ]")
+	defer finish(p)
+	windows := roci.open_windows()
+	roci.step({click_event(windows[0], 5, 5)})
+	roci.step()
+	roci.step({click_event(windows[0], 5, 5, false)})
+	testing.expect_value(t, printed(p), "true\ntrue\ntrue\ntrue\nfalse\ntrue")
+}
+
+@(test)
+test_held_is_true_while_the_key_is_down :: proc(t: ^testing.T) {
+	p := run_text(t, "draw [ print (held \"a\") ]")
+	defer finish(p)
+	w := first_window()
+	roci.step({key_event(w, .A)})
+	roci.step()
+	roci.step({key_event(w, .A, false)})
+	testing.expect_value(t, printed(p), "true\ntrue\nfalse")
+}

@@ -5,6 +5,7 @@ chooser: a window
 garden: a window
 chosen: a number
 wind: a number
+dragging: true or false
 calm: a number
 flowers: a list of records with at, size, petals and spin
 first_planted: a number

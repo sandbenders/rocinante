@@ -51,6 +51,9 @@ API_NAMES := [?]Api_Entry{
 	{"dist", "dist"},
 	{"abs", "absolute"},
 	{"sqrt", "square_root"},
+	{"floor", "floor"},
+	{"round", "round"},
+	{"ceil", "ceil"},
 	{"sin", "sin_deg"},
 	{"cos", "cos_deg"},
 	{"random", "random"}, // `random_between` is `random from … to …`

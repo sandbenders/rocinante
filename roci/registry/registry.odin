@@ -72,7 +72,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "false", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "tau", "time", "true", "width",
+	"anywhere", "false", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "pressed", "tau", "time", "true", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -91,6 +91,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"height", .Number, 0},
 	{"key", .Text, 0}, // the name of the key last pressed
 	{"mouse", .Vector, 2},
+	{"pressed", .Boolean, 0}, // whether a mouse button is held down in this window
 	{"pi", .Number, 0},
 	{"pmouse", .Vector, 2}, // where the mouse was a frame ago
 	{"tau", .Number, 0},

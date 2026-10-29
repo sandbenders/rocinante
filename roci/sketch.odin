@@ -44,6 +44,7 @@ Win :: struct {
 	alive:        bool,
 	mouse:        [2]f64,           // where the mouse is in this window, and where it was a frame ago
 	previous:     [2]f64,
+	buttons:      bit_set[platform.Mouse_Button], // the mouse buttons held down that went down in this window
 	fullscreen:   bool,
 	fixed:        bool,             // its size cannot be changed by dragging its edges
 	borderless:   bool,             // no title bar or frame
@@ -87,7 +88,6 @@ Sketch :: struct {
 	seed:         u64,
 	seed_chosen:  bool,    // by `seed`, or by the start-up when the program did not choose
 	keys:         [512]bool, // by SDL scancode
-	buttons:      bit_set[platform.Mouse_Button],
 	wheel:        [2]f64,   // scrolled during the last frame
 	log:          [dynamic]Happened, // what happened in the frame in progress
 	last_key:     string,

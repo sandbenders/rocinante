@@ -166,6 +166,9 @@ VERBS := []Verb{
 	}, "The distance between two points."},
 	{"abs", {{{{"value", .Number}}, nil, .Number}}, "A number without its sign."},
 	{"sqrt", {{{{"value", .Number}}, nil, .Number}}, "The square root."},
+	{"floor", {{{{"value", .Number}}, nil, .Number}}, "The whole number at or below a number: floor 2.7 is 2, floor -2.1 is -3."},
+	{"round", {{{{"value", .Number}}, nil, .Number}}, "The nearest whole number; halves go away from zero: round 2.5 is 3."},
+	{"ceil", {{{{"value", .Number}}, nil, .Number}}, "The whole number at or above a number: ceil 2.1 is 3, ceil -2.7 is -2."},
 	{"sin", {{{{"degrees", .Number}}, nil, .Number}}, "The sine of an angle in degrees."},
 	{"cos", {{{{"degrees", .Number}}, nil, .Number}}, "The cosine of an angle in degrees."},
 

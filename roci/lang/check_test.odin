@@ -1040,3 +1040,15 @@ test_a_gradient_list_holds_colours_and_a_list_of_a_list_is_taught :: proc(t: ^te
 		testing.expectf(t, found, "`%s` should say a gradient is a list of colours", bad)
 	}
 }
+
+@(test)
+test_pressed_and_held_are_true_or_false_and_the_rounding_verbs_take_a_number :: proc(t: ^testing.T) {
+	expect_errors(t, "if pressed [ circle at mouse radius 5 ]", {})
+	expect_types(t, "a = pressed\nb = held \"space\"\nc = round 2.5\nd = floor mouse.x\ne = ceil 1", "a: true or false\nb: true or false\nc: a number\nd: a number\ne: a number")
+	expect_errors(t, "x = held 5", {.Wrong_Argument_Kind})
+	expect_errors(t, "x = floor \"a\"", {.Wrong_Argument_Kind})
+	expect_errors(t, "pressed = 3", {.Reserved_Name})
+	expect_errors(t, "round = 3", {.Reserved_Name})
+	// `round` is a verb, and still the word of caps and joins.
+	expect_errors(t, "caps round\njoins round\nx = round 1.5", {})
+}

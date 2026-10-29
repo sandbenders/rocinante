@@ -4,9 +4,9 @@
 // plants a flower. The palette window recolours the garden and sets the wind
 // through messages; both kinds are one record of fields the garden reads.
 //
-// Next to the Odin version this one has no text labels (text comes with the text
-// verbs), no held-key or held-button state (so no dragging the wind bar and no
-// calm-while-held), and no scale to fit the window.
+// The wind bar can be dragged (`pressed`) and the space bar calms the grass while it is
+// held (`held`). Next to the Odin version this one has no text labels (text comes with
+// the text verbs) and no scale to fit the window.
 GROUND = 470
 SWATCH = 80
 
@@ -42,16 +42,17 @@ garden = window size 800 600 at 420 80 title "garden"
 
 chosen = 1
 wind = 0.5
+dragging = false
 calm = 1
 flowers = []
 
 learn plant place [
-  // A whole number of petals (a fraction would leave a gap in the ring): the part after the point is cut off.
-  petal_count = 5 + random 4
+  // A whole number of petals: a fraction would leave a gap in the ring.
+  petal_count = floor (5 + random 4)
   add {
     at: place
     size: random from 10 to 22
-    petals: petal_count - petal_count % 1
+    petals: petal_count
     spin: random from -40 to 40
   } to flowers
 ]
@@ -64,6 +65,14 @@ first_planted = count flowers
 
 draw chooser [
   background 30
+  // Dragging the bar goes on while the button is held, wherever the mouse is.
+  if dragging [
+    if pressed [
+      send garden { wind: clamp (map mouse.x 16 304 0 1) 0 1 }
+    ] else [
+      dragging = false
+    ]
+  ]
   for i from 1 to 3 [
     x = 16 + (i - 1) * (SWATCH + 20)
     p = item i of palettes
@@ -85,6 +94,7 @@ on chooser mouse down [
     ]
   ]
   if mouse.y > 155 and mouse.y < 195 [
+    dragging = true
     send garden { wind: clamp (map mouse.x 16 304 0 1) 0 1 }
   ]
 ]
@@ -100,7 +110,6 @@ on garden receive message [
   if message.wind > 0 [ wind = message.wind ]
 ]
 
-on garden key "space" [ calm = 0.15 ]
 on garden key "c" [ flowers = keep flowers [ it.size > 30 ] ]
 
 learn draw_flower flower look [
@@ -121,6 +130,7 @@ learn draw_flower flower look [
 
 draw garden [
   p = item chosen of palettes
+  if held "space" [ calm = 0.15 ] else [ calm = 1 ]
   background (gradient p.sky angle 90)
 
   seed 11

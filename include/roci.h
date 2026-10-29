@@ -230,6 +230,15 @@ double roci_abs(double value);
 /* The square root. */
 double roci_sqrt(double value);
 
+/* The whole number at or below a number: floor 2.7 is 2, floor -2.1 is -3. */
+double roci_floor(double value);
+
+/* The nearest whole number; halves go away from zero: round 2.5 is 3. */
+double roci_round(double value);
+
+/* The whole number at or above a number: ceil 2.1 is 3, ceil -2.7 is -2. */
+double roci_ceil(double value);
+
 /* The sine of an angle in degrees. */
 double roci_sin(double degrees);
 
@@ -269,7 +278,7 @@ roci_vec2 roci_mouse(void);
 /* Where the mouse was one frame ago. */
 roci_vec2 roci_pmouse(void);
 
-/* 1 while the left mouse button is down. */
+/* 1 while the left mouse button is down, in the current window. */
 int roci_mouse_down(void);
 
 /* 1 while the key with this lowercase name ("a", "space", "left", "f5", ...) is held. */

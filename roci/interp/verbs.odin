@@ -454,6 +454,12 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return roci.dist_v(p(a, 0), p(a, 1))
 	case "abs":
 		return roci.absolute(n(a, 0))
+	case "floor":
+		return roci.floor(n(a, 0))
+	case "round":
+		return roci.round(n(a, 0))
+	case "ceil":
+		return roci.ceil(n(a, 0))
 	case "sqrt":
 		return roci.square_root(n(a, 0))
 	case "sin":
@@ -501,7 +507,7 @@ HANDLED := [?]string{
 	"circle", "ellipse", "rect", "square", "line", "point", "triangle", "quad", "arc",
 	"fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "caps", "joins",
 	"rgb", "hsb", "oklch", "gradient", "mix", "move", "turn", "grow", "shear", "push",
-	"map", "clamp", "dist", "abs", "sqrt", "sin", "cos",
+	"map", "clamp", "dist", "abs", "sqrt", "sin", "cos", "floor", "round", "ceil",
 	"random", "pick", "gaussian", "seed", "noise", "fbm",
 }
 

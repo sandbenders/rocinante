@@ -137,7 +137,9 @@ handle_event :: proc(event: platform.Event) {
 	case platform.Focus_Changed:
 		if !e.gained {
 			the.keys = {}
-			the.buttons = {}
+			for w in the.windows {
+				w.buttons = {}
+			}
 		}
 	case platform.Mouse_Moved:
 		if w := win_for_platform(e.window); w != nil {
@@ -154,11 +156,11 @@ handle_event :: proc(event: platform.Event) {
 				w.mouse /= platform.input_scale(w.handle)
 			}
 			the.focused = w
-		}
-		if e.down {
-			the.buttons += {e.button}
-		} else {
-			the.buttons -= {e.button}
+			if e.down {
+				w.buttons += {e.button}
+			} else {
+				w.buttons -= {e.button}
+			}
 		}
 	case platform.Wheel:
 		the.wheel += {f64(e.dx), f64(e.dy)}

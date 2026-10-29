@@ -527,6 +527,24 @@ abi_sqrt :: proc "c" (value: f64) -> f64 {
 	return square_root(value)
 }
 
+@(export, link_name = "roci_floor")
+abi_floor :: proc "c" (value: f64) -> f64 {
+	context = runtime.default_context()
+	return floor(value)
+}
+
+@(export, link_name = "roci_round")
+abi_round :: proc "c" (value: f64) -> f64 {
+	context = runtime.default_context()
+	return round(value)
+}
+
+@(export, link_name = "roci_ceil")
+abi_ceil :: proc "c" (value: f64) -> f64 {
+	context = runtime.default_context()
+	return ceil(value)
+}
+
 @(export, link_name = "roci_sin")
 abi_sin :: proc "c" (degrees: f64) -> f64 {
 	context = runtime.default_context()

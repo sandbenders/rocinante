@@ -20,9 +20,14 @@ pmouse :: proc() -> [2]f64 {
 	return current_win().previous
 }
 
-// Whether a mouse button is down.
+// Whether a mouse button is down that went down in the current window.
 mouse_down :: proc(button := platform.Mouse_Button.Left) -> bool {
-	return button in the.buttons
+	return button in current_win().buttons
+}
+
+// Whether any mouse button is held down in the current window (`pressed`).
+pressed :: proc() -> bool {
+	return current_win().buttons != {}
 }
 
 // How far the wheel turned during the last frame: x to the right, y up.

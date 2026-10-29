@@ -1,4 +1,4 @@
-# design.md: rocinante
+`pressed` (a button is held in this window), `held "space"` (a key is held), # design.md: rocinante
 
 The architecture details (§4.3 to §4.11), the language (§5) and the feature parity map (§6). It is imported by `CLAUDE.md`; together the two files are the single source of truth. Section numbers are global, so `§5.9` means section 5.9 of this file and `§8` means section 8 of `CLAUDE.md`. When a decision changes, update the file that holds the section, in place.
 

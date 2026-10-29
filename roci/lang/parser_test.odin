@@ -1021,3 +1021,9 @@ test_extra_spaces_after_an_equals_sign_or_between_words_mean_nothing_in_a_block_
 	expect_ids(t, "draw [ x =    3  y = 4 ]\n", {})
 	expect_ids(t, "draw [ x = ]\n", {.Nothing_After_Equals})
 }
+
+@(test)
+test_a_word_where_a_verb_takes_a_word_is_that_word_even_when_it_is_also_a_verb :: proc(t: ^testing.T) {
+	expect_tree(t, "caps round", "(call caps (name round))")
+	expect_tree(t, "x = round 1.5", "(assign x (call round (num 1.5)))")
+}

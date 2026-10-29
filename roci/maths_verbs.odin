@@ -114,3 +114,25 @@ sin_deg :: proc(degrees: f64) -> f64 {
 cos_deg :: proc(degrees: f64) -> f64 {
 	return maths.cos_deg(degrees)
 }
+
+// The whole number at or below a number (`floor`).
+floor :: proc(value: f64) -> f64 {
+	return no_negative_zero(math.floor(value))
+}
+
+// The nearest whole number, halves going away from zero (`round`).
+round :: proc(value: f64) -> f64 {
+	return no_negative_zero(math.round(value))
+}
+
+// The whole number at or above a number (`ceil`).
+ceil :: proc(value: f64) -> f64 {
+	return no_negative_zero(math.ceil(value))
+}
+
+// A zero with a minus sign would print as -0 and never be told apart by a sketch, so
+// it is made the plain zero in every back end.
+@(private)
+no_negative_zero :: proc(value: f64) -> f64 {
+	return 0 if value == 0 else value
+}

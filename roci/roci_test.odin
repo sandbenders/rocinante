@@ -491,6 +491,19 @@ test_number_verbs :: proc(t: ^testing.T) {
 	testing.expect_value(t, absolute(-3), 3.0)
 	testing.expect_value(t, square_root(16), 4.0)
 	testing.expect_value(t, square_root(-1), 0.0)
+	testing.expect_value(t, floor(2.7), 2.0)
+	testing.expect_value(t, floor(-2.1), -3.0)
+	testing.expect_value(t, ceil(2.1), 3.0)
+	testing.expect_value(t, ceil(-2.7), -2.0)
+	testing.expect_value(t, round(2.5), 3.0)
+	testing.expect_value(t, round(-2.5), -3.0)
+	testing.expect_value(t, round(2.4), 2.0)
+	testing.expect_value(t, round(-2.4), -2.0)
+	testing.expect_value(t, floor(5), 5.0)
+	// A zero never has a minus sign: it would print as -0.
+	testing.expect(t, !math.sign_bit(ceil(-0.5)))
+	testing.expect(t, !math.sign_bit(round(-0.4)))
+	testing.expect(t, !math.sign_bit(floor(-0.0)))
 	testing.expect_value(t, sin_deg(90), 1.0)
 	testing.expect_value(t, cos_deg(180), -1.0)
 	testing.expect_value(t, sin_deg(0), 0.0)
@@ -1107,4 +1120,24 @@ test_a_window_can_be_made_hidden_at_creation :: proc(t: ^testing.T) {
 	testing.expect(t, !window_flag(w, "visible"))
 	shown := window(100, 100)
 	testing.expect(t, window_flag(shown, "visible"))
+}
+
+@(thread_local)
+seen_pressed: [2]bool
+
+@(test)
+test_a_button_is_held_in_the_window_it_went_down_in_and_pressed_says_any :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	first := window(100, 100)
+	second := window(100, 100)
+	circle(0, 0, 1)
+	step({platform.Mouse_Button_Changed{window = platform.Window_Id(first), button = .Middle, down = true}})
+	draw_window(first, proc() {seen_pressed[0] = pressed() && mouse_down(.Middle)})
+	draw_window(second, proc() {seen_pressed[1] = pressed()})
+	step()
+	testing.expect_value(t, seen_pressed, [2]bool{true, false})
+	step({platform.Mouse_Button_Changed{window = platform.Window_Id(first), button = .Middle, down = false}})
+	step()
+	testing.expect_value(t, seen_pressed, [2]bool{false, false})
 }

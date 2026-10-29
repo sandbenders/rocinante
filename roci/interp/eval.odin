@@ -158,6 +158,8 @@ builtin_value :: proc(it: ^Interp, name: string) -> Value {
 		return vec2(roci.anywhere())
 	case "key":
 		return roci.last_key()
+	case "pressed":
+		return roci.pressed()
 	case "true":
 		return true
 	case "false":

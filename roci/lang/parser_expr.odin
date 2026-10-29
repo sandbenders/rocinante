@@ -305,6 +305,17 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 		if !is_argument_start(p, t) {
 			break
 		}
+		// A word where the verb takes a word (`caps round`, `joins miter`) is that word, even when it is also a verb.
+		if t.kind == .Name && param_kind_is(info, len(args), .Name) {
+			advance(p)
+			parts := make([]string, 1, p.alloc)
+			parts[0] = text_of(p, t)
+			append(&args, new_expr(p, t.span, Path{parts = parts}))
+			if !nested {
+				p.last_value = t.span
+			}
+			continue
+		}
 		append(&args, parse_argument(p, expect_block = param_is_block(info, len(args)), expr_block = param_is_expr_block(info, len(args))))
 		if !nested {
 			p.last_value = args[len(args) - 1].span
