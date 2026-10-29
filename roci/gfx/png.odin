@@ -2,10 +2,10 @@
 //
 // Writes PNG files and compares pictures, for the golden-image tests and for
 // saving frames. Odin's core:image/png only reads PNG (checked 2026-10-27), so
-// this is a small writer of our own: 8-bit RGBA, no filtering, and the pixel
-// data in uncompressed ("stored") deflate blocks. The files are bigger than a
-// compressing writer would make, which does not matter for small test pictures,
-// and the tests read them back with core:image/png to prove they are valid.
+// this is a small writer of our own: 8-bit RGBA, each row filtered the way that
+// leaves the smallest numbers (libpng's rule: the least sum of the bytes taken as
+// signed), then compressed by our own deflate (deflate.odin). The tests read the
+// files back with core:image/png to prove they are valid.
 // Format: https://www.w3.org/TR/png-3/ and RFC 1950/1951 for the zlib wrapper.
 package gfx
 
@@ -27,29 +27,70 @@ put_chunk :: proc(out: ^[dynamic]u8, type: string, data: []u8) {
 	put_u32_be(out, hash.crc32(out[start:]))
 }
 
+// The rows, each led by the number of its filter: 0 none, 1 the pixel to the left
+// taken away, 2 the pixel above, 3 their average, 4 Paeth's guess. Every filter is
+// tried on every row and the one whose bytes, read as signed, add up least wins;
+// a tie goes to the lower number.
+@(private)
+filter_rows :: proc(img: Image) -> []u8 {
+	row := img.width * 4
+	raw := make([]u8, (row + 1) * img.height, context.temp_allocator)
+	trial := make([]u8, row, context.temp_allocator)
+	zero := make([]u8, row, context.temp_allocator)
+	for y in 0 ..< img.height {
+		line := img.pixels[y * row:(y + 1) * row]
+		above := img.pixels[(y - 1) * row:y * row] if y > 0 else zero
+		out := raw[y * (row + 1):(y + 1) * (row + 1)]
+		best := max(int)
+		for filter in u8(0) ..= 4 {
+			sum := 0
+			for x in 0 ..< row {
+				left := line[x - 4] if x >= 4 else 0
+				up := above[x]
+				corner := above[x - 4] if x >= 4 else 0
+				guess: u8
+				switch filter {
+				case 1: guess = left
+				case 2: guess = up
+				case 3: guess = u8((int(left) + int(up)) / 2)
+				case 4: guess = paeth(left, up, corner)
+				}
+				trial[x] = line[x] - guess
+				sum += abs(int(i8(trial[x])))
+			}
+			if sum < best {
+				best = sum
+				out[0] = filter
+				copy(out[1:], trial)
+			}
+		}
+	}
+	return raw
+}
+
+// The neighbour closest to left + up - corner, preferring left, then up.
+@(private)
+paeth :: proc "contextless" (left, up, corner: u8) -> u8 {
+	p := int(left) + int(up) - int(corner)
+	pa, pb, pc := abs(p - int(left)), abs(p - int(up)), abs(p - int(corner))
+	if pa <= pb && pa <= pc {
+		return left
+	}
+	return up if pb <= pc else corner
+}
+
 // A PNG of the pixels (RGBA, rows from the top). Gives nothing for a size that
 // is not positive or pixels of the wrong length.
 png_encode :: proc(img: Image, allocator := context.allocator) -> (png: []u8, ok: bool) {
 	if img.width <= 0 || img.height <= 0 || len(img.pixels) != img.width * img.height * 4 {
 		return nil, false
 	}
-	// The zlib stream: a header, stored blocks of at most 65535 bytes holding the
-	// scanlines (each led by a filter byte of 0), and the Adler-32 of the raw data.
-	row := img.width * 4
-	raw := make([]u8, (row + 1) * img.height, context.temp_allocator)
-	for y in 0 ..< img.height {
-		copy(raw[y * (row + 1) + 1:], img.pixels[y * row:(y + 1) * row])
-	}
+	// The zlib stream: a header, the filtered rows compressed, and the Adler-32 of
+	// the rows before compressing.
+	raw := filter_rows(img)
 	z := make([dynamic]u8, context.temp_allocator)
 	append(&z, 0x78, 0x01)
-	for offset := 0; offset < len(raw) || offset == 0; {
-		n := min(len(raw) - offset, 65535)
-		last := offset + n >= len(raw)
-		append(&z, 1 if last else 0, u8(n), u8(n >> 8), u8(~n), u8(~n >> 8))
-		append(&z, ..raw[offset:offset + n])
-		offset += n
-		if last {break}
-	}
+	append(&z, ..deflate(raw, context.temp_allocator))
 	put_u32_be(&z, hash.adler32(raw))
 
 	out := make([dynamic]u8, allocator)

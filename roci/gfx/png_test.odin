@@ -44,7 +44,7 @@ test_png_round_trips_small_pictures :: proc(t: ^testing.T) {
 
 @(test)
 test_png_round_trips_pictures_needing_several_blocks :: proc(t: ^testing.T) {
-	// 64 x 64 x 4 = 16 KiB; 200 x 100 x 4 = 78 KB needs two stored blocks; 400 x 300 needs eight.
+	// 64 x 64 x 4 = 16 KiB; 200 x 100 and 400 x 300 make more data than one stored block holds.
 	round_trips(t, 64, 64)
 	round_trips(t, 200, 100)
 	round_trips(t, 400, 300)
