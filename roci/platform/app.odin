@@ -16,6 +16,7 @@ import sdl "vendor:sdl3"
 App :: struct {
 	device:  ^sdl.GPUDevice,
 	driver:  string,     // "vulkan", "metal" or "direct3d12", as SDL names it
+	video:   string,     // the video driver SDL chose: "wayland", "x11", "cocoa", "windows" and so on
 	gpu:     string,     // the device's name as its driver gives it ("llvmpipe (...)" on lavapipe); "" when unknown
 	windows: [dynamic]^Window,
 	error:   string,     // the last failure, in SDL's words; "" when there is none
@@ -69,6 +70,7 @@ init :: proc(app: ^App) -> bool {
 		return fail(app, "SDL_Init")
 	}
 	intrinsics.atomic_add(&apps_running, 1)
+	app.video = strings.clone_from_cstring(sdl.GetCurrentVideoDriver())
 	// Every shader format rocinante compiles to, so SDL picks the backend of the
 	// system: Vulkan (SPIR-V), Metal (MSL) or Direct3D 12 (DXIL).
 	props := sdl.CreateProperties()
@@ -89,6 +91,8 @@ init :: proc(app: ^App) -> bool {
 	if app.device == nil {
 		fail(app, "SDL_CreateGPUDevice")
 		quit_sdl()
+		delete(app.video)
+		app.video = ""
 		return false
 	}
 	app.driver = string(sdl.GetGPUDeviceDriver(app.device))
@@ -128,6 +132,7 @@ shutdown :: proc(app: ^App) {
 	delete(app.windows)
 	delete(app.error)
 	delete(app.gpu)
+	delete(app.video)
 	if app.device != nil {
 		_ = sdl.WaitForGPUIdle(app.device)
 		sdl.DestroyGPUDevice(app.device)

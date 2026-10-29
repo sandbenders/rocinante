@@ -36,7 +36,7 @@ run :: proc() -> bool {
 		return false
 	}
 	defer platform.shutdown(&app)
-	fmt.printfln("window: GPU driver %s", app.driver)
+	fmt.printfln("window: GPU driver %s, video driver %s", app.driver, app.video)
 
 	first, ok := platform.create_window(&app, {title = "rocinante window", resizable = true})
 	if !ok {
