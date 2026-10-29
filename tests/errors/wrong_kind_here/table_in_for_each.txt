@@ -1,0 +1,8 @@
+── `for each` needs a list here ─────────────────────── sketch.roci:3:18
+
+3 │ for each name in counts [ print name ]
+  │                  ^^^^^^
+
+Here it is given a table of numbers.
+
+Write:  for each name in (keys counts) [ print name ]

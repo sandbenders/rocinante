@@ -1,0 +1,3 @@
+counts = table
+put counts "cat" 3
+for each name in counts [ print name ]

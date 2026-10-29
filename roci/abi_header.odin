@@ -154,7 +154,7 @@ abi_c_type :: proc(kind: registry.Kind) -> (name: string, ok: bool) {
 	case .Colour:               return "roci_colour", true
 	case .Vector:               return "roci_vec2", true
 	case .Window:               return "roci_window_id", true
-	case .List, .Block, .Gradient, .Any, .Boolean, .Expr_Block: return "", false
+	case .List, .Table, .Block, .Gradient, .Any, .Boolean, .Expr_Block: return "", false
 	}
 	return "", false
 }

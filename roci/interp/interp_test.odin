@@ -1411,3 +1411,58 @@ test_a_new_tween_of_the_same_place_replaces_the_old :: proc(t: ^testing.T) {
 	text := "x = 0\ntween x to 1000 over 10\ntween x to 5 over 0.1\ndraw [ ]\nevery 1 seconds [ print x ]"
 	expect_printed(t, text, "5", 61)
 }
+
+// ---- tables ----
+
+@(test)
+test_a_table_counts_words_in_the_order_they_came :: proc(t: ^testing.T) {
+	text := `counts = table
+for each word in [ "cat" "dog" "cat" "owl" "cat" ] [ put counts word ((get counts word) + 1) ]
+print counts
+print (get counts "cat")
+print (get counts "emu")
+print (count counts)
+print (keys counts)
+remove "dog" from counts
+remove "emu" from counts
+print counts
+print (keys counts)`
+	expect_printed(t, text, "{ \"cat\": 3, \"dog\": 1, \"owl\": 1 }\n3\n0\n3\n[ cat dog owl ]\n{ \"cat\": 3, \"owl\": 1 }\n[ cat owl ]")
+}
+
+@(test)
+test_a_table_is_shared_and_copy_makes_another :: proc(t: ^testing.T) {
+	text := `a = table
+put a "x" 1
+b = a
+put b "y" 2
+c = copy a
+put c "z" 3
+print (count a)
+print (count c)
+print (a is b)
+print (a is c)
+put c "z" 0
+remove "z" from c
+print (a is c)`
+	expect_printed(t, text, "2\n3\ntrue\nfalse\ntrue")
+}
+
+@(test)
+test_a_table_made_while_drawing_lasts_when_kept :: proc(t: ^testing.T) {
+	// The table and its names are made in the frame's memory, then kept by a
+	// sketch-wide name, so they have to be copied out before the frame ends.
+	text := "seen = table\ndraw [\n  t = table\n  put t \"frame\" frame\n  seen = t\n]\nevery 3 frames [ print seen ]"
+	expect_printed(t, text, "{ \"frame\": 2 }\n{ \"frame\": 5 }", 7)
+}
+
+@(test)
+test_a_table_keeps_its_values_across_a_reload :: proc(t: ^testing.T) {
+	before := "counts = table\nput counts \"a\" 1\ndraw [ put counts \"b\" frame ]"
+	after := "counts = table\nput counts \"a\" 1\ndraw [ print counts ]"
+	n, outcome := reloaded(t, before, after, 3)
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	roci.step()
+	testing.expect(t, strings.has_prefix(printed(n), "{ \"a\": 1, \"b\": "), printed(n))
+}

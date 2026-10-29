@@ -15,7 +15,7 @@ import "core:unicode/utf8"
 
 is_language_verb :: proc(name: string) -> bool {
 	switch name {
-	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send", "set", "held", "tween":
+	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send", "set", "held", "tween", "table", "put", "get", "keys":
 		return true
 	}
 	return is_collision_verb(name)
@@ -60,6 +60,9 @@ same :: proc(a, b: Value) -> bool {
 	case ^Record:
 		y, ok := b.(^Record)
 		return ok && x == y
+	case ^Table:
+		y, ok := b.(^Table)
+		return ok && x == y
 	}
 	return false
 }
@@ -79,7 +82,12 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 	case "remove":
 		item := eval(it, call.args[0])
-		list := as_list(option_or_nil(it, call.options, "from"))
+		from := option_or_nil(it, call.options, "from")
+		if t := as_table(from); t != nil {
+			table_remove(it, t, as_text(item))
+			return nil
+		}
+		list := as_list(from)
 		if list != nil {
 			// The very item first, then one that is equal to it.
 			for x, i in list.items {
@@ -101,6 +109,9 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		v := eval(it, call.args[0])
 		if l := as_list(v); l != nil {
 			return f64(len(l.items))
+		}
+		if t := as_table(v); t != nil {
+			return f64(len(t.keys))
 		}
 		if s, ok := v.(string); ok {
 			return f64(utf8.rune_count_in_string(s))
@@ -181,6 +192,26 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return roci.key_down(as_text(eval(it, call.args[0])))
 	case "tween":
 		start_tween(it, call)
+	case "table":
+		return new_table(it)
+	case "put":
+		if t := as_table(eval(it, call.args[0])); t != nil {
+			table_put(it, t, as_text(eval(it, call.args[1])), eval(it, call.args[2]))
+		}
+	case "get":
+		t := as_table(eval(it, call.args[0]))
+		if v, found := table_get(t, as_text(eval(it, call.args[1]))); found {
+			return v
+		}
+		return zero_value(it, e.type, 0)
+	case "keys":
+		out := new_list(it)
+		if t := as_table(eval(it, call.args[0])); t != nil {
+			for name in t.keys {
+				append(&out.items, name)
+			}
+		}
+		return out
 	}
 	return nil
 }

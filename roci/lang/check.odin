@@ -333,6 +333,7 @@ sample_of :: proc(c: ^Checker, type: Type_Id) -> string {
 	case .Window:  return "w"
 	case .Vector:  return strings.concatenate({"{ ", strings.join(slice.repeat([]string{"0"}, item.a, context.temp_allocator), ", ", context.temp_allocator), " }"}, context.temp_allocator)
 	case .List:    return "[ 1 2 3 ]"
+	case .Table:   return "table"
 	}
 	return "1"
 }
@@ -344,6 +345,7 @@ sample_for_kind :: proc(kind: registry.Kind) -> string {
 	case .Colour:   return "red"
 	case .Vector:   return "{ 0, 0 }"
 	case .List:     return "[ 1 2 3 ]"
+	case .Table:    return "table"
 	case .Window:   return "w"
 	case .Boolean:  return "true"
 	case .Gradient: return "[ red teal ]"
@@ -362,6 +364,7 @@ kind_words :: proc(kind: registry.Kind) -> string {
 	case .Colour:   return "a colour"
 	case .Vector:   return "a vector"
 	case .List:     return "a list"
+	case .Table:    return "a table"
 	case .Block, .Expr_Block: return "a block"
 	case .Window:   return "a window"
 	case .Name:     return "a word"
@@ -487,7 +490,9 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 		case .Error, .Boxed:
 			element = T_BOXED if kind_of(c.types, list.type) == .Boxed else T_ERROR
 		case:
-			note(c, .Wrong_Kind_Here, k.list.span, "for each", "a list", describe(c.types, list.type), fix(c, k.list.span, "[ 1 2 3 ]"))
+			// A table is walked by its names: `for each name in (keys counts)`.
+			walk_as := fmt.tprintf("(keys %s)", text_at(c, k.list.span)) if kind_of(c.types, list.type) == .Table else "[ 1 2 3 ]"
+			note(c, .Wrong_Kind_Here, k.list.span, "for each", "a list", describe(c.types, list.type), fix(c, k.list.span, walk_as))
 			element = T_ERROR
 		}
 		check_hiding(c, k.var, s.span)

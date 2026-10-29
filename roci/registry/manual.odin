@@ -56,6 +56,7 @@ kind_name :: proc(kind: Kind) -> string {
 	case .Colour:     return "colour"
 	case .Vector:     return "vector"
 	case .List:       return "list"
+	case .Table:      return "table"
 	case .Block:      return "[ ... ]"
 	case .Expr_Block: return "[ expression ]"
 	case .Window:     return "window"
@@ -78,10 +79,11 @@ sample :: proc(kind: Kind, index: int, verb := "", after := "") -> string {
 		}
 	}
 	numbers := [?]string{"100", "100", "50", "50", "0", "90", "0", "0"}
-	// A tween moves a name of the sketch (the examples have a number `x`) over some seconds.
+	// `ease` shows an amount halfway.
 	if verb == "ease" && after == "amount" {
 		return "0.5"
 	}
+	// A tween moves a name of the sketch (the examples have a number `x`) over some seconds.
 	if verb == "tween" {
 		if kind == .Any && after == "place" {
 			return "x"
@@ -89,6 +91,10 @@ sample :: proc(kind: Kind, index: int, verb := "", after := "") -> string {
 		if after == "over" {
 			return "0.5"
 		}
+	}
+	// `remove` takes out of a list or a table.
+	if verb == "remove" && after == "from" {
+		return "[ 1 2 3 ]"
 	}
 	// The collision verbs take shapes, which are records.
 	switch verb {
@@ -104,6 +110,7 @@ sample :: proc(kind: Kind, index: int, verb := "", after := "") -> string {
 	case .Colour:     return "red"
 	case .Vector:     return "{ 100, 100 }"
 	case .List:       return "[ 1 2 3 ]"
+	case .Table:      return "table"
 	case .Window:     return "w"
 	case .Boolean:    return "true"
 	case .Gradient:   return "[ red teal ]"

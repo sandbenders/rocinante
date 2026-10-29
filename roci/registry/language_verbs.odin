@@ -17,8 +17,11 @@ LIST_AND_BLOCK := []Param{{"list", .List}, {"body", .Expr_Block}}
 
 LANGUAGE_VERBS := []Verb{
 	{"add", {{LIST_ITEM, {{"to", {.List}, true}}, .None}}, "Puts an item at the end of a list: `add p to particles`."},
-	{"remove", {{LIST_ITEM, {{"from", {.List}, true}}, .None}}, "Takes an item out of a list: `remove p from particles`."},
-	{"count", {{LIST_PARAM, nil, .Number}}, "How many items a list has."},
+	{"remove", {{LIST_ITEM, {{"from", {.Any}, true}}, .None}}, "Takes an item out of a list, or a name out of a table: `remove p from particles`, `remove \"cat\" from counts`."},
+	{"count", {
+		{LIST_PARAM, nil, .Number},
+		{{{"table", .Table}}, nil, .Number},
+	}, "How many items a list has, or names a table has."},
 	{"item", {{{{"index", .Number}}, {{"of", {.List}, true}}, .Any}}, "The item at a place in a list, counting from 1: `item 1 of scores`."},
 	{"set", {{{{"window", .Window}}, SET_OPTIONS, .None}}, "Changes a window that is open, with the words of `window`: `set w size 400 300 resizable false`."},
 	{"send", {{{{"window", .Window}, {"value", .Any}}, nil, .None}}, "Sends a value to a window; it arrives on that window's next frame: `send w 5`."},
@@ -34,6 +37,11 @@ LANGUAGE_VERBS := []Verb{
 	{"sort", {{LIST_PARAM, {{"by", {.Expr_Block}, true}}, .List}}, "A list in order of what the block gives for each item: `sort particles by [ it.size ]`."},
 
 	{"tween", {{{{"place", .Any}}, {{"to", {.Any}, true}, {"over", {.Number}, true}, {"as", {.Name}, false}}, .None}}, "Moves a number, vector or colour to a value over some seconds, a little each frame: `tween ball.pos to mouse over 0.5 as out`. A new tween of the same place replaces the old."},
+	// Tables: text names with a value each, kept in the order they were put.
+	{"table", {{{}, nil, .Table}}, "A new, empty table: text names with a value each, kept in the order they were put: `counts = table`."},
+	{"put", {{{{"table", .Table}, {"key", .Text}, {"value", .Any}}, nil, .None}}, "Gives a name in a table a value: `put counts \"cat\" 3`. A name already there gets the new value."},
+	{"get", {{{{"table", .Table}, {"key", .Text}}, nil, .Any}}, "The value of a name in a table, or an empty one (0, empty text) when it has none: `get counts \"cat\"`."},
+	{"keys", {{{{"table", .Table}}, nil, .List}}, "The names in a table, as a list of text, in the order they were put: `for each name in (keys counts) [ ... ]`."},
 
 	// Collision: a shape is a vector (a point) or a record with pos and radius, pos
 	// and size (and angle), from and to, or points.

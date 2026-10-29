@@ -7,6 +7,7 @@ package lang
 
 import "../registry"
 import "core:fmt"
+import "core:strings"
 
 // The element type of a list type. A type not known yet is made a list of an
 // unknown element, so a list that is only used (`for each`, `add`) still gets one.
@@ -103,26 +104,58 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 		}
 		item := args[0]
 		list_kind := kind_of(c.types, list.type)
-		if item.type != T_ERROR && (list_kind == .List || list_kind == .Variable) && !unify(c.types, list.type, list_of(c.types, item.type)) {
-			element := element_of(c, list.type)
-			note(c, .Wrong_Item_Kind, k.args[0].span, verb.name, describe(c.types, element), describe(c.types, item.type), fix(c, k.args[0].span, sample_of(c, element)))
+		switch {
+		case list_kind == .Table && verb.name == "remove":
+			// A table loses a name: the item is the name, so it is text.
+			if item.type != T_ERROR && !unify(c.types, item.type, T_TEXT) {
+				note(c, .Wrong_Argument_Kind, k.args[0].span, verb.name, "a name (text) to take out of a table", describe(c.types, item.type), fix(c, k.args[0].span, "\"cat\""))
+			}
+		case list_kind == .List || list_kind == .Variable:
+			if item.type != T_ERROR && !unify(c.types, list.type, list_of(c.types, item.type)) {
+				element := element_of(c, list.type)
+				note(c, .Wrong_Item_Kind, k.args[0].span, verb.name, describe(c.types, element), describe(c.types, item.type), fix(c, k.args[0].span, sample_of(c, element)))
+			}
+		case list_kind == .Error || list_kind == .Boxed:
+		case:
+			for o in k.options {
+				if o.word == word && len(o.args) > 0 {
+					wanted := "a list" if verb.name == "add" else "a list or a table"
+					note(c, .Wrong_Argument_Kind, o.args[0].span, verb.name, fmt.tprintf("%s after `%s`", wanted, word), describe(c.types, list.type), fix(c, o.args[0].span, "[ 1 2 3 ]"))
+				}
+			}
+			return T_NONE, true
 		}
 		for o in k.options {
 			if o.word == word && len(o.args) > 0 {
-				if path, is_path := o.args[0].kind.(Path); is_path && len(path.parts) == 1 {
-					if slice_contains(c.walking[:], path.parts[0]) {
-						changed_while_walking(c, path.parts[0], o.args[0].span)
-					}
-					if sym := lookup(c, path.parts[0]); sym != nil {
-						if sym.kind == .Parameter {
-							sym.mutated = true
-						}
-						note_mutation(c, sym, o.args[0].span)
-					}
-				}
+				changes_in_place(c, o.args[0])
 			}
 		}
 		return T_NONE, true
+	case "table":
+		return table_of(c.types, fresh(c.types)), true
+	case "put":
+		if len(args) < 3 {
+			return T_NONE, true
+		}
+		table := args[0]
+		#partial switch kind_of(c.types, table.type) {
+		case .Variable:
+			unify(c.types, table.type, table_of(c.types, args[2].type))
+		case .Table:
+			values := Type_Id(c.types.items[resolve(c.types, table.type)].a)
+			if args[2].type != T_ERROR && !unify(c.types, values, args[2].type) {
+				note(c, .Wrong_Argument_Kind, k.args[2].span, verb.name, fmt.tprintf("%s, as the table holds", describe(c.types, values)), describe(c.types, args[2].type), fix(c, k.args[2].span, sample_of(c, values)))
+			}
+		}
+		changes_in_place(c, k.args[0])
+		return T_NONE, true
+	case "get":
+		if len(args) == 0 {
+			return T_ERROR, true
+		}
+		return table_values(c, args[0].type), true
+	case "keys":
+		return list_of(c.types, T_TEXT), true
 	case "send":
 		if len(args) == 2 {
 			record_send(c, window_key(k.args[0]), args[1].type)
@@ -197,4 +230,48 @@ block_expr_span :: proc(e: ^Expr) -> Span {
 		return block.block.stmts[0].span
 	}
 	return e.span
+}
+
+// The type of a table's values; a table not known yet is made a table of an
+// unknown value, so a table that is only read still gets one.
+@(private)
+table_values :: proc(c: ^Checker, table: Type_Id) -> Type_Id {
+	#partial switch kind_of(c.types, table) {
+	case .Table:
+		return Type_Id(c.types.items[resolve(c.types, table)].a)
+	case .Variable:
+		values := fresh(c.types)
+		unify(c.types, table, table_of(c.types, values))
+		return values
+	case .Boxed:
+		return T_BOXED
+	}
+	return T_ERROR
+}
+
+// A verb that changes a list or table where it is (`add`, `remove`, `put`): a
+// constant never changes, a list being walked must not, a parameter that does is
+// marked, and a name shared with another gets the sharing hint.
+@(private)
+changes_in_place :: proc(c: ^Checker, e: ^Expr) {
+	path, is_path := e.kind.(Path)
+	if !is_path || len(path.parts) != 1 {
+		return
+	}
+	name := path.parts[0]
+	if slice_contains(c.walking[:], name) {
+		changed_while_walking(c, name, e.span)
+	}
+	sym := lookup(c, name)
+	if sym == nil {
+		return
+	}
+	if sym.kind == .Constant {
+		note(c, .Constant_Changed, e.span, name, "", "", fix(c, e.span, strings.to_lower(name, context.temp_allocator)))
+		return
+	}
+	if sym.kind == .Parameter {
+		sym.mutated = true
+	}
+	note_mutation(c, sym, e.span)
 }

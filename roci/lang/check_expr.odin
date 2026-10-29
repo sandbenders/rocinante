@@ -139,7 +139,7 @@ check_unary :: proc(c: ^Checker, e: ^Expr, k: Unary) -> ^IR {
 		if k.op == .Negate {
 			return new_ir(c, e.span, operand.type, IR_Unary{op = k.op, operand = operand})
 		}
-	case .None, .Text, .Gradient, .Window, .Block, .List, .Record:
+	case .None, .Text, .Gradient, .Window, .Block, .List, .Table, .Record:
 	}
 	if kind_of(c.types, operand.type) == .Number && k.op == .Negate || kind_of(c.types, operand.type) == .Boolean && k.op == .Not {
 		return new_ir(c, e.span, resolve(c.types, operand.type), IR_Unary{op = k.op, operand = operand})
@@ -392,6 +392,9 @@ report_kinds :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Verb, args:
 				continue
 			}
 			need := fmt.tprintf("%s for `%s`", kind_words(param.kind), param.name)
+			if kind_words(param.kind) == fmt.tprintf("a %s", param.name) {
+				need = kind_words(param.kind) // not "a list for `list`"
+			}
 			// `random` makes numbers; a list is what `pick` takes an item from.
 			if verb.name == "random" && kinds[j] == .List {
 				example := fix(c, e.span, fmt.tprintf("pick %s", text_at(c, k.args[j].span)))

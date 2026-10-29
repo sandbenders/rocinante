@@ -17,7 +17,7 @@ type_for_kind :: proc(kind: registry.Kind) -> (id: typeid, ok: bool) {
 	case .Text, .Name: return cstring, true
 	case .Colour:      return Abi_Colour, true
 	case .Vector:      return Abi_Vec2, true
-	case .None, .Window, .List, .Block, .Gradient, .Any, .Boolean, .Expr_Block: return nil, false
+	case .None, .Window, .List, .Table, .Block, .Gradient, .Any, .Boolean, .Expr_Block: return nil, false
 	}
 	return nil, false
 }

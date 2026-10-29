@@ -160,7 +160,7 @@ compatible :: proc(old: ^Interp, ot: lang.Type_Id, fresh: ^Interp, nt: lang.Type
 	#partial switch a.kind {
 	case .Vector:
 		return a.a == b.a
-	case .List:
+	case .List, .Table:
 		return compatible(old, lang.Type_Id(a.a), fresh, lang.Type_Id(b.a), depth + 1)
 	case .Record:
 		for f in old.types.shapes[a.a].fields {
@@ -233,9 +233,25 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> 
 			}
 		}
 		return r
+	case ^Table:
+		if x == nil || item.kind != .Table {
+			return nil
+		}
+		carry := Carry{old = old, type = lang.Type_Id(item.a)}
+		return table_copy(fresh, x, true, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {
+			c := (^Carry)(data)
+			return convert(c.old, it, v, c.type, depth)
+		}, &carry, depth)
 	case f64, bool, Vec, maths.Colour, roci.Window:
 	}
 	return v
+}
+
+// What a table's values are carried across with.
+@(private = "file")
+Carry :: struct {
+	old:  ^Interp,
+	type: lang.Type_Id,
 }
 
 // ---- reloading ----

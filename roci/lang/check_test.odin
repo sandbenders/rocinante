@@ -1133,3 +1133,26 @@ test_a_tween_needs_a_place_that_lasts_and_a_value_of_its_kind :: proc(t: ^testin
 	expect_errors(t, "v = { 1, 2 }\ntween v to 5 over 1", {.Wrong_Argument_Kind})
 	expect_errors(t, "x = 0\ntween x to 5 over 1 as bounc", {.Unknown_Choice})
 }
+
+// ---- tables ----
+
+@(test)
+test_a_table_holds_one_kind_of_value_under_text_names :: proc(t: ^testing.T) {
+	expect_types(t, "counts = table\nput counts \"cat\" 3\nn = get counts \"cat\"\nk = keys counts\nc = count counts", "counts: a table of numbers\nn: a number\nk: a list of text\nc: a number")
+	expect_errors(t, "counts = table\nput counts \"cat\" 3\nput counts \"dog\" \"many\"", {.Wrong_Argument_Kind})
+	expect_errors(t, "counts = table\nput counts 5 3", {.Wrong_Argument_Kind})
+	expect_errors(t, "counts = table\nremove 5 from counts", {.Wrong_Argument_Kind})
+	expect_errors(t, "counts = table\nfor each n in counts [ print n ]", {.Wrong_Kind_Here})
+	expect_errors(t, "x = get [ 1 2 ] \"a\"", {.Wrong_Argument_Kind})
+	expect_errors(t, "add 3 to 7", {.Wrong_Argument_Kind})
+	// A table read before anything is put in it still gets a type from its use.
+	expect_errors(t, "learn total t [ give (get t \"a\") + 1 ]\ncounts = table\nput counts \"a\" 2\nprint (total counts)", {})
+}
+
+@(test)
+test_a_constant_list_or_table_never_changes :: proc(t: ^testing.T) {
+	expect_errors(t, "COLOURS = [ red teal ]\nadd green to COLOURS", {.Constant_Changed})
+	expect_errors(t, "COLOURS = [ red teal ]\nremove red from COLOURS", {.Constant_Changed})
+	expect_errors(t, "NAMES = table\nput NAMES \"a\" 1", {.Constant_Changed})
+	expect_errors(t, "COLOURS = [ red teal ]\nmine = copy COLOURS\nadd green to mine", {})
+}

@@ -1,0 +1,8 @@
+── `COLOURS` is a constant ──────────────────────────── sketch.roci:2:14
+
+2 │ add green to COLOURS
+  │              ^^^^^^^
+
+`COLOURS` is written in capitals, so it is a constant: it is given a value once and can never change. If it has to change, write it in lowercase.
+
+Write:  add green to colours

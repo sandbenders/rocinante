@@ -50,6 +50,7 @@ Value :: union {
 	roci.Window,
 	^List,
 	^Record,
+	^Table,
 }
 
 vec2 :: proc(v: [2]f64) -> Vec {
@@ -156,6 +157,8 @@ zero_value :: proc(it: ^Interp, type: lang.Type_Id, depth: int) -> Value {
 		return maths.Colour{}
 	case .List:
 		return new_list(it)
+	case .Table:
+		return new_table(it)
 	}
 	return nil
 }
@@ -206,6 +209,11 @@ promote :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
 			r.fields[i] = promote(it, f, depth + 1)
 		}
 		return r
+	case ^Table:
+		if x == nil || x.long {
+			return v
+		}
+		return table_copy(it, x, true, proc(it: ^Interp, v: Value, _: rawptr, depth: int) -> Value {return promote(it, v, depth)}, nil, depth)
 	case ^roci.Gradient:
 		if x == nil {
 			return v
@@ -248,6 +256,11 @@ deep_copy :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
 			r.fields[i] = deep_copy(it, f, depth + 1)
 		}
 		return r
+	case ^Table:
+		if x == nil {
+			return v
+		}
+		return table_copy(it, x, it.alloc == it.long, proc(it: ^Interp, v: Value, _: rawptr, depth: int) -> Value {return deep_copy(it, v, depth)}, nil, depth)
 	case ^roci.Gradient:
 		if x == nil {
 			return v
@@ -313,6 +326,22 @@ equal :: proc(a, b: Value, depth := 0) -> bool {
 		}
 		for f, i in x.fields {
 			if !equal(f, y.fields[i], depth + 1) {
+				return false
+			}
+		}
+		return true
+	case ^Table:
+		y, ok := b.(^Table)
+		if !ok || x == nil || y == nil {
+			return ok && x == y
+		}
+		if len(x.keys) != len(y.keys) {
+			return false
+		}
+		// The same names with the same values, in any order.
+		for name, i in x.keys {
+			other, found := table_get(y, name)
+			if !found || !equal(x.values[i], other, depth + 1) {
 				return false
 			}
 		}
@@ -383,6 +412,20 @@ format :: proc(it: ^Interp, v: Value, allocator := context.temp_allocator, depth
 				strings.write_string(&b, it.types.shapes[x.shape].fields[i].name)
 				strings.write_string(&b, ": ")
 				strings.write_string(&b, format(it, f, allocator, depth + 1))
+			}
+		}
+		strings.write_string(&b, " }")
+		return strings.to_string(b)
+	case ^Table:
+		// Like a record, with each name in quotes: { "cat": 3, "dog": 1 }.
+		b := strings.builder_make(allocator)
+		strings.write_string(&b, "{")
+		if x != nil {
+			for name, i in x.keys {
+				strings.write_string(&b, ", " if i > 0 else " ")
+				strings.write_quoted_string(&b, name)
+				strings.write_string(&b, ": ")
+				strings.write_string(&b, format(it, x.values[i], allocator, depth + 1))
 			}
 		}
 		strings.write_string(&b, " }")

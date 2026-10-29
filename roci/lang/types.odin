@@ -25,6 +25,7 @@ Type_Kind :: enum u8 {
 	Block,
 	Vector,   // `a` is the number of components
 	List,     // `a` is the element's type
+	Table,    // `a` is the type of its values (its keys are text)
 	Record,   // `a` is the shape's number
 	Boxed,    // the fallback for what inference cannot decide: any value, checked while the sketch runs
 	Variable, // `a` is the variable's number
@@ -94,6 +95,10 @@ vector_of :: proc(ts: ^Types, size: int) -> Type_Id {
 
 list_of :: proc(ts: ^Types, element: Type_Id) -> Type_Id {
 	return intern(ts, .List, int(element))
+}
+
+table_of :: proc(ts: ^Types, value: Type_Id) -> Type_Id {
+	return intern(ts, .Table, int(value))
 }
 
 // A new type variable: a type to be found out from how it is used.
@@ -203,7 +208,7 @@ occurs :: proc(ts: ^Types, variable: Type_Id, id: Type_Id) -> bool {
 			}
 		}
 	}
-	return item.kind == .List && occurs(ts, variable, Type_Id(item.a))
+	return (item.kind == .List || item.kind == .Table) && occurs(ts, variable, Type_Id(item.a))
 }
 
 // Makes the two types one, binding variables as needed. False when they cannot
@@ -231,6 +236,8 @@ unify :: proc(ts: ^Types, a, b: Type_Id) -> bool {
 		return true
 	case ka == .List && kb == .List:
 		return unify(ts, Type_Id(ts.items[x].a), Type_Id(ts.items[y].a))
+	case ka == .Table && kb == .Table:
+		return unify(ts, Type_Id(ts.items[x].a), Type_Id(ts.items[y].a))
 	case ka == .Record && kb == .Record:
 		return merge_shapes(ts, ts.items[x].a, ts.items[y].a)
 	}
@@ -249,6 +256,7 @@ registry_kind :: proc(ts: ^Types, id: Type_Id) -> registry.Kind {
 	case .Block:    return .Block
 	case .Vector:   return .Vector
 	case .List:     return .List
+	case .Table:    return .Table
 	case .None:     return .None
 	}
 	return .Any
@@ -269,6 +277,7 @@ type_of_kind :: proc(ts: ^Types, kind: registry.Kind, first_list: Type_Id = T_ER
 	case .Name:     return T_TEXT
 	case .Vector:   return vector_of(ts, 2)
 	case .List:     return list_of(ts, T_BOXED)
+	case .Table:    return table_of(ts, fresh(ts))
 	case .Any:
 		if first_list != T_ERROR && kind_of(ts, first_list) == .List {
 			return Type_Id(ts.items[resolve(ts, first_list)].a)
@@ -318,6 +327,10 @@ describe :: proc(ts: ^Types, id: Type_Id) -> string {
 		case:           plural = inner
 		}
 		return fmt.tprintf("a list of %s", plural)
+	case .Table:
+		// Worded as a list of the same values is: "a table of numbers".
+		inner := describe(ts, list_of(ts, Type_Id(item.a)))
+		return strings.concatenate({"a table", inner[len("a list"):]}, context.temp_allocator)
 	case .Record:
 		names := make([dynamic]string, context.temp_allocator)
 		for f in ts.shapes[item.a].fields {

@@ -26,6 +26,7 @@ Kind :: enum u8 {
 	Any,
 	Boolean, // true or false: what a comparison gives
 	Expr_Block, // a [ ] that holds one expression, run for each item of a list
+	Table, // names (text) with a value each: `counts = table`
 }
 
 Param :: struct {
@@ -148,7 +149,7 @@ property_words :: proc(def: Property_Def) -> string {
 	case .Boolean: return "true or false"
 	case .Vector:  return "a vector of 2 numbers" if def.size == 2 else "a vector"
 	case .Window:  return "a window"
-	case .None, .List, .Block, .Name, .Gradient, .Any, .Expr_Block, .Colour: return "a value"
+	case .None, .List, .Block, .Name, .Gradient, .Any, .Expr_Block, .Colour, .Table: return "a value"
 	}
 	return "a value"
 }
