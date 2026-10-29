@@ -28,6 +28,7 @@ EXAMPLES := [?]Example{
 	{"constellation", 5, {1}}, // a library: libs/stars
 	{"tree", 5, {1}}, // the turtle
 	{"bricks", 120, {1}}, // collision: a brick broken by then
+	{"ease", 200, {1}}, // ease and tween: a dot past its end, the ball on its way
 }
 
 // How many pixels may differ for a picture of this many: the scenes allow

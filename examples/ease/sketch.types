@@ -1,0 +1,4 @@
+ball: a record with pos and radius
+t: a number
+along: a list of numbers
+y: a number

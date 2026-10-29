@@ -1,0 +1,32 @@
+// Easing: seven dots cross the window again and again, one on each curve of
+// `ease` (smooth, linear, in, out, back, elastic, bounce, from the top), and a
+// ball moves with `tween`: to wherever you click, springing at the end, and every
+// three seconds to somewhere new on its own.
+window size 560 360 title "ease" resizable false
+
+ball = { pos: { 280, 310 }, radius: 14 }
+
+on mouse down [ tween ball.pos to mouse over 0.8 as elastic ]
+
+every 3 seconds [ tween ball.pos to { random from 40 to 520, 310 } over 0.8 as back ]
+
+draw [
+  background 20
+  // 0 to 1 over a second and a half, then a half-second rest at the end.
+  t = (time % 2) / 1.5
+  along = [
+    (ease t)
+    (ease t as linear)
+    (ease t as in)
+    (ease t as out)
+    (ease t as back)
+    (ease t as elastic)
+    (ease t as bounce)
+  ]
+  for i from 1 to 7 [
+    y = i * 34
+    line from 40 y to 520 y stroke 50
+    circle at (40 + (item i of along) * 480) y radius 9 fill (hsb (i * 32) 190 255)
+  ]
+  circle at ball.pos radius ball.radius fill white
+]
