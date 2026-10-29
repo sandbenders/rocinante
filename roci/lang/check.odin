@@ -949,6 +949,9 @@ check_style_option :: proc(c: ^Checker, o: Option_Use) -> IR_Option {
 	}
 	for a, i in o.args {
 		ir := check_expr(c, a, false)
+		if i < len(def.kinds) && def.kinds[i] == .Colour {
+			check_colour_list(c, ir, a)
+		}
 		if i < len(def.kinds) && ir.type != T_ERROR && !registry.accepts(def.kinds[i], registry_kind(c.types, ir.type)) {
 			need := fmt.tprintf("%s after `%s`", kind_words(def.kinds[i]), o.word)
 			note(c, .Wrong_Argument_Kind, a.span, "with", need, describe(c.types, ir.type), fix(c, a.span, sample_for_kind(def.kinds[i])))
@@ -1033,4 +1036,29 @@ is_library_name :: proc(c: ^Checker, name: string) -> bool {
 		}
 	}
 	return false
+}
+
+// A list where a colour goes is a gradient, and every item in it has to be a colour (a
+// number is a grey). Says what the list holds instead, and for a list that holds just one
+// list (`[colours]`) shows it without the extra brackets.
+@(private)
+check_colour_list :: proc(c: ^Checker, ir: ^IR, e: ^Expr) {
+	if ir.type == T_ERROR || kind_of(c.types, ir.type) != .List {
+		return
+	}
+	element := resolve(c.types, Type_Id(c.types.items[resolve(c.types, ir.type)].a))
+	#partial switch kind_of(c.types, element) {
+	case .Text, .Boolean, .Window, .Vector, .List, .Record, .Gradient, .Block:
+	case:
+		return
+	}
+	holds := describe(c.types, element)
+	if kind_of(c.types, element) == .List {
+		holds = "a list"
+	}
+	replacement := "[ red teal ]"
+	if literal, is_list := e.kind.(List_Lit); is_list && len(literal.items) == 1 && kind_of(c.types, element) == .List {
+		replacement = text_at(c, literal.items[0].span)
+	}
+	note(c, .Colours_Expected, e.span, holds, fix(c, e.span, replacement))
 }

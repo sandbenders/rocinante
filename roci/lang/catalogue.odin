@@ -42,6 +42,7 @@ Message_Id :: enum u8 {
 	Library_Clash,
 	Shadows_Library,
 	Library_Name_Taken,
+	Colours_Expected,
 	// Brackets
 	Missing_Close_Square,
 	Missing_Close_Round,
@@ -181,6 +182,9 @@ CATALOGUE := [Message_Id]Entry{
 		"To use the library's, name it:", "{b}.{a}"},
 	.Library_Name_Taken = {.Error, "`{a}` is the name of a library",
 		"The sketch uses a library called `{a}`, and `{a}.word` means that library's word, so `{a}` cannot also be a name that holds a value.",
+		"Write:", "{b}"},
+	.Colours_Expected = {.Error, "A gradient is a list of colours, and this list holds {a}",
+		"A list used where a colour goes makes a gradient, so every item in it has to be a colour. If the colours are in a name already, use the name without square brackets around it.",
 		"Write:", "{b}"},
 
 	.Missing_Close_Square = {.Error, "This block is never closed",

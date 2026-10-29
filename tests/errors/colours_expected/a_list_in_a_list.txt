@@ -1,0 +1,8 @@
+── A gradient is a list of colours, and this list holds a list ─── sketch.roci:2:12
+
+2 │ background [colours] as conic angle 45
+  │            ^^^^^^^^^
+
+A list used where a colour goes makes a gradient, so every item in it has to be a colour. If the colours are in a name already, use the name without square brackets around it.
+
+Write:  background colours as conic angle 45

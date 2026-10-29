@@ -1,0 +1,2 @@
+colours = [ red teal ]
+background [colours] as conic angle 45

@@ -485,6 +485,7 @@ glow = { fill: sunset, stroke: white }        // and works in named styles
 - **Mixing:** colours are mixed in Oklab by default, which keeps gradients even and avoids muddy middles; `in rgb` gives Processing's look and `in oklch` mixes along the hue.
 - With per-element style words, a bare list works (`circle at 100 100 radius 50 fill [ red teal ]`). A gradient with options is named first or wrapped: `fill (gradient [ red teal ] angle 90)`, because connecting words belong to the call they sit in (§5.1).
 - Gradients are drawn on the GPU in one pass per element, like solid colours.
+- **A list of colours, nothing else** (decided 2026-10-29): every item of a list used as a colour has to be a colour (a number is a grey), and `[colours]` around a name that already holds the list is the classic slip, so it is a teaching error that shows the line without the extra brackets.
 
 **Images, video and canvases as fills** (decided 2026-10-24). `fill` also takes an image, a canvas, a movie or the webcam. The element becomes a mask: the image shows only inside the shape, including text.
 

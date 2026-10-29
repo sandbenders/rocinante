@@ -1010,3 +1010,33 @@ test_the_other_window_words_check_and_a_name_like_them_is_still_a_name :: proc(t
 	expect_errors(t, "main = window size 800 600\nd = window size 100 100 parent main modal true", {})
 	expect_errors(t, "ratio = 0.5\nvisible = true\nparent = 3\ncircle at 1 1 radius ratio", {})
 }
+
+@(test)
+test_a_gradient_list_holds_colours_and_a_list_of_a_list_is_taught :: proc(t: ^testing.T) {
+	for ok in ([]string{
+		"colours = [ red teal ]\nbackground colours as conic angle 45",
+		"background [ red teal ]",
+		"fill [ 0 255 ]",
+		"stroke [ #ff0000 (rgb 1 2 3) blue ]",
+		"c = [ red teal ]\ng = gradient c angle 90\nfill g",
+		"x = 1\ncircle at 1 1 radius 5 fill [ red (rgb x 2 3) ]",
+	}) {
+		expect_errors(t, ok, {})
+	}
+	for bad in ([]string{
+		"colours = [ red teal ]\nbackground [colours] as conic angle 45",
+		"colours = [ red teal ]\nfill [colours]",
+		"colours = [ red teal ]\nstroke [colours]",
+		"colours = [ red teal ]\ng = gradient [colours]",
+		"fill [ \"red\" \"teal\" ]",
+		"fill [ true false ]",
+		"circle at 1 1 radius 5 fill [ { 1, 2 } { 3, 4 } ]",
+	}) {
+		got := check_text(bad)
+		found := false
+		for d in got.checked.diagnostics {
+			found ||= d.id == .Colours_Expected
+		}
+		testing.expectf(t, found, "`%s` should say a gradient is a list of colours", bad)
+	}
+}
