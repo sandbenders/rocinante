@@ -544,8 +544,8 @@ key_event :: proc(w: roci.Window, code: sdl.Scancode, down := true) -> platform.
 	return platform.Key_Changed{window = platform.Window_Id(w), scancode = code, down = down}
 }
 
-click_event :: proc(w: roci.Window, x, y: f32, down := true) -> platform.Event {
-	return platform.Mouse_Button_Changed{window = platform.Window_Id(w), button = .Left, down = down, clicks = 1, x = x, y = y}
+click_event :: proc(w: roci.Window, x, y: f32, down := true, button := platform.Mouse_Button.Left) -> platform.Event {
+	return platform.Mouse_Button_Changed{window = platform.Window_Id(w), button = button, down = down, clicks = 1, x = x, y = y}
 }
 
 @(test)
@@ -1465,4 +1465,48 @@ test_a_table_keeps_its_values_across_a_reload :: proc(t: ^testing.T) {
 	testing.expect_value(t, outcome, Outcome.Reloaded)
 	roci.step()
 	testing.expect(t, strings.has_prefix(printed(n), "{ \"a\": 1, \"b\": "), printed(n))
+}
+
+// ---- mouse buttons and the wheel ----
+
+@(test)
+test_on_mouse_down_can_wait_for_one_button :: proc(t: ^testing.T) {
+	text := `on mouse down [ print "any" ]
+on mouse down right [ print "right" ]
+on mouse up left [ print "left up" ]
+on mouse down back [ print "back" ]
+circle at 1 1 radius 1`
+	p := run_text(t, text)
+	defer finish(p)
+	w := first_window()
+	roci.step({click_event(w, 5, 5, button = .Right)})
+	roci.step({click_event(w, 5, 5, false, .Right), click_event(w, 5, 5, button = .Left)})
+	roci.step({click_event(w, 5, 5, false, .Left)})
+	roci.step({click_event(w, 5, 5, button = .Back)})
+	testing.expect_value(t, printed(p), "any\nright\nany\nleft up\nany\nback")
+}
+
+@(test)
+test_held_reads_mouse_buttons_by_name :: proc(t: ^testing.T) {
+	text := "draw [ print (held \"mouse right\")  print (held \"mouse left\")  print pressed ]"
+	p := run_text(t, text)
+	defer finish(p)
+	w := first_window()
+	clear(&p.printed)
+	roci.step({click_event(w, 5, 5, button = .Right)})
+	testing.expect_value(t, printed(p), "true\nfalse\ntrue")
+	clear(&p.printed)
+	roci.step({click_event(w, 5, 5, false, .Right)})
+	testing.expect_value(t, printed(p), "false\nfalse\nfalse")
+}
+
+@(test)
+test_the_wheel_is_how_far_it_turned_since_the_last_frame :: proc(t: ^testing.T) {
+	p := run_text(t, "zoom = 1\ndraw [\n  zoom = zoom + wheel.y\n  print zoom\n  print wheel\n]")
+	defer finish(p)
+	w := platform.Window_Id(first_window())
+	clear(&p.printed)
+	roci.step({platform.Wheel{window = w, dx = 0, dy = 2}, platform.Wheel{window = w, dx = -1, dy = 1}})
+	roci.step()
+	testing.expect_value(t, printed(p), "4\n{ -1, 3 }\n4\n{ 0, 0 }")
 }

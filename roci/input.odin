@@ -25,6 +25,24 @@ mouse_down :: proc(button := platform.Mouse_Button.Left) -> bool {
 	return button in current_win().buttons
 }
 
+// The mouse buttons by the names a sketch uses: `on mouse down right`, `held "mouse right"`.
+MOUSE_BUTTON_NAMES := [platform.Mouse_Button]string{
+	.Left    = "left",
+	.Middle  = "middle",
+	.Right   = "right",
+	.Back    = "back",    // the side button nearer the wrist on most mice
+	.Forward = "forward",
+}
+
+mouse_button_by_name :: proc(name: string) -> (button: platform.Mouse_Button, ok: bool) {
+	for n, b in MOUSE_BUTTON_NAMES {
+		if n == name {
+			return b, true
+		}
+	}
+	return .Left, false
+}
+
 // Whether any mouse button is held down in the current window (`pressed`).
 pressed :: proc() -> bool {
 	return current_win().buttons != {}

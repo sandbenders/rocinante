@@ -23,7 +23,7 @@ Happening :: enum u8 {
 Happened :: struct {
 	kind:   Happening,
 	window: Window,
-	name:   string, // the key's name for Key_Down
+	name:   string, // the key's name for Key_Down, the button's for Mouse_Down and Mouse_Up
 }
 
 // The events of the frame in progress.
@@ -88,7 +88,7 @@ note_event :: proc(event: platform.Event) {
 		}
 	case platform.Mouse_Button_Changed:
 		if w := win_for_platform(e.window); w != nil {
-			log_event(.Mouse_Down if e.down else .Mouse_Up, w)
+			log_event(.Mouse_Down if e.down else .Mouse_Up, w, MOUSE_BUTTON_NAMES[e.button])
 		}
 	case platform.Resized:
 		if w := win_for_platform(e.window); w != nil {

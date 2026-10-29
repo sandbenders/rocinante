@@ -7,7 +7,7 @@ package registry
 
 // The words that may follow `after` in a call of `verb`: a connecting word (`as`,
 // `in`, `cursor`), or the name of the verb's own word parameter (`style` for
-// `caps`). A verb of "" stands for every verb without an entry of its own, which
+// `caps`); for an event (`mouse down`), `button`. A verb of "" stands for every verb without an entry of its own, which
 // is how the shapes share their origin words.
 Word_Choices :: struct {
 	verb:  string,
@@ -20,12 +20,15 @@ GRADIENT_KINDS := []string{"linear", "radial", "conic"}
 MIX_SPACES := []string{"oklab", "rgb", "oklch"}
 CURSOR_WORDS := []string{"arrow", "none"}
 EASE_WORDS := []string{"smooth", "linear", "in", "out", "back", "elastic", "bounce"}
+MOUSE_BUTTON_WORDS := []string{"left", "middle", "right", "back", "forward"}
 
 WORD_CHOICES := []Word_Choices{
 	{"caps", "style", {"butt", "round", "square"}},
 	{"joins", "style", {"miter", "round", "bevel"}},
 	{"noise", "as", {"perlin", "simplex"}},
 	{"ease", "as", EASE_WORDS},
+	{"mouse down", "button", MOUSE_BUTTON_WORDS}, // events: `on mouse down right`
+	{"mouse up", "button", MOUSE_BUTTON_WORDS},
 	{"tween", "as", EASE_WORDS},
 	{"window", "cursor", CURSOR_WORDS},
 	{"set", "cursor", CURSOR_WORDS},

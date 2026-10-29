@@ -696,10 +696,25 @@ test_every_word_argument_lists_its_words_and_every_list_has_a_place :: proc(t: ^
 			}
 		}
 	}
-	// ...and every list belongs to a verb that has that word argument.
+	// An event that takes a word has a list too.
+	for e in EVENTS {
+		for kind in e.params {
+			if kind == .Name {
+				testing.expectf(t, word_choices(e.name, "button") != nil, "`on %s` has no list of words", e.name)
+			}
+		}
+	}
+	// ...and every list belongs to a verb or an event that has that word argument.
 	for c in WORD_CHOICES {
 		testing.expectf(t, len(c.words) > 0, "an empty list for `%s %s`", c.verb, c.after)
 		if c.verb == "" {
+			continue
+		}
+		is_event := false
+		for e in EVENTS {
+			is_event ||= e.name == c.verb && c.after == "button" && len(e.params) > 0 && e.params[0] == .Name
+		}
+		if is_event {
 			continue
 		}
 		v, found := find_verb(c.verb)

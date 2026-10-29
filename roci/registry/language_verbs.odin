@@ -32,7 +32,7 @@ LANGUAGE_VERBS := []Verb{
 	{"collect", {{LIST_AND_BLOCK, nil, .List}}, "One new value for each item: `collect particles [ it.size * 2 ]`."},
 	{"combine", {{LIST_PARAM, {{"from", {.Any, .Expr_Block}, true}}, .Any}}, "Folds a list into one value, starting from a value: `combine scores from 0 [ result + it ]`."},
 	{"find", {{LIST_AND_BLOCK, nil, .Any}}, "The first item that passes a test, or an empty value."},
-	{"held", {{{{"key", .Text}}, nil, .Boolean}}, "Whether the key with this name is held down right now: held \"space\", held \"left\". The names are those of on key."},
+	{"held", {{{{"key", .Text}}, nil, .Boolean}}, "Whether the key or mouse button with this name is held down right now: held \"space\", held \"left\" (the arrow key), held \"mouse right\". Keys have the names of on key; buttons are mouse left, middle, right, back and forward."},
 	{"shuffle", {{LIST_PARAM, nil, .List}}, "A new list with the same items in a random order: `shuffle colors`."},
 	{"sort", {{LIST_PARAM, {{"by", {.Expr_Block}, true}}, .List}}, "A list in order of what the block gives for each item: `sort particles by [ it.size ]`."},
 

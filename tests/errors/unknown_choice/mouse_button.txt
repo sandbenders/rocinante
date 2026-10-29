@@ -1,0 +1,8 @@
+── `mouse down` does not know the word `rigth` ──────── sketch.roci:1:15
+
+1 │ on mouse down rigth [ print "menu" ]
+  │               ^^^^^
+
+After `mouse down` comes one of these words: `left`, `middle`, `right`, `back` or `forward`.
+
+Did you mean:  on mouse down right [ print "menu" ]

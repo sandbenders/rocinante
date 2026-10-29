@@ -553,6 +553,13 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 				continue
 			}
 			for a, i in k.args {
+				if i < len(event.params) && event.params[i] == .Name {
+					if word, ok := as_word(c, a); ok {
+						check_choice(c, k.event, k.event, "button", word, a.span)
+						append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
+						continue
+					}
+				}
 				expected := T_TEXT
 				if i < len(event.params) && event.params[i] != .Text {
 					expected = type_of_kind(c.types, event.params[i])

@@ -73,7 +73,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "false", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "pressed", "tau", "time", "true", "width",
+	"anywhere", "false", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "pressed", "tau", "time", "true", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -98,6 +98,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"tau", .Number, 0},
 	{"time", .Number, 0}, // seconds since the sketch started
 	{"true", .Boolean, 0},
+	{"wheel", .Vector, 2}, // how far the mouse wheel turned since the last frame: y up, x right
 	{"width", .Number, 0},
 }
 
@@ -176,8 +177,8 @@ Event :: struct {
 
 EVENTS := []Event{
 	{"key", {.Text}, "Runs when the named key goes down."},
-	{"mouse down", {}, "Runs when a mouse button goes down."},
-	{"mouse up", {}, "Runs when a mouse button comes up."},
+	{"mouse down", {.Name}, "Runs when a mouse button goes down; name one to wait for it alone: `on mouse down right`."},
+	{"mouse up", {.Name}, "Runs when a mouse button comes up; name one to wait for it alone: `on mouse up left`."},
 	{"touch", {}, "Runs when a finger touches the screen."},
 	{"resize", {}, "Runs when the window changes size."},
 	{"move", {}, "Runs when the window moves."},

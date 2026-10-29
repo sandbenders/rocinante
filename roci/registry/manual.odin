@@ -42,7 +42,7 @@ STATEMENT_DOCS := []Statement_Doc{
 	{"stop", "Ends a verb you taught early, without a value.", {"stop"}, "learn greet name [ if name is \"\" [ stop ] ]"},
 	{"with", "Styles everything in a block, then puts the style back; the words are the ones that style one element, or a record of them.", {"with fill colour stroke colour thickness number [ ... ]", "with style [ ... ]"}, "with fill cyan thickness 2 [ circle at 100 100 radius 50 ]"},
 	{"every", "Runs a block again and again, every so many seconds or frames.", {"every count seconds [ ... ]", "every count frames [ ... ]"}, "every 2 seconds [ x = x + 1 ]"},
-	{"on", "Runs a block when something happens: a key, a mouse button, a window change, or a message. A window may be named first.", {"on key \"name\" [ ... ]", "on mouse down [ ... ]", "on window event [ ... ]", "on window receive message [ ... ]"}, "on garden key \"space\" [ calm = 0.15 ]"},
+	{"on", "Runs a block when something happens: a key, a mouse button, a window change, or a message. A window may be named first, and a mouse button after `mouse down` or `mouse up`.", {"on key \"name\" [ ... ]", "on mouse down [ ... ]", "on mouse down right [ ... ]", "on window event [ ... ]", "on window receive message [ ... ]"}, "on garden key \"space\" [ calm = 0.15 ]"},
 	{"draw", "Runs a block every frame, for the default window or one you name.", {"draw [ ... ]", "draw window [ ... ]"}, "draw [ background 30 ]"},
 	{"use", "Brings in a library, copied into the sketch.", {"use \"name\""}, "use \"flocking\""},
 }

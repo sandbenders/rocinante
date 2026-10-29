@@ -189,7 +189,13 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case "set":
 		set_window(it, eval(it, call.args[0]), call.options)
 	case "held":
-		return roci.key_down(as_text(eval(it, call.args[0])))
+		// "mouse right" is a button held down in this window, anything else a key.
+		name := as_text(eval(it, call.args[0]))
+		if strings.has_prefix(name, "mouse ") {
+			button, known := roci.mouse_button_by_name(name[len("mouse "):])
+			return known && roci.mouse_down(button)
+		}
+		return roci.key_down(name)
 	case "tween":
 		start_tween(it, call)
 	case "table":

@@ -1195,3 +1195,20 @@ test_the_ease_curves_are_the_words_the_language_allows :: proc(t: ^testing.T) {
 		testing.expectf(t, found, "`%s` is not a word of `ease`", name)
 	}
 }
+
+@(test)
+test_the_mouse_buttons_are_the_words_the_language_allows :: proc(t: ^testing.T) {
+	words := registry.word_choices("mouse down", "button")
+	testing.expect_value(t, len(words), len(MOUSE_BUTTON_NAMES))
+	for name, button in MOUSE_BUTTON_NAMES {
+		found := false
+		for w in words {
+			found ||= w == name
+		}
+		testing.expectf(t, found, "`%s` is not a word of `on mouse down`", name)
+		b, ok := mouse_button_by_name(name)
+		testing.expect(t, ok && b == button, name)
+	}
+	_, ok := mouse_button_by_name("wheel")
+	testing.expect(t, !ok)
+}

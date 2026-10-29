@@ -687,8 +687,22 @@ parse_on :: proc(p: ^Parser) -> Stmt_Kind {
 			advance(p)
 		}
 		args := make([dynamic]^Expr, p.alloc)
-		for _ in event.params {
-			if call_ends_at(p, cur(p)) || !is_argument_start(p, cur(p)) {
+		for kind in event.params {
+			if call_ends_at(p, cur(p)) {
+				break
+			}
+			// A word (`right` in `on mouse down right`) is that word, even when it is also a verb.
+			if t := cur(p); kind == .Name && t.kind == .Name && !is_word(p, t, "receive") {
+				advance(p)
+				parts := make([]string, 1, p.alloc)
+				parts[0] = text_of(p, t)
+				append(&args, new_expr(p, t.span, Path{parts = parts}))
+				continue
+			}
+			if kind == .Name {
+				break // only a word goes there; the block follows
+			}
+			if !is_argument_start(p, cur(p)) {
 				break
 			}
 			append(&args, parse_argument(p))
