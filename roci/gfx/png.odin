@@ -2,9 +2,11 @@
 //
 // Writes PNG files and compares pictures, for the golden-image tests and for
 // saving frames. Odin's core:image/png only reads PNG (checked 2026-10-27), so
-// this is a small writer of our own: 8-bit RGBA, each row filtered the way that
-// leaves the smallest numbers (libpng's rule: the least sum of the bytes taken as
-// signed), then compressed by our own deflate (deflate.odin). The tests read the
+// this is a small writer of our own: 8-bit RGBA, compressed by our own deflate
+// (deflate.odin). Each row may be filtered the way that leaves the smallest
+// numbers (libpng's rule: the least sum of the bytes taken as signed), which suits
+// gradients, or left as it is, which often suits flat colours with sharp edges
+// better; by default both are made and the smaller kept (`Png_Filters`). The tests read the
 // files back with core:image/png to prove they are valid.
 // Format: https://www.w3.org/TR/png-3/ and RFC 1950/1951 for the zlib wrapper.
 package gfx
@@ -30,9 +32,9 @@ put_chunk :: proc(out: ^[dynamic]u8, type: string, data: []u8) {
 // The rows, each led by the number of its filter: 0 none, 1 the pixel to the left
 // taken away, 2 the pixel above, 3 their average, 4 Paeth's guess. Every filter is
 // tried on every row and the one whose bytes, read as signed, add up least wins;
-// a tie goes to the lower number.
+// a tie goes to the lower number. Without `adaptive` every row is left unfiltered.
 @(private)
-filter_rows :: proc(img: Image) -> []u8 {
+filter_rows :: proc(img: Image, adaptive: bool) -> []u8 {
 	row := img.width * 4
 	raw := make([]u8, (row + 1) * img.height, context.temp_allocator)
 	trial := make([]u8, row, context.temp_allocator)
@@ -41,6 +43,10 @@ filter_rows :: proc(img: Image) -> []u8 {
 		line := img.pixels[y * row:(y + 1) * row]
 		above := img.pixels[(y - 1) * row:y * row] if y > 0 else zero
 		out := raw[y * (row + 1):(y + 1) * (row + 1)]
+		if !adaptive {
+			copy(out[1:], line)
+			continue
+		}
 		best := max(int)
 		for filter in u8(0) ..= 4 {
 			sum := 0
@@ -79,19 +85,41 @@ paeth :: proc "contextless" (left, up, corner: u8) -> u8 {
 	return up if pb <= pc else corner
 }
 
-// A PNG of the pixels (RGBA, rows from the top). Gives nothing for a size that
-// is not positive or pixels of the wrong length.
-png_encode :: proc(img: Image, allocator := context.allocator) -> (png: []u8, ok: bool) {
-	if img.width <= 0 || img.height <= 0 || len(img.pixels) != img.width * img.height * 4 {
-		return nil, false
-	}
-	// The zlib stream: a header, the filtered rows compressed, and the Adler-32 of
-	// the rows before compressing.
-	raw := filter_rows(img)
+// How `png_encode` filters the rows before compressing them.
+Png_Filters :: enum u8 {
+	Smallest, // both ways below, keeping the smaller file: twice the work
+	Adaptive, // each row the filter that leaves the smallest numbers
+	None,     // every row as it is
+}
+
+// The zlib stream of the rows: a header, the rows compressed, and the Adler-32 of
+// the rows before compressing.
+@(private)
+zlib_stream :: proc(raw: []u8) -> []u8 {
 	z := make([dynamic]u8, context.temp_allocator)
 	append(&z, 0x78, 0x01)
 	append(&z, ..deflate(raw, context.temp_allocator))
 	put_u32_be(&z, hash.adler32(raw))
+	return z[:]
+}
+
+// A PNG of the pixels (RGBA, rows from the top). Gives nothing for a size that
+// is not positive or pixels of the wrong length. With `.Smallest` a tie goes to
+// the filtered rows.
+png_encode :: proc(img: Image, allocator := context.allocator, filters := Png_Filters.Smallest) -> (png: []u8, ok: bool) {
+	if img.width <= 0 || img.height <= 0 || len(img.pixels) != img.width * img.height * 4 {
+		return nil, false
+	}
+	z: []u8
+	switch filters {
+	case .Adaptive: z = zlib_stream(filter_rows(img, true))
+	case .None:     z = zlib_stream(filter_rows(img, false))
+	case .Smallest:
+		z = zlib_stream(filter_rows(img, true))
+		if plain := zlib_stream(filter_rows(img, false)); len(plain) < len(z) {
+			z = plain
+		}
+	}
 
 	out := make([dynamic]u8, allocator)
 	append(&out, ..PNG_SIGNATURE[:])
@@ -100,7 +128,7 @@ png_encode :: proc(img: Image, allocator := context.allocator) -> (png: []u8, ok
 	put_u32_be(&ihdr, u32(img.height))
 	append(&ihdr, 8, 6, 0, 0, 0) // 8 bits, RGBA, deflate, adaptive filtering, no interlace
 	put_chunk(&out, "IHDR", ihdr[:])
-	put_chunk(&out, "IDAT", z[:])
+	put_chunk(&out, "IDAT", z)
 	put_chunk(&out, "IEND", nil)
 	return out[:], true
 }

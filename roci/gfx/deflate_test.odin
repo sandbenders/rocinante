@@ -136,7 +136,7 @@ test_png_rows_use_the_filter_that_suits_them :: proc(t: ^testing.T) {
 			}
 		}
 	}
-	raw := filter_rows(img)
+	raw := filter_rows(img, true)
 	row := 64 * 4 + 1
 	testing.expect_value(t, raw[0], 1)
 	for y in 1 ..< 4 {
@@ -253,5 +253,53 @@ test_png_round_trips_generated_pictures :: proc(t: ^testing.T) {
 		if !testing.expectf(t, ok && same, "seed %d (%dx%d): %v", seed, w, h, err) {
 			return
 		}
+	}
+}
+
+@(test)
+test_png_rows_left_unfiltered_are_the_pixels_themselves :: proc(t: ^testing.T) {
+	img := pattern(5, 3)
+	defer image_destroy(&img)
+	raw := filter_rows(img, false)
+	row := 5 * 4
+	for y in 0 ..< 3 {
+		testing.expect_value(t, raw[y * (row + 1)], 0)
+		testing.expect(t, bytes.equal(raw[y * (row + 1) + 1:(y + 1) * (row + 1)], img.pixels[y * row:(y + 1) * row]))
+	}
+}
+
+// A picture where leaving the rows alone wins (flat colours with hard edges) and
+// one where filtering wins (a smooth gradient): `.Smallest` keeps the smaller each
+// time, and every choice reads back the same.
+@(test)
+test_png_filters_choice_keeps_the_smaller_file :: proc(t: ^testing.T) {
+	w, h := 200, 120
+	flat := Image{w, h, make([]u8, w * h * 4)}
+	defer image_destroy(&flat)
+	smooth := Image{w, h, make([]u8, w * h * 4)}
+	defer image_destroy(&smooth)
+	for y in 0 ..< h {
+		for x in 0 ..< w {
+			i := (y * w + x) * 4
+			stripe := u8(((x / 9) ~ (y / 7)) & 3) * 80
+			flat.pixels[i], flat.pixels[i + 1], flat.pixels[i + 2], flat.pixels[i + 3] = stripe, 255 - stripe, 30, 255
+			smooth.pixels[i], smooth.pixels[i + 1], smooth.pixels[i + 2], smooth.pixels[i + 3] = u8(x), u8(y * 2), u8(x + y), 255
+		}
+	}
+	for img in ([?]Image{flat, smooth}) {
+		sizes: [Png_Filters]int
+		for choice in Png_Filters {
+			data, ok := png_encode(img, context.allocator, choice)
+			testing.expect(t, ok)
+			defer delete(data)
+			sizes[choice] = len(data)
+			decoded, err := png.load_from_bytes(data, {.alpha_add_if_missing})
+			testing.expectf(t, err == nil, "%v: %v", choice, err)
+			if err == nil {
+				testing.expectf(t, bytes.equal(bytes.buffer_to_bytes(&decoded.pixels), img.pixels), "%v reads back different", choice)
+				png.destroy(decoded)
+			}
+		}
+		testing.expect_value(t, sizes[.Smallest], min(sizes[.Adaptive], sizes[.None]))
 	}
 }
