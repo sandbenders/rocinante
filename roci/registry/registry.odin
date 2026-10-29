@@ -83,26 +83,27 @@ Value_Def :: struct {
 	name: string,
 	kind: Kind,
 	size: int,
+	doc:  string, // one line for the reference and the manual
 }
 
 VALUE_DEFS := [?]Value_Def{
-	{"anywhere", .Vector, 2}, // a random point in the window
-	{"false", .Boolean, 0},
-	{"finger", .Record, 0}, // the finger of `on touch down` and `on touch up`: a record with id, pos, start and pressure
-	{"fps", .Number, 0},
-	{"frame", .Number, 0},
-	{"height", .Number, 0},
-	{"key", .Text, 0}, // the name of the key last pressed
-	{"mouse", .Vector, 2},
-	{"pressed", .Boolean, 0}, // whether a mouse button is held down in this window
-	{"pi", .Number, 0},
-	{"pmouse", .Vector, 2}, // where the mouse was a frame ago
-	{"tau", .Number, 0},
-	{"time", .Number, 0}, // seconds since the sketch started
-	{"touches", .List, 0}, // the fingers down in the window now, in the order they went down, each a record like `finger`
-	{"true", .Boolean, 0},
-	{"wheel", .Vector, 2}, // how far the mouse wheel turned since the last frame: y up, x right
-	{"width", .Number, 0},
+	{"anywhere", .Vector, 2, "A random point in the window, different each time it is read."},
+	{"false", .Boolean, 0, "The value of a condition that does not hold."},
+	{"finger", .Record, 0, "The finger an `on touch down` or `on touch up` block runs for: a record with `id`, `pos`, `start` and `pressure`."},
+	{"fps", .Number, 0, "How many frames a second the sketch is drawing."},
+	{"frame", .Number, 0, "How many frames the sketch has drawn, counting from 0."},
+	{"height", .Number, 0, "The height of the window the code runs in, in pixels."},
+	{"key", .Text, 0, "The name of the key pressed last."},
+	{"mouse", .Vector, 2, "Where the mouse is in the window: `mouse.x` and `mouse.y`."},
+	{"pressed", .Boolean, 0, "Whether a mouse button is held down in this window."},
+	{"pi", .Number, 0, "Half a turn in radians, 3.14159…, for sketches that work in radians."},
+	{"pmouse", .Vector, 2, "Where the mouse was a frame ago."},
+	{"tau", .Number, 0, "A whole turn in radians, 6.28318…"},
+	{"time", .Number, 0, "Seconds since the sketch started."},
+	{"touches", .List, 0, "The fingers down in the window now, in the order they went down, each a record like `finger`."},
+	{"true", .Boolean, 0, "The value of a condition that holds."},
+	{"wheel", .Vector, 2, "How far the mouse wheel turned since the last frame: `wheel.y` up, `wheel.x` to the right."},
+	{"width", .Number, 0, "The width of the window the code runs in, in pixels."},
 }
 
 // A property of a window value (`main_window.width`): what it is and whether a

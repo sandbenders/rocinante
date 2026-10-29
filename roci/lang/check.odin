@@ -1027,7 +1027,7 @@ window_property :: proc(name: string) -> (def: registry.Property_Def, found: boo
 
 @(private)
 type_of_property :: proc(c: ^Checker, def: registry.Property_Def) -> Type_Id {
-	return type_of_value(c, registry.Value_Def{def.name, def.kind, def.size})
+	return type_of_value(c, registry.Value_Def{name = def.name, kind = def.kind, size = def.size})
 }
 
 // A property a window does not have: name the ones it has and the nearest.

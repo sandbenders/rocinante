@@ -742,3 +742,41 @@ test_the_nearest_word_is_suggested :: proc(t: ^testing.T) {
 	testing.expect_value(t, word_choices("circle", "as")[0], "center") // the shapes share the origin words
 	testing.expect(t, word_choices("circle", "fill") == nil)
 }
+
+@(test)
+test_every_word_of_the_language_is_in_exactly_one_reference_section :: proc(t: ^testing.T) {
+	seen := make(map[string]int, 128, context.temp_allocator)
+	for section in REFERENCE_SECTIONS {
+		for w in section.words {
+			seen[w] += 1
+		}
+	}
+	expect_once :: proc(t: ^testing.T, seen: map[string]int, word, what: string) {
+		testing.expectf(t, seen[word] == 1, "the %s `%s` is in %d reference sections, not 1", what, word, seen[word])
+	}
+	for v in ALL_VERBS {
+		expect_once(t, seen, v.name, "verb")
+	}
+	for s in STATEMENT_DOCS {
+		expect_once(t, seen, s.name, "statement")
+	}
+	for v in VALUES {
+		expect_once(t, seen, v, "value")
+	}
+	// And nothing in a section that the language does not have.
+	for word in seen {
+		_, is_verb := find_verb(word)
+		_, is_statement := find_statement(word)
+		testing.expectf(t, is_verb || is_statement || slice.contains(VALUES[:], word), "`%s` is in a reference section but is not a word of the language", word)
+	}
+	testing.expect_value(t, reference_slug("no fill"), "no-fill")
+	testing.expect_value(t, section_of("circle"), "Shapes")
+	testing.expect_value(t, section_of("nothing"), "")
+}
+
+@(test)
+test_every_built_in_value_says_what_it_is :: proc(t: ^testing.T) {
+	for def in VALUE_DEFS {
+		testing.expectf(t, len(def.doc) > 10 && (strings.has_suffix(def.doc, ".") || strings.has_suffix(def.doc, "…")), "`%s` needs a one-line description", def.name)
+	}
+}
