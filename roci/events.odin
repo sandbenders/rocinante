@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// What happened in a frame: key presses, mouse buttons and window changes, in the
+// What happened in a frame: key presses, mouse buttons, fingers and window changes, in the
 // order they came, with the window each belongs to. The app loop keeps the list for
 // the frame in progress; the interpreter reads it to run the sketch's `on` blocks,
 // and a frame hook lets it run them in the middle of each window's frame, after the
@@ -14,6 +14,8 @@ Happening :: enum u8 {
 	Key_Down,
 	Mouse_Down,
 	Mouse_Up,
+	Touch_Down,
+	Touch_Up,
 	Resize,
 	Move,
 	Focus,
@@ -24,6 +26,7 @@ Happened :: struct {
 	kind:   Happening,
 	window: Window,
 	name:   string, // the key's name for Key_Down, the button's for Mouse_Down and Mouse_Up
+	finger: Touch,  // the finger, for Touch_Down and Touch_Up
 }
 
 // The events of the frame in progress.
@@ -103,5 +106,7 @@ note_event :: proc(event: platform.Event) {
 			log_event(.Focus, w)
 		}
 	case platform.Quit, platform.Close_Requested, platform.Pixel_Size_Changed, platform.Scale_Changed, platform.Mouse_Moved, platform.Wheel:
+	case platform.Finger_Changed:
+		// Logged by `handle_finger`, which gives the finger its number.
 	}
 }

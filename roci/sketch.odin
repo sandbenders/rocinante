@@ -60,6 +60,7 @@ Win :: struct {
 	ratio:        f64,              // the shape it keeps when resized; 0 for any
 	position:     [2]int,           // where it was asked to be (a headless window has no screen)
 	cursor:       Cursor,           // the mouse cursor while the mouse is over it
+	fingers:      [dynamic]Finger,  // the fingers down that went down in this window, in that order
 }
 
 Sketch :: struct {
@@ -73,6 +74,7 @@ Sketch :: struct {
 	windows:      [dynamic]^Win,
 	closed:       [dynamic]^Win, // closed windows, freed with the sketch
 	next_id:      int,
+	next_finger:  int,     // the number the last finger to go down was given
 	current:      ^Win,    // the window verbs draw into
 	default:      ^Win,    // the window made when a verb needed one and there was none
 	newest:       ^Win,    // the window the last `window` call made: verbs outside any block act on it
@@ -177,6 +179,7 @@ destroy_win :: proc(w: ^Win) {
 	gfx.batcher_destroy(&w.batcher)
 	delete(w.inbox)
 	delete(w.title)
+	delete(w.fingers)
 	if w.handle != nil {
 		platform.destroy_window(&the.app, w.handle)
 	}

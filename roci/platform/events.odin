@@ -89,6 +89,25 @@ Wheel :: struct {
 	x, y:   f32, // where the mouse was
 }
 
+// What a finger did. A cancelled finger (the system took the touch away, for a
+// gesture of its own) counts as lifted.
+Finger_Phase :: enum u8 {
+	Down,
+	Moved,
+	Up,
+}
+
+// A finger on a touch screen, or the mouse's left button acting as one on the
+// desktop. `x` and `y` are fractions of the window, 0 to 1 (a finger can be
+// reported a little outside it); `finger` tells fingers apart while they are down.
+Finger_Changed :: struct {
+	window:   Window_Id,
+	finger:   [2]u64, // the touch device and the finger on it
+	phase:    Finger_Phase,
+	x, y:     f32,
+	pressure: f32, // 0 to 1
+}
+
 // A key by where it is on the keyboard, not by the letter on it, so AZERTY
 // works for `keys w a s d`.
 Key_Changed :: struct {
@@ -111,6 +130,7 @@ Event :: union {
 	Mouse_Button_Changed,
 	Wheel,
 	Key_Changed,
+	Finger_Changed,
 }
 
 mods_from_sdl :: proc "contextless" (m: sdl.Keymod) -> (mods: Modifiers) {
@@ -133,7 +153,7 @@ button_from_sdl :: proc "contextless" (button: u8) -> (b: Mouse_Button, ok: bool
 }
 
 // Turns an SDL event into ours. Events the core does not use (devices, text,
-// touch, and so on, until they are wired) give `ok = false`.
+// and so on, until they are wired) give `ok = false`.
 translate :: proc "contextless" (e: sdl.Event) -> (event: Event, ok: bool) {
 	#partial switch e.type {
 	case .QUIT:
@@ -167,6 +187,17 @@ translate :: proc "contextless" (e: sdl.Event) -> (event: Event, ok: bool) {
 	case .KEY_DOWN, .KEY_UP:
 		k := e.key
 		return Key_Changed{Window_Id(k.windowID), k.scancode, k.down, k.repeat, mods_from_sdl(k.mod)}, true
+	case .FINGER_DOWN, .FINGER_MOTION, .FINGER_UP, .FINGER_CANCELED:
+		f := e.tfinger
+		if f.windowID == 0 {
+			return {}, false
+		}
+		phase := Finger_Phase.Moved
+		#partial switch e.type {
+		case .FINGER_DOWN:                 phase = .Down
+		case .FINGER_UP, .FINGER_CANCELED: phase = .Up
+		}
+		return Finger_Changed{Window_Id(f.windowID), {u64(f.touchID), u64(f.fingerID)}, phase, f.x, f.y, f.pressure}, true
 	}
 	return {}, false
 }

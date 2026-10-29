@@ -66,6 +66,10 @@ init :: proc(app: ^App) -> bool {
 	if hint, ok := video_driver_hint(string(sdl.getenv("WAYLAND_DISPLAY")), string(sdl.getenv(sdl.HINT_VIDEO_DRIVER))); ok {
 		sdl.SetHint(sdl.HINT_VIDEO_DRIVER, hint)
 	}
+	// The left button acts as a finger on the desktop too (SDL does it only on the
+	// phones by default), so a touch sketch can be tried without a touch screen; a
+	// finger also moves the mouse, SDL's default everywhere (decided 2026-10-29).
+	sdl.SetHint(sdl.HINT_MOUSE_TOUCH_EVENTS, "1")
 	if !sdl.Init({.VIDEO}) {
 		return fail(app, "SDL_Init")
 	}

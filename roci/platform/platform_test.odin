@@ -307,3 +307,26 @@ test_a_wayland_desktop_asks_sdl_for_wayland_first :: proc(t: ^testing.T) {
 	_, ok = video_driver_hint("", "") // not a Wayland session: SDL chooses
 	testing.expect(t, !ok)
 }
+
+@(test)
+test_fingers_go_down_move_and_come_up_and_a_cancel_is_an_up :: proc(t: ^testing.T) {
+	e: sdl.Event
+	e.tfinger = sdl.TouchFingerEvent{type = .FINGER_DOWN, touchID = 7, fingerID = 3, x = 0.25, y = 0.5, pressure = 0.8, windowID = 2}
+	ev, ok := translate(e)
+	testing.expect(t, ok)
+	testing.expect_value(t, ev.(Finger_Changed), Finger_Changed{2, {7, 3}, .Down, 0.25, 0.5, 0.8})
+	Case :: struct {
+		type:  sdl.EventType,
+		phase: Finger_Phase,
+	}
+	for kind in ([]Case{{.FINGER_MOTION, .Moved}, {.FINGER_UP, .Up}, {.FINGER_CANCELED, .Up}}) {
+		e.type = kind.type
+		ev, ok = translate(e)
+		testing.expect(t, ok)
+		testing.expect_value(t, ev.(Finger_Changed).phase, kind.phase)
+	}
+	// A finger over no window has nowhere to go.
+	e.tfinger.windowID = 0
+	_, ok = translate(e)
+	testing.expect(t, !ok)
+}

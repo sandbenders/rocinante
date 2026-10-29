@@ -1212,3 +1212,53 @@ test_the_mouse_buttons_are_the_words_the_language_allows :: proc(t: ^testing.T) 
 	_, ok := mouse_button_by_name("wheel")
 	testing.expect(t, !ok)
 }
+
+@(test)
+test_fingers_are_numbered_kept_in_order_and_logged :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	circle(0, 0, 1) // the default window, 800 by 600
+	testing.expect_value(t, len(touches()), 0)
+	step({platform.Finger_Changed{window = 1, finger = {1, 10}, phase = .Down, x = 0.5, y = 0.5, pressure = 1}})
+	step({platform.Finger_Changed{window = 1, finger = {1, 11}, phase = .Down, x = 0.25, y = 0, pressure = 0.5}})
+	fingers := touches()
+	if testing.expect_value(t, len(fingers), 2) {
+		testing.expect_value(t, fingers[0], Touch{id = 1, pos = {400, 300}, start = {400, 300}, pressure = 1})
+		testing.expect_value(t, fingers[1].id, 2)
+		testing.expect_value(t, fingers[1].pos, [2]f64{200, 0})
+	}
+	log := happened()
+	if testing.expect_value(t, len(log), 1) {
+		testing.expect_value(t, log[0].kind, Happening.Touch_Down)
+		testing.expect_value(t, log[0].finger.id, 2)
+	}
+
+	// A move changes where it is and leaves where it started; an up logs it there and forgets it.
+	step({platform.Finger_Changed{window = 1, finger = {1, 10}, phase = .Moved, x = 0.75, y = 0.5, pressure = 0.25}})
+	testing.expect_value(t, len(happened()), 0)
+	testing.expect_value(t, touches()[0].pos, [2]f64{600, 300})
+	testing.expect_value(t, touches()[0].start, [2]f64{400, 300})
+	testing.expect_value(t, touches()[0].pressure, 0.25)
+	step({platform.Finger_Changed{window = 1, finger = {1, 10}, phase = .Up, x = 1, y = 0.5}})
+	log = happened()
+	if testing.expect_value(t, len(log), 1) {
+		testing.expect_value(t, log[0].kind, Happening.Touch_Up)
+		testing.expect_value(t, log[0].finger.id, 1)
+		testing.expect_value(t, log[0].finger.pos, [2]f64{800, 300})
+	}
+	testing.expect_value(t, len(touches()), 1)
+	testing.expect_value(t, touches()[0].id, 2)
+
+	// A new finger gets a new number, even with the system's own name of an old one;
+	// an up or a move of a finger never seen, and a window that is not there, change nothing.
+	step({platform.Finger_Changed{window = 1, finger = {1, 10}, phase = .Down}})
+	testing.expect_value(t, touches()[1].id, 3)
+	step({platform.Finger_Changed{window = 1, finger = {9, 9}, phase = .Up}, platform.Finger_Changed{window = 1, finger = {9, 9}, phase = .Moved}, platform.Finger_Changed{window = 99, finger = {1, 12}, phase = .Down}})
+	testing.expect_value(t, len(happened()), 0)
+	testing.expect_value(t, len(touches()), 2)
+	// Down twice without an up: the finger starts again with a new number.
+	step({platform.Finger_Changed{window = 1, finger = {1, 10}, phase = .Down, x = 0.1}})
+	fingers = touches()
+	testing.expect_value(t, len(fingers), 2)
+	testing.expect_value(t, fingers[1].id, 4)
+}
