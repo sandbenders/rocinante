@@ -157,6 +157,7 @@ IR :: struct {
 	span: Span,
 	type: Type_Id,
 	kind: IR_Kind,
+	fast: Fast, // set by an optimisation pass when the node is known to give a number or true or false
 }
 
 IR_Assign :: struct {

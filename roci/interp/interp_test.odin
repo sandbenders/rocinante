@@ -1841,3 +1841,110 @@ draw [ print (count (hits { 210, 105 } walls)) ]`
 	testing.expect(t, cached, "the cached tree follows the list it belongs to")
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// ---- the optimisation passes against the reference ----
+
+// One run of a sketch: a hash of every window's commands each frame, what it
+// printed and how many runtime errors it hit.
+@(private = "file")
+Trace :: struct {
+	frames:  [dynamic]u64,
+	printed: string,
+	errors:  int,
+}
+
+// Runs an example for `frames` frames with a fixed seed, sending the same mouse
+// moves, clicks, keys, wheel turns and fingers to every window each time.
+@(private = "file")
+trace_example :: proc(t: ^testing.T, name: string, frames: int, chosen: lang.Passes) -> (trace: Trace, ok: bool) {
+	program, problem := folder.read_program(fmt.tprintf("examples/%s/sketch.roci", name))
+	if problem != "" {
+		return
+	}
+	set_passes(chosen)
+	defer set_passes(lang.ALL_PASSES)
+	roci.start_headless(3)
+	defer roci.shutdown()
+	p, loaded := load_files(program.files)
+	defer destroy(p)
+	if !testing.expectf(t, loaded, "%s does not load", name) {
+		return
+	}
+	start(p)
+	trace.frames = make([dynamic]u64, context.temp_allocator)
+	for f in 0 ..< frames {
+		events := make([dynamic]platform.Event, context.temp_allocator)
+		for w in roci.open_windows() {
+			id := platform.Window_Id(w)
+			x := f32(120 + (f * 37) % 300)
+			y := f32(90 + (f * 53) % 220)
+			append(&events, platform.Mouse_Moved{window = id, x = x, y = y})
+			switch f % 20 {
+			case 3:  append(&events, click_event(w, x, y))
+			case 5:  append(&events, click_event(w, x, y, false))
+			case 7:  append(&events, click_event(w, x, y, button = .Right))
+			case 8:  append(&events, click_event(w, x, y, false, .Right))
+			case 9:  append(&events, platform.Wheel{window = id, dy = 1, x = x, y = y})
+			case 11: append(&events, finger_event(w, 1, .Down, 0.3, 0.4))
+			case 13: append(&events, finger_event(w, 1, .Up, 0.6, 0.5))
+			case 15: append(&events, key_event(w, sdl.Scancode(int(sdl.Scancode.A) + f % 26)))
+			case 16: append(&events, key_event(w, sdl.Scancode(int(sdl.Scancode.A) + (f - 1) % 26), false))
+			case 17: append(&events, key_event(w, .SPACE), key_event(w, ._1))
+			case 18: append(&events, key_event(w, .SPACE, false), key_event(w, ._1, false))
+			}
+		}
+		roci.step(events[:])
+		h: u64 = 14695981039346656037
+		for w in roci.open_windows() {
+			for c in roci.recorded(w) {
+				h = (h ~ gfx.command_hash(c)) * 1099511628211
+			}
+		}
+		append(&trace.frames, h)
+	}
+	trace.printed = strings.join(p.printed[:], "\n", context.temp_allocator)
+	trace.errors = len(p.errors)
+	return trace, true
+}
+
+@(test)
+test_every_example_draws_the_same_with_the_passes_on_and_off :: proc(t: ^testing.T) {
+	dir, err := os.open("examples")
+	if !testing.expect(t, err == nil, "tests run from the repository root") {
+		return
+	}
+	defer os.close(dir)
+	entries, _ := os.read_dir(dir, -1, context.temp_allocator)
+	compared := 0
+	for entry in entries {
+		if !os.exists(fmt.tprintf("examples/%s/sketch.roci", entry.name)) {
+			continue
+		}
+		frames := 2 if entry.name == "benchmark" else 80
+		reference, ok := trace_example(t, entry.name, frames, {})
+		if !ok {
+			continue
+		}
+		optimised, _ := trace_example(t, entry.name, frames, lang.ALL_PASSES)
+		compared += 1
+		testing.expectf(t, optimised.errors == reference.errors, "%s: %d runtime errors with the passes, %d without", entry.name, optimised.errors, reference.errors)
+		testing.expectf(t, optimised.printed == reference.printed, "%s prints something else with the passes", entry.name)
+		for h, f in reference.frames {
+			if !testing.expectf(t, f < len(optimised.frames) && optimised.frames[f] == h, "%s draws frame %d differently with the passes", entry.name, f) {
+				break
+			}
+		}
+	}
+	testing.expect(t, compared >= 15, "the examples were found")
+}
+
+@(test)
+test_the_interpreter_never_fuses_a_multiply_and_an_add :: proc(t: ^testing.T) {
+	// 1 + 2^-30 and 1 + 2^-29, written out: rounded twice the sum is exactly 0.
+	text := "a = 1 + 1 / 1073741824\nc = 0 - (1 + 1 / 536870912)\ndraw [ print (a * a + c) ]"
+	for chosen in ([]lang.Passes{{}, lang.ALL_PASSES}) {
+		set_passes(chosen)
+		expect_printed(t, text, "0", 1)
+	}
+	set_passes(lang.ALL_PASSES)
+}

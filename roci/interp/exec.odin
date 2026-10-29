@@ -7,7 +7,7 @@ package interp
 
 import "../"
 import "../lang"
-import "core:math"
+import "../maths"
 
 exec_stmts :: proc(it: ^Interp, stmts: []^lang.IR_Stmt) -> Flow {
 	for s in stmts {
@@ -29,6 +29,10 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 	}
 	switch &k in s.kind {
 	case lang.IR_Assign:
+		if len(k.fields) == 0 && k.value.fast == .Sure_Number && is_global(k.target) {
+			set_global(it, k.target, eval_number(it, k.value)) // a number needs no `keep`
+			return .Normal
+		}
 		value := eval(it, k.value)
 		if len(k.fields) == 0 {
 			store_symbol(it, k.target, value)
@@ -44,20 +48,20 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 			return flow
 		}
 	case lang.IR_If:
-		if as_bool(eval(it, k.cond)) {
+		if eval_cond(it, k.cond) {
 			return exec_block(it, k.body)
 		} else if k.has_else {
 			return exec_block(it, k.else_body)
 		}
 	case lang.IR_Repeat:
 		count := as_number(eval(it, k.count))
-		for _ in 0 ..< int(math.floor(count)) {
+		for _ in 0 ..< int(maths.floor(count)) {
 			if flow := exec_block(it, k.body); flow != .Normal {
 				return flow
 			}
 		}
 	case lang.IR_While:
-		for as_bool(eval(it, k.cond)) {
+		for eval_cond(it, k.cond) {
 			if flow := exec_block(it, k.body); flow != .Normal {
 				return flow
 			}
@@ -113,7 +117,7 @@ exec_for :: proc(it: ^Interp, s: ^lang.IR_Stmt, k: lang.IR_For) -> Flow {
 		}
 	}
 	// Counting steps, not adding to a running total, so a step of 0.1 does not drift.
-	count := int(math.floor((to - from) / step + 1e-9)) + 1
+	count := int(maths.floor((to - from) / step + 1e-9)) + 1
 	for n in 0 ..< max(count, 0) {
 		store_symbol(it, k.var, from + f64(n) * step)
 		if flow := exec_block(it, k.body); flow != .Normal {

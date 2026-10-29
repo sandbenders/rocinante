@@ -1204,3 +1204,24 @@ test_finger_means_something_only_in_a_touch_block :: proc(t: ^testing.T) {
 	expect_errors(t, "finger = 1", {.Reserved_Name})
 	expect_errors(t, "on touch [ ]", {.Unknown_Event})
 }
+
+// ---- optimisation passes ----
+
+@(test)
+test_the_typed_pass_marks_numbers_sure_numbers_and_booleans :: proc(t: ^testing.T) {
+	got := check_text("x = 1 + 2\ny = x\nfound = find [ 1 2 ] [ it > 5 ]\nok = x < 3\nz = sin x")
+	program := got.checked.program
+	value :: proc(s: ^IR_Stmt) -> ^IR {return s.kind.(IR_Assign).value}
+	for s in program.stmts {
+		testing.expect_value(t, value(s).fast, Fast.None) // nothing is marked before the passes run
+	}
+	optimise(&program, ALL_PASSES)
+	testing.expect_value(t, value(program.stmts[0]).fast, Fast.Sure_Number)
+	testing.expect_value(t, value(program.stmts[1]).fast, Fast.Number) // a name may hold the empty value
+	testing.expect_value(t, value(program.stmts[2]).fast, Fast.Number)
+	testing.expect_value(t, value(program.stmts[3]).fast, Fast.Boolean)
+	testing.expect_value(t, value(program.stmts[4]).fast, Fast.Sure_Number)
+	other := check_text("x = 1 + 2")
+	optimise(&other.checked.program, {})
+	testing.expect_value(t, value(other.checked.program.stmts[0]).fast, Fast.None)
+}

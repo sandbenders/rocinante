@@ -103,6 +103,15 @@ Interp :: struct {
 @(thread_local)
 current: ^Interp
 
+// The optimisation passes the sketches loaded from now on run (`lang.optimise`).
+// Every pass by default; none gives the reference that tests compare the others with.
+@(thread_local)
+passes_off: lang.Passes // kept as the passes left out, so the default (all) needs no start-up
+
+set_passes :: proc(chosen: lang.Passes) {
+	passes_off = lang.ALL_PASSES - chosen
+}
+
 // Reads and checks a sketch of one file. See `load_files`.
 load :: proc(name, text: string) -> (p: ^Interp, ok: bool) {
 	return load_files({lang.File_Text{name = name, text = text}})
@@ -138,6 +147,9 @@ load_files :: proc(files: []lang.File_Text) -> (p: ^Interp, ok: bool) {
 	}
 	p.checked = lang.check(p.src, registry.ALL_VERBS, nil, p.program_memory)
 	p.types = p.checked.program.types
+	if !lang.has_errors(p.checked.diagnostics) {
+		lang.optimise(&p.checked.program, lang.ALL_PASSES - passes_off)
+	}
 	p.globals = make([]Global, len(p.checked.program.symbols), p.program_memory)
 	p.draws = make(map[roci.Window]^lang.IR_Block, 4, p.program_memory)
 	p.seen = make(map[int]bool, 8, p.program_memory)

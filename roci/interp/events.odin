@@ -9,7 +9,7 @@ package interp
 
 import "../"
 import "../lang"
-import "core:math"
+import "../maths"
 import "core:mem/virtual"
 
 Handler_Kind :: enum u8 {
@@ -54,7 +54,7 @@ register_on :: proc(it: ^Interp, k: ^lang.IR_On) {
 }
 
 register_every :: proc(it: ^Interp, k: ^lang.IR_Every) {
-	n := math.floor(as_number(eval(it, k.count)))
+	n := maths.floor(as_number(eval(it, k.count)))
 	if n < 1 {
 		return
 	}

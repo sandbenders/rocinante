@@ -32,7 +32,7 @@ eval_call :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 eval_args :: proc(it: ^Interp, args: []^lang.IR, buffer: []Value = nil) -> []Value {
 	out := buffer[:len(args)] if len(args) <= len(buffer) else make([]Value, len(args), context.temp_allocator)
 	for a, i in args {
-		out[i] = eval(it, a)
+		out[i] = eval_number(it, a) if a.fast == .Sure_Number else eval(it, a)
 	}
 	return out
 }

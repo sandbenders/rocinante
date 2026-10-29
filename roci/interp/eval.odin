@@ -357,6 +357,23 @@ clamp_colour :: proc(c: [4]f32) -> maths.Colour {
 
 @(private)
 binary :: proc(it: ^Interp, e: ^lang.IR, k: lang.IR_Binary) -> Value {
+	// Arithmetic on two numbers, a comparison of two numbers, and `and` and `or` by
+	// their typed paths, which finish these without coming back here.
+	numbers := lang.is_number(k.lhs.fast) && lang.is_number(k.rhs.fast)
+	#partial switch k.op {
+	case .Add, .Subtract, .Multiply, .Divide, .Modulo:
+		if numbers && lang.is_number(e.fast) {
+			return eval_number(it, e)
+		}
+	case .Less, .Less_Equal, .Greater, .Greater_Equal:
+		if numbers && e.fast == .Boolean {
+			return eval_bool(it, e)
+		}
+	case .And, .Or:
+		if e.fast == .Boolean {
+			return eval_bool(it, e)
+		}
+	}
 	left := eval(it, k.lhs)
 	// `and` and `or` leave the right side alone when the left decides.
 	#partial switch k.op {
@@ -411,7 +428,7 @@ binary :: proc(it: ^Interp, e: ^lang.IR, k: lang.IR_Binary) -> Value {
 				zero^ = true
 				return 0
 			}
-			return a - b * math.floor(a / b)
+			return a - b * maths.floor(a / b)
 		case .Is, .Is_Not, .Less, .Less_Equal, .Greater, .Greater_Equal, .And, .Or:
 		}
 		return 0

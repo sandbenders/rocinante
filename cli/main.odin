@@ -6,6 +6,7 @@
 //     odin run cli -- check [file] [--tree]
 package main
 
+import "../roci/interp"
 import "../tools/term"
 import "core:fmt"
 import "core:os"
@@ -27,6 +28,11 @@ More commands arrive as the language does.`
 
 main :: proc() {
 	term.setup()
+	// For working on rocinante: run sketches with no optimisation pass, the reference
+	// the passes are compared with.
+	if os.get_env("ROCI_PASSES", context.temp_allocator) == "off" {
+		interp.set_passes({})
+	}
 	if len(os.args) < 2 {
 		fmt.println(COMMANDS)
 		os.exit(0)

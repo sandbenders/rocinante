@@ -7,8 +7,8 @@ package interp
 
 import "../"
 import "../lang"
+import "../maths"
 import "core:fmt"
-import "core:math"
 import "core:slice"
 import "core:strings"
 import "core:unicode/utf8"
@@ -229,7 +229,7 @@ item_of :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	index := as_number(eval(it, call.args[0]))
 	list_ir := option_ir(call.options, "of")
 	list := as_list(eval(it, list_ir))
-	at := int(math.floor(index))
+	at := int(maths.floor(index))
 	if list != nil && at >= 1 && at <= len(list.items) {
 		return list.items[at - 1]
 	}
@@ -237,7 +237,7 @@ item_of :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	has := "no items" if count == 0 else fmt.tprintf("%d item%s", count, "" if count == 1 else "s")
 	name := lang.span_text(it.src, list_ir.span) if list_ir != nil else "the list"
 	line := strings.trim_space(lang.line_text(it.src, lang.position_of(it.src, e.span.start).line))
-	fail(it, .Index_Out_Of_Range, e.span, name, has, format_number(index), strings.concatenate({"if count ", name, " >= ", format_number(max(math.floor(index), 1)), " [ ", line, " ]"}, context.temp_allocator))
+	fail(it, .Index_Out_Of_Range, e.span, name, has, format_number(index), strings.concatenate({"if count ", name, " >= ", format_number(max(maths.floor(index), 1)), " [ ", line, " ]"}, context.temp_allocator))
 	return zero_value(it, e.type, 0)
 }
 
