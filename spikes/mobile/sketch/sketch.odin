@@ -3,9 +3,11 @@
 // The sketch both phones run in Phase 1: written
 // against the public API in package roci, so it exercises the window, the
 // renderer's shapes, mesh and text pipelines and the input path on a real device.
-// A circle follows the finger (touch arrives as the mouse), a ring of small
-// circles turns around the middle, and a line of text says what it is and how
-// many frames a second the phone draws (Phase 1 exit: frame rates on both phones).
+// Every finger down is a circle with a line back to where it went down (the
+// fingers of `touches`), a ring at the mouse shows a finger moves it too, a ring
+// of small circles turns around the middle, and lines of text say how many frames
+// a second the phone draws (Phase 1 exit: frame rates on both phones) and where
+// each finger is.
 package mobile_sketch
 
 import "core:fmt"
@@ -42,13 +44,28 @@ draw :: proc() {
 	}
 	roci.pop()
 
-	// The finger, and a stroked triangle (a mesh batch).
+	// Every finger down: a circle sized by its pressure, its number's colour, and a
+	// line back to where it went down. A small ring at the mouse shows that a
+	// finger also moves the mouse, and a stroked triangle there is a mesh batch.
+	fingers := roci.touches()
+	roci.fill(roci.grey(200))
+	roci.debug_text(fmt.tprintf("%d fingers", len(fingers)), 16, 80, 2)
+	for f, i in fingers {
+		colour := roci.hsb(f64(f.id * 47 % 255), 180, 255)
+		roci.stroke(colour)
+		roci.thickness(4)
+		roci.line(f.start, f.pos)
+		roci.no_stroke()
+		roci.fill(colour)
+		roci.circle(f.pos, 50 + f.pressure * 40)
+		roci.fill(roci.grey(200))
+		roci.debug_text(fmt.tprintf("#%d at %.0f, %.0f  pressure %.2f", f.id, f.pos.x, f.pos.y, f.pressure), 16, 108 + f64(i) * 24, 2)
+	}
 	p := roci.mouse()
-	roci.fill(roci.named("tomato"))
-	roci.circle(p, 40)
 	roci.no_fill()
 	roci.stroke(roci.named("white"))
 	roci.thickness(6)
+	roci.circle(p, 20)
 	roci.triangle(p + {0, -90}, p + {80, 60}, p + {-80, 60})
 }
 

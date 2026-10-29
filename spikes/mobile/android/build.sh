@@ -18,7 +18,12 @@ here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/../../.." && pwd)"
 out="$root/output/android"
 
-ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+# Android Studio's own places: ~/Library/Android/sdk on a Mac, ~/Android/Sdk on Linux.
+case "$(uname -s)" in
+  Darwin) default_home="$HOME/Library/Android/sdk" ;;
+  *) default_home="$HOME/Android/Sdk" ;;
+esac
+ANDROID_HOME="${ANDROID_HOME:-$default_home}"
 NDK_VERSION="${NDK_VERSION:-29.0.14206865}"
 API_LEVEL="${API_LEVEL:-24}"
 TARGET_API_LEVEL="${TARGET_API_LEVEL:-34}"
