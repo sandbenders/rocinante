@@ -86,6 +86,8 @@ Interp :: struct {
 	budget:    f64, // seconds one block may run
 	started:   time.Tick, // when the block being run began
 	has_errors: bool, // the sketch has check errors and does not run
+	writes:    u64, // counts changes to lists and records, to tell when a list's shapes changed
+	shape_cache: [SHAPE_CACHE_SIZE]Shape_Cache, // box trees of the lists the collision verbs asked about most recently
 }
 
 // The interpreter the running frame belongs to. The app loop calls plain
@@ -148,6 +150,9 @@ destroy :: proc(p: ^Interp) {
 	delete(p.results)
 	delete(p.errors)
 	delete(p.printed)
+	for &e in p.shape_cache {
+		drop_entry(&e)
+	}
 	virtual.arena_destroy(&p.arena)
 	free(p)
 }

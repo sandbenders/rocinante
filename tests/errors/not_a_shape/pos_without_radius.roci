@@ -1,0 +1,3 @@
+ball = { pos: { 200, 100 }, vel: { 2, 3 } }
+paddle = { pos: { 180, 380 }, size: { 80, 12 } }
+if touching ball paddle [ print "hit" ]

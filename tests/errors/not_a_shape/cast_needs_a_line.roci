@@ -1,0 +1,2 @@
+walls = [ { from: { 0, 0 }, to: { 400, 0 } } ]
+h = cast { pos: { 0, 0 }, radius: 4 } walls

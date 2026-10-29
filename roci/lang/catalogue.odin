@@ -107,6 +107,7 @@ Message_Id :: enum u8 {
 	Shared_Change,
 	Name_Hides,
 	Labels_Needed,
+	Not_A_Shape,
 	// What goes wrong while a sketch runs (found by the interpreter, never by the checker)
 	Index_Out_Of_Range,
 	Division_By_Zero,
@@ -366,6 +367,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Labels_Needed = {.Error, "`{a}` is written with labels",
 		"Shapes are written with {b} in front of their values, so a number is never mistaken for another and the line reads as what it draws.",
 		"Write:", "{d}"},
+	.Not_A_Shape = {.Error, "`{a}` needs a shape here",
+		"This is {b}. {c}A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline.",
+		"For example:", "{d}"},
 	.Changed_While_Walking = {.Error, "`{a}` changes while the loop walks it",
 		"A `for each` is going through `{a}` right now, and adding to it, taking from it or giving it a new value in the middle makes the walk lose its place. Walk a copy, then change the list.",
 		"Write:", "{d}"},

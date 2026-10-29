@@ -26,6 +26,8 @@ Vec :: struct {
 List :: struct {
 	items: [dynamic]Value,
 	long:  bool,
+	id:    u64, // unique in its sketch, so memory used again is never taken for the same list
+	stamp: u64, // when an item was last added, removed or replaced (`Interp.writes`)
 }
 
 // `shape` is the root of the record's shape; `fields` follow that shape's order.
@@ -33,6 +35,8 @@ Record :: struct {
 	shape:  int,
 	fields: []Value,
 	long:   bool,
+	class:  lang.Shape_Class, // the collision shape its `{ }` made it, kept by copies
+	stamp:  u64, // when a field was last changed (`Interp.writes`)
 }
 
 // nil is the empty value.
@@ -116,6 +120,7 @@ as_record :: proc(v: Value) -> ^Record {
 
 new_list :: proc(it: ^Interp, items: ..Value) -> ^List {
 	l := new(List, it.alloc)
+	l.id = next_write(it)
 	l.items = make([dynamic]Value, 0, max(len(items), 4), it.alloc)
 	append(&l.items, ..items)
 	l.long = it.alloc == it.long
@@ -181,6 +186,7 @@ promote :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
 			return v
 		}
 		l := new(List, it.long)
+		l.id = next_write(it)
 		l.items = make([dynamic]Value, 0, len(x.items), it.long)
 		l.long = true
 		for item in x.items {
@@ -193,6 +199,7 @@ promote :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
 		}
 		r := new(Record, it.long)
 		r.shape = x.shape
+		r.class = x.class
 		r.long = true
 		r.fields = make([]Value, len(x.fields), it.long)
 		for f, i in x.fields {
@@ -234,6 +241,7 @@ deep_copy :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
 		}
 		r := new(Record, it.alloc)
 		r.shape = x.shape
+		r.class = x.class
 		r.long = it.alloc == it.long
 		r.fields = make([]Value, len(x.fields), it.alloc)
 		for f, i in x.fields {
@@ -392,4 +400,10 @@ alpha_to_byte :: proc(percent: f64) -> f64 {
 // The other way, rounded so a byte that came from a whole percentage reads back whole.
 byte_to_alpha :: proc(byte: f64) -> f64 {
 	return math.round(byte * 100 / 255 * 10000) / 10000
+}
+
+// A new mark from the sketch's count of changes: later marks are later changes.
+next_write :: proc(it: ^Interp) -> u64 {
+	it.writes += 1
+	return it.writes
 }

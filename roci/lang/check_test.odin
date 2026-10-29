@@ -1052,3 +1052,66 @@ test_pressed_and_held_are_true_or_false_and_the_rounding_verbs_take_a_number :: 
 	// `round` is a verb, and still the word of caps and joins.
 	expect_errors(t, "caps round\njoins round\nx = round 1.5", {})
 }
+
+// ---- collision shapes ----
+
+@(test)
+test_a_record_is_the_shape_its_fields_are_written_with :: proc(t: ^testing.T) {
+	Case :: struct {
+		names: []string,
+		class: Shape_Class,
+	}
+	cases := []Case{
+		{{"pos", "radius"}, .Circle},
+		{{"pos", "radius", "size"}, .Circle}, // a radius makes it round
+		{{"pos", "size"}, .Box},
+		{{"pos", "size", "angle", "vel"}, .Box},
+		{{"from", "to"}, .Segment},
+		{{"points"}, .Polygon},
+		{{"pos"}, .None},
+		{{"vel"}, .None},
+		{nil, .None},
+		{{"from"}, .None},
+		{{"to"}, .None},
+		{{"from", "to", "pos"}, .None},
+		{{"points", "from"}, .None},
+		{{"points", "pos"}, .None},
+	}
+	for c in cases {
+		class, problem := shape_class(c.names)
+		testing.expectf(t, class == c.class, "%v gave %v", c.names, class)
+		testing.expectf(t, (class == .None) == (problem != ""), "%v: %q", c.names, problem)
+	}
+}
+
+@(test)
+test_collision_verbs_check_their_shapes :: proc(t: ^testing.T) {
+	BALL :: "ball = { pos: { 1, 2 }, radius: 3 }\n"
+	expect_errors(t, BALL + "print (touching ball ball)", {})
+	expect_errors(t, BALL + "print (touching ball { 5, 5 })", {})
+	expect_errors(t, BALL + "print (inside mouse ball)", {})
+	expect_errors(t, BALL + "c = contact ball ball\nprint c.depth\nprint c.normal.x", {})
+	expect_errors(t, BALL + "walls = [ { from: { 0, 0 }, to: { 9, 0 } } ]\nh = cast { from: { 0, 0 }, to: { 0, 9 } } walls\nprint h.item.from", {})
+	expect_errors(t, "b = { pos: { 1, 2 } }\nprint (touching b b)", {.Not_A_Shape, .Not_A_Shape})
+	expect_errors(t, "print (touching 1 { 1, 1 })", {.Not_A_Shape})
+	expect_errors(t, BALL + "print (count (hits ball [ 1 2 ]))", {.Not_A_Shape})
+	expect_errors(t, BALL + "h = cast ball [ ball ]", {.Not_A_Shape})
+	// A value whose kind is only known while the sketch runs is taken on trust.
+	expect_errors(t, "learn test a b [ give touching a b ]", {})
+}
+
+@(test)
+test_a_list_may_hold_shapes_of_different_kinds :: proc(t: ^testing.T) {
+	// The records merge into one shape with every field, and each stays the shape
+	// its own braces make it.
+	text := "walls = [ { from: { 0, 0 }, to: { 9, 0 } } { pos: { 5, 5 }, radius: 2 } { pos: { 1, 1 }, size: { 2, 2 } } { points: [ { 0, 0 } { 1, 0 } { 0, 1 } ] } ]\nprint (count (hits { 1, 1 } walls))"
+	expect_errors(t, text, {})
+	// One that is no shape among them is still found.
+	expect_errors(t, "walls = [ { from: { 0, 0 }, to: { 9, 0 } } { pos: { 5, 5 } } ]\nprint (count (hits { 1, 1 } walls))", {.Not_A_Shape})
+}
+
+@(test)
+test_a_field_given_later_does_not_change_what_shape_a_record_is :: proc(t: ^testing.T) {
+	// The braces decide: written with `pos` alone, it is no shape, even with a radius later.
+	expect_errors(t, "b = { pos: { 1, 2 } }\nb.radius = 3\nprint (touching b b)", {.Not_A_Shape, .Not_A_Shape})
+}

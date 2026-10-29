@@ -646,21 +646,21 @@ Collision is built in. Shapes are plain records (§5.2), recognised by their fie
 | `from`, `to` | line segment |
 | `points` | polygon (2D) |
 
-A record that matches no row, or matches rows that disagree (for example `points` together with `from`), is a load-time error when it is passed to a collision verb, and the message lists the fields each shape needs (decided 2026-10-24).
+A record that matches no row, or matches rows that disagree (for example `points` together with `from`), is a load-time error when it is passed to a collision verb, and the message lists the fields each shape needs (decided 2026-10-24). **A record is the shape its own `{ }` is written with** (decided 2026-10-29): records made in different places merge into one shape with every field when they meet in one list (§5.3), so a list of walls holding lines and circles is allowed, and each item stays what its braces made it (the checker checks every place such records are written; the interpreter keeps the kind on the record, and `copy` keeps it too). A field given later by an assignment does not change what shape a record is, so `b = { pos: p }` then `b.radius = 5` is still no shape: write the radius in the braces.
 
 ```
 ball   = { pos: { 200, 100 }, radius: 10, vel: { 2, 3 } }
 paddle = { pos: { 180, 380 }, size: { 80, 12 } }
 
 if touching ball paddle [ ball.vel.y = -ball.vel.y ]
-c = contact ball paddle            // { point, normal, depth }, or empty
+c = contact ball paddle            // { point, normal, depth }, every field 0 when apart
 for each b in (hits ball bricks) [ remove b from bricks ]
 if inside mouse paddle [ … ]
-h = cast { from: eye, to: target } walls   // first thing along a line
+h = cast { from: eye, to: target } walls   // { item, point, normal, distance }: the first thing along a line
 ```
 
-- **Verbs:** `touching a b` (true or false), `contact a b` (where they touch, the direction to push apart and how far, or empty), `hits a list` (every item in a list that touches `a`), `inside point shape` and `cast segment list` (the first hit along a line, with its point and normal).
-- **Fast for many things.** `hits` and `cast` over lists use a broad phase (a dynamic tree) automatically, so a thousand particles against a thousand walls stays cheap.
+- **Verbs:** `touching a b` (true or false, edges included), `contact a b` (where they touch: `point`, `normal`, the direction to move `a` to part them, and `depth`, how far), `hits a list` (every item in a list that touches `a`, in list order), `inside point shape` (edges included) and `cast line list` (the first item a line from its `from` to its `to` meets: `item`, `point`, `normal` and `distance`). When there is nothing to give, `contact` and `cast` give a record whose fields are all 0 (and no `item`), the useful zero values of §5.2 (decided 2026-10-29); `touching` is the way to ask first.
+- **Fast for many things.** `hits` and `cast` over lists use a broad phase (a tree of boxes) automatically, so a thousand particles against a thousand walls stays cheap: the interpreter keeps the tree of a list it is asked about twice without the list changing (every list and record carries the mark of its last change), and checks shapes one by one otherwise. Measured 2026-10-29: a thousand circles against a thousand rectangles each frame, 300 ms a frame one by one, 3 ms with the tree. A list whose items move while it is being asked about (particles against each other) is checked one by one.
 - **Detection first, simulation when asked for.** Collision answers questions; what happens next is the sketch's choice.
 - **2D physics** (decided 2026-10-24) builds on the same records and on Box2D v3's world simulation. Draft verbs: `simulate ball` hands a shape record to the physics world, which then updates its `pos`, `vel` and `angle` every frame; `fixed wall` makes a body that never moves; `gravity { 0, 400 }` sets gravity; `kick ball { 0, -300 }` applies an impulse (not `push`, which scopes style and transforms); `join a b` connects two bodies. A sketch that never calls `simulate` has no physics world at all. 3D physics is on the roadmap (README.md).
 - **Implementation** (revised 2026-10-29): 2D detection is rocinante's own Odin, package `roci/collide`, in 64-bit like every number in the language. Box2D was the plan, but `vendor:box2d` is Box2D 3.1.1 (3.2.0 is out), ships libraries only for macOS, Windows and WebAssembly, works in 32-bit and takes only convex polygons of at most 8 corners; Box2D now arrives with 2D physics in Phase 6. Every shape is cut into convex pieces of at most four corners with a radius around them (a polygon, concave or not, into geom's triangles), touching edges count as touching (a gap of exactly 0), a rectangle's `pos` is its top-left corner as in `rect at pos size size` and its `angle` turns it clockwise about its centre, `contact` gives the direction to move the first shape (from the second towards the first) and the depth, and a line that starts inside a shape meets it at its start. `hits` and `cast` go through a tree of boxes (`collide.Tree`) whose answers are tested against checking every shape. 3D starts with rocinante's own sphere, box, segment and ray tests in Odin; Box3D (Box2D's 3D sibling, MIT, also in `vendor:`) is reconsidered once it has releases and covers iOS and Android.

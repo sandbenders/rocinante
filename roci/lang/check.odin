@@ -39,6 +39,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		types   = types,
 		diags   = make([dynamic]Diagnostic, allocator),
 		sites   = make(map[int]int, 8, allocator),
+		site_names = make(map[int][]string, 8, allocator),
 		walking = make([dynamic]string, allocator),
 		learn_order = make([dynamic]string, allocator),
 		msg_types   = make(map[string]Type_Id, 8, allocator),
@@ -153,6 +154,7 @@ Checker :: struct {
 	deferred: int,              // how many blocks deep that run later (draw, on, every)
 	report:   bool,             // false in the first pass, which only settles record shapes
 	sites:    map[int]int,      // where a record is made (its offset) to its shape
+	site_names: map[int][]string, // the fields each place's `{ }` is written with, by its shape
 	walking:  [dynamic]string,  // lists a `for each` is walking right now
 	learns:        map[string]^Learn_Decl, // the verbs taught at the top of the sketch
 	learn_order:   [dynamic]string,

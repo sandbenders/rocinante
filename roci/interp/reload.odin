@@ -202,6 +202,7 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> 
 			return v
 		}
 		l := new(List, fresh.long)
+		l.id = next_write(fresh)
 		l.long = true
 		l.items = make([dynamic]Value, 0, len(x.items), fresh.long)
 		element := lang.T_BOXED
@@ -219,6 +220,7 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> 
 		r := new(Record, fresh.long)
 		r.long = true
 		r.shape = item.a
+		r.class = x.class
 		fields := fresh.types.shapes[item.a].fields
 		r.fields = make([]Value, len(fields), fresh.long)
 		old_fields := old.types.shapes[x.shape].fields

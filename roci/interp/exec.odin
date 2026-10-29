@@ -139,7 +139,11 @@ exec_for_each :: proc(it: ^Interp, k: lang.IR_For_Each) -> Flow {
 		store_symbol(it, k.var, list.items[i])
 		flow := exec_block(it, k.body)
 		if i < len(list.items) {
-			list.items[i] = load_symbol(it, k.var)
+			after := load_symbol(it, k.var)
+			if !same(list.items[i], after) && !equal(list.items[i], after) {
+				list.stamp = next_write(it)
+			}
+			list.items[i] = after
 		}
 		if flow != .Normal {
 			return flow

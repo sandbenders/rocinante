@@ -1230,3 +1230,133 @@ test_the_pen_lifts_and_push_brings_the_turtle_back :: proc(t: ^testing.T) {
 	testing.expect_value(t, commands[7].args, [8]f32{400, 320, 400, 310, 0, 0, 0, 0})
 	testing.expect_value(t, commands[8].args, [8]f32{400, 300, 395, 300, 0, 0, 0, 0})
 }
+
+// ---- collision ----
+
+@(test)
+test_touching_and_inside_answer_for_every_kind_of_shape :: proc(t: ^testing.T) {
+	text := `ball = { pos: { 200, 100 }, radius: 10 }
+paddle = { pos: { 180, 380 }, size: { 80, 12 } }
+turned = { pos: { 0, 0 }, size: { 20, 10 }, angle: 90 }
+wall = { from: { 0, 50 }, to: { 400, 50 } }
+roof = { points: [ { 0, 0 } { 100, 0 } { 50, 40 } ] }
+print (touching ball paddle)
+ball.pos = { 200, 375 }
+print (touching ball paddle)
+print (touching { 210, 385 } paddle)
+print (inside { 10, -4 } turned)
+print (inside { 1, 5 } turned)
+print (touching wall { 99, 50 })
+print (inside { 50, 10 } roof)
+print (inside { 90, 30 } roof)`
+	expect_printed(t, text, "false\ntrue\ntrue\ntrue\nfalse\ntrue\ntrue\nfalse")
+}
+
+@(test)
+test_contact_gives_a_record_or_an_empty_one :: proc(t: ^testing.T) {
+	text := `ball = { pos: { 50, 98 }, radius: 5 }
+paddle = { pos: { 0, 95 }, size: { 100, 10 } }
+c = contact ball paddle
+print c.normal
+print c.depth
+ball.pos = { 50, 0 }
+d = contact ball paddle
+print d.depth
+print d.normal`
+	expect_printed(t, text, "{ 0, -1 }\n8\n0\n{ 0, 0 }")
+}
+
+@(test)
+test_hits_keeps_the_items_that_touch_in_list_order :: proc(t: ^testing.T) {
+	text := `bricks = []
+for i from 0 to 4 [ add { pos: { i * 50, 0 }, size: { 40, 20 } } to bricks ]
+ball = { pos: { 95, 10 }, radius: 12 }
+for each b in (hits ball bricks) [ print b.pos.x ]
+print (count (hits { 500, 500 } bricks))`
+	expect_printed(t, text, "50\n100\n0")
+}
+
+@(test)
+test_cast_finds_the_first_item_along_a_line_in_a_mixed_list :: proc(t: ^testing.T) {
+	text := `things = [ { from: { 0, 300 }, to: { 400, 300 } } { pos: { 100, 200 }, radius: 20 } { pos: { 80, 100 }, size: { 40, 10 } } ]
+h = cast { from: { 100, 0 }, to: { 100, 400 } } things
+print h.point
+print h.normal
+print h.distance
+print h.item.size
+miss = cast { from: { 300, 0 }, to: { 300, 100 } } things
+print miss.distance`
+	expect_printed(t, text, "{ 100, 100 }\n{ 0, -1 }\n100\n{ 40, 10 }\n0")
+}
+
+@(test)
+test_a_copied_record_stays_the_same_shape :: proc(t: ^testing.T) {
+	text := `wall = { from: { 0, 0 }, to: { 10, 0 } }
+other = copy wall
+other.to = { 0, 10 }
+print (touching other { 0, 5 })
+keep_it = []
+add other to keep_it
+print (touching (item 1 of keep_it) { 0, 5 })`
+	expect_printed(t, text, "true\ntrue")
+}
+
+@(test)
+test_shapes_in_a_draw_block_are_tested_every_frame :: proc(t: ^testing.T) {
+	text := `ball = { pos: { 0, 100 }, radius: 5 }
+wall = { from: { 20, 0 }, to: { 20, 200 } }
+draw [
+  ball.pos = ball.pos + { 10, 0 }
+  if touching ball wall [ print "hit" ]
+]`
+	// x is 10, 20, 30: only in the second frame does it reach the wall (its left
+	// edge is at 25 in the third).
+	expect_printed(t, text, "hit", 3)
+}
+
+@(test)
+test_a_list_asked_again_answers_the_same_and_sees_every_change :: proc(t: ^testing.T) {
+	// The second question builds a tree; the answers must not change because of it,
+	// and a moved wall, an added one, a removed one and a changed outline must all be seen.
+	text := `walls = []
+for i from 0 to 9 [ add { pos: { i * 30, 0 }, size: { 20, 20 } } to walls ]
+add { points: [ { 0, 100 } { 50, 100 } { 25, 140 } ] } to walls
+probe = { pos: { 35, 10 }, radius: 6 }
+repeat 3 [ print (count (hits probe walls)) ]
+w = item 2 of walls
+w.pos = { 500, 500 }
+print (count (hits probe walls))
+add { pos: { 30, 0 }, size: { 5, 5 } } to walls
+print (count (hits probe walls))
+remove w from walls
+print (count (hits probe walls))
+print (count (hits { 25, 120 } walls))
+o = item 10 of walls
+add { 25, 170 } to o.points
+print (count (hits { 25, 150 } walls))
+print (count (hits { 25, 150 } walls))
+h = cast { from: { 35, -50 }, to: { 35, 50 } } walls
+h = cast { from: { 35, -50 }, to: { 35, 50 } } walls
+print h.item.size`
+	expect_printed(t, text, "1\n1\n1\n0\n1\n1\n1\n1\n1\n{ 5, 5 }")
+}
+
+@(test)
+test_moving_one_list_keeps_the_tree_of_another :: proc(t: ^testing.T) {
+	// Balls move every frame; the walls do not, so their tree stays (and the answers are right).
+	text := `walls = []
+for i from 0 to 9 [ add { from: { i * 40, 0 }, to: { i * 40, 100 } } to walls ]
+balls = []
+for i from 0 to 4 [ add { pos: { i * 40 + 30, 50 }, radius: 5 } to balls ]
+draw [
+  n = 0
+  for each b in balls [
+    b.pos = b.pos + { 2, 0 }
+    n = n + count (hits b walls)
+  ]
+  print n
+]`
+	// Each ball starts 10 left of a wall and moves 2 a frame; it touches the wall
+	// while its centre is within 5 of it, in frames 3 to 7.
+	expect_printed(t, text, "0\n0\n5\n5\n5\n5\n5\n0", 8)
+}

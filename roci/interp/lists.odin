@@ -18,7 +18,7 @@ is_language_verb :: proc(name: string) -> bool {
 	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send", "set", "held":
 		return true
 	}
-	return false
+	return is_collision_verb(name)
 }
 
 // The one expression inside the `[ ]` of a list verb.
@@ -66,12 +66,16 @@ same :: proc(a, b: Value) -> bool {
 
 @(private)
 call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
+	if is_collision_verb(call.verb.name) {
+		return collision_verb(it, e, call)
+	}
 	switch call.verb.name {
 	case "add":
 		item := eval(it, call.args[0])
 		list := as_list(option_or_nil(it, call.options, "to"))
 		if list != nil {
 			append(&list.items, promote(it, item) if list.long && it.alloc != it.long else item)
+			list.stamp = next_write(it)
 		}
 	case "remove":
 		item := eval(it, call.args[0])
@@ -81,12 +85,14 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			for x, i in list.items {
 				if same(x, item) {
 					ordered_remove(&list.items, i)
+					list.stamp = next_write(it)
 					return nil
 				}
 			}
 			for x, i in list.items {
 				if equal(x, item) {
 					ordered_remove(&list.items, i)
+					list.stamp = next_write(it)
 					return nil
 				}
 			}

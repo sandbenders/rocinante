@@ -72,6 +72,14 @@ kind_name :: proc(kind: Kind) -> string {
 @(private)
 sample :: proc(kind: Kind, index: int, verb := "") -> string {
 	numbers := [?]string{"100", "100", "50", "50", "0", "90", "0", "0"}
+	// The collision verbs take shapes, which are records.
+	switch verb {
+	case "touching", "contact", "hits", "inside", "cast":
+		#partial switch kind {
+		case .Any:  return "{ from: { 0, 0 }, to: { 200, 200 } }" if verb == "cast" else "{ pos: { 100, 100 }, radius: 10 }"
+		case .List: return "[ { pos: { 120, 100 }, radius: 10 } ]"
+		}
+	}
 	#partial switch kind {
 	case .Number:     return numbers[index % len(numbers)]
 	case .Text:       return "\"hello\""

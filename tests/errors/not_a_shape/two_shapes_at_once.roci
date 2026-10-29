@@ -1,0 +1,2 @@
+wall = { points: [ { 0, 0 } { 10, 0 } { 5, 8 } ], from: { 0, 0 } }
+print (inside mouse wall)

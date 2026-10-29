@@ -51,6 +51,7 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 	case lang.IR_Record:
 		shape := lang.shape_root(it.types, k.shape)
 		r := new_record(it, shape)
+		r.class = k.class
 		for name, i in k.names {
 			if at := field_index(it, shape, name); at >= 0 {
 				r.fields[at] = eval(it, k.values[i])
@@ -268,6 +269,7 @@ assign_path :: proc(it: ^Interp, base: Value, path: []string, value: Value) -> V
 			changed = promote(it, changed)
 		}
 		b.fields[at] = changed
+		b.stamp = next_write(it)
 		return base
 	case Vec:
 		out := b

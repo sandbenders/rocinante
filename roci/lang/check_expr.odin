@@ -72,7 +72,9 @@ check_record :: proc(c: ^Checker, e: ^Expr, k: Record_Lit) -> ^IR {
 		append(&names, f.name)
 		append(&values, value)
 	}
-	return new_ir(c, e.span, record_of(c.types, shape), IR_Record{shape = shape, names = names[:], values = values[:]})
+	c.site_names[shape] = names[:]
+	class, _ := shape_class(names[:])
+	return new_ir(c, e.span, record_of(c.types, shape), IR_Record{shape = shape, names = names[:], values = values[:], class = class})
 }
 
 @(private)

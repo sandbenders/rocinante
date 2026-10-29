@@ -1,0 +1,8 @@
+── `hits` needs a shape here ────────────────────────── sketch.roci:3:25
+
+3 │ print (count (hits ball bricks))
+  │                         ^^^^^^
+
+This is a list of numbers. Each of its items has to be a shape. A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline.
+
+For example:  walls = [ { from: { 0, 0 }, to: { 400, 0 } } ]

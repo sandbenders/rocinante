@@ -1,0 +1,2 @@
+ball = { pos: { 200, 100 }, radius: "big" }
+print (touching ball { 0, 0 })

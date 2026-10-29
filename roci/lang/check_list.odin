@@ -182,6 +182,8 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 		return args[0].type, true
 	case "count", "print":
 		return type_of_kind(c.types, verb.shapes[0].gives), true
+	case "touching", "contact", "hits", "inside", "cast":
+		return collision_verb_type(c, verb, e, k, args), true
 	}
 	return T_ERROR, false
 }

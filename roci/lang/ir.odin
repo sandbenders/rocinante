@@ -89,6 +89,7 @@ IR_Record :: struct {
 	shape:  int, // the record's shape (types.shapes), the root of any merge
 	names:  []string,
 	values: []^IR,
+	class:  Shape_Class, // the collision shape its fields make, decided here once
 }
 
 IR_Unary :: struct {

@@ -1,0 +1,8 @@
+── `touching` needs a shape here ────────────────────── sketch.roci:3:13
+
+3 │ if touching ball paddle [ print "hit" ]
+  │             ^^^^
+
+This is a record with pos and vel. It is made with `pos` but neither `radius` nor `size`. A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline.
+
+For example:  ball = { pos: { 200, 100 }, radius: 10 }
