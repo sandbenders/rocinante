@@ -1,0 +1,72 @@
+// Mouse: a canvas of dots you can draw on and move around. The left button puts
+// a dot where you click, the right button takes away the dot under the mouse, the
+// side buttons undo (back) and redo (forward), the wheel zooms in and out around
+// the mouse, and dragging with the middle button moves the canvas.
+window size 640 480 title "mouse" resizable false cursor none
+
+dots = []
+undone = []
+repeat 12 [ add { pos: anywhere, hue: random 255 } to dots ]
+zoom = 1
+offset = { 0, 0 }
+
+// Where a point of the window is on the canvas.
+learn on_canvas p [ give (p - offset) / zoom ]
+
+on mouse down left [
+  add { pos: on_canvas mouse, hue: random 255 } to dots
+  undone = []
+]
+
+on mouse down right [
+  spot = on_canvas mouse
+  hit = find dots [ dist it.pos spot < 12 ]
+  remove hit from dots
+]
+
+on mouse down back [
+  if count dots > 0 [
+    last = item (count dots) of dots
+    remove last from dots
+    add last to undone
+  ]
+]
+
+on mouse down forward [
+  if count undone > 0 [
+    last = item (count undone) of undone
+    remove last from undone
+    add last to dots
+  ]
+]
+
+draw [
+  // The wheel zooms around the mouse: the point under it stays under it.
+  if wheel.y is not 0 [
+    under = on_canvas mouse
+    zoom = clamp (zoom * (1 + wheel.y * 0.15)) 0.2 8
+    offset = mouse - under * zoom
+  ]
+  if held "mouse middle" [ offset = offset + (mouse - pmouse) ]
+  background 245
+  push [
+    move offset
+    grow zoom
+    // Lines get thicker as the canvas grows, so the grid is drawn thinner to match.
+    stroke 215
+    thickness (1 / zoom)
+    for i from -20 to 20 [
+      line from (i * 50) -1000 to (i * 50) 1000
+      line from -1000 (i * 50) to 1000 (i * 50)
+    ]
+    no stroke
+    for each d in dots [ circle at d.pos radius 10 fill (hsb d.hue 180 230) ]
+  ]
+  // The cursor is hidden; a ring shows where the mouse is.
+  push [
+    no fill
+    stroke 40
+    thickness 2
+    circle at mouse radius 6
+  ]
+]

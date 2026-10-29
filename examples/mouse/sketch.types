@@ -1,0 +1,8 @@
+dots: a list of records with pos and hue
+undone: a list of records with pos and hue
+zoom: a number
+offset: a vector of 2 numbers
+spot: a vector of 2 numbers
+hit: a record with pos and hue
+last: a record with pos and hue
+under: a vector of 2 numbers

@@ -1510,3 +1510,52 @@ test_the_wheel_is_how_far_it_turned_since_the_last_frame :: proc(t: ^testing.T) 
 	roci.step()
 	testing.expect_value(t, printed(p), "4\n{ -1, 3 }\n4\n{ 0, 0 }")
 }
+
+// The value of a sketch-wide name, for tests that drive a sketch and look inside.
+global_named :: proc(p: ^Interp, name: string) -> Value {
+	for symbol, value in p.globals {
+		if symbol.name == name {
+			return value
+		}
+	}
+	return nil
+}
+
+@(test)
+test_the_mouse_example_draws_undoes_zooms_and_pans :: proc(t: ^testing.T) {
+	data, err := os.read_entire_file("examples/mouse/sketch.roci", context.temp_allocator)
+	if !testing.expect(t, err == nil, "tests run from the repository root") {
+		return
+	}
+	p := run_text(t, string(data), 1)
+	defer finish(p)
+	w := first_window()
+	id := platform.Window_Id(w)
+	dots := proc(p: ^Interp) -> int {return len(as_list(global_named(p, "dots")).items)}
+	at :: proc(id: platform.Window_Id, x, y: f32) -> platform.Event {return platform.Mouse_Moved{window = id, x = x, y = y}}
+	testing.expect_value(t, dots(p), 12)
+
+	// Left puts a dot, back takes it away, forward brings it back, right takes it away.
+	roci.step({at(id, 100, 100), click_event(w, 100, 100)})
+	roci.step({click_event(w, 100, 100, false)})
+	testing.expect_value(t, dots(p), 13)
+	roci.step({click_event(w, 100, 100, button = .Back)})
+	testing.expect_value(t, dots(p), 12)
+	roci.step({click_event(w, 100, 100, button = .Forward)})
+	testing.expect_value(t, dots(p), 13)
+	roci.step({click_event(w, 100, 100, button = .Right)})
+	testing.expect_value(t, dots(p), 12)
+
+	// The wheel zooms around the mouse: the canvas point under it stays under it.
+	roci.step({platform.Wheel{window = id, dy = 1, x = 100, y = 100}})
+	testing.expect(t, abs(as_number(global_named(p, "zoom")) - 1.15) < 1e-12)
+	offset := as_pair(global_named(p, "offset"))
+	testing.expect(t, abs(offset.x + 15) < 1e-9 && abs(offset.y + 15) < 1e-9, "offset")
+
+	// Dragging with the middle button moves the canvas with the mouse.
+	roci.step({click_event(w, 100, 100, button = .Middle)})
+	roci.step({at(id, 130, 90)})
+	roci.step({click_event(w, 130, 90, false, .Middle)})
+	offset = as_pair(global_named(p, "offset"))
+	testing.expect(t, abs(offset.x - 15) < 1e-9 && abs(offset.y + 25) < 1e-9, "offset after the drag")
+}
