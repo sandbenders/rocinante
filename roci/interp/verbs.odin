@@ -195,6 +195,10 @@ gradient_from :: proc(it: ^Interp, colours: Value, options: []lang.IR_Option) ->
 	return g
 }
 
+// The look of a call with no style words; never written.
+@(private)
+NO_LOOK: roci.Look
+
 // The style of one element: the words that follow its arguments.
 @(private)
 make_look :: proc(it: ^Interp, options: []lang.IR_Option) -> (look: roci.Look, origin: roci.Origin) {
@@ -297,7 +301,15 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	}
 	buffer: [ARGS_ON_STACK]Value = ---
 	a := eval_args(it, call.args, buffer[:])
-	look, origin := make_look(it, call.options)
+	// Most calls have no style words: they share one empty look instead of building
+	// one (a look is 776 bytes, since a paint can hold a whole gradient).
+	own_look: roci.Look = ---
+	look := &NO_LOOK
+	origin := roci.Origin{}
+	if len(call.options) > 0 {
+		own_look, origin = make_look(it, call.options)
+		look = &own_look
+	}
 	n :: proc(a: []Value, i: int) -> f64 {
 		return as_number(a[i]) if i < len(a) else 0
 	}
@@ -337,54 +349,54 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 
 	case .Circle:
 		if call.shape == 0 {
-			roci.circle_xyr(n(a, 0), n(a, 1), n(a, 2), look, origin)
+			roci.circle_xyr(n(a, 0), n(a, 1), n(a, 2), look^, origin)
 		} else {
-			roci.circle_vr(p(a, 0), n(a, 1), look, origin)
+			roci.circle_vr(p(a, 0), n(a, 1), look^, origin)
 		}
 	case .Ellipse:
 		if call.shape == 0 {
-			roci.ellipse_xywh(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look, origin)
+			roci.ellipse_xywh(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look^, origin)
 		} else {
-			roci.ellipse_vs(p(a, 0), p(a, 1), look, origin)
+			roci.ellipse_vs(p(a, 0), p(a, 1), look^, origin)
 		}
 	case .Rect:
 		if call.shape == 0 {
-			roci.rect_xywh(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look, origin)
+			roci.rect_xywh(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look^, origin)
 		} else {
-			roci.rect_vs(p(a, 0), p(a, 1), look, origin)
+			roci.rect_vs(p(a, 0), p(a, 1), look^, origin)
 		}
 	case .Square:
 		if call.shape == 0 {
-			roci.square_xys(n(a, 0), n(a, 1), n(a, 2), look, origin)
+			roci.square_xys(n(a, 0), n(a, 1), n(a, 2), look^, origin)
 		} else {
-			roci.square_vs(p(a, 0), n(a, 1), look, origin)
+			roci.square_vs(p(a, 0), n(a, 1), look^, origin)
 		}
 	case .Line:
 		if call.shape == 0 {
-			roci.line_xyxy(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look)
+			roci.line_xyxy(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look^)
 		} else {
-			roci.line_vv(p(a, 0), p(a, 1), look)
+			roci.line_vv(p(a, 0), p(a, 1), look^)
 		}
 	case .Point:
 		if call.shape == 0 {
-			roci.point_xy(n(a, 0), n(a, 1), look)
+			roci.point_xy(n(a, 0), n(a, 1), look^)
 		} else {
-			roci.point_v(p(a, 0), look)
+			roci.point_v(p(a, 0), look^)
 		}
 	case .Triangle:
 		if call.shape == 0 {
-			roci.triangle_xy(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look)
+			roci.triangle_xy(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look^)
 		} else {
-			roci.triangle_v(p(a, 0), p(a, 1), p(a, 2), look)
+			roci.triangle_v(p(a, 0), p(a, 1), p(a, 2), look^)
 		}
 	case .Quad:
 		if call.shape == 0 {
-			roci.quad_xy(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), n(a, 6), n(a, 7), look)
+			roci.quad_xy(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), n(a, 6), n(a, 7), look^)
 		} else {
-			roci.quad_v(p(a, 0), p(a, 1), p(a, 2), p(a, 3), look)
+			roci.quad_v(p(a, 0), p(a, 1), p(a, 2), p(a, 3), look^)
 		}
 	case .Arc:
-		roci.arc(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look, origin)
+		roci.arc(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look^, origin)
 
 	case .Fill:
 		if paint, ok := to_paint(it, a[0], call.options); ok {

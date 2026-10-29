@@ -15,7 +15,7 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 	if e == nil {
 		return nil
 	}
-	switch k in e.kind {
+	switch &k in e.kind {
 	case lang.IR_Number:
 		return k.value
 	case lang.IR_Text:

@@ -27,7 +27,7 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 	if !tick(it, s.span) {
 		return .Abort
 	}
-	switch k in s.kind {
+	switch &k in s.kind {
 	case lang.IR_Assign:
 		value := eval(it, k.value)
 		if len(k.fields) == 0 {
