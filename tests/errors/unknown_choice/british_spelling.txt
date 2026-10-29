@@ -1,0 +1,8 @@
+── `as` does not know the word `centre` ─────────────── sketch.roci:1:29
+
+1 │ rect at 10 10 size 50 30 as centre
+  │                             ^^^^^^
+
+After `as` comes one of these words: `center` or `corner`.
+
+Did you mean:  rect at 10 10 size 50 30 as center

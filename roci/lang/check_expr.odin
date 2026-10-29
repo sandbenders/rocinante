@@ -279,6 +279,7 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 		}
 		if is_word_slot(verb, len(k.args), i) {
 			if word, ok := as_word(c, a); ok {
+				check_choice(c, verb.name, verb.name, word_param_name(verb, len(k.args), i), word, a.span)
 				append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
 				append(&kinds, registry.Kind.Name)
 				continue
@@ -397,7 +398,11 @@ report_kinds :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Verb, args:
 				note(c, .Wrong_Argument_Kind, k.args[j].span, verb.name, need, describe(c.types, args[j].type), example)
 				return
 			}
-			note(c, .Wrong_Argument_Kind, k.args[j].span, verb.name, need, describe(c.types, args[j].type), fix(c, k.args[j].span, sample_for_kind(param.kind)))
+			example := sample_for_kind(param.kind)
+			if words := registry.word_choices(verb.name, param.name); param.kind == .Name && len(words) > 0 {
+				example = words[0] // `caps butt`, not a word another verb takes
+			}
+			note(c, .Wrong_Argument_Kind, k.args[j].span, verb.name, need, describe(c.types, args[j].type), fix(c, k.args[j].span, example))
 			return
 		}
 	}
@@ -435,6 +440,7 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 			}
 			if i < len(def.kinds) && def.kinds[i] == .Name {
 				if word, ok := as_word(c, a); ok {
+					check_choice(c, verb.name, o.word, o.word, word, a.span)
 					append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
 					continue
 				}
@@ -447,7 +453,11 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 			is_pair := len(def.kinds) == 2 && def.kinds[0] == .Number && def.kinds[1] == .Number && len(o.args) == 1 && registry_kind(c.types, ir.type) == .Vector
 			if !is_pair && i < len(def.kinds) && ir.type != T_ERROR && !registry.accepts(def.kinds[i], registry_kind(c.types, ir.type)) {
 				need := fmt.tprintf("%s after `%s`", kind_words(def.kinds[i]), o.word)
-				note(c, .Wrong_Argument_Kind, a.span, verb.name, need, describe(c.types, ir.type), fix(c, a.span, sample_for_kind(def.kinds[i])))
+				example := sample_for_kind(def.kinds[i])
+				if words := registry.word_choices(verb.name, o.word); def.kinds[i] == .Name && len(words) > 0 {
+					example = words[0] // `cursor arrow`, not a word another verb takes
+				}
+				note(c, .Wrong_Argument_Kind, a.span, verb.name, need, describe(c.types, ir.type), fix(c, a.span, example))
 			}
 			append(&args, ir)
 		}
@@ -476,4 +486,37 @@ slice_contains :: proc(items: []string, item: string) -> bool {
 parse_number_text :: proc(text: string) -> f64 {
 	value, _ := strconv.parse_f64(text)
 	return value
+}
+
+// A word argument has to be one of the words the registry lists for it (`caps
+// round`, `cursor none`); `shown` is what the message calls the place (`caps`,
+// `cursor`), `after` the parameter or connecting word the registry knows it by.
+@(private)
+check_choice :: proc(c: ^Checker, verb, shown, after, word: string, span: Span) {
+	words := registry.word_choices(verb, after)
+	if words == nil || slice_contains(words, word) {
+		return
+	}
+	list: string
+	switch len(words) {
+	case 1:  list = fmt.tprintf("`%s`", words[0])
+	case:
+		quoted := make([dynamic]string, context.temp_allocator)
+		for w in words[:len(words) - 1] {
+			append(&quoted, fmt.tprintf("`%s`", w))
+		}
+		list = fmt.tprintf("%s or `%s`", strings.join(quoted[:], ", ", context.temp_allocator), words[len(words) - 1])
+	}
+	note(c, .Unknown_Choice, span, word, shown, list, fix(c, span, registry.nearest_choice(word, words)))
+}
+
+// The name of the verb's word parameter at `index`, for the shape with `given` arguments.
+@(private)
+word_param_name :: proc(verb: ^registry.Verb, given, index: int) -> string {
+	for shape in verb.shapes {
+		if len(shape.params) == given && index < len(shape.params) && shape.params[index].kind == .Name {
+			return shape.params[index].name
+		}
+	}
+	return ""
 }

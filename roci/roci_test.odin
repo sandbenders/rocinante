@@ -1169,3 +1169,16 @@ test_cursors_are_found_by_name :: proc(t: ^testing.T) {
 	_, ok = cursor_by_name("")
 	testing.expect(t, !ok)
 }
+
+@(test)
+test_the_cursor_names_are_the_words_the_language_allows :: proc(t: ^testing.T) {
+	words := registry.word_choices("window", "cursor")
+	testing.expect_value(t, len(words), len(CURSOR_NAMES))
+	for name in CURSOR_NAMES {
+		found := false
+		for w in words {
+			found ||= w == name
+		}
+		testing.expectf(t, found, "`%s` is not a word of `cursor`", name)
+	}
+}

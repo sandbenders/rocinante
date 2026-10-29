@@ -270,7 +270,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 					break
 				}
 			}
-			if is_stop_word(word) {
+			if is_stop_word(word) && !param_kind_is(info, len(args), .Name) {
 				break
 			}
 		}
@@ -302,10 +302,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			append(&p.wraps, chain.span)
 			continue
 		}
-		if !is_argument_start(p, t) {
-			break
-		}
-		// A word where the verb takes a word (`caps round`, `joins miter`) is that word, even when it is also a verb.
+		// A word where the verb takes a word (`caps round`, `joins miter`) is that word, even when it is also a verb or a keyword.
 		if t.kind == .Name && param_kind_is(info, len(args), .Name) {
 			advance(p)
 			parts := make([]string, 1, p.alloc)
@@ -315,6 +312,9 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 				p.last_value = t.span
 			}
 			continue
+		}
+		if !is_argument_start(p, t) {
+			break
 		}
 		append(&args, parse_argument(p, expect_block = param_is_block(info, len(args)), expr_block = param_is_expr_block(info, len(args))))
 		if !nested {
@@ -346,6 +346,16 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			if next.kind == .Comma && !(len(p.groups) > 0 && p.groups[len(p.groups) - 1] == .Curly) {
 				append(&commas, next.span)
 				advance(p)
+				continue
+			}
+			// A word where the word takes one (`cursor none`, `as center`) is that word, even
+			// when it is also a verb or a keyword (`cursor hidden`).
+			if kinds[len(option_args)] == .Name && next.kind == .Name {
+				advance(p)
+				parts := make([]string, 1, p.alloc)
+				parts[0] = text_of(p, next)
+				append(&option_args, new_expr(p, next.span, Path{parts = parts}))
+				p.last_value = next.span
 				continue
 			}
 			if !is_argument_start(p, next) {

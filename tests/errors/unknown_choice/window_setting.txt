@@ -1,0 +1,8 @@
+── `cursor` does not know the word `hidden` ─────────── sketch.roci:1:32
+
+1 │ w = window size 300 200 cursor hidden
+  │                                ^^^^^^
+
+After `cursor` comes one of these words: `arrow` or `none`.
+
+Did you mean:  w = window size 300 200 cursor none

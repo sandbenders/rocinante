@@ -1,0 +1,8 @@
+── `as` does not know the word `radiall` ────────────── sketch.roci:1:39
+
+1 │ background [ navy black ] angle 90 as radiall
+  │                                       ^^^^^^^
+
+After `as` comes one of these words: `linear`, `radial` or `conic`.
+
+Did you mean:  background [ navy black ] angle 90 as radial

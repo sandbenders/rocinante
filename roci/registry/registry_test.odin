@@ -676,3 +676,54 @@ test_set_has_a_word_for_every_property_that_can_be_changed :: proc(t: ^testing.T
 		testing.expectf(t, has == def.settable, "`%s`: set has the word is %v but settable is %v", def.name, has, def.settable)
 	}
 }
+
+@(test)
+test_every_word_argument_lists_its_words_and_every_list_has_a_place :: proc(t: ^testing.T) {
+	// Every word argument of every verb has a list, so no word goes unchecked...
+	for v in ALL_VERBS {
+		for shape in v.shapes {
+			for param in shape.params {
+				if param.kind == .Name {
+					testing.expectf(t, word_choices(v.name, param.name) != nil, "`%s %s` has no list of words", v.name, param.name)
+				}
+			}
+			for option in shape.options {
+				for kind in option.kinds {
+					if kind == .Name {
+						testing.expectf(t, word_choices(v.name, option.word) != nil, "`%s ... %s` has no list of words", v.name, option.word)
+					}
+				}
+			}
+		}
+	}
+	// ...and every list belongs to a verb that has that word argument.
+	for c in WORD_CHOICES {
+		testing.expectf(t, len(c.words) > 0, "an empty list for `%s %s`", c.verb, c.after)
+		if c.verb == "" {
+			continue
+		}
+		v, found := find_verb(c.verb)
+		if !testing.expectf(t, found, "`%s` is not a verb", c.verb) {
+			continue
+		}
+		has := false
+		for shape in v.shapes {
+			for param in shape.params {
+				has ||= param.kind == .Name && param.name == c.after
+			}
+			for option in shape.options {
+				has ||= option.word == c.after && len(option.kinds) > 0 && option.kinds[0] == .Name
+			}
+		}
+		testing.expectf(t, has, "`%s` has no word argument `%s`", c.verb, c.after)
+	}
+}
+
+@(test)
+test_the_nearest_word_is_suggested :: proc(t: ^testing.T) {
+	testing.expect_value(t, nearest_choice("rond", {"butt", "round", "square"}), "round")
+	testing.expect_value(t, nearest_choice("centre", ORIGIN_WORDS), "center")
+	testing.expect_value(t, nearest_choice("zzz", {"a", "b"}), "a") // nothing close: the first, so a line can still be shown
+	testing.expect_value(t, word_choices("circle", "as")[0], "center") // the shapes share the origin words
+	testing.expect(t, word_choices("circle", "fill") == nil)
+}

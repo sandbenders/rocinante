@@ -1,0 +1,8 @@
+── `caps` does not know the word `rond` ──────────────── sketch.roci:1:6
+
+1 │ caps rond
+  │      ^^^^
+
+After `caps` comes one of these words: `butt`, `round` or `square`.
+
+Did you mean:  caps round

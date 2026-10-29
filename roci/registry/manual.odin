@@ -70,7 +70,13 @@ kind_name :: proc(kind: Kind) -> string {
 // A value of the kind to use in an example; numbers differ by position so a call
 // reads (`circle at 100 100 radius 50`).
 @(private)
-sample :: proc(kind: Kind, index: int, verb := "") -> string {
+sample :: proc(kind: Kind, index: int, verb := "", after := "") -> string {
+	// A word argument shows the first word it may be (`caps butt`, `cursor arrow`).
+	if kind == .Name {
+		if words := word_choices(verb, after); len(words) > 0 {
+			return words[0]
+		}
+	}
 	numbers := [?]string{"100", "100", "50", "50", "0", "90", "0", "0"}
 	// The collision verbs take shapes, which are records.
 	switch verb {
@@ -127,7 +133,7 @@ manual_page :: proc(verb: ^Verb, allocator := context.temp_allocator) -> Manual_
 		values := make([dynamic]string, allocator)
 		for param, j in shape.params {
 			append(&names, param.name)
-			append(&values, sample(param.kind, j, verb.name))
+			append(&values, sample(param.kind, j, verb.name, param.name))
 		}
 		syntax, example: string
 		if text, labelled := write_with_labels(verb.name, names[:], allocator); labelled {
@@ -162,7 +168,7 @@ manual_page :: proc(verb: ^Verb, allocator := context.temp_allocator) -> Manual_
 				filled := make([dynamic]string, allocator)
 				append(&filled, option.word)
 				for kind, n in option.kinds {
-					append(&filled, sample(kind, n + k, verb.name))
+					append(&filled, sample(kind, n + k, verb.name, option.word))
 				}
 				append(&example_parts, strings.join(filled[:], " ", allocator))
 			} else {
