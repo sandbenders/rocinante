@@ -59,6 +59,12 @@ quit_sdl :: proc() {
 // Starts SDL and the GPU device. On failure `app.error` says why and nothing is
 // left open.
 init :: proc(app: ^App) -> bool {
+	// On a Wayland desktop, Wayland first: SDL 3.4 otherwise falls back to XWayland on
+	// compositors without the fifo-v1 protocol (niri), where window sizes and
+	// settings get lost and scaled displays draw at density 1 (decided 2026-10-29).
+	if hint, ok := video_driver_hint(string(sdl.getenv("WAYLAND_DISPLAY")), string(sdl.getenv(sdl.HINT_VIDEO_DRIVER))); ok {
+		sdl.SetHint(sdl.HINT_VIDEO_DRIVER, hint)
+	}
 	if !sdl.Init({.VIDEO}) {
 		return fail(app, "SDL_Init")
 	}
@@ -99,6 +105,19 @@ GPU_DEBUG_VARIABLE :: "ROCI_GPU_DEBUG"
 // empty or 0.
 gpu_debug_wanted :: proc "contextless" (value: string) -> bool {
 	return value != "" && value != "0"
+}
+
+// The video drivers to ask SDL for, in order, given the session's WAYLAND_DISPLAY
+// and the user's own SDL_VIDEO_DRIVER: Wayland, then X11, on a Wayland desktop
+// of Linux or FreeBSD; nothing (SDL's own choice) when the user chose, when the
+// session is not Wayland, and on other systems.
+video_driver_hint :: proc "contextless" (wayland_display, chosen: string) -> (hint: cstring, ok: bool) {
+	when ODIN_OS == .Linux || ODIN_OS == .FreeBSD {
+		if wayland_display != "" && chosen == "" {
+			return "wayland,x11", true
+		}
+	}
+	return nil, false
 }
 
 // Closes every window, the device and SDL.

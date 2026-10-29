@@ -292,3 +292,18 @@ test_sdl_is_quit_only_by_the_last_app_that_started_it :: proc(t: ^testing.T) {
 	quit_sdl()
 	testing.expect_value(t, apps_running, 0)
 }
+
+@(test)
+test_a_wayland_desktop_asks_sdl_for_wayland_first :: proc(t: ^testing.T) {
+	hint, ok := video_driver_hint("wayland-1", "")
+	when ODIN_OS == .Linux || ODIN_OS == .FreeBSD {
+		testing.expect(t, ok)
+		testing.expect_value(t, hint, cstring("wayland,x11"))
+	} else {
+		testing.expect(t, !ok) // other systems have one video driver
+	}
+	_, ok = video_driver_hint("wayland-1", "x11") // the user's own choice stands
+	testing.expect(t, !ok)
+	_, ok = video_driver_hint("", "") // not a Wayland session: SDL chooses
+	testing.expect(t, !ok)
+}
