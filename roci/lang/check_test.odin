@@ -1225,3 +1225,16 @@ test_the_typed_pass_marks_numbers_sure_numbers_and_booleans :: proc(t: ^testing.
 	optimise(&other.checked.program, {})
 	testing.expect_value(t, value(other.checked.program.stmts[0]).fast, Fast.None)
 }
+
+@(test)
+test_a_connecting_word_read_as_a_value_is_one_message :: proc(t: ^testing.T) {
+	// The call does not take the word and still needs a value: one message, not a cascade.
+	expect_errors(t, "v = (cos angle) * 2", {.Reserved_Name})
+	expect_errors(t, "print angle", {.Reserved_Name})
+	expect_errors(t, "x = stops + 1", {.Reserved_Name})
+	got := check_text("v = (cos angle) * 2")
+	testing.expect_value(t, got.checked.diagnostics[0].args[3], "v = (cos myangle) * 2")
+	// Where the call takes the word, it is still the word (`gradient [ red teal ] angle 90`).
+	expect_errors(t, "g = gradient [ red teal ] angle 90", {})
+	expect_errors(t, "xs = []\nadd 1 to xs", {})
+}

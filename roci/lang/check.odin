@@ -879,6 +879,12 @@ text_at_line :: proc(c: ^Checker, span: Span) -> string {
 
 @(private)
 unknown_name :: proc(c: ^Checker, span: Span, word: string) {
+	// One of the language's own words can never be given a value, so "give it a value
+	// first" would be no help: say so, and show the line with a name of the writer's.
+	if registry.is_reserved_name(word) {
+		note(c, .Reserved_Name, span, word, "", "", fix(c, span, fmt.tprintf("my%s", word)))
+		return
+	}
 	if suggestion, ok := suggest_name(c, word); ok {
 		note(c, .Unknown_Name, span, word, "Check the spelling.", "Did you mean:", fix(c, span, suggestion))
 	} else {

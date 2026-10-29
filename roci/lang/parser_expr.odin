@@ -194,6 +194,22 @@ is_stop_word :: proc(word: string) -> bool {
 	return slice.contains(registry.CONNECTING_WORDS[:], word) && !registry.is_free_as_parameter(word)
 }
 
+// A connecting word the call does not take, where the call still needs a value
+// (`cos angle`): it is read as a value, so the checker says it cannot be a name,
+// instead of the call ending early and every bracket after it looking wrong. A
+// call nested without brackets keeps stopping there, since the word is most likely
+// its outer call's.
+@(private)
+misplaced_word :: proc(info: Call_Info, word: string, given: int, nested: bool) -> bool {
+	if nested || slice.contains(registry.KEYWORDS[:], word) || !slice.contains(registry.CONNECTING_WORDS[:], word) {
+		return false
+	}
+	if _, is_option := option_arity(info, word, given); is_option {
+		return false
+	}
+	return option_could_be_value(info, given)
+}
+
 @(private)
 is_argument_start :: proc(p: ^Parser, t: Token) -> bool {
 	#partial switch t.kind {
@@ -270,7 +286,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 					break
 				}
 			}
-			if is_stop_word(word) && !param_kind_is(info, len(args), .Name) {
+			if is_stop_word(word) && !param_kind_is(info, len(args), .Name) && !misplaced_word(info, word, len(args), nested) {
 				break
 			}
 		}
@@ -313,7 +329,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			}
 			continue
 		}
-		if !is_argument_start(p, t) {
+		if !is_argument_start(p, t) && !(t.kind == .Name && misplaced_word(info, text_of(p, t), len(args), nested)) {
 			break
 		}
 		append(&args, parse_argument(p, expect_block = param_is_block(info, len(args)), expr_block = param_is_expr_block(info, len(args))))

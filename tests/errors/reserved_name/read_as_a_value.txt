@@ -1,0 +1,8 @@
+── `angle` is already a word ────────────────────────── sketch.roci:2:39
+
+2 │   circle at 200 200 radius (20 + (sin angle) * 10)
+  │                                       ^^^^^
+
+The language already uses `angle` for something else, so it cannot be the name of a value. Pick another name.
+
+Write:  circle at 200 200 radius (20 + (sin myangle) * 10)
