@@ -1,0 +1,26 @@
+{{ define "main" }}
+{{ if eq .Section "reference" }}
+<div class="with-side">
+  {{ partial "reference-side.html" . }}
+  <main id="content" class="content reference-index">
+    <h1>{{ .Title | lower }}</h1>
+    {{ .Content }}
+  </main>
+</div>
+{{ else if eq .Section "guides" }}
+<main id="content" class="content guides-index">
+  <h1>{{ .Title | lower }}</h1>
+  {{ .Content }}
+  <ol class="guide-list">
+    {{ range .Pages.ByWeight }}
+    <li><a href="{{ .RelPermalink }}"><span class="guide-title">{{ .Title }}</span><span class="guide-summary">{{ .Summary | plainify }}</span></a></li>
+    {{ end }}
+  </ol>
+</main>
+{{ else }}
+<main id="content" class="content {{ .Section }}-index">
+  <h1>{{ .Title | lower }}</h1>
+  {{ .Content }}
+</main>
+{{ end }}
+{{ end }}

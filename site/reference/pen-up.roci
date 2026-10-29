@@ -1,0 +1,6 @@
+repeat 8 [
+  forward 15
+  pen up
+  forward 15
+  pen down
+]

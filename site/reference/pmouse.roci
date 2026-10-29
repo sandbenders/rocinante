@@ -1,0 +1,3 @@
+background 240
+thickness 6
+draw [ line from pmouse to mouse ]

@@ -1,0 +1,5 @@
+draw [
+  background 240
+  shade = map mouse.x 0 400 0 255
+  circle at 200 150 radius 80 fill shade
+]

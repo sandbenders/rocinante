@@ -1,0 +1,16 @@
+<nav class="side" aria-label="Reference">
+  <details open>
+    <summary>all words</summary>
+    <ul>
+    {{ $section := "" }}
+    {{ $here := .RelPermalink }}
+    {{ range (where site.RegularPages "Section" "reference").ByWeight }}
+      {{ if ne .Params.section_name $section }}
+        {{ $section = .Params.section_name }}
+        <li class="group">{{ $section | lower }}</li>
+      {{ end }}
+      <li><a href="{{ .RelPermalink }}"{{ if eq .RelPermalink $here }} aria-current="page"{{ end }}><code>{{ .Title }}</code></a></li>
+    {{ end }}
+    </ul>
+  </details>
+</nav>

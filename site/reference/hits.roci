@@ -1,0 +1,7 @@
+walls = []
+for i from 0 to 7 [ add { pos: { i * 50, 140 }, size: { 40, 20 } } to walls ]
+ball = { pos: { 200, 150 }, radius: 40 }
+for each w in walls [ rect at w.pos size w.size fill 200 ]
+for each w in (hits ball walls) [ rect at w.pos size w.size fill tomato ]
+no fill
+circle at ball.pos radius ball.radius

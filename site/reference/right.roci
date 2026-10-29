@@ -1,0 +1,4 @@
+repeat 5 [
+  forward 120
+  right 144
+]

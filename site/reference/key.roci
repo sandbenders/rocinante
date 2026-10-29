@@ -1,0 +1,2 @@
+on key "a" [ print key ]
+on key "b" [ print key ]

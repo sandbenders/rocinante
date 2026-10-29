@@ -1,0 +1,4 @@
+canvas = window size 300 200 title "canvas"
+control = window size 200 120 title "control"
+on control mouse down [ send canvas { at: mouse } ]
+on canvas receive message [ print message.at ]

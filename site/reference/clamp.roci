@@ -1,0 +1,2 @@
+print (clamp 140 0 100)
+print (clamp -5 0 100)

@@ -1,0 +1,5 @@
+no stroke
+for i from 0 to 99 [
+  h = (fbm (i * 0.02) 0 0) * 300
+  rect at (i * 4) (300 - h) size 4 h fill teal
+]

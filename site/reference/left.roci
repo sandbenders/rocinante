@@ -1,0 +1,4 @@
+repeat 6 [
+  forward 80
+  left 60
+]

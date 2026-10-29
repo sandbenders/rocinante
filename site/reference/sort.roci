@@ -1,0 +1,3 @@
+people = [ { name: "cy", age: 30 } { name: "ada", age: 12 } ]
+by_age = sort people by [ it.age ]
+for each p in by_age [ print p.name ]

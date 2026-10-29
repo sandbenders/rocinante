@@ -1,0 +1,7 @@
+ball = { pos: { 60, 150 } }
+tween ball.pos to { 340, 150 } over 2 as bounce
+
+draw [
+  background 240
+  circle at ball.pos radius 24 fill tomato
+]

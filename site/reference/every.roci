@@ -1,0 +1,7 @@
+dots = []
+every 5 frames [ add anywhere to dots ]
+
+draw [
+  background 30
+  for each d in dots [ circle at d radius 6 fill gold ]
+]

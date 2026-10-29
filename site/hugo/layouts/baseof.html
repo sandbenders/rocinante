@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ if .IsHome }}rocinante{{ else }}{{ .Title }} · rocinante{{ end }}</title>
+<meta name="description" content="{{ .Summary | plainify }}">
+{{ $css := resources.Get "css/site.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}">
+</head>
+<body class="{{ .Section | default "home" }}">
+<a class="skip" href="#content">Skip to the page</a>
+<header class="top">
+  <div class="top-inner">
+    <a class="mark" href="{{ "" | relURL }}">rocinante<span class="release">{{ site.Params.release }}</span></a>
+    <nav aria-label="Main">
+      <a href="{{ "guides/" | relURL }}"{{ if eq .Section "guides" }} aria-current="true"{{ end }}>guides</a>
+      <a href="{{ "reference/" | relURL }}"{{ if eq .Section "reference" }} aria-current="true"{{ end }}>reference</a>
+      <a href="{{ "messages/" | relURL }}"{{ if eq .Section "messages" }} aria-current="true"{{ end }}>messages</a>
+      <a href="{{ site.Params.repository }}">source</a>
+    </nav>
+  </div>
+</header>
+<div class="frame">
+{{ block "main" . }}{{ end }}
+</div>
+<footer class="foot">
+  <p>rocinante is free software under the Zero-Clause BSD licence. These pages are made from the language itself: every example on them runs, and every picture is what it draws.</p>
+</footer>
+</body>
+</html>

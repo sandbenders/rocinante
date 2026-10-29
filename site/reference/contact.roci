@@ -1,0 +1,5 @@
+ball = { pos: { 200, 120 }, radius: 40 }
+floor_box = { pos: { 0, 150 }, size: { 400, 150 } }
+c = contact ball floor_box
+print c.normal
+print c.depth

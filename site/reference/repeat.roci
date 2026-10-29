@@ -1,0 +1,1 @@
+repeat 40 [ circle at (random 400) (random 300) radius 8 fill teal ]

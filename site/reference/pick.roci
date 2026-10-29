@@ -1,0 +1,3 @@
+seed 3
+COLOURS = [ tomato gold teal ]
+repeat 40 [ circle at anywhere radius 12 fill (pick COLOURS) ]

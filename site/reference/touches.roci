@@ -1,0 +1,4 @@
+draw [
+  background 30
+  for each f in touches [ circle at f.pos radius 40 fill skyblue ]
+]

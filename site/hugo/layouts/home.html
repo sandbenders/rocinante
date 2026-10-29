@@ -1,0 +1,24 @@
+{{ define "main" }}
+<main id="content" class="home-main">
+  <section class="hero">
+    <h1>a small language for drawing and animating</h1>
+    <p class="lead">rocinante is for people who want to make pictures, animations and interactive pieces with code, without first learning a programming language's machinery. One line makes a picture:</p>
+    <pre class="roci hero-code"><code><span class="v">circle</span> <span class="w">at</span> <span class="n">100</span> <span class="n">100</span> <span class="w">radius</span> <span class="n">50</span></code></pre>
+    <p>Save the file and the window changes while it runs. Mistakes never stop it: the window keeps the last good picture and says, in plain words, what went wrong and what would work.</p>
+  </section>
+  <section class="ways">
+    <a class="way" href="{{ "guides/" | relURL }}"><h2>guides</h2><p>Learn it a topic at a time: shapes, movement, input, lists, collision, windows, the turtle, verbs of your own.</p></a>
+    <a class="way" href="{{ "reference/" | relURL }}"><h2>reference</h2><p>Every word of the language, each with an example and the picture it draws.</p></a>
+    <a class="way" href="{{ "messages/" | relURL }}"><h2>messages</h2><p>Everything rocinante can tell you when something is wrong, with a sketch that makes each message.</p></a>
+  </section>
+  <section class="start">
+    <h2>start</h2>
+    <ol class="steps">
+      <li><pre class="shell"><code>roci new my-sketch</code></pre><p>makes a sketch folder with one circle in it</p></li>
+      <li><pre class="shell"><code>cd my-sketch</code></pre></li>
+      <li><pre class="shell"><code>roci run</code></pre><p>opens the window; change <code>sketch.roci</code> and save</p></li>
+    </ol>
+    <p class="note">This is an <strong>alpha</strong>: the language and these pages will still change. The <a href="{{ "guides/getting-started/" | relURL }}">getting started</a> guide says how to install it.</p>
+  </section>
+</main>
+{{ end }}

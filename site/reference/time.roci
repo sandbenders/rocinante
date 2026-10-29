@@ -1,0 +1,6 @@
+draw [
+  background 240
+  move 200 150
+  turn (time * 90)
+  rect at 0 0 size 120 20 as center fill teal
+]

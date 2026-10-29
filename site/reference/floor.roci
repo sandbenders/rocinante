@@ -1,0 +1,2 @@
+print (floor 2.7)
+print (floor -2.2)

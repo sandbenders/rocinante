@@ -1,0 +1,3 @@
+sunset = gradient [ navy purple orange ] angle 90
+rect at 0 0 size 400 300 fill sunset
+circle at 200 220 radius 60 fill (gradient [ gold tomato ] as radial)

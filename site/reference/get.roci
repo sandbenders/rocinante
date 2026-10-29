@@ -1,0 +1,4 @@
+counts = table
+put counts "cat" 2
+print (get counts "cat")
+print (get counts "dog")

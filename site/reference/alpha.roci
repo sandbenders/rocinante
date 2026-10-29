@@ -1,0 +1,5 @@
+fill tomato
+circle at 160 150 radius 80
+alpha 50
+fill royalblue
+circle at 240 150 radius 80

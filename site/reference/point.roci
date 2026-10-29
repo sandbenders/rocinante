@@ -1,0 +1,3 @@
+thickness 12
+caps round
+for i from 1 to 9 [ point at (i * 40) 150 ]

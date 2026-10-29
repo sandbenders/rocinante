@@ -1,0 +1,15 @@
+# The documentation site. Its reference, messages and coloured guides are written by
+# `odin run tools/site`, which copies this folder to output/site first; build there.
+baseURL = "https://sandbenders.github.io/rocinante/"
+languageCode = "en"
+title = "rocinante"
+disableKinds = ["taxonomy", "term", "rss", "sitemap"]
+enableRobotsTXT = false
+
+[markup.goldmark.renderer]
+  # The generated pages hold coloured code as HTML.
+  unsafe = true
+
+[params]
+  release = "alpha"
+  repository = "https://github.com/sandbenders/rocinante"

@@ -1,0 +1,5 @@
+draw [
+  background 240
+  if pressed [ fill tomato ] else [ fill 200 ]
+  circle at 200 150 radius 80
+]

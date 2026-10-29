@@ -1,0 +1,2 @@
+no stroke
+for i from 0 to 11 [ rect at (i * 34) 0 size 34 300 fill (oklch 0.75 0.15 (i * 30)) ]

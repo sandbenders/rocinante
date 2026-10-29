@@ -1,0 +1,7 @@
+no fill
+stroke 30
+thickness 16
+joins miter
+triangle { 70, 230 } { 120, 70 } { 170, 230 }
+joins round
+triangle { 230, 230 } { 280, 70 } { 330, 230 }

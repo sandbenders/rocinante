@@ -1,0 +1,3 @@
+use "flocking"
+
+draw [ flock birds ]

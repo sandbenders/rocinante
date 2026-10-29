@@ -1,0 +1,5 @@
+stroke black
+thickness 6
+circle at 120 150 radius 50
+no stroke
+circle at 280 150 radius 50

@@ -1,0 +1,3 @@
+w = window size 300 200
+on key "b" [ set w size 500 300 ]
+on key "t" [ set w topmost true ]

@@ -1,0 +1,3 @@
+window size 300 200 title "small" resizable false
+background navy
+circle at 150 100 radius 50 fill gold

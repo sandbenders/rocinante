@@ -1,0 +1,2 @@
+print (dist 0 0 30 40)
+print (dist { 0, 0 } { 3, 4 })

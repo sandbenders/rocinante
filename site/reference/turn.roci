@@ -1,0 +1,5 @@
+move 200 150
+repeat 12 [
+  turn 30
+  rect at 0 0 size 110 6
+]

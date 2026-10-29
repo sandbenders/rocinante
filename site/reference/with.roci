@@ -1,0 +1,4 @@
+with fill gold stroke 30 thickness 4 [
+  circle at 120 150 radius 50
+  square at 220 100 size 100
+]

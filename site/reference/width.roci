@@ -1,0 +1,2 @@
+circle at (width / 2) (height / 2) radius 60
+print width

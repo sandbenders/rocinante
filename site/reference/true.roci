@@ -1,0 +1,2 @@
+running = true
+if running [ circle at 200 150 radius 40 ]

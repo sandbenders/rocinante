@@ -1,0 +1,4 @@
+for i from 0 to 35 [
+  a = i * 10
+  circle at (200 + (cos a) * 100) (150 + (sin a) * 100) radius 5
+]

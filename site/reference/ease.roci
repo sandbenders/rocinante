@@ -1,0 +1,5 @@
+for i from 0 to 20 [
+  x = 20 + i * 18
+  y = 270 - (ease (i / 20) as smooth) * 240
+  circle at x y radius 5
+]

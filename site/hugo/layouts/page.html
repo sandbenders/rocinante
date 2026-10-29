@@ -1,0 +1,22 @@
+{{ define "main" }}
+{{ if eq .Section "reference" }}
+<div class="with-side">
+  {{ partial "reference-side.html" . }}
+  <main id="content" class="content word">
+    <p class="crumb"><a href="../">reference</a> / {{ .Params.section_name | lower }}</p>
+    <h1><code>{{ .Title }}</code></h1>
+    {{ .Content }}
+  </main>
+</div>
+{{ else }}
+<main id="content" class="content guide">
+  <p class="crumb"><a href="../">guides</a></p>
+  <h1>{{ .Title }}</h1>
+  {{ .Content }}
+  <nav class="next-prev" aria-label="Guides">
+    {{ with .PrevInSection }}<a class="next" href="{{ .RelPermalink }}">next: {{ .Title }}</a>{{ end }}
+    {{ with .NextInSection }}<a class="prev" href="{{ .RelPermalink }}">back: {{ .Title }}</a>{{ end }}
+  </nav>
+</main>
+{{ end }}
+{{ end }}

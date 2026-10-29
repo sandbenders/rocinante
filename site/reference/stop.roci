@@ -1,0 +1,7 @@
+learn greet name [
+  if name is "" [ stop ]
+  print ("hello " + name)
+]
+
+greet ""
+greet "ada"

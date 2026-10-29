@@ -1,0 +1,3 @@
+dots = []
+for i from 1 to 8 [ add { i * 45, 150 } to dots ]
+for each d in dots [ circle at d radius 15 ]

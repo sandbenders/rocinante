@@ -1,0 +1,3 @@
+names = [ "ada" "bob" "cy" ]
+remove "bob" from names
+print names

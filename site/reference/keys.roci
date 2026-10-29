@@ -1,0 +1,4 @@
+counts = table
+put counts "cat" 2
+put counts "owl" 1
+for each name in (keys counts) [ print name ]

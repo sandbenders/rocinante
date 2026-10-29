@@ -1,0 +1,2 @@
+on key "f" [ fullscreen ]
+circle at 200 150 radius 60

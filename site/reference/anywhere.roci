@@ -1,0 +1,2 @@
+seed 3
+repeat 50 [ circle at anywhere radius 6 fill teal ]

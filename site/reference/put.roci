@@ -1,0 +1,5 @@
+counts = table
+put counts "cat" 2
+put counts "owl" 1
+put counts "cat" 3
+print counts

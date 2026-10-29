@@ -1,0 +1,8 @@
+stroke 30
+thickness 20
+caps butt
+line from 80 70 to 320 70
+caps round
+line from 80 150 to 320 150
+caps square
+line from 80 230 to 320 230

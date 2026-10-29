@@ -1,0 +1,4 @@
+fill tomato
+circle at 120 150 radius 60
+fill (rgb 80 160 255)
+circle at 280 150 radius 60

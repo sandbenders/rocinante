@@ -1,0 +1,4 @@
+draw [
+  background 240
+  circle at mouse radius 30 fill tomato
+]

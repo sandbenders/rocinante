@@ -1,0 +1,5 @@
+ball = { pos: { 200, 150 }, radius: 40 }
+wall = { pos: { 220, 60 }, size: { 140, 30 } }
+if touching ball wall [ fill tomato ] else [ fill teal ]
+circle at ball.pos radius ball.radius
+rect at wall.pos size wall.size fill 120

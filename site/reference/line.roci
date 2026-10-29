@@ -1,0 +1,3 @@
+thickness 4
+line from 40 260 to 360 40
+line from 40 40 to 360 260 stroke tomato

@@ -1,0 +1,7 @@
+size = 40
+
+draw [
+  background 240
+  size = clamp (size + wheel.y * 5) 5 140
+  circle at 200 150 radius size
+]

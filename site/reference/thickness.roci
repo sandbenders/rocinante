@@ -1,0 +1,5 @@
+stroke 30
+for i from 1 to 5 [
+  thickness (i * 3)
+  line from (i * 70) 40 to (i * 70) 260
+]

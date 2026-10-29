@@ -1,0 +1,6 @@
+push [
+  move 120 150
+  turn 45
+  square at 0 0 size 80 as center fill tomato
+]
+square at 280 150 size 80 as center fill gold

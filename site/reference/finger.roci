@@ -1,0 +1,7 @@
+rings = []
+on touch down [ add finger.pos to rings ]
+
+draw [
+  background 30
+  for each r in rings [ circle at r radius 20 fill gold ]
+]

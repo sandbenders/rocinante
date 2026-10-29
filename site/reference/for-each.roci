@@ -1,0 +1,2 @@
+points = [ { 80, 200 } { 160, 100 } { 240, 180 } { 320, 80 } ]
+for each p in points [ circle at p radius 16 fill gold ]

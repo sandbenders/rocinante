@@ -1,0 +1,2 @@
+learn double n [ give n * 2 ]
+print (double 21)

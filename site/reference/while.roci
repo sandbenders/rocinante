@@ -1,0 +1,5 @@
+size = 140
+while size > 10 [
+  circle at 200 150 radius size
+  size = size * 0.7
+]

@@ -1,0 +1,12 @@
+learn flower x y [
+  push [
+    move x y
+    repeat 6 [
+      turn 60
+      ellipse at 0 -30 size 20 50 fill pink
+    ]
+  ]
+]
+
+flower 120 150
+flower 280 150

@@ -1,0 +1,4 @@
+a = [ 1 2 ]
+b = copy a
+add 3 to b
+print (count a)

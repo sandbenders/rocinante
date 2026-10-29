@@ -1,0 +1,2 @@
+print (sqrt 16)
+for i from 0 to 9 [ circle at (20 + i * 40) 150 radius ((sqrt i) * 10) ]
