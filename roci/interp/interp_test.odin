@@ -317,7 +317,8 @@ test_a_list_made_in_a_frame_is_kept_when_stored_in_the_sketch :: proc(t: ^testin
 	text := "flowers = []\ndraw [\n  add { n: frame } to flowers\n  stash = collect flowers [ it.n ]\n]\non mouse down [ ]\n"
 	p := run_text(t, text, 5)
 	defer finish(p)
-	list := as_list(p.globals[p.checked.program.symbols[0]])
+	value, _ := global_value(p, p.checked.program.symbols[0])
+	list := as_list(value)
 	testing.expect(t, list != nil)
 	testing.expect_value(t, len(list.items), 5)
 	testing.expect(t, as_record(list.items[4]).long)
@@ -1513,8 +1514,9 @@ test_the_wheel_is_how_far_it_turned_since_the_last_frame :: proc(t: ^testing.T) 
 
 // The value of a sketch-wide name, for tests that drive a sketch and look inside.
 global_named :: proc(p: ^Interp, name: string) -> Value {
-	for symbol, value in p.globals {
+	for symbol in p.checked.program.symbols {
 		if symbol.name == name {
+			value, _ := global_value(p, symbol)
 			return value
 		}
 	}
@@ -1743,4 +1745,25 @@ test_the_benchmark_example_draws_its_hundred_thousand_circles :: proc(t: ^testin
 	}
 	testing.expect_value(t, circles, 100_000)
 	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_every_registry_verb_has_its_own_code :: proc(t: ^testing.T) {
+	seen: [Verb_Code]bool
+	for &verb in registry.ALL_VERBS {
+		code := verb_code(&verb)
+		testing.expectf(t, code != .None, "`%s` has no code", verb.name)
+		testing.expectf(t, VERB_CODE_NAMES[code] == verb.name, "`%s` has the code of `%s`", verb.name, VERB_CODE_NAMES[code])
+		testing.expectf(t, !seen[code], "`%s` shares a code", verb.name)
+		seen[code] = true
+		// The language's own verbs are the ones the Odin API does not have.
+		_, in_api := registry.find_in(registry.VERBS, verb.name)
+		testing.expectf(t, is_language_code(code) == !in_api, "`%s` is on the wrong side", verb.name)
+	}
+	testing.expect_value(t, verb_code(nil), Verb_Code.None)
+	outside := registry.Verb{name = "circle"}
+	testing.expect_value(t, verb_code(&outside), Verb_Code.None) // only the registry's own verbs have codes
+	testing.expect_value(t, code_for_name("no fill"), Verb_Code.No_Fill)
+	testing.expect_value(t, code_for_name("nothing"), Verb_Code.None)
+	testing.expect_value(t, code_for_name(""), Verb_Code.None)
 }

@@ -12,30 +12,21 @@ import "../lang"
 import "core:math"
 
 @(private)
-is_collision_verb :: proc(name: string) -> bool {
-	switch name {
-	case "touching", "contact", "hits", "inside", "cast":
-		return true
-	}
-	return false
-}
-
-@(private)
-collision_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
+collision_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Code) -> Value {
 	if len(call.args) < 2 {
 		return nil
 	}
 	a := eval(it, call.args[0])
 	b := eval(it, call.args[1])
-	switch call.verb.name {
-	case "touching":
+	#partial switch code {
+	case .Touching:
 		sa, ok_a := to_shape(it, a)
 		sb, ok_b := to_shape(it, b)
 		return ok_a && ok_b && collide.touching(sa, sb)
-	case "inside":
+	case .Inside:
 		sb, ok := to_shape(it, b)
 		return ok && collide.inside(as_pair(a), sb)
-	case "contact":
+	case .Contact:
 		sa, ok_a := to_shape(it, a)
 		sb, ok_b := to_shape(it, b)
 		if !ok_a || !ok_b {
@@ -46,7 +37,7 @@ collision_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			return make_result(it, e.type, nil) // empty: every field 0
 		}
 		return make_result(it, e.type, {{"point", vec2(c.point)}, {"normal", vec2(c.normal)}, {"depth", c.depth}})
-	case "hits":
+	case .Hits:
 		out := new_list(it)
 		sa, ok := to_shape(it, a)
 		list := as_list(b)
@@ -66,7 +57,7 @@ collision_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			}
 		}
 		return out
-	case "cast":
+	case .Cast:
 		line := as_record(a)
 		list := as_list(b)
 		if line == nil || list == nil {

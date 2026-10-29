@@ -253,7 +253,7 @@ declare_global :: proc(c: ^Checker, name: string, span: Span) -> ^Symbol {
 		}
 	}
 	s := new(Symbol, c.alloc)
-	s^ = Symbol{name = name, kind = .Constant if is_constant_name(name) else .Variable, type = fresh(c.types), first_write = span}
+	s^ = Symbol{name = name, kind = .Constant if is_constant_name(name) else .Variable, type = fresh(c.types), first_write = span, slot = len(c.order)}
 	c.globals[name] = s
 	append(&c.order, s)
 	return s

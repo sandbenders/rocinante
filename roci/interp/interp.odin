@@ -56,7 +56,7 @@ Interp :: struct {
 	arena:     virtual.Arena,
 	long:      mem.Allocator, // the sketch's own memory, freed with it
 	alloc:     mem.Allocator, // where new values go now: `long` while the sketch sets itself up, the frame's memory after
-	globals:   map[^lang.Symbol]Value,
+	globals:   []Global, // the sketch-wide names' values, by `Symbol.slot`
 	frame:     ^Frame,
 	items:     [dynamic]Value, // `it`, innermost last
 	results:   [dynamic]Value, // `result`, innermost last
@@ -129,7 +129,7 @@ load_files :: proc(files: []lang.File_Text) -> (p: ^Interp, ok: bool) {
 	}
 	p.checked = lang.check(p.src, registry.ALL_VERBS, nil, p.long)
 	p.types = p.checked.program.types
-	p.globals = make(map[^lang.Symbol]Value, 32, p.long)
+	p.globals = make([]Global, len(p.checked.program.symbols), p.long)
 	p.draws = make(map[roci.Window]^lang.IR_Block, 4, p.long)
 	p.seen = make(map[int]bool, 8, p.long)
 	p.budget = BLOCK_SECONDS

@@ -82,10 +82,30 @@ is_global :: proc(s: ^lang.Symbol) -> bool {
 	return s.kind == .Variable || s.kind == .Constant
 }
 
+// A sketch-wide name's value, and whether it has been given one.
+Global :: struct {
+	value: Value,
+	set:   bool,
+}
+
+global_value :: proc(it: ^Interp, s: ^lang.Symbol) -> (Value, bool) {
+	if s.slot < 0 || s.slot >= len(it.globals) {
+		return nil, false
+	}
+	g := it.globals[s.slot]
+	return g.value, g.set
+}
+
+set_global :: proc(it: ^Interp, s: ^lang.Symbol, v: Value) {
+	if s.slot >= 0 && s.slot < len(it.globals) {
+		it.globals[s.slot] = {v, true}
+	}
+}
+
 load_symbol :: proc(it: ^Interp, s: ^lang.Symbol) -> Value {
 	switch s.kind {
 	case .Variable, .Constant:
-		if v, found := it.globals[s]; found {
+		if v, found := global_value(it, s); found {
 			return v
 		}
 	case .Item:
@@ -123,7 +143,7 @@ keep :: proc(it: ^Interp, v: Value) -> Value {
 
 store_symbol :: proc(it: ^Interp, s: ^lang.Symbol, v: Value) {
 	if is_global(s) {
-		it.globals[s] = keep(it, v)
+		set_global(it, s, keep(it, v))
 		return
 	}
 	if it.frame == nil {

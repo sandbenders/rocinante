@@ -13,14 +13,6 @@ import "core:slice"
 import "core:strings"
 import "core:unicode/utf8"
 
-is_language_verb :: proc(name: string) -> bool {
-	switch name {
-	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send", "set", "held", "tween", "table", "put", "get", "keys":
-		return true
-	}
-	return is_collision_verb(name)
-}
-
 // The one expression inside the `[ ]` of a list verb.
 @(private)
 block_expr :: proc(ir: ^lang.IR) -> ^lang.IR {
@@ -69,18 +61,18 @@ same :: proc(a, b: Value) -> bool {
 
 @(private)
 call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
-	if is_collision_verb(call.verb.name) {
-		return collision_verb(it, e, call)
-	}
-	switch call.verb.name {
-	case "add":
+	code := verb_code(call.verb)
+	#partial switch code {
+	case .Touching, .Contact, .Hits, .Inside, .Cast:
+		return collision_verb(it, e, call, code)
+	case .Add:
 		item := eval(it, call.args[0])
 		list := as_list(option_or_nil(it, call.options, "to"))
 		if list != nil {
 			append(&list.items, promote(it, item) if list.long && it.alloc != it.long else item)
 			list.stamp = next_write(it)
 		}
-	case "remove":
+	case .Remove:
 		item := eval(it, call.args[0])
 		from := option_or_nil(it, call.options, "from")
 		if t := as_table(from); t != nil {
@@ -105,7 +97,7 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 				}
 			}
 		}
-	case "count":
+	case .Count:
 		v := eval(it, call.args[0])
 		if l := as_list(v); l != nil {
 			return f64(len(l.items))
@@ -117,30 +109,30 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			return f64(utf8.rune_count_in_string(s))
 		}
 		return 0.0
-	case "item":
+	case .Item:
 		return item_of(it, e, call)
-	case "print":
+	case .Print:
 		text := format(it, eval(it, call.args[0]), it.long)
 		append(&it.printed, text)
 		if it.echo {
 			fmt.println(text)
 		}
-	case "copy":
+	case .Copy:
 		return deep_copy(it, eval(it, call.args[0]))
-	case "keep", "skip":
+	case .Keep, .Skip:
 		list := as_list(eval(it, call.args[0]))
 		expr := block_expr(call.args[1])
 		out := new_list(it)
 		if list != nil {
 			for item in list.items {
 				passes := as_bool(run_item(it, expr, item))
-				if passes == (call.verb.name == "keep") {
+				if passes == (code == .Keep) {
 					append(&out.items, item)
 				}
 			}
 		}
 		return out
-	case "find":
+	case .Find:
 		list := as_list(eval(it, call.args[0]))
 		expr := block_expr(call.args[1])
 		if list != nil {
@@ -151,7 +143,7 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			}
 		}
 		return nil
-	case "collect":
+	case .Collect:
 		list := as_list(eval(it, call.args[0]))
 		expr := block_expr(call.args[1])
 		out := new_list(it)
@@ -161,7 +153,7 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			}
 		}
 		return out
-	case "combine":
+	case .Combine:
 		list := as_list(eval(it, call.args[0]))
 		result, _ := option_value(it, call.options, "from", 0)
 		expr := block_expr(option_ir(call.options, "from", 1))
@@ -171,9 +163,9 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			}
 		}
 		return result
-	case "sort":
+	case .Sort:
 		return sort_list(it, call)
-	case "shuffle":
+	case .Shuffle:
 		// A new list, mixed by the sketch's own random numbers (so a seed repeats it).
 		out := new_list(it)
 		if list := as_list(eval(it, call.args[0])); list != nil {
@@ -184,11 +176,11 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			}
 		}
 		return out
-	case "send":
+	case .Send:
 		send_message(it, eval(it, call.args[0]), eval(it, call.args[1]))
-	case "set":
+	case .Set:
 		set_window(it, eval(it, call.args[0]), call.options)
-	case "held":
+	case .Held:
 		// "mouse right" is a button held down in this window, anything else a key.
 		name := as_text(eval(it, call.args[0]))
 		if strings.has_prefix(name, "mouse ") {
@@ -196,21 +188,21 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			return known && roci.mouse_down(button)
 		}
 		return roci.key_down(name)
-	case "tween":
+	case .Tween:
 		start_tween(it, call)
-	case "table":
+	case .Table:
 		return new_table(it)
-	case "put":
+	case .Put:
 		if t := as_table(eval(it, call.args[0])); t != nil {
 			table_put(it, t, as_text(eval(it, call.args[1])), eval(it, call.args[2]))
 		}
-	case "get":
+	case .Get:
 		t := as_table(eval(it, call.args[0]))
 		if v, found := table_get(t, as_text(eval(it, call.args[1]))); found {
 			return v
 		}
 		return zero_value(it, e.type, 0)
-	case "keys":
+	case .Keys:
 		out := new_list(it)
 		if t := as_table(eval(it, call.args[0])); t != nil {
 			for name in t.keys {

@@ -132,7 +132,7 @@ is_effect :: proc(s: ^lang.IR_Stmt) -> bool {
 @(private)
 makes_window :: proc(e: ^lang.IR) -> bool {
 	if call, ok := e.kind.(lang.IR_Call); ok && call.verb != nil {
-		return call.verb.name == "window"
+		return verb_code(call.verb) == .Window
 	}
 	return false
 }
@@ -328,8 +328,8 @@ reload_files :: proc(p: ^Interp, files: []lang.File_Text, restart := false) -> (
 		assign, is_assign := s.kind.(lang.IR_Assign)
 		if is_assign && j >= 0 && len(assign.fields) == 0 {
 			if old_assign, was_assign := old_stmts[j].kind.(lang.IR_Assign); was_assign && assign.target.kind != .Constant {
-				if v, has := p.globals[old_assign.target]; has && compatible(p, old_assign.target.type, n, assign.target.type) {
-					n.globals[assign.target] = convert(p, n, v, assign.target.type)
+				if v, has := global_value(p, old_assign.target); has && compatible(p, old_assign.target.type, n, assign.target.type) {
+					set_global(n, assign.target, convert(p, n, v, assign.target.type))
 					kept += 1
 					continue
 				}
@@ -343,16 +343,20 @@ reload_files :: proc(p: ^Interp, files: []lang.File_Text, restart := false) -> (
 		exec_stmt(n, s)
 	}
 	// Names the sketch gives only inside blocks (or assigns in a way no line above carried): by name.
-	for old_symbol, v in p.globals {
+	for old_symbol in p.checked.program.symbols {
+		v, set := global_value(p, old_symbol)
+		if !set {
+			continue
+		}
 		for new_symbol in n.checked.program.symbols {
 			if new_symbol.name != old_symbol.name {
 				continue
 			}
-			if _, has := n.globals[new_symbol]; has || new_symbol.kind == .Constant {
+			if _, has := global_value(n, new_symbol); has || new_symbol.kind == .Constant {
 				break
 			}
 			if compatible(p, old_symbol.type, n, new_symbol.type) {
-				n.globals[new_symbol] = convert(p, n, v, new_symbol.type)
+				set_global(n, new_symbol, convert(p, n, v, new_symbol.type))
 				kept += 1
 			} else {
 				append(&lost, old_symbol.name)

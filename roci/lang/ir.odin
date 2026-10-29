@@ -33,6 +33,7 @@ Symbol :: struct {
 	written:     bool,  // set when the checker reaches that first write
 	scope:       int,   // 0 for a sketch-wide name; the depth of the block a local belongs to
 	mutated:     bool,  // a taught verb changes what this parameter holds (`p.x = 1`, `add x to p`)
+	slot:        int,   // for a sketch-wide name, its place in `IR_Program.symbols`, where the interpreter keeps its value
 }
 
 IR_Number :: struct {

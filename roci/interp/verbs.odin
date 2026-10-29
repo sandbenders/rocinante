@@ -19,22 +19,27 @@ eval_call :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	if call.verb == nil {
 		return nil // taught in another file: its body is not here
 	}
-	if is_language_verb(call.verb.name) {
+	if is_language_code(verb_code(call.verb)) {
 		return call_language(it, e, call)
 	}
 	return call_builtin(it, e, call)
 }
 
-// The values of a call's arguments, in the frame's memory. A block argument has no
+// The values of a call's arguments: in `buffer` when it has room (the caller's stack),
+// otherwise in the frame's memory. A block argument has no
 // value: the verb runs it itself.
 @(private)
-eval_args :: proc(it: ^Interp, args: []^lang.IR) -> []Value {
-	out := make([]Value, len(args), context.temp_allocator)
+eval_args :: proc(it: ^Interp, args: []^lang.IR, buffer: []Value = nil) -> []Value {
+	out := buffer[:len(args)] if len(args) <= len(buffer) else make([]Value, len(args), context.temp_allocator)
 	for a, i in args {
 		out[i] = eval(it, a)
 	}
 	return out
 }
+
+// How many arguments a core verb's values are kept on the stack for: every core
+// verb has fewer, so a call never asks the frame's memory for them.
+ARGS_ON_STACK :: 8
 
 // The first value of a connecting word, and whether it was written.
 @(private)
@@ -276,8 +281,9 @@ apply_look :: proc(look: roci.Look) {
 @(private)
 call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	verb := call.verb
+	code := verb_code(verb)
 	// `push` runs its block itself; no other core verb takes one.
-	if verb.name == "push" {
+	if code == .Push {
 		roci.push()
 		if len(call.args) > 0 {
 			if block, ok := call.args[0].kind.(lang.IR_Block_Value); ok {
@@ -289,7 +295,8 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.pop()
 		return nil
 	}
-	a := eval_args(it, call.args)
+	buffer: [ARGS_ON_STACK]Value = ---
+	a := eval_args(it, call.args, buffer[:])
 	look, origin := make_look(it, call.options)
 	n :: proc(a: []Value, i: int) -> f64 {
 		return as_number(a[i]) if i < len(a) else 0
@@ -297,8 +304,8 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	p :: proc(a: []Value, i: int) -> [2]f64 {
 		return as_pair(a[i]) if i < len(a) else {}
 	}
-	switch verb.name {
-	case "window":
+	#partial switch code {
+	case .Window:
 		at: Maybe([2]int)
 		if x, found := option_value(it, call.options, "at", 0); found {
 			y, _ := option_value(it, call.options, "at", 1)
@@ -315,196 +322,196 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		w := roci.window(int(n(a, 0)), int(n(a, 1)), at, flags)
 		apply_window_options(it, w, call.options)
 		return w
-	case "title":
+	case .Title:
 		roci.title_text(as_text(a[0]))
-	case "fullscreen":
+	case .Fullscreen:
 		roci.fullscreen()
-	case "quit":
+	case .Quit:
 		roci.quit()
-	case "background":
+	case .Background:
 		if paint, ok := to_paint(it, a[0], call.options); ok {
 			roci.background(paint)
 		}
-	case "clear":
+	case .Clear:
 		roci.clear_window()
 
-	case "circle":
+	case .Circle:
 		if call.shape == 0 {
 			roci.circle_xyr(n(a, 0), n(a, 1), n(a, 2), look, origin)
 		} else {
 			roci.circle_vr(p(a, 0), n(a, 1), look, origin)
 		}
-	case "ellipse":
+	case .Ellipse:
 		if call.shape == 0 {
 			roci.ellipse_xywh(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look, origin)
 		} else {
 			roci.ellipse_vs(p(a, 0), p(a, 1), look, origin)
 		}
-	case "rect":
+	case .Rect:
 		if call.shape == 0 {
 			roci.rect_xywh(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look, origin)
 		} else {
 			roci.rect_vs(p(a, 0), p(a, 1), look, origin)
 		}
-	case "square":
+	case .Square:
 		if call.shape == 0 {
 			roci.square_xys(n(a, 0), n(a, 1), n(a, 2), look, origin)
 		} else {
 			roci.square_vs(p(a, 0), n(a, 1), look, origin)
 		}
-	case "line":
+	case .Line:
 		if call.shape == 0 {
 			roci.line_xyxy(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look)
 		} else {
 			roci.line_vv(p(a, 0), p(a, 1), look)
 		}
-	case "point":
+	case .Point:
 		if call.shape == 0 {
 			roci.point_xy(n(a, 0), n(a, 1), look)
 		} else {
 			roci.point_v(p(a, 0), look)
 		}
-	case "triangle":
+	case .Triangle:
 		if call.shape == 0 {
 			roci.triangle_xy(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look)
 		} else {
 			roci.triangle_v(p(a, 0), p(a, 1), p(a, 2), look)
 		}
-	case "quad":
+	case .Quad:
 		if call.shape == 0 {
 			roci.quad_xy(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), n(a, 6), n(a, 7), look)
 		} else {
 			roci.quad_v(p(a, 0), p(a, 1), p(a, 2), p(a, 3), look)
 		}
-	case "arc":
+	case .Arc:
 		roci.arc(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look, origin)
 
-	case "fill":
+	case .Fill:
 		if paint, ok := to_paint(it, a[0], call.options); ok {
 			roci.fill_paint(paint)
 		}
-	case "no fill":
+	case .No_Fill:
 		roci.no_fill()
-	case "stroke":
+	case .Stroke:
 		if paint, ok := to_paint(it, a[0], call.options); ok {
 			roci.stroke_paint(paint)
 		}
-	case "no stroke":
+	case .No_Stroke:
 		roci.no_stroke()
-	case "thickness":
+	case .Thickness:
 		roci.thickness(n(a, 0))
-	case "alpha":
+	case .Alpha:
 		roci.alpha(alpha_to_byte(n(a, 0)))
-	case "caps":
+	case .Caps:
 		switch as_text(a[0]) {
 		case "butt":   roci.caps(.Butt)
 		case "round":  roci.caps(.Round)
 		case "square": roci.caps(.Square)
 		}
-	case "joins":
+	case .Joins:
 		switch as_text(a[0]) {
 		case "miter": roci.joins(.Miter)
 		case "round": roci.joins(.Round)
 		case "bevel": roci.joins(.Bevel)
 		}
 
-	case "rgb", "hsb", "oklch":
+	case .Rgb, .Hsb, .Oklch:
 		alpha := 255.0
 		if v, found := option_value(it, call.options, "alpha"); found {
 			alpha = alpha_to_byte(as_number(v))
 		}
-		switch verb.name {
-		case "rgb":   return roci.rgb(n(a, 0), n(a, 1), n(a, 2), alpha)
-		case "hsb":   return roci.hsb(n(a, 0), n(a, 1), n(a, 2), alpha)
+		#partial switch code {
+		case .Rgb:    return roci.rgb(n(a, 0), n(a, 1), n(a, 2), alpha)
+		case .Hsb:    return roci.hsb(n(a, 0), n(a, 1), n(a, 2), alpha)
 		case:         return roci.oklch(n(a, 0), n(a, 1), n(a, 2), alpha)
 		}
-	case "gradient":
+	case .Gradient:
 		return gradient_from(it, a[0], call.options)
-	case "mix":
+	case .Mix:
 		if call.shape == 0 {
 			return roci.mix_colours(as_colour(a[0]), as_colour(a[1]), n(a, 2))
 		}
 		return roci.mix_numbers(n(a, 0), n(a, 1), n(a, 2))
 
-	case "move":
+	case .Move:
 		if call.shape == 0 {
 			roci.move_xy(n(a, 0), n(a, 1))
 		} else {
 			roci.move_v(p(a, 0))
 		}
-	case "turn":
+	case .Turn:
 		roci.turn(n(a, 0))
-	case "grow":
+	case .Grow:
 		if call.shape == 0 {
 			roci.grow_factor(n(a, 0))
 		} else {
 			roci.grow_xy(n(a, 0), n(a, 1))
 		}
-	case "shear":
+	case .Shear:
 		roci.shear(n(a, 0), n(a, 1))
 
-	case "forward":
+	case .Forward:
 		roci.forward(n(a, 0))
-	case "back":
+	case .Back:
 		roci.back(n(a, 0))
-	case "left":
+	case .Left:
 		roci.left(n(a, 0))
-	case "right":
+	case .Right:
 		roci.right(n(a, 0))
-	case "pen up":
+	case .Pen_Up:
 		roci.pen_up()
-	case "pen down":
+	case .Pen_Down:
 		roci.pen_down()
-	case "home":
+	case .Home:
 		roci.home()
 
-	case "map":
+	case .Map:
 		return roci.map_range(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4))
-	case "clamp":
+	case .Clamp:
 		return roci.clamp_between(n(a, 0), n(a, 1), n(a, 2))
-	case "dist":
+	case .Dist:
 		if call.shape == 0 {
 			return roci.dist_xy(n(a, 0), n(a, 1), n(a, 2), n(a, 3))
 		}
 		return roci.dist_v(p(a, 0), p(a, 1))
-	case "abs":
+	case .Abs:
 		return roci.absolute(n(a, 0))
-	case "floor":
+	case .Floor:
 		return roci.floor(n(a, 0))
-	case "round":
+	case .Round:
 		return roci.round(n(a, 0))
-	case "ceil":
+	case .Ceil:
 		return roci.ceil(n(a, 0))
-	case "sqrt":
+	case .Sqrt:
 		return roci.square_root(n(a, 0))
-	case "sin":
+	case .Sin:
 		return roci.sin_deg(n(a, 0))
-	case "cos":
+	case .Cos:
 		return roci.cos_deg(n(a, 0))
-	case "ease":
+	case .Ease:
 		curve := roci.Ease.Smooth
 		if word, found := option_value(it, call.options, "as"); found {
 			curve, _ = maths.ease_by_name(as_text(word))
 		}
 		return roci.ease(n(a, 0), curve)
 
-	case "random":
+	case .Random:
 		if call.shape == 0 {
 			return roci.random(n(a, 0))
 		}
 		low, _ := option_value(it, call.options, "from")
 		high, _ := option_value(it, call.options, "to")
 		return roci.random_between(as_number(low), as_number(high))
-	case "pick":
+	case .Pick:
 		if l := as_list(a[0]); l != nil {
 			return roci.pick(l.items[:])
 		}
 		return nil
-	case "gaussian":
+	case .Gaussian:
 		return roci.gaussian(n(a, 0), n(a, 1))
-	case "seed":
+	case .Seed:
 		roci.seed(n(a, 0))
-	case "noise":
+	case .Noise:
 		simplex := false
 		if word, found := option_value(it, call.options, "as"); found {
 			simplex = as_text(word) == "simplex"
@@ -515,29 +522,14 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		case 3: return roci.noise_3(n(a, 0), n(a, 1), n(a, 2), simplex)
 		case:   return roci.noise_4(n(a, 0), n(a, 1), n(a, 2), n(a, 3), simplex)
 		}
-	case "fbm":
+	case .Fbm:
 		return roci.fbm(n(a, 0), n(a, 1), n(a, 2))
 	}
 	return nil
 }
 
-// Every core verb the interpreter runs, so a test can tell when the registry gains
-// one it does not.
-HANDLED := [?]string{
-	"window", "title", "fullscreen", "quit", "background", "clear",
-	"circle", "ellipse", "rect", "square", "line", "point", "triangle", "quad", "arc",
-	"fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "caps", "joins",
-	"rgb", "hsb", "oklch", "gradient", "mix", "move", "turn", "grow", "shear", "push",
-	"forward", "back", "left", "right", "pen up", "pen down", "home",
-	"map", "clamp", "dist", "abs", "sqrt", "sin", "cos", "ease", "floor", "round", "ceil",
-	"random", "pick", "gaussian", "seed", "noise", "fbm",
-}
-
+// Whether the interpreter runs the verb of this name, so a test can tell when the
+// registry gains one it does not.
 handled :: proc(name: string) -> bool {
-	for h in HANDLED {
-		if h == name {
-			return true
-		}
-	}
-	return is_language_verb(name)
+	return code_for_name(name) != .None
 }
