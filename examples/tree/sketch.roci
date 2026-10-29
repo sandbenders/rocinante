@@ -13,7 +13,7 @@ learn branch size [
 ]
 
 draw [
-  background [ (rgb 250 236 210) (rgb 205 225 240) ] angle 90
+  background [ (rgb 250 236 210) yellow (rgb 205 225 240) ] angle 90
   stroke (rgb 70 50 40)
   pen up
   back 200
