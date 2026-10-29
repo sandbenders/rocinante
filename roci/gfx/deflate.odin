@@ -12,7 +12,8 @@ import "core:slice"
 
 @(private = "file") WINDOW :: 32768
 @(private = "file") HASH_BITS :: 15
-@(private = "file") MAX_CHAIN :: 64 // how many earlier places with the same three bytes are tried
+@(private = "file") MAX_CHAIN :: 128 // how many earlier places with the same three bytes are tried (zlib's level 6 tries as many)
+@(private = "file") LAZY_LIMIT :: 32 // a match this long is taken without trying the next place
 @(private = "file") MIN_MATCH :: 3
 @(private = "file") MAX_MATCH :: 258
 @(private = "file") BLOCK_TOKENS :: 65535 // symbols in a block before a new one starts: all literals still fit one stored block
@@ -82,68 +83,127 @@ distance_code :: proc(distance: u16) -> int {
 }
 
 // Raw deflate data of `data` (no zlib header), in `allocator`.
+//
+// Matching is lazy, as zlib's is: a match found at one place is held back while
+// the next place is tried, and when that one is longer the first byte goes out
+// as a literal instead. Long matches are taken at once (LAZY_LIMIT).
 deflate :: proc(data: []u8, allocator := context.allocator) -> []u8 {
 	out := make([dynamic]u8, 0, len(data) / 4 + 64, allocator)
-	w := Bit_Writer{out = &out}
-	head := make([]i32, 1 << HASH_BITS, context.temp_allocator)
-	slice.fill(head, -1)
-	prev := make([]i32, WINDOW, context.temp_allocator)
-	tokens := make([dynamic]Token, 0, BLOCK_TOKENS, context.temp_allocator)
+	m := Matcher{
+		data   = data,
+		head   = make([]i32, 1 << HASH_BITS, context.temp_allocator),
+		prev   = make([]i32, WINDOW, context.temp_allocator),
+		tokens = make([dynamic]Token, 0, BLOCK_TOKENS, context.temp_allocator),
+		w      = Bit_Writer{out = &out},
+	}
+	slice.fill(m.head, -1)
 
-	hash3 :: proc(data: []u8, i: int) -> int {
-		return (int(data[i]) << 10 ~ int(data[i + 1]) << 5 ~ int(data[i + 2])) & (1 << HASH_BITS - 1)
-	}
-	insert :: proc(data: []u8, head, prev: []i32, i: int) {
-		if i + MIN_MATCH <= len(data) {
-			h := hash3(data, i)
-			prev[i & (WINDOW - 1)] = head[h]
-			head[h] = i32(i)
-		}
-	}
-
-	block_start := 0
-	i := 0
-	for i < len(data) {
-		best_length, best_distance := 0, 0
-		if i + MIN_MATCH <= len(data) {
-			limit := min(MAX_MATCH, len(data) - i)
-			candidate := int(head[hash3(data, i)])
-			for chain := 0; chain < MAX_CHAIN && candidate >= 0 && i - candidate <= WINDOW; chain += 1 {
-				if data[candidate + best_length] == data[i + best_length] {
-					n := 0
-					for n < limit && data[candidate + n] == data[i + n] {
-						n += 1
-					}
-					if n > best_length {
-						best_length, best_distance = n, i - candidate
-						if n == limit {break}
-					}
-				}
-				next := int(prev[candidate & (WINDOW - 1)])
-				if next >= candidate {break} // the slot was reused by a newer place
-				candidate = next
+	held := false // a match starting at i - 1 waits to see whether i has a longer one
+	held_length, held_distance := 0, 0
+	for i := 0; i < len(data); i += 1 {
+		length, distance := longest_match(&m, i, held_length if held else 0)
+		insert(&m, i)
+		switch {
+		case held && length > held_length:
+			emit(&m, Token{u16(data[i - 1]), 0}, 1)
+			held_length, held_distance = length, distance
+		case held:
+			emit(&m, Token{u16(held_length), u16(held_distance)}, held_length)
+			// The match began at i - 1 and i is in already; add the rest.
+			for k in i + 1 ..< i - 1 + held_length {
+				insert(&m, k)
 			}
-		}
-		if best_length >= MIN_MATCH {
-			append(&tokens, Token{u16(best_length), u16(best_distance)})
-			for k in 0 ..< best_length {
-				insert(data, head, prev, i + k)
+			i += held_length - 2
+			held = false
+		case length >= MIN_MATCH && length < LAZY_LIMIT:
+			held, held_length, held_distance = true, length, distance
+		case length >= MIN_MATCH:
+			emit(&m, Token{u16(length), u16(distance)}, length)
+			for k in i + 1 ..< i + length {
+				insert(&m, k)
 			}
-			i += best_length
-		} else {
-			append(&tokens, Token{u16(data[i]), 0})
-			insert(data, head, prev, i)
-			i += 1
-		}
-		if len(tokens) == BLOCK_TOKENS {
-			write_block(&w, tokens[:], data[block_start:i], false)
-			clear(&tokens)
-			block_start = i
+			i += length - 1
+		case:
+			emit(&m, Token{u16(data[i]), 0}, 1)
 		}
 	}
-	write_block(&w, tokens[:], data[block_start:], true)
-	align_to_byte(&w)
+	if held {
+		emit(&m, Token{u16(held_length), u16(held_distance)}, held_length)
+	}
+	write_block(&m.w, m.tokens[:], data[m.block_start:], true)
+	align_to_byte(&m.w)
 	return out[:]
+}
+
+// What finding matches and cutting blocks needs to keep between bytes.
+@(private = "file")
+Matcher :: struct {
+	data:        []u8,
+	head:        []i32, // the latest place for each hash of three bytes, or -1
+	prev:        []i32, // for each place in the window, the place before it with the same hash
+	tokens:      [dynamic]Token,
+	w:           Bit_Writer,
+	block_start: int, // the first byte of the block being collected
+	done:        int, // how many bytes the tokens so far stand for
+}
+
+@(private = "file")
+hash3 :: proc(data: []u8, i: int) -> int {
+	return (int(data[i]) << 10 ~ int(data[i + 1]) << 5 ~ int(data[i + 2])) & (1 << HASH_BITS - 1)
+}
+
+@(private = "file")
+insert :: proc(m: ^Matcher, i: int) {
+	if i + MIN_MATCH <= len(m.data) {
+		h := hash3(m.data, i)
+		m.prev[i & (WINDOW - 1)] = m.head[h]
+		m.head[h] = i32(i)
+	}
+}
+
+// The longest match for the bytes at `i` among earlier places, if it is longer
+// than `beat` (0 takes any of at least three bytes).
+@(private = "file")
+longest_match :: proc(m: ^Matcher, i, beat: int) -> (length, distance: int) {
+	data := m.data
+	if i + MIN_MATCH > len(data) {
+		return
+	}
+	limit := min(MAX_MATCH, len(data) - i)
+	best := max(beat, MIN_MATCH - 1)
+	if best >= limit {
+		return
+	}
+	candidate := int(m.head[hash3(data, i)])
+	for chain := 0; chain < MAX_CHAIN && candidate >= 0 && i - candidate <= WINDOW; chain += 1 {
+		// The byte that would make this one longer than the best is checked first.
+		if data[candidate + best] == data[i + best] {
+			n := 0
+			for n < limit && data[candidate + n] == data[i + n] {
+				n += 1
+			}
+			if n > best {
+				best, length, distance = n, n, i - candidate
+				if n == limit {break}
+			}
+		}
+		next := int(m.prev[candidate & (WINDOW - 1)])
+		if next >= candidate {break} // the slot was reused by a newer place
+		candidate = next
+	}
+	return
+}
+
+// Adds a token standing for `covers` bytes, and writes the block when it is full.
+@(private = "file")
+emit :: proc(m: ^Matcher, t: Token, covers: int) {
+	append(&m.tokens, t)
+	m.done += covers
+	if len(m.tokens) == BLOCK_TOKENS {
+		write_block(&m.w, m.tokens[:], m.data[m.block_start:m.done], false)
+		clear(&m.tokens)
+		m.block_start = m.done
+	}
 }
 
 // One block in its smallest form. `raw` is the data its tokens stand for.
