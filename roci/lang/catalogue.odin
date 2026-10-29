@@ -109,6 +109,7 @@ Message_Id :: enum u8 {
 	Name_Hides,
 	Labels_Needed,
 	Not_A_Shape,
+	Tween_Place,
 	// What goes wrong while a sketch runs (found by the interpreter, never by the checker)
 	Index_Out_Of_Range,
 	Division_By_Zero,
@@ -371,6 +372,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Labels_Needed = {.Error, "`{a}` is written with labels",
 		"Shapes are written with {b} in front of their values, so a number is never mistaken for another and the line reads as what it draws.",
 		"Write:", "{d}"},
+	.Tween_Place = {.Error, "`tween` cannot move `{a}`",
+		"{b}A tween moves a number, a vector or a colour, a little each frame, so it needs one that lasts: a name of the sketch, or a field of a record.",
+		"For example:", "{d}"},
 	.Not_A_Shape = {.Error, "`{a}` needs a shape here",
 		"This is {b}. {c}A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline.",
 		"For example:", "{d}"},

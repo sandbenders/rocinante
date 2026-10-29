@@ -1,0 +1,8 @@
+── `tween` cannot move `(width / 2)` ─────────────────── sketch.roci:1:7
+
+1 │ tween (width / 2) to 100 over 1
+  │       ^^^^^^^^^^^
+
+It is worked out, not kept anywhere. A tween moves a number, a vector or a colour, a little each frame, so it needs one that lasts: a name of the sketch, or a field of a record.
+
+For example:  tween ball.pos to { 300, 200 } over 1

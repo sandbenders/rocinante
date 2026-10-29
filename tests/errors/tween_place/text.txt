@@ -1,0 +1,8 @@
+── `tween` cannot move `label` ───────────────────────── sketch.roci:2:7
+
+2 │ tween label to "end" over 1
+  │       ^^^^^
+
+It holds text. A tween moves a number, a vector or a colour, a little each frame, so it needs one that lasts: a name of the sketch, or a field of a record.
+
+For example:  tween ball.pos to { 300, 200 } over 1

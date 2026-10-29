@@ -88,6 +88,7 @@ Interp :: struct {
 	has_errors: bool, // the sketch has check errors and does not run
 	writes:    u64, // counts changes to lists and records, to tell when a list's shapes changed
 	shape_cache: [SHAPE_CACHE_SIZE]Shape_Cache, // box trees of the lists the collision verbs asked about most recently
+	tweens:    [dynamic]Tween, // the places being moved a little each frame (tween.odin)
 }
 
 // The interpreter the running frame belongs to. The app loop calls plain
@@ -153,6 +154,10 @@ destroy :: proc(p: ^Interp) {
 	for &e in p.shape_cache {
 		drop_entry(&e)
 	}
+	for &t in p.tweens {
+		drop_tween(&t)
+	}
+	delete(p.tweens)
 	virtual.arena_destroy(&p.arena)
 	free(p)
 }

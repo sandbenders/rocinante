@@ -1115,3 +1115,21 @@ test_a_field_given_later_does_not_change_what_shape_a_record_is :: proc(t: ^test
 	// The braces decide: written with `pos` alone, it is no shape, even with a radius later.
 	expect_errors(t, "b = { pos: { 1, 2 } }\nb.radius = 3\nprint (touching b b)", {.Not_A_Shape, .Not_A_Shape})
 }
+
+// ---- tween ----
+
+@(test)
+test_a_tween_needs_a_place_that_lasts_and_a_value_of_its_kind :: proc(t: ^testing.T) {
+	expect_errors(t, "x = 0\ntween x to 5 over 1", {})
+	expect_errors(t, "b = { pos: { 1, 2 } }\ntween b.pos to { 3, 4 } over 1 as out", {})
+	expect_errors(t, "p = { 1, 2 }\ntween p.x to 3 over 1", {})
+	expect_errors(t, "c = red\ntween c to blue over 1", {})
+	expect_errors(t, "balls = [ { pos: { 1, 2 } } ]\nfor each b in balls [ tween b.pos to { 0, 0 } over 1 ]", {})
+	expect_errors(t, "learn go [\n  n = 5\n  tween n to 1 over 1\n]", {.Tween_Place})
+	expect_errors(t, "learn go v [\n  tween v.x to 1 over 1\n]\ngo { 1, 2 }", {.Tween_Place})
+	expect_errors(t, "SPEED = 1\ntween SPEED to 2 over 1", {.Constant_Changed})
+	expect_errors(t, "name = \"a\"\ntween name to \"b\" over 1", {.Tween_Place})
+	expect_errors(t, "tween (1 + 2) to 3 over 1", {.Tween_Place})
+	expect_errors(t, "v = { 1, 2 }\ntween v to 5 over 1", {.Wrong_Argument_Kind})
+	expect_errors(t, "x = 0\ntween x to 5 over 1 as bounc", {.Unknown_Choice})
+}

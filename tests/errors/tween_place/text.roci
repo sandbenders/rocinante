@@ -1,0 +1,2 @@
+label = "start"
+tween label to "end" over 1

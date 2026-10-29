@@ -200,8 +200,8 @@ test_formatting_every_example_and_check_sketch_is_stable_and_changes_no_meaning 
 test_every_example_of_the_manual_is_a_sketch_that_checks :: proc(t: ^testing.T) {
 	for &verb in registry.ALL_VERBS {
 		for entry in registry.manual_page(&verb).entries {
-			// The examples name a window `w`, so one is made first.
-			text := fmt.tprintf("w = window size 100 100\n%s\n", entry.example)
+			// The examples name a window `w` and a number `x`, so they are made first.
+			text := fmt.tprintf("w = window size 100 100\nx = 0\n%s\n", entry.example)
 			parsed := check_text(text)
 			for d in parsed.checked.diagnostics {
 				testing.expectf(t, severity_of(d) != .Error, "`%s`: %v", entry.example, d.id)

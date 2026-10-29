@@ -104,6 +104,7 @@ frame_hook :: proc(w: roci.Window) {
 			frame_hook(w)
 			return
 		}
+		step_tweens(p)
 		if p.reported < len(p.errors) {
 			update_overlay(p)
 			report_new_errors(p)

@@ -15,7 +15,7 @@ import "core:unicode/utf8"
 
 is_language_verb :: proc(name: string) -> bool {
 	switch name {
-	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send", "set", "held":
+	case "add", "remove", "count", "item", "print", "copy", "keep", "skip", "collect", "combine", "find", "sort", "shuffle", "send", "set", "held", "tween":
 		return true
 	}
 	return is_collision_verb(name)
@@ -179,6 +179,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		set_window(it, eval(it, call.args[0]), call.options)
 	case "held":
 		return roci.key_down(as_text(eval(it, call.args[0])))
+	case "tween":
+		start_tween(it, call)
 	}
 	return nil
 }
