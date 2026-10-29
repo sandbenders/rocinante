@@ -26,6 +26,7 @@ EXAMPLES := [?]Example{
 	{"garden", 30, {1, 2}},
 	{"starfield", 5, {1}}, // two files: sketch.roci and palette.roci
 	{"constellation", 5, {1}}, // a library: libs/stars
+	{"tree", 5, {1}}, // the turtle
 }
 
 // How many pixels may differ for a picture of this many: the scenes allow

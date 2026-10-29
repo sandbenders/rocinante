@@ -1,0 +1,32 @@
+// A tree the turtle grows: each branch walks forward, then splits in two inside
+// push, so the turtle comes back to the fork for the other side. The angle of
+// every fork breathes with noise over time, and the turtle walks a star in the corner.
+window size 600 450 title "tree"
+
+learn branch size [
+  if size < 6 [ stop ]
+  thickness (size / 8)
+  forward size
+  bend = 18 + (noise (time / 3) (size / 40)) * 20
+  push [ left bend  branch (size * 0.72) ]
+  push [ right bend  branch (size * 0.72) ]
+]
+
+draw [
+  background [ (rgb 250 236 210) (rgb 205 225 240) ] angle 90
+  stroke (rgb 70 50 40)
+  pen up
+  back 200
+  pen down
+  branch 95
+  home
+  pen up
+  left 90
+  forward 230
+  right 90
+  back 170
+  pen down
+  stroke (rgb 200 120 60)
+  thickness 2
+  repeat 5 [ forward 40  right 144 ]
+]
