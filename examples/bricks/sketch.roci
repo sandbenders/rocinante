@@ -1,0 +1,44 @@
+// Bricks: a ball bounces inside four walls, off a paddle that follows the mouse,
+// and breaks the bricks it hits. Shapes are plain records: the ball is a circle
+// (pos and radius), the bricks and the paddle are rectangles (pos and size), the
+// walls are lines (from and to). `contact` says which way to bounce.
+window size 480 360 title "bricks"
+
+COLORS = [ tomato orange gold yellowgreen mediumturquoise ]
+bricks = []
+for row from 0 to 4 [
+  for col from 0 to 7 [
+    add { pos: { col * 56 + 16, row * 22 + 30 }, size: { 50, 16 }, tint: item (row + 1) of COLORS } to bricks
+  ]
+]
+walls = [
+  { from: { 0, 0 }, to: { 480, 0 } }
+  { from: { 0, 0 }, to: { 0, 360 } }
+  { from: { 480, 0 }, to: { 480, 360 } }
+]
+ball = { pos: { 240, 250 }, radius: 7, vel: { 3, -4 } }
+paddle = { pos: { 200, 330 }, size: { 80, 10 } }
+
+learn bounce off [
+  c = contact ball off
+  // Push the ball out, then turn its speed back along the normal.
+  ball.pos = ball.pos + c.normal * c.depth
+  along = ball.vel.x * c.normal.x + ball.vel.y * c.normal.y
+  if along < 0 [ ball.vel = ball.vel - c.normal * (2 * along) ]
+]
+
+draw [
+  background 24
+  paddle.pos = { clamp (mouse.x - 40) 0 400, 330 }
+  ball.pos = ball.pos + ball.vel
+  for each w in (hits ball walls) [ bounce w ]
+  if touching ball paddle [ bounce paddle ]
+  for each b in (hits ball bricks) [
+    bounce b
+    remove b from bricks
+  ]
+  if ball.pos.y > 380 [ ball.pos = { 240, 250 }  ball.vel = { 3, -4 } ]
+  for each b in bricks [ rect at b.pos size b.size fill b.tint ]
+  rect at paddle.pos size paddle.size fill white
+  circle at ball.pos radius ball.radius fill white
+]

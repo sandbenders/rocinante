@@ -1,0 +1,5 @@
+COLORS: a list of colours
+bricks: a list of records with pos, size and tint
+walls: a list of records with from and to
+ball: a record with pos, radius and vel
+paddle: a record with pos and size
