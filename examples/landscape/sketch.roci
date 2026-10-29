@@ -1,0 +1,56 @@
+// Landscape: hills of layered noise (`fbm`) drifting slowly, nearer ones darker,
+// under a band of stars scattered with `gaussian`, so most sit near the middle of
+// the band and a few stray. Clouds breathe with simplex noise, the moon swings on
+// `sin` and `cos`, and `every 40 frames` a shooting star sets off; `while` keeps
+// no more than four of them in the sky.
+window size 720 420 title "landscape" resizable false
+
+seed 7
+stars = []
+repeat 260 [
+  x = random 720
+  add { pos: { x, gaussian (60 + x * 0.25) 28 }, size: random from 0.5 to 2 } to stars
+]
+shooting = []
+
+every 40 frames [
+  add { pos: { random from 60 to 500, random from 10 to 120 }, life: 1 } to shooting
+  while count shooting > 4 [ remove (item 1 of shooting) from shooting ]
+]
+
+draw [
+  background [ (rgb 10 12 40) (rgb 60 50 110) (rgb 230 140 120) ] angle 90 stops [ 0 70 100 ]
+
+  no stroke
+  for each s in stars [ circle at s.pos radius s.size fill (rgb 255 255 240 alpha 70) ]
+
+  a = time * 4 + 215
+  circle at (360 + (cos a) * 280) (210 + (sin a) * 160) radius 22 fill (rgb 255 245 220)
+
+  for each s in shooting [
+    s.pos = s.pos + { 7, 3 }
+    s.life = s.life - 0.02
+    line from s.pos to (s.pos - { 70, 30 }) stroke (rgb 255 255 255 alpha (s.life * 90)) thickness 2
+  ]
+  shooting = keep shooting [ it.life > 0 ]
+
+  for i from 0 to 4 [
+    cx = (i * 180 + time * 12) % 900 - 90
+    for j from 0 to 4 [
+      puff = noise (i * 1.7 + j) (time * 0.4) as simplex
+      circle at (cx + j * 22) (70 + i % 2 * 50 - j % 2 * 8) radius (16 + puff * 14) fill (rgb 255 255 255 alpha 7)
+    ]
+  ]
+
+  for layer from 0 to 3 [
+    shade = mix (rgb 110 90 140) (rgb 20 18 35) (layer / 3)
+    base = 250 + layer * 45
+    for i from 0 to 89 [
+      x0 = i * 8
+      x1 = x0 + 8
+      y0 = base - (fbm (x0 * 0.004) (layer * 10) (time * 0.03) - 0.5) * 420
+      y1 = base - (fbm (x1 * 0.004) (layer * 10) (time * 0.03) - 0.5) * 420
+      quad { x0, y0 } { x1, y1 } { x1, 420 } { x0, 420 } fill shade
+    ]
+  ]
+]

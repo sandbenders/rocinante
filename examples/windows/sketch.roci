@@ -1,0 +1,96 @@
+// Windows: two windows whose settings change while they are open (`set`) and are
+// read back as fields. The big window draws a small map of where both windows are
+// on the screen (`at`, `width`, `height`), rings when it is resized (`on resize`),
+// flashes when it is moved (`on move`) and dims while it is not in front
+// (`on focus`, `focused`). The pad belongs to it (`parent`) and floats above it.
+//
+// In the big window: 1, 2 and 3 set its size, f makes it fill the screen,
+// t keeps the pad on top or not, b takes the pad's frame off or puts it back,
+// the up and down arrows make the pad more or less see-through (`alpha`), and q
+// quits. Holding the mouse down in the pad grows a dot that falls when let go
+// (`on mouse up`); the pad lights up while the mouse is over it (`hovered`).
+big = window size 560 360 at 100 100 title "windows" smallest 320 240
+pad = window size 200 200 at 700 140 title "pad" parent big topmost true
+
+rings = []
+flash = 0
+dim = false
+dot = 0
+falling = { 0, 0 }
+drop = 0
+
+on big resize [ add { age: 0 } to rings ]
+on big move [ flash = 1 ]
+on big focus [ dim = not big.focused ]
+
+on big key "1" [ set big size 480 320 ]
+on big key "2" [ set big size 640 400 ]
+on big key "3" [ set big size 800 500 ]
+on big key "f" [ set big fullscreen (not big.fullscreen) ]
+on big key "t" [ set pad topmost (not pad.topmost) ]
+on big key "b" [ set pad bordered (not pad.bordered) ]
+on big key "up" [ set pad alpha (clamp (pad.alpha + 10) 20 100) ]
+on big key "down" [ set pad alpha (clamp (pad.alpha - 10) 20 100) ]
+on big key "q" [ quit ]
+
+on pad mouse up [
+  falling = { 100, 100 }
+  drop = dot / 3
+  dot = 0
+]
+
+draw big [
+  if dim [ background 60 ] else [ background 235 ]
+
+  // The map: the screen at a quarter of its size, the pad drawn as solid as it is.
+  push [
+    move 20 20
+    grow 0.25
+    stroke 120
+    thickness 8
+    rect at big.at size { big.width, big.height } fill (rgb 230 120 90 alpha 60)
+    rect at pad.at size { pad.width, pad.height } fill (rgb 90 140 230 alpha pad.alpha)
+    line from (big.at + { big.width, big.height } / 2) to (pad.at + { pad.width, pad.height } / 2)
+  ]
+
+  // A lamp for each setting that is on: the big window fills the screen, the
+  // pad stays on top, the pad has its frame, the big window is in front.
+  no stroke
+  lamps = [ big.fullscreen pad.topmost pad.bordered big.focused ]
+  for i from 1 to 4 [
+    if item i of lamps [
+      circle at (width - 140 + i * 26) (height - 24) radius 9 fill (rgb 120 200 120)
+    ] else [
+      circle at (width - 140 + i * 26) (height - 24) radius 9 fill 160
+    ]
+  ]
+
+  // Rings that spread from the middle after each resize.
+  no fill
+  for each r in rings [
+    r.age = r.age + 1 / 60
+    circle at (width / 2) (height / 2) radius (r.age * 300) stroke (rgb 230 120 90 alpha (100 - r.age * 100)) thickness 3
+  ]
+  rings = keep rings [ it.age < 1 ]
+
+  if flash > 0 [
+    flash = flash - 1 / 30
+    rect at 0 0 size width height stroke (rgb 90 140 230 alpha (flash * 100)) thickness 12
+  ]
+]
+
+draw pad [
+  if pad.hovered [ background (rgb 255 236 200) ] else [ background (rgb 220 228 245) ]
+  no stroke
+  if pressed [ dot = dot + 1 ]
+  push [
+    no fill
+    circle at 100 100 radius 60 stroke (rgb 90 140 230 alpha 40) thickness 2
+  ]
+  circle at 100 100 radius (dot / 3) fill (rgb 90 140 230)
+  if falling.x > 0 [
+    falling = falling + { 0, 6 }
+    if falling.y > 260 [ falling = { 0, 0 } ]
+    circle at falling radius drop fill (rgb 230 120 90)
+  ]
+]

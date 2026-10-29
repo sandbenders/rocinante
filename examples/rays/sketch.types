@@ -1,0 +1,5 @@
+spinner: a record with from, to, pos, radius, size, angle and points
+things: a list of records with from, to, pos, radius, size, angle and points
+lamp: a vector of 2 numbers
+far: a vector of 2 numbers
+h: a record with item, point, normal and distance

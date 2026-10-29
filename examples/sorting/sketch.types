@@ -1,0 +1,8 @@
+PALETTE: a list of colours
+GAP: a number
+bars: a list of records with height, shade, tint and x
+shade: a number
+shown: a list of records with height, shade, tint and x
+step: a number
+level: a number
+tallest: a record with height, shade, tint and x

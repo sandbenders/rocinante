@@ -1,0 +1,5 @@
+glow: a record with fill, stroke and thickness
+outline: a record with stroke and thickness
+x: a number
+y: a number
+a: a number

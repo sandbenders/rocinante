@@ -1,0 +1,69 @@
+// Sorting: a row of bars that the list verbs rearrange, every bar sliding to its new
+// place with `tween`. Every two and a half seconds the next step runs, or press its
+// key: `shuffle` (space), `sort … by` height (h) or colour (c), `keep` the tall ones
+// (k) and `skip` the tall ones (s). `collect` and `combine` work out the average,
+// drawn as a line across, `find` picks out the first bar taller than that, and
+// p prints the heights.
+window size 640 400 title "sorting" resizable false
+
+PALETTE = [ tomato orange gold yellowgreen mediumturquoise cornflowerblue orchid ]
+GAP = 24
+
+bars = []
+for i from 1 to 24 [
+  shade = floor (random from 1 to 8)
+  add { height: random from 30 to 320, shade: shade, tint: item shade of PALETTE, x: 0 } to bars
+]
+shown = sort bars by [ it.height ]
+step = 0
+
+// Every bar shown slides to its place; the ones not shown go off the right edge.
+learn arrange [
+  for each b in bars [ tween b.x to 700 over 0.6 ]
+  i = 0
+  for each b in shown [
+    tween b.x to (30 + i * GAP) over 0.6
+    i = i + 1
+  ]
+]
+
+learn average [
+  heights = collect shown [ it.height ]
+  total = combine heights from 0 [ result + it ]
+  give total / (count heights)
+]
+
+learn next_step [
+  step = step % 4 + 1
+  if step is 1 [ shown = shuffle bars ]
+  if step is 2 [ shown = sort bars by [ it.height ] ]
+  if step is 3 [ shown = keep bars [ it.height > 150 ] ]
+  if step is 4 [ shown = sort bars by [ it.shade ] ]
+  arrange
+]
+
+for each b in shown [ b.x = 30 + (count (keep shown [ it.height < b.height ])) * GAP ]
+
+every 2.5 seconds [ next_step ]
+
+on key "space" [ shown = shuffle bars  arrange ]
+on key "h" [ shown = sort bars by [ it.height ]  arrange ]
+on key "c" [ shown = sort bars by [ it.shade ]  arrange ]
+on key "k" [ shown = keep bars [ it.height > 150 ]  arrange ]
+on key "s" [ shown = skip bars [ it.height > 150 ]  arrange ]
+on key "p" [ print (collect shown [ it.height ]) ]
+
+draw [
+  background 30
+  level = average
+  tallest = find shown [ it.height > level ]
+  no stroke
+  for each b in bars [ rect at b.x (360 - b.height) size (GAP - 6) b.height fill b.tint ]
+  if tallest.height > 0 [
+    push [
+      no fill
+      rect at tallest.x (360 - tallest.height) size (GAP - 6) tallest.height stroke white thickness 3
+    ]
+  ]
+  line from 20 (360 - level) to 620 (360 - level) stroke white thickness 2
+]

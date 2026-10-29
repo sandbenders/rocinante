@@ -1,0 +1,72 @@
+// Tally: a grid of coloured tiles and a table that counts them by colour name.
+// Clicking a tile gives it the next colour, and the bars on the right follow:
+// one bar for each name in the table, in the order the names were first put in.
+// A right click on a bar takes its name out of the table (`remove … from`) and
+// blanks its tiles; paint one again and the name comes back, at the end. The
+// colours themselves are a table too, from name to colour. p prints the counts.
+window size 640 360 title "tally" resizable false
+
+NAMES = [ "tomato" "gold" "mediumturquoise" "orchid" "cornflowerblue" ]
+colours = table
+put colours "tomato" tomato
+put colours "gold" gold
+put colours "mediumturquoise" mediumturquoise
+put colours "orchid" orchid
+put colours "cornflowerblue" cornflowerblue
+
+tiles = []
+counts = table
+for down from 0 to 5 [
+  for across from 0 to 5 [
+    picked = pick NAMES
+    add { pos: { 20 + across * 52, 20 + down * 52 }, name: picked } to tiles
+    put counts picked ((get counts picked) + 1)
+  ]
+]
+
+learn next_name current [
+  for i from 1 to count NAMES [
+    if item i of NAMES is current [ give item (i % (count NAMES) + 1) of NAMES ]
+  ]
+  give item 1 of NAMES
+]
+
+on mouse down left [
+  for each t in tiles [
+    if inside mouse { pos: t.pos, size: { 48, 48 } } [
+      if t.name is not "" [ put counts t.name ((get counts t.name) - 1) ]
+      t.name = next_name t.name
+      put counts t.name ((get counts t.name) + 1)
+    ]
+  ]
+]
+
+on mouse down right [
+  row = 0
+  for each kind in (keys counts) [
+    if mouse.x > 360 and mouse.y > 20 + row * 40 and mouse.y < 52 + row * 40 [
+      remove kind from counts
+      for each t in tiles [ if t.name is kind [ t.name = "" ] ]
+    ]
+    row = row + 1
+  ]
+]
+
+on key "p" [ print counts ]
+
+draw [
+  background 236
+  no stroke
+  for each t in tiles [
+    if t.name is "" [
+      square at t.pos size 48 fill 210
+    ] else [
+      square at t.pos size 48 fill (get colours t.name)
+    ]
+  ]
+  row = 0
+  for each kind in (keys counts) [
+    rect at 360 (20 + row * 40) size ((get counts kind) * 18 + 4) 32 fill (get colours kind)
+    row = row + 1
+  ]
+]

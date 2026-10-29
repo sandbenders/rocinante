@@ -1,0 +1,78 @@
+// Style: the ways a shape can look, in one picture. At the top, the same two
+// colours mixed three ways (`in rgb`, Oklab by default, `in oklch`) and a
+// gradient with uneven `stops`. Then outlines turning corners three ways (`joins`)
+// and lines ending three ways (`caps`). At the bottom, a style kept in a record
+// and used with `style` and `with`, a `with` group, squares turning about their
+// middle (`as center`), a ring of `oklch` hues and a slanting row (`shear`).
+window size 720 560 title "style" resizable false
+
+glow = { fill: (rgb 255 200 90), stroke: white, thickness: 3 }
+outline = { stroke: white, thickness: 2 }
+
+draw [
+  background 28
+  no stroke
+
+  // Mixing: from blue to yellow through grey (rgb), evenly (oklab) or round the hues (oklch).
+  rect at 40 30 size 640 26 fill (gradient [ blue yellow ] in rgb)
+  rect at 40 64 size 640 26 fill (gradient [ blue yellow ])
+  rect at 40 98 size 640 26 fill (gradient [ blue yellow ] in oklch)
+  rect at 40 132 size 640 26 fill (gradient [ navy tomato gold white ] stops [ 0 60 85 100 ])
+
+  // Corners: miter, round and bevel.
+  stroke (rgb 120 200 255)
+  thickness 14
+  no fill
+  x = 80
+  for each corner in [ "miter" "round" "bevel" ] [
+    if corner is "miter" [ joins miter ]
+    if corner is "round" [ joins round ]
+    if corner is "bevel" [ joins bevel ]
+    triangle { x, 290 } { x + 50, 200 } { x + 100, 290 }
+    x = x + 130
+  ]
+
+  // Ends: butt, round and square, each over a thin line where it really ends.
+  for i from 0 to 2 [
+    y = 210 + i * 36
+    if i is 0 [ caps butt ]
+    if i is 1 [ caps round ]
+    if i is 2 [ caps square ]
+    line from 480 y to 660 y stroke (rgb 255 140 120) thickness 16
+    line from 480 y to 660 y stroke white thickness 1
+  ]
+
+  // A named style, on one shape and on a group.
+  joins miter
+  caps round
+  no stroke
+  square at 40 340 size 60 style glow
+  with glow [
+    circle at 150 370 radius 28
+    triangle { 200, 400 } { 230, 340 } { 260, 400 }
+  ]
+  with fill (rgb 90 110 170) stroke (rgb 200 210 255) thickness 2 [
+    rect at 40 430 size 220 50
+  ]
+
+  // Squares about their middle.
+  for i from 0 to 2 [
+    square at (330 + i * 70) 370 size 44 as center fill (hsb (i * 40 + 120) 160 230) style outline
+    push [
+      move (330 + i * 70) 450
+      turn (time * 30 + i * 30)
+      square at 0 0 size 44 as center fill (hsb (i * 40 + 120) 160 230)
+    ]
+  ]
+
+  // A ring of hues at one lightness: oklch keeps them equally bright.
+  for i from 0 to 11 [
+    a = i * 30
+    circle at (580 + (cos a) * 50) (410 + (sin a) * 50) radius 14 fill (oklch 0.75 0.15 a)
+  ]
+  push [
+    move 330 520
+    shear (sin (time * 60) * 25) 0
+    for i from 0 to 2 [ rect at (i * 70 - 22) -10 size 44 20 fill (oklch 0.8 0.12 (i * 120)) ]
+  ]
+]

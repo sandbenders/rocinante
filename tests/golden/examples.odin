@@ -30,6 +30,12 @@ EXAMPLES := [?]Example{
 	{"bricks", 120, {1}}, // collision: a brick broken by then
 	{"mouse", 5, {1}}, // the canvas before any input: the starting dots and the grid
 	{"ease", 200, {1}}, // ease and tween: a dot past its end, the ball on its way
+	{"rays", 30, {1}}, // cast and inside on a list of every kind of shape
+	{"sorting", 200, {1}}, // list verbs: the bars after the first shuffle has settled
+	{"tally", 5, {1}}, // tables: the tiles and a bar for each colour name
+	{"style", 40, {1}}, // mixing, stops, joins, caps, named styles, with, as center, oklch, shear
+	{"landscape", 100, {1}}, // fbm hills, gaussian stars, simplex clouds, a shooting star
+	{"windows", 5, {1, 2}}, // the map of both windows and the lamps of their settings
 }
 
 // How many pixels may differ for a picture of this many: the scenes allow

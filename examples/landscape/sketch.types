@@ -1,0 +1,12 @@
+stars: a list of records with pos and size
+x: a number
+shooting: a list of records with pos and life
+a: a number
+cx: a number
+puff: a number
+shade: a colour
+base: a number
+x0: a number
+x1: a number
+y0: a number
+y1: a number

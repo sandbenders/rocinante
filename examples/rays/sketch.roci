@@ -1,0 +1,73 @@
+// Rays: a lamp sends light out in every direction, and each ray stops at the first
+// thing it meets (`cast`). The things are one list that mixes every kind of shape:
+// lines, circles, rectangles turned by `angle`, and polygons (`points`). The lamp
+// follows the mouse, and the shape under the mouse lights up (`inside`). One of the
+// rectangles turns: it is shared with the list, so turning it turns it there too.
+window size 640 480 title "rays" resizable false
+
+spinner = { pos: { 420, 300 }, size: { 120, 24 }, angle: 0 }
+things = [
+  { from: { 0, 0 }, to: { 640, 0 } }
+  { from: { 640, 0 }, to: { 640, 480 } }
+  { from: { 640, 480 }, to: { 0, 480 } }
+  { from: { 0, 480 }, to: { 0, 0 } }
+  { from: { 80, 380 }, to: { 220, 420 } }
+  { pos: { 160, 140 }, radius: 40 }
+  { pos: { 500, 120 }, radius: 24 }
+  { pos: { 260, 280 }, size: { 60, 60 }, angle: 20 }
+  { points: [ { 360, 60 } { 430, 170 } { 300, 160 } ] }
+  { points: [ { 520, 380 } { 600, 360 } { 610, 440 } { 540, 450 } ] }
+]
+add spinner to things
+
+lamp = { 320, 240 }
+
+learn draw_thing s [
+  if s.radius > 0 [
+    circle at s.pos radius s.radius
+  ] else [
+    if count s.points is 3 [
+      triangle (item 1 of s.points) (item 2 of s.points) (item 3 of s.points)
+    ] else [
+      if count s.points is 4 [
+        quad (item 1 of s.points) (item 2 of s.points) (item 3 of s.points) (item 4 of s.points)
+      ] else [
+        if s.size.x > 0 [
+          // A rectangle turns about its middle, so draw it from there.
+          push [
+            move (s.pos + s.size / 2)
+            turn s.angle
+            rect at (s.size / -2) size s.size
+          ]
+        ] else [
+          line from s.from to s.to
+        ]
+      ]
+    ]
+  ]
+]
+
+draw [
+  spinner.angle = time * 40
+  if mouse is not pmouse [ lamp = mouse ]
+  background 16
+
+  // Every ray ends where it meets something, or at its full length.
+  thickness 1
+  stroke (rgb 255 220 140 alpha 35)
+  for i from 0 to 359 [
+    far = lamp + { cos i, sin i } * 900
+    h = cast { from: lamp, to: far } things
+    if h.distance > 0 [ line from lamp to h.point ] else [ line from lamp to far ]
+  ]
+
+  stroke (rgb 120 130 160)
+  thickness 3
+  for each s in things [
+    if inside mouse s [ fill (rgb 255 200 90) ] else [ fill (rgb 50 56 80) ]
+    draw_thing s
+  ]
+
+  no stroke
+  circle at lamp radius 8 fill (gradient [ white (rgb 255 220 140 alpha 0) ] as radial)
+]

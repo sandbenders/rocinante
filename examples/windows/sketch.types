@@ -1,0 +1,9 @@
+big: a window
+pad: a window
+rings: a list of records with age
+flash: a number
+dim: true or false
+dot: a number
+falling: a vector of 2 numbers
+drop: a number
+lamps: a list of true or false values

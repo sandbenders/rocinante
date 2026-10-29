@@ -1559,3 +1559,95 @@ test_the_mouse_example_draws_undoes_zooms_and_pans :: proc(t: ^testing.T) {
 	offset = as_pair(global_named(p, "offset"))
 	testing.expect(t, abs(offset.x - 15) < 1e-9 && abs(offset.y + 25) < 1e-9, "offset after the drag")
 }
+
+// The examples that only draw: each runs for a while without a runtime error.
+@(test)
+test_the_drawing_examples_run_without_a_runtime_error :: proc(t: ^testing.T) {
+	for name in ([]string{"rays", "style", "landscape"}) {
+		p := run_text(t, example_text(name), 120)
+		testing.expectf(t, len(p.errors) == 0, "%s hit a runtime error", name)
+		testing.expectf(t, len(roci.recorded(first_window())) > 20, "%s drew too little", name)
+		finish(p)
+	}
+}
+
+@(test)
+test_the_tally_example_counts_a_click_and_forgets_a_name :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("tally"), 1)
+	defer finish(p)
+	w := first_window()
+	counts := proc(p: ^Interp) -> ^Table {return as_table(global_named(p, "counts"))}
+	total := proc(table: ^Table) -> (sum: f64) {
+		for v in table.values {
+			sum += as_number(v)
+		}
+		return
+	}
+	testing.expect_value(t, total(counts(p)), 36)
+
+	// A click on the first tile moves one count from its colour to the next.
+	before := len(counts(p).keys)
+	roci.step({platform.Mouse_Moved{window = platform.Window_Id(w), x = 30, y = 30}, click_event(w, 30, 30)})
+	roci.step({click_event(w, 30, 30, false)})
+	testing.expect_value(t, total(counts(p)), 36)
+	testing.expect(t, len(counts(p).keys) >= before)
+
+	// A right click on the first bar takes its name out, with the tiles it counted.
+	first := counts(p).keys[0]
+	gone := as_number(counts(p).values[0])
+	roci.step({platform.Mouse_Moved{window = platform.Window_Id(w), x = 370, y = 30}, click_event(w, 370, 30, button = .Right)})
+	_, still := table_get(counts(p), first)
+	testing.expect(t, !still, "the first name is taken out")
+	testing.expect_value(t, total(counts(p)), 36 - gone)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_the_sorting_example_keeps_and_skips_the_tall_bars :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("sorting"), 1)
+	defer finish(p)
+	w := first_window()
+	shown := proc(p: ^Interp) -> int {return len(as_list(global_named(p, "shown")).items)}
+	testing.expect_value(t, shown(p), 24)
+	roci.step({key_event(w, .K)})
+	tall := shown(p)
+	testing.expect(t, tall > 0 && tall < 24, "some bars are tall and some are not")
+	roci.step({key_event(w, .K, false), key_event(w, .S)})
+	testing.expect_value(t, shown(p), 24 - tall)
+	roci.step({key_event(w, .S, false), key_event(w, .SPACE)})
+	testing.expect_value(t, shown(p), 24)
+	for _ in 0 ..< 200 {
+		roci.step()
+	}
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_the_windows_example_changes_its_settings_from_keys :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("windows"), 1)
+	defer finish(p)
+	windows := roci.open_windows()
+	if !testing.expect_value(t, len(windows), 2) {
+		return
+	}
+	big, pad := windows[0], windows[1]
+	testing.expect_value(t, roci.window_parent(pad), big)
+	testing.expect(t, roci.window_flag(pad, "topmost"))
+
+	roci.step({key_event(big, ._2)})
+	testing.expect_value(t, roci.window_size(big), [2]f64{640, 400})
+	roci.step({key_event(big, ._2, false), key_event(big, .T)})
+	testing.expect(t, !roci.window_flag(pad, "topmost"), "t takes the pad off the top")
+	roci.step({key_event(big, .T, false), key_event(big, .DOWN)})
+	testing.expect_value(t, roci.window_alpha(pad), 229.5) // 90 in the language; the Odin API counts to 255
+
+	// Holding the mouse in the pad grows the dot, and letting go drops it.
+	roci.step({click_event(pad, 100, 100)})
+	for _ in 0 ..< 30 {
+		roci.step()
+	}
+	roci.step({click_event(pad, 100, 100, false)})
+	testing.expect(t, as_number(global_named(p, "drop")) > 5, "the dot dropped")
+	testing.expect_value(t, as_number(global_named(p, "dot")), 0)
+	testing.expect_value(t, len(p.errors), 0)
+}

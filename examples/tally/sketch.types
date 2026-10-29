@@ -1,0 +1,6 @@
+NAMES: a list of text
+colours: a table of colours
+tiles: a list of records with pos and name
+counts: a table of numbers
+picked: text
+row: a number
