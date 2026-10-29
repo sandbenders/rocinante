@@ -175,3 +175,83 @@ test_a_smooth_picture_compresses_well_and_reads_back :: proc(t: ^testing.T) {
 		testing.expect(t, bytes.equal(bytes.buffer_to_bytes(&decoded.pixels), img.pixels))
 	}
 }
+
+// Data of a random length made of random pieces: runs of one byte, copies of
+// something earlier (near and far), bytes from a small alphabet, and noise. Built
+// from `seed` alone, so a failure is found again from the seed it prints.
+@(private = "file")
+fuzz_data :: proc(seed: u64) -> []u8 {
+	r := rand.create(seed)
+	gen := rand.default_random_generator(&r)
+	size := int(rand.uint32(gen) % 120_000)
+	if seed % 4 == 0 {
+		size %= 600 // plenty of tiny inputs too
+	}
+	data := make([dynamic]u8, 0, size)
+	for len(data) < size {
+		n := min(size - len(data), 1 + int(rand.uint32(gen) % 700))
+		switch rand.uint32(gen) % 5 {
+		case 0: // a run
+			b := u8(rand.uint32(gen))
+			for _ in 0 ..< n {append(&data, b)}
+		case 1: // a copy of something earlier, possibly overlapping itself
+			if len(data) == 0 {
+				append(&data, u8(rand.uint32(gen)))
+				continue
+			}
+			from := len(data) - 1 - int(rand.uint32(gen) % u32(min(len(data), 40_000)))
+			for k in 0 ..< n {append(&data, data[from + k])}
+		case 2: // a small alphabet, like text
+			for _ in 0 ..< n {append(&data, 'a' + u8(rand.uint32(gen) % 6))}
+		case 3: // a slow ramp, like a gradient
+			start := rand.uint32(gen)
+			for k in 0 ..< n {append(&data, u8(start + u32(k / 7)))}
+		case: // noise
+			for _ in 0 ..< n {append(&data, u8(rand.uint32(gen)))}
+		}
+	}
+	return data[:]
+}
+
+@(test)
+test_deflate_round_trips_generated_data :: proc(t: ^testing.T) {
+	for seed in u64(1) ..= 300 {
+		data := fuzz_data(seed)
+		defer delete(data)
+		packed := deflate(data)
+		defer delete(packed)
+		buf: bytes.Buffer
+		defer bytes.buffer_destroy(&buf)
+		err := zlib.inflate(packed, &buf, true, len(data))
+		if !testing.expectf(t, err == nil && bytes.equal(bytes.buffer_to_bytes(&buf), data), "seed %d (%d bytes): %v", seed, len(data), err) {
+			return
+		}
+	}
+}
+
+@(test)
+test_png_round_trips_generated_pictures :: proc(t: ^testing.T) {
+	for seed in u64(1) ..= 60 {
+		r := rand.create(seed)
+		gen := rand.default_random_generator(&r)
+		w, h := 1 + int(rand.uint32(gen) % 300), 1 + int(rand.uint32(gen) % 200)
+		// Fill from generated data, so pictures have runs, repeats and noise.
+		data := fuzz_data(seed * 7919)
+		defer delete(data)
+		img := Image{w, h, make([]u8, w * h * 4)}
+		defer image_destroy(&img)
+		for &p, i in img.pixels {
+			p = data[i % len(data)] if len(data) > 0 else u8(i)
+		}
+		encoded, ok := png_encode(img)
+		defer delete(encoded)
+		decoded, err := png.load_from_bytes(encoded, {.alpha_add_if_missing})
+		same := err == nil && bytes.equal(bytes.buffer_to_bytes(&decoded.pixels), img.pixels)
+		if err == nil {
+			png.destroy(decoded)
+		}
+		if !testing.expectf(t, ok && same, "seed %d (%dx%d): %v", seed, w, h, err) {
+			return
+		}
+	}
+}
