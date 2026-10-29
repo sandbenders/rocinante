@@ -1141,3 +1141,31 @@ test_a_button_is_held_in_the_window_it_went_down_in_and_pressed_says_any :: proc
 	step()
 	testing.expect_value(t, seen_pressed, [2]bool{false, false})
 }
+
+@(test)
+test_each_window_keeps_its_own_cursor :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	a := window(200, 200)
+	b := window(100, 100)
+	testing.expect_value(t, window_cursor(a), Cursor.Arrow)
+	set_cursor(b, .None)
+	testing.expect_value(t, window_cursor(a), Cursor.Arrow)
+	testing.expect_value(t, window_cursor(b), Cursor.None)
+	testing.expect_value(t, window_cursor(Window(99)), Cursor.Arrow) // no such window
+	step() // headless: there is no cursor to show or hide, and nothing breaks
+	reset_settings(win_for(b))
+	testing.expect_value(t, window_cursor(b), Cursor.Arrow)
+}
+
+@(test)
+test_cursors_are_found_by_name :: proc(t: ^testing.T) {
+	for name, c in CURSOR_NAMES {
+		found, ok := cursor_by_name(name)
+		testing.expect(t, ok && found == c, name)
+	}
+	_, ok := cursor_by_name("hand") // not offered yet
+	testing.expect(t, !ok)
+	_, ok = cursor_by_name("")
+	testing.expect(t, !ok)
+}

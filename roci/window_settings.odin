@@ -23,6 +23,7 @@ reset_settings :: proc(w: ^Win) {
 	set_ratio(w.id, 0)
 	set_window_alpha(w.id, 255)
 	w.parent = 0
+	w.cursor = .Arrow
 }
 
 set_bordered :: proc(w: Window, on: bool) {
@@ -245,5 +246,60 @@ set_window_position :: proc(w: Window, x, y: int) {
 	win.position = {x, y}
 	if win.handle != nil {
 		platform.set_position(win.handle, x, y)
+	}
+}
+
+// ---- the mouse cursor ----
+
+// The mouse cursor over a window, by the name a sketch writes (`cursor none`).
+Cursor :: enum u8 {
+	Arrow,
+	None,
+}
+
+CURSOR_NAMES := [Cursor]string{
+	.Arrow = "arrow",
+	.None  = "none",
+}
+
+cursor_by_name :: proc(name: string) -> (c: Cursor, ok: bool) {
+	for n, k in CURSOR_NAMES {
+		if n == name {
+			return k, true
+		}
+	}
+	return .Arrow, false
+}
+
+set_cursor :: proc(w: Window, c: Cursor) {
+	if win := win_for(w); win != nil {
+		win.cursor = c
+	}
+}
+
+window_cursor :: proc(w: Window) -> Cursor {
+	if win := win_for(w); win != nil {
+		return win.cursor
+	}
+	return .Arrow
+}
+
+// SDL has one cursor for the whole program, so each frame it takes the setting of
+// the window the mouse is over, and the arrow when it is over none of them.
+@(private)
+apply_cursor :: proc() {
+	if the.headless {
+		return
+	}
+	want := Cursor.Arrow
+	for w in the.windows {
+		if w.alive && w.handle != nil && platform.state(w.handle).hovered {
+			want = w.cursor
+			break
+		}
+	}
+	if want != the.cursor_shown {
+		platform.show_cursor(want != .None)
+		the.cursor_shown = want
 	}
 }

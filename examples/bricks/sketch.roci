@@ -2,7 +2,7 @@
 // and breaks the bricks it hits. Shapes are plain records: the ball is a circle
 // (pos and radius), the bricks and the paddle are rectangles (pos and size), the
 // walls are lines (from and to). `contact` says which way to bounce.
-window size 480 360 title "bricks" resizable false
+window size 480 360 title "bricks" resizable false cursor none
 
 COLORS = [ tomato orange gold yellowgreen mediumturquoise ]
 bricks = []

@@ -59,6 +59,7 @@ Win :: struct {
 	largest:      [2]int,
 	ratio:        f64,              // the shape it keeps when resized; 0 for any
 	position:     [2]int,           // where it was asked to be (a headless window has no screen)
+	cursor:       Cursor,           // the mouse cursor while the mouse is over it
 }
 
 Sketch :: struct {
@@ -98,6 +99,7 @@ Sketch :: struct {
 	shot_app:     platform.App, // the graphics a headless sketch starts for its first picture
 	shot_renderer: gfx.Renderer,
 	shot_ready:   bool,
+	cursor_shown: Cursor, // what the one cursor of the program is now
 }
 
 @(thread_local)

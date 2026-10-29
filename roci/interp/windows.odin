@@ -57,6 +57,11 @@ apply_window_options :: proc(it: ^Interp, w: roci.Window, options: []lang.IR_Opt
 			roci.set_parent(w, owner)
 		}
 	}
+	if v, found := option_value(it, options, "cursor"); found {
+		if c, known := roci.cursor_by_name(as_text(v)); known {
+			roci.set_cursor(w, c)
+		}
+	}
 }
 
 // `set main_window width 400`: the property is set the way the connecting word of
@@ -87,6 +92,10 @@ set_window_property :: proc(it: ^Interp, w: roci.Window, name: string, value: Va
 	case "focusable": roci.set_focusable(w, as_bool(value))
 	case "grab":      roci.set_grab(w, as_bool(value))
 	case "modal":     roci.set_modal(w, as_bool(value))
+	case "cursor":
+		if c, known := roci.cursor_by_name(as_text(value)); known {
+			roci.set_cursor(w, c)
+		}
 	case "parent":
 		if owner, ok := value.(roci.Window); ok {
 			roci.set_parent(w, owner)

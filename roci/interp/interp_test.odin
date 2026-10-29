@@ -1360,3 +1360,10 @@ draw [
 	// while its centre is within 5 of it, in frames 3 to 7.
 	expect_printed(t, text, "0\n0\n5\n5\n5\n5\n5\n0", 8)
 }
+
+@(test)
+test_a_window_hides_its_cursor_with_window_or_set :: proc(t: ^testing.T) {
+	text := "w = window size 300 200 cursor none\nprint w.cursor\nset w cursor arrow\nprint w.cursor\nset w cursor nonsense\nprint w.cursor\ncursor = 5\nprint cursor"
+	// An unknown name changes nothing; `cursor` stays free as a name.
+	expect_printed(t, text, "none\narrow\narrow\n5")
+}

@@ -45,6 +45,7 @@ WINDOW_OPTIONS := []Option{
 	{"grab", {.Boolean}, false},
 	{"parent", {.Window}, false},
 	{"modal", {.Boolean}, false},
+	{"cursor", {.Name}, false},
 }
 // What `set` changes on a window that is open: the words of `window` and the others a window can be read for.
 SET_OPTIONS := []Option{
@@ -66,6 +67,7 @@ SET_OPTIONS := []Option{
 	{"grab", {.Boolean}, false},
 	{"parent", {.Window}, false},
 	{"modal", {.Boolean}, false},
+	{"cursor", {.Name}, false},
 	{"focused", {.Boolean}, false},
 	{"maximized", {.Boolean}, false},
 	{"minimized", {.Boolean}, false},

@@ -60,7 +60,7 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"alpha", "angle", "as", "at", "bordered", "by", "fill", "focusable", "focused", "font", "from", "fullscreen", "grab", "height", "in",
+	"alpha", "angle", "as", "at", "bordered", "by", "cursor", "fill", "focusable", "focused", "font", "from", "fullscreen", "grab", "height", "in",
 	"largest", "lines", "maximized", "minimized", "modal", "of", "parent", "radius", "ratio", "resizable", "size", "smallest", "start", "stops", "stroke", "style", "thickness", "title", "to", "topmost", "visible", "width",
 }
 
@@ -135,6 +135,7 @@ WINDOW_PROPERTIES := [?]Property_Def{
 	{"focused", .Boolean, 0, true},   // whether it has the keyboard; setting it true brings it to the front
 	{"maximized", .Boolean, 0, true}, // setting it true maximizes it and false restores it
 	{"minimized", .Boolean, 0, true},
+	{"cursor", .Text, 0, true},       // the mouse cursor over it: arrow or none
 	{"hovered", .Boolean, 0, false},  // whether the mouse is over it
 	{"covered", .Boolean, 0, false},  // whether other windows hide it
 }
@@ -160,7 +161,7 @@ FREE_AS_PARAMETERS := [?]string{"height", "size", "width"}
 // else (a `ratio`, a `parent`, `visible`): the parser takes one for a connecting
 // word only where a window call is due one.
 WINDOW_FREE_WORDS := [?]string{
-	"bordered", "focusable", "focused", "grab", "largest", "maximized", "minimized", "modal", "parent", "ratio",
+	"bordered", "cursor", "focusable", "focused", "grab", "largest", "maximized", "minimized", "modal", "parent", "ratio",
 	"resizable", "smallest", "topmost", "visible",
 }
 

@@ -296,6 +296,16 @@ set_always_on_top :: proc(window: ^Window, on: bool) {
 	sdl.SetWindowAlwaysOnTop(window.handle, on)
 }
 
+// Shows or hides the mouse cursor. SDL has one cursor for the whole program, so this
+// is for every window.
+show_cursor :: proc(visible: bool) {
+	if visible {
+		_ = sdl.ShowCursor() // a failure leaves the cursor as it was
+	} else {
+		_ = sdl.HideCursor()
+	}
+}
+
 // The smallest and largest size, in logical pixels; 0 means no limit.
 set_min_size :: proc(window: ^Window, width, height: int) {
 	sdl.SetWindowMinimumSize(window.handle, i32(width), i32(height))

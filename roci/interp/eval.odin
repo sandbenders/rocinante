@@ -222,6 +222,7 @@ read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
 		case "ratio":    return roci.window_ratio(w)
 		case "smallest": return vec2(roci.window_smallest(w))
 		case "largest":  return vec2(roci.window_largest(w))
+		case "cursor":   return roci.CURSOR_NAMES[roci.window_cursor(w)]
 		case "parent":
 			if owner := roci.window_parent(w); owner != 0 {
 				return owner
