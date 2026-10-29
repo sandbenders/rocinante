@@ -271,6 +271,11 @@ set_resizable :: proc(w: Window, on: bool) {
 	}
 	win.fixed = !on
 	if win.handle != nil {
+		if !on {
+			// A compositor may have answered the new window with a size of its
+			// own, and SDL pins whatever size the window has when it is fixed.
+			platform.set_size(win.handle, win.width, win.height)
+		}
 		platform.set_resizable(win.handle, on)
 	}
 }
