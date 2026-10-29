@@ -36,6 +36,7 @@ EXAMPLES := [?]Example{
 	{"style", 40, {1}}, // mixing, stops, joins, caps, named styles, with, as center, oklch, shear
 	{"landscape", 100, {1}}, // fbm hills, gaussian stars, simplex clouds, a shooting star
 	{"windows", 5, {1, 2}}, // the map of both windows and the lamps of their settings
+	{"touch", 5, {1}}, // the two rings it starts with; fingers come from a touch screen or the mouse
 }
 
 // How many pixels may differ for a picture of this many: the scenes allow

@@ -1,0 +1,40 @@
+// Touch: put fingers on the screen. Every finger that goes down sends out a ring
+// (`on touch down`, where `finger` is that finger); every finger held down is a
+// circle with a line back to where it started, numbered by colour (`touches`); and a
+// finger lifted throws a dot the way it moved (`on touch up`). On a computer
+// without a touch screen, the left mouse button is one finger.
+window size 640 480 title "touch" resizable false
+
+rings = [ { pos: { 200, 200 }, age: 0.3, hue: 20 } { pos: { 420, 280 }, age: 0.6, hue: 150 } ]
+thrown = []
+
+learn hue_of f [ give (f.id * 47) % 255 ]
+
+on touch down [ add { pos: finger.pos, age: 0, hue: hue_of finger } to rings ]
+
+on touch up [
+  add { pos: finger.pos, vel: (finger.pos - finger.start) / 10, hue: hue_of finger, life: 1 } to thrown
+]
+
+draw [
+  background 18
+  no fill
+  for each r in rings [
+    r.age = r.age + 1 / 60
+    circle at r.pos radius (r.age * 160) stroke (hsb r.hue 180 255 alpha (100 - r.age * 100)) thickness 3
+  ]
+  rings = keep rings [ it.age < 1 ]
+
+  no stroke
+  for each d in thrown [
+    d.pos = d.pos + d.vel
+    d.life = d.life - 1 / 90
+    circle at d.pos radius 8 fill (hsb d.hue 180 255 alpha (d.life * 100))
+  ]
+  thrown = keep thrown [ it.life > 0 ]
+
+  for each f in touches [
+    line from f.start to f.pos stroke (hsb (hue_of f) 120 200) thickness 2
+    circle at f.pos radius (30 + f.pressure * 30) fill (hsb (hue_of f) 180 255 alpha 70)
+  ]
+]

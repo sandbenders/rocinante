@@ -1,0 +1,2 @@
+rings: a list of records with pos, age and hue
+thrown: a list of records with pos, vel, hue and life
