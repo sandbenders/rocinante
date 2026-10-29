@@ -1262,3 +1262,17 @@ test_fingers_are_numbered_kept_in_order_and_logged :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(fingers), 2)
 	testing.expect_value(t, fingers[1].id, 4)
 }
+
+@(test)
+test_a_tool_can_choose_the_size_of_the_default_window :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	set_default_window_size(400, 300)
+	circle(0, 0, 1)
+	testing.expect_value(t, the.windows[0].width, 400)
+	testing.expect_value(t, the.windows[0].height, 300)
+	testing.expect_value(t, width(), 400)
+	start_headless(1) // a new sketch starts at the usual size again
+	circle(0, 0, 1)
+	testing.expect_value(t, the.windows[0].width, DEFAULT_WIDTH)
+}

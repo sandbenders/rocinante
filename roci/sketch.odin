@@ -75,6 +75,7 @@ Sketch :: struct {
 	closed:       [dynamic]^Win, // closed windows, freed with the sketch
 	next_id:      int,
 	next_finger:  int,     // the number the last finger to go down was given
+	default_size: [2]int,  // the size of a window made with none given; 0 for DEFAULT_WIDTH by DEFAULT_HEIGHT
 	current:      ^Win,    // the window verbs draw into
 	default:      ^Win,    // the window made when a verb needed one and there was none
 	newest:       ^Win,    // the window the last `window` call made: verbs outside any block act on it
@@ -196,7 +197,8 @@ make_win :: proc(width, height: int, position: Maybe([2]int), title: string, fla
 	w.hidden = flags.hidden
 	the.next_id += 1
 	w.id = Window(the.next_id)
-	w.width, w.height = width if width > 0 else DEFAULT_WIDTH, height if height > 0 else DEFAULT_HEIGHT
+	default := default_window_size()
+	w.width, w.height = width if width > 0 else default.x, height if height > 0 else default.y
 	w.title = strings.clone(title)
 	w.alive = true
 	if p, has := position.?; has {
@@ -235,7 +237,7 @@ current_win :: proc() -> ^Win {
 	}
 	if the.default == nil {
 		start()
-		the.default = make_win(DEFAULT_WIDTH, DEFAULT_HEIGHT, nil, "rocinante")
+		the.default = make_win(0, 0, nil, "rocinante")
 	}
 	return the.default
 }
@@ -290,4 +292,18 @@ set_seed :: proc(seed: u64) {
 	the.seed, the.seed_chosen = seed, true
 	the.rng = maths.rng_make(seed)
 	the.noise = maths.noise_make(seed)
+}
+
+// The size of a window made without one: 800 by 600, unless a tool chose another
+// for this sketch (the documentation draws its examples at 400 by 300).
+set_default_window_size :: proc(width, height: int) {
+	the.default_size = {width, height}
+}
+
+@(private)
+default_window_size :: proc() -> [2]int {
+	if the.default_size.x > 0 && the.default_size.y > 0 {
+		return the.default_size
+	}
+	return {DEFAULT_WIDTH, DEFAULT_HEIGHT}
 }
