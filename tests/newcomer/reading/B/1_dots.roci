@@ -1,4 +1,5 @@
 background 20
 repeat 30 [
-  circle at random width random height radius random 20 fill rgb random 255 100 200
+  fill rgb random 255 100 200
+  circle at random width random height radius random 20
 ]

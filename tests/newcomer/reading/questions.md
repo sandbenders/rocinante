@@ -30,7 +30,7 @@ Say before starting: "These are three short programs in a language you have neve
 |---|---|---|
 | 1 | 30 | `repeat` not understood |
 | 2 | anywhere: a random place in the window | `random width` not understood (group B: the arguments ran together) |
-| 3 | a random radius up to 20 | the call boundaries were misread (group B: `radius random 20 fill rgb ...`) |
+| 3 | a random radius up to 20 | the call boundaries were misread (group B: `random width random height radius random 20`) |
 | 4 | yes, to the right, 2 pixels a frame | `draw` running every frame not understood |
 | 5 | it goes up and down smoothly, 50 pixels either side of the middle | `sin` of time not understood |
 | 6 | the sine (`sin (time * 90)`), not `time` or `90` | **the nesting question**: group B's `sin time * 90 * 50` reads several ways; this is where the two styles should differ |
