@@ -1665,3 +1665,68 @@ test_a_vector_and_two_numbers_draw_what_four_numbers_draw :: proc(t: ^testing.T)
 		testing.expect_value(t, [4]f32{c.args[0], c.args[1], c.args[2], c.args[3]}, [4]f32{5, 6, 80, 40})
 	}
 }
+
+finger_event :: proc(w: roci.Window, key: u64, phase: platform.Finger_Phase, x, y: f32) -> platform.Event {
+	return platform.Finger_Changed{window = platform.Window_Id(w), finger = {1, key}, phase = phase, x = x, y = y, pressure = 0.5}
+}
+
+@(test)
+test_touch_blocks_see_their_finger_and_draw_sees_every_finger :: proc(t: ^testing.T) {
+	text := `on touch down [ print finger.id  print finger.pos ]
+on touch up [ print (finger.pos - finger.start) ]
+on mouse down [ print "mouse" ]
+draw [ print (count touches) ]`
+	p := run_text(t, text)
+	defer finish(p)
+	w := first_window()
+	clear(&p.printed)
+	roci.step({finger_event(w, 5, .Down, 0.5, 0.5)})
+	roci.step({finger_event(w, 6, .Down, 0, 0), finger_event(w, 5, .Moved, 0.75, 0.5)})
+	roci.step({finger_event(w, 5, .Up, 0.75, 0.5)})
+	roci.step()
+	testing.expect_value(t, printed(p), "1\n{ 400, 300 }\n1\n2\n{ 0, 0 }\n2\n{ 200, 0 }\n1\n1")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_a_list_of_fingers_keeps_their_fields :: proc(t: ^testing.T) {
+	text := `marks = []
+on touch down [ add finger to marks ]
+draw [ for each f in touches [ print f.pressure ] ]`
+	p := run_text(t, text)
+	defer finish(p)
+	w := first_window()
+	clear(&p.printed)
+	roci.step({finger_event(w, 1, .Down, 0.25, 0.5)})
+	for _ in 0 ..< 3 {
+		roci.step() // the frame's memory is freed; the mark kept in the sketch's stays
+	}
+	marks := as_list(global_named(p, "marks"))
+	if testing.expect_value(t, len(marks.items), 1) {
+		testing.expect_value(t, as_pair(read_field(p, marks.items[0], "pos")), [2]f64{200, 300})
+		testing.expect_value(t, as_number(read_field(p, marks.items[0], "id")), 1)
+	}
+	testing.expect_value(t, printed(p), "0.5\n0.5\n0.5\n0.5")
+}
+
+@(test)
+test_the_touch_example_rings_holds_and_throws :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("touch"), 1)
+	defer finish(p)
+	w := first_window()
+	count_of := proc(p: ^Interp, name: string) -> int {return len(as_list(global_named(p, name)).items)}
+	testing.expect_value(t, count_of(p, "rings"), 2)
+	roci.step({finger_event(w, 1, .Down, 0.25, 0.5), finger_event(w, 2, .Down, 0.75, 0.5)})
+	testing.expect_value(t, count_of(p, "rings"), 4)
+	testing.expect_value(t, len(roci.touches()), 2)
+	roci.step({finger_event(w, 1, .Moved, 0.5, 0.5)})
+	roci.step({finger_event(w, 1, .Up, 0.5, 0.5)})
+	testing.expect_value(t, count_of(p, "thrown"), 1)
+	thrown := as_list(global_named(p, "thrown")).items[0]
+	testing.expect_value(t, as_pair(read_field(p, thrown, "vel")), [2]f64{16, 0}) // moved 160 to the right, a tenth a frame
+	for _ in 0 ..< 100 {
+		roci.step()
+	}
+	testing.expect_value(t, count_of(p, "thrown"), 0)
+	testing.expect_value(t, len(p.errors), 0)
+}

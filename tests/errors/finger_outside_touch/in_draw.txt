@@ -1,0 +1,8 @@
+── `finger` only works inside on touch down or on touch up ─── sketch.roci:2:13
+
+2 │   circle at finger.pos radius 20
+  │             ^^^^^^^^^^
+
+`finger` is the finger that has just gone down or come up, so it means something only in the block of `on touch down` or `on touch up`. Everywhere else, `touches` holds every finger on the screen now.
+
+For example:  on touch down [ circle at finger.pos radius 20 ]

@@ -27,6 +27,7 @@ Kind :: enum u8 {
 	Boolean, // true or false: what a comparison gives
 	Expr_Block, // a [ ] that holds one expression, run for each item of a list
 	Table, // names (text) with a value each: `counts = table`
+	Record, // fields with a value each: `{ pos: p, radius: 5 }`, `finger`
 }
 
 Param :: struct {
@@ -73,7 +74,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "false", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "pressed", "tau", "time", "true", "wheel", "width",
+	"anywhere", "false", "finger", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "pressed", "tau", "time", "touches", "true", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -87,6 +88,7 @@ Value_Def :: struct {
 VALUE_DEFS := [?]Value_Def{
 	{"anywhere", .Vector, 2}, // a random point in the window
 	{"false", .Boolean, 0},
+	{"finger", .Record, 0}, // the finger of `on touch down` and `on touch up`: a record with id, pos, start and pressure
 	{"fps", .Number, 0},
 	{"frame", .Number, 0},
 	{"height", .Number, 0},
@@ -97,6 +99,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"pmouse", .Vector, 2}, // where the mouse was a frame ago
 	{"tau", .Number, 0},
 	{"time", .Number, 0}, // seconds since the sketch started
+	{"touches", .List, 0}, // the fingers down in the window now, in the order they went down, each a record like `finger`
 	{"true", .Boolean, 0},
 	{"wheel", .Vector, 2}, // how far the mouse wheel turned since the last frame: y up, x right
 	{"width", .Number, 0},
@@ -150,7 +153,7 @@ property_words :: proc(def: Property_Def) -> string {
 	case .Boolean: return "true or false"
 	case .Vector:  return "a vector of 2 numbers" if def.size == 2 else "a vector"
 	case .Window:  return "a window"
-	case .None, .List, .Block, .Name, .Gradient, .Any, .Expr_Block, .Colour, .Table: return "a value"
+	case .None, .List, .Block, .Name, .Gradient, .Any, .Expr_Block, .Colour, .Table, .Record: return "a value"
 	}
 	return "a value"
 }
@@ -179,7 +182,8 @@ EVENTS := []Event{
 	{"key", {.Text}, "Runs when the named key goes down."},
 	{"mouse down", {.Name}, "Runs when a mouse button goes down; name one to wait for it alone: `on mouse down right`."},
 	{"mouse up", {.Name}, "Runs when a mouse button comes up; name one to wait for it alone: `on mouse up left`."},
-	{"touch", {}, "Runs when a finger touches the screen."},
+	{"touch down", {}, "Runs when a finger touches the screen; `finger` is that finger: `finger.pos`, `finger.id`."},
+	{"touch up", {}, "Runs when a finger leaves the screen; `finger` is that finger, where it was last."},
 	{"resize", {}, "Runs when the window changes size."},
 	{"move", {}, "Runs when the window moves."},
 	{"focus", {}, "Runs when the window gains or loses focus."},

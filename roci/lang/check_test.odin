@@ -1179,3 +1179,28 @@ test_a_constant_list_or_table_never_changes :: proc(t: ^testing.T) {
 	expect_errors(t, "NAMES = table\nput NAMES \"a\" 1", {.Constant_Changed})
 	expect_errors(t, "COLOURS = [ red teal ]\nmine = copy COLOURS\nadd green to mine", {})
 }
+
+// ---- fingers ----
+
+@(test)
+test_a_finger_is_a_record_and_touches_a_list_of_them :: proc(t: ^testing.T) {
+	expect_types(t, "marks = []\non touch down [ add finger to marks ]\ndraw [ n = count touches ]", "marks: a list of records with id, pos, start and pressure\nn: a number")
+	expect_types(t, "on touch up [ moved = finger.pos - finger.start ]\ndraw [ for each f in touches [ p = f.pressure ] ]", "moved: a vector of 2 numbers\np: a number")
+	// A finger met in a list with a record of its own fields is one shape.
+	expect_types(t, "marks = [ { id: 0, pos: { 1, 2 }, start: { 1, 2 }, pressure: 1 } ]\non touch down [ add finger to marks ]", "marks: a list of records with id, pos, start and pressure")
+	expect_errors(t, "on touch down [ x = finger.place ]", {.Unknown_Field})
+}
+
+@(test)
+test_finger_means_something_only_in_a_touch_block :: proc(t: ^testing.T) {
+	expect_errors(t, "x = finger.pos", {.Finger_Outside_Touch})
+	expect_errors(t, "draw [ circle at finger.pos radius 5 ]", {.Finger_Outside_Touch})
+	expect_errors(t, "on mouse down [ x = finger.id ]", {.Finger_Outside_Touch})
+	expect_errors(t, "learn mark [ x = finger.id ]\non touch down [ mark ]", {.Finger_Outside_Touch})
+	expect_types(t, "learn mark f [ give f.id ]\non touch down [ x = mark finger ]", "x: a number")
+	got := check_text("draw [\n  circle at finger.pos radius 5\n]")
+	testing.expect_value(t, got.checked.diagnostics[0].args[3], "on touch down [ circle at finger.pos radius 5 ]")
+	// `finger` and `touches` are built-in names, and the old `on touch` is no event.
+	expect_errors(t, "finger = 1", {.Reserved_Name})
+	expect_errors(t, "on touch [ ]", {.Unknown_Event})
+}

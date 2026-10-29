@@ -71,6 +71,8 @@ event_name :: proc(kind: roci.Happening) -> string {
 	case .Key_Down:   return "key"
 	case .Mouse_Down: return "mouse down"
 	case .Mouse_Up:   return "mouse up"
+	case .Touch_Down: return "touch down"
+	case .Touch_Up:   return "touch up"
 	case .Resize:     return "resize"
 	case .Move:       return "move"
 	case .Focus:      return "focus"
@@ -130,7 +132,9 @@ frame_hook :: proc(w: roci.Window) {
 			if len(h.args) > 0 && !event_arg_matches(p, h, happening) {
 				continue
 			}
+			p.finger = happening.finger
 			run_block(p, h.body)
+			p.finger = {}
 		}
 	}
 	for &h in p.handlers {

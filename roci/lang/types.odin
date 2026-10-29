@@ -278,6 +278,7 @@ type_of_kind :: proc(ts: ^Types, kind: registry.Kind, first_list: Type_Id = T_ER
 	case .Vector:   return vector_of(ts, 2)
 	case .List:     return list_of(ts, T_BOXED)
 	case .Table:    return table_of(ts, fresh(ts))
+	case .Record:   return T_BOXED // a record's fields come from where it is made, not from a kind
 	case .Any:
 		if first_list != T_ERROR && kind_of(ts, first_list) == .List {
 			return Type_Id(ts.items[resolve(ts, first_list)].a)

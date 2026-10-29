@@ -152,6 +152,7 @@ Checker :: struct {
 	diags:    [dynamic]Diagnostic,
 	depth:    int,              // how many blocks deep
 	deferred: int,              // how many blocks deep that run later (draw, on, every)
+	in_touch: int,              // how many `on touch down` or `on touch up` blocks deep, where `finger` means something
 	report:   bool,             // false in the first pass, which only settles record shapes
 	sites:    map[int]int,      // where a record is made (its offset) to its shape
 	site_names: map[int][]string, // the fields each place's `{ }` is written with, by its shape
@@ -365,6 +366,7 @@ kind_words :: proc(kind: registry.Kind) -> string {
 	case .Vector:   return "a vector"
 	case .List:     return "a list"
 	case .Table:    return "a table"
+	case .Record:   return "a record"
 	case .Block, .Expr_Block: return "a block"
 	case .Window:   return "a window"
 	case .Name:     return "a word"
@@ -571,7 +573,14 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 			result.window = check_kind(c, k.window, T_WINDOW, "on")
 		}
 		result.args = args[:]
+		touch := k.event == "touch down" || k.event == "touch up"
+		if touch {
+			c.in_touch += 1
+		}
 		result.body = check_block(c, k.body, true)
+		if touch {
+			c.in_touch -= 1
+		}
 		return result
 	}
 	result.window = check_kind(c, k.window, T_WINDOW, "on")
@@ -836,6 +845,10 @@ check_path :: proc(c: ^Checker, e: ^Expr, path: Path) -> ^IR {
 		touch(c, sym)
 		base = new_ir(c, Span{e.span.file, e.span.start, e.span.start + len(word)}, sym.type, IR_Load{symbol = sym})
 	} else if def, ok := builtin_value(word); ok {
+		if word == "finger" && c.in_touch == 0 {
+			note(c, .Finger_Outside_Touch, e.span, word, "", "", fmt.tprintf("on touch down [ %s ]", text_at_line(c, e.span)))
+			return error_ir(c, e.span)
+		}
 		base = new_ir(c, Span{e.span.file, e.span.start, e.span.start + len(word)}, type_of_value(c, def), IR_Builtin{name = word})
 	} else if colour, is_colour := maths.name_lookup(word); is_colour {
 		base = new_ir(c, Span{e.span.file, e.span.start, e.span.start + len(word)}, T_COLOUR, IR_Colour{value = colour})
@@ -885,10 +898,31 @@ builtin_value :: proc(word: string) -> (registry.Value_Def, bool) {
 
 @(private)
 type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
+	switch def.name {
+	case "finger":  return finger_type(c)
+	case "touches": return list_of(c.types, finger_type(c))
+	}
 	if def.kind == .Vector {
 		return vector_of(c.types, def.size)
 	}
 	return type_of_kind(c.types, def.kind)
+}
+
+// The record a finger is (`finger`, an item of `touches`): one shape for the whole
+// sketch, kept from the first pass to the second under a place no record is made at.
+@(private)
+finger_type :: proc(c: ^Checker) -> Type_Id {
+	FINGER_SITE :: -1
+	shape, known := c.sites[FINGER_SITE]
+	if !known {
+		shape = new_shape(c.types, c.alloc)
+		c.sites[FINGER_SITE] = shape
+		add_field(c.types, shape, "id", T_NUMBER)
+		add_field(c.types, shape, "pos", vector_of(c.types, 2))
+		add_field(c.types, shape, "start", vector_of(c.types, 2))
+		add_field(c.types, shape, "pressure", T_NUMBER)
+	}
+	return record_of(c.types, shape)
 }
 
 // A field no record of this shape ever has, anywhere in the sketch: most likely a

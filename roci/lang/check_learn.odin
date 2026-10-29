@@ -186,8 +186,11 @@ instantiate :: proc(c: ^Checker, decl: ^Learn_Decl, arg_types: []Type_Id, unused
 	c.instance_keys[key] = inst
 	append(&c.instances, inst)
 
-	// The verb sees only its own names, then the sketch's: nothing of the caller's.
-	saved_locals, saved_verb_locals, saved_verb, saved_walking := c.locals, c.verb_locals, c.verb, c.walking
+	// The verb sees only its own names, then the sketch's: nothing of the caller's,
+	// not even the finger of the `on touch` block it is called from, which would make
+	// it depend on where it was first called. A finger is passed to it instead.
+	saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch := c.locals, c.verb_locals, c.verb, c.walking, c.in_touch
+	c.in_touch = 0
 	c.locals = make([dynamic]^Symbol, c.alloc)
 	c.verb_locals = make([dynamic]^Symbol, c.alloc)
 	c.walking = make([dynamic]string, c.alloc)
@@ -232,7 +235,7 @@ instantiate :: proc(c: ^Checker, decl: ^Learn_Decl, arg_types: []Type_Id, unused
 	inst.mutated = mutated
 
 	c.deferred -= 1
-	c.locals, c.verb_locals, c.verb, c.walking = saved_locals, saved_verb_locals, saved_verb, saved_walking
+	c.locals, c.verb_locals, c.verb, c.walking, c.in_touch = saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch
 	return inst
 }
 
