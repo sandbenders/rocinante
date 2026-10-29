@@ -281,3 +281,14 @@ test_gpu_debug_mode_is_off_unless_asked_for :: proc(t: ^testing.T) {
 	testing.expect(t, gpu_debug_wanted("00")) // only a plain 0 turns it off
 	testing.expect_value(t, GPU_DEBUG_VARIABLE, "ROCI_GPU_DEBUG")
 }
+
+@(test)
+test_sdl_is_quit_only_by_the_last_app_that_started_it :: proc(t: ^testing.T) {
+	// Two apps (a window's and a headless sketch's picture device) share SDL; the first
+	// to finish must leave the video system alone.
+	apps_running = 2
+	quit_sdl()
+	testing.expect_value(t, apps_running, 1)
+	quit_sdl()
+	testing.expect_value(t, apps_running, 0)
+}

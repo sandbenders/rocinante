@@ -9,6 +9,7 @@
 // loop runs there.
 package platform
 
+import "base:intrinsics"
 import "core:strings"
 import sdl "vendor:sdl3"
 
@@ -38,12 +39,30 @@ Window_Options :: struct {
 DEFAULT_WIDTH :: 800
 DEFAULT_HEIGHT :: 600
 
+// How many apps have started SDL and not shut it down yet. A headless sketch starts a
+// device of its own for pictures while the program may hold another, and SDL_Quit
+// tears down the video system for every one of them, so it is called only by the last.
+@(private)
+apps_running: int
+
+// Gives back one app's hold on SDL: its video subsystem (SDL counts how many times it was
+// started), and everything else when it was the last.
+@(private)
+quit_sdl :: proc() {
+	if intrinsics.atomic_sub(&apps_running, 1) == 1 {
+		sdl.Quit()
+	} else {
+		sdl.QuitSubSystem({.VIDEO})
+	}
+}
+
 // Starts SDL and the GPU device. On failure `app.error` says why and nothing is
 // left open.
 init :: proc(app: ^App) -> bool {
 	if !sdl.Init({.VIDEO}) {
 		return fail(app, "SDL_Init")
 	}
+	intrinsics.atomic_add(&apps_running, 1)
 	// Every shader format rocinante compiles to, so SDL picks the backend of the
 	// system: Vulkan (SPIR-V), Metal (MSL) or Direct3D 12 (DXIL).
 	props := sdl.CreateProperties()
@@ -63,7 +82,7 @@ init :: proc(app: ^App) -> bool {
 	app.device = sdl.CreateGPUDeviceWithProperties(props)
 	if app.device == nil {
 		fail(app, "SDL_CreateGPUDevice")
-		sdl.Quit()
+		quit_sdl()
 		return false
 	}
 	app.driver = string(sdl.GetGPUDeviceDriver(app.device))
@@ -91,9 +110,10 @@ shutdown :: proc(app: ^App) {
 	delete(app.error)
 	delete(app.gpu)
 	if app.device != nil {
+		_ = sdl.WaitForGPUIdle(app.device)
 		sdl.DestroyGPUDevice(app.device)
 	}
-	sdl.Quit()
+	quit_sdl()
 	app^ = {}
 }
 
