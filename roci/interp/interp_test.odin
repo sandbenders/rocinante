@@ -1563,7 +1563,7 @@ test_the_mouse_example_draws_undoes_zooms_and_pans :: proc(t: ^testing.T) {
 // The examples that only draw: each runs for a while without a runtime error.
 @(test)
 test_the_drawing_examples_run_without_a_runtime_error :: proc(t: ^testing.T) {
-	for name in ([]string{"rays", "style", "landscape"}) {
+	for name in ([]string{"rays", "style", "landscape", "shapes"}) {
 		p := run_text(t, example_text(name), 120)
 		testing.expectf(t, len(p.errors) == 0, "%s hit a runtime error", name)
 		testing.expectf(t, len(roci.recorded(first_window())) > 20, "%s drew too little", name)
@@ -1728,5 +1728,19 @@ test_the_touch_example_rings_holds_and_throws :: proc(t: ^testing.T) {
 		roci.step()
 	}
 	testing.expect_value(t, count_of(p, "thrown"), 0)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_the_benchmark_example_draws_its_hundred_thousand_circles :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("benchmark"), 1)
+	defer finish(p)
+	circles := 0
+	for c in roci.recorded(first_window()) {
+		if c.kind == gfx.Kind.Circle {
+			circles += 1
+		}
+	}
+	testing.expect_value(t, circles, 100_000)
 	testing.expect_value(t, len(p.errors), 0)
 }

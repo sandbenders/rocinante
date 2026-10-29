@@ -21,6 +21,8 @@ Example :: struct {
 	windows: []int, // which windows to take a picture of, counting from 1
 }
 
+// `benchmark` has no picture: 100,000 small circles hardly compress (737 KB), and an
+// interpreter test checks the work it does exactly, which is what it promises.
 EXAMPLES := [?]Example{
 	{"two_windows", 30, {1, 2}},
 	{"garden", 30, {1, 2}},
@@ -36,6 +38,7 @@ EXAMPLES := [?]Example{
 	{"style", 40, {1}}, // mixing, stops, joins, caps, named styles, with, as center, oklch, shear
 	{"landscape", 100, {1}}, // fbm hills, gaussian stars, simplex clouds, a shooting star
 	{"windows", 5, {1, 2}}, // the map of both windows and the lamps of their settings
+	{"shapes", 30, {1}}, // every basic shape, as the Odin example draws them
 	{"touch", 5, {1}}, // the two rings it starts with; fingers come from a touch screen or the mouse
 }
 

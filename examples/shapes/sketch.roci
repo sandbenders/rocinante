@@ -1,0 +1,56 @@
+// Shapes: every basic shape, as main.odin draws them through the renderer by hand.
+// Filled shapes, outlines of five thicknesses, fill and outline together half see-
+// through, lines and a point, a square turning about its middle, and a shadow that
+// follows the mouse. (main.odin also writes its name; text comes with the text verbs.)
+window size 800 600 title "shapes"
+
+draw [
+  background 235
+
+  // Filled shapes, no outline.
+  fill tomato
+  circle at 120 120 radius 60
+  fill teal
+  ellipse at 300 120 size 140 70
+  fill goldenrod
+  rect at 420 60 size 120 120
+  fill slateblue
+  triangle { 600, 180 } { 660, 60 } { 720, 180 }
+
+  // Outlines of several thicknesses.
+  no fill
+  stroke 30
+  for i from 0 to 4 [
+    thickness (i * 2 + 1)
+    circle at (80 + i * 130) 300 radius 50
+  ]
+
+  // Fill and outline together, two thirds solid.
+  fill orange
+  stroke navy
+  thickness 6
+  alpha 67
+  rect at 80 400 size 160 100
+  ellipse at 340 450 size 160 100
+  triangle { 480, 500 } { 560, 400 } { 640, 500 }
+
+  // Lines and a point, and a square turning about its middle.
+  alpha 100
+  stroke crimson
+  thickness 3
+  for i from 0 to 9 [ line from 30 (540 + i * 4) to 770 (540 + i * 4 + i * 2) ]
+  thickness 10
+  point at 760 300
+  push [
+    move 700 400
+    turn (time * 60)
+    fill seagreen
+    stroke 0
+    thickness 2
+    rect at 0 0 size 80 80 as center
+  ]
+
+  // Follows the mouse.
+  no stroke
+  circle at mouse radius 24 fill (rgb 0 0 0 alpha 35)
+]

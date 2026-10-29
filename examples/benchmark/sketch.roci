@@ -1,0 +1,25 @@
+// The circle benchmark in rocinante: the same 100,000 circles a frame as main.odin,
+// drifting with the clock, the colour changing every hundred, but run by the
+// interpreter, so the difference between the two is what interpreting costs. It
+// prints the frame rate once a second.
+COUNT = 100000
+
+window size 800 600 title "benchmark"
+seed 7
+
+every 1 second [ print (round fps) ]
+
+draw [
+  background 20
+  no stroke
+  t = time
+  for i from 0 to COUNT - 1 [
+    if i % 100 is 0 [
+      shade = floor (i / 100)
+      fill (hsb (shade % 255) 200 255 alpha 78)
+    ]
+    x = i * 7919 % 800 + 20 * sin (t * 90 + i)
+    y = i * 104729 % 600 + 20 * cos (t * 70 + i)
+    circle at x y radius (2 + i % 5)
+  ]
+]
