@@ -443,6 +443,21 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case "shear":
 		roci.shear(n(a, 0), n(a, 1))
 
+	case "forward":
+		roci.forward(n(a, 0))
+	case "back":
+		roci.back(n(a, 0))
+	case "left":
+		roci.left(n(a, 0))
+	case "right":
+		roci.right(n(a, 0))
+	case "pen up":
+		roci.pen_up()
+	case "pen down":
+		roci.pen_down()
+	case "home":
+		roci.home()
+
 	case "map":
 		return roci.map_range(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4))
 	case "clamp":
@@ -507,6 +522,7 @@ HANDLED := [?]string{
 	"circle", "ellipse", "rect", "square", "line", "point", "triangle", "quad", "arc",
 	"fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "caps", "joins",
 	"rgb", "hsb", "oklch", "gradient", "mix", "move", "turn", "grow", "shear", "push",
+	"forward", "back", "left", "right", "pen up", "pen down", "home",
 	"map", "clamp", "dist", "abs", "sqrt", "sin", "cos", "floor", "round", "ceil",
 	"random", "pick", "gaussian", "seed", "noise", "fbm",
 }

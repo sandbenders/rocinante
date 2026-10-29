@@ -318,6 +318,12 @@ draw [
 
 Logo's turtle is built in, in 2D and 3D: `forward`, `back`, `left`, `right`, `pen up`, `pen down`, `home`, plus `up`/`down`/`roll` in 3D. Each window has its own turtle.
 
+- **Where it starts** (decided 2026-10-29): in the middle of its window, facing up, as in Logo; `right` turns it clockwise, as `turn` turns the canvas, and `left` anticlockwise. `home` sends it back there facing up, **without drawing** (Logo and Python draw a line home when the pen is down; a sketch more often wants to start a new figure), and leaves the pen up or down. The middle is worked out when the turtle first moves, so a window resized before then still starts it in its middle.
+- **What it draws with** (decided 2026-10-29): its lines are ordinary lines, in the stroke colour, thickness, caps and alpha, under the current transform. While the stroke is off, which is the default (§5.15), it draws in black, so `repeat 4 [ forward 100  right 90 ]` in a fresh sketch shows a square (non-negotiable 1). Setting a stroke colours it; `no stroke` does not hide it (lift the pen with `pen up`).
+- **How long it lasts** (decided 2026-10-29): like style and transforms, every frame starts the turtle at home, and `push [ ]` puts its place, heading and pen back afterwards, so a branching tree is a recursive verb with a `push` for each branch (`examples/tree`); `with [ ]`, which keeps the style only, leaves it walking. Set-up drawing in a window with no `draw` block keeps the turtle where the set-up left it.
+- **Teaching**: Logo's short words (`fd`, `bk`, `lt`, `rt`, `pu`, `pd`, `penup`, `pendown`) are "did you mean" suggestions for the whole ones (`registry.VERB_SYNONYMS`), never verbs of their own (one word for one job, §5.1).
+- Reading where the turtle is and which way it faces from a sketch, and showing the turtle itself, are not offered yet; the Odin API has `turtle_position` for tests and tools.
+
 ### 5.7 Errors
 
 Format, modelled on Elm:

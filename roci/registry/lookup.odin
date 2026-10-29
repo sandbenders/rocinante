@@ -158,13 +158,26 @@ edit_distance :: proc(a, b: string) -> int {
 	return rows[prev][len(b)]
 }
 
+// Words people from other tools reach for, and the verb that means it here: Logo's
+// short turtle words, which are never a few letters away from the long ones.
+VERB_SYNONYMS := [?][2]string{
+	{"fd", "forward"}, {"bk", "back"}, {"backward", "back"}, {"lt", "left"}, {"rt", "right"},
+	{"pu", "pen up"}, {"penup", "pen up"}, {"pd", "pen down"}, {"pendown", "pen down"},
+}
+
 // "Did you mean ...?": the known word closest to `word`, if one is close
-// enough. A word that is already known gets no suggestion. Verbs come first,
-// then keywords, values, connecting words and colour names; a tie goes to the
-// earlier one, so the answer never depends on anything but the tables.
+// enough. A word that is already known gets no suggestion, and a word another
+// tool uses for one of ours (`fd`) gets ours. Verbs come first, then keywords,
+// values, connecting words and colour names; a tie goes to the earlier one, so
+// the answer never depends on anything but the tables.
 suggest :: proc(word: string) -> (suggestion: string, ok: bool) {
 	if word == "" || is_reserved(word) {
 		return "", false
+	}
+	for pair in VERB_SYNONYMS {
+		if pair[0] == word {
+			return pair[1], true
+		}
 	}
 	limit := clamp(len(word) / 3, 1, 3)
 	best := limit + 1

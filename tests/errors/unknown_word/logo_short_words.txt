@@ -1,0 +1,26 @@
+── I don't know the word `fd` ────────────────────────── sketch.roci:2:1
+
+2 │ fd 100
+  │ ^^
+
+A line starts with a verb, a keyword or a name, and I don't know `fd`. Check the spelling, or teach the word with `learn`.
+
+Did you mean:  forward 100
+
+── I don't know the word `rt` ────────────────────────── sketch.roci:3:1
+
+3 │ rt 90
+  │ ^^
+
+A line starts with a verb, a keyword or a name, and I don't know `rt`. Check the spelling, or teach the word with `learn`.
+
+Did you mean:  right 90
+
+── I don't know the word `pu` ────────────────────────── sketch.roci:4:1
+
+4 │ pu
+  │ ^^
+
+A line starts with a verb, a keyword or a name, and I don't know `pu`. Check the spelling, or teach the word with `learn`.
+
+Did you mean:  pen up

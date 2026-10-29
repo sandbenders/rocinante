@@ -97,6 +97,7 @@ Saved :: struct {
 	scope:     Scope,
 	style:     Style,
 	transform: Transform,
+	turtle:    Turtle, // saved and put back with the transform
 }
 
 Command_List :: struct {
@@ -113,6 +114,7 @@ Command_List :: struct {
 	gradients:  [dynamic]Gradient, // the gradients this frame's commands use; ids index it from 1
 	text:       [dynamic]u8,       // the characters of this frame's text commands, end to end
 	background_paint: Gradient_Ref, // a gradient behind everything, when set
+	turtle:     Turtle, // turtle.odin
 }
 
 // Starts a frame: forgets last frame's commands and puts the style, the
@@ -128,6 +130,7 @@ begin_frame :: proc(list: ^Command_List) {
 	list.style = DEFAULT_STYLE
 	list.transform = IDENTITY
 	list.span = {}
+	list.turtle = {}
 }
 
 // Ends a frame. Gives how many `push`es were never popped; the list is put
@@ -399,7 +402,7 @@ shear :: proc(list: ^Command_List, x_degrees, y_degrees: f64) {
 // ---- scopes ----
 
 push :: proc(list: ^Command_List, scope: Scope) {
-	append(&list.saved, Saved{scope, list.style, list.transform})
+	append(&list.saved, Saved{scope, list.style, list.transform, list.turtle})
 }
 
 // Brings back what the matching `push` saved. Gives false when there was
@@ -414,6 +417,7 @@ pop :: proc(list: ^Command_List) -> bool {
 	list.style = saved.style
 	if saved.scope == .Style_And_Transform {
 		list.transform = saved.transform
+		list.turtle = saved.turtle
 	}
 	return true
 }
@@ -431,6 +435,7 @@ List_Mark :: struct {
 	span:             Span,
 	background:       maths.Colour,
 	background_paint: Gradient_Ref,
+	turtle:           Turtle,
 }
 
 mark :: proc(list: ^Command_List) -> List_Mark {
@@ -438,7 +443,7 @@ mark :: proc(list: ^Command_List) -> List_Mark {
 		commands = len(list.commands), looks = len(list.looks), text = len(list.text),
 		gradients = len(list.gradients), saved = len(list.saved),
 		style = list.style, transform = list.transform, look_changed = list.look_changed,
-		span = list.span, background = list.background, background_paint = list.background_paint,
+		span = list.span, background = list.background, background_paint = list.background_paint, turtle = list.turtle,
 	}
 }
 
@@ -451,4 +456,5 @@ rewind :: proc(list: ^Command_List, m: List_Mark) {
 	resize(&list.saved, m.saved)
 	list.style, list.transform, list.look_changed, list.span = m.style, m.transform, m.look_changed, m.span
 	list.background, list.background_paint = m.background, m.background_paint
+	list.turtle = m.turtle
 }

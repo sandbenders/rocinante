@@ -352,8 +352,8 @@ shear :: proc(x_degrees, y_degrees: f64) {
 	gfx.shear(current_list(), x_degrees, y_degrees)
 }
 
-// Saves the style (`.Style`) or the style and transform (`.Style_And_Transform`,
-// the default) until the matching `pop`.
+// Saves the style (`.Style`) or the style, the transform and the turtle
+// (`.Style_And_Transform`, the default) until the matching `pop`.
 push :: proc(scope := Scope.Style_And_Transform) {
 	gfx.push(current_list(), scope)
 }

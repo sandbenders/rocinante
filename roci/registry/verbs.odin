@@ -155,7 +155,16 @@ VERBS := []Verb{
 		{{{"x", .Number}, {"y", .Number}}, nil, .None},
 	}, "Scales everything drawn after it."},
 	{"shear", {{{{"x", .Number}, {"y", .Number}}, nil, .None}}, "Slants everything drawn after it, by angles in degrees."},
-	{"push", {{{{"body", .Block}}, nil, .None}}, "Runs a block, then puts the style and transforms back as they were."},
+	{"push", {{{{"body", .Block}}, nil, .None}}, "Runs a block, then puts the style, the transforms and the turtle back as they were."},
+
+	// Turtle: one a window, in the middle facing up at the start of every frame
+	{"forward", {{{{"distance", .Number}}, nil, .None}}, "Walks the turtle forward, drawing a line while its pen is down."},
+	{"back", {{{{"distance", .Number}}, nil, .None}}, "Walks the turtle backwards, without turning it round."},
+	{"left", {{{{"degrees", .Number}}, nil, .None}}, "Turns the turtle anticlockwise, in degrees."},
+	{"right", {{{{"degrees", .Number}}, nil, .None}}, "Turns the turtle clockwise, in degrees."},
+	{"pen up", {{{}, nil, .None}}, "Lifts the turtle's pen: it moves without drawing."},
+	{"pen down", {{{}, nil, .None}}, "Puts the turtle's pen down: it draws as it moves, in the stroke, or in black while there is none."},
+	{"home", {{{}, nil, .None}}, "Sends the turtle back to the middle of the window, facing up, without drawing."},
 
 	// Maths
 	{"map", {{{{"value", .Number}, {"from_low", .Number}, {"from_high", .Number}, {"to_low", .Number}, {"to_high", .Number}}, nil, .Number}}, "Moves a number from one range to another."},

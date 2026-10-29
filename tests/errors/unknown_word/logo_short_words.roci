@@ -1,0 +1,4 @@
+// Logo writes its turtle words short; rocinante writes them whole.
+fd 100
+rt 90
+pu

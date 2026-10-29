@@ -206,11 +206,32 @@ void roci_grow_xy(double x, double y);
 /* Slants everything drawn after it, by angles in degrees. */
 void roci_shear(double x, double y);
 
-/* Saves the style and the transform until the matching roci_pop. */
+/* Saves the style, the transform and the turtle until the matching roci_pop. */
 void roci_push(void);
 
 /* Puts back what the matching roci_push saved. Gives 0 for a pop without a push. */
 int roci_pop(void);
+
+/* Walks the turtle forward, drawing a line while its pen is down. */
+void roci_forward(double distance);
+
+/* Walks the turtle backwards, without turning it round. */
+void roci_back(double distance);
+
+/* Turns the turtle anticlockwise, in degrees. */
+void roci_left(double degrees);
+
+/* Turns the turtle clockwise, in degrees. */
+void roci_right(double degrees);
+
+/* Lifts the turtle's pen: it moves without drawing. */
+void roci_pen_up(void);
+
+/* Puts the turtle's pen down: it draws as it moves, in the stroke, or in black while there is none. */
+void roci_pen_down(void);
+
+/* Sends the turtle back to the middle of the window, facing up, without drawing. */
+void roci_home(void);
 
 /* Moves a number from one range to another. */
 double roci_map(double value, double from_low, double from_high, double to_low, double to_high);

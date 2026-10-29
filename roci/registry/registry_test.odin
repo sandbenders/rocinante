@@ -280,6 +280,18 @@ test_suggest_also_knows_colours_keywords_and_connecting_words :: proc(t: ^testin
 }
 
 @(test)
+test_suggest_turns_logo_short_words_into_the_turtle_verbs :: proc(t: ^testing.T) {
+	for pair in VERB_SYNONYMS {
+		s, ok := suggest(pair[0])
+		testing.expect(t, ok, pair[0])
+		testing.expect_value(t, s, pair[1])
+		_, is_verb := find_verb(pair[1])
+		testing.expect(t, is_verb, pair[1])
+		testing.expect(t, !is_reserved(pair[0]), pair[0])
+	}
+}
+
+@(test)
 test_suggest_stays_quiet_when_nothing_is_close_or_the_word_is_known :: proc(t: ^testing.T) {
 	for word in ([?]string{"", "circle", "zzzzzz", "xylophone", "q"}) {
 		_, ok := suggest(word)

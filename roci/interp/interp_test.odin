@@ -1202,3 +1202,31 @@ test_held_is_true_while_the_key_is_down :: proc(t: ^testing.T) {
 	roci.step({key_event(w, .A, false)})
 	testing.expect_value(t, printed(p), "true\ntrue\nfalse")
 }
+
+// ---- the turtle ----
+
+@(test)
+test_the_turtle_walks_a_square_back_to_where_it_began :: proc(t: ^testing.T) {
+	p := run_text(t, "repeat 4 [ forward 100  right 90 ]")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 4)
+	ends := [4][2]f32{{400, 200}, {500, 200}, {500, 300}, {400, 300}}
+	for end, i in ends {
+		testing.expect_value(t, commands[i].kind, gfx.Kind.Line)
+		testing.expect_value(t, [2]f32{commands[i].args[2], commands[i].args[3]}, end)
+	}
+}
+
+@(test)
+test_the_pen_lifts_and_push_brings_the_turtle_back :: proc(t: ^testing.T) {
+	text := "pen up\nback 100\npen down\nlearn branch size [\n  if size < 20 [ stop ]\n  forward size\n  push [ left 30  branch (size / 2) ]\n  push [ right 30  branch (size / 2) ]\n]\nbranch 80\nforward 10\nhome\nleft 90\nforward 5"
+	p := run_text(t, text)
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	// Trunk 80, two branches of 40, four of 20, then the walk on from the trunk's top and from home.
+	testing.expect_value(t, len(commands), 1 + 2 + 4 + 2)
+	testing.expect_value(t, commands[0].args, [8]f32{400, 400, 400, 320, 0, 0, 0, 0})
+	testing.expect_value(t, commands[7].args, [8]f32{400, 320, 400, 310, 0, 0, 0, 0})
+	testing.expect_value(t, commands[8].args, [8]f32{400, 300, 395, 300, 0, 0, 0, 0})
+}

@@ -475,7 +475,7 @@ abi_shear :: proc "c" (x, y: f64) {
 	shear(x, y)
 }
 
-// Saves the style and the transform until the matching `roci_pop`.
+// Saves the style, the transform and the turtle until the matching `roci_pop`.
 @(export, link_name = "roci_push")
 abi_push :: proc "c" () {
 	context = runtime.default_context()
@@ -487,6 +487,50 @@ abi_push :: proc "c" () {
 abi_pop :: proc "c" () -> c.int {
 	context = runtime.default_context()
 	return 1 if pop() else 0
+}
+
+// ---- turtle ----
+
+@(export, link_name = "roci_forward")
+abi_forward :: proc "c" (distance: f64) {
+	context = runtime.default_context()
+	forward(distance)
+}
+
+@(export, link_name = "roci_back")
+abi_back :: proc "c" (distance: f64) {
+	context = runtime.default_context()
+	back(distance)
+}
+
+@(export, link_name = "roci_left")
+abi_left :: proc "c" (degrees: f64) {
+	context = runtime.default_context()
+	left(degrees)
+}
+
+@(export, link_name = "roci_right")
+abi_right :: proc "c" (degrees: f64) {
+	context = runtime.default_context()
+	right(degrees)
+}
+
+@(export, link_name = "roci_pen_up")
+abi_pen_up :: proc "c" () {
+	context = runtime.default_context()
+	pen_up()
+}
+
+@(export, link_name = "roci_pen_down")
+abi_pen_down :: proc "c" () {
+	context = runtime.default_context()
+	pen_down()
+}
+
+@(export, link_name = "roci_home")
+abi_home :: proc "c" () {
+	context = runtime.default_context()
+	home()
 }
 
 // ---- maths ----
