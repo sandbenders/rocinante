@@ -1,0 +1,4 @@
+a = [ { 100, 100 } { 200, 150 } ]
+b = a
+add { 300, 200 } to b
+for each p in a [ circle at p radius ((count a) * 5) ]
