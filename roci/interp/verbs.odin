@@ -481,6 +481,12 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return roci.sin_deg(n(a, 0))
 	case "cos":
 		return roci.cos_deg(n(a, 0))
+	case "ease":
+		curve := roci.Ease.Smooth
+		if word, found := option_value(it, call.options, "as"); found {
+			curve, _ = maths.ease_by_name(as_text(word))
+		}
+		return roci.ease(n(a, 0), curve)
 
 	case "random":
 		if call.shape == 0 {
@@ -523,7 +529,7 @@ HANDLED := [?]string{
 	"fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "caps", "joins",
 	"rgb", "hsb", "oklch", "gradient", "mix", "move", "turn", "grow", "shear", "push",
 	"forward", "back", "left", "right", "pen up", "pen down", "home",
-	"map", "clamp", "dist", "abs", "sqrt", "sin", "cos", "floor", "round", "ceil",
+	"map", "clamp", "dist", "abs", "sqrt", "sin", "cos", "ease", "floor", "round", "ceil",
 	"random", "pick", "gaussian", "seed", "noise", "fbm",
 }
 

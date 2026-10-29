@@ -21,6 +21,7 @@ package roci
 import "base:runtime"
 import "core:c"
 import "core:strings"
+import "maths"
 
 Abi_Colour :: struct {
 	r, g, b, a: f32,
@@ -599,6 +600,21 @@ abi_sin :: proc "c" (degrees: f64) -> f64 {
 abi_cos :: proc "c" (degrees: f64) -> f64 {
 	context = runtime.default_context()
 	return cos_deg(degrees)
+}
+
+@(export, link_name = "roci_ease")
+abi_ease :: proc "c" (amount: f64) -> f64 {
+	context = runtime.default_context()
+	return ease(amount)
+}
+
+// A curve by name: "smooth", "linear", "in", "out", "back", "elastic" or "bounce";
+// any other name is smooth.
+@(export, link_name = "roci_ease_as")
+abi_ease_as :: proc "c" (amount: f64, curve: cstring) -> f64 {
+	context = runtime.default_context()
+	c, _ := maths.ease_by_name(text_from_abi(curve))
+	return ease(amount, c)
 }
 
 @(export, link_name = "roci_random")

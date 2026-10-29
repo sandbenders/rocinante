@@ -74,6 +74,7 @@ SET_OPTIONS := []Option{
 }
 ALPHA_OPTION := []Option{{"alpha", {.Number}, false}}
 NOISE_OPTIONS := []Option{{"as", {.Name}, false}} // `as simplex`; Perlin is the default
+EASE_OPTIONS := []Option{{"as", {.Name}, false}} // `as out`; smooth is the default
 RANDOM_RANGE := []Option{{"from", {.Number}, true}, {"to", {.Number}, true}}
 
 VERBS := []Verb{
@@ -182,6 +183,7 @@ VERBS := []Verb{
 	{"ceil", {{{{"value", .Number}}, nil, .Number}}, "The whole number at or above a number: ceil 2.1 is 3, ceil -2.7 is -2."},
 	{"sin", {{{{"degrees", .Number}}, nil, .Number}}, "The sine of an angle in degrees."},
 	{"cos", {{{{"degrees", .Number}}, nil, .Number}}, "The cosine of an angle in degrees."},
+	{"ease", {{{{"amount", .Number}}, EASE_OPTIONS, .Number}}, "How far along a movement is when an amount (0 to 1) of its time has passed, on a curve: `ease t as out`. Smooth unless `as` says linear, in, out, back, elastic or bounce."},
 
 	// Randomness and noise
 	{"random", {

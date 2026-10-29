@@ -136,3 +136,11 @@ ceil :: proc(value: f64) -> f64 {
 no_negative_zero :: proc(value: f64) -> f64 {
 	return 0 if value == 0 else value
 }
+
+Ease :: maths.Ease
+
+// How far along a movement is when `amount` (0 to 1) of its time has passed, on a
+// curve: smooth unless another is asked for.
+ease :: proc(amount: f64, curve := Ease.Smooth) -> f64 {
+	return maths.ease(amount, curve)
+}

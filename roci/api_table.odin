@@ -63,6 +63,7 @@ API_NAMES := [?]Api_Entry{
 	{"ceil", "ceil"},
 	{"sin", "sin_deg"},
 	{"cos", "cos_deg"},
+	{"ease", "ease"},
 	{"random", "random"}, // `random_between` is `random from … to …`
 	{"pick", "pick"},
 	{"gaussian", "gaussian"},

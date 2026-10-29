@@ -266,6 +266,12 @@ double roci_sin(double degrees);
 /* The cosine of an angle in degrees. */
 double roci_cos(double degrees);
 
+/* How far along a movement is when an amount (0 to 1) of its time has passed, on a curve: `ease t as out`. Smooth unless `as` says linear, in, out, back, elastic or bounce. */
+double roci_ease(double amount);
+
+/* The same on a named curve: smooth, linear, in, out, back, elastic or bounce (any other name is smooth). */
+double roci_ease_as(double amount, const char *curve);
+
 /* A random number from 0 up to a limit, or `random from 1 to 3` between two numbers. */
 double roci_random(double limit);
 

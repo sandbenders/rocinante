@@ -1182,3 +1182,16 @@ test_the_cursor_names_are_the_words_the_language_allows :: proc(t: ^testing.T) {
 		testing.expectf(t, found, "`%s` is not a word of `cursor`", name)
 	}
 }
+
+@(test)
+test_the_ease_curves_are_the_words_the_language_allows :: proc(t: ^testing.T) {
+	words := registry.word_choices("ease", "as")
+	testing.expect_value(t, len(words), len(maths.EASE_NAMES))
+	for name in maths.EASE_NAMES {
+		found := false
+		for w in words {
+			found ||= w == name
+		}
+		testing.expectf(t, found, "`%s` is not a word of `ease`", name)
+	}
+}

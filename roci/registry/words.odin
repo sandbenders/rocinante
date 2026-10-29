@@ -19,11 +19,14 @@ ORIGIN_WORDS := []string{"center", "corner"}
 GRADIENT_KINDS := []string{"linear", "radial", "conic"}
 MIX_SPACES := []string{"oklab", "rgb", "oklch"}
 CURSOR_WORDS := []string{"arrow", "none"}
+EASE_WORDS := []string{"smooth", "linear", "in", "out", "back", "elastic", "bounce"}
 
 WORD_CHOICES := []Word_Choices{
 	{"caps", "style", {"butt", "round", "square"}},
 	{"joins", "style", {"miter", "round", "bevel"}},
 	{"noise", "as", {"perlin", "simplex"}},
+	{"ease", "as", EASE_WORDS},
+	{"tween", "as", EASE_WORDS},
 	{"window", "cursor", CURSOR_WORDS},
 	{"set", "cursor", CURSOR_WORDS},
 	{"fill", "as", GRADIENT_KINDS},

@@ -123,6 +123,8 @@ abi_table_init :: proc "contextless" () {
 	{"roci_ceil", "ceil", 0, typeid_of(type_of(abi_ceil)), "", ""},
 	{"roci_sin", "sin", 0, typeid_of(type_of(abi_sin)), "", ""},
 	{"roci_cos", "cos", 0, typeid_of(type_of(abi_cos)), "", ""},
+	{"roci_ease", "ease", 0, typeid_of(type_of(abi_ease)), "", ""},
+	{"roci_ease_as", "", 0, typeid_of(type_of(abi_ease_as)), "double roci_ease_as(double amount, const char *curve)", "The same on a named curve: smooth, linear, in, out, back, elastic or bounce (any other name is smooth)."},
 	{"roci_random", "random", 0, typeid_of(type_of(abi_random)), "", ""},
 	{"roci_random_between", "", 0, typeid_of(type_of(abi_random_between)), "double roci_random_between(double low, double high)", "A random number from `low` up to `high`."},
 	{"roci_gaussian", "gaussian", 0, typeid_of(type_of(abi_gaussian)), "", ""},

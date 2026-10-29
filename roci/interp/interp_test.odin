@@ -1367,3 +1367,47 @@ test_a_window_hides_its_cursor_with_window_or_set :: proc(t: ^testing.T) {
 	text := "w = window size 300 200 cursor none\nprint w.cursor\nset w cursor arrow\nprint w.cursor\ncursor = 5\nprint cursor"
 	expect_printed(t, text, "none\narrow\n5")
 }
+
+// ---- ease and tween ----
+
+@(test)
+test_ease_maps_an_amount_onto_a_curve :: proc(t: ^testing.T) {
+	expect_printed(t, "print (ease 0.5)\nprint (ease 0.5 as in)\nprint (ease 0.25 as linear)\nprint (ease 2 as out)", "0.5\n0.125\n0.25\n1")
+}
+
+@(test)
+test_a_tween_moves_its_place_each_frame_and_lands_on_the_value :: proc(t: ^testing.T) {
+	// Frames are 1/60 of a second apart; the tween starts while the sketch sets up.
+	text := "x = 0\ntween x to 60 over 1 as linear\ndraw [ print (round x) ]"
+	p := run_text(t, text, 70)
+	defer finish(p)
+	lines := strings.split(printed(p), "\n", context.temp_allocator)
+	testing.expect_value(t, lines[0], "1")
+	testing.expect_value(t, lines[29], "30")
+	testing.expect_value(t, lines[59], "60")
+	testing.expect_value(t, lines[69], "60")
+}
+
+@(test)
+test_tweens_move_fields_vectors_parts_and_colours :: proc(t: ^testing.T) {
+	text := `balls = [ { pos: { 0, 0 } } { pos: { 0, 0 } } ]
+for each b in balls [ tween b.pos to { 10, 20 } over 0.1 ]
+c = black
+tween c to white over 0.1 as linear
+p = { 5, 5 }
+tween p.x to 50 over 0.1
+draw [ ]
+every 1 seconds [
+  second = item 2 of balls
+  print second.pos
+  print c.r
+  print p
+]`
+	expect_printed(t, text, "{ 10, 20 }\n255\n{ 50, 5 }", 61)
+}
+
+@(test)
+test_a_new_tween_of_the_same_place_replaces_the_old :: proc(t: ^testing.T) {
+	text := "x = 0\ntween x to 1000 over 10\ntween x to 5 over 0.1\ndraw [ ]\nevery 1 seconds [ print x ]"
+	expect_printed(t, text, "5", 61)
+}

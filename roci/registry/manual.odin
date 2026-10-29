@@ -78,6 +78,18 @@ sample :: proc(kind: Kind, index: int, verb := "", after := "") -> string {
 		}
 	}
 	numbers := [?]string{"100", "100", "50", "50", "0", "90", "0", "0"}
+	// A tween moves a name of the sketch (the examples have a number `x`) over some seconds.
+	if verb == "ease" && after == "amount" {
+		return "0.5"
+	}
+	if verb == "tween" {
+		if kind == .Any && after == "place" {
+			return "x"
+		}
+		if after == "over" {
+			return "0.5"
+		}
+	}
 	// The collision verbs take shapes, which are records.
 	switch verb {
 	case "touching", "contact", "hits", "inside", "cast":
