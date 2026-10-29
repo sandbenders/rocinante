@@ -300,5 +300,18 @@ taught_by_siblings :: proc(path: string) -> []Taught_Verb {
 			append(&taught, ..taught_in(other, string(data), context.temp_allocator))
 		}
 	}
+	// And the libraries of its libs folder.
+	w: os.Walker
+	os.walker_init(&w, fmt.tprintf("%s/libs", folder))
+	defer os.walker_destroy(&w)
+	for fi in os.walker_walk(&w) {
+		if fi.type == .Directory || !strings.has_suffix(fi.name, ".roci") || !strings.contains(folder, "examples") {
+			continue
+		}
+		if data, err := os.read_entire_file(fi.fullpath, context.temp_allocator); err == nil {
+			after := fi.fullpath[strings.index(fi.fullpath, "/libs/") + len("/libs/"):]
+			append(&taught, ..taught_in(fi.fullpath, string(data), context.temp_allocator, strings.clone(after[:strings.index_byte(after, '/')], context.temp_allocator)))
+		}
+	}
 	return taught[:]
 }

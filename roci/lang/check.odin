@@ -521,7 +521,10 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 			window = check_kind(c, k.window, T_WINDOW, "draw")
 		}
 		out.kind = IR_Draw{window = window, body = check_block(c, k.body, true)}
-	case Learn, Use:
+	case Learn:
+		out.kind = IR_Unchecked{}
+	case Use:
+		check_use(c, s, k)
 		out.kind = IR_Unchecked{}
 	case Give:
 		out.kind = check_give(c, k)
@@ -620,6 +623,10 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 	value := check_expr(c, k.value, false)
 	if registry.is_reserved(name) && !registry.is_free_as_name(name) {
 		note(c, .Reserved_Name, span, name, "", "", fix(c, span, fmt.tprintf("my%s", name)))
+		return IR_Error_Stmt{}
+	}
+	if is_library_name(c, name) {
+		note(c, .Library_Name_Taken, span, name, fix(c, span, fmt.tprintf("%s_value", name)))
 		return IR_Error_Stmt{}
 	}
 	sym := lookup(c, name)
@@ -1006,4 +1013,24 @@ check_definitions_only :: proc(c: ^Checker, stmts: []^Stmt) {
 			note(c, .Definitions_Only, s.span, part.name, text_at(c, s.span))
 		}
 	}
+}
+
+// `use "name"`: the library has to be in the program, which is to say in `libs/`.
+@(private)
+check_use :: proc(c: ^Checker, s: ^Stmt, k: Use) {
+	name := library_name(k.name)
+	if !is_library_name(c, name) {
+		note(c, .Library_Missing, s.span, k.name, name)
+	}
+}
+
+// Whether some file of the program belongs to the library of this name.
+@(private)
+is_library_name :: proc(c: ^Checker, name: string) -> bool {
+	for part in c.src.parts {
+		if part.library == name {
+			return true
+		}
+	}
+	return false
 }

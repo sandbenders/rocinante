@@ -105,6 +105,10 @@ fill :: proc(result: ^Scaffold, options: Options, allocator := context.allocator
 			return result^, .Cannot_Create
 		}
 	}
+	// Vendored libraries go here (`roci get`); the folder is committed, so it is kept with a `.keep`.
+	if !put_file(result, root, "libs/.keep", "") {
+		return result^, .Cannot_Create
+	}
 	if !put_directory(result, root, "output") {
 		return result^, .Cannot_Create
 	}

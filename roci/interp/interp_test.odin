@@ -1097,7 +1097,7 @@ test_a_runtime_error_in_another_file_names_that_file :: proc(t: ^testing.T) {
 	testing.expect(t, ok)
 	start(p)
 	testing.expect(t, len(p.errors) > 0)
-	testing.expect(t, strings.contains(report(p), "maths.roci:1:"))
+	testing.expect(t, strings.contains(report(p, context.temp_allocator), "maths.roci:1:"))
 }
 
 @(test)
@@ -1159,4 +1159,16 @@ test_the_starfield_example_of_two_files_draws_its_stars :: proc(t: ^testing.T) {
 	windows := roci.open_windows()
 	testing.expect_value(t, len(windows), 1)
 	testing.expect(t, len(roci.recorded(windows[0])) >= 40)
+}
+
+@(test)
+test_a_library_in_libs_runs_with_its_hidden_helper_and_the_sketch_wins_a_clash :: proc(t: ^testing.T) {
+	root := "output/tests/interp_libs"
+	_ = os.remove_all(root)
+	_ = os.make_directory_all("output/tests/interp_libs/libs/stars")
+	write_sketch(t, "output/tests/interp_libs/libs/stars/stars.roci", "learn twinkle n [ print (double_it n) ]\nhidden learn double_it n [ give n * 2 ]\nlearn glow [ print \"library glow\" ]\nlearn flash [ glow ]\n")
+	write_sketch(t, "output/tests/interp_libs/sketch.roci", "use \"stars\"\nlearn glow [ print \"my glow\" ]\ntwinkle 4\nglow\nflash\nstars.glow\n")
+	program, problem := folder.read_program("output/tests/interp_libs/sketch.roci")
+	testing.expect_value(t, problem, "")
+	expect_files_printed(t, program.files, "8\nmy glow\nlibrary glow\nlibrary glow")
 }

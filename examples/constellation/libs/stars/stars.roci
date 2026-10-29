@@ -1,0 +1,12 @@
+// A small library of stars. `star` is for sketches to use; `twinkle` is its own helper.
+STAR_COLOUR = gold
+
+learn star x y size [
+  fill STAR_COLOUR
+  circle at x y radius (twinkle size x)
+]
+
+hidden learn twinkle size x [
+  wave = sin (time * 90 + x)
+  give size * (1 + 0.3 * wave)
+]

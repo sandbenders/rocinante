@@ -42,23 +42,26 @@ find_cases :: proc() -> [dynamic]Case {
 			continue
 		}
 		path := strings.clone(strings.trim_suffix(fi.fullpath, ".roci"), context.temp_allocator) // the walker reuses its buffer
-		parts := strings.split(path, "/", context.temp_allocator)
-		if len(parts) < 2 {
+		marker := strings.index(path, "tests/errors/")
+		if marker < 0 {
 			continue
 		}
-		// tests/errors/<id>/<case>.roci is one file; tests/errors/<id>/<case>/<file>.roci is a folder of them.
-		if len(parts) >= 4 && parts[len(parts) - 4] == "errors" {
-			folder := strings.join(parts[:len(parts) - 1], "/", context.temp_allocator)
+		// tests/errors/<id>/<case>.roci is one file; tests/errors/<id>/<case>/... is a folder of them.
+		parts := strings.split(path[marker + len("tests/errors/"):], "/", context.temp_allocator)
+		if len(parts) >= 3 {
+			folder := strings.join({path[:marker + len("tests/errors/")], parts[0], "/", parts[1]}, "", context.temp_allocator)
 			seen := false
 			for existing in cases {
 				seen ||= existing.path == folder
 			}
 			if !seen {
-				append(&cases, Case{id_folder = parts[len(parts) - 3], name = parts[len(parts) - 2], path = folder, folder = true})
+				append(&cases, Case{id_folder = parts[0], name = parts[1], path = folder, folder = true})
 			}
 			continue
 		}
-		append(&cases, Case{id_folder = parts[len(parts) - 2], name = parts[len(parts) - 1], path = path})
+		if len(parts) == 2 {
+			append(&cases, Case{id_folder = parts[0], name = parts[1], path = path})
+		}
 	}
 	return cases
 }
@@ -152,24 +155,25 @@ check_case :: proc(t: ^testing.T, c: Case) -> (Checked_Text, bool) {
 		return check_text(string(data)), true
 	}
 	files := make([dynamic]File_Text, context.temp_allocator)
-	handle, open_err := os.open(c.path)
-	if !testing.expectf(t, open_err == nil, "cannot open %s", c.path) {
-		return {}, false
-	}
-	defer os.close(handle)
-	entries, read_err := os.read_dir(handle, -1, context.temp_allocator)
-	if !testing.expectf(t, read_err == nil, "cannot read %s", c.path) {
-		return {}, false
-	}
-	for entry in entries {
-		if !strings.has_suffix(entry.name, ".roci") {
+	w: os.Walker
+	os.walker_init(&w, c.path)
+	defer os.walker_destroy(&w)
+	for fi in os.walker_walk(&w) {
+		if fi.type == .Directory || !strings.has_suffix(fi.name, ".roci") {
 			continue
 		}
-		data, err := os.read_entire_file(fmt.tprintf("%s/%s", c.path, entry.name), context.temp_allocator)
-		if !testing.expectf(t, err == nil, "cannot read %s/%s", c.path, entry.name) {
+		data, err := os.read_entire_file(fi.fullpath, context.temp_allocator)
+		if !testing.expectf(t, err == nil, "cannot read %s", fi.fullpath) {
 			return {}, false
 		}
-		append(&files, File_Text{name = strings.clone(entry.name, context.temp_allocator), text = string(data)})
+		// <case>/libs/<library>/x.roci belongs to the library; the other files are the sketch's.
+		relative := strings.clone(strings.trim_prefix(fi.fullpath[strings.index(fi.fullpath, c.path) + len(c.path):], "/"), context.temp_allocator)
+		library := ""
+		if strings.has_prefix(relative, "libs/") {
+			rest := relative[len("libs/"):]
+			library = rest[:strings.index_byte(rest, '/')]
+		}
+		append(&files, File_Text{name = relative, library = library, text = string(data)})
 	}
 	return check_files(files[:]), true
 }

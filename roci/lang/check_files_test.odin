@@ -88,6 +88,18 @@ program_source :: proc(t: ^testing.T, base: string, sketch_text: string) -> Sour
 		}
 		append(&files, File_Text{name = strings.clone(entry.name, context.temp_allocator), text = text})
 	}
+	// The libraries in its libs folder, each file belonging to the folder it is in.
+	w: os.Walker
+	os.walker_init(&w, fmt.tprintf("%s/libs", folder))
+	defer os.walker_destroy(&w)
+	for fi in os.walker_walk(&w) {
+		if fi.type == .Directory || !strings.has_suffix(fi.name, ".roci") {
+			continue
+		}
+		data, _ := os.read_entire_file(fi.fullpath, context.temp_allocator)
+		after := fi.fullpath[strings.index(fi.fullpath, "/libs/") + len("/libs/"):]
+		append(&files, File_Text{name = strings.clone(fmt.tprintf("libs/%s", after), context.temp_allocator), library = strings.clone(after[:strings.index_byte(after, '/')], context.temp_allocator), text = string(data)})
+	}
 	order_files(files[:])
 	return join_sources(files[:], context.temp_allocator)
 }

@@ -6,6 +6,8 @@
 // statement itself reports them, so each is reported once.
 package lang
 
+import "core:strings"
+
 // The caller frees the slice and what it points to (an arena does it).
 prescan :: proc(src: Source, lexed: Lexed, allocator := context.allocator) -> []Taught_Verb {
 	found := make([dynamic]Taught_Verb, allocator)
@@ -20,6 +22,9 @@ prescan :: proc(src: Source, lexed: Lexed, allocator := context.allocator) -> []
 			continue
 		}
 		verb := Taught_Verb{name = span_text(src, tokens[j].span), hidden = hidden, span = tokens[j].span}
+		if part, in_part := part_of(src, verb.span.start); in_part {
+			verb.library = part.library
+		}
 		j += 1
 		params := make([dynamic]string, allocator)
 		for j < len(tokens) && tokens[j].kind == .Name && span_text(src, tokens[j].span) != "with" {
@@ -82,8 +87,43 @@ skip_one_item :: proc(tokens: []Token, j: int) -> int {
 
 // The verbs a file teaches, read without parsing it: what another file of the same
 // program needs to know to read its calls (`extra_taught` of `parse`).
-taught_in :: proc(name, text: string, allocator := context.allocator) -> []Taught_Verb {
+taught_in :: proc(name, text: string, allocator := context.allocator, library := "") -> []Taught_Verb {
 	src := make_source(name, text, 0, allocator)
 	lexed := lex(src, allocator)
-	return prescan(src, lexed, allocator)
+	verbs := prescan(src, lexed, allocator)
+	for &verb in verbs {
+		verb.library = library
+	}
+	return verbs
+}
+
+// The libraries a file asks for with `use "name"` at the start of a line, by the name
+// of the folder in `libs/` each stands for. Read without parsing, so the files of a
+// program can be gathered before it is checked.
+uses_in :: proc(name, text: string, allocator := context.allocator) -> []string {
+	src := make_source(name, text, 0, allocator)
+	lexed := lex(src, allocator)
+	found := make([dynamic]string, allocator)
+	tokens := lexed.tokens
+	for i := 0; i + 1 < len(tokens); i += 1 {
+		if tokens[i].kind != .Name || span_text(src, tokens[i].span) != "use" || tokens[i + 1].kind != .Text {
+			continue
+		}
+		// Only at the start of a line.
+		if i > 0 && tokens[i - 1].kind != .Newline {
+			continue
+		}
+		append(&found, library_name(unescape(span_text(src, tokens[i + 1].span), allocator)))
+	}
+	return found[:]
+}
+
+// The folder of `libs/` a `use` line stands for: its last path segment, so
+// `use "flocking"` and `use "github.com/someone/flocking.git"` both mean `flocking`.
+library_name :: proc(use: string) -> string {
+	name := use
+	if i := strings.last_index_byte(name, '/'); i >= 0 {
+		name = name[i + 1:]
+	}
+	return strings.trim_suffix(name, ".git")
 }

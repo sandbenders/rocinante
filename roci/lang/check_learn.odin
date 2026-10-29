@@ -15,6 +15,7 @@ import "core:strings"
 Learn_Decl :: struct {
 	span:   Span, // the whole statement
 	learn:  Learn,
+	library: string, // the library whose file teaches it; empty for the sketch's own files
 	called: bool,
 }
 
@@ -33,17 +34,48 @@ Verb_Ctx :: struct {
 collect_learns :: proc(c: ^Checker, stmts: []^Stmt) {
 	for s in stmts {
 		if learn, ok := s.kind.(Learn); ok {
-			if first, exists := c.learns[learn.name]; exists {
+			library := library_at(c, s.span.start)
+			key := learn_key(c, library, learn.name)
+			if first, exists := c.learns[key]; exists {
 				file, pos := place_of(c.src, first.span.start)
 				note(c, .Verb_Twice, s.span, learn.name, fmt.tprintf("%s, line %d", file, pos.line), renamed_header(c, s.span, learn.name))
 			} else {
 				decl := new(Learn_Decl, c.alloc)
-				decl^ = Learn_Decl{span = s.span, learn = learn}
-				c.learns[learn.name] = decl
-				append(&c.learn_order, learn.name)
+				decl^ = Learn_Decl{span = s.span, learn = learn, library = library}
+				c.learns[key] = decl
+				append(&c.learn_order, key)
 			}
 		}
 	}
+	// A verb of the sketch's own that a library also teaches wins, and says so.
+	for key in c.learn_order {
+		decl := c.learns[key]
+		if decl.library != "" {
+			continue
+		}
+		for other_key in c.learn_order {
+			other := c.learns[other_key]
+			if other.library != "" && !other.learn.hidden && other.learn.name == decl.learn.name {
+				note(c, .Shadows_Library, decl.span, decl.learn.name, other.library)
+				break
+			}
+		}
+	}
+}
+
+// The library whose file holds a byte offset; empty for the sketch's own files.
+@(private)
+library_at :: proc(c: ^Checker, offset: int) -> string {
+	if part, found := part_of(c.src, offset); found {
+		return part.library
+	}
+	return ""
+}
+
+// Verbs are found by library and name, since two libraries may teach the same word.
+@(private)
+learn_key :: proc(c: ^Checker, library, name: string) -> string {
+	return strings.concatenate({library, "/", name}, c.alloc)
 }
 
 // Whether a `give` appears anywhere in the body: that is what makes a verb give,
@@ -132,6 +164,8 @@ terminates :: proc(stmts: []^Stmt) -> (ends, stops: bool) {
 instantiate :: proc(c: ^Checker, decl: ^Learn_Decl, arg_types: []Type_Id, unused: bool) -> ^IR_Instance {
 	learn := decl.learn
 	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, decl.library)
+	strings.write_string(&b, "/")
 	strings.write_string(&b, learn.name)
 	for t in arg_types {
 		fmt.sbprintf(&b, "|%d", int(resolve(c.types, t)))
@@ -219,8 +253,8 @@ check_give :: proc(c: ^Checker, k: Give) -> IR_Stmt_Kind {
 // mistake in them is still found.
 @(private)
 check_unused_verbs :: proc(c: ^Checker) {
-	for name in c.learn_order {
-		decl := c.learns[name]
+	for key in c.learn_order {
+		decl := c.learns[key]
 		if decl.called {
 			continue
 		}
@@ -263,7 +297,12 @@ check_taught_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR 
 			return error_ir(c, e.span)
 		}
 	}
-	decl, known := c.learns[k.taught.name]
+	decl, known := c.learns[learn_key(c, k.taught.library, k.taught.name)]
+	if known {
+		if !check_taught_visibility(c, e, k, decl) {
+			return error_ir(c, e.span)
+		}
+	}
 	if !known {
 		// Taught in another file: its body is not here to check.
 		return new_ir(c, e.span, T_BOXED, IR_Call{taught = k.taught, args = args[:], options = options[:]})
@@ -323,4 +362,36 @@ renamed_header :: proc(c: ^Checker, span: Span, name: string) -> string {
 	}
 	at += span.start
 	return line_replacing(c.src, Span{span.file, at, at + len(name)}, fmt.tprintf("%s2", name), c.alloc)
+}
+
+// A verb of a library may be private to it, and a word two libraries teach has to be
+// named with its library when no file of the sketch (or of the caller's own library)
+// teaches it too. Says what is wrong and gives false when the call cannot stand.
+@(private)
+check_taught_visibility :: proc(c: ^Checker, e: ^Expr, k: Call, decl: ^Learn_Decl) -> bool {
+	if decl.library == "" {
+		return true
+	}
+	caller := library_at(c, e.span.start)
+	if caller == decl.library {
+		return true
+	}
+	if decl.learn.hidden {
+		params := strings.join(k.taught.params, " ", context.temp_allocator)
+		note(c, .Hidden_Verb, e.span, decl.learn.name, decl.library, fmt.tprintf("learn %s %s [ ... ]", decl.learn.name, params))
+		return false
+	}
+	if strings.has_prefix(text_at(c, e.span), strings.concatenate({decl.library, "."}, context.temp_allocator)) {
+		return true // written with its library
+	}
+	for key in c.learn_order {
+		other := c.learns[key]
+		if other == decl || other.learn.name != decl.learn.name || other.learn.hidden || other.library == "" || other.library == decl.library {
+			continue
+		}
+		qualified := fmt.tprintf("%s.%s", decl.library, text_at(c, e.span))
+		note(c, .Library_Clash, e.span, decl.library, other.library, decl.learn.name, fix(c, e.span, qualified))
+		return false
+	}
+	return true
 }

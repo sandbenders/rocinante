@@ -1,0 +1,8 @@
+── `use` goes at the top of a file ──────────────────── sketch.roci:1:12
+
+1 │ repeat 2 [ use "stars" ]
+  │            ^^^
+
+A library is brought in for the whole sketch, so `use` is written on a line of its own, outside every block.
+
+Write:  use "stars"

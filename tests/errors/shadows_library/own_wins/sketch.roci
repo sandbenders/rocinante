@@ -1,0 +1,3 @@
+use "stars"
+learn glow n [ circle at n n radius 9 ]
+glow 5

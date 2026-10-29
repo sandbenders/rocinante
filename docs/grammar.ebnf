@@ -58,6 +58,7 @@ style_words     = option { option } ;
 (* Section 5.5 and 5.8; the unit is one of the registry's EVERY_UNITS. *)
 every_statement = "every" argument 'unit' block ;
 draw_statement  = "draw" [ argument ] block ;
+(* At the top of a file, outside every block. The name is a folder of libs/, or a git URL that ends in one. *)
 use_statement   = "use" TEXT ;
 
 (* The event phrases and what follows them are the registry's EVENTS; a window may come first (`on garden key "space"`), and the second
@@ -68,6 +69,8 @@ on_statement    = "on" ( [ argument ] 'event phrase' { argument } | argument "re
    required arguments, then connecting words. Which shape of a verb group is meant
    is the checker's choice, by count and then kinds; the parser only
    needs the largest count any shape takes and the options any shape lists. *)
+(* A verb a library teaches may be written with the library before it, `physics.wiggle ball`; it has to be
+   named so when two libraries teach the same word. *)
 call           = 'verb' { argument } { option } ;
 option         = 'connecting word' { argument } ;
 

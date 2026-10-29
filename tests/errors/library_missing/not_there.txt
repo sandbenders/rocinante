@@ -1,0 +1,8 @@
+── I cannot find the library `stars` ─────────────────── sketch.roci:1:1
+
+1 │ use "stars"
+  │ ^^^^^^^^^^^
+
+`use "stars"` reads the library from the libs folder of this sketch, and there is no folder `libs/stars` with it. `roci get` puts a library there.
+
+In a terminal, in the folder of this sketch:  roci get stars

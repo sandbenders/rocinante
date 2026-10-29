@@ -624,6 +624,7 @@ parse_draw :: proc(p: ^Parser) -> Stmt_Kind {
 
 @(private)
 parse_use :: proc(p: ^Parser) -> Stmt_Kind {
+	use_token := cur(p)
 	advance(p)
 	t := cur(p)
 	if t.kind != .Text {
@@ -642,6 +643,10 @@ parse_use :: proc(p: ^Parser) -> Stmt_Kind {
 		return Error_Stmt{}
 	}
 	advance(p)
+	if len(p.groups) > 0 {
+		report(p, .Use_Not_Top, use_token.span, text_of(p, t), fmt.tprintf("use %s", text_of(p, t)))
+		return Error_Stmt{}
+	}
 	return Use{name = unescape(text_of(p, t), p.alloc)}
 }
 

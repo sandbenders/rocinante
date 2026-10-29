@@ -1,0 +1,8 @@
+── Both `a` and `b` teach `wiggle` ───────────────────── sketch.roci:3:1
+
+3 │ wiggle 5
+  │ ^^^^^^^^
+
+A word that two libraries teach has to say which one it means: the name of the library, a dot and the word.
+
+Write:  a.wiggle 5

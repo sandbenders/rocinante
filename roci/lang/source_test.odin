@@ -135,3 +135,75 @@ contains :: proc(s, sub: string) -> bool {
 	}
 	return false
 }
+
+// ---- libraries ----
+
+@(test)
+test_a_use_line_names_the_folder_of_libs_it_stands_for :: proc(t: ^testing.T) {
+	testing.expect_value(t, library_name("flocking"), "flocking")
+	testing.expect_value(t, library_name("github.com/someone/noise-tools"), "noise-tools")
+	testing.expect_value(t, library_name("https://example.org/a/b.git"), "b")
+	uses := uses_in("sketch.roci", "use \"flocking\"\nx = 1\nuse \"github.com/a/sparks.git\"\nrepeat 2 [ y = 2 ]\n", context.temp_allocator)
+	testing.expect_value(t, len(uses), 2)
+	testing.expect_value(t, uses[0], "flocking")
+	testing.expect_value(t, uses[1], "sparks")
+	testing.expect_value(t, len(uses_in("sketch.roci", "x = 1 use \"no\"\n", context.temp_allocator)), 0)
+}
+
+@(private = "file")
+stars_library :: proc(extra := "") -> File_Text {
+	return File_Text{name = "libs/stars/stars.roci", library = "stars", text = extra}
+}
+
+@(private = "file")
+ids_of :: proc(got: Checked_Text) -> []Message_Id {
+	ids := make([dynamic]Message_Id, context.temp_allocator)
+	for d in got.checked.diagnostics {
+		append(&ids, d.id)
+	}
+	return ids[:]
+}
+
+@(test)
+test_a_library_verb_is_used_by_its_plain_name_or_with_its_library :: proc(t: ^testing.T) {
+	library := stars_library("learn twinkle n [ glow n ]\nhidden learn glow n [ circle at n n radius 2 ]\n")
+	plain := check_files({library, {name = "sketch.roci", text = "use \"stars\"\ntwinkle 5\n"}})
+	testing.expect_value(t, len(plain.checked.diagnostics), 0)
+	qualified := check_files({library, {name = "sketch.roci", text = "use \"stars\"\nstars.twinkle 5\nx = 1\n"}})
+	testing.expect_value(t, len(qualified.checked.diagnostics), 0)
+	testing.expect_value(t, len(qualified.checked.program.instances), 2) // twinkle, and glow which it calls
+	// A name that is no verb of the library is not a call.
+	wrong := check_files({library, {name = "sketch.roci", text = "use \"stars\"\nstars.nothing 5\n"}})
+	testing.expect(t, len(wrong.checked.diagnostics) > 0)
+}
+
+@(test)
+test_a_library_keeps_using_its_own_verb_when_the_sketch_teaches_the_same_word :: proc(t: ^testing.T) {
+	library := stars_library("learn glow n [ circle at n n radius 2 ]\nlearn twinkle n [ glow n ]\n")
+	got := check_files({library, {name = "sketch.roci", text = "use \"stars\"\nlearn glow n [ circle at n n radius 9 ]\nglow 5\ntwinkle 5\n"}})
+	testing.expect_value(t, len(ids_of(got)), 1)
+	testing.expect_value(t, ids_of(got)[0], Message_Id.Shadows_Library)
+	// Both versions of glow are checked: the sketch's and the library's.
+	testing.expect_value(t, len(got.checked.program.instances), 3)
+}
+
+@(test)
+test_hidden_verbs_are_free_inside_their_own_library_and_the_sketchs_own :: proc(t: ^testing.T) {
+	// In the sketch itself `hidden` has nothing to hide from.
+	own := check_files({{name = "a.roci", text = "hidden learn helper n [ circle at n n radius 2 ]\n"}, {name = "sketch.roci", text = "helper 3\n"}})
+	testing.expect_value(t, len(own.checked.diagnostics), 0)
+	// A second library may teach its own word of the same name.
+	got := check_files({
+		{name = "libs/a/a.roci", library = "a", text = "hidden learn helper n [ circle at n n radius 2 ]\nlearn shout n [ helper n ]\n"},
+		{name = "libs/b/b.roci", library = "b", text = "hidden learn helper n [ circle at n n radius 3 ]\nlearn cry n [ helper n ]\n"},
+		{name = "sketch.roci", text = "use \"a\"\nuse \"b\"\nshout 1\ncry 2\n"},
+	})
+	testing.expect_value(t, len(got.checked.diagnostics), 0)
+}
+
+@(test)
+test_a_library_file_holds_definitions_only_like_the_sketchs_other_files :: proc(t: ^testing.T) {
+	got := check_files({stars_library("circle at 1 1 radius 2\n"), {name = "sketch.roci", text = "use \"stars\"\n"}})
+	testing.expect_value(t, len(ids_of(got)), 1)
+	testing.expect_value(t, ids_of(got)[0], Message_Id.Definitions_Only)
+}

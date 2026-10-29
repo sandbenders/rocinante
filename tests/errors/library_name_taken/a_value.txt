@@ -1,0 +1,8 @@
+── `stars` is the name of a library ──────────────────── sketch.roci:2:1
+
+2 │ stars = 5
+  │ ^^^^^
+
+The sketch uses a library called `stars`, and `stars.word` means that library's word, so `stars` cannot also be a name that holds a value.
+
+Write:  stars_value = 5

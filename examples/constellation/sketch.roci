@@ -1,0 +1,9 @@
+// Stars from a library: `use` brings in libs/stars, and its verbs are plain words.
+use "stars"
+
+window size 400 300
+
+draw [
+  background navy
+  for i from 1 to 30 [ star (i * 13) (20 + (i * 37) % 260) (2 + i % 3) ]
+]

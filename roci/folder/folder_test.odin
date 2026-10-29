@@ -32,6 +32,7 @@ test_a_new_sketch_has_the_starting_sketch_the_asset_folders_and_the_gitignore ::
 		testing.expectf(t, os.exists(path_in(root, strings.concatenate({"assets/", name, "/.keep"}, context.temp_allocator))), "assets/%s/.keep is missing", name)
 	}
 	testing.expect(t, os.is_directory(path_in(root, "output")))
+	testing.expect(t, os.exists(path_in(root, "libs/.keep")))
 	testing.expect(t, len(result.created) > 10)
 	testing.expect_value(t, len(result.kept), 0)
 	testing.expect_value(t, result.git, Git_Outcome.Not_Wanted)
@@ -243,4 +244,35 @@ test_the_folder_of_a_sketch_path :: proc(t: ^testing.T) {
 	testing.expect(t, is_foreign_folder("output"))
 	testing.expect(t, is_foreign_folder(".git"))
 	testing.expect(t, !is_foreign_folder("parts"))
+}
+
+@(test)
+test_a_program_includes_the_libraries_it_uses_and_the_ones_those_use :: proc(t: ^testing.T) {
+	root := fresh("program_libs")
+	for dir in ([]string{"libs/stars/parts", "libs/moon", "libs/unused", "libs/stars/.git"}) {
+		_ = os.make_directory_all(path_in(root, dir))
+	}
+	files := [?][2]string {
+		{"sketch.roci", "use \"stars\"\nuse \"nothing_here\"\nuse \"github.com/x/moon.git\"\n"},
+		{"libs/stars/stars.roci", "use \"moon\"\nlearn star n [ ]\n"},
+		{"libs/stars/parts/p.roci", "learn part n [ ]\n"},
+		{"libs/stars/.git/g.roci", "x = 1\n"},
+		{"libs/moon/moon.roci", "learn moon n [ ]\n"},
+		{"libs/unused/u.roci", "learn unused n [ ]\n"},
+	}
+	for file in files {
+		testing.expect(t, os.write_entire_file(path_in(root, file[0]), transmute([]byte)file[1]) == nil)
+	}
+	program, problem := read_program(path_in(root, "sketch.roci"))
+	testing.expect_value(t, problem, "")
+	libraries := make([dynamic]string, context.temp_allocator)
+	for f in program.files {
+		if f.library != "" {
+			append(&libraries, strings.concatenate({f.library, ":", strings.trim_prefix(f.name, strings.concatenate({root, "/libs/"}, context.temp_allocator))}, context.temp_allocator))
+		}
+	}
+	testing.expect_value(t, strings.join(libraries[:], " ", context.temp_allocator), "moon:moon/moon.roci stars:stars/parts/p.roci stars:stars/stars.roci")
+	// The sketch is still last, and the libraries it did not ask for are not in.
+	testing.expect_value(t, program.files[len(program.files) - 1].library, "")
+	testing.expect_value(t, len(program.files), 4)
 }

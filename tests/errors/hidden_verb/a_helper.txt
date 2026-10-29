@@ -1,0 +1,8 @@
+── `glow` is private to the library `stars` ──────────── sketch.roci:2:1
+
+2 │ glow 5
+  │ ^^^^^^
+
+The library `stars` keeps `glow` for its own use, taught with `hidden learn`. Its other verbs are free to use, and you can teach a verb of your own with that name.
+
+Teach your own:  learn glow n [ ... ]

@@ -67,12 +67,48 @@ find_callee :: proc(p: ^Parser) -> (info: Call_Info, used: int, ok: bool) {
 	if verb, count := registry.match_phrase_in(p.verbs, words[:n]); verb != nil {
 		return info_of_verb(verb), count, true
 	}
-	for &t in p.taught {
-		if t.name == words[0] {
-			return info_of_taught(&t), 1, true
+	// `physics.push ball`: the verb of one library, named with it.
+	if n >= 1 && p.at + 2 < len(p.tokens) && p.tokens[p.at + 1].kind == .Dot && p.tokens[p.at + 2].kind == .Name && p.tokens[p.at].span.end == p.tokens[p.at + 1].span.start && p.tokens[p.at + 1].span.end == p.tokens[p.at + 2].span.start {
+		library, verb := words[0], text_of(p, p.tokens[p.at + 2])
+		for &t in p.taught {
+			if t.library == library && t.name == verb {
+				return info_of_taught(&t), 3, true
+			}
 		}
 	}
+	if t := taught_for(p, words[0]); t != nil {
+		return info_of_taught(t), 1, true
+	}
 	return
+}
+
+// The verb a plain name means at the cursor when several files teach it: one of the
+// library the call is written in, else the sketch's own (which wins over a library's),
+// else one of the libraries, a visible one first. The checker says so when that leaves
+// two libraries to choose between.
+@(private)
+taught_for :: proc(p: ^Parser, name: string) -> ^Taught_Verb {
+	caller := ""
+	if part, found := part_of(p.src, cur(p).span.start); found {
+		caller = part.library
+	}
+	chosen: ^Taught_Verb
+	rank := 4
+	for &t in p.taught {
+		if t.name != name {
+			continue
+		}
+		r := 3
+		switch {
+		case t.library == caller:  r = 0
+		case t.library == "":      r = 1
+		case !t.hidden:            r = 2
+		}
+		if r < rank {
+			chosen, rank = &t, r
+		}
+	}
+	return chosen
 }
 
 // Whether `word` is a connecting word of this call once `given` arguments are in,

@@ -1,0 +1,8 @@
+── Warning: `glow` hides a verb of the library `stars` ─── sketch.roci:2:1
+
+2 │ learn glow n [ circle at n n radius 9 ]
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Your own `glow` is used instead of the one in `stars`, here and in your other files. The files of the library keep using theirs.
+
+To use the library's, name it:  stars.glow

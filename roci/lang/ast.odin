@@ -138,6 +138,7 @@ Taught_Verb :: struct {
 	words:  []string, // the connecting words after `with`, each taking one value
 	hidden: bool,
 	span:   Span, // the header's name
+	library: string, // the library whose file teaches it; empty for the sketch's own files
 }
 
 Assign :: struct {

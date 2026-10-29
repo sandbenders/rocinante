@@ -1,0 +1,2 @@
+use "stars"
+circle at 1 1 radius 2

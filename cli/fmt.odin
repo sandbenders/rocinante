@@ -124,13 +124,15 @@ verbs_of_the_other_files :: proc(file: string) -> []lang.Taught_Verb {
 		return nil
 	}
 	taught := make([dynamic]lang.Taught_Verb, context.temp_allocator)
-	for other in folder.roci_files(root) {
-		if other == file {
+	program, problem := folder.read_program(strings.concatenate({root, "/sketch.roci"}, context.temp_allocator))
+	if problem != "" {
+		return nil
+	}
+	for other in program.files {
+		if other.name == file {
 			continue
 		}
-		if data, err := os.read_entire_file(other, context.temp_allocator); err == nil {
-			append(&taught, ..lang.taught_in(other, string(data), context.temp_allocator))
-		}
+		append(&taught, ..lang.taught_in(other.name, other.text, context.temp_allocator, other.library))
 	}
 	return taught[:]
 }

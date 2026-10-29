@@ -7,6 +7,7 @@
 package folder
 
 import "../lang"
+import "base:runtime"
 import "core:os"
 import "core:slice"
 import "core:strings"
@@ -26,6 +27,16 @@ is_foreign_folder :: proc(name: string) -> bool {
 // Every .roci file in a folder and the folders inside it that the sketch owns, as
 // paths that start with `root`, in the order of their names.
 roci_files :: proc(root: string, allocator := context.temp_allocator) -> []string {
+	return walk_roci(root, true, allocator)
+}
+
+// Every .roci file of a library folder (hidden folders such as git's are left out).
+library_files :: proc(dir: string, allocator := context.temp_allocator) -> []string {
+	return walk_roci(dir, false, allocator)
+}
+
+@(private)
+walk_roci :: proc(root: string, own_code_only: bool, allocator: runtime.Allocator) -> []string {
 	found := make([dynamic]string, allocator)
 	cwd, _ := os.get_working_directory(context.temp_allocator)
 	here := strings.concatenate({cwd, "/"}, context.temp_allocator)
@@ -34,7 +45,8 @@ roci_files :: proc(root: string, allocator := context.temp_allocator) -> []strin
 	defer os.walker_destroy(&w)
 	for fi in os.walker_walk(&w) {
 		if fi.type == .Directory {
-			if is_foreign_folder(fi.name) && fi.fullpath != root {
+			skipped := is_foreign_folder(fi.name) if own_code_only else strings.has_prefix(fi.name, ".")
+			if skipped && fi.fullpath != root {
 				os.walker_skip_dir(&w)
 			}
 			continue
@@ -63,9 +75,35 @@ read_program :: proc(sketch: string, allocator := context.temp_allocator) -> (pr
 		}
 		append(&files, lang.File_Text{name = path, text = string(data)})
 	}
+	// The libraries the files ask for with `use`, and the ones those ask for in turn.
+	wanted := make([dynamic]string, allocator)
+	for f in files {
+		append(&wanted, ..lang.uses_in(f.name, f.text, allocator))
+	}
+	visited := make(map[string]bool, 4, allocator)
+	for i := 0; i < len(wanted); i += 1 {
+		name := wanted[i]
+		if visited[name] {
+			continue
+		}
+		visited[name] = true
+		dir := strings.concatenate({root, "/libs/", name}, allocator)
+		if !os.is_directory(dir) {
+			continue // `use` of a library that is not there is the checker's to report
+		}
+		for path in library_files(dir, allocator) {
+			data, err := os.read_entire_file(path, allocator)
+			if err != nil {
+				return {}, strings.concatenate({"I cannot read `", path, "`."}, allocator)
+			}
+			shown := strings.trim_prefix(path, "./")
+			append(&files, lang.File_Text{name = shown, library = name, text = string(data)})
+			append(&wanted, ..lang.uses_in(shown, string(data), allocator))
+		}
+	}
 	// `sketch` may be spelled differently from the walker's path (`./x/sketch.roci`):
 	// it is the one file that runs, so it goes last whatever it is called here.
-	slice.sort_by(files[:], proc(a, b: lang.File_Text) -> bool {return a.name < b.name})
+
 	ordered := slice.clone_to_dynamic(files[:], allocator)
 	lang.order_files(ordered[:])
 	ordered_paths := make([]string, len(ordered), allocator)

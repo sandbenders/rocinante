@@ -489,14 +489,17 @@ poll_program :: proc(p: ^Interp) -> ^Interp {
 	}
 	if !changed && time.diff(p.scanned, time.now()) >= SCAN_EVERY {
 		p.scanned = time.now()
-		listed := folder.roci_files(folder.root_of(p.path))
-		changed = len(listed) != len(p.watched)
-		for path in listed {
-			known := false
-			for w in p.watched {
-				known ||= w == path
+		// The program as it is now, libraries it asks for included: any file that came or went.
+		listed, problem := folder.read_program(p.path)
+		if problem == "" {
+			changed = len(listed.paths) != len(p.watched)
+			for path in listed.paths {
+				known := false
+				for w in p.watched {
+					known ||= w == path
+				}
+				changed ||= !known
 			}
-			changed ||= !known
 		}
 	}
 	if !changed {
