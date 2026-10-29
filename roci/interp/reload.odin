@@ -37,7 +37,7 @@ retired: [dynamic]^Interp
 // for its whole folder: every .roci file there is watched, and so is the folder, for
 // files that appear or go.
 watch :: proc(p: ^Interp, path: string) {
-	p.path = strings.clone(path, p.long)
+	p.path = strings.clone(path, p.program_memory)
 	if t, err := os.modification_time_by_path(path); err == nil {
 		p.mtime = t
 	}
@@ -57,10 +57,10 @@ is_sketch_path :: proc(path: string) -> bool {
 // Remembers the files of the program and when each one last changed.
 @(private)
 remember_files :: proc(p: ^Interp, paths: []string) {
-	p.watched = make([]string, len(paths), p.long)
-	p.mtimes = make([]time.Time, len(paths), p.long)
+	p.watched = make([]string, len(paths), p.program_memory)
+	p.mtimes = make([]time.Time, len(paths), p.program_memory)
 	for path, i in paths {
-		p.watched[i] = strings.clone(path, p.long)
+		p.watched[i] = strings.clone(path, p.program_memory)
 		if t, err := os.modification_time_by_path(path); err == nil {
 			p.mtimes[i] = t
 		}
@@ -100,7 +100,7 @@ shutdown :: proc() {
 
 @(private)
 notice :: proc(p: ^Interp, text: string) {
-	append(&p.notices, strings.clone(text, p.long))
+	append(&p.notices, strings.clone(text, p.program_memory))
 	if p.echo {
 		style := term.Style.Green
 		if strings.has_prefix(text, "restarted") {
@@ -274,11 +274,11 @@ reload_files :: proc(p: ^Interp, files: []lang.File_Text, restart := false) -> (
 		return p, .Failed
 	}
 	n.echo, n.budget, n.hook_frame = p.echo, p.budget, p.hook_frame
-	n.path, n.mtime = strings.clone(p.path, n.long), p.mtime
+	n.path, n.mtime = strings.clone(p.path, n.program_memory), p.mtime
 	n.program, n.scanned = p.program, p.scanned
-	n.watched, n.mtimes = make([]string, len(p.watched), n.long), make([]time.Time, len(p.mtimes), n.long)
+	n.watched, n.mtimes = make([]string, len(p.watched), n.program_memory), make([]time.Time, len(p.mtimes), n.program_memory)
 	for path, i in p.watched {
-		n.watched[i] = strings.clone(path, n.long)
+		n.watched[i] = strings.clone(path, n.program_memory)
 	}
 	copy(n.mtimes, p.mtimes)
 
@@ -392,10 +392,10 @@ set_problem :: proc(p, bad: ^Interp) {
 	if title == p.problem_title {
 		return
 	}
-	p.problem_title = strings.clone(title, p.long)
-	p.problem_lines = make([]string, len(lines), p.long)
+	p.problem_title = strings.clone(title, p.program_memory)
+	p.problem_lines = make([]string, len(lines), p.program_memory)
 	for l, i in lines {
-		p.problem_lines[i] = strings.clone(l, p.long)
+		p.problem_lines[i] = strings.clone(l, p.program_memory)
 	}
 	if p.echo {
 		what := "the sketch has errors, so nothing runs until they are fixed" if p.has_errors else "the sketch has errors, so the last good version keeps running"

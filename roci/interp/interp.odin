@@ -53,8 +53,13 @@ Interp :: struct {
 	checked:   lang.Checked,
 	src:       lang.Source,
 	types:     ^lang.Types,
-	arena:     virtual.Arena,
-	long:      mem.Allocator, // the sketch's own memory, freed with it
+	arena:     virtual.Arena, // the program: its text, tree, types and bookkeeping, freed with it
+	program_memory: mem.Allocator,
+	values:    [2]virtual.Arena, // the sketch's long-lived values: one in use, the other for the next copy (collect.odin)
+	values_now: int,
+	live:      uint, // bytes in use after the last copy
+	collections: int, // how many copies were made, for tests
+	long:      mem.Allocator, // the arena of values in use
 	alloc:     mem.Allocator, // where new values go now: `long` while the sketch sets itself up, the frame's memory after
 	globals:   []Global, // the sketch-wide names' values, by `Symbol.slot`
 	frame:     ^Frame,
@@ -111,27 +116,31 @@ load_files :: proc(files: []lang.File_Text) -> (p: ^Interp, ok: bool) {
 	if err := virtual.arena_init_growing(&p.arena); err != nil {
 		return p, false
 	}
-	p.long = virtual.arena_allocator(&p.arena)
+	p.program_memory = virtual.arena_allocator(&p.arena)
+	if err := virtual.arena_init_growing(&p.values[0]); err != nil {
+		return p, false
+	}
+	p.long = virtual.arena_allocator(&p.values[0])
 	for i in 0 ..< 2 {
 		_ = virtual.arena_init_growing(&p.msg_arenas[i])
 	}
 	p.hook_frame = -1
 	p.alloc = p.long
-	kept := make([]lang.File_Text, len(files), p.long)
+	kept := make([]lang.File_Text, len(files), p.program_memory)
 	for f, i in files {
-		kept[i] = lang.File_Text{name = strings.clone(f.name, p.long), library = strings.clone(f.library, p.long), text = f.text}
+		kept[i] = lang.File_Text{name = strings.clone(f.name, p.program_memory), library = strings.clone(f.library, p.program_memory), text = f.text}
 	}
 	if len(kept) == 1 {
-		kept[0].text = strings.clone(kept[0].text, p.long)
-		p.src = lang.make_source(kept[0].name, kept[0].text, 0, p.long)
+		kept[0].text = strings.clone(kept[0].text, p.program_memory)
+		p.src = lang.make_source(kept[0].name, kept[0].text, 0, p.program_memory)
 	} else {
-		p.src = lang.join_sources(kept, p.long) // copies every text
+		p.src = lang.join_sources(kept, p.program_memory) // copies every text
 	}
-	p.checked = lang.check(p.src, registry.ALL_VERBS, nil, p.long)
+	p.checked = lang.check(p.src, registry.ALL_VERBS, nil, p.program_memory)
 	p.types = p.checked.program.types
-	p.globals = make([]Global, len(p.checked.program.symbols), p.long)
-	p.draws = make(map[roci.Window]^lang.IR_Block, 4, p.long)
-	p.seen = make(map[int]bool, 8, p.long)
+	p.globals = make([]Global, len(p.checked.program.symbols), p.program_memory)
+	p.draws = make(map[roci.Window]^lang.IR_Block, 4, p.program_memory)
+	p.seen = make(map[int]bool, 8, p.program_memory)
 	p.budget = BLOCK_SECONDS
 	p.has_errors = lang.has_errors(p.checked.diagnostics)
 	return p, !p.has_errors
@@ -159,6 +168,7 @@ destroy :: proc(p: ^Interp) {
 		drop_tween(&t)
 	}
 	delete(p.tweens)
+	virtual.arena_destroy(&p.values[p.values_now])
 	virtual.arena_destroy(&p.arena)
 	free(p)
 }
@@ -243,7 +253,7 @@ fail :: proc(p: ^Interp, id: lang.Message_Id, span: lang.Span, a, b, c, d: strin
 		return
 	}
 	p.seen[key] = true
-	append(&p.errors, Runtime_Error{id = id, span = span, args = {strings.clone(a, p.long), strings.clone(b, p.long), strings.clone(c, p.long), strings.clone(d, p.long)}})
+	append(&p.errors, Runtime_Error{id = id, span = span, args = {strings.clone(a, p.program_memory), strings.clone(b, p.program_memory), strings.clone(c, p.program_memory), strings.clone(d, p.program_memory)}})
 }
 
 // The writer's own line with `replacement` where `at` was; when it cannot be

@@ -112,10 +112,12 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case .Item:
 		return item_of(it, e, call)
 	case .Print:
-		text := format(it, eval(it, call.args[0]), it.long)
-		append(&it.printed, text)
+		// On the console the line is written and forgotten; kept only for tests and
+		// tools that read it back, since a sketch printing every frame would fill memory.
 		if it.echo {
-			fmt.println(text)
+			fmt.println(format(it, eval(it, call.args[0]), context.temp_allocator))
+		} else {
+			append(&it.printed, format(it, eval(it, call.args[0]), it.program_memory))
 		}
 	case .Copy:
 		return deep_copy(it, eval(it, call.args[0]))

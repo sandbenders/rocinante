@@ -1767,3 +1767,77 @@ test_every_registry_verb_has_its_own_code :: proc(t: ^testing.T) {
 	testing.expect_value(t, code_for_name("nothing"), Verb_Code.None)
 	testing.expect_value(t, code_for_name(""), Verb_Code.None)
 }
+
+// ---- the sketch's memory ----
+
+@(test)
+test_replacing_a_list_every_frame_keeps_memory_bounded :: proc(t: ^testing.T) {
+	p := run_text(t, "dots = []\nrepeat 1000 [ add { pos: { random 800, random 600 }, life: 1 } to dots ]\nlabel = \"\"\ndraw [\n  dots = keep dots [ it.life > 0 ]\n  label = \"frame \" + frame\n]")
+	defer finish(p)
+	for _ in 0 ..< 10 {
+		roci.step()
+	}
+	for _ in 0 ..< 990 {
+		roci.step()
+		used := p.values[p.values_now].total_used
+		testing.expectf(t, used < 2 * p.live + COLLECT_SLACK + 1 << 20, "the values arena grew to %d bytes", used)
+	}
+	testing.expect(t, p.collections > 0, "the arena was copied")
+	testing.expect_value(t, len(as_list(global_named(p, "dots")).items), 1000)
+	testing.expect_value(t, as_text(global_named(p, "label")), "frame 999") // `frame` counts from 0
+}
+
+@(test)
+test_a_copy_of_the_memory_keeps_values_and_what_is_shared :: proc(t: ^testing.T) {
+	text := `a = [ { x: 1 } ]
+b = a
+r = { x: 7 }
+first = [ r ]
+second = [ r ]
+counts = table
+put counts "cat" 3
+name = "hello"
+`
+	p := run_text(t, text, 1)
+	defer finish(p)
+	collect(p)
+	collect(p) // twice, so the arena the values started in is the one in use again
+	testing.expect_value(t, p.collections, 2)
+	a, b := as_list(global_named(p, "a")), as_list(global_named(p, "b"))
+	testing.expect(t, a == b, "b and a are still one list")
+	first := as_list(global_named(p, "first"))
+	second := as_list(global_named(p, "second"))
+	testing.expect(t, first.items[0] == second.items[0], "a record in two lists is still one record")
+	testing.expect_value(t, as_number(read_field(p, first.items[0], "x")), 7)
+	value, _ := table_get(as_table(global_named(p, "counts")), "cat")
+	testing.expect_value(t, as_number(value), 3)
+	testing.expect_value(t, as_text(global_named(p, "name")), "hello")
+	testing.expect_value(t, len(a.items), 1)
+}
+
+@(test)
+test_a_tween_and_a_cached_tree_follow_their_values_across_a_copy :: proc(t: ^testing.T) {
+	text := `balls = [ { pos: { 0, 0 }, radius: 5 } ]
+walls = []
+for i from 0 to 9 [ add { pos: { i * 50, 100 }, size: { 40, 10 } } to walls ]
+on key "a" [ for each b in balls [ tween b.pos to { 100, 0 } over 0.5 ] ]
+draw [ print (count (hits { 210, 105 } walls)) ]`
+	p := run_text(t, text, 3) // asked about unchanged: the list has a tree by now
+	defer finish(p)
+	w := first_window()
+	roci.step({key_event(w, .A)})
+	collect(p)
+	for _ in 0 ..< 60 {
+		roci.step()
+	}
+	ball := as_list(global_named(p, "balls")).items[0]
+	testing.expect_value(t, as_pair(read_field(p, ball, "pos")), [2]f64{100, 0})
+	testing.expect_value(t, p.printed[len(p.printed) - 1], "1")
+	walls := as_list(global_named(p, "walls"))
+	cached := false
+	for e in p.shape_cache {
+		cached ||= e.list == walls
+	}
+	testing.expect(t, cached, "the cached tree follows the list it belongs to")
+	testing.expect_value(t, len(p.errors), 0)
+}
