@@ -1,0 +1,45 @@
+// Particles: a fountain of 10,000 sparks, a list of records each frame. A taught
+// verb moves one spark (records are shared, so it changes the one in the list),
+// `keep` takes away the spent ones and new ones take their place at the mouse.
+// It is also the interpreter's second benchmark, for lists of records: it prints
+// the frame rate once a second.
+COUNT = 10000
+
+window size 800 600 title "particles"
+seed 5
+
+source = { 400, 450 }
+sparks = []
+
+learn spawn [
+  heading = random from 240 to 300
+  speed = random from 2 to 7
+  add {
+    pos: source
+    vel: { (cos heading) * speed, (sin heading) * speed }
+    life: random from 0.5 to 1
+    hue: random from 10 to 50
+  } to sparks
+]
+
+learn step spark [
+  spark.vel = spark.vel + { 0, 0.08 }
+  spark.pos = spark.pos + spark.vel
+  spark.life = spark.life - 0.01
+]
+
+repeat COUNT [ spawn ]
+
+every 1 second [ print (round fps) ]
+
+draw [
+  if mouse is not pmouse [ source = mouse ]
+  background 12
+  no stroke
+  for each spark in sparks [
+    step spark
+    circle at spark.pos radius (1 + spark.life * 2) fill (hsb spark.hue 220 255 alpha (spark.life * 100))
+  ]
+  sparks = keep sparks [ it.life > 0 ]
+  repeat COUNT - (count sparks) [ spawn ]
+]

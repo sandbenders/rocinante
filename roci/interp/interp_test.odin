@@ -1920,7 +1920,7 @@ test_every_example_draws_the_same_with_the_passes_on_and_off :: proc(t: ^testing
 		if !os.exists(fmt.tprintf("examples/%s/sketch.roci", entry.name)) {
 			continue
 		}
-		frames := 2 if entry.name == "benchmark" else 80
+		frames := 2 if entry.name == "benchmark" else (20 if entry.name == "particles" else 80)
 		reference, ok := trace_example(t, entry.name, frames, {})
 		if !ok {
 			continue
@@ -1947,4 +1947,15 @@ test_the_interpreter_never_fuses_a_multiply_and_an_add :: proc(t: ^testing.T) {
 		expect_printed(t, text, "0", 1)
 	}
 	set_passes(lang.ALL_PASSES)
+}
+
+@(test)
+test_the_particles_example_keeps_its_ten_thousand_sparks_in_bounded_memory :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("particles"), 40) // each frame's new list is about half a megabyte: copied within a few frames
+	defer finish(p)
+	testing.expect_value(t, len(as_list(global_named(p, "sparks")).items), 10_000)
+	used := p.values[p.values_now].total_used
+	testing.expectf(t, used < 2 * p.live + COLLECT_SLACK + 1 << 20, "the values arena grew to %d bytes", used)
+	testing.expect(t, p.collections > 0, "the arena was copied along the way")
+	testing.expect_value(t, len(p.errors), 0)
 }

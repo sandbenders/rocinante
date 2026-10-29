@@ -1,0 +1,3 @@
+COUNT: a number
+source: a vector of 2 numbers
+sparks: a list of records with pos, vel, life and hue
