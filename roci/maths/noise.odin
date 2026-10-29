@@ -72,7 +72,7 @@ noise2 :: proc "contextless" (n: ^Noise, x, y: f64) -> f64 {
 // Noise from 0 to 1 at a point in space. At whole-number points it is exactly 0.5.
 noise3 :: proc "contextless" (n: ^Noise, x_in, y_in, z_in: f64) -> f64 {
 	x, y, z := x_in, y_in, z_in
-	fx, fy, fz := math.floor(x_in), math.floor(y_in), math.floor(z_in)
+	fx, fy, fz := floor(x_in), floor(y_in), floor(z_in)
 	// The lattice repeats every 256; i64 first so huge or negative values wrap cleanly.
 	xi, yi, zi := int(i64(fx) & 255), int(i64(fy) & 255), int(i64(fz) & 255)
 	x, y, z = x - fx, y - fy, z - fz
@@ -148,7 +148,7 @@ PERLIN4_SCALE :: 0.8
 
 // Noise from 0 to 1 at a point in space and time (or any four numbers).
 noise4 :: proc "contextless" (n: ^Noise, x_in, y_in, z_in, w_in: f64) -> f64 {
-	fx, fy, fz, fw := math.floor(x_in), math.floor(y_in), math.floor(z_in), math.floor(w_in)
+	fx, fy, fz, fw := floor(x_in), floor(y_in), floor(z_in), floor(w_in)
 	xi, yi, zi, wi := int(i64(fx) & 255), int(i64(fy) & 255), int(i64(fz) & 255), int(i64(fw) & 255)
 	x, y, z, w := x_in - fx, y_in - fy, z_in - fz, w_in - fw
 	u, v, s, r := fade(x), fade(y), fade(z), fade(w)
@@ -192,7 +192,7 @@ corner_share :: proc "contextless" (radius_sq, dist_sq, dot: f64) -> f64 {
 // stretch between two whole numbers, and each end pulls with a gradient between
 // 1 and 8 (up or down), fading to nothing a whole step away.
 simplex1 :: proc "contextless" (n: ^Noise, x: f64) -> f64 {
-	i0 := math.floor(x)
+	i0 := floor(x)
 	x0 := x - i0
 	x1 := x0 - 1
 	h0 := n.perm[int(i64(i0) & 255)]
@@ -210,7 +210,7 @@ simplex2 :: proc "contextless" (n: ^Noise, x, y: f64) -> f64 {
 	F2 :: 0.36602540378443864676 // (sqrt(3) - 1) / 2
 	G2 :: 0.21132486540518711775 // (3 - sqrt(3)) / 6
 	skew := (x + y) * F2
-	i, j := math.floor(x + skew), math.floor(y + skew)
+	i, j := floor(x + skew), floor(y + skew)
 	unskew := (i + j) * G2
 	x0, y0 := x - (i - unskew), y - (j - unskew)
 	// Which of the two triangles of the skewed square the point is in.
@@ -235,7 +235,7 @@ simplex3 :: proc "contextless" (n: ^Noise, x, y, z: f64) -> f64 {
 	F3 :: 1.0 / 3.0
 	G3 :: 1.0 / 6.0
 	skew := (x + y + z) * F3
-	i, j, k := math.floor(x + skew), math.floor(y + skew), math.floor(z + skew)
+	i, j, k := floor(x + skew), floor(y + skew), floor(z + skew)
 	unskew := (i + j + k) * G3
 	x0, y0, z0 := x - (i - unskew), y - (j - unskew), z - (k - unskew)
 	// Which of the six tetrahedra of the skewed cube the point is in.
@@ -271,7 +271,7 @@ simplex4 :: proc "contextless" (n: ^Noise, x, y, z, w: f64) -> f64 {
 	F4 :: 0.30901699437494742410 // (sqrt(5) - 1) / 4
 	G4 :: 0.13819660112501051518 // (5 - sqrt(5)) / 20
 	skew := (x + y + z + w) * F4
-	i, j, k, l := math.floor(x + skew), math.floor(y + skew), math.floor(z + skew), math.floor(w + skew)
+	i, j, k, l := floor(x + skew), floor(y + skew), floor(z + skew), floor(w + skew)
 	unskew := (i + j + k + l) * G4
 	off := [4]f64{x - (i - unskew), y - (j - unskew), z - (k - unskew), w - (l - unskew)}
 	// Rank the four offsets, largest first: that order is the path from the

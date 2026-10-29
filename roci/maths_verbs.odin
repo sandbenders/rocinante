@@ -117,7 +117,7 @@ cos_deg :: proc(degrees: f64) -> f64 {
 
 // The whole number at or below a number (`floor`).
 floor :: proc(value: f64) -> f64 {
-	return no_negative_zero(math.floor(value))
+	return no_negative_zero(maths.floor(value))
 }
 
 // The nearest whole number, halves going away from zero (`round`).
