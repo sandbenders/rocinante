@@ -840,6 +840,29 @@ test_a_labelled_call_builds_the_arguments_in_input_order :: proc(t: ^testing.T) 
 }
 
 @(test)
+test_a_vector_and_two_numbers_mix_in_one_call :: proc(t: ^testing.T) {
+	// The two numbers become the vector the shape takes, so the call has the vector form.
+	cases := []string{"rect at mouse size 80 40", "rect at 10 20 size { 80, 40 }", "ellipse at mouse size 80 40", "line from mouse to 10 20", "line from 10 20 to mouse"}
+	for text in cases {
+		got := check_text(text)
+		if !testing.expectf(t, len(got.checked.diagnostics) == 0, "`%s` gave a message", text) {
+			continue
+		}
+		call := got.checked.program.stmts[0].kind.(IR_Expr_Stmt).expr.kind.(IR_Call)
+		testing.expectf(t, call.shape == 1 && len(call.args) == 2, "`%s` has the vector form", text)
+	}
+	packed := check_text("rect at mouse size 80 40")
+	size := packed.checked.program.stmts[0].kind.(IR_Expr_Stmt).expr.kind.(IR_Call).args[1]
+	testing.expect_value(t, len(size.kind.(IR_Vector).items), 2)
+	testing.expect_value(t, span_text(packed.src, size.span), "80 40")
+	// Only two numbers make a vector, and only where the form takes one.
+	expect_errors(t, "rect at mouse size 80", {.Wrong_Argument_Kind})
+	expect_errors(t, "rect at mouse size 80 40 10", {.Unexpected_Token})
+	expect_errors(t, "rect at mouse size \"a\" 40", {.Wrong_Argument_Kind})
+	expect_errors(t, "circle at mouse radius 1 2", {.Unexpected_Token})
+}
+
+@(test)
 test_every_geometry_verb_has_a_labelled_form_that_checks :: proc(t: ^testing.T) {
 	expect_errors(t, `
 circle at 1 2 radius 3

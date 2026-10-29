@@ -48,8 +48,8 @@ draw big [
     grow 0.25
     stroke 120
     thickness 8
-    rect at big.at size { big.width, big.height } fill (rgb 230 120 90 alpha 60)
-    rect at pad.at size { pad.width, pad.height } fill (rgb 90 140 230 alpha pad.alpha)
+    rect at big.at size big.width big.height fill (rgb 230 120 90 alpha 60)
+    rect at pad.at size pad.width pad.height fill (rgb 90 140 230 alpha pad.alpha)
     line from (big.at + { big.width, big.height } / 2) to (pad.at + { pad.width, pad.height } / 2)
   ]
 

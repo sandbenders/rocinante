@@ -109,7 +109,7 @@ check_labelled :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> (ir: ^I
 				continue
 			}
 			present += 1
-			if len(got.args) != w.count || !label_kinds_fit(c, verb, form, w, got.args) {
+			if !(len(got.args) == w.count && label_kinds_fit(c, verb, form, w, got.args)) && !packs_into_vector(c, verb, form, w, got.args) {
 				complete = false
 			}
 		}
@@ -130,6 +130,12 @@ check_labelled :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> (ir: ^I
 	args := make([]^IR, len(shape.params), c.alloc)
 	for w in form.words {
 		got, _ := find_written(written[:], w.word)
+		if packs_into_vector(c, verb, form, w, got.args) {
+			// `rect at p size 80 40`: the two numbers become the vector the shape takes.
+			span := Span{got.args[0].span.file, got.args[0].span.start, got.args[1].span.end}
+			args[w.first] = new_ir(c, span, vector_of(c.types, 2), IR_Vector{items = got.args})
+			continue
+		}
 		for a, i in got.args {
 			args[w.first + i] = a
 		}
@@ -163,6 +169,17 @@ label_kinds_fit :: proc(c: ^Checker, verb: ^registry.Verb, form: registry.Label_
 		}
 	}
 	return true
+}
+
+// Two numbers after a word that writes one vector of the shape (`size 80 40` where
+// `at` was given a vector), which the call then makes into that vector, so a vector
+// and a pair of numbers can be mixed in one call.
+@(private)
+packs_into_vector :: proc(c: ^Checker, verb: ^registry.Verb, form: registry.Label_Form, w: registry.Label_Word, args: []^IR) -> bool {
+	if w.count != 1 || len(args) != 2 || verb.shapes[form.shape].params[w.first].kind != .Vector {
+		return false
+	}
+	return args[0].type == T_NUMBER && args[1].type == T_NUMBER
 }
 
 // `0 0` for the inputs a word writes, as the example of a missing label.

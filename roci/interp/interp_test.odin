@@ -1651,3 +1651,17 @@ test_the_windows_example_changes_its_settings_from_keys :: proc(t: ^testing.T) {
 	testing.expect_value(t, as_number(global_named(p, "dot")), 0)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_a_vector_and_two_numbers_draw_what_four_numbers_draw :: proc(t: ^testing.T) {
+	p := run_text(t, "p = { 5, 6 }\nrect at p size 80 40\nrect at 5 6 size { 80, 40 }\nrect at 5 6 size 80 40")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	if !testing.expect_value(t, len(commands), 3) {
+		return
+	}
+	for c in commands {
+		testing.expect_value(t, c.kind, gfx.Kind.Rect)
+		testing.expect_value(t, [4]f32{c.args[0], c.args[1], c.args[2], c.args[3]}, [4]f32{5, 6, 80, 40})
+	}
+}
