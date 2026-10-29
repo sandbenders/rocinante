@@ -315,6 +315,17 @@ read_files :: proc(file: string, command: string, err: ^strings.Builder) -> (fil
 			fmt.sbprintf(err, "%s\n", problem)
 			return nil, false
 		}
+		// A `use` of a git address that is not in libs/ yet is fetched the first time.
+		if fetched := folder.fetch_missing_libraries(folder.root_of(file), program.files); len(fetched) > 0 {
+			for library in fetched {
+				fmt.eprintfln("%s %s", term.err("rocinante:", .Bold_Cyan), term.err(fmt.tprintf("fetched libs/%s from %s (commit %s)", library.name, library.url, short(library.commit)), .Cyan))
+			}
+			program, problem = folder.read_program(file)
+			if problem != "" {
+				fmt.sbprintf(err, "%s\n", problem)
+				return nil, false
+			}
+		}
 		if len(program.files) > 0 {
 			return program.files, true
 		}

@@ -101,6 +101,15 @@ taught_in :: proc(name, text: string, allocator := context.allocator, library :=
 // of the folder in `libs/` each stands for. Read without parsing, so the files of a
 // program can be gathered before it is checked.
 uses_in :: proc(name, text: string, allocator := context.allocator) -> []string {
+	texts := use_texts_in(name, text, allocator)
+	for &t in texts {
+		t = library_name(t)
+	}
+	return texts
+}
+
+// The same, with each `use` line's text as it was written (a name or a git URL).
+use_texts_in :: proc(name, text: string, allocator := context.allocator) -> []string {
 	src := make_source(name, text, 0, allocator)
 	lexed := lex(src, allocator)
 	found := make([dynamic]string, allocator)
@@ -113,7 +122,7 @@ uses_in :: proc(name, text: string, allocator := context.allocator) -> []string 
 		if i > 0 && tokens[i - 1].kind != .Newline {
 			continue
 		}
-		append(&found, library_name(unescape(span_text(src, tokens[i + 1].span), allocator)))
+		append(&found, unescape(span_text(src, tokens[i + 1].span), allocator))
 	}
 	return found[:]
 }

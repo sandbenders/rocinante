@@ -20,13 +20,13 @@ Early, but you can write and run sketches today. The language exists and the `ro
 
 - **`roci run`** runs a sketch (or a folder, through its `sketch.roci`). Save the file and the running sketch updates, keeping its values where it can; a mistake is shown over the picture while the last good version keeps running, and it recovers when you fix the file. Ctrl+R or Cmd+R starts it again from the first line, and Ctrl+Q or Cmd+Q quits.
 - **`roci check`** reads a sketch and says what is wrong, in plain words with your own line fixed (`--errors json` gives the messages as data). **`roci fmt`** writes sketches in one house style. **`roci man rect`** shows how a verb is written.
-- **`roci new`, `roci init` and `roci add`** make a sketch folder (with git, and Git LFS if you want it) and copy files into its `assets/`.
-- **A sketch can be several files.** Every `.roci` file in a sketch folder is part of the same program: put verbs and constants in `palette.roci`, use them in `sketch.roci`, and messages name the right file. Save any of them and the sketch reloads (see `examples/starfield`). Libraries are folders in `libs/` brought in with `use "name"` (see `examples/constellation`); getting one from a git URL comes next.
+- **`roci new`, `roci init` and `roci add`** make a sketch folder (with git, and Git LFS if you want it) and copy files into its `assets/`. **`roci get`** copies a library from a git address into `libs/`, and **`roci update`** fetches a newer copy and says what changed.
+- **A sketch can be several files.** Every `.roci` file in a sketch folder is part of the same program: put verbs and constants in `palette.roci`, use them in `sketch.roci`, and messages name the right file. Save any of them and the sketch reloads (see `examples/starfield`). Libraries are folders in `libs/` brought in with `use "name"` (see `examples/constellation`), copied there from a git address by `roci get`.
 - The language so far has drawing, style and colour, gradients, transforms, random numbers and noise, lists and records, verbs you teach with `learn`, `if`, `repeat`, `for`, `while`, the list verbs (`keep`, `collect`, `sort`, `shuffle` and more), keys and the mouse (`on key`, `on mouse down`), `every`, messages between windows, and windows you can size, fix, move, make borderless or keep on top, read from (`main_window.width`) and change with `set`. Text, user interface widgets, images, sound and 3D come in later phases.
 
 Under it is the engine, which also has an Odin API (and a C API). It draws on macOS (Metal), Linux and FreeBSD (Vulkan), Windows (Direct3D 12), and on an iPhone and an Android phone, and 100,000 circles a frame hold about 60 frames a second on the computers tried so far. Packaging a sketch into an app (`roci package`) is not written yet.
 
-Phase 0 (2026-10-27) tested the riskiest parts with four spikes: a window and GPU device on every desktop system, a shader-drawn circle on a real iPhone and a real Android phone, generating Odin from a typed IR, and Dear ImGui with a screen reader. Phase 1, the window and the 2D core, is built and measured on all of them. Phase 2, the language itself, is well under way; what is still to come in it is libraries, turtle graphics, animation helpers and 2D collision. The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
+Phase 0 (2026-10-27) tested the riskiest parts with four spikes: a window and GPU device on every desktop system, a shader-drawn circle on a real iPhone and a real Android phone, generating Odin from a typed IR, and Dear ImGui with a screen reader. Phase 1, the window and the 2D core, is built and measured on all of them. Phase 2, the language itself, is well under way; what is still to come in it is turtle graphics, animation helpers and 2D collision. The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
 
 ## What it looks like
 
@@ -113,6 +113,7 @@ The other commands:
 ```
 odin run cli -- new mysketch                           # a sketch folder, with git; roci init does it in this folder
 odin run cli -- add cat.png                            # copy a file into the right folder of assets/
+odin run cli -- get github.com/someone/flocking          # copy a library into libs/ (then  use "flocking" ); roci update fetches newer copies
 odin run cli -- check sketch.roci                      # say what is wrong, with the fix
 odin run cli -- fmt                                    # write every .roci file here in the house style
 odin run cli -- man rect                               # how a verb is written (no word: every verb)
