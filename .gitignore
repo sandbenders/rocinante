@@ -5,6 +5,7 @@ output/
 /cli.exe
 /codegen
 /build.exe
+/build*.bin
 /codegen.exe
 /golden
 /golden.exe
