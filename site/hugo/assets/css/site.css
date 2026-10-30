@@ -179,6 +179,8 @@ pre.shell code::before { content: "$ "; opacity: 0.55; }
 .engine .facts dt { font: 650 1rem var(--mono); margin-bottom: 4px; }
 .engine .facts dd { margin: 0; color: var(--soft); }
 .engine h2 { margin-top: 0; }
+/* What is coming: the same cards, drawn with a dashed line, since none of it is here yet. */
+.coming .facts div { border-top: 2px dashed var(--soft); }
 
 /* reference */
 .with-side { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; }

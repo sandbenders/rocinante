@@ -79,3 +79,34 @@ front_page_shows_the_catalogues_own_message :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(page, `{{ partial "front-mistake.html" . }}`))
 	testing.expect(t, !strings.contains(page, `class="message-text"`))
 }
+
+// A link in a layout is a path inside the site (`"guides/"`), never one with a space
+// in it, which an editor's HTML formatter can add and which makes it lead nowhere.
+@(test)
+layouts_link_with_plain_paths :: proc(t: ^testing.T) {
+	PATH_CHARS :: "abcdefghijklmnopqrstuvwxyz0123456789/._-"
+	links := 0
+	for name in ([]string{"site/hugo/layouts/home.html", "site/hugo/layouts/baseof.html", "site/hugo/layouts/page.html", "site/hugo/layouts/section.html"}) {
+		page, ok := read(name)
+		testing.expectf(t, ok, "cannot read %s", name)
+		rest := page
+		for {
+			at := strings.index(rest, `" | relURL`)
+			if at < 0 {
+				break
+			}
+			open := strings.last_index(rest[:at], `{{ "`)
+			testing.expectf(t, open >= 0, "%s: a relURL whose path is not written in quotes", name)
+			if open < 0 {
+				break
+			}
+			path := rest[open + len(`{{ "`):at]
+			for c in path {
+				testing.expectf(t, strings.contains_rune(PATH_CHARS, c), "%s: the link %q has %q in it", name, path, c)
+			}
+			links += 1
+			rest = rest[at + 1:]
+		}
+	}
+	testing.expect(t, links >= 8)
+}
