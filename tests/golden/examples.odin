@@ -39,8 +39,9 @@ EXAMPLES := [?]Example{
 	{"landscape", 100, {1}}, // fbm hills, gaussian stars, simplex clouds, a shooting star
 	{"windows", 5, {1, 2}}, // the map of both windows and the lamps of their settings
 	{"shapes", 30, {1}}, // every basic shape, as the Odin example draws them
-	{"touch", 5, {1}},
-	{"particles", 60, {1}}, // the fountain a second after it starts: 10,000 records // the two rings it starts with; fingers come from a touch screen or the mouse
+	{"touch", 5, {1}}, // the two rings it starts with; fingers come from a touch screen or the mouse
+	{"particles", 60, {1}}, // the fountain a second after it starts: 10,000 records
+	{"logo", 3, {1}}, // rocinante's logo, drawn from its SVG's own numbers
 }
 
 // How many pixels may differ for a picture of this many: the scenes allow

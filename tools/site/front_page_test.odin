@@ -141,3 +141,12 @@ without_size_and_title_keeps_the_drawing :: proc(t: ^testing.T) {
 	testing.expect_value(t, without_size_and_title(`<svg><g/></svg>`), `<svg><g/></svg>`)
 	testing.expect_value(t, logo_recoloured(`<a fill="#000" stroke="#000"/><b fill="#fff"/>`, "I", "L", "C"), `<a I L/><b C/>`)
 }
+
+@(test)
+front_page_shows_a_longer_sketch_from_its_example :: proc(t: ^testing.T) {
+	page, _ := read("site/hugo/layouts/home.html")
+	testing.expect(t, strings.contains(page, `{{ partial "front-sketch.html" . }}`))
+	code, ok := read(FRONT_SKETCH)
+	testing.expect(t, ok, "the front page's sketch is an example of its own")
+	testing.expect(t, strings.count(code, "\n") > 15, "it is longer than the hello world")
+}

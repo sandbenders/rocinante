@@ -1,0 +1,6 @@
+MIDDLE: a vector of 2 numbers
+RING: a vector of 2 numbers
+TIP: a vector of 2 numbers
+MOUTH_TOP: a vector of 2 numbers
+MOUTH_BOTTOM: a vector of 2 numbers
+OUTLINE: a number

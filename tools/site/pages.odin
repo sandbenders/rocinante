@@ -567,3 +567,22 @@ window_html :: proc(src, alt: string, size: [2]int, class: string, titled := tru
 	title := fmt.tprintf("what it draws: the whole window, %d by %d", size.x, size.y) if titled else fmt.tprintf("%d by %d", size.x, size.y)
 	return fmt.tprintf(`<figure class="pane window %s"><figcaption class="window-bar"><span class="dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="pane-title">%s</span></figcaption><img src="%s" alt="%s" width="%d" height="%d" loading="lazy"></figure>`, class, title, src, escape(alt), size.x, size.y)
 }
+
+// The front page's longer sketch, the logo drawn by rocinante, from the example itself:
+// its code in a file's pane beside the window it draws, as the hello world is shown.
+FRONT_SKETCH :: "examples/logo/sketch.roci"
+
+write_front_sketch :: proc(out: string) -> bool {
+	code, ok := read(FRONT_SKETCH)
+	if !ok {
+		fmt.eprintfln("site: the front page's sketch %s is missing", FRONT_SKETCH)
+		return false
+	}
+	drawn, drew := draw_example(code, fmt.tprintf("%s/static/img/logo-sketch.png", out), roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT, 1, always = true)
+	if !drew || !drawn.picture {
+		fmt.eprintfln("site: the front page's sketch %s does not draw", FRONT_SKETCH)
+		return false
+	}
+	html := fmt.tprintf(`<div class="pane editor"><div class="window-bar"><span class="pane-title">sketch.roci</span></div>%s</div>%s`, code_html(code), window_html("{{ \"img/logo-sketch.png\" | relURL }}", "rocinante's logo, as the sketch draws it: a speech bubble with an asterisk in a black dot", drawn.size, "hello"))
+	return write(fmt.tprintf("%s/layouts/_partials/front-sketch.html", out), html)
+}
