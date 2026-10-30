@@ -87,7 +87,18 @@ git config core.hooksPath tools/hooks
 
 ## Building
 
-Install the Odin release named in `ODIN_VERSION`: `brew install odin` gives the right one on macOS at the time of writing, and the [official releases](https://github.com/odin-lang/Odin/releases) cover Linux, macOS and Windows. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) You also need SDL3, which the engine's tests link: `brew install sdl3` on macOS, `sdl3` from your package manager on Arch, `pkg install sdl3` on FreeBSD, and on Windows Odin ships `SDL3.lib` and you copy its `SDL3.dll` next to the programs (`cp "$(odin root)/vendor/sdl3/SDL3.dll" .`). Then, from the repository root:
+You need git, the Odin release named in `ODIN_VERSION` (check it with `odin version`) and SDL3, which the engine's tests link:
+
+| System | Odin | SDL3 and the rest |
+|---|---|---|
+| Windows | the `windows-amd64` archive from Odin's [releases](https://github.com/odin-lang/Odin/releases), and Build Tools for Visual Studio with the C++ workload | comes with Odin: copy its `SDL3.dll` next to the programs (`cp "$(odin root)/vendor/sdl3/SDL3.dll" .`) |
+| Arch, CachyOS, Manjaro | `sudo pacman -S odin` | `sudo pacman -S git clang sdl3` |
+| Debian 13+, Ubuntu 25.04+ | the `linux-amd64` or `linux-arm64` archive (their `odin` package is another program) | `sudo apt install git clang libsdl3-dev` |
+| Fedora 43+ | the `linux-amd64` or `linux-arm64` archive | `sudo dnf install git clang SDL3-devel` |
+| FreeBSD | `sudo pkg install odin-lang` | `sudo pkg install git sdl3` |
+| macOS | `brew install odin`, or the `macos-arm64` archive | `xcode-select --install`, then `brew install sdl3` |
+
+Systems with no SDL3 package (Ubuntu 24.04, Debian 12) can build it with `tools/ci/install-sdl3.sh`, as the GitHub pipeline does. The [getting started guide](https://sandbenders.github.io/rocinante/guides/01-getting-started/) has every step. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) Then, from the repository root:
 
 ```
 odin run build -- ci          # what the pipelines run
