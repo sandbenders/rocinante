@@ -103,8 +103,18 @@ p, li, dd { max-width: var(--measure); }
 .top nav a { color: var(--soft); text-decoration: none; padding: 2px 0; border-bottom: 2px solid transparent; }
 .top nav a:hover { color: var(--ink); }
 .top nav a[aria-current] { color: var(--ink); border-bottom-color: var(--accent); }
-.theme { font: 0.95rem var(--mono); color: var(--soft); background: none; border: 1px solid var(--rule); border-radius: 4px; padding: 1px 8px; cursor: pointer; }
+.theme { display: inline-flex; align-items: center; color: var(--soft); background: none; border: 1px solid var(--rule); border-radius: 4px; padding: 3px 6px; cursor: pointer; }
 .theme:hover { color: var(--ink); border-color: var(--soft); }
+.theme svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* The moon switches to dark, the sun to light; which theme is showing decides. */
+.theme .sun { display: none; }
+:root[data-theme="dark"] .theme .moon { display: none; }
+:root[data-theme="dark"] .theme .sun { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme .moon { display: none; }
+  :root:not([data-theme="light"]) .theme .sun { display: block; }
+}
+.mono { font-family: var(--mono); }
 
 .frame { max-width: 1180px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
 .content { min-width: 0; }

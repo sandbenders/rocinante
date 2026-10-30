@@ -22,7 +22,10 @@
       <a href="{{ "reference/" | relURL }}"{{ if eq .Section "reference" }} aria-current="true"{{ end }}>reference</a>
       <a href="{{ "messages/" | relURL }}"{{ if eq .Section "messages" }} aria-current="true"{{ end }}>messages</a>
       <a href="{{ site.Params.repository }}">source</a>
-      <button class="theme" type="button" id="theme" aria-label="Switch between light and dark">dark</button>
+      <button class="theme" type="button" id="theme" aria-label="Switch to dark" title="Switch to dark">
+        <svg class="moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      </button>
     </nav>
   </div>
 </header>
@@ -33,14 +36,19 @@
   <p>rocinante is free software under the Zero-Clause BSD licence. These pages are made from the language itself: every example on them runs, and every picture is what it draws.</p>
 </footer>
 <script>
-  // The switch: shows the theme it would change to, and remembers the choice.
+  // The switch: the icon of the theme it changes to (chosen by the style sheet), its
+  // name for screen readers, and the choice remembered.
   (function () {
     var button = document.getElementById("theme");
     var root = document.documentElement;
     function current() {
       return root.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     }
-    function label() { button.textContent = current() === "dark" ? "light" : "dark"; }
+    function label() {
+      var name = "Switch to " + (current() === "dark" ? "light" : "dark");
+      button.setAttribute("aria-label", name);
+      button.title = name;
+    }
     button.addEventListener("click", function () {
       var next = current() === "dark" ? "light" : "dark";
       root.dataset.theme = next;
