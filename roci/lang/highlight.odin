@@ -9,6 +9,7 @@ package lang
 import "../maths"
 import "../registry"
 import "core:slice"
+import "core:strings"
 
 Highlight :: enum u8 {
 	Plain,    // spaces, and anything not listed below
@@ -64,6 +65,9 @@ highlight :: proc(text: string, allocator := context.allocator) -> []Highlight_S
 				}
 			}
 			kind = name_highlight(word, after_dot, starts_statement(tokens, i))
+			if kind != .Keyword && !after_dot && i > 0 && tokens[i - 1].kind == .Name && is_choice_word(text[tokens[i - 1].span.start:tokens[i - 1].span.end], word) {
+				kind = .Word
+			}
 		}
 		if kind != .Plain {
 			append(&marks, Highlight_Span{t.span.start, end, kind})
@@ -151,4 +155,24 @@ name_highlight :: proc(word: string, after_dot, at_start: bool) -> Highlight {
 		return .Colour
 	}
 	return .Name
+}
+
+// A word one of the language's words takes, right after it: `as center`, `in oklch`,
+// `cursor none`, `caps round`, `on mouse down right`. It is coloured as the language's
+// own word, not as a name of the writer's.
+@(private = "file")
+is_choice_word :: proc(before, word: string) -> bool {
+	for c in registry.WORD_CHOICES {
+		if !slice.contains(c.words, word) {
+			continue
+		}
+		last := c.verb
+		if space := strings.last_index_byte(c.verb, ' '); space >= 0 {
+			last = c.verb[space + 1:]
+		}
+		if before == c.after || (c.verb != "" && before == last) {
+			return true
+		}
+	}
+	return false
 }

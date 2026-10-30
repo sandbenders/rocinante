@@ -54,3 +54,16 @@ test_a_word_that_is_a_verb_and_a_connecting_word_follows_its_place :: proc(t: ^t
 	testing.expect_value(t, pieces("repeat 2 [ fill red  stroke blue ]"),
 		"repeat:Keyword 2:Number [:Bracket fill:Verb red:Colour stroke:Verb blue:Colour ]:Bracket")
 }
+
+// A word the language takes after one of its words is coloured as the language's own.
+@(test)
+test_highlight_colours_a_chosen_word_as_the_languages :: proc(t: ^testing.T) {
+	testing.expect_value(t, pieces("rect at 1 1 size 2 2 as center"), "rect:Verb at:Word 1:Number 1:Number size:Word 2:Number 2:Number as:Word center:Word")
+	testing.expect_value(t, pieces("caps round"), "caps:Verb round:Word")
+	testing.expect_value(t, pieces("fill [ red teal ] in oklch"), "fill:Verb [:Bracket red:Colour teal:Colour ]:Bracket in:Word oklch:Word")
+	testing.expect_value(t, pieces("on mouse down right [ ]"), "on:Keyword mouse:Value down:Name right:Word [:Bracket ]:Bracket")
+	// Anywhere else the same words are what they are: a verb, a name of the writer's.
+	testing.expect_value(t, pieces("x = round 2.5"), "x:Name =:Operator round:Verb 2.5:Number")
+	testing.expect_value(t, pieces("center = 1"), "center:Name =:Operator 1:Number")
+	testing.expect_value(t, pieces("circle at center radius 2"), "circle:Verb at:Word center:Name radius:Word 2:Number")
+}
