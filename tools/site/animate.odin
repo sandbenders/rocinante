@@ -154,10 +154,10 @@ contains_word :: proc(text, word: string) -> bool {
 }
 
 // What the visitor does: the mouse goes round a slow figure of eight over the window,
-// the left button (which is also a finger) goes down four times for a quarter of a
-// second, and the wheel turns up a little and then down.
-CLICKS := [?]f64{1.0, 3.5, 6.0, 8.5}
-CLICK_SECONDS :: 0.25
+// the left button (which is also a finger) goes down three times for a quarter of a
+// second and once for two, a drag that a drawing sketch can draw with, and the wheel
+// turns up a little and then down. Each press: when it starts and how long it lasts.
+CLICKS := [?][2]f64{{1.0, 0.25}, {3.5, 0.25}, {5.0, 2.0}, {8.5, 0.25}}
 
 Visitor :: struct {
 	pos:     [2]f32,
@@ -170,7 +170,7 @@ visitor_at :: proc(seconds: f64, width, height: int) -> Visitor {
 	y := f64(height) * (0.5 + 0.30 * math.sin(tau * seconds / 3 + 1.2))
 	v := Visitor{pos = {f32(x), f32(y)}}
 	for c in CLICKS {
-		if seconds >= c && seconds < c + CLICK_SECONDS {
+		if seconds >= c[0] && seconds < c[0] + c[1] {
 			v.pressed = true
 		}
 	}

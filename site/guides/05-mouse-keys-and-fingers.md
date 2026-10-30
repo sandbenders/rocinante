@@ -11,12 +11,14 @@ A sketch can ask how things are now, in `draw`, or wait for something to happen,
 `mouse` is where the mouse is, `pmouse` where it was a frame ago, and `pressed` whether a button is down:
 
 ```roci picture
+strokes = []
 draw [
-  if pressed [ line from pmouse to mouse thickness 4 ]
+  if pressed [ add { from: pmouse, to: mouse } to strokes ]
+  for each s in strokes [ line from s.from to s.to stroke tomato thickness 4 ]
 ]
 ```
 
-This one draws while the button is held, and never clears, so the lines stay.
+This one draws while the button is held. Every frame starts empty, so a drawing that stays is kept in a list: a piece of line for every frame the button is down, from where the mouse was to where it is.
 
 `held` asks about a key, by its name (`"a"` to `"z"`, `"0"` to `"9"`, `"space"`, `"enter"`, `"left"`, `"right"`, `"up"`, `"down"`, `"shift"`, …), or about a mouse button with `"mouse left"`, `"mouse middle"` and `"mouse right"`:
 

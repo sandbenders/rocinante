@@ -1,3 +1,6 @@
-background 240
-thickness 6
-draw [ line from pmouse to mouse ]
+// mouse - pmouse is how far the mouse moved since the last frame:
+// stretched ten times, it points where the mouse is going
+draw [
+  background 240
+  line from mouse to (mouse + (mouse - pmouse) * 10) stroke tomato thickness 6
+]

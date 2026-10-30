@@ -22,6 +22,8 @@ the_visitor_clicks_for_a_quarter_of_a_second :: proc(t: ^testing.T) {
 	testing.expect(t, visitor_at(1.0, 800, 600).pressed)
 	testing.expect(t, visitor_at(1.2, 800, 600).pressed)
 	testing.expect(t, !visitor_at(1.25, 800, 600).pressed)
+	testing.expect(t, visitor_at(6.0, 800, 600).pressed, "one press is a two-second drag")
+	testing.expect(t, !visitor_at(7.0, 800, 600).pressed)
 	for s in ([]f64{0, 2.7, 5.1, 9.9}) {
 		v := visitor_at(s, 800, 600)
 		testing.expectf(t, v.pos.x >= 0 && v.pos.x <= 800 && v.pos.y >= 0 && v.pos.y <= 600, "at %v s the mouse is in the window", s)
