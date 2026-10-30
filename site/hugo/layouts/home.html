@@ -1,10 +1,23 @@
 {{ define "main" }}
 <main id="content" class="home-main">
   <section class="hero">
-    <h1>a small language for drawing and animating</h1>
-    <p class="lead">rocinante is for people who want to make pictures, animations and interactive pieces with code, without first learning a programming language's machinery. One line makes a picture:</p>
+    <h1>a simple language, with a fast engine under it</h1>
+    <p class="lead">rocinante is for making pictures, animations and interactive pieces with code. The language is small enough to learn in an afternoon; underneath it is an engine of today's graphics technology. One line makes a picture:</p>
     <pre class="roci hero-code"><code><span class="v">circle</span> <span class="w">at</span> <span class="n">100</span> <span class="n">100</span> <span class="w">radius</span> <span class="n">50</span></code></pre>
     <p>Save the file and the window changes while it runs. Mistakes never stop it: the window keeps the last good picture and says, in plain words, what went wrong and what would work.</p>
+    <div class="mistake">
+      <pre class="roci"><code><span class="x">score</span> <span class="op">=</span> <span class="n">1</span>&#10;<span class="k">if</span> <span class="x">score</span> <span class="op">=</span> <span class="n">10</span> <span class="p">[</span>&#10;  <span class="v">fill</span> <span class="o">red</span>&#10;<span class="p">]</span></code></pre>
+      <pre class="message-text">── A condition asks, it does not assign ─────────────── sketch.roci:2:10&#10;&#10;2 │ if score = 10 [&#10;  │          ^&#10;&#10;A single equals sign gives a name a value. To ask whether two things are the same, write `is`.&#10;&#10;Write:  if score is 10 [</pre>
+    </div>
+  </section>
+  <section class="engine">
+    <h2>what is under it</h2>
+    <dl class="facts">
+      <div><dt>graphics</dt><dd>Vulkan, Metal and Direct3D 12, through SDL3 and its GPU API. Shapes are batched and drawn on the GPU: the engine draws 100,000 circles a frame at 60 frames a second.</dd></div>
+      <div><dt>everywhere</dt><dd>macOS, Windows, Linux and FreeBSD today, with the same sketch behaving the same on each; iPhone and Android apps made from the same sketch are coming.</dd></div>
+      <div><dt>live</dt><dd>While you work, sketches are interpreted and reload the moment you save, keeping their values. For release they are compiled to native code; that part is coming.</dd></div>
+      <div><dt>open</dt><dd>Free software under the Zero-Clause BSD licence, the most permissive there is, written in Odin.</dd></div>
+    </dl>
   </section>
   <section class="ways">
     <a class="way" href="{{ "guides/" | relURL }}"><h2>guides</h2><p>Learn it a topic at a time: shapes, movement, input, lists, collision, windows, the turtle, verbs of your own.</p></a>
@@ -16,9 +29,11 @@
     <ol class="steps">
       <li><pre class="shell"><code>roci new my-sketch</code></pre><p>makes a sketch folder with one circle in it</p></li>
       <li><pre class="shell"><code>cd my-sketch</code></pre></li>
-      <li><pre class="shell"><code>roci run</code></pre><p>opens the window; change <code>sketch.roci</code> and save</p></li>
+      <li><pre class="shell"><code>roci run</code></pre><p>opens the window; change <code>sketch.roci</code> and save, and rocinante reloads it while it runs</p></li>
     </ol>
-    <p class="note">This is an <strong>alpha</strong>: the language and these pages will still change. The <a href="{{ "guides/getting-started/" | relURL }}">getting started</a> guide says how to install it.</p>
+    {{ with site.GetPage "guides/01-getting-started" }}
+    <p class="note">This is an <strong>alpha</strong>: the language and these pages will still change. The <a href="{{ .RelPermalink }}">getting started</a> guide says how to install it.</p>
+    {{ end }}
   </section>
 </main>
 {{ end }}

@@ -7,6 +7,10 @@
 <meta name="description" content="{{ .Summary | plainify }}">
 {{ $css := resources.Get "css/site.css" | minify | fingerprint }}
 <link rel="stylesheet" href="{{ $css.RelPermalink }}">
+<script>
+  // The theme chosen with the switch, before the page draws, so it never flashes the other one.
+  try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 </head>
 <body class="{{ .Section | default "home" }}">
 <a class="skip" href="#content">Skip to the page</a>
@@ -18,6 +22,7 @@
       <a href="{{ "reference/" | relURL }}"{{ if eq .Section "reference" }} aria-current="true"{{ end }}>reference</a>
       <a href="{{ "messages/" | relURL }}"{{ if eq .Section "messages" }} aria-current="true"{{ end }}>messages</a>
       <a href="{{ site.Params.repository }}">source</a>
+      <button class="theme" type="button" id="theme" aria-label="Switch between light and dark">dark</button>
     </nav>
   </div>
 </header>
@@ -27,5 +32,23 @@
 <footer class="foot">
   <p>rocinante is free software under the Zero-Clause BSD licence. These pages are made from the language itself: every example on them runs, and every picture is what it draws.</p>
 </footer>
+<script>
+  // The switch: shows the theme it would change to, and remembers the choice.
+  (function () {
+    var button = document.getElementById("theme");
+    var root = document.documentElement;
+    function current() {
+      return root.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    }
+    function label() { button.textContent = current() === "dark" ? "light" : "dark"; }
+    button.addEventListener("click", function () {
+      var next = current() === "dark" ? "light" : "dark";
+      root.dataset.theme = next;
+      try { localStorage.setItem("theme", next); } catch (e) {}
+      label();
+    });
+    label();
+  })();
+</script>
 </body>
 </html>
