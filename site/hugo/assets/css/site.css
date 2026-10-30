@@ -263,6 +263,11 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
 .toc li { max-width: none; line-height: 1.35; }
 .toc a { color: var(--soft); text-decoration: none; }
 .toc a:hover { color: var(--accent); }
+.toc ul ul { margin: 6px 0 2px; padding-left: 14px; font-size: 0.85rem; }
+/* The section being read: the accent colour, and a mark on the list's edge beside it. */
+.toc a[aria-current] { color: var(--accent); font-weight: 600; position: relative; }
+.toc a[aria-current]::before { content: ""; position: absolute; left: -17px; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+.toc ul ul a[aria-current]::before { left: -31px; }
 .edit { margin-top: 20px; font: 0.85rem var(--mono); }
 .edit a { color: var(--soft); }
 /* the list of guides, two to a row: they are read in order, so they keep their numbers */

@@ -11,9 +11,9 @@ enableRobotsTXT = false
   unsafe = true
 
 [markup.tableOfContents]
-  # A guide lists its sections beside it.
+  # A guide lists its sections, and the parts of each, beside it.
   startLevel = 2
-  endLevel = 2
+  endLevel = 3
 
 [params]
   release = "alpha"

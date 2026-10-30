@@ -66,5 +66,32 @@
     label();
   })();
 </script>
+<script>
+  // The sections list of a guide marks the section being read: the last heading that
+  // has scrolled up past the top bar, or the last one when the page is at its end.
+  (function () {
+    var toc = document.querySelector(".toc");
+    if (!toc) return;
+    var links = {};
+    toc.querySelectorAll('a[href^="#"]').forEach(function (a) { links[decodeURIComponent(a.hash.slice(1))] = a; });
+    var heads = Array.prototype.filter.call(document.querySelectorAll(".guide h2[id], .guide h3[id]"), function (h) { return links[h.id]; });
+    if (!heads.length) return;
+    var shown = null, waiting = false;
+    function mark() {
+      waiting = false;
+      var current = heads[0];
+      var atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+      if (atEnd) current = heads[heads.length - 1];
+      else for (var i = 0; i < heads.length; i++) { if (heads[i].getBoundingClientRect().top < 110) current = heads[i]; else break; }
+      if (current === shown) return;
+      if (shown) links[shown.id].removeAttribute("aria-current");
+      links[current.id].setAttribute("aria-current", "location");
+      shown = current;
+    }
+    window.addEventListener("scroll", function () { if (!waiting) { waiting = true; requestAnimationFrame(mark); } }, { passive: true });
+    window.addEventListener("resize", mark);
+    mark();
+  })();
+</script>
 </body>
 </html>

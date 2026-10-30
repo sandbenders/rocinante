@@ -28,29 +28,27 @@ A program that opens a window needs SDL3's library beside it on Windows: copy `S
 
 ### Linux
 
-1. Download Odin from its [releases](https://github.com/odin-lang/Odin/releases) (the `linux-amd64` or `linux-arm64` archive of the version in `ODIN_VERSION`), unpack it, and add its folder to your `PATH`.
-2. Install git, clang (which Odin uses to link) and SDL3:
+Install git, clang (which Odin uses to link) and SDL3, and Odin itself where the distribution packages it:
 
 | Distribution | Command |
 |---|---|
-| Arch, CachyOS, Manjaro | `sudo pacman -S git clang sdl3` |
+| Arch, CachyOS, Manjaro | `sudo pacman -S git clang odin sdl3` |
 | Debian 13 or later, Ubuntu 25.04 or later | `sudo apt install git clang libsdl3-dev` |
 | Fedora 43 or later | `sudo dnf install git clang SDL3-devel` |
+
+Arch keeps its `odin` package current; check that `odin version` matches `ODIN_VERSION`. Debian, Ubuntu and Fedora do not package Odin (the `odin` package on Debian and Ubuntu is a different program, for medical imaging), so on those download Odin from its [releases](https://github.com/odin-lang/Odin/releases): the `linux-amd64` or `linux-arm64` archive of the version in `ODIN_VERSION`. Unpack it and add its folder to your `PATH`.
 
 Older releases (Ubuntu 24.04, Debian 12) have no SDL3 package. Build it with the repository's own script, which the pipelines use: `tools/ci/install-sdl3.sh ~/sdl3`, then point the compiler at it with `export LIBRARY_PATH=~/sdl3/lib` and `export LD_LIBRARY_PATH=~/sdl3/lib`. It needs `cmake`, `ninja` and the development packages of X11 or Wayland.
 
 ### FreeBSD
 
-Odin has no FreeBSD archive, so it is built from its source, which takes about two minutes:
+FreeBSD packages Odin as `odin-lang`:
 
 ```
-sudo pkg install git gmake llvm19 sdl3
-git clone --branch dev-2026-10 https://github.com/odin-lang/Odin
-cd Odin
-LLVM_CONFIG=llvm-config19 gmake release-native
+sudo pkg install git odin-lang sdl3
 ```
 
-Then add the `Odin` folder to your `PATH`. Use the version in `ODIN_VERSION` as the branch; the `lang/odin` port is usually older than rocinante needs.
+Check that `odin version` matches `ODIN_VERSION`.
 
 ### macOS
 
