@@ -151,15 +151,19 @@ front_page_shows_a_longer_sketch_from_its_example :: proc(t: ^testing.T) {
 	testing.expect(t, strings.count(code, "\n") > 15, "it is longer than the hello world")
 }
 
-// The README's logo for a dark page is the logo with its colours swapped, nothing else:
-// when the logo changes, `odin run tools/site -- --logo` writes it again.
+// The README's title pictures are the logo and its name, nothing else: when the logo
+// changes, `odin run tools/site -- --logo` writes them again.
 @(test)
-the_dark_logo_is_the_logo_recoloured :: proc(t: ^testing.T) {
+the_readme_title_is_drawn_from_the_logo :: proc(t: ^testing.T) {
 	svg, ok := read(LOGO)
-	dark, has_dark := read(LOGO_ON_DARK)
-	testing.expect(t, ok && has_dark)
-	testing.expect(t, dark == logo_on_dark(svg), "docs/logo/rocinante-logo-dark.svg is out of date: run odin run tools/site -- --logo")
-	testing.expect(t, !strings.contains(dark, `"#000"`) && !strings.contains(dark, `"#fff"`))
+	light, has_light := read(WORDMARK)
+	dark, has_dark := read(WORDMARK_ON_DARK)
+	testing.expect(t, ok && has_light && has_dark)
+	testing.expect(t, light == wordmark(svg, false) && dark == wordmark(svg, true), "the README's title pictures are out of date: run odin run tools/site -- --logo")
+	for w in ([]string{light, dark}) {
+		testing.expect(t, !strings.contains(w, `"#000"`) && !strings.contains(w, `"#fff"`), "recoloured")
+		testing.expect(t, strings.contains(w, ">rocinante</text>") && strings.contains(w, `viewBox="10 90 1480 1080"`), "the name beside the whole logo")
+	}
 	readme, _ := read("README.md")
-	testing.expect(t, strings.contains(readme, LOGO) && strings.contains(readme, LOGO_ON_DARK), "the README shows both")
+	testing.expect(t, strings.contains(readme, WORDMARK) && strings.contains(readme, WORDMARK_ON_DARK), "the README shows both")
 }

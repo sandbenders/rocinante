@@ -42,10 +42,10 @@ main :: proc() {
 			watching = true
 		} else if arg == "--logo" {
 			svg, ok := read(LOGO)
-			if !ok || !write(LOGO_ON_DARK, logo_on_dark(svg)) {
+			if !ok || !write(WORDMARK, wordmark(svg, false)) || !write(WORDMARK_ON_DARK, wordmark(svg, true)) {
 				os.exit(1)
 			}
-			fmt.printfln("site: wrote %s from %s", LOGO_ON_DARK, LOGO)
+			fmt.printfln("site: wrote %s and %s from %s", WORDMARK, WORDMARK_ON_DARK, LOGO)
 			os.exit(0)
 		} else {
 			out = arg

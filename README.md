@@ -1,11 +1,9 @@
-<p align="center">
+<h1 align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/logo/rocinante-logo-dark.svg">
-    <img src="docs/logo/rocinante-logo.svg" alt="rocinante's logo: a speech bubble with an asterisk in a black dot" width="200">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo/rocinante-wordmark-dark.svg">
+    <img src="docs/logo/rocinante-wordmark.svg" alt="rocinante" width="360">
   </picture>
-</p>
-
-# rocinante
+</h1>
 
 > _Y así, después de muchos nombres que formó, borró y quitó, añadió, deshizo y tornó a hacer en su memoria e imaginación, al fin le vino a llamar Rocinante: nombre, a su parecer, alto, sonoro y significativo de lo que había sido cuando fue rocín, antes de lo que ahora era, que era antes y primero de todos los rocines del mundo._
 >

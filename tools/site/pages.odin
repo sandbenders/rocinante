@@ -608,12 +608,26 @@ write_front_sketch :: proc(out: string) -> bool {
 	return write(fmt.tprintf("%s/layouts/_partials/front-sketch.html", out), html)
 }
 
-// The logo for a dark page that cannot follow the theme, such as the README on
-// GitHub's dark theme: GitHub's own light text for the ink and its dark background
-// for the asterisk. It is committed beside the logo (the README needs a file) and
-// written from it by `odin run tools/site -- --logo`; a test keeps the two the same.
-LOGO_ON_DARK :: "docs/logo/rocinante-logo-dark.svg"
+// The README's title, as the site's header shows it: the logo with "rocinante" beside
+// it in bold monospace, the logo 1.3 times the text's size. GitHub shows a README on a
+// light or a dark page and lets it pick a picture for each, but not a style, so both
+// are committed beside the logo (a README needs files) in GitHub's own text and page
+// colours, and written from it by `odin run tools/site -- --logo`; a test keeps them
+// the same. The word's length is fixed, so whatever monospace font the reader has, the
+// word fits the picture.
+WORDMARK :: "docs/logo/rocinante-wordmark.svg"
+WORDMARK_ON_DARK :: "docs/logo/rocinante-wordmark-dark.svg"
 
-logo_on_dark :: proc(svg: string) -> string {
-	return logo_recoloured(svg, `fill="#e6edf3"`, `stroke="#e6edf3"`, `fill="#0d1117"`)
+wordmark :: proc(svg: string, dark: bool) -> string {
+	ink, cut := "#1f2328", "#ffffff"
+	if dark {
+		ink, cut = "#e6edf3", "#0d1117"
+	}
+	logo := logo_recoloured(svg, fmt.tprintf(`fill="%s"`, ink), fmt.tprintf(`stroke="%s"`, ink), fmt.tprintf(`fill="%s"`, cut))
+	logo = without_size_and_title(logo)
+	// The logo's own drawing, placed 130 high at the left; the text, 100 high, 42 after it.
+	logo, _ = strings.replace(logo, `<svg xmlns="http://www.w3.org/2000/svg"`, `<svg x="0" y="0" width="178" height="130"`, 1, context.temp_allocator)
+	font := `ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'IBM Plex Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace`
+	text := fmt.tprintf(`<text x="220" y="100" font-family="%s" font-weight="700" font-size="100" textLength="522" lengthAdjust="spacing" fill="%s">rocinante</text>`, font, ink)
+	return fmt.tprintf("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 750 130\" width=\"750\" height=\"130\">\n  <title>rocinante</title>\n  %s\n  %s\n</svg>\n", strings.trim_space(logo), text)
 }
