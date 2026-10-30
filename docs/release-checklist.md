@@ -15,6 +15,8 @@ For FreeBSD, macOS and Windows: build on that system, run every example, run the
 
 Where someone has a mid-range laptop, run `examples/benchmark` on it and note the frame rate (Phase 1 used an older desktop as a stand-in).
 
+On the iPhone, also play `examples/touch` with several fingers: they should be in the right places, numbered in order and never reused, and gone when they lift (checked on the Pixel 9 in Phase 2; the iPhone was moved here when Phase 2 closed).
+
 ## Results
 
 | Version | FreeBSD | macOS | Windows | iOS | Android | Notes |

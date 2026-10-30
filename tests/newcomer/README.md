@@ -1,6 +1,6 @@
 # The newcomer test
 
-Phase 2's last exit criterion: someone who has never seen rocinante makes a moving sketch in 15 minutes, observed and written up, with two groups that read the same sketches in two styles, and three traps from Logo's history watched for. How it is run was decided on 2026-10-30:
+Phase 2's last exit criterion, met on 2026-10-30: someone who has never seen rocinante makes a moving sketch in 15 minutes, observed, with two groups that read the same sketches in two styles, and three traps from Logo's history watched for. How it is run was decided on 2026-10-30:
 
 - **Two groups, eight people.** Group A reads the sketches with one thing per argument (`circle at (random width) (random height) radius 5`), group B the same sketches in bare Logo nesting (`circle at random width random height radius 5`). Bare nesting is an error in rocinante, so only the reading differs: everyone then builds in the real `roci run`. In each group, two people who have never programmed and two with a little experience (Scratch, Processing, spreadsheet formulas).
 - **In person, one at a time, thinking aloud**, at the observer's computer, about 30 minutes each. Screen and voice are recorded only with written consent.
@@ -51,7 +51,7 @@ How to help:
 
 ## Writing it up
 
-When all eight are done, summarise in CLAUDE.md, §8, Phase 2, as the exit criterion asks:
+The sheets, the logs and the summary are kept outside the repository (decided 2026-10-30); only the decisions they lead to go in CLAUDE.md. When all eight are done, summarise:
 
 - how many made something move in 15 minutes unaided, per group and per background, and the median minute of the first moving thing;
 - reading: right answers per question per group, and the time per sketch. Question 6 is where the two styles should differ most;
