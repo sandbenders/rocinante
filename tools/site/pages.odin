@@ -526,7 +526,7 @@ write_logo :: proc(out: string) -> bool {
 	}
 	icon := logo_recoloured(svg, `class="ink"`, `class="line"`, `class="cut"`)
 	// A tab icon is 16 to 32 pixels wide, where the bubble's thin outline would fade away.
-	icon, _ = strings.replace(icon, `stroke-width="24"`, `stroke-width="56"`, 1, context.temp_allocator)
+	icon, _ = strings.replace(icon, `stroke-width="48"`, `stroke-width="80"`, 1, context.temp_allocator)
 	icon, _ = strings.replace(icon, "<title>", "<style>.ink{fill:#1b1d21}.line{stroke:#1b1d21}.cut{fill:#fff}@media (prefers-color-scheme:dark){.ink{fill:#e8e9e6}.line{stroke:#e8e9e6}.cut{fill:#1b1d21}}</style><title>", 1, context.temp_allocator)
 	inline := logo_recoloured(svg, `fill="currentColor"`, `stroke="currentColor"`, `class="logo-cut"`)
 	inline, _ = strings.replace(inline, `<svg xmlns="http://www.w3.org/2000/svg"`, `<svg class="logo" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"`, 1, context.temp_allocator)
