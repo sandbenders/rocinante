@@ -153,6 +153,7 @@ one_line :: proc(html: string) -> string {
 syntax_html :: proc(syntax: string, verb: string) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	verb_words := strings.split(verb, " ", context.temp_allocator)
+	previous := ""
 	for part, i in strings.split(syntax, " ", context.temp_allocator) {
 		if i > 0 {
 			strings.write_byte(&b, ' ')
@@ -160,7 +161,8 @@ syntax_html :: proc(syntax: string, verb: string) -> string {
 		word := strings.trim(part, "[]")
 		open := strings.has_prefix(part, "[")
 		close := strings.has_suffix(part, "]")
-		literal := slice.contains(verb_words, word) || slice.contains(registry.CONNECTING_WORDS[:], word) || slice.contains(registry.KEYWORDS[:], word) || word == "..." || word == "=" || word == "\"\"" || strings.has_prefix(word, "\"")
+		// `radius radius`: the label, then the value it takes, which shares its name.
+		literal := word != previous && (slice.contains(verb_words, word) || slice.contains(registry.CONNECTING_WORDS[:], word) || slice.contains(registry.KEYWORDS[:], word) || word == "..." || word == "=" || word == "\"\"" || strings.has_prefix(word, "\""))
 		if open {
 			strings.write_string(&b, `<span class="opt">[`)
 		}
@@ -172,6 +174,7 @@ syntax_html :: proc(syntax: string, verb: string) -> string {
 		if close {
 			strings.write_string(&b, `]</span>`)
 		}
+		previous = word
 	}
 	return strings.to_string(b)
 }
