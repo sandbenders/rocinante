@@ -27,7 +27,7 @@ SCENES := [?]Scene{
 	{"transparency", transparency},
 	{"transforms", transforms},
 	{"origins", origins},
-	{"background_wipes", background_wipes},
+	{"background_behind", background_behind},
 	{"quads_and_arcs", quads_and_arcs},
 	{"outline_joins", outline_joins},
 	{"line_caps", line_caps},
@@ -183,9 +183,9 @@ origins :: proc(list: ^gfx.Command_List) {
 	}
 }
 
-background_wipes :: proc(list: ^gfx.Command_List) {
+background_behind :: proc(list: ^gfx.Command_List) {
 	gfx.set_fill(list, named("red"))
-	gfx.circle(list, 50, 50, 40) // gone: background paints over it
+	gfx.circle(list, 50, 50, 40) // stays: a background is behind everything, wherever it is written
 	gfx.background(list, named("navy"))
 	gfx.set_fill(list, named("white"))
 	gfx.circle(list, 150, 100, 30)

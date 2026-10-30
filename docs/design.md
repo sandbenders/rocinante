@@ -449,6 +449,7 @@ with glow [ ... ]
 
 Words:
 
+- `background`: what is behind everything in the window (decided 2026-10-30): wherever it is written, the shapes before it and after it are drawn on it, and the last background of a frame is the one that shows. It never wipes what came before (Processing's `background` does, and so did rocinante's until then); `clear` is the verb that empties the window. Every frame starts empty anyway, so no sketch needs a background to rub out the last one.
 - `fill`: colour of areas and text. `no fill` turns it off.
 - `stroke`: colour of outlines and lines. `no stroke` turns it off.
 - `thickness`: stroke width in pixels (not `strokeWeight`, and not `width`, which already means size).

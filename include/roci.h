@@ -77,7 +77,7 @@ void roci_send_vec2(roci_window_id to, roci_vec2 point);
 /* Shows the sketch until every window is closed, or for `frames` frames when that is more than 0. Gives 1 when it ran and 0 when the graphics could not start. */
 int roci_run(int frames);
 
-/* Fills the whole window with a color or a gradient. */
+/* Sets the color or gradient behind everything in the window, wherever it is written. */
 void roci_background(roci_color color);
 
 /* Paints the whole window a gray, 0 to 255. */

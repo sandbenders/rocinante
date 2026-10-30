@@ -266,10 +266,10 @@ debug_text :: proc(list: ^Command_List, text: string, x, y: f32, scale: f32 = 2)
 	return record(list, .Text, .Corner, {x, y, scale, w, h, f32(offset), f32(len(text)), 0}, hash.fnv64a(transmute([]u8)text))
 }
 
-// `background` paints the whole window, so everything recorded before it is
-// hidden and is dropped; later commands draw on top.
+// `background` sets what is behind everything in the window: wherever it is written,
+// the shapes recorded before it and after it are drawn on it. The last one of a frame is
+// the one that shows. (`clear` is the verb that empties the window.)
 background :: proc(list: ^Command_List, colour: maths.Colour) {
-	clear(&list.commands)
 	list.background = colour
 	list.background_paint = {}
 }
@@ -280,7 +280,6 @@ background_gradient :: proc(list: ^Command_List, g: Gradient) {
 	if g.count == 0 {
 		return
 	}
-	clear(&list.commands)
 	list.background = g.colours[0]
 	list.background_paint = register_gradient(list, g)
 }

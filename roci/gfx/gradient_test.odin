@@ -325,13 +325,13 @@ test_a_command_hash_follows_the_gradient_content_not_its_number :: proc(t: ^test
 }
 
 @(test)
-test_background_gradient_wipes_the_commands_and_remembers_the_gradient :: proc(t: ^testing.T) {
+test_background_gradient_keeps_the_commands_and_remembers_the_gradient :: proc(t: ^testing.T) {
 	list := fresh()
 	defer destroy(&list)
 	circle(&list, 0, 0, 5)
 	g, _ := gradient_make({BLUE, BLACK})
 	background_gradient(&list, g)
-	testing.expect_value(t, len(list.commands), 0)
+	testing.expect_value(t, len(list.commands), 1) // the circle stays, drawn on the gradient
 	testing.expect_value(t, list.background, BLUE)
 	testing.expect_value(t, list.background_paint.id, u32(1))
 	background(&list, WHITE) // a plain colour takes it back

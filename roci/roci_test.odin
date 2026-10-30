@@ -263,12 +263,13 @@ test_arc_and_text_and_background :: proc(t: ^testing.T) {
 	arc(50, 50, 40, 40, 0, 90)
 	debug_text("hi", 5, 5)
 	list := &the.windows[0].list
-	testing.expect_value(t, len(list.commands), 2) // the circle was wiped
+	testing.expect_value(t, len(list.commands), 3) // the circle stays: the background is behind it
 	testing.expect_value(t, list.background, Colour{10, 20, 30, 255})
-	testing.expect_value(t, gfx.command_at(list, 0).kind, gfx.Kind.Arc)
-	testing.expect_value(t, gfx.command_at(list, 1).kind, gfx.Kind.Text)
+	testing.expect_value(t, gfx.command_at(list, 0).kind, gfx.Kind.Circle)
+	testing.expect_value(t, gfx.command_at(list, 1).kind, gfx.Kind.Arc)
+	testing.expect_value(t, gfx.command_at(list, 2).kind, gfx.Kind.Text)
 	background_grey(100)
-	testing.expect_value(t, len(list.commands), 0)
+	testing.expect_value(t, len(list.commands), 3)
 	testing.expect_value(t, list.background, maths.grey(100))
 	circle(0, 0, 1)
 	clear_window()

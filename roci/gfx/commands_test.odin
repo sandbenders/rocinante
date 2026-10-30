@@ -258,16 +258,20 @@ test_end_frame_counts_unpopped_pushes_and_resets_the_stack :: proc(t: ^testing.T
 	testing.expect_value(t, end_frame(&list), 0)
 }
 
+// A background is behind everything wherever it is written: what came before it stays,
+// and the last background of a frame is the one that shows.
 @(test)
-test_background_wipes_what_came_before_but_not_what_comes_after :: proc(t: ^testing.T) {
+test_background_is_behind_what_comes_before_and_after :: proc(t: ^testing.T) {
 	list := fresh()
 	defer destroy(&list)
 	circle(&list, 0, 0, 1)
 	background(&list, maths.rgb(10, 20, 30))
 	circle(&list, 0, 0, 2)
-	testing.expect_value(t, len(list.commands), 1)
-	testing.expect_value(t, command_at(&list, 0).args[2], f32(2))
-	testing.expect_value(t, list.background, maths.Colour{10, 20, 30, 255})
+	background(&list, maths.rgb(40, 50, 60))
+	testing.expect_value(t, len(list.commands), 2)
+	testing.expect_value(t, command_at(&list, 0).args[2], f32(1))
+	testing.expect_value(t, command_at(&list, 1).args[2], f32(2))
+	testing.expect_value(t, list.background, maths.Colour{40, 50, 60, 255})
 }
 
 @(test)
@@ -462,3 +466,4 @@ test_a_list_can_be_rewound_to_a_mark :: proc(t: ^testing.T) {
 	circle(&list, 2, 2, 2)
 	testing.expect_value(t, len(list.commands), 2)
 }
+

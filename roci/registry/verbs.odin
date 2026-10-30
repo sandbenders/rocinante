@@ -85,7 +85,7 @@ VERBS := []Verb{
 	{"title", {{{{"text", .Text}}, nil, .None}}, "Sets the title of the window the code runs in. Another window is changed with `set`."},
 	{"fullscreen", {{{}, nil, .None}}, "Makes the window fill the screen."},
 	{"quit", {{{}, nil, .None}}, "Closes the sketch."},
-	{"background", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Fills the whole window with a color or a gradient."},
+	{"background", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the color or gradient behind everything in the window, wherever it is written."},
 	{"clear", {{{}, nil, .None}}, "Empties the window, leaving it transparent."},
 
 	// 2D shapes
