@@ -279,8 +279,10 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
 .guide-title { font: 600 1rem var(--mono); }
 .guide-summary { color: var(--soft); font-size: 0.95rem; }
 .next-prev { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--rule); font-family: var(--mono); font-size: 0.9rem; }
-.guide table { border-collapse: collapse; }
+/* A table wider than a phone scrolls inside itself, never the page. */
+.guide table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
 .guide th, .guide td { border-bottom: 1px solid var(--rule); padding: 6px 10px; text-align: left; }
+.guide td code { white-space: nowrap; }
 
 @media (max-width: 820px) {
   .with-side { grid-template-columns: minmax(0, 1fr); gap: 16px; }

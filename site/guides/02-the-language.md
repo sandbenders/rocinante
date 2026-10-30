@@ -43,10 +43,10 @@ x = x + SPEED
 | number | `3`, `0.5`, `-10` | every number is one kind; no difference between whole and not |
 | text | `"hello"` | `+` joins text: `"score: " + 3` |
 | true or false | `true`, `false` | what a comparison gives |
-| colour | `red`, `#ff8800`, `rgb 255 136 0` | 0 to 255 for each channel, a name from the CSS list |
+| colour | `red`, `#ff8800`,<br>`rgb 255 136 0` | 0 to 255 for each channel, a name from the CSS list |
 | vector | `{ 100, 50 }` | two numbers, a position or a size; `v.x`, `v.y` |
-| record | `{ pos: { 10, 20 }, life: 1 }` | named fields; `ball.pos`, `ball.life` |
-| list | `[ 1 2 3 ]`, `[ red gold teal ]` | many values in order, no commas between them |
+| record | `{ pos: { 10, 20 },`<br>`life: 1 }` | named fields; `ball.pos`, `ball.life` |
+| list | `[ 1 2 3 ]`,<br>`[ red gold teal ]` | many values in order, no commas between them |
 
 A vector has commas and curly brackets; a list has square brackets and no commas. They look alike, and mixing them up is the commonest early mistake.
 
