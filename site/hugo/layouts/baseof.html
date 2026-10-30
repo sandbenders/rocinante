@@ -33,8 +33,16 @@
 {{ block "main" . }}{{ end }}
 </div>
 <footer class="foot">
-  <p>rocinante is free software under the Zero-Clause BSD licence. These pages are made from the language itself: every example on them runs, and every picture is what it draws.</p>
+  <div class="foot-inner">
+    <p class="foot-about"><span class="mark">rocinante</span> is free software under the Zero-Clause BSD licence. These pages are made from the language itself: every example on them runs, and every picture is what it draws.</p>
+    <dl class="foot-links">
+      <div><dt>write</dt><dd><a href="mailto:{{ site.Params.contact }}">{{ site.Params.contact }}</a></dd></div>
+      <div><dt>read the code</dt><dd><a href="{{ site.Params.repository }}">{{ site.Params.repository | replaceRE "^https://" "" }}</a></dd></div>
+      <div><dt>something wrong?</dt><dd><a href="{{ site.Params.repository }}/issues">report a problem</a></dd></div>
+    </dl>
+  </div>
 </footer>
+
 <script>
   // The switch: the icon of the theme it changes to (chosen by the style sheet), its
   // name for screen readers, and the choice remembered.

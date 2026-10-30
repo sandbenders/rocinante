@@ -88,7 +88,7 @@
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 var(--sans); }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 var(--sans); min-height: 100vh; display: flex; flex-direction: column; }
 a { color: var(--accent); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
 a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
@@ -129,10 +129,16 @@ p, li, dd { max-width: var(--measure); }
 }
 .mono { font-family: var(--mono); }
 
-.frame { max-width: 1180px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
+.frame { flex: 1; width: 100%; max-width: 1180px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
 .content { min-width: 0; }
-.foot { border-top: 1px solid var(--rule); color: var(--soft); font-size: 0.85rem; }
-.foot p { max-width: 1180px; margin: 0 auto; padding: 20px max(16px, env(safe-area-inset-right, 0px)) 28px max(16px, env(safe-area-inset-left, 0px)); }
+.foot { border-top: 1px solid var(--rule); background: var(--sheet); color: var(--soft); font-size: 0.9rem; }
+.foot-inner { max-width: 1180px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 36px max(16px, env(safe-area-inset-left, 0px)); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px 56px; align-items: start; }
+.foot-about { margin: 0; max-width: 60ch; }
+.foot-about .mark { font-size: 1rem; }
+.foot-links { display: flex; flex-wrap: wrap; gap: 14px 40px; margin: 0; }
+.foot-links dt { font: 600 0.75rem var(--mono); margin-bottom: 2px; }
+.foot-links dd { margin: 0; }
+.foot-links a { color: var(--ink); }
 
 /* code */
 pre { background: var(--code-bg); border-radius: 6px; padding: 14px 16px; margin: 0; overflow-x: auto; font-size: 0.92rem; line-height: 1.55; tab-size: 2; }
@@ -150,13 +156,20 @@ pre.roci { border-left: 3px solid var(--accent); }
 pre.shell { background: var(--ink); color: var(--paper); }
 pre.shell code::before { content: "$ "; opacity: 0.55; }
 
-/* home */
-.home-main { display: flex; flex-direction: column; gap: 40px; }
-.hero h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); max-width: 28ch; margin-top: 0.3em; text-wrap: balance; }
-.hero { display: flex; flex-direction: column; gap: 16px; }
-.hero-code { font-size: 1.35rem; padding: 22px 24px; max-width: 34ch; }
+/* home: the words run the page's whole width; the line and the window it draws share a row */
+.home-main { display: flex; flex-direction: column; gap: 48px; }
+.home-main p, .home-main li, .home-main dd { max-width: none; }
+.hero { display: flex; flex-direction: column; gap: 22px; }
+.hero h1 { font-size: clamp(2rem, 4.2vw, 3.1rem); margin: 0.2em 0 0; }
+.hero .lead { font-size: 1.25rem; margin: 0; }
+.demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px 40px; align-items: start; }
+.demo .mistake { display: flex; flex-direction: column; gap: 10px; }
+.demo .mistake > pre { width: 100%; }
+.demo-words { display: flex; flex-direction: column; gap: 18px; }
+.demo-words p { margin: 0; font-size: 1.05rem; }
+.hero-code { font-size: 1.35rem; padding: 22px 24px; }
 /* The window the front page's line opens, scaled down, with a plain title bar. */
-.hello { margin: 0; max-width: 420px; }
+.hello { margin: 0; }
 .hello .window-bar { display: flex; gap: 6px; padding: 7px 10px; background: var(--code-bg); border: 1px solid var(--rule); border-bottom: 0; border-radius: 6px 6px 0 0; }
 .hello .window-bar span { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); }
 .hello img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 0 0 6px 6px; background: #e6e6e6; }
@@ -166,11 +179,12 @@ pre.shell code::before { content: "$ "; opacity: 0.55; }
 .way:hover { border-color: var(--accent); }
 .way h2 { margin: 0 0 6px; color: var(--accent); }
 .way p { margin: 0; color: var(--soft); }
-.steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-.steps li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
-.steps pre { min-width: 16ch; }
+/* The three commands in one column, what each does beside it. */
+.steps { list-style: none; padding: 0; margin: 0 0 20px; display: flex; flex-direction: column; gap: 10px; }
+.steps li { display: grid; grid-template-columns: 22ch minmax(0, 1fr); align-items: center; gap: 6px 18px; }
 .steps p { margin: 0; color: var(--soft); }
 .start h2 { margin-top: 0; }
+.start .note { margin: 0; }
 
 .mistake { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 12px; align-items: start; }
 .mistake pre.message-text { white-space: pre-wrap; }
@@ -235,12 +249,22 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
 .message-text .m-label { color: var(--msg-good); font-weight: 700; }
 .message-text .m-example { color: var(--msg-good); }
 
-/* guides */
-.guide { max-width: 760px; }
+/* guides: the page, and the list of its sections beside it */
+.with-toc { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 56px; align-items: start; }
 .guide pre { margin: 14px 0; }
-.guide-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; counter-reset: guide; }
-.guide-list li { counter-increment: guide; }
-.guide-list a { display: grid; grid-template-columns: 3ch minmax(0, 1fr); gap: 2px 12px; padding: 12px 14px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; text-decoration: none; color: var(--ink); }
+.guide h2 { scroll-margin-top: 80px; }
+.toc { position: sticky; top: 76px; max-height: calc(100vh - 96px); overflow-y: auto; font-size: 0.9rem; border-left: 1px solid var(--rule); padding-left: 16px; }
+.toc-title { font: 600 0.8rem var(--mono); color: var(--soft); margin: 4px 0 8px; }
+.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.toc li { max-width: none; line-height: 1.35; }
+.toc a { color: var(--soft); text-decoration: none; }
+.toc a:hover { color: var(--accent); }
+.edit { margin-top: 20px; font: 0.85rem var(--mono); }
+.edit a { color: var(--soft); }
+/* the list of guides, two to a row: they are read in order, so they keep their numbers */
+.guide-list { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 12px; counter-reset: guide; }
+.guide-list li { counter-increment: guide; max-width: none; display: flex; }
+.guide-list a { flex: 1; display: grid; align-content: start; grid-template-columns: 3ch minmax(0, 1fr); gap: 2px 12px; padding: 14px 16px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; text-decoration: none; color: var(--ink); }
 .guide-list a::before { content: counter(guide); font: 600 1rem var(--mono); color: var(--accent); grid-row: span 2; }
 .guide-list a:hover { border-color: var(--accent); }
 .guide-title { font: 600 1rem var(--mono); }
@@ -255,6 +279,17 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
   .side details:not([open]) ul { display: none; }
   .example { grid-template-columns: minmax(0, 1fr); }
   .mistake { grid-template-columns: minmax(0, 1fr); }
+  .demo, .with-toc, .foot-inner { grid-template-columns: minmax(0, 1fr); }
+  /* On a phone the window follows the line that draws it, before the words about saving. */
+  .demo { display: flex; flex-direction: column; gap: 18px; }
+  .demo-words { display: contents; }
+  .hero-code { order: 1; }
+  .hello { order: 2; }
+  .demo-words > p { order: 3; }
+  .demo .mistake { order: 4; }
+  .toc { display: none; }
+  .steps li { grid-template-columns: minmax(0, 1fr); }
+  .hero .lead { font-size: 1.1rem; }
   .hero-code { font-size: 1.05rem; padding: 16px 18px; }
   .ref-list, .choices { grid-template-columns: minmax(0, 1fr); gap: 0 0; }
   .ref-list dd { margin-bottom: 8px; }

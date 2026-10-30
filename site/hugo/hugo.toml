@@ -10,6 +10,12 @@ enableRobotsTXT = false
   # The generated pages hold coloured code as HTML.
   unsafe = true
 
+[markup.tableOfContents]
+  # A guide lists its sections beside it.
+  startLevel = 2
+  endLevel = 2
+
 [params]
   release = "alpha"
   repository = "https://github.com/sandbenders/rocinante"
+  contact = "fabrizio@fabriziopoltronieri.com"

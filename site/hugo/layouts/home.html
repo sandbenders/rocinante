@@ -5,16 +5,20 @@
     <p class="lead">rocinante is for making pictures, animations, sounds and interactive pieces with code. The language is small
       enough to learn in an afternoon; underneath it is an engine of today's graphics, sound and AI technology. Here's our <span class="mono">hello world!</span> One line makes a
       picture in its own window:</p>
-    <pre class="roci hero-code"><code><span class="v">circle</span> <span class="w">at</span> <span class="n">100</span> <span class="n">100</span> <span class="w">radius</span> <span class="n">50</span></code></pre>
-    <figure class="hello">
-      <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
-      <img src="{{ "img/hello.png" | relURL }}" alt="The window that line opens: 800 by 600 pixels of light grey, with a white circle near its top-left corner" width="800" height="600">
-      <figcaption>what it draws: the whole window, 800 by 600</figcaption>
-    </figure>
-    <p>Save the file and the window changes while it runs. Mistakes never stop it: the window keeps the last good
-      picture and says, in plain words, what went wrong and what would work.</p>
-    <div class="mistake">
-      {{ partial "front-mistake.html" . }}
+    <div class="demo">
+      <div class="demo-words">
+        <pre class="roci hero-code"><code><span class="v">circle</span> <span class="w">at</span> <span class="n">100</span> <span class="n">100</span> <span class="w">radius</span> <span class="n">50</span></code></pre>
+        <p>Save the file and the window changes while it runs. Mistakes never stop it: the window keeps the last good
+          picture and says, in plain words, what went wrong and what would work.</p>
+        <div class="mistake">
+          {{ partial "front-mistake.html" . }}
+        </div>
+      </div>
+      <figure class="hello">
+        <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+        <img src="{{ "img/hello.png" | relURL }}" alt="The window that line opens: 800 by 600 pixels of light grey, with a white circle near its top-left corner" width="800" height="600">
+        <figcaption>what it draws: the whole window, 800 by 600</figcaption>
+      </figure>
     </div>
   </section>
   <section class="engine">

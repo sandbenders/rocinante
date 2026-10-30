@@ -9,14 +9,24 @@
   </main>
 </div>
 {{ else }}
-<main id="content" class="content guide">
-  <p class="crumb"><a href="../">guides</a></p>
-  <h1>{{ .Title }}</h1>
-  {{ .Content }}
-  <nav class="next-prev" aria-label="Guides">
-    {{ with .NextInSection }}<a class="prev" href="{{ .RelPermalink }}">back: {{ .Title }}</a>{{ else }}<span></span>{{ end }}
-    {{ with .PrevInSection }}<a class="next" href="{{ .RelPermalink }}">next: {{ .Title }}</a>{{ end }}
+<div class="with-toc">
+  <main id="content" class="content guide">
+    <p class="crumb"><a href="../">guides</a></p>
+    <h1>{{ .Title }}</h1>
+    {{ .Content }}
+    <nav class="next-prev" aria-label="Guides">
+      {{ with .NextInSection }}<a class="prev" href="{{ .RelPermalink }}">back: {{ .Title }}</a>{{ else }}<span></span>{{ end }}
+      {{ with .PrevInSection }}<a class="next" href="{{ .RelPermalink }}">next: {{ .Title }}</a>{{ end }}
+    </nav>
+    {{ with .File }}<p class="edit"><a href="{{ site.Params.repository }}/blob/main/site/guides/{{ .LogicalName }}">edit this page on GitHub</a></p>{{ end }}
+  </main>
+  {{ if .Fragments.Headings }}
+  <nav class="toc" aria-label="On this page">
+    <p class="toc-title">on this page</p>
+    {{ .TableOfContents }}
   </nav>
-</main>
+  {{ end }}
+</div>
 {{ end }}
 {{ end }}
+
