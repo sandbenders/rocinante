@@ -113,6 +113,38 @@ err_icon :: proc(i: Icon) -> string {
 	return icon(i, err_colour)
 }
 
+// The part of an error message one of its lines is, so `message` here and the
+// documentation site paint a message the same way.
+Message_Part :: enum {
+	Plain,
+	Title,     // `── I don't know the word "x" ───── sketch.roci:1:1`
+	Warning,   // a title that starts `── Warning:`
+	Hint,      // a title that starts `── Hint:`
+	Carets,    // `  │   ^^^^`, under the source line
+	Example,   // a line indented four spaces: a line that would work
+	Labelled,  // `Did you mean:  circle ...`: a label, then a line that would work
+}
+
+// What one line of a message is; for a labelled line, `label_end` is just after its colon.
+message_part :: proc(line: string) -> (part: Message_Part, label_end: int) {
+	trimmed := strings.trim_left_space(line)
+	switch {
+	case strings.has_prefix(line, "── Warning:"):
+		return .Warning, 0
+	case strings.has_prefix(line, "── Hint:"):
+		return .Hint, 0
+	case strings.has_prefix(line, "── "):
+		return .Title, 0
+	case is_caret_line(line):
+		return .Carets, 0
+	case strings.has_prefix(line, "    ") && trimmed != "":
+		return .Example, 0
+	case strings.contains(line, ":  ") && !strings.contains(line, "│"):
+		return .Labelled, strings.index(line, ":  ") + 1
+	}
+	return .Plain, 0
+}
+
 // Paints an error message as `roci` writes it (a title line of dashes, the source
 // line with its carets, an explanation and an example) so the parts can be told
 // apart: the title in bold red (yellow for a warning, cyan for a hint), the carets
@@ -128,30 +160,22 @@ message :: proc(text: string, on: bool) -> string {
 		if i > 0 {
 			strings.write_string(&b, "\n")
 		}
-		trimmed := strings.trim_left_space(line)
-		switch {
-		case strings.has_prefix(line, "── "):
-			style := Style.Bold_Red
-			if strings.has_prefix(line, "── Warning:") {
-				style = .Yellow
-			} else if strings.has_prefix(line, "── Hint:") {
-				style = .Cyan
-			}
-			strings.write_string(&b, paint(line, style, true))
-		case is_caret_line(line):
-			strings.write_string(&b, paint(line, .Red, true))
-		case strings.has_prefix(line, "    ") && trimmed != "":
-			strings.write_string(&b, paint(line, .Green, true))
-		case strings.contains(line, ":  ") && !strings.contains(line, "│"):
-			at := strings.index(line, ":  ")
-			strings.write_string(&b, paint(line[:at + 1], .Bold_Green, true))
-			strings.write_string(&b, paint(line[at + 1:], .Green, true))
-		case:
-			strings.write_string(&b, line)
+		part, label_end := message_part(line)
+		switch part {
+		case .Title:    strings.write_string(&b, paint(line, .Bold_Red, true))
+		case .Warning:  strings.write_string(&b, paint(line, .Yellow, true))
+		case .Hint:     strings.write_string(&b, paint(line, .Cyan, true))
+		case .Carets:   strings.write_string(&b, paint(line, .Red, true))
+		case .Example:  strings.write_string(&b, paint(line, .Green, true))
+		case .Labelled:
+			strings.write_string(&b, paint(line[:label_end], .Bold_Green, true))
+			strings.write_string(&b, paint(line[label_end:], .Green, true))
+		case .Plain:    strings.write_string(&b, line)
 		}
 	}
 	return strings.to_string(b)
 }
+
 
 // The line under the source line that points at it: `  │   ^^^^`.
 @(private)

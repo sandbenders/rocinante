@@ -257,7 +257,7 @@ write_messages :: proc(out: string) -> bool {
 	slice.sort_by(found[:], proc(a, c: Found) -> bool {return a.title < c.title})
 	strings.write_string(&b, `<div class="messages">`)
 	for f in found {
-		fmt.sbprintf(&b, `<section class="message" id="%s"><h2>%s</h2>%s%s</section>`, f.slug, escape(f.title), code_html(f.code), one_line(fmt.tprintf(`<pre class="message-text">%s</pre>`, escape(strings.trim_right_space(f.text)))))
+		fmt.sbprintf(&b, `<section class="message" id="%s"><h2>%s</h2>%s%s</section>`, f.slug, escape(f.title), code_html(f.code), message_html(f.text))
 	}
 	strings.write_string(&b, "</div>\n")
 	if len(found) < 50 {
@@ -367,4 +367,18 @@ write_hello :: proc(out: string) -> bool {
 		return false
 	}
 	return true
+}
+
+// The mistake the front page shows, from the catalogue's own test (so it is the message
+// rocinante really gives), written as a partial template its layout includes.
+FRONT_MISTAKE :: "tests/errors/equals_in_condition/if"
+
+write_front_mistake :: proc(out: string) -> bool {
+	code, has_code := read(FRONT_MISTAKE + ".roci")
+	text, has_text := read(FRONT_MISTAKE + ".txt")
+	if !has_code || !has_text {
+		fmt.eprintfln("site: the front page's mistake needs %s.roci and %s.txt", FRONT_MISTAKE, FRONT_MISTAKE)
+		return false
+	}
+	return write(fmt.tprintf("%s/layouts/_partials/front-mistake.html", out), fmt.tprintf("%s\n%s\n", code_html(code), message_html(text)))
 }

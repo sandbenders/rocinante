@@ -94,3 +94,28 @@ test_a_warning_and_a_hint_have_their_own_colours :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(message("── Warning: x ──", true), code(.Yellow)))
 	testing.expect(t, strings.contains(message("── Hint: x ──", true), code(.Cyan)))
 }
+
+@(test)
+test_each_line_of_a_message_is_the_part_it_looks_like :: proc(t: ^testing.T) {
+	Case :: struct {
+		line:      string,
+		part:      Message_Part,
+		label_end: int,
+	}
+	cases := []Case{
+		{"── I don't know the word `x` ──── a.roci:1:1", .Title, 0},
+		{"── Warning: x ──", .Warning, 0},
+		{"── Hint: x ──", .Hint, 0},
+		{"  │   ^^^^", .Carets, 0},
+		{"1 │ x 1", .Plain, 0},
+		{"    circle at 1 1 radius 1", .Example, 0},
+		{"    ", .Plain, 0},
+		{"Did you mean:  circle at 1 1 radius 1", .Labelled, len("Did you mean:")},
+		{"Say it better.", .Plain, 0},
+		{"", .Plain, 0},
+	}
+	for c in cases {
+		part, label_end := message_part(c.line)
+		testing.expectf(t, part == c.part && label_end == c.label_end, "%q gave %v %d, not %v %d", c.line, part, label_end, c.part, c.label_end)
+	}
+}

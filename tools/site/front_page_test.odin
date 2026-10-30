@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: 0BSD
 package site_tool
 
+import "core:fmt"
+import "core:os"
 import "core:strings"
 import "core:testing"
 
@@ -44,4 +46,36 @@ without_tags :: proc(html: string) -> string {
 		}
 	}
 	return strings.to_string(b)
+}
+
+@(test)
+message_html_gives_each_part_its_class :: proc(t: ^testing.T) {
+	text := "── I don't know the word `x` ──── a.roci:1:1\n\n1 │ x < 1\n  │ ^\n\nSay it better.\n\nDid you mean:  circle at 1 1 radius 1\n    circle at 2 2 radius 2\n"
+	html := message_html(text)
+	testing.expect(t, strings.has_prefix(html, `<pre class="message-text"><span class="m-title">── I don't know`))
+	testing.expect(t, strings.contains(html, `<span class="m-carets">  │ ^</span>`))
+	testing.expect(t, strings.contains(html, `1 │ x &lt; 1`))
+	testing.expect(t, strings.contains(html, `<span class="m-label">Did you mean:</span><span class="m-example">  circle at 1 1 radius 1</span>`))
+	testing.expect(t, strings.contains(html, `<span class="m-example">    circle at 2 2 radius 2</span>`))
+	testing.expect(t, strings.contains(html, "&#10;Say it better.&#10;"))
+	testing.expect(t, !strings.contains(html, "\n"))
+	testing.expect(t, strings.has_suffix(html, "radius 2</span></pre>"))
+	testing.expect(t, strings.contains(message_html("── Warning: w ──"), `class="m-warning"`))
+	testing.expect(t, strings.contains(message_html("── Hint: h ──"), `class="m-hint"`))
+	testing.expect_value(t, message_html(""), `<pre class="message-text"></pre>`)
+}
+
+@(test)
+front_page_shows_the_catalogues_own_message :: proc(t: ^testing.T) {
+	out := fresh_out("front-mistake")
+	defer os.remove_all(out)
+	testing.expect(t, write_front_mistake(out))
+	partial, ok := read(fmt.tprintf("%s/layouts/_partials/front-mistake.html", out))
+	testing.expect(t, ok)
+	testing.expect(t, strings.contains(partial, `<pre class="roci">`))
+	testing.expect(t, strings.contains(partial, `<span class="m-title">── A condition asks, it does not assign`))
+
+	page, _ := read("site/hugo/layouts/home.html")
+	testing.expect(t, strings.contains(page, `{{ partial "front-mistake.html" . }}`))
+	testing.expect(t, !strings.contains(page, `class="message-text"`))
 }

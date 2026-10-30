@@ -22,6 +22,11 @@
   --hl-name: #1b1d21;
   --hl-comment: #848a92;
   --hl-punct: #6a6f77;
+  /* messages, in the terminal's colours */
+  --msg-error: #b4232f;
+  --msg-good: #2e7d1f;
+  --msg-warning: #8f6200;
+  --msg-hint: #0b7285;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", "IBM Plex Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
   --measure: 70ch;
@@ -47,6 +52,10 @@
     --hl-name: #e8e9e6;
     --hl-comment: #7c828b;
     --hl-punct: #a3a8b0;
+    --msg-error: #ff7b86;
+    --msg-good: #8fd16a;
+    --msg-warning: #e8b54a;
+    --msg-hint: #5ccfe0;
     color-scheme: dark;
   }
 }
@@ -70,6 +79,10 @@
   --hl-name: #e8e9e6;
   --hl-comment: #7c828b;
   --hl-punct: #a3a8b0;
+  --msg-error: #ff7b86;
+  --msg-good: #8fd16a;
+  --msg-warning: #e8b54a;
+  --msg-hint: #5ccfe0;
   color-scheme: dark;
 }
 
@@ -212,6 +225,13 @@ pre.syntax .opt { color: var(--soft); }
 .message { display: flex; flex-direction: column; gap: 8px; scroll-margin-top: 80px; }
 .message h2 { margin: 0; }
 pre.message-text { background: var(--sheet); border: 1px solid var(--rule); color: var(--ink); white-space: pre; }
+/* A message's parts, coloured as the terminal colours them. */
+.message-text .m-title { color: var(--msg-error); font-weight: 700; }
+.message-text .m-warning { color: var(--msg-warning); font-weight: 700; }
+.message-text .m-hint { color: var(--msg-hint); font-weight: 700; }
+.message-text .m-carets { color: var(--msg-error); }
+.message-text .m-label { color: var(--msg-good); font-weight: 700; }
+.message-text .m-example { color: var(--msg-good); }
 
 /* guides */
 .guide { max-width: 760px; }

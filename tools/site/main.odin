@@ -53,6 +53,7 @@ main :: proc() {
 	ok = write_messages(out) && ok
 	ok = write_guides(out) && ok
 	ok = write_hello(out) && ok
+	ok = write_front_mistake(out) && ok
 	if !ok {
 		fmt.eprintln("site: some pages could not be made; see above")
 		os.exit(1)
@@ -158,6 +159,33 @@ code_html :: proc(code: string) -> string {
 one_line :: proc(html: string) -> string {
 	out, _ := strings.replace_all(html, "\n", "&#10;", context.temp_allocator)
 	return out
+}
+
+MESSAGE_CLASSES := [term.Message_Part]string{
+	.Plain = "", .Title = "m-title", .Warning = "m-warning", .Hint = "m-hint",
+	.Carets = "m-carets", .Example = "m-example", .Labelled = "m-example",
+}
+
+// A message as `roci check` prints it, each part in the colour the terminal gives it.
+message_html :: proc(text: string) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, `<pre class="message-text">`)
+	for line, i in strings.split_lines(strings.trim_right_space(text), context.temp_allocator) {
+		if i > 0 {
+			strings.write_string(&b, "\n")
+		}
+		part, label_end := term.message_part(line)
+		switch part {
+		case .Plain:
+			strings.write_string(&b, escape(line))
+		case .Labelled:
+			fmt.sbprintf(&b, `<span class="m-label">%s</span><span class="m-example">%s</span>`, escape(line[:label_end]), escape(line[label_end:]))
+		case .Title, .Warning, .Hint, .Carets, .Example:
+			fmt.sbprintf(&b, `<span class="%s">%s</span>`, MESSAGE_CLASSES[part], escape(line))
+		}
+	}
+	strings.write_string(&b, "</pre>")
+	return one_line(strings.to_string(b))
 }
 
 // A syntax line: the verb and its words as written, the values to fill in in italics

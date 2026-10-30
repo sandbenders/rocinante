@@ -14,8 +14,7 @@
     <p>Save the file and the window changes while it runs. Mistakes never stop it: the window keeps the last good
       picture and says, in plain words, what went wrong and what would work.</p>
     <div class="mistake">
-      <pre class="roci"><code><span class="x">score</span> <span class="op">=</span> <span class="n">1</span>&#10;<span class="k">if</span> <span class="x">score</span> <span class="op">=</span> <span class="n">10</span> <span class="p">[</span>&#10;  <span class="v">fill</span> <span class="o">red</span>&#10;<span class="p">]</span></code></pre>
-      <pre class="message-text">── A condition asks, it does not assign ─────────────── sketch.roci:2:10&#10;&#10;2 │ if score = 10 [&#10;  │          ^&#10;&#10;A single equals sign gives a name a value. To ask whether two things are the same, write `is`.&#10;&#10;Write:  if score is 10 [</pre>
+      {{ partial "front-mistake.html" . }}
     </div>
   </section>
   <section class="engine">
