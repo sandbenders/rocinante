@@ -1,4 +1,4 @@
 ---
 title: "rocinante"
-summary: "A small language for drawing and animating, with one line to start."
+summary: "A simple language for pictures, animation and interaction, on a GPU engine (Vulkan, Metal, Direct3D 12) that reloads your sketch as you save."
 ---
