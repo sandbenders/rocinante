@@ -1,6 +1,4 @@
-// rocinante's logo, drawn by rocinante: a speech bubble with an asterisk in it.
-// The numbers are the logo's own drawing (docs/logo/rocinante-logo.svg), so the
-// whole thing is drawn at half size.
+// rocinante's logo, drawn with rocinante: a speech bubble with an asterisk in it.
 
 window size 740 540 title "rocinante"
 background white
@@ -8,25 +6,28 @@ grow 0.5
 move -10 -90
 
 MIDDLE = { 942, 622 }
-RING = { 945.03, 630.03 }
+RING = { 945, 630 }
 TIP = { 90, 595 }
-MOUTH_TOP = { 461.3, 595 }
+MOUTH_TOP = { 461, 595 }
 MOUTH_BOTTOM = { 654, 1018 }
 OUTLINE = 48
 
-// The bubble: a ring, and the tail from its tip to the mouth, both outlined in
-// black; then white inside the ring, which hides the tail's inner edges. The
-// tail's lower edge touches the ring there, which is why the ring has its own middle.
-circle at RING radius 485 fill white stroke black thickness OUTLINE
-quad TIP MOUTH_TOP RING MOUTH_BOTTOM fill white stroke black thickness OUTLINE
-circle at RING radius (485 - OUTLINE / 2) fill white
+// The bubble
+fill white
+stroke black
+thickness OUTLINE
+circle at RING radius 485
+quad TIP MOUTH_TOP RING MOUTH_BOTTOM
+no stroke
+circle at RING radius (485 - OUTLINE / 2)
 
-// The dot, and the asterisk on it: one white bar, turned an eighth of a turn at a time.
+// The dot, and the asterisk on it:
+// one white bar, turned an eighth of a turn at a time.
 circle at MIDDLE radius 365 fill black
 push [
   move MIDDLE.x MIDDLE.y
   repeat 4 [
-    rect at 0 0 size 80 460 as center fill white
+    rect at 0 0 size 80 460 as center
     turn 45
   ]
 ]
