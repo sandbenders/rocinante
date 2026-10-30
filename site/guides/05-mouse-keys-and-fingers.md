@@ -10,7 +10,7 @@ A sketch can ask how things are now, in `draw`, or wait for something to happen,
 
 `mouse` is where the mouse is, `pmouse` where it was a frame ago, and `pressed` whether a button is down:
 
-```roci
+```roci picture
 draw [
   if pressed [ line from pmouse to mouse thickness 4 ]
 ]
@@ -45,7 +45,7 @@ draw [
 
 `on` runs a block when something happens:
 
-```roci
+```roci picture
 dots = []
 on mouse down [ add mouse to dots ]
 on key "c" [ dots = [] ]
@@ -68,7 +68,7 @@ Other things to wait for are `on resize`, `on move` and `on focus`, for the wind
 
 On a touch screen, `on touch down` and `on touch up` run when a finger goes down or comes up, and inside them `finger` is that finger, a record with `pos` (where it is), `start` (where it went down), `id` (a number it keeps while it is down) and `pressure`. `touches` is every finger down now:
 
-```roci
+```roci picture
 draw [
   background 30
   for each f in touches [

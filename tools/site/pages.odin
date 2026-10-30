@@ -91,7 +91,9 @@ write_word_page :: proc(out: string, section: registry.Reference_Section, word: 
 	}
 	strings.write_string(&b, `<div class="example">`)
 	if !slice.contains(NOT_RUN[:], word) {
-		drawn, drew := draw_example(code, fmt.tprintf("%s/static/reference/img/%s.png", out, slug))
+		// An example that waits for the mouse or a finger still gets its window: the visitor
+		// shows what it does.
+		drawn, drew := draw_example(code, fmt.tprintf("%s/static/reference/img/%s.png", out, slug), always = uses_input(code))
 		if !drew {
 			fmt.eprintfln("site: the example for `%s` does not run", word)
 			return false
