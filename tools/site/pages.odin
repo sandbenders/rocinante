@@ -380,5 +380,9 @@ write_front_mistake :: proc(out: string) -> bool {
 		fmt.eprintfln("site: the front page's mistake needs %s.roci and %s.txt", FRONT_MISTAKE, FRONT_MISTAKE)
 		return false
 	}
-	return write(fmt.tprintf("%s/layouts/_partials/front-mistake.html", out), fmt.tprintf("%s\n%s\n", code_html(code), message_html(text)))
+	// Each in a pane with a title bar, like the line and the window above it.
+	panes := fmt.tprintf(`<div class="pane editor"><div class="window-bar"><span class="pane-title">sketch.roci</span></div>%s</div>
+<div class="pane said"><div class="window-bar"><span class="pane-title">what rocinante says</span></div>%s</div>
+`, code_html(code), message_html(text))
+	return write(fmt.tprintf("%s/layouts/_partials/front-mistake.html", out), panes)
 }
