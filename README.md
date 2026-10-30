@@ -155,7 +155,7 @@ Add `-- 3` to any of these to close the window after three seconds. `examples/c/
 
 ## Versions
 
-Releases use calendar versioning, `YYYY.MINOR.MICRO`: `2026.1.0` is the first release of 2026 and `2026.1.1` its first fix. Releases before the first stable one are marked as previews.
+Releases use calendar versioning, `YYYY.MINOR.MICRO`: the year of the release, the feature release within that year counted from 1, and its fixes counted from 0. Releases before the first stable one are previews and carry their stage: `2026.1.0-alpha` is the first alpha, `2026.1.1-alpha` its first fix and `2026.2.0-alpha` the next. The first stable release is the first version without one.
 
 ## Licence
 
