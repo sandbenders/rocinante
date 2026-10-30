@@ -11,7 +11,7 @@ import "core:testing"
 colour_code_blocks_colours_code_and_messages :: proc(t: ^testing.T) {
 	page := "Before.\n\n```roci\ncircle at 1 1 radius 1\n```\n\n```message\n── I don't know the word `x` ──── a.roci:1:1\n```\n\n```\nroci run\n```\n"
 	html := colour_code_blocks(page)
-	testing.expect(t, strings.has_prefix(html, "Before.\n\n<pre class=\"roci\">"))
+	testing.expect(t, strings.has_prefix(html, "Before.\n\n<pre class=\"roci numbered\">"))
 	testing.expect(t, strings.contains(html, `<pre class="message-text"><span class="m-title">── I don't know`))
 	testing.expect(t, strings.contains(html, "```\nroci run\n```"), "a plain block stays as it is")
 	testing.expect(t, !strings.contains(html, "```roci"))
@@ -88,7 +88,7 @@ picture_and_gallery_blocks_are_code_without_pictures :: proc(t: ^testing.T) {
 	page := "```roci picture\ncircle at 1 1 radius 1\n```\n```roci gallery\nsquare at 1 1 size 1\n```\n"
 	html := colour_code_blocks(page)
 	testing.expect(t, !strings.contains(html, "```"))
-	testing.expect_value(t, strings.count(html, `<pre class="roci">`), 2)
+	testing.expect_value(t, strings.count(html, `<pre class="roci numbered">`), 2)
 	testing.expect(t, !strings.contains(html, "<figure"), "no pictures are drawn without a place to put them")
 }
 
@@ -119,4 +119,17 @@ inline_code_html_is_one_coloured_code_span :: proc(t: ^testing.T) {
 	testing.expect(t, strings.has_prefix(html, `<code class="roci"><span class="v">circle</span>`))
 	testing.expect(t, strings.has_suffix(html, "</code>"))
 	testing.expect(t, !strings.contains(html, "<pre"))
+}
+
+@(test)
+code_html_numbers_each_line_and_keeps_colours_across_breaks :: proc(t: ^testing.T) {
+	html := code_html("x = 1\n\ncircle at x 2 radius 3")
+	testing.expect(t, strings.has_prefix(html, `<pre class="roci numbered"><code><span class="ln">`))
+	testing.expect_value(t, strings.count(html, `<span class="ln">`), 3) // the empty line is a line too
+	testing.expect(t, strings.contains(html, `<span class="ln"></span>`))
+	testing.expect(t, strings.contains(html, `<span class="ln"><span class="v">circle</span>`))
+	testing.expect(t, !strings.contains(html, "\n") && !strings.contains(html, "&#10;"), "the lines are elements, not breaks")
+	plain := code_html("a = 1\nb = 2", numbered = false)
+	testing.expect(t, strings.has_prefix(plain, `<pre class="roci"><code>`))
+	testing.expect(t, strings.contains(plain, "&#10;") && !strings.contains(plain, `class="ln"`))
 }

@@ -11,6 +11,8 @@
   --accent: #2443c8;
   --accent-soft: #e6eafb;
   --code-bg: #f1f2ee;
+  --gutter: #e3e5df;
+  --gutter-ink: #6b7079;
   /* code */
   /* Four kinds told apart for red-green colour blindness too: verbs blue (and bold), the
      language's other words orange, values teal, names in ink; comments grey and italic. */
@@ -44,6 +46,8 @@
     --accent: #8ea4ff;
     --accent-soft: #252c4a;
     --code-bg: #1f2227;
+    --gutter: #181b1f;
+    --gutter-ink: #8a9099;
     --hl-verb: #8ea4ff;
     --hl-word: #f0a050;
     --hl-key: #f0a050;
@@ -71,6 +75,8 @@
   --accent: #8ea4ff;
   --accent-soft: #252c4a;
   --code-bg: #1f2227;
+  --gutter: #181b1f;
+  --gutter-ink: #8a9099;
   --hl-verb: #8ea4ff;
   --hl-word: #f0a050;
   --hl-key: #f0a050;
@@ -151,6 +157,12 @@ p, li, dd { max-width: var(--measure); }
 /* code */
 pre { background: var(--code-bg); border-radius: 6px; padding: 14px 16px; margin: 0; overflow-x: auto; font-size: 0.92rem; line-height: 1.55; tab-size: 2; }
 pre.roci { border-left: 3px solid var(--accent); }
+/* Numbered code, as Processing's reference shows it: each line an element, its number
+   written by the style sheet in a gutter down the left, so copying takes no numbers. */
+pre.roci.numbered { border-left: 0; padding-left: 0; counter-reset: line; background: linear-gradient(to right, var(--gutter) 0 3em, var(--code-bg) 3em); }
+.numbered .ln { display: block; position: relative; min-height: 1.55em; padding-left: 3.9em; }
+.numbered .ln::before { counter-increment: line; content: counter(line); position: absolute; left: 0; width: 2.4em; text-align: right; color: var(--gutter-ink); font-size: 0.86em; line-height: 1.8; user-select: none; }
+.pane > pre.numbered { background: linear-gradient(to right, var(--gutter) 0 3em, var(--sheet) 3em); }
 .roci .v { color: var(--hl-verb); font-weight: 600; }
 .roci .w { color: var(--hl-word); }
 .roci .k { color: var(--hl-key); font-weight: 600; }
@@ -325,3 +337,19 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
 .today dt a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--rule); }
 .today dt a:hover { color: var(--accent); border-bottom-color: var(--accent); }
 .today dd code { font-size: 0.9em; white-space: nowrap; }
+
+/* A long sketch beside its window, folded to the window's height: the pane takes no
+   height of its own and fills its row, which the window sets; a fade and a button at
+   its foot open it. Only side by side: on a phone the code sits above its window. */
+.folds { position: relative; }
+.unfold { display: block; margin: 0 auto 14px; font: 0.8rem var(--mono); color: var(--ink); background: var(--tint); border: 1px solid var(--rule); border-radius: 4px; padding: 3px 12px; cursor: pointer; }
+.unfold:hover { border-color: var(--accent); color: var(--accent); }
+.unfold::before { content: "⋯ "; }
+@media (min-width: 821px) {
+  .folds.folded { height: 0; min-height: 100%; align-self: stretch; overflow: hidden; }
+  .folds.folded::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 6em; background: linear-gradient(to bottom, transparent, var(--sheet) 75%); pointer-events: none; }
+  .folds.folded .unfold { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); margin: 0; z-index: 1; }
+}
+@media (max-width: 820px) {
+  .unfold { display: none; }
+}

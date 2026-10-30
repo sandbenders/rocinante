@@ -97,5 +97,22 @@
     mark();
   })();
 </script>
+<script>
+  // A long sketch beside its window is folded to the window's height, and its button
+  // opens it and folds it again.
+  document.querySelectorAll(".folds").forEach(function (pane) {
+    var button = pane.querySelector(".unfold");
+    if (!button) return;
+    var all = button.textContent;
+    function show(open) {
+      pane.classList.toggle("folded", !open);
+      button.setAttribute("aria-expanded", open ? "true" : "false");
+      button.textContent = open ? "show fewer lines" : all;
+    }
+    button.hidden = false;
+    button.addEventListener("click", function () { show(pane.classList.contains("folded")); });
+    show(false);
+  });
+</script>
 </body>
 </html>

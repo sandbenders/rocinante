@@ -12,7 +12,7 @@ import "core:testing"
 front_page_shows_the_line_its_picture_is_drawn_from :: proc(t: ^testing.T) {
 	page, ok := read("site/hugo/layouts/home.html")
 	testing.expect(t, ok)
-	OPEN :: `<pre class="roci hero-code"><code>`
+	OPEN :: `<pre class="roci numbered hero-code"><code>`
 	start := strings.index(page, OPEN)
 	testing.expect(t, start >= 0)
 	if start < 0 {
@@ -72,7 +72,7 @@ front_page_shows_the_catalogues_own_message :: proc(t: ^testing.T) {
 	testing.expect(t, write_front_mistake(out))
 	partial, ok := read(fmt.tprintf("%s/layouts/_partials/front-mistake.html", out))
 	testing.expect(t, ok)
-	testing.expect(t, strings.contains(partial, `<pre class="roci">`))
+	testing.expect(t, strings.contains(partial, `<pre class="roci numbered">`))
 	testing.expect(t, strings.contains(partial, `<span class="m-title">── A condition asks, it does not assign`))
 
 	page, _ := read("site/hugo/layouts/home.html")

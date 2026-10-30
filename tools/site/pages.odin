@@ -466,7 +466,7 @@ gallery_html :: proc(p: ^Pictures, code: string) -> string {
 
 // One line of code, coloured, to sit inside a sentence or a caption.
 inline_code_html :: proc(line: string) -> string {
-	html := code_html(line)
+	html := code_html(line, numbered = false)
 	html = strings.trim_prefix(html, `<pre class="roci"><code>`)
 	html = strings.trim_suffix(html, "</code></pre>")
 	return fmt.tprintf(`<code class="roci">%s</code>`, html)
@@ -601,6 +601,9 @@ write_front_sketch :: proc(out: string) -> bool {
 		fmt.eprintfln("site: the front page's sketch %s does not draw", FRONT_SKETCH)
 		return false
 	}
-	html := fmt.tprintf(`<div class="pane editor"><div class="window-bar"><span class="pane-title">sketch.roci</span></div>%s</div>%s`, code_html(code), window_html("{{ \"img/logo-sketch.png\" | relURL }}", "rocinante's logo, as the sketch draws it: a speech bubble with an asterisk in a black dot", drawn.size, "hello"))
+	lines := strings.count(strings.trim_right(code, "\n"), "\n") + 1
+	// The code can be folded to the height of its window and opened again (the script in
+	// the base layout does it; without it the whole code shows).
+	html := fmt.tprintf(`<div class="pane editor folds"><div class="window-bar"><span class="pane-title">sketch.roci</span></div>%s<button class="unfold" type="button" aria-expanded="true" hidden>show all %d lines</button></div>%s`, code_html(code), lines, window_html("{{ \"img/logo-sketch.png\" | relURL }}", "rocinante's logo, as the sketch draws it: a speech bubble with an asterisk in a black dot", drawn.size, "hello"))
 	return write(fmt.tprintf("%s/layouts/_partials/front-sketch.html", out), html)
 }

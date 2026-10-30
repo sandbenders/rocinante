@@ -92,7 +92,7 @@ apply_change_colours_a_guide_and_removes_it :: proc(t: ^testing.T) {
 	apply_change(out, Change{path = "site/guides/03-shapes-and-color.md"})
 	page, ok := read(fmt.tprintf("%s/content/guides/03-shapes-and-color.md", out))
 	testing.expect(t, ok)
-	testing.expect(t, strings.contains(page, `<pre class="roci">`))
+	testing.expect(t, strings.contains(page, `<pre class="roci numbered">`))
 	testing.expect(t, !strings.contains(page, "```roci"))
 
 	apply_change(out, Change{path = "site/guides/03-shapes-and-color.md", gone = true})
@@ -109,7 +109,7 @@ apply_change_writes_a_reference_page :: proc(t: ^testing.T) {
 	page, ok := read(fmt.tprintf("%s/content/reference/use.md", out))
 	testing.expect(t, ok)
 	testing.expect(t, strings.contains(page, `title: "use"`))
-	testing.expect(t, strings.contains(page, `<pre class="roci">`))
+	testing.expect(t, strings.contains(page, `<pre class="roci numbered">`))
 }
 
 @(test)

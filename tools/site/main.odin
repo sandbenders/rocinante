@@ -139,18 +139,36 @@ HIGHLIGHT_CLASSES := [lang.Highlight]string{
 	.Colour = "o", .Number = "n", .Text = "s", .Name = "x", .Bracket = "p", .Operator = "op",
 }
 
-// A block of rocinante code, coloured by the real lexer.
-code_html :: proc(code: string) -> string {
+// A block of rocinante code, coloured by the real lexer, each line numbered as
+// Processing's reference numbers them (`numbered`): every line is an element of its own,
+// and the style sheet writes its number beside it, so copying the code copies no numbers.
+code_html :: proc(code: string, numbered := true) -> string {
 	text := strings.trim_right(code, "\n")
 	b := strings.builder_make(context.temp_allocator)
-	strings.write_string(&b, `<pre class="roci"><code>`)
+	strings.write_string(&b, `<pre class="roci numbered"><code>` if numbered else `<pre class="roci"><code>`)
+	if numbered {
+		strings.write_string(&b, `<span class="ln">`)
+	}
 	for s in lang.highlight(text, context.temp_allocator) {
-		piece := escape(text[s.start:s.end])
-		if class := HIGHLIGHT_CLASSES[s.kind]; class != "" {
-			fmt.sbprintf(&b, `<span class="%s">%s</span>`, class, piece)
-		} else {
-			strings.write_string(&b, piece)
+		class := HIGHLIGHT_CLASSES[s.kind]
+		// A piece may hold a line break (the spaces between two words do), so each line of
+		// it is written on its own line, its colour opened again there.
+		for part, i in strings.split(text[s.start:s.end], "\n", context.temp_allocator) {
+			if i > 0 {
+				strings.write_string(&b, `</span><span class="ln">` if numbered else "\n")
+			}
+			if part == "" {
+				continue
+			}
+			if class != "" {
+				fmt.sbprintf(&b, `<span class="%s">%s</span>`, class, escape(part))
+			} else {
+				strings.write_string(&b, escape(part))
+			}
 		}
+	}
+	if numbered {
+		strings.write_string(&b, `</span>`)
 	}
 	strings.write_string(&b, "</code></pre>")
 	return one_line(strings.to_string(b))
