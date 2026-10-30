@@ -607,3 +607,13 @@ write_front_sketch :: proc(out: string) -> bool {
 	html := fmt.tprintf(`<div class="pane editor folds"><div class="window-bar"><span class="pane-title">sketch.roci</span></div>%s<button class="unfold" type="button" aria-expanded="true" hidden>show all %d lines</button></div>%s`, code_html(code), lines, window_html("{{ \"img/logo-sketch.png\" | relURL }}", "rocinante's logo, as the sketch draws it: a speech bubble with an asterisk in a black dot", drawn.size, "hello"))
 	return write(fmt.tprintf("%s/layouts/_partials/front-sketch.html", out), html)
 }
+
+// The logo for a dark page that cannot follow the theme, such as the README on
+// GitHub's dark theme: GitHub's own light text for the ink and its dark background
+// for the asterisk. It is committed beside the logo (the README needs a file) and
+// written from it by `odin run tools/site -- --logo`; a test keeps the two the same.
+LOGO_ON_DARK :: "docs/logo/rocinante-logo-dark.svg"
+
+logo_on_dark :: proc(svg: string) -> string {
+	return logo_recoloured(svg, `fill="#e6edf3"`, `stroke="#e6edf3"`, `fill="#0d1117"`)
+}

@@ -150,3 +150,16 @@ front_page_shows_a_longer_sketch_from_its_example :: proc(t: ^testing.T) {
 	testing.expect(t, ok, "the front page's sketch is an example of its own")
 	testing.expect(t, strings.count(code, "\n") > 15, "it is longer than the hello world")
 }
+
+// The README's logo for a dark page is the logo with its colours swapped, nothing else:
+// when the logo changes, `odin run tools/site -- --logo` writes it again.
+@(test)
+the_dark_logo_is_the_logo_recoloured :: proc(t: ^testing.T) {
+	svg, ok := read(LOGO)
+	dark, has_dark := read(LOGO_ON_DARK)
+	testing.expect(t, ok && has_dark)
+	testing.expect(t, dark == logo_on_dark(svg), "docs/logo/rocinante-logo-dark.svg is out of date: run odin run tools/site -- --logo")
+	testing.expect(t, !strings.contains(dark, `"#000"`) && !strings.contains(dark, `"#fff"`))
+	readme, _ := read("README.md")
+	testing.expect(t, strings.contains(readme, LOGO) && strings.contains(readme, LOGO_ON_DARK), "the README shows both")
+}

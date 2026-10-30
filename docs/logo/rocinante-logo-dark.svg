@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 90 1480 1080" width="1480" height="1080">
+  <title>rocinante</title>
+  <g transform="translate(1500 0) scale(-1 1)">
+  <path d="M 1410 595 L 1038.7 595 A 485 485 0 1 0 846 1018 Z"
+        fill="none" stroke="#e6edf3" stroke-width="48" stroke-linejoin="miter" stroke-miterlimit="10"/>
+  <circle cx="558" cy="622" r="365" fill="#e6edf3"/>
+  <path fill="#0d1117" transform="translate(558 622)"
+        d="M -40 -230 L 40 -230 L 40 230 L -40 230 Z M 134.4 -190.9 L 190.9 -134.4 L -134.4 190.9 L -190.9 134.4 Z M 230 -40 L 230 40 L -230 40 L -230 -40 Z M 190.9 134.4 L 134.4 190.9 L -190.9 -134.4 L -134.4 -190.9 Z"/>
+  </g>
+</svg>

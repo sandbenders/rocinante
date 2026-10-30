@@ -40,6 +40,13 @@ main :: proc() {
 	for arg in os.args[1:] {
 		if arg == "--watch" {
 			watching = true
+		} else if arg == "--logo" {
+			svg, ok := read(LOGO)
+			if !ok || !write(LOGO_ON_DARK, logo_on_dark(svg)) {
+				os.exit(1)
+			}
+			fmt.printfln("site: wrote %s from %s", LOGO_ON_DARK, LOGO)
+			os.exit(0)
 		} else {
 			out = arg
 		}
