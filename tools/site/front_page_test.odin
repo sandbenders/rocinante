@@ -84,7 +84,7 @@ front_page_shows_the_catalogues_own_message :: proc(t: ^testing.T) {
 // in it, which an editor's HTML formatter can add and which makes it lead nowhere.
 @(test)
 layouts_link_with_plain_paths :: proc(t: ^testing.T) {
-	PATH_CHARS :: "abcdefghijklmnopqrstuvwxyz0123456789/._-"
+	PATH_CHARS :: "abcdefghijklmnopqrstuvwxyz0123456789/._-#"
 	links := 0
 	for name in ([]string{"site/hugo/layouts/home.html", "site/hugo/layouts/baseof.html", "site/hugo/layouts/page.html", "site/hugo/layouts/section.html"}) {
 		page, ok := read(name)
