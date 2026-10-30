@@ -99,6 +99,8 @@ The full `ci` also draws the golden images on Mesa's software Vulkan driver (lav
 
 ## Trying it
 
+The documentation (guides, and a reference of every word with an example and the picture it draws) is at https://sandbenders.github.io/rocinante/, built from this repository: `odin run build -- docs` makes it locally, with [Hugo](https://gohugo.io) at the version in `HUGO_VERSION`.
+
 Run a sketch (the examples are written in the language as `sketch.roci` files):
 
 ```
