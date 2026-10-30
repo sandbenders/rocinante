@@ -99,15 +99,17 @@ apply_change_colours_a_guide_and_removes_it :: proc(t: ^testing.T) {
 	testing.expect(t, !os.exists(fmt.tprintf("%s/content/guides/03-shapes-and-colour.md", out)))
 }
 
+// The page of `use`, whose example is shown but not run: drawing a picture needs a
+// GPU device, which the pipelines' unit tests do not have.
 @(test)
-apply_change_draws_a_reference_page :: proc(t: ^testing.T) {
+apply_change_writes_a_reference_page :: proc(t: ^testing.T) {
 	out := fresh_out("reference")
 	defer os.remove_all(out)
-	apply_change(out, Change{path = "site/reference/circle.roci"})
-	page, ok := read(fmt.tprintf("%s/content/reference/circle.md", out))
+	apply_change(out, Change{path = "site/reference/use.roci"})
+	page, ok := read(fmt.tprintf("%s/content/reference/use.md", out))
 	testing.expect(t, ok)
-	testing.expect(t, strings.contains(page, "circle"))
-	testing.expect(t, os.exists(fmt.tprintf("%s/static/reference/img/circle.png", out)))
+	testing.expect(t, strings.contains(page, `title: "use"`))
+	testing.expect(t, strings.contains(page, `<pre class="roci">`))
 }
 
 @(test)
