@@ -7,6 +7,7 @@ import "core:fmt"
 import "core:os"
 import "core:slice"
 import "core:strings"
+import "../../roci"
 import "../../roci/registry"
 
 // ---- the reference ----
@@ -351,4 +352,19 @@ colour_code_blocks :: proc(text: string) -> string {
 	}
 	strings.write_string(&b, rest)
 	return strings.to_string(b)
+}
+
+// ---- the front page ----
+
+// The one line the front page starts with, and the picture it draws, in the window a
+// sketch of your own opens: the default size, the default background.
+HELLO_CODE :: "circle at 100 100 radius 50"
+
+write_hello :: proc(out: string) -> bool {
+	drawn, ok := draw_example(HELLO_CODE, fmt.tprintf("%s/static/img/hello.png", out), roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT, 1)
+	if !ok || !drawn.picture {
+		fmt.eprintfln("site: the front page's line `%s` does not draw", HELLO_CODE)
+		return false
+	}
+	return true
 }

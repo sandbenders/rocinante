@@ -52,6 +52,7 @@ main :: proc() {
 	ok = write_reference(out) && ok
 	ok = write_messages(out) && ok
 	ok = write_guides(out) && ok
+	ok = write_hello(out) && ok
 	if !ok {
 		fmt.eprintln("site: some pages could not be made; see above")
 		os.exit(1)
@@ -215,12 +216,12 @@ Drawn :: struct {
 	printed: []string, // what it printed
 }
 
-// Runs an example headless in a 400 by 300 window, with the mouse in the window,
-// and writes the picture of its first window when it drew anything.
-draw_example :: proc(code, png_path: string) -> (drawn: Drawn, ok: bool) {
+// Runs an example headless, in a 400 by 300 window unless told otherwise, with the
+// mouse in the window, and writes the picture of its first window when it drew anything.
+draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := EXAMPLE_HEIGHT, scale := 2) -> (drawn: Drawn, ok: bool) {
 	roci.start_headless(1)
 	defer roci.shutdown()
-	roci.set_default_window_size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT)
+	roci.set_default_window_size(width, height)
 	p, loaded := interp.load("example.roci", code)
 	defer interp.destroy(p)
 	if !loaded {
@@ -250,7 +251,7 @@ draw_example :: proc(code, png_path: string) -> (drawn: Drawn, ok: bool) {
 	if len(windows) == 0 || len(roci.recorded(windows[0])) == 0 {
 		return drawn, true
 	}
-	picture, rendered := roci.picture(windows[0], 2)
+	picture, rendered := roci.picture(windows[0], scale)
 	if !rendered {
 		fmt.eprintfln("site: cannot draw %s: %s", png_path, roci.last_error())
 		return drawn, false

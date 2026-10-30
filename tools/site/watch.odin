@@ -33,6 +33,7 @@ watch :: proc(out: string) -> bool {
 	ok := copy_tree("site/hugo", out)
 	ok = write_guides(out) && ok
 	ok = write_messages(out) && ok
+	ok = write_hello(out) && ok
 	if os.exists(fmt.tprintf("%s/content/reference/_index.md", out)) {
 		fmt.println(term.out(fmt.tprintf("site: kept the reference pages already in %s; `odin run build -- docs` draws them again", out), .Dim))
 	} else {
