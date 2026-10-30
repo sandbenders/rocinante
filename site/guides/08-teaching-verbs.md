@@ -79,7 +79,7 @@ draw [
 
 Names given a value inside a verb belong to the verb; names of the sketch it can read and change.
 
-## A verb that uses itself
+## A verb that uses itself (recursion)
 
 A verb may call itself, which is how trees and fractals are drawn. It needs a way to stop:
 
