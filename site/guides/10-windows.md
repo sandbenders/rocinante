@@ -8,7 +8,7 @@ weight: 10
 
 A sketch that never opens a window gets one of 800 by 600. `window` opens one of your choice, with its settings as words:
 
-```roci
+```roci picture
 window size 400 300 title "garden" resizable false
 background navy
 circle at 200 150 radius 60 fill gold

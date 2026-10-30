@@ -336,6 +336,9 @@ write_guide :: proc(out, name: string) -> bool {
 
 // Where a guide's pictures go, how many it has drawn, and whether every one drew.
 // Without one (the tests), picture and gallery blocks are only coloured.
+// A guide's pictures are taken three seconds in, so what happens every second has happened.
+GUIDE_FRAMES :: 180
+
 Pictures :: struct {
 	out, guide: string,
 	count:      int,
@@ -408,24 +411,24 @@ next_coloured_block :: proc(text: string) -> (start: int, kind: Block_Kind) {
 
 // Draws code in a window given no size, as a sketch of one's own would open, and
 // gives the file name of its picture; "" when it could not be drawn or drew nothing.
-draw_guide_picture :: proc(p: ^Pictures, code: string) -> string {
+draw_guide_picture :: proc(p: ^Pictures, code: string) -> (file: string, size: [2]int) {
 	p.count += 1
-	file := fmt.tprintf("%s-%d.png", p.guide, p.count)
-	drawn, ok := draw_example(code, fmt.tprintf("%s/static/guides/img/%s", p.out, file), roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT, 1, always = true)
+	file = fmt.tprintf("%s-%d.png", p.guide, p.count)
+	drawn, ok := draw_example(code, fmt.tprintf("%s/static/guides/img/%s", p.out, file), roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT, 1, always = true, frames = GUIDE_FRAMES)
 	if !ok || !drawn.picture {
 		fmt.eprintfln("site: picture %d of the guide %s could not be drawn:\n%s", p.count, p.guide, code)
 		p.ok = false
-		return ""
+		return "", {}
 	}
-	return file
+	return file, drawn.size
 }
 
 picture_html :: proc(p: ^Pictures, code: string) -> string {
-	file := draw_guide_picture(p, code)
+	file, size := draw_guide_picture(p, code)
 	if file == "" {
 		return ""
 	}
-	return fmt.tprintf(`<figure class="guide-picture"><img src="../img/%s" alt="What these lines draw" width="%d" height="%d" loading="lazy"><figcaption>what these lines draw, in a window of %d by %d</figcaption></figure>`, file, roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT, roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT)
+	return fmt.tprintf(`<figure class="guide-picture"><img src="../img/%s" alt="What these lines draw" width="%d" height="%d" loading="lazy"><figcaption>what these lines draw, in a window of %d by %d</figcaption></figure>`, file, size.x, size.y, size.x, size.y)
 }
 
 // Each line on its own picture, the line itself as the caption, so it is plain
@@ -437,11 +440,11 @@ gallery_html :: proc(p: ^Pictures, code: string) -> string {
 		if strings.trim_space(line) == "" {
 			continue
 		}
-		file := draw_guide_picture(p, line)
+		file, size := draw_guide_picture(p, line)
 		if file == "" {
 			continue
 		}
-		fmt.sbprintf(&b, `<figure><img src="../img/%s" alt="What %s draws" width="%d" height="%d" loading="lazy"><figcaption>%s</figcaption></figure>`, file, escape(line), roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT, inline_code_html(line))
+		fmt.sbprintf(&b, `<figure><img src="../img/%s" alt="What %s draws" width="%d" height="%d" loading="lazy"><figcaption>%s</figcaption></figure>`, file, escape(line), size.x, size.y, inline_code_html(line))
 	}
 	strings.write_string(&b, `</div>`)
 	return strings.to_string(b)

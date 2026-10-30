@@ -6,7 +6,7 @@ weight: 11
 
 Each window has a **turtle**: a pen that starts in the middle of the window, facing up. It draws as it walks.
 
-```roci
+```roci picture
 repeat 4 [
   forward 100
   right 90
@@ -15,7 +15,7 @@ repeat 4 [
 
 `forward` and `back` walk, `left` and `right` turn by degrees (`right` turns clockwise), and `home` goes back to the middle, facing up, without drawing. `pen up` stops it drawing and `pen down` starts again:
 
-```roci
+```roci picture
 repeat 12 [
   forward 20
   pen up
@@ -26,7 +26,7 @@ repeat 12 [
 
 The turtle draws its lines in the stroke colour and thickness, so set them first. With the stroke off, as in a new sketch, it draws in black.
 
-```roci
+```roci picture
 stroke tomato
 thickness 4
 repeat 5 [
@@ -39,7 +39,7 @@ repeat 5 [
 
 Like the style, the turtle starts again at home every frame, and `push [ ]` puts it back where it was afterwards. Together with a verb that uses itself, that draws trees:
 
-```roci
+```roci picture
 learn branch size [
   if size < 8 [ stop ]
   thickness (size / 10)

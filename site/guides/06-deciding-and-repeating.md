@@ -8,7 +8,7 @@ weight: 6
 
 `if` runs a block when a condition holds, and `else` another when it does not:
 
-```roci
+```roci picture
 draw [
   background 240
   if mouse.x < 200 [ fill tomato ] else [ fill skyblue ]
@@ -18,7 +18,7 @@ draw [
 
 Conditions compare with `<`, `<=`, `>`, `>=`, `is` and `is not`, and join with `and`, `or` and `not`. More cases follow with `else if`:
 
-```roci
+```roci picture
 score = 7
 if score > 8 [ fill gold ] else if score > 5 [ fill silver ] else [ fill brown ]
 circle at 200 150 radius 60
@@ -28,7 +28,7 @@ circle at 200 150 radius 60
 
 `repeat` runs a block a number of times:
 
-```roci
+```roci picture
 repeat 50 [ circle at (random 400) (random 300) radius 6 ]
 ```
 
@@ -36,7 +36,7 @@ repeat 50 [ circle at (random 400) (random 300) radius 6 ]
 
 `for` counts, from one number to another and including both, giving each number a name:
 
-```roci
+```roci picture
 for i from 1 to 10 [ circle at (i * 36) 150 radius (i * 2) ]
 ```
 
@@ -46,7 +46,7 @@ for i from 1 to 10 [ circle at (i * 36) 150 radius (i * 2) ]
 
 `while` runs a block for as long as a condition holds:
 
-```roci
+```roci picture
 size = 150
 while size > 5 [
   circle at 200 150 radius size
@@ -60,7 +60,7 @@ A block that never ends would freeze a sketch, so rocinante stops one that runs 
 
 `for each` goes through a list, giving each item a name:
 
-```roci
+```roci picture
 points = [ { 60, 200 } { 140, 100 } { 220, 180 } { 300, 80 } ]
 for each p in points [ circle at p radius 14 fill teal ]
 ```

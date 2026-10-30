@@ -8,7 +8,7 @@ weight: 4
 
 Lines at the top of a sketch run once. Lines inside `draw [ ]` run again for every frame, about sixty times a second. Change a value a little each time and things move:
 
-```roci
+```roci picture
 x = 0
 draw [
   background 240
@@ -25,7 +25,7 @@ Names given a value inside `draw` keep it from one frame to the next, so `x` abo
 
 `time` is the seconds since the sketch started, and `frame` how many frames it has drawn. Anything worked out from them moves by itself:
 
-```roci
+```roci picture
 draw [
   background 240
   y = 150 + (sin (time * 90)) * 100
@@ -39,7 +39,7 @@ Angles are in degrees everywhere, so `sin (time * 90)` goes up and down once eve
 
 `move`, `turn` and `grow` move, turn and scale everything drawn after them. `push [ ]` keeps them to a block:
 
-```roci
+```roci picture
 draw [
   background 240
   push [
@@ -57,7 +57,7 @@ Without the `push`, the circle would turn too. Every frame starts with no moving
 
 A **tween** moves a name or a field from where it is to a new value, a little each frame, and stops exactly there:
 
-```roci
+```roci picture
 ball = { pos: { 60, 150 } }
 on mouse down [ tween ball.pos to mouse over 0.8 as elastic ]
 draw [
@@ -70,7 +70,7 @@ draw [
 
 `ease` is the same curve as a plain verb, for sketches that work out their own time: it takes a number from 0 to 1 and gives how far along the movement is:
 
-```roci
+```roci picture
 draw [
   background 240
   t = (time % 2) / 2
@@ -83,7 +83,7 @@ draw [
 
 `every` runs a block again and again, every so many seconds or frames:
 
-```roci
+```roci picture
 dots = []
 every 1 second [ add anywhere to dots ]
 draw [

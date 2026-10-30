@@ -22,7 +22,7 @@ Items are counted from 1. Asking for an item that is not there gives an empty va
 
 A record holds named fields, in curly brackets:
 
-```roci
+```roci picture
 ball = { pos: { 200, 150 }, vel: { 3, 2 }, radius: 20 }
 ball.pos = ball.pos + ball.vel
 circle at ball.pos radius ball.radius
@@ -34,7 +34,7 @@ A field that is given a value anywhere in the sketch belongs to every record mad
 
 Particles, balls, birds: a list of records, and a verb that moves one.
 
-```roci
+```roci picture
 balls = []
 repeat 20 [ add { pos: anywhere, vel: { (random from -3 to 3), (random from -3 to 3) } } to balls ]
 draw [

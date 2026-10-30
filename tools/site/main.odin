@@ -242,11 +242,12 @@ front_matter :: proc(b: ^strings.Builder, title, summary: string, weight: int, e
 Drawn :: struct {
 	picture: bool,     // a picture was written
 	printed: []string, // what it printed
+	size:    [2]int,   // the size of the window it shows, in the sketch's pixels
 }
 
 // Runs an example headless, in a 400 by 300 window unless told otherwise, with the
 // mouse in the window, and writes the picture of its first window when it drew anything.
-draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := EXAMPLE_HEIGHT, scale := 2, always := false) -> (drawn: Drawn, ok: bool) {
+draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := EXAMPLE_HEIGHT, scale := 2, always := false, frames := EXAMPLE_FRAMES) -> (drawn: Drawn, ok: bool) {
 	roci.start_headless(1)
 	defer roci.shutdown()
 	roci.set_default_window_size(width, height)
@@ -256,7 +257,7 @@ draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := E
 		return drawn, false
 	}
 	interp.start(p)
-	for f in 0 ..< EXAMPLE_FRAMES {
+	for f in 0 ..< frames {
 		events := make([dynamic]platform.Event, context.temp_allocator)
 		if f == 0 {
 			for w in roci.open_windows() {
@@ -290,5 +291,6 @@ draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := E
 		return drawn, false
 	}
 	drawn.picture = true
+	drawn.size = {picture.width / scale, picture.height / scale}
 	return drawn, true
 }

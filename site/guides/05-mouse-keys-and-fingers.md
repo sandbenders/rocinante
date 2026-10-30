@@ -20,7 +20,7 @@ This one draws while the button is held, and never clears, so the lines stay.
 
 `held` asks about a key, by its name (`"a"` to `"z"`, `"0"` to `"9"`, `"space"`, `"enter"`, `"left"`, `"right"`, `"up"`, `"down"`, `"shift"`, …), or about a mouse button with `"mouse left"`, `"mouse middle"` and `"mouse right"`:
 
-```roci
+```roci picture
 x = 200
 draw [
   background 240
@@ -32,7 +32,7 @@ draw [
 
 `wheel` is how far the mouse wheel turned since the last frame: `wheel.y` up and down, `wheel.x` sideways.
 
-```roci
+```roci picture
 size = 40
 draw [
   background 240

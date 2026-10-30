@@ -18,7 +18,7 @@ A record is the shape its own curly brackets say, so a list can hold lines and c
 
 ## touching and inside
 
-```roci
+```roci picture
 ball = { pos: { 200, 150 }, radius: 40 }
 wall = { pos: { 220, 60 }, size: { 140, 30 } }
 if touching ball wall [ fill tomato ] else [ fill teal ]
@@ -28,7 +28,7 @@ rect at wall.pos size wall.size fill 120
 
 `touching a b` counts edges that only meet. `inside point shape` asks whether a point is in a shape, edges included:
 
-```roci
+```roci picture
 box = { pos: { 100, 75 }, size: { 200, 150 } }
 draw [
   background 240
@@ -41,7 +41,7 @@ draw [
 
 `contact a b` says where two shapes meet: `normal` is the way to move the first one out of the second, and `depth` how far. Moving it that far, then turning its speed back along the normal, is a bounce:
 
-```roci
+```roci picture
 ball = { pos: { 200, 60 }, radius: 16, vel: { 2, 3 } }
 floor_box = { pos: { 0, 260 }, size: { 400, 40 } }
 draw [
@@ -63,7 +63,7 @@ When the shapes do not touch, every field of the answer is 0.
 
 `hits shape list` gives every item of a list that touches a shape, in the list's order, which is how a ball breaks bricks:
 
-```roci
+```roci picture
 bricks = []
 for i from 0 to 7 [ add { pos: { i * 50, 40 }, size: { 46, 20 } } to bricks ]
 ball = { pos: { 160, 52 }, radius: 30 }
@@ -76,7 +76,7 @@ circle at ball.pos radius ball.radius
 
 `cast line list` follows a line from its `from` to its `to` and gives the first item it meets: the `item`, the `point`, the `normal` there and the `distance`:
 
-```roci
+```roci picture
 walls = [ { pos: { 300, 100 }, size: { 40, 100 } } { pos: { 180, 150 }, radius: 30 } ]
 ray = { from: { 20, 150 }, to: { 380, 150 } }
 h = cast ray walls
