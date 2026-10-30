@@ -12,10 +12,10 @@
 #include "roci.h"
 
 static void draw(void) {
-	roci_background_grey(30);
+	roci_background_gray(30);
 	roci_fill(roci_rgb(255, 99, 71));
 	roci_circle(roci_mouse().x, roci_mouse().y, 40);
-	roci_fill_grey(230);
+	roci_fill_gray(230);
 	roci_debug_text("rocinante in C", 10, 10, 2);
 }
 

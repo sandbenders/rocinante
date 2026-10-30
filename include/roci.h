@@ -4,8 +4,8 @@
  * ABI_TABLE (roci/abi_header.odin) by 'odin run tools/header -- include/roci.h';
  * do not edit it by hand.
  *
- * Numbers are double, text is a NUL-terminated const char *, colours are
- * roci_colour (four floats, each 0 to 255), points are roci_vec2, windows are
+ * Numbers are double, text is a NUL-terminated const char *, colors are
+ * roci_color (four floats, each 0 to 255), points are roci_vec2, windows are
  * roci_window_id (an int; 0 is none) and true and false are int. A verb with
  * several shapes has one function per shape: the first keeps the verb's name and
  * the others add a suffix (_v is the form that takes points).
@@ -17,7 +17,7 @@
 extern "C" {
 #endif
 
-typedef struct { float r, g, b, a; } roci_colour;
+typedef struct { float r, g, b, a; } roci_color;
 typedef struct { double x, y; } roci_vec2;
 typedef int roci_window_id;
 
@@ -78,10 +78,10 @@ void roci_send_vec2(roci_window_id to, roci_vec2 point);
 int roci_run(int frames);
 
 /* Fills the whole window with a color or a gradient. */
-void roci_background(roci_colour color);
+void roci_background(roci_color color);
 
-/* Paints the whole window a grey, 0 to 255. */
-void roci_background_grey(double value);
+/* Paints the whole window a gray, 0 to 255. */
+void roci_background_gray(double value);
 
 /* Empties the window, leaving it transparent. */
 void roci_clear(void);
@@ -137,23 +137,23 @@ void roci_quad_v(roci_vec2 a, roci_vec2 b, roci_vec2 c, roci_vec2 d);
 /* Draws part of an ellipse, between two angles in degrees. */
 void roci_arc(double x, double y, double width, double height, double start, double stop);
 
-/* Text in the built-in overlay font, in the fill colour; whole-number scales look best. */
+/* Text in the built-in overlay font, in the fill color; whole-number scales look best. */
 void roci_debug_text(const char *text, double x, double y, double scale);
 
 /* Sets the color of areas from now on. */
-void roci_fill(roci_colour color);
+void roci_fill(roci_color color);
 
-/* Fills with a grey, 0 to 255, from now on. */
-void roci_fill_grey(double value);
+/* Fills with a gray, 0 to 255, from now on. */
+void roci_fill_gray(double value);
 
 /* Turns area color off from now on. */
 void roci_no_fill(void);
 
 /* Sets the color of outlines and lines from now on. */
-void roci_stroke(roci_colour color);
+void roci_stroke(roci_color color);
 
-/* Outlines with a grey, 0 to 255, from now on. */
-void roci_stroke_grey(double value);
+/* Outlines with a gray, 0 to 255, from now on. */
+void roci_stroke_gray(double value);
 
 /* Turns outlines off from now on. */
 void roci_no_stroke(void);
@@ -171,19 +171,19 @@ void roci_caps(const char *style);
 void roci_joins(const char *style);
 
 /* Makes a color from red, green and blue, each 0 to 255. */
-roci_colour roci_rgb(double red, double green, double blue);
+roci_color roci_rgb(double red, double green, double blue);
 
-/* Makes a colour with its own transparency, each channel 0 to 255. */
-roci_colour roci_rgba(double red, double green, double blue, double alpha);
+/* Makes a color with its own transparency, each channel 0 to 255. */
+roci_color roci_rgba(double red, double green, double blue, double alpha);
 
 /* Makes a color from hue, saturation and brightness, each 0 to 255. */
-roci_colour roci_hsb(double hue, double saturation, double brightness);
+roci_color roci_hsb(double hue, double saturation, double brightness);
 
 /* Makes a color from lightness 0 to 1, chroma and hue in degrees. */
-roci_colour roci_oklch(double lightness, double chroma, double hue);
+roci_color roci_oklch(double lightness, double chroma, double hue);
 
 /* Blends two colors, or two numbers; amount 0 gives the first and 1 the second. */
-roci_colour roci_mix(roci_colour first, roci_colour second, double amount);
+roci_color roci_mix(roci_color first, roci_color second, double amount);
 
 /* Blends two colors, or two numbers; amount 0 gives the first and 1 the second. */
 double roci_mix_numbers(double first, double second, double amount);

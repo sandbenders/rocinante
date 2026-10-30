@@ -32,7 +32,7 @@ Abi_Skip :: struct {
 }
 
 ABI_NOT_IN_C := [?]Abi_Skip{
-	{"gradient", 0, "takes a list of colours; no C form yet"},
+	{"gradient", 0, "takes a list of colors; no C form yet"},
 	{"pick", 0, "takes a list; no C form yet"},
 	{"push", 0, "takes a block; C has roci_push and roci_pop"},
 	{"random", 1, "`random from 1 to 3` is roci_random_between"},
@@ -61,7 +61,7 @@ abi_table_init :: proc "contextless" () {
 	{"roci_send_vec2", "", 0, typeid_of(type_of(abi_send_vec2)), "void roci_send_vec2(roci_window_id to, roci_vec2 point)", "Sends a point to a window."},
 	{"roci_run", "", 0, typeid_of(type_of(abi_run)), "int roci_run(int frames)", "Shows the sketch until every window is closed, or for `frames` frames when that is more than 0. Gives 1 when it ran and 0 when the graphics could not start."},
 	{"roci_background", "background", 0, typeid_of(type_of(abi_background)), "", ""},
-	{"roci_background_grey", "", 0, typeid_of(type_of(abi_background_grey)), "void roci_background_grey(double value)", "Paints the whole window a grey, 0 to 255."},
+	{"roci_background_gray", "", 0, typeid_of(type_of(abi_background_gray)), "void roci_background_gray(double value)", "Paints the whole window a gray, 0 to 255."},
 	{"roci_clear", "clear", 0, typeid_of(type_of(abi_clear)), "", ""},
 	{"roci_circle", "circle", 0, typeid_of(type_of(abi_circle)), "", ""},
 	{"roci_circle_v", "circle", 1, typeid_of(type_of(abi_circle_v)), "", ""},
@@ -80,19 +80,19 @@ abi_table_init :: proc "contextless" () {
 	{"roci_quad", "quad", 0, typeid_of(type_of(abi_quad)), "", ""},
 	{"roci_quad_v", "quad", 1, typeid_of(type_of(abi_quad_v)), "", ""},
 	{"roci_arc", "arc", 0, typeid_of(type_of(abi_arc)), "", ""},
-	{"roci_debug_text", "", 0, typeid_of(type_of(abi_debug_text)), "void roci_debug_text(const char *text, double x, double y, double scale)", "Text in the built-in overlay font, in the fill colour; whole-number scales look best."},
+	{"roci_debug_text", "", 0, typeid_of(type_of(abi_debug_text)), "void roci_debug_text(const char *text, double x, double y, double scale)", "Text in the built-in overlay font, in the fill color; whole-number scales look best."},
 	{"roci_fill", "fill", 0, typeid_of(type_of(abi_fill)), "", ""},
-	{"roci_fill_grey", "", 0, typeid_of(type_of(abi_fill_grey)), "void roci_fill_grey(double value)", "Fills with a grey, 0 to 255, from now on."},
+	{"roci_fill_gray", "", 0, typeid_of(type_of(abi_fill_gray)), "void roci_fill_gray(double value)", "Fills with a gray, 0 to 255, from now on."},
 	{"roci_no_fill", "no fill", 0, typeid_of(type_of(abi_no_fill)), "", ""},
 	{"roci_stroke", "stroke", 0, typeid_of(type_of(abi_stroke)), "", ""},
-	{"roci_stroke_grey", "", 0, typeid_of(type_of(abi_stroke_grey)), "void roci_stroke_grey(double value)", "Outlines with a grey, 0 to 255, from now on."},
+	{"roci_stroke_gray", "", 0, typeid_of(type_of(abi_stroke_gray)), "void roci_stroke_gray(double value)", "Outlines with a gray, 0 to 255, from now on."},
 	{"roci_no_stroke", "no stroke", 0, typeid_of(type_of(abi_no_stroke)), "", ""},
 	{"roci_thickness", "thickness", 0, typeid_of(type_of(abi_thickness)), "", ""},
 	{"roci_alpha", "alpha", 0, typeid_of(type_of(abi_alpha)), "", ""},
 	{"roci_caps", "caps", 0, typeid_of(type_of(abi_caps)), "", ""},
 	{"roci_joins", "joins", 0, typeid_of(type_of(abi_joins)), "", ""},
 	{"roci_rgb", "rgb", 0, typeid_of(type_of(abi_rgb)), "", ""},
-	{"roci_rgba", "", 0, typeid_of(type_of(abi_rgba)), "roci_colour roci_rgba(double red, double green, double blue, double alpha)", "Makes a colour with its own transparency, each channel 0 to 255."},
+	{"roci_rgba", "", 0, typeid_of(type_of(abi_rgba)), "roci_color roci_rgba(double red, double green, double blue, double alpha)", "Makes a color with its own transparency, each channel 0 to 255."},
 	{"roci_hsb", "hsb", 0, typeid_of(type_of(abi_hsb)), "", ""},
 	{"roci_oklch", "oklch", 0, typeid_of(type_of(abi_oklch)), "", ""},
 	{"roci_mix", "mix", 0, typeid_of(type_of(abi_mix)), "", ""},
@@ -151,7 +151,7 @@ abi_c_type :: proc(kind: registry.Kind) -> (name: string, ok: bool) {
 	case .None:                 return "void", true
 	case .Number:               return "double", true
 	case .Text, .Name:          return "const char *", true
-	case .Colour:               return "roci_colour", true
+	case .Colour:               return "roci_color", true
 	case .Vector:               return "roci_vec2", true
 	case .Window:               return "roci_window_id", true
 	case .List, .Table, .Block, .Gradient, .Any, .Boolean, .Expr_Block, .Record: return "", false
@@ -211,8 +211,8 @@ abi_header :: proc(allocator := context.allocator) -> string {
  * ABI_TABLE (roci/abi_header.odin) by 'odin run tools/header -- include/roci.h';
  * do not edit it by hand.
  *
- * Numbers are double, text is a NUL-terminated const char *, colours are
- * roci_colour (four floats, each 0 to 255), points are roci_vec2, windows are
+ * Numbers are double, text is a NUL-terminated const char *, colors are
+ * roci_color (four floats, each 0 to 255), points are roci_vec2, windows are
  * roci_window_id (an int; 0 is none) and true and false are int. A verb with
  * several shapes has one function per shape: the first keeps the verb's name and
  * the others add a suffix (_v is the form that takes points).
@@ -224,7 +224,7 @@ abi_header :: proc(allocator := context.allocator) -> string {
 extern "C" {
 #endif
 
-typedef struct { float r, g, b, a; } roci_colour;
+typedef struct { float r, g, b, a; } roci_color;
 typedef struct { double x, y; } roci_vec2;
 typedef int roci_window_id;
 

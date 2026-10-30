@@ -15,7 +15,7 @@ type_for_kind :: proc(kind: registry.Kind) -> (id: typeid, ok: bool) {
 	switch kind {
 	case .Number:      return f64, true
 	case .Text, .Name: return cstring, true
-	case .Colour:      return Abi_Colour, true
+	case .Colour:      return Abi_Color, true
 	case .Vector:      return Abi_Vec2, true
 	case .None, .Window, .List, .Table, .Block, .Gradient, .Any, .Boolean, .Expr_Block, .Record: return nil, false
 	}
@@ -142,8 +142,8 @@ test_registry_prototypes_use_the_registrys_names_and_kinds :: proc(t: ^testing.T
 	defer delete(header)
 	testing.expect(t, strings.contains(header, "void roci_circle(double x, double y, double radius);"))
 	testing.expect(t, strings.contains(header, "void roci_circle_v(roci_vec2 position, double radius);"))
-	testing.expect(t, strings.contains(header, "roci_colour roci_rgb(double red, double green, double blue);"))
-	testing.expect(t, strings.contains(header, "roci_colour roci_mix(roci_colour first, roci_colour second, double amount);"))
+	testing.expect(t, strings.contains(header, "roci_color roci_rgb(double red, double green, double blue);"))
+	testing.expect(t, strings.contains(header, "roci_color roci_mix(roci_color first, roci_color second, double amount);"))
 	testing.expect(t, strings.contains(header, "void roci_title(const char *text);"))
 	testing.expect(t, strings.contains(header, "double roci_dist(double x1, double y1, double x2, double y2);"))
 	testing.expect(t, strings.contains(header, "void roci_quit(void);"))

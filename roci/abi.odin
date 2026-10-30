@@ -10,7 +10,7 @@
 // of the exported procedures.
 //
 // Conventions: numbers are `double`, text is a NUL-terminated `const char *`,
-// colours are `roci_colour` (four floats, 0 to 255) and points `roci_vec2` (two
+// colors are `roci_color` (four floats, 0 to 255) and points `roci_vec2` (two
 // doubles), windows are `roci_window` (an int, 0 for none), true and false are
 // `int`. Words such as the arguments of `caps` and `joins` are text ("round").
 // Callbacks are `void (*)(void)`. A verb with several shapes has one function per
@@ -23,7 +23,7 @@ import "core:c"
 import "core:strings"
 import "maths"
 
-Abi_Colour :: struct {
+Abi_Color :: struct {
 	r, g, b, a: f32,
 }
 
@@ -50,13 +50,13 @@ Abi_Draw_Fn :: proc "c" ()
 Abi_Receive_Fn :: proc "c" (value: ^Abi_Value)
 
 @(private)
-colour_from_abi :: proc "contextless" (c: Abi_Colour) -> Colour {
+color_from_abi :: proc "contextless" (c: Abi_Color) -> Colour {
 	return Colour{c.r, c.g, c.b, c.a}
 }
 
 @(private)
-colour_to_abi :: proc "contextless" (c: Colour) -> Abi_Colour {
-	return Abi_Colour{c.r, c.g, c.b, c.a}
+color_to_abi :: proc "contextless" (c: Colour) -> Abi_Color {
+	return Abi_Color{c.r, c.g, c.b, c.a}
 }
 
 @(private)
@@ -203,13 +203,13 @@ abi_run :: proc "c" (frames: c.int) -> c.int {
 // ---- drawing ----
 
 @(export, link_name = "roci_background")
-abi_background :: proc "c" (colour: Abi_Colour) {
+abi_background :: proc "c" (colour: Abi_Color) {
 	context = runtime.default_context()
-	background(colour_from_abi(colour))
+	background(color_from_abi(colour))
 }
 
-@(export, link_name = "roci_background_grey")
-abi_background_grey :: proc "c" (value: f64) {
+@(export, link_name = "roci_background_gray")
+abi_background_gray :: proc "c" (value: f64) {
 	context = runtime.default_context()
 	background_grey(value)
 }
@@ -331,13 +331,13 @@ abi_debug_text :: proc "c" (text: cstring, x, y, scale: f64) {
 // ---- style ----
 
 @(export, link_name = "roci_fill")
-abi_fill :: proc "c" (colour: Abi_Colour) {
+abi_fill :: proc "c" (colour: Abi_Color) {
 	context = runtime.default_context()
-	fill(colour_from_abi(colour))
+	fill(color_from_abi(colour))
 }
 
-@(export, link_name = "roci_fill_grey")
-abi_fill_grey :: proc "c" (value: f64) {
+@(export, link_name = "roci_fill_gray")
+abi_fill_gray :: proc "c" (value: f64) {
 	context = runtime.default_context()
 	fill(value)
 }
@@ -349,13 +349,13 @@ abi_no_fill :: proc "c" () {
 }
 
 @(export, link_name = "roci_stroke")
-abi_stroke :: proc "c" (colour: Abi_Colour) {
+abi_stroke :: proc "c" (colour: Abi_Color) {
 	context = runtime.default_context()
-	stroke(colour_from_abi(colour))
+	stroke(color_from_abi(colour))
 }
 
-@(export, link_name = "roci_stroke_grey")
-abi_stroke_grey :: proc "c" (value: f64) {
+@(export, link_name = "roci_stroke_gray")
+abi_stroke_gray :: proc "c" (value: f64) {
 	context = runtime.default_context()
 	stroke(value)
 }
@@ -403,33 +403,33 @@ abi_joins :: proc "c" (style: cstring) {
 // ---- colour ----
 
 @(export, link_name = "roci_rgb")
-abi_rgb :: proc "c" (red, green, blue: f64) -> Abi_Colour {
+abi_rgb :: proc "c" (red, green, blue: f64) -> Abi_Color {
 	context = runtime.default_context()
-	return colour_to_abi(rgb(red, green, blue))
+	return color_to_abi(rgb(red, green, blue))
 }
 
 @(export, link_name = "roci_rgba")
-abi_rgba :: proc "c" (red, green, blue, alpha_value: f64) -> Abi_Colour {
+abi_rgba :: proc "c" (red, green, blue, alpha_value: f64) -> Abi_Color {
 	context = runtime.default_context()
-	return colour_to_abi(rgb(red, green, blue, alpha_value))
+	return color_to_abi(rgb(red, green, blue, alpha_value))
 }
 
 @(export, link_name = "roci_hsb")
-abi_hsb :: proc "c" (hue, saturation, brightness: f64) -> Abi_Colour {
+abi_hsb :: proc "c" (hue, saturation, brightness: f64) -> Abi_Color {
 	context = runtime.default_context()
-	return colour_to_abi(hsb(hue, saturation, brightness))
+	return color_to_abi(hsb(hue, saturation, brightness))
 }
 
 @(export, link_name = "roci_oklch")
-abi_oklch :: proc "c" (lightness, chroma, hue: f64) -> Abi_Colour {
+abi_oklch :: proc "c" (lightness, chroma, hue: f64) -> Abi_Color {
 	context = runtime.default_context()
-	return colour_to_abi(oklch(lightness, chroma, hue))
+	return color_to_abi(oklch(lightness, chroma, hue))
 }
 
 @(export, link_name = "roci_mix")
-abi_mix :: proc "c" (first, second: Abi_Colour, amount: f64) -> Abi_Colour {
+abi_mix :: proc "c" (first, second: Abi_Color, amount: f64) -> Abi_Color {
 	context = runtime.default_context()
-	return colour_to_abi(mix_colours(colour_from_abi(first), colour_from_abi(second), amount))
+	return color_to_abi(mix_colours(color_from_abi(first), color_from_abi(second), amount))
 }
 
 @(export, link_name = "roci_mix_numbers")
