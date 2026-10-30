@@ -129,6 +129,17 @@ background (gradient [ (rgb 20 20 60) black ] angle 90)
 
 `angle` turns it (90 runs top to bottom), `as radial` and `as conic` make it round, and `stops` says where each color sits, in percent. Colors are mixed evenly by default; `in rgb` mixes them the older way.
 
+```roci picture
+// the same three colors: spread evenly, then with gold held back to 80 percent
+rect at 20 20 size 360 50 fill [ navy gold teal ]
+rect at 20 80 size 360 50 fill (gradient [ navy gold teal ] stops [ 0 80 100 ])
+// a conic gradient sweeps round the middle
+circle at 90 220 radius 60 fill (gradient [ navy gold navy ] as conic)
+// blue to yellow mixed evenly, then the older way
+rect at 180 170 size 200 40 fill [ blue yellow ]
+rect at 180 220 size 200 40 fill (gradient [ blue yellow ] in rgb)
+```
+
 ## Line ends and corners
 
 `caps` says how lines end (`butt`, `round`, `square`), and `joins` how outlines turn corners (`miter`, `round`, `bevel`):
