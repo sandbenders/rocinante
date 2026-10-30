@@ -151,16 +151,6 @@ test_apng_refuses_what_it_cannot_write :: proc(t: ^testing.T) {
 	testing.expect(t, !empty && !sizes && !counts && !rate && !tick && !long)
 }
 
-@(test)
-test_changed_box_finds_the_corners :: proc(t: ^testing.T) {
-	a, b := filled(5, 5, 0), filled(5, 5, 0)
-	x, y, w, h := changed_box(a, b)
-	testing.expect(t, x == 0 && y == 0 && w == 5 && h == 5, "nothing changed: the whole picture")
-	b.pixels[(0 * 5 + 4) * 4 + 3] = 1 // the alpha of the top right pixel
-	b.pixels[(3 * 5 + 1) * 4] = 1
-	x, y, w, h = changed_box(a, b)
-	testing.expect(t, x == 1 && y == 0 && w == 4 && h == 4, "from the leftmost to the rightmost change")
-}
 
 // Plays an APNG the way a browser does (each rectangle written over the picture so
 // far) and gives every frame shown, so a recording can be compared with what went in.
@@ -212,4 +202,27 @@ test_apng_plays_back_every_frame_exactly :: proc(t: ^testing.T) {
 			testing.expectf(t, bytes.equal(shown[i], f.pixels), "frame %d plays back different", i)
 		}
 	}
+}
+
+// The neighbour closest to left + up - corner, preferring left, then up: how a reader
+// undoes PNG's fourth filter.
+@(private = "file")
+paeth :: proc(left, up, corner: u8) -> u8 {
+	p := int(left) + int(up) - int(corner)
+	pa, pb, pc := abs(p - int(left)), abs(p - int(up)), abs(p - int(corner))
+	if pa <= pb && pa <= pc {
+		return left
+	}
+	return up if pb <= pc else corner
+}
+
+// A rectangle of a picture, as a picture of its own.
+@(private = "file")
+crop :: proc(img: Image, x, y, w, h: int) -> Image {
+	out := Image{width = w, height = h, pixels = make([]u8, w * h * 4, context.temp_allocator)}
+	for row in 0 ..< h {
+		from := ((y + row) * img.width + x) * 4
+		copy(out.pixels[row * w * 4:(row + 1) * w * 4], img.pixels[from:from + w * 4])
+	}
+	return out
 }

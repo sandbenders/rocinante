@@ -21,3 +21,5 @@ vendor:stb      Public-Domain
 # font8x8 glyph data, embedded in roci/gfx/font_data.odin: Public Domain, by its own header (checked 2026-10-27).
 # PortMidi: licence.txt is MIT-style, with non-binding requests.
 vendor:portmidi MIT
+# sancho: rocinante's own PNG writer and deflate, published on their own; its LICENSE is 0BSD (checked 2026-10-30).
+vendor/sancho   0BSD

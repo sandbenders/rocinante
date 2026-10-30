@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: 0BSD
 //
-// A deflate compressor (RFC 1951), for the PNG writer: Odin's core:compress
-// only inflates. Matches are found with hash chains over a 32 KiB window, and
-// each block is written in whichever of its three forms is smallest: Huffman
-// codes made for that block, the fixed codes, or stored as it is. Everything is
-// decided by the data alone (ties go to the earlier choice), so the same pixels
-// always give the same bytes.
-package gfx
+// A deflate compressor (RFC 1951) and its zlib wrapper (RFC 1950). Odin's
+// core:compress/zlib only inflates; this is the other half.
+//
+// Matches are found with hash chains over a 32 KiB window, lazily, as zlib's
+// level 6 finds them, and each block is written in whichever of its three forms
+// is smallest: Huffman codes made for that block, the fixed codes, or stored as
+// it is. Everything is decided by the data alone (ties go to the earlier
+// choice), so the same input always gives the same bytes, on every system.
+package deflate
 
+import "base:runtime"
+import "core:hash"
 import "core:slice"
 
 @(private = "file") WINDOW :: 32768
@@ -82,12 +86,14 @@ distance_code :: proc(distance: u16) -> int {
 	return code
 }
 
-// Raw deflate data of `data` (no zlib header), in `allocator`.
+// Raw deflate data of `data` (no zlib header or checksum), in `allocator`. The
+// working memory is temporary and given back before it returns.
 //
 // Matching is lazy, as zlib's is: a match found at one place is held back while
 // the next place is tried, and when that one is longer the first byte goes out
 // as a literal instead. Long matches are taken at once (LAZY_LIMIT).
-deflate :: proc(data: []u8, allocator := context.allocator) -> []u8 {
+compress :: proc(data: []u8, allocator := context.allocator) -> []u8 {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
 	out := make([dynamic]u8, 0, len(data) / 4 + 64, allocator)
 	m := Matcher{
 		data   = data,
@@ -133,6 +139,20 @@ deflate :: proc(data: []u8, allocator := context.allocator) -> []u8 {
 	write_block(&m.w, m.tokens[:], data[m.block_start:], true)
 	align_to_byte(&m.w)
 	return out[:]
+}
+
+// A zlib stream of `data`: a two-byte header, the deflate data and the Adler-32 of
+// `data`, which is what `core:compress/zlib.inflate` reads by default and what
+// PNG files hold.
+compress_zlib :: proc(data: []u8, allocator := context.allocator) -> []u8 {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD(ignore = allocator == context.temp_allocator)
+	raw := compress(data, context.temp_allocator)
+	out := make([]u8, len(raw) + 6, allocator)
+	out[0], out[1] = 0x78, 0x01 // deflate with a 32 KiB window; no preset dictionary
+	copy(out[2:], raw)
+	sum := hash.adler32(data)
+	out[len(out) - 4], out[len(out) - 3], out[len(out) - 2], out[len(out) - 1] = u8(sum >> 24), u8(sum >> 16), u8(sum >> 8), u8(sum)
+	return out
 }
 
 // What finding matches and cutting blocks needs to keep between bytes.

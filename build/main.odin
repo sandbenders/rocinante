@@ -95,7 +95,7 @@ check_odin :: proc() -> bool {
 
 // Packages whose @(test) procedures `ci` runs, from the repository root (some
 // tests make fixtures under output/). Add each package here as it gets tests.
-TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/folder", "roci/gfx", "roci/interp", "roci/lang", "roci/maths", "roci/platform", "roci/registry", "cli", "spikes/codegen", "tools/term", "tools/site"}
+TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/folder", "roci/gfx", "roci/interp", "roci/lang", "roci/maths", "roci/platform", "roci/registry", "cli", "spikes/codegen", "tools/term", "tools/site", "vendor/sancho/deflate", "vendor/sancho/png_writer"}
 
 // Where `odin test` writes each package's test program. Left to itself it writes
 // build.exe to the repository root, the very file `odin run build` is running
