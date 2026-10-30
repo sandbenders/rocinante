@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: 0BSD
+#
+# The documentation site, published on GitHub Pages from the mirror. A thin wrapper,
+# like ci.yml: `odin run build -- docs` writes the site's source with tools/site
+# (the reference's pictures drawn on Mesa's software Vulkan, as the golden images
+# are) and builds it with the Hugo pinned in HUGO_VERSION.
+# The repository's Pages source must be set to "GitHub Actions" once, in Settings.
+name: docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One publication at a time; a newer push waits rather than cancelling one halfway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev \
+            libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
+            libdrm-dev libgbm-dev libegl1-mesa-dev libasound2-dev libpulse-dev \
+            libudev-dev libdbus-1-dev libibus-1.0-dev \
+            libvulkan1 mesa-vulkan-drivers
+      - name: Install Odin
+        run: tools/ci/install-odin.sh "$HOME/odin"
+      - name: Install Hugo
+        run: tools/ci/install-hugo.sh "$HOME/hugo"
+      - name: Find the latest SDL3 release
+        id: sdl
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: echo "tag=$(tools/ci/install-sdl3.sh --latest)" >> "$GITHUB_OUTPUT"
+      - name: Restore SDL3
+        uses: actions/cache@v6
+        with:
+          path: ~/sdl3
+          key: sdl3-ubuntu-24.04-${{ steps.sdl.outputs.tag }}-${{ hashFiles('tools/ci/install-sdl3.sh') }}
+      - name: Build SDL3
+        run: tools/ci/install-sdl3.sh "$HOME/sdl3" "${{ steps.sdl.outputs.tag }}"
+      - id: pages
+        uses: actions/configure-pages@v5
+      - name: Build the site
+        run: |
+          export PATH="$HOME/odin:$HOME/hugo:$PATH"
+          export LIBRARY_PATH="$HOME/sdl3/lib:${LIBRARY_PATH:-}"
+          export LD_LIBRARY_PATH="$HOME/sdl3/lib:${LD_LIBRARY_PATH:-}"
+          export PKG_CONFIG_PATH="$HOME/sdl3/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+          # The pictures are drawn offscreen on lavapipe, as the golden images are.
+          export VK_DRIVER_FILES="$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | tr '\n' ':')"
+          export SDL_VIDEODRIVER=offscreen
+          export HUGO_BASEURL="${{ steps.pages.outputs.base_url }}/"
+          odin run build -- docs
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: output/site/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

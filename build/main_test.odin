@@ -81,3 +81,11 @@ test_optimised_test_binaries_differ_from_every_default_one :: proc(t: ^testing.T
 test_the_optimised_tests_are_built_for_speed :: proc(t: ^testing.T) {
 	testing.expect_value(t, OPTIMISED_TEST_FLAG, "-o:speed")
 }
+
+@(test)
+test_hugo_versions_are_matched_exactly :: proc(t: ^testing.T) {
+	testing.expect(t, hugo_version_matches("hugo v0.169.0-6ba4366d+extended+withdeploy linux/amd64 BuildDate=2026-10-27", "0.169.0"))
+	testing.expect(t, hugo_version_matches("hugo v0.169.0 darwin/arm64", "0.169.0"))
+	testing.expect(t, !hugo_version_matches("hugo v0.169.10-abc linux/amd64", "0.169.1"))
+	testing.expect(t, !hugo_version_matches("hugo v0.168.0-abc linux/amd64", "0.169.0"))
+}

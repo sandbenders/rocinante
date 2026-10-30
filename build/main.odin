@@ -21,6 +21,7 @@ commands:
   ci [--fast]   run the checks the pipelines run (--fast: the pre-push subset)
   licences      check dependency licences
   odin          check the installed Odin against ODIN_VERSION
+  docs          build the documentation site into output/site/public (needs Hugo, HUGO_VERSION)
 `
 
 main :: proc() {
@@ -39,6 +40,8 @@ main :: proc() {
 		ok = check_licences(".")
 	case "odin":
 		ok = check_odin()
+	case "docs":
+		ok = docs()
 	case:
 		fmt.eprint(USAGE)
 		os.exit(2)
@@ -158,6 +161,7 @@ check_packages :: proc() -> bool {
 	// ones need their SDKs and are built by hand.
 	ok = step("check roci command", {"odin", "check", "cli", "-vet", "-strict-style"}) && ok
 	ok = step("check header tool", {"odin", "check", "tools/header", "-vet", "-strict-style"}) && ok
+	ok = step("check site tool", {"odin", "check", "tools/site", "-vet", "-strict-style"}) && ok
 	ok = step("check benchmark example", {"odin", "check", "examples/benchmark", "-vet", "-strict-style"}) && ok
 	ok = step("check circle example", {"odin", "check", "examples/circle", "-vet", "-strict-style"}) && ok
 	ok = step("check two windows example", {"odin", "check", "examples/two_windows", "-vet", "-strict-style"}) && ok
