@@ -15,7 +15,7 @@ circle at 100 100 radius 50
 
 That line is a complete rocinante sketch. Run it and a window opens with a circle in it.
 
-rocinante is an open-source creative coding framework with its own easy to learn, [LOGO](https://el.media.mit.edu/logo-foundation/what_is_logo/logo_programming.html)-inspired language. It comes out of years of working with [Processing](https://processing.org/), [openFrameworks](https://openframeworks.cc/) and [Cinder](https://libcinder.org/), and it borrows the turtle from [Logo](https://el.media.mit.edu/logo-foundation/). The goal is to make coding FUN AGAIN, especially for creative coders. You write a line and get a picture, mistakes come with a plain explanation, and when you save the file the running sketch updates.
+rocinante is an open-source creative coding framework with its own easy to learn and powerful language. It comes out of years of working with [Processing](https://processing.org/), [openFrameworks](https://openframeworks.cc/) and [Cinder](https://libcinder.org/), and it borrows the turtle, ideas and also some syntax from [Logo](https://el.media.mit.edu/logo-foundation/). The goal is to make coding FUN AGAIN, especially for creative coders. You write a line and get a picture, mistakes come with a plain explanation, and when you save the file the running sketch updates.
 
 Read [MANIFESTO.md](MANIFESTO.md) for why it exists.
 
