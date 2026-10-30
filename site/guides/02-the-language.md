@@ -1,6 +1,6 @@
 ---
 title: "The language in one sitting"
-summary: "Names, numbers, text, colours, vectors, records and lists, and the one rule about brackets."
+summary: "Names, numbers, text, colors, vectors, records and lists, and the one rule about brackets."
 weight: 2
 ---
 
@@ -43,7 +43,7 @@ x = x + SPEED
 | number | `3`, `0.5`, `-10` | every number is one kind; no difference between whole and not |
 | text | `"hello"` | `+` joins text: `"score: " + 3` |
 | true or false | `true`, `false` | what a comparison gives |
-| colour | `red`, `#ff8800`,<br>`rgb 255 136 0` | 0 to 255 for each channel, a name from the CSS list |
+| color | `red`, `#ff8800`,<br>`rgb 255 136 0` | 0 to 255 for each channel, a name from the CSS list |
 | vector | `{ 100, 50 }` | two numbers, a position or a size; `v.x`, `v.y` |
 | record | `{ pos: { 10, 20 },`<br>`life: 1 }` | named fields; `ball.pos`, `ball.life` |
 | list | `[ 1 2 3 ]`,<br>`[ red gold teal ]` | many values in order, no commas between them |
@@ -55,14 +55,14 @@ p = { 120, 80 }
 circle at p radius 20
 ball = { pos: { 200, 150 }, radius: 30 }
 circle at ball.pos radius ball.radius
-COLOURS = [ tomato gold teal ]
-fill (item 2 of COLOURS)
+COLORS = [ tomato gold teal ]
+fill (item 2 of COLORS)
 circle at 300 220 radius 30
 ```
 
 ## Arithmetic
 
-`+ - * /` work as you expect, `%` gives what is left after dividing, and they work on vectors and colours too:
+`+ - * /` work as you expect, `%` gives what is left after dividing, and they work on vectors and colors too:
 
 ```roci
 pos = { 100, 100 }
@@ -103,7 +103,7 @@ A short block can sit on one line, with two spaces between its statements: `[ fi
 
 ## Comments
 
-Two slashes start a comment, which runs to the end of the line. `#` is only for colours.
+Two slashes start a comment, which runs to the end of the line. `#` is only for colors.
 
 ```roci
 // a dark sky

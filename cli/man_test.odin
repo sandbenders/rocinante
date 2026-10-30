@@ -18,7 +18,7 @@ test_the_page_of_a_verb_shows_how_it_is_written_with_an_example :: proc(t: ^test
 	code, out, _ := man("rect")
 	testing.expect_value(t, code, 0)
 	testing.expect(t, strings.contains(out, "Draws a rectangle."))
-	testing.expect(t, strings.contains(out, "rect at x y size width height [fill colour]"))
+	testing.expect(t, strings.contains(out, "rect at x y size width height [fill color]"))
 	testing.expect(t, strings.contains(out, "rect at 100 100 size 50 50"))
 }
 
@@ -26,7 +26,7 @@ test_the_page_of_a_verb_shows_how_it_is_written_with_an_example :: proc(t: ^test
 test_a_verb_of_several_words_and_one_that_gives_a_value :: proc(t: ^testing.T) {
 	code, out, _ := man("no", "fill")
 	testing.expect_value(t, code, 0)
-	testing.expect(t, strings.contains(out, "Turns area colour off"))
+	testing.expect(t, strings.contains(out, "Turns area color off"))
 	_, random, _ := man("random")
 	testing.expect(t, strings.contains(random, "gives a number"))
 }

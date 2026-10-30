@@ -1,4 +1,4 @@
-// The colours and the verb the starfield draws with. This file holds definitions only:
+// The colors and the verb the starfield draws with. This file holds definitions only:
 // what runs is written in sketch.roci.
 SKY = navy
 GLOW = gold

@@ -1,4 +1,4 @@
-colours = [ red teal ]
-with fill [colours] [
+colors = [ red teal ]
+with fill [colors] [
   circle at 10 10 radius 5
 ]

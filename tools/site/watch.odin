@@ -133,7 +133,7 @@ apply_change :: proc(out: string, c: Change) {
 		} else {
 			ok = write_guide(out, name)
 		}
-		what = "coloured"
+		what = "colored"
 	case strings.has_prefix(c.path, "site/reference/") && strings.has_suffix(c.path, ".roci"):
 		slug := strings.trim_suffix(c.path[len("site/reference/"):], ".roci")
 		section, word, weight, known := word_place(slug)

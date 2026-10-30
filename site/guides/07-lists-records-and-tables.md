@@ -66,7 +66,7 @@ In `combine`, `result` is the value so far.
 
 ## Shared, or copied
 
-Numbers, text, vectors and colours are copied when they are given to a new name. Lists and records are **shared**: `b = a` makes `b` another name for the same list, and changing one changes the other.
+Numbers, text, vectors and colors are copied when they are given to a new name. Lists and records are **shared**: `b = a` makes `b` another name for the same list, and changing one changes the other.
 
 ```roci
 a = [ 1 2 ]

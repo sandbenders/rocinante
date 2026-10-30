@@ -12,11 +12,11 @@ first_planted: a number
 x: a number
 p: a record with name, sky, hill, grass, petals and moon
 twinkle: a number
-sky_top: a colour
-moon_edge: a colour
+sky_top: a color
+moon_edge: a color
 ring: a number
-far_hill: a colour
-near_hill: a colour
+far_hill: a color
+near_hill: a color
 base: a number
 tall: a number
 sway: a number

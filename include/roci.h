@@ -77,8 +77,8 @@ void roci_send_vec2(roci_window_id to, roci_vec2 point);
 /* Shows the sketch until every window is closed, or for `frames` frames when that is more than 0. Gives 1 when it ran and 0 when the graphics could not start. */
 int roci_run(int frames);
 
-/* Fills the whole window with a colour or a gradient. */
-void roci_background(roci_colour colour);
+/* Fills the whole window with a color or a gradient. */
+void roci_background(roci_colour color);
 
 /* Paints the whole window a grey, 0 to 255. */
 void roci_background_grey(double value);
@@ -140,17 +140,17 @@ void roci_arc(double x, double y, double width, double height, double start, dou
 /* Text in the built-in overlay font, in the fill colour; whole-number scales look best. */
 void roci_debug_text(const char *text, double x, double y, double scale);
 
-/* Sets the colour of areas from now on. */
-void roci_fill(roci_colour colour);
+/* Sets the color of areas from now on. */
+void roci_fill(roci_colour color);
 
 /* Fills with a grey, 0 to 255, from now on. */
 void roci_fill_grey(double value);
 
-/* Turns area colour off from now on. */
+/* Turns area color off from now on. */
 void roci_no_fill(void);
 
-/* Sets the colour of outlines and lines from now on. */
-void roci_stroke(roci_colour colour);
+/* Sets the color of outlines and lines from now on. */
+void roci_stroke(roci_colour color);
 
 /* Outlines with a grey, 0 to 255, from now on. */
 void roci_stroke_grey(double value);
@@ -170,22 +170,22 @@ void roci_caps(const char *style);
 /* Sets how outlines turn corners from now on: miter, round or bevel. */
 void roci_joins(const char *style);
 
-/* Makes a colour from red, green and blue, each 0 to 255. */
+/* Makes a color from red, green and blue, each 0 to 255. */
 roci_colour roci_rgb(double red, double green, double blue);
 
 /* Makes a colour with its own transparency, each channel 0 to 255. */
 roci_colour roci_rgba(double red, double green, double blue, double alpha);
 
-/* Makes a colour from hue, saturation and brightness, each 0 to 255. */
+/* Makes a color from hue, saturation and brightness, each 0 to 255. */
 roci_colour roci_hsb(double hue, double saturation, double brightness);
 
-/* Makes a colour from lightness 0 to 1, chroma and hue in degrees. */
+/* Makes a color from lightness 0 to 1, chroma and hue in degrees. */
 roci_colour roci_oklch(double lightness, double chroma, double hue);
 
-/* Blends two colours, or two numbers; amount 0 gives the first and 1 the second. */
+/* Blends two colors, or two numbers; amount 0 gives the first and 1 the second. */
 roci_colour roci_mix(roci_colour first, roci_colour second, double amount);
 
-/* Blends two colours, or two numbers; amount 0 gives the first and 1 the second. */
+/* Blends two colors, or two numbers; amount 0 gives the first and 1 the second. */
 double roci_mix_numbers(double first, double second, double amount);
 
 /* Moves everything drawn after it. */

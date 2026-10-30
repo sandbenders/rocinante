@@ -3,6 +3,6 @@
 3 │   tween size to 50 over 1
   │         ^^^^
 
-It only lasts while this block runs. A tween moves a number, a vector or a colour, a little each frame, so it needs one that lasts: a name of the sketch, or a field of a record.
+It only lasts while this block runs. A tween moves a number, a vector or a color, a little each frame, so it needs one that lasts: a name of the sketch, or a field of a record.
 
 For example:  tween ball.pos to { 300, 200 } over 1

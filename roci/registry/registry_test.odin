@@ -599,7 +599,7 @@ test_the_manual_writes_geometry_with_labels_and_lists_the_optional_words :: proc
 	rect, _ := find_verb("rect")
 	page := manual_page(rect)
 	testing.expect_value(t, len(page.entries), 2)
-	testing.expect(t, strings.has_prefix(page.entries[0].syntax, "rect at x y size width height [fill colour]"))
+	testing.expect(t, strings.has_prefix(page.entries[0].syntax, "rect at x y size width height [fill color]"))
 	testing.expect_value(t, page.entries[0].example, "rect at 100 100 size 50 50")
 	circle, _ := find_verb("circle")
 	testing.expect_value(t, manual_page(circle).entries[0].example, "circle at 100 100 radius 50")

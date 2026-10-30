@@ -299,7 +299,7 @@ describe :: proc(ts: ^Types, id: Type_Id) -> string {
 	case .Number:   return "a number"
 	case .Text:     return "text"
 	case .Boolean:  return "true or false"
-	case .Colour:   return "a colour"
+	case .Colour:   return "a color"
 	case .Gradient: return "a gradient"
 	case .Window:   return "a window"
 	case .Block:    return "a block"
@@ -316,7 +316,7 @@ describe :: proc(ts: ^Types, id: Type_Id) -> string {
 		plural: string
 		#partial switch ts.items[element].kind {
 		case .Number:   plural = "numbers"
-		case .Colour:   plural = "colours"
+		case .Colour:   plural = "colors"
 		case .Window:   plural = "windows"
 		case .Boolean:  plural = "true or false values"
 		case .Text:     plural = "text"

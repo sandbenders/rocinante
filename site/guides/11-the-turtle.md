@@ -24,7 +24,7 @@ repeat 12 [
 ]
 ```
 
-The turtle draws its lines in the stroke colour and thickness, so set them first. With the stroke off, as in a new sketch, it draws in black.
+The turtle draws its lines in the stroke color and thickness, so set them first. With the stroke off, as in a new sketch, it draws in black.
 
 ```roci picture
 stroke tomato

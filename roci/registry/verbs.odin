@@ -85,7 +85,7 @@ VERBS := []Verb{
 	{"title", {{{{"text", .Text}}, nil, .None}}, "Sets the title of the window the code runs in. Another window is changed with `set`."},
 	{"fullscreen", {{{}, nil, .None}}, "Makes the window fill the screen."},
 	{"quit", {{{}, nil, .None}}, "Closes the sketch."},
-	{"background", {{{{"colour", .Colour}}, GRADIENT_OPTIONS, .None}}, "Fills the whole window with a colour or a gradient."},
+	{"background", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Fills the whole window with a color or a gradient."},
 	{"clear", {{{}, nil, .None}}, "Empties the window, leaving it transparent."},
 
 	// 2D shapes
@@ -126,9 +126,9 @@ VERBS := []Verb{
 	}, "Draws part of an ellipse, between two angles in degrees."},
 
 	// Style
-	{"fill", {{{{"colour", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the colour of areas from now on."},
-	{"no fill", {{{}, nil, .None}}, "Turns area colour off from now on."},
-	{"stroke", {{{{"colour", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the colour of outlines and lines from now on."},
+	{"fill", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the color of areas from now on."},
+	{"no fill", {{{}, nil, .None}}, "Turns area color off from now on."},
+	{"stroke", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the color of outlines and lines from now on."},
 	{"no stroke", {{{}, nil, .None}}, "Turns outlines off from now on."},
 	{"thickness", {{{{"pixels", .Number}}, nil, .None}}, "Sets the width of outlines and lines, in pixels."},
 	{"alpha", {{{{"amount", .Number}}, nil, .None}}, "Sets how solid fill and stroke are: 0 (gone) to 100 (solid) in the language, 0 to 255 in the Odin and C APIs."},
@@ -136,16 +136,16 @@ VERBS := []Verb{
 	{"joins", {{{{"style", .Name}}, nil, .None}}, "Sets how outlines turn corners from now on: miter, round or bevel."},
 
 	// Colour
-	{"rgb", {{{{"red", .Number}, {"green", .Number}, {"blue", .Number}}, ALPHA_OPTION, .Colour}}, "Makes a colour from red, green and blue, each 0 to 255."},
-	{"hsb", {{{{"hue", .Number}, {"saturation", .Number}, {"brightness", .Number}}, ALPHA_OPTION, .Colour}}, "Makes a colour from hue, saturation and brightness, each 0 to 255."},
-	{"oklch", {{{{"lightness", .Number}, {"chroma", .Number}, {"hue", .Number}}, ALPHA_OPTION, .Colour}}, "Makes a colour from lightness 0 to 1, chroma and hue in degrees."},
+	{"rgb", {{{{"red", .Number}, {"green", .Number}, {"blue", .Number}}, ALPHA_OPTION, .Colour}}, "Makes a color from red, green and blue, each 0 to 255."},
+	{"hsb", {{{{"hue", .Number}, {"saturation", .Number}, {"brightness", .Number}}, ALPHA_OPTION, .Colour}}, "Makes a color from hue, saturation and brightness, each 0 to 255."},
+	{"oklch", {{{{"lightness", .Number}, {"chroma", .Number}, {"hue", .Number}}, ALPHA_OPTION, .Colour}}, "Makes a color from lightness 0 to 1, chroma and hue in degrees."},
 	{"gradient", {
-		{{{"colours", .List}}, GRADIENT_OPTIONS, .Gradient},
-	}, "Makes a gradient from a list of colours, to use wherever a colour goes."},
+		{{{"colors", .List}}, GRADIENT_OPTIONS, .Gradient},
+	}, "Makes a gradient from a list of colors, to use wherever a color goes."},
 	{"mix", {
 		{{{"first", .Colour}, {"second", .Colour}, {"amount", .Number}}, nil, .Colour},
 		{{{"first", .Number}, {"second", .Number}, {"amount", .Number}}, nil, .Number},
-	}, "Blends two colours, or two numbers; amount 0 gives the first and 1 the second."},
+	}, "Blends two colors, or two numbers; amount 0 gives the first and 1 the second."},
 
 	// Transforms
 	{"move", {

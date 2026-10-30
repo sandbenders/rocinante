@@ -89,7 +89,7 @@ test_types_are_described_in_plain_words :: proc(t: ^testing.T) {
 	testing.expect_value(t, describe(&ts, T_TEXT), "text")
 	testing.expect_value(t, describe(&ts, T_BOOLEAN), "true or false")
 	testing.expect_value(t, describe(&ts, vector_of(&ts, 3)), "a vector of 3 numbers")
-	testing.expect_value(t, describe(&ts, list_of(&ts, T_COLOUR)), "a list of colours")
+	testing.expect_value(t, describe(&ts, list_of(&ts, T_COLOUR)), "a list of colors")
 	testing.expect_value(t, describe(&ts, list_of(&ts, vector_of(&ts, 2))), "a list of vectors of 2 numbers")
 	testing.expect_value(t, describe(&ts, list_of(&ts, fresh(&ts))), "a list")
 	testing.expect_value(t, describe(&ts, T_NONE), "nothing")
@@ -110,7 +110,7 @@ p = mouse
 x: a number
 name: text
 v: a vector of 2 numbers
-c: a colour
+c: a color
 ok: true or false
 p: a vector of 2 numbers
 `)
@@ -141,7 +141,7 @@ b: a vector of 2 numbers
 c: a vector of 2 numbers
 d: a vector of 3 numbers
 e: a vector of 2 numbers
-f: a colour
+f: a color
 g: text
 h: a number
 i: a number
@@ -264,7 +264,7 @@ test_vectors_need_two_to_four_numbers :: proc(t: ^testing.T) {
 test_lists_have_one_element_type_or_hold_mixed_values :: proc(t: ^testing.T) {
 	expect_types(t, "a = [ 1 2 3 ]\nb = [ red teal ]\nc = [ { 1, 2 } { 3, 4 } ]\nd = []\ne = [ 1 \"a\" ]", `
 a: a list of numbers
-b: a list of colours
+b: a list of colors
 c: a list of vectors of 2 numbers
 d: a list
 e: a list of mixed values
@@ -358,7 +358,7 @@ test_with_checks_its_style_words :: proc(t: ^testing.T) {
 @(test)
 test_a_verb_group_picks_its_shape_by_count_then_kinds :: proc(t: ^testing.T) {
 	expect_errors(t, "circle at 1 2 radius 3\ncircle at mouse radius 5\nx = mix 1 2 0.5\nc = mix red blue 0.5", {})
-	expect_types(t, "x = mix 1 2 0.5\nc = mix red blue 0.5", "x: a number\nc: a colour")
+	expect_types(t, "x = mix 1 2 0.5\nc = mix red blue 0.5", "x: a number\nc: a color")
 }
 
 @(test)
@@ -381,7 +381,7 @@ test_the_wrong_kind_of_argument_names_the_parameter :: proc(t: ^testing.T) {
 	testing.expect_value(t, d.args[1], "a number for `green`")
 	testing.expect_value(t, d.args[2], "text")
 	testing.expect_value(t, d.args[3], "rgb 100 0 50")
-	// A grey number, a gradient list and a colour all fit a colour parameter.
+	// A grey number, a gradient list and a color all fit a color parameter.
 	expect_errors(t, "fill 128\nfill [ red teal ]\nfill red\nbackground (gradient [ red teal ])", {})
 	expect_errors(t, "fill \"red\"", {.Wrong_Argument_Kind})
 }
@@ -412,7 +412,7 @@ test_words_where_a_call_takes_a_word_are_not_names :: proc(t: ^testing.T) {
 
 @(test)
 test_a_picked_item_has_the_type_of_the_list :: proc(t: ^testing.T) {
-	expect_types(t, "colours = [ red teal ]\nc = pick colours", "colours: a list of colours\nc: a colour")
+	expect_types(t, "colours = [ red teal ]\nc = pick colours", "colours: a list of colors\nc: a color")
 }
 
 @(test)
@@ -501,7 +501,7 @@ z: text
 test_a_field_assigned_anywhere_joins_the_shape_even_above :: proc(t: ^testing.T) {
 	// The read is above the assignment; the field still exists (two passes).
 	expect_errors(t, "ball = { x: 1 }\nc = ball.colour\nball.colour = red", {})
-	expect_types(t, "ball = { x: 1 }\nball.colour = red\nc = ball.colour", "ball: a record with x and colour\nc: a colour")
+	expect_types(t, "ball = { x: 1 }\nball.colour = red\nc = ball.colour", "ball: a record with x and colour\nc: a color")
 }
 
 @(test)
@@ -1016,7 +1016,7 @@ test_a_windows_properties_are_changed_with_set_and_assigning_them_teaches_it :: 
 
 @(test)
 test_shuffle_gives_a_list_of_the_same_kind_and_needs_a_list :: proc(t: ^testing.T) {
-	expect_types(t, "xs = [ red teal ]\nys = shuffle xs", "xs: a list of colours\nys: a list of colours")
+	expect_types(t, "xs = [ red teal ]\nys = shuffle xs", "xs: a list of colors\nys: a list of colors")
 	expect_errors(t, "x = shuffle 3", {.Wrong_Argument_Kind})
 }
 
@@ -1060,7 +1060,7 @@ test_a_gradient_list_holds_colours_and_a_list_of_a_list_is_taught :: proc(t: ^te
 		for d in got.checked.diagnostics {
 			found ||= d.id == .Colours_Expected
 		}
-		testing.expectf(t, found, "`%s` should say a gradient is a list of colours", bad)
+		testing.expectf(t, found, "`%s` should say a gradient is a list of colors", bad)
 	}
 }
 

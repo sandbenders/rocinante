@@ -1,2 +1,2 @@
-COLOURS = [ tomato gold teal ]
-circle at 200 150 radius 80 fill (item 2 of COLOURS)
+COLORS = [ tomato gold teal ]
+circle at 200 150 radius 80 fill (item 2 of COLORS)

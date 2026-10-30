@@ -1,8 +1,8 @@
 // A small library of stars. `star` is for sketches to use; `twinkle` is its own helper.
-STAR_COLOUR = gold
+STAR_COLOR = gold
 
 learn star x y size [
-  fill STAR_COLOUR
+  fill STAR_COLOR
   circle at x y radius (twinkle size x)
 ]
 

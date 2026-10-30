@@ -12,7 +12,7 @@ import "core:fmt"
 import "core:strings"
 
 Manual_Entry :: struct {
-	syntax:  string, // `rect at x y size width height [fill colour] ...`
+	syntax:  string, // `rect at x y size width height [fill color] ...`
 	example: string, // `rect at 100 100 size 50 50`
 	gives:   string, // what the call gives back, or "" for a statement
 }
@@ -40,7 +40,7 @@ STATEMENT_DOCS := []Statement_Doc{
 	{"learn", "Teaches a new verb. `give` hands back a value and `stop` ends it early; `with` gives optional words a default.", {"learn name parameter parameter [ ... ]", "learn name parameter with word value word value [ ... ]", "hidden learn name parameter [ ... ]"}, "learn double n [ give n * 2 ]"},
 	{"give", "Ends a verb you taught and hands back a value.", {"give value"}, "learn double n [ give n * 2 ]"},
 	{"stop", "Ends a verb you taught early, without a value.", {"stop"}, "learn greet name [ if name is \"\" [ stop ] ]"},
-	{"with", "Styles everything in a block, then puts the style back; the words are the ones that style one element, or a record of them.", {"with fill colour stroke colour thickness number [ ... ]", "with style [ ... ]"}, "with fill cyan thickness 2 [ circle at 100 100 radius 50 ]"},
+	{"with", "Styles everything in a block, then puts the style back; the words are the ones that style one element, or a record of them.", {"with fill color stroke color thickness number [ ... ]", "with style [ ... ]"}, "with fill cyan thickness 2 [ circle at 100 100 radius 50 ]"},
 	{"every", "Runs a block again and again, every so many seconds or frames.", {"every count seconds [ ... ]", "every count frames [ ... ]"}, "every 2 seconds [ x = x + 1 ]"},
 	{"on", "Runs a block when something happens: a key, a mouse button, a finger, a window change, or a message. A window may be named first, and a mouse button after `mouse down` or `mouse up`.", {"on key \"name\" [ ... ]", "on mouse down [ ... ]", "on mouse down right [ ... ]", "on touch down [ ... ]", "on touch up [ ... ]", "on window event [ ... ]", "on window receive message [ ... ]"}, "on garden key \"space\" [ calm = 0.15 ]"},
 	{"draw", "Runs a block every frame, for the default window or one you name.", {"draw [ ... ]", "draw window [ ... ]"}, "draw [ background 30 ]"},
@@ -53,7 +53,7 @@ kind_name :: proc(kind: Kind) -> string {
 	case .None:       return ""
 	case .Number:     return "number"
 	case .Text:       return "text"
-	case .Colour:     return "colour"
+	case .Colour:     return "color"
 	case .Vector:     return "vector"
 	case .List:       return "list"
 	case .Table:      return "table"
@@ -134,7 +134,7 @@ gives_words :: proc(kind: Kind) -> string {
 	case .None:   return ""
 	case .Any:    return "a value"
 	case .Number: return "a number"
-	case .Colour: return "a colour"
+	case .Colour: return "a color"
 	case .Window: return "a window"
 	case .List:   return "a list"
 	case .Gradient: return "a gradient"

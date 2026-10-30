@@ -1,5 +1,5 @@
 // Style: the ways a shape can look, in one picture. At the top, the same two
-// colours mixed three ways (`in rgb`, Oklab by default, `in oklch`) and a
+// colors mixed three ways (`in rgb`, Oklab by default, `in oklch`) and a
 // gradient with uneven `stops`. Then outlines turning corners three ways (`joins`)
 // and lines ending three ways (`caps`). At the bottom, a style kept in a record
 // and used with `style` and `with`, a `with` group, squares turning about their
@@ -13,7 +13,7 @@ draw [
   background 28
   no stroke
 
-  // Mixing: from blue to yellow through grey (rgb), evenly (oklab) or round the hues (oklch).
+  // Mixing: from blue to yellow through gray (rgb), evenly (oklab) or round the hues (oklch).
   rect at 40 30 size 640 26 fill (gradient [ blue yellow ] in rgb)
   rect at 40 64 size 640 26 fill (gradient [ blue yellow ])
   rect at 40 98 size 640 26 fill (gradient [ blue yellow ] in oklch)

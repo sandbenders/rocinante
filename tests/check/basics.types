@@ -4,7 +4,7 @@ SPEED: a number
 ratio: a number
 v: a vector of 2 numbers
 u: a vector of 2 numbers
-c: a colour
+c: a color
 sky: a gradient
 p: a vector of 2 numbers
 dx: a number
@@ -12,4 +12,4 @@ corner: a vector of 2 numbers
 hit: true or false
 r: a number
 n: a number
-pick_one: a colour
+pick_one: a color

@@ -1,4 +1,4 @@
-PALETTE: a list of colours
+PALETTE: a list of colors
 GAP: a number
 bars: a list of records with height, shade, tint and x
 shade: a number

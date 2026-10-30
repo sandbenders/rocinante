@@ -4,7 +4,7 @@ summary: "Shapes as records, and the five verbs that say whether, where and what
 weight: 9
 ---
 
-rocinante can tell whether shapes touch. The shapes are plain records, recognised by their fields, so the same record is drawn and tested:
+rocinante can tell whether shapes touch. The shapes are plain records, recognized by their fields, so the same record is drawn and tested:
 
 | Fields | Shape |
 |---|---|

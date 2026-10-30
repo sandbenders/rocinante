@@ -1,8 +1,8 @@
-── A gradient is a list of colours, and this list holds text ─── sketch.roci:1:34
+── A gradient is a list of colors, and this list holds text ─── sketch.roci:1:34
 
 1 │ circle at 100 100 radius 50 fill [ "red" "teal" ]
   │                                  ^^^^^^^^^^^^^^^^
 
-A list used where a colour goes makes a gradient, so every item in it has to be a colour. If the colours are in a name already, use the name without square brackets around it.
+A list used where a color goes makes a gradient, so every item in it has to be a color. If the colors are in a name already, use the name without square brackets around it.
 
 Write:  circle at 100 100 radius 50 fill [ red teal ]

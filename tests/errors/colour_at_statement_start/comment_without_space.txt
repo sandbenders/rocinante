@@ -1,8 +1,8 @@
-── A line cannot start with a colour ─────────────────── sketch.roci:1:1
+── A line cannot start with a color ──────────────────── sketch.roci:1:1
 
 1 │ #add this later
   │ ^^^^
 
-`#add` is read as a colour, but a line has to start with a word. If you meant a comment, start it with two slashes, not a hash.
+`#add` is read as a color, but a line has to start with a word. If you meant a comment, start it with two slashes, not a hash.
 
 Did you mean:  // add this later

@@ -1,6 +1,6 @@
 // Sorting: a row of bars that the list verbs rearrange, every bar sliding to its new
 // place with `tween`. Every two and a half seconds the next step runs, or press its
-// key: `shuffle` (space), `sort … by` height (h) or colour (c), `keep` the tall ones
+// key: `shuffle` (space), `sort … by` height (h) or color (c), `keep` the tall ones
 // (k) and `skip` the tall ones (s). `collect` and `combine` work out the average,
 // drawn as a line across, `find` picks out the first bar taller than that, and
 // p prints the heights.

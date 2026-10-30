@@ -66,7 +66,7 @@ draw [
 ]
 ```
 
-`over` is the seconds it takes, and `as` the way it moves: `smooth` (slow, fast, slow; the usual one), `linear`, `in`, `out`, `back`, `elastic` or `bounce`. Numbers, vectors and colours can all be tweened.
+`over` is the seconds it takes, and `as` the way it moves: `smooth` (slow, fast, slow; the usual one), `linear`, `in`, `out`, `back`, `elastic` or `bounce`. Numbers, vectors and colors can all be tweened.
 
 `ease` is the same curve as a plain verb, for sketches that work out their own time: it takes a number from 0 to 1 and gives how far along the movement is:
 

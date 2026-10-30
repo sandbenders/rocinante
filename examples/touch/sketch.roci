@@ -1,6 +1,6 @@
 // Touch: put fingers on the screen. Every finger that goes down sends out a ring
 // (`on touch down`, where `finger` is that finger); every finger held down is a
-// circle with a line back to where it started, numbered by colour (`touches`); and a
+// circle with a line back to where it started, numbered by color (`touches`); and a
 // finger lifted throws a dot the way it moved (`on touch up`). On a computer
 // without a touch screen, the left mouse button is one finger.
 window size 640 480 title "touch" resizable false

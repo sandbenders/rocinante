@@ -3,6 +3,6 @@
 2 │ background (random colors)
   │                    ^^^^^^
 
-Here it is given a list of colours.
+Here it is given a list of colors.
 
 Write:  background (pick colors)

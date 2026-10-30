@@ -1,5 +1,5 @@
 // The circle benchmark in rocinante: the same 100,000 circles a frame as main.odin,
-// drifting with the clock, the colour changing every hundred, but run by the
+// drifting with the clock, the color changing every hundred, but run by the
 // interpreter, so the difference between the two is what interpreting costs. It
 // prints the frame rate once a second.
 COUNT = 100000

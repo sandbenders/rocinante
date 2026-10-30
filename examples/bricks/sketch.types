@@ -1,4 +1,4 @@
-COLORS: a list of colours
+COLORS: a list of colors
 bricks: a list of records with pos, size and tint
 walls: a list of records with from and to
 ball: a record with pos, radius and vel

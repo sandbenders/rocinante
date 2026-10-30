@@ -362,7 +362,7 @@ kind_words :: proc(kind: registry.Kind) -> string {
 	case .None:     return "nothing"
 	case .Number:   return "a number"
 	case .Text:     return "text"
-	case .Colour:   return "a colour"
+	case .Colour:   return "a color"
 	case .Vector:   return "a vector"
 	case .List:     return "a list"
 	case .Table:    return "a table"
@@ -970,7 +970,7 @@ check_field :: proc(c: ^Checker, base: ^IR, part: string, span: Span) -> ^IR {
 		if len(part) == 1 && strings.index_byte("rgba", part[0]) >= 0 {
 			return new_ir(c, base.span, T_NUMBER, IR_Swizzle{base = base, parts = part})
 		}
-		note(c, .Bad_Field, span, part, "a colour", "A colour has r, g, b and a.", fix(c, span, "r"))
+		note(c, .Bad_Field, span, part, "a color", "A color has r, g, b and a.", fix(c, span, "r"))
 		return error_ir(c, base.span)
 	case .Window:
 		if def, found := window_property(part); found {
@@ -987,7 +987,7 @@ check_field :: proc(c: ^Checker, base: ^IR, part: string, span: Span) -> ^IR {
 	case .Boxed, .Variable, .Error:
 		return new_ir(c, base.span, T_BOXED if item.kind != .Error else T_ERROR, IR_Field{base = base, name = part})
 	}
-	note(c, .Bad_Field, span, part, describe(c.types, resolved), "Only vectors and colours have parts here.", fix(c, Span{span.file, span.start - 1, span.end}, ""))
+	note(c, .Bad_Field, span, part, describe(c.types, resolved), "Only vectors and colors have parts here.", fix(c, Span{span.file, span.start - 1, span.end}, ""))
 	return error_ir(c, base.span)
 }
 

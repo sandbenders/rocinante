@@ -89,14 +89,14 @@ apply_change_copies_and_removes_hugo_files :: proc(t: ^testing.T) {
 apply_change_colours_a_guide_and_removes_it :: proc(t: ^testing.T) {
 	out := fresh_out("guide")
 	defer os.remove_all(out)
-	apply_change(out, Change{path = "site/guides/03-shapes-and-colour.md"})
-	page, ok := read(fmt.tprintf("%s/content/guides/03-shapes-and-colour.md", out))
+	apply_change(out, Change{path = "site/guides/03-shapes-and-color.md"})
+	page, ok := read(fmt.tprintf("%s/content/guides/03-shapes-and-color.md", out))
 	testing.expect(t, ok)
 	testing.expect(t, strings.contains(page, `<pre class="roci">`))
 	testing.expect(t, !strings.contains(page, "```roci"))
 
-	apply_change(out, Change{path = "site/guides/03-shapes-and-colour.md", gone = true})
-	testing.expect(t, !os.exists(fmt.tprintf("%s/content/guides/03-shapes-and-colour.md", out)))
+	apply_change(out, Change{path = "site/guides/03-shapes-and-color.md", gone = true})
+	testing.expect(t, !os.exists(fmt.tprintf("%s/content/guides/03-shapes-and-color.md", out)))
 }
 
 // The page of `use`, whose example is shown but not run: drawing a picture needs a
