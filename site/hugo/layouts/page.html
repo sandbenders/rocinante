@@ -14,8 +14,8 @@
   <h1>{{ .Title }}</h1>
   {{ .Content }}
   <nav class="next-prev" aria-label="Guides">
+    {{ with .NextInSection }}<a class="prev" href="{{ .RelPermalink }}">back: {{ .Title }}</a>{{ else }}<span></span>{{ end }}
     {{ with .PrevInSection }}<a class="next" href="{{ .RelPermalink }}">next: {{ .Title }}</a>{{ end }}
-    {{ with .NextInSection }}<a class="prev" href="{{ .RelPermalink }}">back: {{ .Title }}</a>{{ end }}
   </nav>
 </main>
 {{ end }}
