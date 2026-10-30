@@ -5,6 +5,8 @@
 // that never calls `window` gets the default window, 800 x 600.
 package roci
 
+import "core:hash"
+import "core:slice"
 import "core:strings"
 import "gfx"
 import "platform"
@@ -164,6 +166,24 @@ recorded :: proc(w: Window, allocator := context.temp_allocator) -> []gfx.Comman
 		out[i] = gfx.command_at(&win.list, i)
 	}
 	return out
+}
+
+// A hash of what a window's frame shows (its commands, without their place in the
+// sketch, its background and its size), so a tool can tell a frame that changed from
+// one that did not without drawing either. 0 for a window that is not open.
+frame_hash :: proc(w: Window) -> u64 {
+	win := win_for(w)
+	if win == nil {
+		return 0
+	}
+	parts := make([dynamic]u64, 0, len(win.list.commands) + 4, context.temp_allocator)
+	for i in 0 ..< len(win.list.commands) {
+		append(&parts, gfx.command_hash(gfx.command_at(&win.list, i)))
+	}
+	bg := win.list.background
+	append(&parts, u64(transmute(u32)bg.r) << 32 | u64(transmute(u32)bg.g), u64(transmute(u32)bg.b) << 32 | u64(transmute(u32)bg.a))
+	append(&parts, win.list.background_paint.hash, u64(win.width) << 32 | u64(win.height))
+	return hash.fnv64a(slice.to_bytes(parts[:]))
 }
 
 // The windows that are open, in the order they were made.

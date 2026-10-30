@@ -104,7 +104,12 @@ write_word_page :: proc(out: string, section: registry.Reference_Section, word: 
 		}
 		strings.write_string(&b, `</div>`)
 		if drawn.picture {
-			strings.write_string(&b, window_html(fmt.tprintf("../img/%s.png", slug), "What the example draws", {EXAMPLE_WIDTH, EXAMPLE_HEIGHT}, "picture"))
+			moved, recorded := record_example(code, fmt.tprintf("%s/static/reference/img/%s-moving.png", out, slug), EXAMPLE_WIDTH, EXAMPLE_HEIGHT, false)
+			if !recorded {
+				return false
+			}
+			moving := fmt.tprintf("../img/%s-moving.png", slug) if moved else ""
+			strings.write_string(&b, window_html(fmt.tprintf("../img/%s.png", slug), "What the example draws", {EXAMPLE_WIDTH, EXAMPLE_HEIGHT}, "picture", moving = moving))
 		}
 	} else {
 		strings.write_string(&b, `<div class="example-code">`)
@@ -429,7 +434,13 @@ picture_html :: proc(p: ^Pictures, code: string) -> string {
 	if file == "" {
 		return ""
 	}
-	return window_html(fmt.tprintf("../img/%s", file), "What these lines draw", size, "guide-picture")
+	// An example that moves is shown moving, at the half size the page shows it.
+	moving := strings.concatenate({strings.trim_suffix(file, ".png"), "-moving.png"}, context.temp_allocator)
+	moved, ok := record_example(code, fmt.tprintf("%s/static/guides/img/%s", p.out, moving), roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT, true)
+	if !ok {
+		p.ok = false
+	}
+	return window_html(fmt.tprintf("../img/%s", file), "What these lines draw", size, "guide-picture", moving = fmt.tprintf("../img/%s", moving) if moved else "")
 }
 
 // Each line on its own picture, the line itself as the caption, so it is plain
@@ -563,9 +574,14 @@ without_size_and_title :: proc(svg: string) -> string {
 // A picture in a window, as the front page shows its hello world: a title bar with its
 // dots, and the title saying it is the whole window and how big it is. A small window
 // (a gallery's) has the dots and the size only.
-window_html :: proc(src, alt: string, size: [2]int, class: string, titled := true) -> string {
+window_html :: proc(src, alt: string, size: [2]int, class: string, titled := true, moving := "") -> string {
 	title := fmt.tprintf("what it draws: the whole window, %d by %d", size.x, size.y) if titled else fmt.tprintf("%d by %d", size.x, size.y)
-	return fmt.tprintf(`<figure class="pane window %s"><figcaption class="window-bar"><span class="dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="pane-title">%s</span></figcaption><img src="%s" alt="%s" width="%d" height="%d" loading="lazy"></figure>`, class, title, src, escape(alt), size.x, size.y)
+	img := fmt.tprintf(`<img src="%s" alt="%s" width="%d" height="%d" loading="lazy">`, src, escape(alt), size.x, size.y)
+	// A moving example plays when the reader's system allows motion; the still otherwise.
+	if moving != "" {
+		img = fmt.tprintf(`<picture><source srcset="%s" media="(prefers-reduced-motion: no-preference)">%s</picture>`, moving, img)
+	}
+	return fmt.tprintf(`<figure class="pane window %s"><figcaption class="window-bar"><span class="dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="pane-title">%s</span></figcaption>%s</figure>`, class, title, img)
 }
 
 // The front page's longer sketch, the logo drawn by rocinante, from the example itself:

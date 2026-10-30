@@ -110,16 +110,7 @@ png_encode :: proc(img: Image, allocator := context.allocator, filters := Png_Fi
 	if img.width <= 0 || img.height <= 0 || len(img.pixels) != img.width * img.height * 4 {
 		return nil, false
 	}
-	z: []u8
-	switch filters {
-	case .Adaptive: z = zlib_stream(filter_rows(img, true))
-	case .None:     z = zlib_stream(filter_rows(img, false))
-	case .Smallest:
-		z = zlib_stream(filter_rows(img, true))
-		if plain := zlib_stream(filter_rows(img, false)); len(plain) < len(z) {
-			z = plain
-		}
-	}
+	z := compressed_rows(img, filters)
 
 	out := make([dynamic]u8, allocator)
 	append(&out, ..PNG_SIGNATURE[:])
@@ -169,4 +160,145 @@ image_diff :: proc(a, b: Image, tolerance: int) -> Diff {
 image_matches :: proc(a, b: Image, tolerance, allowed: int) -> bool {
 	d := image_diff(a, b, tolerance)
 	return d.same_size && d.differing_pixels <= allowed
+}
+
+// The rows of a picture filtered and compressed into a zlib stream, as png_encode
+// keeps them.
+@(private)
+compressed_rows :: proc(img: Image, filters: Png_Filters) -> []u8 {
+	switch filters {
+	case .Adaptive: return zlib_stream(filter_rows(img, true))
+	case .None:     return zlib_stream(filter_rows(img, false))
+	case .Smallest:
+		z := zlib_stream(filter_rows(img, true))
+		if plain := zlib_stream(filter_rows(img, false)); len(plain) < len(z) {
+			return plain
+		}
+		return z
+	}
+	return nil
+}
+
+// An animation as an APNG, an animated PNG every current browser plays. The first
+// frame is the file's own picture, so a program that knows only PNG shows it; each
+// later frame keeps only the rectangle that changed since the frame before, drawn
+// over it. A frame equal to the one before is not kept again: the one before shows
+// longer instead. Frame i shows for `ticks[i]` of 1/`per_second` of a second, and the
+// animation plays forever. Gives nothing for no frames, frames of different sizes,
+// ticks that do not fit (1 to 65,535) or a rate outside 1 to 65,535.
+// Format: https://www.w3.org/TR/png-3/#apng-frame-control-chunk
+apng_encode :: proc(frames: []Image, ticks: []int, per_second: int, allocator := context.allocator, filters := Png_Filters.Smallest) -> (png: []u8, ok: bool) {
+	if len(frames) == 0 || len(ticks) != len(frames) || per_second < 1 || per_second > 65535 {
+		return nil, false
+	}
+	w, h := frames[0].width, frames[0].height
+	for f, i in frames {
+		if f.width != w || f.height != h || w <= 0 || h <= 0 || len(f.pixels) != w * h * 4 || ticks[i] < 1 {
+			return nil, false
+		}
+	}
+	Kept :: struct {
+		frame, ticks: int,
+	}
+	kept := make([dynamic]Kept, context.temp_allocator)
+	for f, i in frames {
+		if i > 0 && pixels_equal(frames[kept[len(kept) - 1].frame], f) {
+			kept[len(kept) - 1].ticks += ticks[i]
+		} else {
+			append(&kept, Kept{i, ticks[i]})
+		}
+	}
+	for k in kept {
+		if k.ticks > 65535 {
+			return nil, false
+		}
+	}
+
+	out := make([dynamic]u8, allocator)
+	append(&out, ..PNG_SIGNATURE[:])
+	ihdr := make([dynamic]u8, context.temp_allocator)
+	put_u32_be(&ihdr, u32(w))
+	put_u32_be(&ihdr, u32(h))
+	append(&ihdr, 8, 6, 0, 0, 0)
+	put_chunk(&out, "IHDR", ihdr[:])
+	actl := make([dynamic]u8, context.temp_allocator)
+	put_u32_be(&actl, u32(len(kept)))
+	put_u32_be(&actl, 0) // play forever
+	put_chunk(&out, "acTL", actl[:])
+
+	sequence: u32
+	for k, i in kept {
+		x, y, bw, bh := 0, 0, w, h
+		part := frames[k.frame]
+		if i > 0 {
+			x, y, bw, bh = changed_box(frames[kept[i - 1].frame], part)
+			part = crop(part, x, y, bw, bh)
+		}
+		fctl := make([dynamic]u8, context.temp_allocator)
+		put_u32_be(&fctl, sequence)
+		sequence += 1
+		put_u32_be(&fctl, u32(bw))
+		put_u32_be(&fctl, u32(bh))
+		put_u32_be(&fctl, u32(x))
+		put_u32_be(&fctl, u32(y))
+		append(&fctl, u8(k.ticks >> 8), u8(k.ticks), u8(per_second >> 8), u8(per_second))
+		append(&fctl, 0, 0) // keep what is there, and replace the rectangle's pixels
+		put_chunk(&out, "fcTL", fctl[:])
+		z := compressed_rows(part, filters)
+		if i == 0 {
+			put_chunk(&out, "IDAT", z)
+		} else {
+			fdat := make([dynamic]u8, context.temp_allocator)
+			put_u32_be(&fdat, sequence)
+			sequence += 1
+			append(&fdat, ..z)
+			put_chunk(&out, "fdAT", fdat[:])
+		}
+	}
+	put_chunk(&out, "IEND", nil)
+	return out[:], true
+}
+
+@(private)
+pixels_equal :: proc(a, b: Image) -> bool {
+	if len(a.pixels) != len(b.pixels) {
+		return false
+	}
+	for p, i in a.pixels {
+		if p != b.pixels[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// The smallest rectangle holding every pixel that differs between two pictures of
+// one size; the whole picture when none differs.
+@(private)
+changed_box :: proc(a, b: Image) -> (x, y, w, h: int) {
+	left, top, right, bottom := a.width, a.height, -1, -1
+	for row in 0 ..< a.height {
+		for col in 0 ..< a.width {
+			i := (row * a.width + col) * 4
+			if a.pixels[i] != b.pixels[i] || a.pixels[i + 1] != b.pixels[i + 1] || a.pixels[i + 2] != b.pixels[i + 2] || a.pixels[i + 3] != b.pixels[i + 3] {
+				left, right = min(left, col), max(right, col)
+				top, bottom = min(top, row), max(bottom, row)
+			}
+		}
+	}
+	if right < 0 {
+		return 0, 0, a.width, a.height
+	}
+	return left, top, right - left + 1, bottom - top + 1
+}
+
+// A rectangle of a picture, as a picture of its own (in the temporary allocator).
+@(private)
+crop :: proc(img: Image, x, y, w, h: int) -> Image {
+	out := Image{width = w, height = h, pixels = make([]u8, w * h * 4, context.temp_allocator)}
+	for row in 0 ..< h {
+		from := ((y + row) * img.width + x) * 4
+		copy(out.pixels[row * w * 4:(row + 1) * w * 4], img.pixels[from:from + w * 4])
+	}
+	return out
 }

@@ -1277,3 +1277,21 @@ test_a_tool_can_choose_the_size_of_the_default_window :: proc(t: ^testing.T) {
 	circle(0, 0, 1)
 	testing.expect_value(t, the.windows[0].width, DEFAULT_WIDTH)
 }
+
+// A frame's hash changes when what it shows changes, and only then.
+@(test)
+test_frame_hash_follows_what_the_frame_shows :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	circle(10, 10, 5) // the first verb opens the default window
+	w := open_windows()[0]
+	one := frame_hash(w)
+	testing.expect(t, one != 0)
+	testing.expect_value(t, frame_hash(w), one) // asking again changes nothing
+	circle(20, 20, 5)
+	two := frame_hash(w)
+	testing.expect(t, two != one, "a new shape is a new frame")
+	background(rgb(10, 20, 30))
+	testing.expect(t, frame_hash(w) != two, "a background is part of the frame")
+	testing.expect_value(t, frame_hash(Window(9999)), u64(0))
+}

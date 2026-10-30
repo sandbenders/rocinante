@@ -179,7 +179,7 @@ pre.shell code::before { content: "$ "; opacity: 0.55; }
 .editor .hero-code { flex: 1; border-radius: 0; border-left: 0; background: var(--sheet); }
 /* A pane holds its code or message edge to edge, under its title bar. */
 .pane > pre, .pane > pre.message-text { flex: 1; border: 0; border-radius: 0; background: var(--sheet); }
-.hello img, .window img { display: block; width: 100%; height: auto; background: #e6e6e6; }
+.hello img, .window img, .window picture { display: block; width: 100%; height: auto; background: #e6e6e6; }
 /* Changing it while it runs: its own section, the words, then a mistake and its message side by side. */
 .live { display: flex; flex-direction: column; gap: 14px; }
 .live h2, .live p { margin: 0; }
