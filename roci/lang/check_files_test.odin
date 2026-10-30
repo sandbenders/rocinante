@@ -139,13 +139,15 @@ test_the_newcomer_reading_sketches_are_the_same_in_both_styles :: proc(t: ^testi
 	testing.expect(t, found >= 3, "the reading sketches were found")
 }
 
-// Every `roci` block of the newcomer test's handout checks with no message at all,
-// so the page people learn from never shows them something the language refuses.
-@(test)
-test_every_example_on_the_newcomer_handout_checks_cleanly :: proc(t: ^testing.T) {
-	data, err := os.read_entire_file("tests/newcomer/cheatsheet.md", context.temp_allocator)
-	if !testing.expect(t, err == nil, "tests run from the repository root") {
-		return
+// Every `roci` block of a Markdown page checks with no error or warning, so a page
+// people learn from never shows them something the language refuses. A hint is
+// allowed: a guide may show one on purpose (the sharing hint after `b = a`).
+// Gives how many blocks there were.
+@(private = "file")
+check_code_blocks :: proc(t: ^testing.T, path: string) -> int {
+	data, err := os.read_entire_file(path, context.temp_allocator)
+	if !testing.expectf(t, err == nil, "cannot read %s: tests run from the repository root", path) {
+		return 0
 	}
 	blocks := 0
 	rest := string(data)
@@ -156,15 +158,67 @@ test_every_example_on_the_newcomer_handout_checks_cleanly :: proc(t: ^testing.T)
 		}
 		rest = rest[start + len("```roci\n"):]
 		end := strings.index(rest, "```")
-		if !testing.expect(t, end >= 0, "a code block is never closed") {
+		if !testing.expectf(t, end >= 0, "a code block of %s is never closed", path) {
 			break
 		}
 		code := rest[:end]
 		rest = rest[end + 3:]
 		blocks += 1
-		src := make_source("cheatsheet.roci", code, 0, context.temp_allocator)
+		src := make_source("block.roci", code, 0, context.temp_allocator)
 		checked := check(src, registry.ALL_VERBS, nil, context.temp_allocator)
-		testing.expectf(t, len(checked.diagnostics) == 0, "block %d of the handout:\n%s", blocks, render_all(src, checked.diagnostics, context.temp_allocator))
+		serious := make([dynamic]Diagnostic, context.temp_allocator)
+		for d in checked.diagnostics {
+			if severity_of(d) != .Hint {
+				append(&serious, d)
+			}
+		}
+		testing.expectf(t, len(serious) == 0, "block %d of %s:\n%s", blocks, path, render_all(src, serious[:], context.temp_allocator))
 	}
-	testing.expect(t, blocks >= 8, "the handout's examples were found")
+	return blocks
+}
+
+@(test)
+test_every_example_on_the_newcomer_handout_checks_cleanly :: proc(t: ^testing.T) {
+	testing.expect(t, check_code_blocks(t, "tests/newcomer/cheatsheet.md") >= 8, "the handout's examples were found")
+}
+
+@(test)
+test_every_example_in_the_guides_checks_cleanly :: proc(t: ^testing.T) {
+	dir, err := os.open("site/guides")
+	if err != nil {
+		return // no guides yet
+	}
+	defer os.close(dir)
+	entries, _ := os.read_dir(dir, -1, context.temp_allocator)
+	for entry in entries {
+		if strings.has_suffix(entry.name, ".md") {
+			check_code_blocks(t, fmt.tprintf("site/guides/%s", entry.name))
+		}
+	}
+}
+
+// Every word of the reference has an example in site/reference, in the house style
+// and checking with no message (`use` needs a library beside it, so it is only read).
+@(test)
+test_every_word_of_the_reference_has_an_example_that_checks :: proc(t: ^testing.T) {
+	found := 0
+	for section in registry.REFERENCE_SECTIONS {
+		for word in section.words {
+			path := fmt.tprintf("site/reference/%s.roci", registry.reference_slug(word))
+			data, err := os.read_entire_file(path, context.temp_allocator)
+			if !testing.expectf(t, err == nil, "`%s` has no example: write %s", word, path) {
+				continue
+			}
+			found += 1
+			if word == "use" {
+				continue
+			}
+			src := make_source(path, string(data), 0, context.temp_allocator)
+			checked := check(src, registry.ALL_VERBS, nil, context.temp_allocator)
+			testing.expectf(t, len(checked.diagnostics) == 0, "the example of `%s`:\n%s", word, render_all(src, checked.diagnostics, context.temp_allocator))
+			formatted := format_text(path, string(data), registry.ALL_VERBS, context.temp_allocator)
+			testing.expectf(t, formatted.text == string(data), "the example of `%s` is not in the house style: run roci fmt on %s", word, path)
+		}
+	}
+	testing.expect(t, found > 100, "the examples were found: tests run from the repository root")
 }
