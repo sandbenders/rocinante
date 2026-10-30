@@ -226,8 +226,9 @@ pre.shell code::before { content: "$ "; opacity: 0.55; }
 .ref-list dt { margin: 0; }
 .ref-list dd { margin: 0; color: var(--soft); }
 
-.example { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 20px; align-items: start; margin: 24px 0; }
-.example:not(:has(.picture)) { grid-template-columns: minmax(0, 1fr); }
+/* An example: its code, then what it prints and the window it draws, one under the other. */
+.example { display: flex; flex-direction: column; gap: 12px; margin: 24px 0; }
+.example .picture { max-width: 400px; }
 .picture { margin: 0; }
 .example-code { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .prints-label { margin: 6px 0 0; font: 600 0.75rem var(--mono); color: var(--soft); }
@@ -303,7 +304,6 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
   .with-side { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .side { position: static; max-height: none; order: 2; border-top: 1px solid var(--rule); padding-top: 16px; }
   .side details:not([open]) ul { display: none; }
-  .example { grid-template-columns: minmax(0, 1fr); }
   .mistake { grid-template-columns: minmax(0, 1fr); }
   .demo, .with-toc, .foot-inner { grid-template-columns: minmax(0, 1fr); }
   .toc { display: none; }

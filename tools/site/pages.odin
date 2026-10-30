@@ -96,15 +96,16 @@ write_word_page :: proc(out: string, section: registry.Reference_Section, word: 
 			fmt.eprintfln("site: the example for `%s` does not run", word)
 			return false
 		}
-		if drawn.picture {
-			strings.write_string(&b, window_html(fmt.tprintf("../img/%s.png", slug), "What the example draws", {EXAMPLE_WIDTH, EXAMPLE_HEIGHT}, "picture"))
-		}
+		// The code first, then what it prints and the window it draws, as in the guides.
 		strings.write_string(&b, `<div class="example-code">`)
 		strings.write_string(&b, code_html(code))
 		if len(drawn.printed) > 0 {
 			fmt.sbprintf(&b, `<p class="prints-label">It prints</p>%s`, one_line(fmt.tprintf(`<pre class="prints">%s</pre>`, escape(strings.join(drawn.printed, "\n", context.temp_allocator)))))
 		}
 		strings.write_string(&b, `</div>`)
+		if drawn.picture {
+			strings.write_string(&b, window_html(fmt.tprintf("../img/%s.png", slug), "What the example draws", {EXAMPLE_WIDTH, EXAMPLE_HEIGHT}, "picture"))
+		}
 	} else {
 		strings.write_string(&b, `<div class="example-code">`)
 		strings.write_string(&b, code_html(code))
