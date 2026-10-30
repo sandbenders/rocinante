@@ -111,13 +111,13 @@ p, li, dd { max-width: var(--measure); }
 
 /* the bar along the top */
 .top { background: var(--sheet); border-bottom: 1px solid var(--rule); position: sticky; top: 0; z-index: 3; }
-.top-inner { max-width: 1180px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); }
+.top-inner { max-width: 1180px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); }
 .mark { font: 700 1.2rem var(--mono); color: var(--ink); text-decoration: none; letter-spacing: -0.02em; display: inline-flex; align-items: center; gap: 8px; }
 /* The logo, in the ink of the text beside it, its asterisk cut from the bar's paper. */
 .logo { display: inline-block; height: 1.3em; width: auto; flex: none; }
 .logo .logo-cut { fill: var(--sheet); }
 .release { font: 600 0.65rem var(--mono); color: var(--accent); background: var(--accent-soft); border-radius: 3px; padding: 2px 5px; margin-left: 8px; vertical-align: 3px; text-transform: lowercase; }
-.top nav { display: flex; flex-wrap: wrap; gap: 4px 18px; font-family: var(--mono); font-size: 0.95rem; }
+.top nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; font-family: var(--mono); font-size: 0.95rem; }
 .top nav a { color: var(--soft); text-decoration: none; padding: 2px 0; border-bottom: 2px solid transparent; }
 .top nav a:hover { color: var(--ink); }
 .top nav a[aria-current] { color: var(--ink); border-bottom-color: var(--accent); }
