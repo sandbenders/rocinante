@@ -332,26 +332,60 @@ write_guide :: proc(out, name: string) -> bool {
 	return write(fmt.tprintf("%s/content/guides/%s", out, name), colour_code_blocks(text))
 }
 
-// Replaces every ```roci block of a Markdown page with coloured HTML.
+// Replaces every ```roci block of a Markdown page with coloured code, and every
+// ```message block with a message coloured as the terminal colours it.
 colour_code_blocks :: proc(text: string) -> string {
-	FENCE :: "```roci\n"
 	b := strings.builder_make(context.temp_allocator)
 	rest := text
 	for {
-		start := strings.index(rest, FENCE)
+		start, fence, is_message := next_coloured_block(rest)
 		if start < 0 {
 			break
 		}
-		end := strings.index(rest[start + len(FENCE):], "```")
+		body := rest[start + len(fence):]
+		end := strings.index(body, "```")
 		if end < 0 {
 			break
 		}
 		strings.write_string(&b, rest[:start])
-		strings.write_string(&b, code_html(rest[start + len(FENCE):][:end]))
-		rest = rest[start + len(FENCE) + end + 3:]
+		strings.write_string(&b, message_html(body[:end]) if is_message else code_html(body[:end]))
+		rest = body[end + 3:]
 	}
 	strings.write_string(&b, rest)
 	return strings.to_string(b)
+}
+
+ROCI_FENCE :: "```roci\n"
+MESSAGE_FENCE :: "```message\n"
+
+// Where the next ```roci or ```message block starts, and which it is; -1 when there is none.
+next_coloured_block :: proc(text: string) -> (start: int, fence: string, is_message: bool) {
+	code := strings.index(text, ROCI_FENCE)
+	message := strings.index(text, MESSAGE_FENCE)
+	if message >= 0 && (code < 0 || message < code) {
+		return message, MESSAGE_FENCE, true
+	}
+	return code, ROCI_FENCE, false
+}
+
+// The text of every ```message block of a Markdown page, in order.
+message_blocks :: proc(text: string, allocator := context.temp_allocator) -> []string {
+	found := make([dynamic]string, allocator)
+	rest := text
+	for {
+		start := strings.index(rest, MESSAGE_FENCE)
+		if start < 0 {
+			break
+		}
+		body := rest[start + len(MESSAGE_FENCE):]
+		end := strings.index(body, "```")
+		if end < 0 {
+			break
+		}
+		append(&found, body[:end])
+		rest = body[end + 3:]
+	}
+	return found[:]
 }
 
 // ---- the front page ----

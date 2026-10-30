@@ -255,6 +255,7 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
 /* guides: the page, and the list of its sections beside it */
 .with-toc { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 56px; align-items: start; }
 .guide pre { margin: 14px 0; }
+.guide pre.message-text { white-space: pre-wrap; }
 .guide h2 { scroll-margin-top: 80px; }
 .toc { position: sticky; top: 76px; max-height: calc(100vh - 96px); overflow-y: auto; font-size: 0.9rem; border-left: 1px solid var(--rule); padding-left: 16px; }
 .toc-title { font: 600 0.8rem var(--mono); color: var(--soft); margin: 4px 0 8px; }
