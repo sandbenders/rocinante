@@ -1,6 +1,6 @@
 # Release checklist
 
-Work through this before tagging `vYYYY.MINOR.MICRO`. Record the results in the table at the bottom, one row per version. The Linux artefact comes from the tag pipeline; the other platforms are built and checked locally.
+Work through this before tagging `vYYYY.MINOR.MICRO`. Record the results in the table at the bottom, one row per version. A release has a download for each host, FreeBSD, Linux, macOS and Windows, and none for iOS or Android, which are targets only: `roci` never runs on a phone, so a phone gets a sketch as an app its author packaged. The Linux download comes from the tag pipeline; the other hosts' are built and checked locally, and the phones are checked as targets.
 
 ## Before the tag
 
@@ -11,7 +11,7 @@ Work through this before tagging `vYYYY.MINOR.MICRO`. Record the results in the 
 
 ## On each platform
 
-For FreeBSD, macOS and Windows: build on that system, run every example, run the golden-image suite and the back-end equivalence suite, and build the platform's artefact. For iOS and Android, which are targets only: package from a host that can (a Mac for iOS; macOS, Linux x86-64 or Windows for Android), install on a real device, and run every example there.
+For FreeBSD, macOS and Windows: build on that system, run every example, run the golden-image suite and the back-end equivalence suite, and build the platform's download. For iOS and Android, which have no download: package from a host that can (a Mac for iOS; macOS, Linux x86-64 or Windows for Android), install on a real device, and run every example there.
 
 Where someone has a mid-range laptop, run `examples/benchmark` on it and note the frame rate (Phase 1 used an older desktop as a stand-in).
 
