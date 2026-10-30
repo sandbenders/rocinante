@@ -142,6 +142,8 @@ test_the_newcomer_reading_sketches_are_the_same_in_both_styles :: proc(t: ^testi
 // Every `roci` block of a Markdown page checks with no error or warning, so a page
 // people learn from never shows them something the language refuses. A hint is
 // allowed: a guide may show one on purpose (the sharing hint after `b = a`).
+// A block is written ```roci, ```roci picture (drawn whole) or ```roci gallery
+// (each line drawn on its own, so each line must check on its own too).
 // Gives how many blocks there were.
 @(private = "file")
 check_code_blocks :: proc(t: ^testing.T, path: string) -> int {
@@ -152,11 +154,18 @@ check_code_blocks :: proc(t: ^testing.T, path: string) -> int {
 	blocks := 0
 	rest := string(data)
 	for {
-		start := strings.index(rest, "```roci\n")
+		start := strings.index(rest, "```roci")
 		if start < 0 {
 			break
 		}
-		rest = rest[start + len("```roci\n"):]
+		rest = rest[start + len("```roci"):]
+		line_end := strings.index_byte(rest, '\n')
+		if !testing.expectf(t, line_end >= 0, "a code block of %s is never closed", path) {
+			break
+		}
+		kind := rest[:line_end]
+		testing.expectf(t, kind == "" || kind == " picture" || kind == " gallery", "%s has a block written ```roci%s; it can be ```roci, ```roci picture or ```roci gallery", path, kind)
+		rest = rest[line_end + 1:]
 		end := strings.index(rest, "```")
 		if !testing.expectf(t, end >= 0, "a code block of %s is never closed", path) {
 			break
@@ -164,17 +173,27 @@ check_code_blocks :: proc(t: ^testing.T, path: string) -> int {
 		code := rest[:end]
 		rest = rest[end + 3:]
 		blocks += 1
-		src := make_source("block.roci", code, 0, context.temp_allocator)
-		checked := check(src, registry.ALL_VERBS, nil, context.temp_allocator)
-		serious := make([dynamic]Diagnostic, context.temp_allocator)
-		for d in checked.diagnostics {
-			if severity_of(d) != .Hint {
-				append(&serious, d)
+		check_block(t, path, blocks, code)
+		if kind == " gallery" {
+			for line in strings.split_lines(strings.trim_right_space(code), context.temp_allocator) {
+				check_block(t, path, blocks, line)
 			}
 		}
-		testing.expectf(t, len(serious) == 0, "block %d of %s:\n%s", blocks, path, render_all(src, serious[:], context.temp_allocator))
 	}
 	return blocks
+}
+
+@(private = "file")
+check_block :: proc(t: ^testing.T, path: string, block: int, code: string) {
+	src := make_source("block.roci", code, 0, context.temp_allocator)
+	checked := check(src, registry.ALL_VERBS, nil, context.temp_allocator)
+	serious := make([dynamic]Diagnostic, context.temp_allocator)
+	for d in checked.diagnostics {
+		if severity_of(d) != .Hint {
+			append(&serious, d)
+		}
+	}
+	testing.expectf(t, len(serious) == 0, "block %d of %s:\n%s", block, path, render_all(src, serious[:], context.temp_allocator))
 }
 
 @(test)

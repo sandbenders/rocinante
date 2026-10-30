@@ -258,6 +258,14 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
 .with-toc { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 56px; align-items: start; }
 .guide pre { margin: 14px 0; }
 .guide pre.message-text { white-space: pre-wrap; }
+/* A block's picture under it, and a gallery: each line drawn on its own, the line as its caption. */
+.guide-picture { margin: -6px 0 18px; max-width: 400px; }
+.guide-picture img, .gallery img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 6px; background: #e6e6e6; }
+.guide-picture figcaption { margin-top: 6px; font: 0.8rem var(--mono); color: var(--soft); }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 18px 16px; margin: 4px 0 20px; }
+.gallery figure { margin: 0; }
+.gallery figcaption { margin-top: 6px; font-size: 0.8rem; line-height: 1.4; }
+.gallery figcaption code { background: none; padding: 0; font-size: 1em; }
 .guide h2 { scroll-margin-top: 80px; }
 .toc { position: sticky; top: 76px; max-height: calc(100vh - 96px); overflow-y: auto; font-size: 0.9rem; border-left: 1px solid var(--rule); padding-left: 16px; }
 .toc-title { font: 600 0.8rem var(--mono); color: var(--soft); margin: 4px 0 8px; }

@@ -322,50 +322,137 @@ write_guides :: proc(out: string) -> bool {
 	return ok
 }
 
-// One guide of site/guides, by its file name.
+// One guide of site/guides, by its file name, with the pictures its examples ask for.
 write_guide :: proc(out, name: string) -> bool {
 	text, read_ok := read(fmt.tprintf("site/guides/%s", name))
 	if !read_ok {
 		fmt.eprintfln("site: cannot read site/guides/%s", name)
 		return false
 	}
-	return write(fmt.tprintf("%s/content/guides/%s", out, name), colour_code_blocks(text))
+	pictures := Pictures{out = out, guide = strings.trim_suffix(name, ".md"), ok = true}
+	page := colour_code_blocks(text, &pictures)
+	return write(fmt.tprintf("%s/content/guides/%s", out, name), page) && pictures.ok
 }
 
-// Replaces every ```roci block of a Markdown page with coloured code, and every
-// ```message block with a message coloured as the terminal colours it.
-colour_code_blocks :: proc(text: string) -> string {
+// Where a guide's pictures go, how many it has drawn, and whether every one drew.
+// Without one (the tests), picture and gallery blocks are only coloured.
+Pictures :: struct {
+	out, guide: string,
+	count:      int,
+	ok:         bool,
+}
+
+Block_Kind :: enum {
+	Code,    // ```roci
+	Picture, // ```roci picture: the block, then the picture it draws
+	Gallery, // ```roci gallery: the block, then each line drawn on its own, captioned with it
+	Message, // ```message: a message, coloured as the terminal colours it
+}
+
+BLOCK_FENCES := [Block_Kind]string{
+	.Code    = "```roci\n",
+	.Picture = "```roci picture\n",
+	.Gallery = "```roci gallery\n",
+	.Message = "```message\n",
+}
+
+// Replaces every coloured block of a Markdown page with its HTML, drawing the
+// pictures that picture and gallery blocks ask for.
+colour_code_blocks :: proc(text: string, pictures: ^Pictures = nil) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	rest := text
 	for {
-		start, fence, is_message := next_coloured_block(rest)
+		start, kind := next_coloured_block(rest)
 		if start < 0 {
 			break
 		}
-		body := rest[start + len(fence):]
+		body := rest[start + len(BLOCK_FENCES[kind]):]
 		end := strings.index(body, "```")
 		if end < 0 {
 			break
 		}
+		code := body[:end]
 		strings.write_string(&b, rest[:start])
-		strings.write_string(&b, message_html(body[:end]) if is_message else code_html(body[:end]))
+		switch kind {
+		case .Message:
+			strings.write_string(&b, message_html(code))
+		case .Code:
+			strings.write_string(&b, code_html(code))
+		case .Picture:
+			strings.write_string(&b, code_html(code))
+			if pictures != nil {
+				strings.write_string(&b, picture_html(pictures, code))
+			}
+		case .Gallery:
+			strings.write_string(&b, code_html(code))
+			if pictures != nil {
+				strings.write_string(&b, gallery_html(pictures, code))
+			}
+		}
 		rest = body[end + 3:]
 	}
 	strings.write_string(&b, rest)
 	return strings.to_string(b)
 }
 
-ROCI_FENCE :: "```roci\n"
-MESSAGE_FENCE :: "```message\n"
-
-// Where the next ```roci or ```message block starts, and which it is; -1 when there is none.
-next_coloured_block :: proc(text: string) -> (start: int, fence: string, is_message: bool) {
-	code := strings.index(text, ROCI_FENCE)
-	message := strings.index(text, MESSAGE_FENCE)
-	if message >= 0 && (code < 0 || message < code) {
-		return message, MESSAGE_FENCE, true
+// Where the next coloured block starts, and which kind it is; -1 when there is none.
+next_coloured_block :: proc(text: string) -> (start: int, kind: Block_Kind) {
+	start = -1
+	for fence, k in BLOCK_FENCES {
+		if at := strings.index(text, fence); at >= 0 && (start < 0 || at < start) {
+			start, kind = at, k
+		}
 	}
-	return code, ROCI_FENCE, false
+	return
+}
+
+// Draws code in a window given no size, as a sketch of one's own would open, and
+// gives the file name of its picture; "" when it could not be drawn or drew nothing.
+draw_guide_picture :: proc(p: ^Pictures, code: string) -> string {
+	p.count += 1
+	file := fmt.tprintf("%s-%d.png", p.guide, p.count)
+	drawn, ok := draw_example(code, fmt.tprintf("%s/static/guides/img/%s", p.out, file), roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT, 1, always = true)
+	if !ok || !drawn.picture {
+		fmt.eprintfln("site: picture %d of the guide %s could not be drawn:\n%s", p.count, p.guide, code)
+		p.ok = false
+		return ""
+	}
+	return file
+}
+
+picture_html :: proc(p: ^Pictures, code: string) -> string {
+	file := draw_guide_picture(p, code)
+	if file == "" {
+		return ""
+	}
+	return fmt.tprintf(`<figure class="guide-picture"><img src="../img/%s" alt="What these lines draw" width="%d" height="%d" loading="lazy"><figcaption>what these lines draw, in a window of %d by %d</figcaption></figure>`, file, roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT, roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT)
+}
+
+// Each line on its own picture, the line itself as the caption, so it is plain
+// which line drew which shape.
+gallery_html :: proc(p: ^Pictures, code: string) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, `<div class="gallery">`)
+	for line in strings.split_lines(strings.trim_right_space(code), context.temp_allocator) {
+		if strings.trim_space(line) == "" {
+			continue
+		}
+		file := draw_guide_picture(p, line)
+		if file == "" {
+			continue
+		}
+		fmt.sbprintf(&b, `<figure><img src="../img/%s" alt="What %s draws" width="%d" height="%d" loading="lazy"><figcaption>%s</figcaption></figure>`, file, escape(line), roci.DEFAULT_WIDTH, roci.DEFAULT_HEIGHT, inline_code_html(line))
+	}
+	strings.write_string(&b, `</div>`)
+	return strings.to_string(b)
+}
+
+// One line of code, coloured, to sit inside a sentence or a caption.
+inline_code_html :: proc(line: string) -> string {
+	html := code_html(line)
+	html = strings.trim_prefix(html, `<pre class="roci"><code>`)
+	html = strings.trim_suffix(html, "</code></pre>")
+	return fmt.tprintf(`<code class="roci">%s</code>`, html)
 }
 
 // The text of every ```message block of a Markdown page, in order.
@@ -373,11 +460,11 @@ message_blocks :: proc(text: string, allocator := context.temp_allocator) -> []s
 	found := make([dynamic]string, allocator)
 	rest := text
 	for {
-		start := strings.index(rest, MESSAGE_FENCE)
+		start := strings.index(rest, BLOCK_FENCES[.Message])
 		if start < 0 {
 			break
 		}
-		body := rest[start + len(MESSAGE_FENCE):]
+		body := rest[start + len(BLOCK_FENCES[.Message]):]
 		end := strings.index(body, "```")
 		if end < 0 {
 			break

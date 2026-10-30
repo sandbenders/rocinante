@@ -82,3 +82,41 @@ collect_texts :: proc(found: ^[dynamic]string, dir: string) {
 		}
 	}
 }
+
+@(test)
+picture_and_gallery_blocks_are_code_without_pictures :: proc(t: ^testing.T) {
+	page := "```roci picture\ncircle at 1 1 radius 1\n```\n```roci gallery\nsquare at 1 1 size 1\n```\n"
+	html := colour_code_blocks(page)
+	testing.expect(t, !strings.contains(html, "```"))
+	testing.expect_value(t, strings.count(html, `<pre class="roci">`), 2)
+	testing.expect(t, !strings.contains(html, "<figure"), "no pictures are drawn without a place to put them")
+}
+
+@(test)
+next_coloured_block_tells_the_fences_apart :: proc(t: ^testing.T) {
+	Case :: struct {
+		text:  string,
+		start: int,
+		kind:  Block_Kind,
+	}
+	for c in ([]Case{
+		{"```roci\nx\n```", 0, .Code},
+		{"a ```roci picture\nx\n```", 2, .Picture},
+		{"```roci gallery\nx\n```", 0, .Gallery},
+		{"```message\nx\n```", 0, .Message},
+		{"```message\nm\n``` ```roci\nx\n```", 0, .Message},
+		{"```\nplain\n```", -1, .Code},
+		{"", -1, .Code},
+	}) {
+		start, kind := next_coloured_block(c.text)
+		testing.expectf(t, start == c.start && (start < 0 || kind == c.kind), "%q gave %d %v", c.text, start, kind)
+	}
+}
+
+@(test)
+inline_code_html_is_one_coloured_code_span :: proc(t: ^testing.T) {
+	html := inline_code_html("circle at 1 1 radius 2")
+	testing.expect(t, strings.has_prefix(html, `<code class="roci"><span class="v">circle</span>`))
+	testing.expect(t, strings.has_suffix(html, "</code>"))
+	testing.expect(t, !strings.contains(html, "<pre"))
+}
