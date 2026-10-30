@@ -35,6 +35,7 @@ watch :: proc(out: string) -> bool {
 	ok = write_messages(out) && ok
 	ok = write_hello(out) && ok
 	ok = write_front_mistake(out) && ok
+	ok = write_logo(out) && ok
 	if os.exists(fmt.tprintf("%s/content/reference/_index.md", out)) {
 		fmt.println(term.out(fmt.tprintf("site: kept the reference pages already in %s; `odin run build -- docs` draws them again", out), .Dim))
 	} else {

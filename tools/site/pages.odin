@@ -510,3 +510,51 @@ write_front_mistake :: proc(out: string) -> bool {
 `, code_html(code), message_html(text))
 	return write(fmt.tprintf("%s/layouts/_partials/front-mistake.html", out), panes)
 }
+
+// ---- the logo ----
+
+// The one drawing of the logo; the site's copies are made from it, so they never drift.
+LOGO :: "docs/logo/rocinante-logo.svg"
+
+// The logo as the browser tab's icon (dark on a light tab, light on a dark one) and as a
+// template the header and footer draw in the page's own ink, the asterisk cut from the paper.
+write_logo :: proc(out: string) -> bool {
+	svg, ok := read(LOGO)
+	if !ok || !strings.contains(svg, `fill="#000"`) || !strings.contains(svg, `stroke="#000"`) || !strings.contains(svg, `fill="#fff"`) {
+		fmt.eprintfln("site: %s is missing, or no longer drawn in black with a white asterisk", LOGO)
+		return false
+	}
+	icon := logo_recoloured(svg, `class="ink"`, `class="line"`, `class="cut"`)
+	// A tab icon is 16 to 32 pixels wide, where the bubble's thin outline would fade away.
+	icon, _ = strings.replace(icon, `stroke-width="24"`, `stroke-width="56"`, 1, context.temp_allocator)
+	icon, _ = strings.replace(icon, "<title>", "<style>.ink{fill:#1b1d21}.line{stroke:#1b1d21}.cut{fill:#fff}@media (prefers-color-scheme:dark){.ink{fill:#e8e9e6}.line{stroke:#e8e9e6}.cut{fill:#1b1d21}}</style><title>", 1, context.temp_allocator)
+	inline := logo_recoloured(svg, `fill="currentColor"`, `stroke="currentColor"`, `class="logo-cut"`)
+	inline, _ = strings.replace(inline, `<svg xmlns="http://www.w3.org/2000/svg"`, `<svg class="logo" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"`, 1, context.temp_allocator)
+	inline = without_size_and_title(inline)
+	return write(fmt.tprintf("%s/static/favicon.svg", out), icon) && write(fmt.tprintf("%s/layouts/_partials/logo.html", out), inline)
+}
+
+logo_recoloured :: proc(svg, ink, line, cut: string) -> string {
+	s, _ := strings.replace_all(svg, `fill="#000"`, ink, context.temp_allocator)
+	s, _ = strings.replace_all(s, `stroke="#000"`, line, context.temp_allocator)
+	s, _ = strings.replace_all(s, `fill="#fff"`, cut, context.temp_allocator)
+	return s
+}
+
+// The inline logo is sized by the style sheet and named by the text beside it.
+without_size_and_title :: proc(svg: string) -> string {
+	s := svg
+	if a := strings.index(s, "<title>"); a >= 0 {
+		if b := strings.index(s[a:], "</title>"); b >= 0 {
+			s = strings.concatenate({s[:a], s[a + b + len("</title>"):]}, context.temp_allocator)
+		}
+	}
+	for attr in ([]string{` width="`, ` height="`}) {
+		if a := strings.index(s, attr); a >= 0 && a < strings.index_byte(s, '>') {
+			if b := strings.index_byte(s[a + len(attr):], '"'); b >= 0 {
+				s = strings.concatenate({s[:a], s[a + len(attr) + b + 1:]}, context.temp_allocator)
+			}
+		}
+	}
+	return s
+}

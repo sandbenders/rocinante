@@ -110,3 +110,34 @@ layouts_link_with_plain_paths :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, links >= 8)
 }
+
+@(test)
+the_logo_is_made_from_its_one_drawing :: proc(t: ^testing.T) {
+	out := fresh_out("logo")
+	defer os.remove_all(out)
+	testing.expect(t, write_logo(out))
+	icon, has_icon := read(fmt.tprintf("%s/static/favicon.svg", out))
+	inline, has_inline := read(fmt.tprintf("%s/layouts/_partials/logo.html", out))
+	testing.expect(t, has_icon && has_inline)
+	// The tab icon follows the tab's theme; the inline logo follows the page's ink.
+	testing.expect(t, strings.contains(icon, "@media (prefers-color-scheme:dark)"))
+	testing.expect(t, !strings.contains(icon, `"#000"`) && !strings.contains(icon, `"#fff"`))
+	testing.expect(t, strings.has_prefix(inline, `<svg class="logo" aria-hidden="true"`))
+	testing.expect(t, strings.contains(inline, `fill="currentColor"`) && strings.contains(inline, `class="logo-cut"`))
+	testing.expect(t, !strings.contains(inline, "<title>"), "the text beside the logo names it")
+	testing.expect(t, !strings.contains(inline[:strings.index_byte(inline, '>')], "width="), "the style sheet sizes it")
+	// The drawing itself is the master's.
+	master, _ := read(LOGO)
+	testing.expect(t, strings.contains(inline, `d="M 1410 595 L 1038.7 595 A 485 485 0 1 0 846 1018 Z"`) == strings.contains(master, `d="M 1410 595 L 1038.7 595 A 485 485 0 1 0 846 1018 Z"`))
+
+	page, _ := read("site/hugo/layouts/baseof.html")
+	testing.expect_value(t, strings.count(page, `{{ partial "logo.html" . }}`), 2)
+	testing.expect(t, strings.contains(page, `"favicon.svg" | relURL`))
+}
+
+@(test)
+without_size_and_title_keeps_the_drawing :: proc(t: ^testing.T) {
+	testing.expect_value(t, without_size_and_title(`<svg viewBox="0 0 2 2" width="2" height="2"><title>x</title><rect width="1" height="1"/></svg>`), `<svg viewBox="0 0 2 2"><rect width="1" height="1"/></svg>`)
+	testing.expect_value(t, without_size_and_title(`<svg><g/></svg>`), `<svg><g/></svg>`)
+	testing.expect_value(t, logo_recoloured(`<a fill="#000" stroke="#000"/><b fill="#fff"/>`, "I", "L", "C"), `<a I L/><b C/>`)
+}

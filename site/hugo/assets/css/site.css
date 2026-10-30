@@ -112,7 +112,10 @@ p, li, dd { max-width: var(--measure); }
 /* the bar along the top */
 .top { background: var(--sheet); border-bottom: 1px solid var(--rule); position: sticky; top: 0; z-index: 3; }
 .top-inner { max-width: 1180px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); }
-.mark { font: 700 1.2rem var(--mono); color: var(--ink); text-decoration: none; letter-spacing: -0.02em; }
+.mark { font: 700 1.2rem var(--mono); color: var(--ink); text-decoration: none; letter-spacing: -0.02em; display: inline-flex; align-items: center; gap: 8px; }
+/* The logo, in the ink of the text beside it, its asterisk cut from the bar's paper. */
+.logo { display: inline-block; height: 1.3em; width: auto; flex: none; }
+.logo .logo-cut { fill: var(--sheet); }
 .release { font: 600 0.65rem var(--mono); color: var(--accent); background: var(--accent-soft); border-radius: 3px; padding: 2px 5px; margin-left: 8px; vertical-align: 3px; text-transform: lowercase; }
 .top nav { display: flex; flex-wrap: wrap; gap: 4px 18px; font-family: var(--mono); font-size: 0.95rem; }
 .top nav a { color: var(--soft); text-decoration: none; padding: 2px 0; border-bottom: 2px solid transparent; }
@@ -136,7 +139,10 @@ p, li, dd { max-width: var(--measure); }
 .foot { border-top: 1px solid var(--rule); background: var(--sheet); color: var(--soft); font-size: 0.9rem; }
 .foot-inner { max-width: 1180px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 36px max(16px, env(safe-area-inset-left, 0px)); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px 56px; align-items: start; }
 .foot-about { margin: 0; max-width: 60ch; }
-.foot-about .mark { font-size: 1rem; }
+.foot-about p { margin: 0; }
+.foot-about .mark { font-size: 1rem; display: inline; }
+/* In the footer the logo speaks the line under it: above the text, its tail towards the name. */
+.foot-about > .logo { display: block; height: 52px; margin: 0 0 2px -4px; color: var(--ink); }
 .foot-links { display: flex; flex-wrap: wrap; gap: 14px 40px; margin: 0; }
 .foot-links dt { font: 600 0.75rem var(--mono); margin-bottom: 2px; }
 .foot-links dd { margin: 0; }
