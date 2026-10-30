@@ -10,7 +10,7 @@ rocinante has few rules. This page goes through all of them once; the guides aft
 
 Each line is one statement: a **verb**, then what it works on.
 
-```roci
+```roci picture
 background 30
 circle at 200 150 radius 80
 ```
@@ -21,7 +21,7 @@ Verbs that draw take **labels** that say what each number is: `at` for a positio
 
 A name holds a value. Give it one with `=`, and use it anywhere a value goes:
 
-```roci
+```roci picture
 size = 40
 circle at 100 100 radius size
 size = size * 2
@@ -50,7 +50,7 @@ x = x + SPEED
 
 A vector has commas and curly brackets; a list has square brackets and no commas. They look alike, and mixing them up is the commonest early mistake.
 
-```roci
+```roci picture
 p = { 120, 80 }
 circle at p radius 20
 ball = { pos: { 200, 150 }, radius: 30 }
@@ -64,7 +64,7 @@ circle at 300 220 radius 30
 
 `+ - * /` work as you expect, `%` gives what is left after dividing, and they work on vectors and colors too:
 
-```roci
+```roci picture
 pos = { 100, 100 }
 vel = { 3, 1 }
 pos = pos + vel * 10
@@ -77,7 +77,7 @@ Comparisons are `<`, `<=`, `>`, `>=`, `is` and `is not` (a single `=` gives a na
 
 A verb's value is always **one thing**: a number, a name, a field, something in brackets. When a value is a calculation or another verb's answer, put it in round brackets:
 
-```roci
+```roci picture
 circle at (random 400) (random 300) radius 10
 rect at 20 20 size (40 * 2) 40
 ```
@@ -92,7 +92,7 @@ x = random 400 + 20
 
 Square brackets around lines make a **block**: lines that run later, or again, or only sometimes.
 
-```roci
+```roci picture
 repeat 3 [
   circle at (random 400) (random 300) radius 20
 ]
@@ -105,7 +105,7 @@ A short block can sit on one line, with two spaces between its statements: `[ fi
 
 Two slashes start a comment, which runs to the end of the line. `#` is only for colors.
 
-```roci
+```roci picture
 // a dark sky
 background (rgb 10 10 40)
 ```

@@ -97,7 +97,7 @@ write_word_page :: proc(out: string, section: registry.Reference_Section, word: 
 			return false
 		}
 		if drawn.picture {
-			fmt.sbprintf(&b, `<figure class="picture"><img src="../img/%s.png" alt="What the example draws" width="%d" height="%d" loading="lazy"></figure>`, slug, EXAMPLE_WIDTH, EXAMPLE_HEIGHT)
+			strings.write_string(&b, window_html(fmt.tprintf("../img/%s.png", slug), "What the example draws", {EXAMPLE_WIDTH, EXAMPLE_HEIGHT}, "picture"))
 		}
 		strings.write_string(&b, `<div class="example-code">`)
 		strings.write_string(&b, code_html(code))
@@ -428,7 +428,7 @@ picture_html :: proc(p: ^Pictures, code: string) -> string {
 	if file == "" {
 		return ""
 	}
-	return fmt.tprintf(`<figure class="guide-picture"><img src="../img/%s" alt="What these lines draw" width="%d" height="%d" loading="lazy"><figcaption>what these lines draw, in a window of %d by %d</figcaption></figure>`, file, size.x, size.y, size.x, size.y)
+	return window_html(fmt.tprintf("../img/%s", file), "What these lines draw", size, "guide-picture")
 }
 
 // Each line on its own picture, the line itself as the caption, so it is plain
@@ -444,7 +444,7 @@ gallery_html :: proc(p: ^Pictures, code: string) -> string {
 		if file == "" {
 			continue
 		}
-		fmt.sbprintf(&b, `<figure><img src="../img/%s" alt="What %s draws" width="%d" height="%d" loading="lazy"><figcaption>%s</figcaption></figure>`, file, escape(line), size.x, size.y, inline_code_html(line))
+		fmt.sbprintf(&b, `<div class="gallery-item">%s<p class="gallery-line">%s</p></div>`, window_html(fmt.tprintf("../img/%s", file), fmt.tprintf("What %s draws", line), size, "", false), inline_code_html(line))
 	}
 	strings.write_string(&b, `</div>`)
 	return strings.to_string(b)
@@ -557,4 +557,12 @@ without_size_and_title :: proc(svg: string) -> string {
 		}
 	}
 	return s
+}
+
+// A picture in a window, as the front page shows its hello world: a title bar with its
+// dots, and the title saying it is the whole window and how big it is. A small window
+// (a gallery's) has the dots and the size only.
+window_html :: proc(src, alt: string, size: [2]int, class: string, titled := true) -> string {
+	title := fmt.tprintf("what it draws: the whole window, %d by %d", size.x, size.y) if titled else fmt.tprintf("%d by %d", size.x, size.y)
+	return fmt.tprintf(`<figure class="pane window %s"><figcaption class="window-bar"><span class="dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="pane-title">%s</span></figcaption><img src="%s" alt="%s" width="%d" height="%d" loading="lazy"></figure>`, class, title, src, escape(alt), size.x, size.y)
 }
