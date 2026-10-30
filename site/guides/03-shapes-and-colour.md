@@ -6,7 +6,7 @@ weight: 3
 
 ## Where things go
 
-The window's top-left corner is `0 0`. The first number of a position is how far to the right, the second how far down, in pixels. A new sketch's window is 800 by 600.
+The window's top-left corner is `0 0`. The first number of a position is how far to the right, the second how far down, in pixels. A window opened without a size, like the one a sketch gets when it never calls `window`, is 800 by 600.
 
 ## The shapes
 

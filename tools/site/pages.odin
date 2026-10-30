@@ -53,7 +53,7 @@ write_reference :: proc(out: string) -> bool {
 	ok := true
 	index := strings.builder_make(context.temp_allocator)
 	front_matter(&index, "Reference", "Every word of rocinante, by what it is for.", 2)
-	strings.write_string(&index, `<p class="lead">Every word of the language, with an example and the picture it draws. Examples are drawn in a window of 400 by 300 pixels; a sketch of your own opens one of 800 by 600, so its drawings sit in the top-left corner of it.</p>`)
+	strings.write_string(&index, `<p class="lead">Every word of the language, with an example and the picture it draws. Examples are drawn in a window of 400 by 300 pixels; a window of your own that is given no size is 800 by 600, so the same drawing sits in its top-left corner.</p>`)
 	strings.write_string(&index, "\n\n")
 	weight := 0
 	for section in registry.REFERENCE_SECTIONS {
