@@ -4,6 +4,7 @@
 //
 //     odin run tools/site -- [output folder]      (default output/site)
 //     hugo --source output/site                   (or: odin run build -- docs)
+//     odin run tools/site -- --watch              (or: odin run build -- docs serve)
 //
 // It copies the Hugo project in site/hugo, then writes what must never be written
 // by hand: the reference, one page for every verb, statement and built-in value,
@@ -23,6 +24,7 @@ import "../../roci/interp"
 import "../../roci/lang"
 import "../../roci/platform"
 import "../../roci/registry"
+import "../../tools/term"
 
 // The size of the window examples are drawn in, and how many frames they run first.
 EXAMPLE_WIDTH :: 400
@@ -32,9 +34,18 @@ EXAMPLE_FRAMES :: 45
 NOT_RUN := [?]string{"use"}
 
 main :: proc() {
+	term.setup()
 	out := "output/site"
-	if len(os.args) > 1 {
-		out = os.args[1]
+	watching := false
+	for arg in os.args[1:] {
+		if arg == "--watch" {
+			watching = true
+		} else {
+			out = arg
+		}
+	}
+	if watching {
+		os.exit(0 if watch(out) else 1)
 	}
 	ok := true
 	ok = copy_tree("site/hugo", out) && ok

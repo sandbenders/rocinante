@@ -31,6 +31,31 @@ docs :: proc() -> bool {
 	return ok
 }
 
+// `docs serve`: the site for working on it. tools/site writes it once, starts
+// `hugo server` and rewrites each file of site/ as it is saved, so a change to a guide,
+// a layout, the style sheet or an example shows in the browser at once. Its output is
+// passed straight through, because it runs until Ctrl+C.
+docs_serve :: proc() -> bool {
+	if !check_hugo() {
+		return false
+	}
+	tool := fmt.tprintf("%s/site-tool%s", TEST_OUT_DIR, EXE)
+	if err := os.make_directory_all(TEST_OUT_DIR); err != nil && err != .Exist {
+		fmt.eprintfln("%s", term.err(fmt.tprintf("cannot make the folder %s: %v", TEST_OUT_DIR, err), .Bold_Red))
+		return false
+	}
+	if !step("build the site tool", {"odin", "build", "tools/site", "-o:speed", fmt.tprintf("-out:%s", tool)}) {
+		return false
+	}
+	process, err := os.process_start({command = {tool, "--watch", SITE_SOURCE}, stdin = os.stdin, stdout = os.stdout, stderr = os.stderr})
+	if err != nil {
+		fmt.eprintfln("%s", term.err(fmt.tprintf("docs: cannot start %s: %v", tool, err), .Bold_Red))
+		return false
+	}
+	state, wait_err := os.process_wait(process)
+	return wait_err == nil && state.exit_code == 0
+}
+
 // The pinned Hugo lives in HUGO_VERSION. As with Odin, another version is a warning
 // on a developer's machine and an error in the pipelines, which set CI.
 check_hugo :: proc() -> bool {

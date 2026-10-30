@@ -314,17 +314,21 @@ write_guides :: proc(out: string) -> bool {
 	files, _ := os.read_dir(handle, -1, context.temp_allocator)
 	ok := true
 	for f in files {
-		if !strings.has_suffix(f.name, ".md") {
-			continue
+		if strings.has_suffix(f.name, ".md") {
+			ok = write_guide(out, f.name) && ok
 		}
-		text, read_ok := read(f.fullpath)
-		if !read_ok {
-			ok = false
-			continue
-		}
-		ok = write(fmt.tprintf("%s/content/guides/%s", out, f.name), colour_code_blocks(text)) && ok
 	}
 	return ok
+}
+
+// One guide of site/guides, by its file name.
+write_guide :: proc(out, name: string) -> bool {
+	text, read_ok := read(fmt.tprintf("site/guides/%s", name))
+	if !read_ok {
+		fmt.eprintfln("site: cannot read site/guides/%s", name)
+		return false
+	}
+	return write(fmt.tprintf("%s/content/guides/%s", out, name), colour_code_blocks(text))
 }
 
 // Replaces every ```roci block of a Markdown page with coloured HTML.

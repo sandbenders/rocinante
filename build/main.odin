@@ -22,6 +22,7 @@ commands:
   licences      check dependency licences
   odin          check the installed Odin against ODIN_VERSION
   docs          build the documentation site into output/site/public (needs Hugo, HUGO_VERSION)
+  docs serve    preview it at http://localhost:1313/rocinante/, rewriting what changes in site/ as it is saved
 `
 
 main :: proc() {
@@ -41,7 +42,7 @@ main :: proc() {
 	case "odin":
 		ok = check_odin()
 	case "docs":
-		ok = docs()
+		ok = docs_serve() if len(args) > 1 && args[1] == "serve" else docs()
 	case:
 		fmt.eprint(USAGE)
 		os.exit(2)
@@ -94,7 +95,7 @@ check_odin :: proc() -> bool {
 
 // Packages whose @(test) procedures `ci` runs, from the repository root (some
 // tests make fixtures under output/). Add each package here as it gets tests.
-TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/folder", "roci/gfx", "roci/interp", "roci/lang", "roci/maths", "roci/platform", "roci/registry", "cli", "spikes/codegen", "tools/term"}
+TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/folder", "roci/gfx", "roci/interp", "roci/lang", "roci/maths", "roci/platform", "roci/registry", "cli", "spikes/codegen", "tools/term", "tools/site"}
 
 // Where `odin test` writes each package's test program. Left to itself it writes
 // build.exe to the repository root, the very file `odin run build` is running
