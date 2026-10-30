@@ -1,3 +1,4 @@
+fill gold
 for i from 0 to 39 [
   y = 150 + (sin (i * 18)) * 100
   circle at (i * 10) y radius 4

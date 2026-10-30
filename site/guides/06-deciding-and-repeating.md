@@ -29,7 +29,7 @@ circle at 200 150 radius 60
 `repeat` runs a block a number of times:
 
 ```roci picture
-repeat 50 [ circle at (random 400) (random 300) radius 6 ]
+repeat 50 [ circle at (random 400) (random 300) radius 6 fill gold ]
 ```
 
 ## for
@@ -37,7 +37,7 @@ repeat 50 [ circle at (random 400) (random 300) radius 6 ]
 `for` counts, from one number to another and including both, giving each number a name:
 
 ```roci picture
-for i from 1 to 10 [ circle at (i * 36) 150 radius (i * 2) ]
+for i from 1 to 10 [ circle at (i * 36) 150 radius (i * 2) fill gold ]
 ```
 
 `by` sets the step: `for x from 0 to 400 by 50 [ ... ]`.
@@ -47,6 +47,9 @@ for i from 1 to 10 [ circle at (i * 36) 150 radius (i * 2) ]
 `while` runs a block for as long as a condition holds:
 
 ```roci picture
+fill gold
+stroke 60
+thickness 2
 size = 150
 while size > 5 [
   circle at 200 150 radius size

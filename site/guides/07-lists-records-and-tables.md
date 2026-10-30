@@ -23,6 +23,7 @@ Items are counted from 1. Asking for an item that is not there gives an empty va
 A record holds named fields, in curly brackets:
 
 ```roci picture
+fill gold
 ball = { pos: { 200, 150 }, vel: { 3, 2 }, radius: 20 }
 ball.pos = ball.pos + ball.vel
 circle at ball.pos radius ball.radius

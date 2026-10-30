@@ -1,1 +1,2 @@
+fill gold
 for i from 1 to 9 [ circle at (i * 40) 150 radius (i * 2) ]

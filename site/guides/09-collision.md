@@ -69,7 +69,7 @@ for i from 0 to 7 [ add { pos: { i * 50, 40 }, size: { 46, 20 } } to bricks ]
 ball = { pos: { 160, 52 }, radius: 30 }
 for each b in (hits ball bricks) [ remove b from bricks ]
 for each b in bricks [ rect at b.pos size b.size fill gold ]
-circle at ball.pos radius ball.radius
+circle at ball.pos radius ball.radius fill teal
 ```
 
 ## cast: what a line meets first
@@ -81,6 +81,7 @@ walls = [ { pos: { 300, 100 }, size: { 40, 100 } } { pos: { 180, 150 }, radius: 
 ray = { from: { 20, 150 }, to: { 380, 150 } }
 h = cast ray walls
 line from ray.from to h.point stroke tomato thickness 3
+fill gold
 circle at 180 150 radius 30
 rect at 300 100 size 40 100
 ```

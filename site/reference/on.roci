@@ -4,5 +4,5 @@ on key "space" [ size = 20 ]
 
 draw [
   background 240
-  circle at 200 150 radius size
+  circle at 200 150 radius size fill gold
 ]

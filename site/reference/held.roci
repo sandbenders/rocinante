@@ -4,5 +4,5 @@ draw [
   background 240
   if held "left" [ x = x - 4 ]
   if held "right" [ x = x + 4 ]
-  circle at x 150 radius 30
+  circle at x 150 radius 30 fill gold
 ]

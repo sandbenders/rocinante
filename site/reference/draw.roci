@@ -3,5 +3,5 @@ x = 0
 draw [
   background 240
   x = x + 4
-  circle at x 150 radius 30
+  circle at x 150 radius 30 fill gold
 ]

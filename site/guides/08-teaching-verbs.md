@@ -73,7 +73,7 @@ ball = { pos: { 20, 150 }, vel: { 4, 0 } }
 draw [
   background 240
   step ball
-  circle at ball.pos radius 20
+  circle at ball.pos radius 20 fill gold
 ]
 ```
 

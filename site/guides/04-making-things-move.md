@@ -13,7 +13,7 @@ x = 0
 draw [
   background 240
   x = x + 3
-  circle at x 150 radius 30
+  circle at x 150 radius 30 fill gold
 ]
 ```
 
@@ -29,7 +29,7 @@ Names given a value inside `draw` keep it from one frame to the next, so `x` abo
 draw [
   background 240
   y = 150 + (sin (time * 90)) * 100
-  circle at 200 y radius 30
+  circle at 200 y radius 30 fill gold
 ]
 ```
 
@@ -47,7 +47,7 @@ draw [
     turn (time * 60)
     rect at 0 0 size 160 20 as center fill teal
   ]
-  circle at 60 60 radius 20
+  circle at 60 60 radius 20 fill gold
 ]
 ```
 
@@ -75,7 +75,7 @@ draw [
   background 240
   t = (time % 2) / 2
   x = 40 + (ease t as bounce) * 320
-  circle at x 150 radius 20
+  circle at x 150 radius 20 fill gold
 ]
 ```
 

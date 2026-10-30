@@ -13,13 +13,13 @@ The window's top-left corner is `0 0`. The first number of a position is how far
 Every shape is written with labels that say what its numbers are:
 
 ```roci gallery
-circle at 120 100 radius 50
-ellipse at 300 100 size 140 70
-rect at 60 200 size 120 80
-square at 240 200 size 80
+circle at 120 100 radius 50 fill gold
+ellipse at 300 100 size 140 70 fill gold
+rect at 60 200 size 120 80 fill gold
+square at 240 200 size 80 fill gold
 line from 380 40 to 520 160 stroke 0 thickness 3
 point at 450 260 stroke 0 thickness 10
-arc at 600 120 size 120 120 from 180 to 360
+arc at 600 120 size 120 120 from 180 to 360 fill gold
 ```
 
 A line and a point are drawn with the stroke, the color of outlines, and a new sketch starts with none, so these two give theirs: black, 3 and 10 pixels wide. Fill and stroke are below.
@@ -27,6 +27,7 @@ A line and a point are drawn with the stroke, the color of outlines, and a new s
 `at` takes two numbers or one vector, so a position kept in a name works the same:
 
 ```roci picture
+fill gold
 center = { 200, 150 }
 circle at center radius 40
 ```
@@ -34,6 +35,7 @@ circle at center radius 40
 `triangle` and `quad` take their corners as vectors, in order around the shape:
 
 ```roci picture
+fill gold
 triangle { 100, 40 } { 180, 180 } { 20, 180 }
 quad { 220, 40 } { 360, 60 } { 340, 180 } { 240, 160 }
 ```
@@ -41,6 +43,7 @@ quad { 220, 40 } { 360, 60 } { 340, 180 } { 240, 160 }
 Circles, ellipses and arcs are placed by their middle; rectangles and squares by their top-left corner. `as center` or `as corner` after a shape's numbers changes that for one shape:
 
 ```roci picture
+fill gold
 rect at 200 150 size 120 80 as center
 ```
 
@@ -89,6 +92,7 @@ circle at 240 150 radius 80
 The style words also work at the end of a single shape, for that shape only:
 
 ```roci picture
+background 60
 circle at 100 100 radius 40 fill teal stroke white thickness 3
 circle at 220 100 radius 40
 ```
@@ -96,6 +100,7 @@ circle at 220 100 radius 40
 `with` styles a block of shapes and puts the style back afterwards:
 
 ```roci picture
+background 60
 with fill gold stroke 30 thickness 4 [
   circle at 100 100 radius 40
   square at 180 60 size 80
@@ -106,6 +111,7 @@ circle at 340 100 radius 40
 A style can be kept in a record and used again, with `style` on one shape or with `with` on a group:
 
 ```roci picture
+background 60
 glow = { fill: skyblue, stroke: white, thickness: 3 }
 circle at 100 100 radius 40 style glow
 with glow [ square at 180 60 size 80 ]

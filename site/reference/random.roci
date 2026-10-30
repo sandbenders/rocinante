@@ -1,2 +1,3 @@
 seed 3
+fill gold
 repeat 60 [ circle at (random 400) (random from 100 to 200) radius (random 10) ]

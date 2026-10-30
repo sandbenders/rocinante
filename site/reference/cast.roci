@@ -1,3 +1,4 @@
+fill gold
 walls = [ { pos: { 300, 100 }, size: { 40, 100 } } { pos: { 200, 40 }, radius: 30 } ]
 ray = { from: { 20, 150 }, to: { 380, 150 } }
 h = cast ray walls

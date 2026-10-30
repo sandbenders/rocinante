@@ -22,6 +22,7 @@ Verbs that draw take **labels** that say what each number is: `at` for a positio
 A name holds a value. Give it one with `=`, and use it anywhere a value goes:
 
 ```roci picture
+fill gold
 size = 40
 circle at 100 100 radius size
 size = size * 2
@@ -51,12 +52,13 @@ x = x + SPEED
 A vector has commas and curly brackets; a list has square brackets and no commas. They look alike, and mixing them up is the commonest early mistake.
 
 ```roci picture
+fill gold
 p = { 120, 80 }
 circle at p radius 20
 ball = { pos: { 200, 150 }, radius: 30 }
 circle at ball.pos radius ball.radius
 COLORS = [ tomato gold teal ]
-fill (item 2 of COLORS)
+fill (item 3 of COLORS)
 circle at 300 220 radius 30
 ```
 
@@ -78,6 +80,7 @@ Comparisons are `<`, `<=`, `>`, `>=`, `is` and `is not` (a single `=` gives a na
 A verb's value is always **one thing**: a number, a name, a field, something in brackets. When a value is a calculation or another verb's answer, put it in round brackets:
 
 ```roci picture
+fill gold
 circle at (random 400) (random 300) radius 10
 rect at 20 20 size (40 * 2) 40
 ```
@@ -93,6 +96,7 @@ x = random 400 + 20
 Square brackets around lines make a **block**: lines that run later, or again, or only sometimes.
 
 ```roci picture
+fill gold
 repeat 3 [
   circle at (random 400) (random 300) radius 20
 ]

@@ -26,7 +26,7 @@ draw [
   background 240
   if held "left" [ x = x - 4 ]
   if held "right" [ x = x + 4 ]
-  circle at x 150 radius 30
+  circle at x 150 radius 30 fill gold
 ]
 ```
 
@@ -37,7 +37,7 @@ size = 40
 draw [
   background 240
   size = clamp (size + wheel.y * 5) 5 140
-  circle at 200 150 radius size
+  circle at 200 150 radius size fill gold
 ]
 ```
 

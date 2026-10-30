@@ -1,2 +1,3 @@
 seed 3
+fill gold
 repeat 300 [ circle at (gaussian 200 50) (gaussian 150 30) radius 3 ]

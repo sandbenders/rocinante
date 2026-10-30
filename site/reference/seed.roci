@@ -1,2 +1,3 @@
 seed 42
+fill gold
 repeat 30 [ circle at anywhere radius 10 ]

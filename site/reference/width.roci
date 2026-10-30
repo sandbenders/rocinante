@@ -1,2 +1,2 @@
-circle at (width / 2) (height / 2) radius 60
+circle at (width / 2) (height / 2) radius 60 fill gold
 print width

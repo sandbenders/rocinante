@@ -1,2 +1,2 @@
-rect at 40 40 size 200 120
-rect at 200 150 size 120 80 as center fill gold
+rect at 40 40 size 200 120 fill gold
+rect at 200 150 size 120 80 as center fill teal

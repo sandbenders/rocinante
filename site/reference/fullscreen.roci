@@ -1,2 +1,2 @@
 on key "f" [ fullscreen ]
-circle at 200 150 radius 60
+circle at 200 150 radius 60 fill gold
