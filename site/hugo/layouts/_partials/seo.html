@@ -1,0 +1,43 @@
+{{/* What search engines and shared links read about a page: its one address, what it
+     is, a picture (a reference word's own example, otherwise the logo drawn by
+     rocinante) and, for the home page, what rocinante is as software. */}}
+{{ $description := .Summary | plainify | strings.TrimSpace | default site.Params.description }}
+{{ $title := cond .IsHome "rocinante: a creative coding language" (printf "%s · rocinante" .Title) }}
+{{ if and (eq .Section "reference") .IsPage }}{{ $title = printf "%s · rocinante reference" .Title }}{{ end }}
+{{ $image := site.Params.image }}
+{{ with .File }}{{ $own := printf "reference/img/%s.png" .ContentBaseName }}{{ if fileExists (printf "static/%s" $own) }}{{ $image = $own }}{{ end }}{{ end }}
+<title>{{ $title }}</title>
+<meta name="description" content="{{ $description }}">
+<link rel="canonical" href="{{ .Permalink }}">
+<meta property="og:site_name" content="rocinante">
+<meta property="og:type" content="{{ cond .IsHome "website" "article" }}">
+<meta property="og:title" content="{{ $title }}">
+<meta property="og:description" content="{{ $description }}">
+<meta property="og:url" content="{{ .Permalink }}">
+<meta property="og:image" content="{{ $image | absURL }}">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1e23" media="(prefers-color-scheme: dark)">
+{{ if .IsHome }}
+<script type="application/ld+json">
+{{ dict
+  "@context" "https://schema.org"
+  "@type" "SoftwareSourceCode"
+  "name" "rocinante"
+  "description" site.Params.description
+  "url" .Permalink
+  "codeRepository" site.Params.repository
+  "license" "https://opensource.org/license/0BSD"
+  "programmingLanguage" (slice "rocinante" "Odin")
+  "keywords" "creative coding, programming language, generative art, Processing, Logo, live coding"
+  | jsonify | safeJS }}
+</script>
+{{ else }}
+<script type="application/ld+json">
+{{ $crumbs := slice (dict "@type" "ListItem" "position" 1 "name" "rocinante" "item" site.Home.Permalink) }}
+{{ if .IsPage }}{{ with .Parent }}{{ $crumbs = $crumbs | append (dict "@type" "ListItem" "position" 2 "name" .Title "item" .Permalink) }}{{ end }}{{ end }}
+{{ $crumbs = $crumbs | append (dict "@type" "ListItem" "position" (add (len $crumbs) 1) "name" .Title "item" .Permalink) }}
+{{ dict "@context" "https://schema.org" "@type" "BreadcrumbList" "itemListElement" $crumbs | jsonify | safeJS }}
+</script>
+{{ end }}

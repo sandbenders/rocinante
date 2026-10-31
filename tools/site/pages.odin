@@ -111,7 +111,7 @@ write_word_page :: proc(out: string, section: registry.Reference_Section, word: 
 				return false
 			}
 			moving := fmt.tprintf("../img/%s-moving.png", slug) if moved else ""
-			strings.write_string(&b, window_html(fmt.tprintf("../img/%s.png", slug), "What the example draws", {EXAMPLE_WIDTH, EXAMPLE_HEIGHT}, "picture", moving = moving))
+			strings.write_string(&b, window_html(fmt.tprintf("../img/%s.png", slug), fmt.tprintf("What the example of %s draws", word), {EXAMPLE_WIDTH, EXAMPLE_HEIGHT}, "picture", moving = moving))
 		}
 	} else {
 		strings.write_string(&b, `<div class="example-code">`)

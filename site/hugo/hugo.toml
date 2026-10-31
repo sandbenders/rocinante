@@ -3,8 +3,12 @@
 baseURL = "https://sandbenders.github.io/rocinante/"
 locale = "en"
 title = "rocinante"
-disableKinds = ["taxonomy", "term", "rss", "sitemap"]
-enableRobotsTXT = false
+disableKinds = ["taxonomy", "term", "rss"]
+# For search engines: a sitemap of every page, and a robots.txt that names it.
+enableRobotsTXT = true
+
+[sitemap]
+  changeFreq = "weekly"
 
 [markup.goldmark.renderer]
   # The generated pages hold coloured code as HTML.
@@ -16,6 +20,9 @@ enableRobotsTXT = false
   endLevel = 3
 
 [params]
+  # What a page without a summary of its own says it is, and what a link shared elsewhere shows.
+  description = "rocinante is a creative coding language and framework: a line makes a picture, mistakes come with a plain explanation, and the running sketch updates as you save."
+  image = "img/logo-sketch.png"
   release = "alpha"
   repository = "https://github.com/sandbenders/rocinante"
   contact = "fabrizio@fabriziopoltronieri.com"

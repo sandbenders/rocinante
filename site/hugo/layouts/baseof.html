@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ if .IsHome }}rocinante{{ else }}{{ .Title }} · rocinante{{ end }}</title>
-<meta name="description" content="{{ .Summary | plainify }}">
+{{ partial "seo.html" . }}
 {{ $css := resources.Get "css/site.css" | minify | fingerprint }}
 <link rel="stylesheet" href="{{ $css.RelPermalink }}">
 <link rel="icon" href="{{ "favicon.svg" | relURL }}" type="image/svg+xml">
