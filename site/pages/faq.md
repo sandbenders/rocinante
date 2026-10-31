@@ -30,6 +30,20 @@ rocinante is made for one job, so it can do that job with less in the way:
 
 A web version is on the [roadmap](https://github.com/sandbenders/rocinante#roadmap), so sketches can be shared in a browser too.
 
+## I love OpenGL and have been using it for decades! Why not support it?
+
+So have we, and much of what rocinante knows about drawing was learned with it. But OpenGL is standing still while the systems under it move on:
+
+- **Apple has left it behind.** macOS stopped at OpenGL 4.1, from 2010, and Apple deprecated it in 2018, on the Mac and on the iPhone. A sketch on OpenGL would run on Apple's computers only as long as Apple keeps the old code around.
+- **Its successors are where the work goes.** The group that made OpenGL now puts its effort into Vulkan, and the drivers, the tools and the fixes follow.
+- **One engine means one behavior.** Supporting OpenGL beside Vulkan, Metal and Direct3D 12 would mean a second engine, with its own bugs and its own idea of how a picture looks, and a sketch must look the same everywhere.
+
+So rocinante draws through Vulkan on FreeBSD, Linux and Android, Metal on macOS and iOS, and Direct3D 12 on Windows, each the system's own modern interface, through SDL3. You never see which one: a sketch is the same file on all of them.
+
+The cost is that a computer whose graphics card has none of the three can't run rocinante. Most cards from the last ten years have at least one.
+
+If what you love is writing shaders, you will be able to: your own shaders arrive in a later release, written in HLSL, which a GLSL hand reads easily, and they reload as you save.
+
 ## Logo? Is it not so 60s?
 
 Logo was born in 1967, and its best ideas have aged better than most of what came after:
