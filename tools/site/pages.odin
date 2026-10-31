@@ -330,6 +330,33 @@ write_guides :: proc(out: string) -> bool {
 	return ok
 }
 
+// The pages of their own in site/pages (the FAQ), each at the top of the site with its
+// code coloured like a guide's. They draw no pictures: those belong to the guides.
+write_pages :: proc(out: string) -> bool {
+	handle, err := os.open("site/pages")
+	if err != nil {
+		return true // no pages yet
+	}
+	defer os.close(handle)
+	files, _ := os.read_dir(handle, -1, context.temp_allocator)
+	ok := true
+	for f in files {
+		if strings.has_suffix(f.name, ".md") {
+			ok = write_page(out, f.name) && ok
+		}
+	}
+	return ok
+}
+
+write_page :: proc(out, name: string) -> bool {
+	text, read_ok := read(fmt.tprintf("site/pages/%s", name))
+	if !read_ok {
+		fmt.eprintfln("site: cannot read site/pages/%s", name)
+		return false
+	}
+	return write(fmt.tprintf("%s/content/%s", out, name), colour_code_blocks(text))
+}
+
 // One guide of site/guides, by its file name, with the pictures its examples ask for.
 write_guide :: proc(out, name: string) -> bool {
 	text, read_ok := read(fmt.tprintf("site/guides/%s", name))
@@ -349,6 +376,7 @@ GUIDE_FRAMES :: 180
 
 Pictures :: struct {
 	out, guide: string,
+	heading:    string, // the section the next picture is in, which its alt text names
 	count:      int,
 	ok:         bool,
 }
@@ -384,6 +412,11 @@ colour_code_blocks :: proc(text: string, pictures: ^Pictures = nil) -> string {
 		}
 		code := body[:end]
 		strings.write_string(&b, rest[:start])
+		if pictures != nil {
+			if h := last_heading(rest[:start]); h != "" {
+				pictures.heading = h
+			}
+		}
 		switch kind {
 		case .Message:
 			strings.write_string(&b, message_html(code))
@@ -442,7 +475,7 @@ picture_html :: proc(p: ^Pictures, code: string) -> string {
 	if !ok {
 		p.ok = false
 	}
-	return window_html(fmt.tprintf("../img/%s", file), "What these lines draw", size, "guide-picture", moving = fmt.tprintf("../img/%s", moving) if moved else "")
+	return window_html(fmt.tprintf("../img/%s", file), picture_alt(p), size, "guide-picture", moving = fmt.tprintf("../img/%s", moving) if moved else "")
 }
 
 // Each line on its own picture, the line itself as the caption, so it is plain
@@ -630,4 +663,30 @@ wordmark :: proc(svg: string, dark: bool) -> string {
 	font := `ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'IBM Plex Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace`
 	text := fmt.tprintf(`<text x="220" y="100" font-family="%s" font-weight="700" font-size="100" textLength="522" lengthAdjust="spacing" fill="%s">rocinante</text>`, font, ink)
 	return fmt.tprintf("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 750 130\" width=\"750\" height=\"130\">\n  <title>rocinante</title>\n  %s\n  %s\n</svg>\n", strings.trim_space(logo), text)
+}
+
+// The heading of the last section a piece of Markdown opens, without its hashes and
+// code marks; "" when it opens none. Lines inside a fenced block are skipped.
+last_heading :: proc(text: string) -> string {
+	heading := ""
+	in_code := false // a shell block's comments are not headings
+	rest := text
+	for line in strings.split_lines_iterator(&rest) {
+		if strings.has_prefix(line, "```") {
+			in_code = !in_code
+		} else if !in_code && strings.has_prefix(line, "#") && strings.has_prefix(strings.trim_left(line, "#"), " ") {
+			h := strings.trim_space(strings.trim_left(line, "#"))
+			heading, _ = strings.remove_all(h, "`", context.temp_allocator)
+		}
+	}
+	return heading
+}
+
+// What a guide's picture shows, said by the section it is in, so each reads apart from
+// the others to a screen reader and to an image search.
+picture_alt :: proc(p: ^Pictures) -> string {
+	if p.heading == "" {
+		return "What these lines draw"
+	}
+	return fmt.tprintf("What the example under “%s” draws", p.heading)
 }

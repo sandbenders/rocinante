@@ -59,6 +59,7 @@ main :: proc() {
 	ok = write_reference(out) && ok
 	ok = write_messages(out) && ok
 	ok = write_guides(out) && ok
+	ok = write_pages(out) && ok
 	ok = write_hello(out) && ok
 	ok = write_front_mistake(out) && ok
 	ok = write_front_sketch(out) && ok

@@ -127,6 +127,10 @@ p, li, dd { max-width: var(--measure); }
 .top nav a { color: var(--soft); text-decoration: none; padding: 2px 0; border-bottom: 2px solid transparent; }
 .top nav a:hover { color: var(--ink); }
 .top nav a[aria-current] { color: var(--ink); border-bottom-color: var(--accent); }
+/* GitHub, beside the theme switch: its mark in the soft ink of the links. */
+.top nav a.github { display: inline-flex; align-items: center; color: var(--soft); border-bottom: 0; padding: 4px 2px; }
+.top nav a.github:hover { color: var(--ink); }
+.github svg { fill: currentColor; }
 .theme { display: inline-flex; align-items: center; color: var(--soft); background: none; border: 1px solid var(--rule); border-radius: 4px; padding: 3px 6px; cursor: pointer; }
 .theme:hover { color: var(--ink); border-color: var(--soft); }
 .theme svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

@@ -216,6 +216,11 @@ test_every_example_in_the_guides_checks_cleanly :: proc(t: ^testing.T) {
 	}
 }
 
+@(test)
+test_every_example_on_the_sites_own_pages_checks_cleanly :: proc(t: ^testing.T) {
+	testing.expect(t, check_code_blocks(t, "site/pages/faq.md") >= 2, "the FAQ's examples were found")
+}
+
 // Every word of the reference has an example in site/reference, in the house style
 // and checking with no message (`use` needs a library beside it, so it is only read).
 @(test)

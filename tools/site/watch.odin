@@ -4,8 +4,9 @@
 // writes the site's source once, keeping the reference pages already there (drawing
 // their pictures is nearly all of the time a full build takes), starts `hugo server`
 // on it, and then looks at site/ four times a second and rewrites only what changed:
-// a file of the Hugo project is copied, a guide is coloured again, a reference
-// example is run again for its page. Hugo sees the new file and reloads the browser.
+// a file of the Hugo project is copied, a guide or a page of site/pages is coloured
+// again, a reference example is run again for its page. Hugo sees the new file and
+// reloads the browser.
 // A change to the registry or to this tool is Odin code, so it needs a new start.
 package site_tool
 
@@ -17,7 +18,7 @@ import "core:time"
 import "../../roci/registry"
 import "../../tools/term"
 
-WATCHED := [?]string{"site/hugo", "site/guides", "site/reference"}
+WATCHED := [?]string{"site/hugo", "site/guides", "site/pages", "site/reference"}
 WATCH_INTERVAL :: 250 * time.Millisecond
 
 // Every file under the watched folders, by its path from the repository's root
@@ -32,6 +33,7 @@ Change :: struct {
 watch :: proc(out: string) -> bool {
 	ok := copy_tree("site/hugo", out)
 	ok = write_guides(out) && ok
+	ok = write_pages(out) && ok
 	ok = write_messages(out) && ok
 	ok = write_hello(out) && ok
 	ok = write_front_mistake(out) && ok
@@ -134,6 +136,14 @@ apply_change :: proc(out: string, c: Change) {
 			os.remove(fmt.tprintf("%s/content/guides/%s", out, name))
 		} else {
 			ok = write_guide(out, name)
+		}
+		what = "colored"
+	case strings.has_prefix(c.path, "site/pages/") && strings.has_suffix(c.path, ".md"):
+		name := c.path[len("site/pages/"):]
+		if c.gone {
+			os.remove(fmt.tprintf("%s/content/%s", out, name))
+		} else {
+			ok = write_page(out, name)
 		}
 		what = "colored"
 	case strings.has_prefix(c.path, "site/reference/") && strings.has_suffix(c.path, ".roci"):

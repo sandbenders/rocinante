@@ -133,3 +133,54 @@ code_html_numbers_each_line_and_keeps_colours_across_breaks :: proc(t: ^testing.
 	testing.expect(t, strings.has_prefix(plain, `<pre class="roci"><code>`))
 	testing.expect(t, strings.contains(plain, "&#10;") && !strings.contains(plain, `class="ln"`))
 }
+
+@(test)
+last_heading_is_the_section_a_text_opens_last :: proc(t: ^testing.T) {
+	testing.expect_value(t, last_heading("# Title\n\ntext\n## The shapes\nmore\n"), "The shapes")
+	testing.expect_value(t, last_heading("### Building `roci`\n"), "Building roci")
+	testing.expect_value(t, last_heading("## Colors\n```sh\n# a shell comment\n```\n"), "Colors")
+	testing.expect_value(t, last_heading("#nothing\ntext"), "")
+	testing.expect_value(t, last_heading(""), "")
+}
+
+@(test)
+a_guide_picture_is_named_by_its_section :: proc(t: ^testing.T) {
+	p := Pictures{}
+	testing.expect_value(t, picture_alt(&p), "What these lines draw")
+	p.heading = "Gradients"
+	testing.expect_value(t, picture_alt(&p), "What the example under “Gradients” draws")
+}
+
+// A guide's or a page's summary is what a search engine shows under its link and what a
+// shared link's card says, so every one has one, short enough to be shown whole.
+SUMMARY_LONGEST :: 155
+
+@(test)
+every_guide_and_page_has_a_summary_a_search_engine_shows_whole :: proc(t: ^testing.T) {
+	found := 0
+	for folder in ([]string{"site/guides", "site/pages"}) {
+		handle, err := os.open(folder)
+		if !testing.expectf(t, err == nil, "cannot open %s: tests run from the repository root", folder) {
+			continue
+		}
+		defer os.close(handle)
+		files, _ := os.read_dir(handle, -1, context.temp_allocator)
+		for f in files {
+			if !strings.has_suffix(f.name, ".md") {
+				continue
+			}
+			found += 1
+			page, _ := read(f.fullpath)
+			summary := ""
+			for line in strings.split_lines(page, context.temp_allocator) {
+				if strings.has_prefix(line, "summary:") {
+					summary = strings.trim(strings.trim_space(line[len("summary:"):]), `"`)
+					break
+				}
+			}
+			testing.expectf(t, summary != "", "%s/%s has no summary: line", folder, f.name)
+			testing.expectf(t, len(summary) <= SUMMARY_LONGEST, "the summary of %s/%s is %d characters; search engines cut it after %d", folder, f.name, len(summary), SUMMARY_LONGEST)
+		}
+	}
+	testing.expect(t, found > 10, "the guides and pages were found")
+}
