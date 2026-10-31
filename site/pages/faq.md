@@ -1,6 +1,6 @@
 ---
 title: "Frequently asked questions"
-summary: "Why another creative coding tool, why Logo, where the objects went, why a language in the age of AI, and what Odin has to do with it."
+summary: "Why another creative coding tool, why Logo, where the objects are, what runs where, what happens when a sketch fails, the license, and who is behind it."
 type: "faq"
 ---
 
@@ -17,6 +17,18 @@ What rocinante adds is a different set of trade-offs:
 - **Everywhere.** The same sketch runs on FreeBSD, Linux, macOS and Windows.
 
 It's an alpha, so not all of this is there yet. Text, user interfaces, images, sound, 3D and packaging a sketch as an app for the desktop or a phone are on the way; the [README](https://github.com/sandbenders/rocinante#readme) says what's done.
+
+## Why not Python, or JavaScript like p5.js?
+
+Both are fine languages, and p5.js is a lovely way to make things in a browser. They were made for everything, though, and creative coding is one thing among many: a sketch starts with imports and setup, a mistake comes back as a stack trace, and the speed is the speed of the language.
+
+rocinante is made for one job, so it can do that job with less in the way:
+
+- **No setup.** `circle at 100 100 radius 50` is a whole program.
+- **Mistakes in plain words.** The language is small enough for every error to say where, what, and what would work.
+- **Native speed, native places.** A sketch draws through the GPU's own interface, and a shipped one will be native code: an installation that runs for a year, a phone app, a sketch with a hundred thousand shapes.
+
+A web version is on the [roadmap](https://github.com/sandbenders/rocinante#roadmap), so sketches can be shared in a browser too.
 
 ## Logo? Is it not so 60s?
 
@@ -80,3 +92,37 @@ No ravens were harmed. This [Odin](https://odin-lang.org/) is a programming lang
 It was chosen because it thinks the way rocinante does. It is simple, compiles to fast native code, keeps data plain and in one piece, and does arithmetic on whole vectors, so `p.pos + p.vel` in a sketch is the same idea in the engine underneath. Its own collection of libraries brings SDL3, through which rocinante talks to the GPU on every system.
 
 There is a second reason. When `roci package` arrives, it will turn a sketch into Odin and build it into a native program, so a sketch you ship runs as fast as one written in Odin by hand, while you only ever see rocinante.
+
+## What happens if my sketch fails in the middle of a performance?
+
+The window stays open, and the last good frame keeps running. rocinante never lets a mistake close the canvas:
+
+- **A mistake in the code you save** (a misspelled word, a missing bracket) is caught before it runs. The old code keeps going, with the message drawn over it, and the next save that fixes it takes over.
+- **A mistake while it runs** (an item that is not in a list, a division by zero) gives an empty value or 0 and a message, once for each place, and the sketch carries on.
+- **A block that never ends** is stopped after two seconds, with a message saying which one.
+- **Escape does not quit**, so a stray key can't end a show. Ctrl+Q (Cmd+Q on a Mac) or the window's close button do, and Ctrl+R (Cmd+R) starts the sketch again from its first line.
+
+A crash of rocinante itself is treated as a bug of the highest priority. If you meet one, please [report it](https://github.com/sandbenders/rocinante/issues).
+
+## Which computers does it run on? Can I make phone apps?
+
+You write and run sketches on **FreeBSD, Linux, macOS and Windows**: x86-64 computers, and Macs with Apple silicon. The same sketch file runs on all four.
+
+**iPhones and Android phones** are places a sketch goes, not places you write it. `roci package ios` and `roci package android` will turn a sketch into an app you install or publish; they are on the way and not in the alpha yet. An iPhone app can only be built on a Mac, because Apple's tools run only there, and an Android app on macOS, Linux or Windows.
+
+## Is it free? Can I sell what I make with it?
+
+Yes, and yes. rocinante is open source under the [Zero-Clause BSD license](https://opensource.org/license/0BSD), one of the most permissive there is: use it, change it, share it and sell what you make, for any purpose, with no conditions, not even a credit line (though a mention is always welcome).
+
+What you make is yours. Your sketches, the pictures they draw and the apps you build from them belong to you, under whatever license you choose.
+
+## Who is behind rocinante, and how can I help?
+
+rocinante was started by [Fabrizio Poltronieri](https://github.com/sandbenders), an artist, researcher and educator who has made work with code for decades; the [manifesto](https://github.com/sandbenders/rocinante/blob/main/MANIFESTO.md) tells why. It is open source and meant to stay that way, belonging to the people who make things with it, and the hope is to give it a home in a foundation as it grows.
+
+There are many ways to help, and most need no programming:
+
+- **Make things with it** and show them. Nothing helps more than sketches people want to copy.
+- **Tell us where it got in your way.** A message that confused you, a guide that lost you, a word you expected and didn't find: [report it](https://github.com/sandbenders/rocinante/issues). These are bugs, and they get fixed like bugs.
+- **Teach with it**, and say what your students tripped on.
+- **Write code.** Issues and pull requests are welcome on [GitHub](https://github.com/sandbenders/rocinante); the [README](https://github.com/sandbenders/rocinante#contributing) explains how a contribution reaches the project.
