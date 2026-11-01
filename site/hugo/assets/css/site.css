@@ -349,6 +349,18 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
 .gallery-line { margin: 6px 0 0; font-size: 0.8rem; line-height: 1.4; }
 .gallery-line code { background: none; padding: 0; font-size: 1em; }
 .guide h2 { scroll-margin-top: 80px; }
+/* The FAQ on a phone: each question a card that opens to its answer (the script in the
+   base layout makes them), a chevron turning to say which way it goes. */
+.qa { border: 1px solid var(--rule); border-radius: 8px; background: var(--sheet); margin: 0 0 10px; }
+.qa summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; cursor: pointer; list-style: none; border-radius: 8px; }
+.qa summary::-webkit-details-marker { display: none; }
+.qa summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--soft); border-bottom: 2px solid var(--soft); transform: rotate(45deg); transition: transform 0.15s; }
+.qa[open] summary::after { transform: rotate(-135deg); }
+.qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.qa summary h2 { margin: 0; font-size: 1.05rem; line-height: 1.35; }
+.qa-body { padding: 0 16px 6px; }
+.qa-body > :first-child { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { .qa summary::after { transition: none; } }
 .toc { position: sticky; top: 76px; max-height: calc(100vh - 96px); overflow-y: auto; font-size: 0.9rem; border-left: 1px solid var(--rule); padding-left: 16px; }
 .toc-title { font: 600 0.8rem var(--mono); color: var(--soft); margin: 4px 0 8px; }
 .toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }

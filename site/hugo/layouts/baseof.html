@@ -106,6 +106,37 @@
   })();
 </script>
 <script>
+  // On a phone the FAQ shows its questions as cards that open to their answers, since the
+  // list of questions beside it is not there. Each question and what follows it, up to the
+  // next question, goes into a details element; a link to one answer opens it. Elsewhere,
+  // and without the script, the page stays whole.
+  (function () {
+    var main = document.querySelector("main.faq");
+    if (!main || !matchMedia("(max-width: 820px)").matches) return;
+    Array.prototype.slice.call(main.querySelectorAll(":scope > h2")).forEach(function (h) {
+      var card = document.createElement("details");
+      var summary = document.createElement("summary");
+      var body = document.createElement("div");
+      card.className = "qa";
+      body.className = "qa-body";
+      h.parentNode.insertBefore(card, h);
+      summary.appendChild(h);
+      card.appendChild(summary);
+      while (card.nextSibling && !(card.nextSibling.nodeType === 1 && (card.nextSibling.tagName === "H2" || card.nextSibling.classList.contains("edit")))) {
+        body.appendChild(card.nextSibling);
+      }
+      card.appendChild(body);
+    });
+    function openTarget() {
+      var target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      var card = target && target.closest("details.qa");
+      if (card) { card.open = true; target.scrollIntoView(); }
+    }
+    window.addEventListener("hashchange", openTarget);
+    openTarget();
+  })();
+</script>
+<script>
   // A long sketch beside its window is folded to the window's height, and its button
   // opens it and folds it again.
   document.querySelectorAll(".folds").forEach(function (pane) {

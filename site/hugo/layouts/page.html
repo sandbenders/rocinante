@@ -10,7 +10,7 @@
 </div>
 {{ else if eq .Type "faq" }}
 <div class="with-toc">
-  <main id="content" class="content guide">
+  <main id="content" class="content guide faq">
     <h1>{{ .Title }}</h1>
     {{ .Content }}
     {{ with .File }}<p class="edit"><a href="{{ site.Params.repository }}/blob/main/site/pages/{{ .LogicalName }}">edit this page on GitHub</a></p>{{ end }}
