@@ -65,9 +65,11 @@ What rocinante leaves behind are the parts of Logo that tripped people up, which
 
 ## Where are the objects?
 
-There aren't any, on purpose. rocinante is procedural and data-oriented, like Logo and like Odin: there is plain data (numbers, text, vectors, colors, lists and records), and there are verbs that act on it. You write `fall p`, not `p.fall()`.
+There aren't any, on purpose. rocinante is procedural and data-oriented, like Logo and Odin: there is plain data (numbers, text, vectors, colors, lists and records) and there are verbs that act on it. You write `fall p`, not `p.fall()`.
 
-Many things on the screen are a list of records, and one verb that acts on one of them:
+After decades of working almost exclusively with object-oriented languages, I got fed up with them. I now enjoy the simplicity of procedural languages such as C, and I don't think creative coders need to adopt an object-oriented paradigm.
+
+In rocinante, many things on the screen are a list of records, and one verb that acts on one of them:
 
 ```roci
 particles = []
@@ -86,7 +88,7 @@ draw [
 ]
 ```
 
-There are no classes, methods, inheritance or constructors to learn, only verbs on data. It's also what will make a shipped sketch fast: a list of records of the same shape can sit in memory in one piece, which is how a computer likes to read it.
+There are no classes, methods, inheritance or constructors to learn, only verbs on data. That's also what will make a shipped sketch fast: a list of records of the same shape can sit in memory in one piece, which is how a computer likes to read it.
 
 ## Why another language when AI can code anything?
 
