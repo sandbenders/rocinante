@@ -185,9 +185,6 @@ pre.shell code::before { content: "$ "; opacity: 0.55; }
 .home-main p, .home-main li, .home-main dd { max-width: none; }
 .hero { display: flex; flex-direction: column; gap: 22px; }
 .hero h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); max-width: 28ch; margin: 0.2em 0 0; }
-/* A link in the title keeps the title's ink and shows itself by its underline. */
-.hero h1 a { color: inherit; text-decoration-thickness: 0.06em; text-underline-offset: 0.14em; }
-.hero h1 a:hover { text-decoration-thickness: 0.1em; }
 .hero .lead { font-size: 1.25rem; margin: 0; }
 /* The systems it runs on, under the title: their logos in the ink of the page, each named. */
 .platforms { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; }
