@@ -8,15 +8,17 @@ type: "faq"
 
 We do, and they're wonderful. rocinante comes out of decades of making work with all three, and it borrows from each of them. Processing gave a generation of artists a way in, and openFrameworks and Cinder gave them speed.
 
-What rocinante adds is a different set of trade-offs:
+My main problems with them relate to the syntax of the languages they are built in, and their reliance on technologies that are either deprecated on some platforms or have better modern alternatives. I have spent decades working with different object-oriented languages, and I think creative coding can be simpler and more elegant, with interpreters and compilers that use updated libraries and technologies, making their use transparent to the users.
 
-- **One language from the first line to the finished piece.** Processing is gentle and slower; openFrameworks and Cinder are fast and ask you to learn C++, its compilers and its build files. rocinante is gentle on top and fast underneath: you write a few friendly words, and a modern engine draws them on the GPU.
-- **Change it and see it.** Save the file and the running sketch updates, keeping its values, so the particles keep flying while you change their color.
-- **Mistakes teach.** An error never closes the window. It shows over the last good frame, points at the spot, says what went wrong in plain words and shows a line that works.
-- **A modern engine.** rocinante draws through Vulkan, Metal and Direct3D 12, never OpenGL, which the graphics world has moved past.
-- **Everywhere.** The same sketch runs on FreeBSD, Linux, macOS and Windows.
+Another problem is packaging. It is still hard to package the final piece and distribute it to the whole modern ecosystem, including different platforms and mobile devices.
 
-It's an alpha, so not all of this is there yet. Text, user interfaces, images, sound, 3D and packaging a sketch as an app for the desktop or a phone are on the way; the [README](https://github.com/sandbenders/rocinante#readme) says what's done.
+rocinante provides one simple language that I have been crafting for years, both for my personal use and for use in classrooms, that doesn't require learning Java, Python, or C++. Even so, it is expressive, powerful, and complete enough to build full multiplatform applications, including a light unit test system. You write a few friendly words and its engine draws them on the GPU. With one command, you can package it, without having to deal with build files.
+
+The language ships with an interpreter, allowing hot reload. You change it and see it. Save the file in your favorite editor and the running sketch updates, keeping its values so particles keep flying while you change their color. When you feel the work is done, a simple command compiles your sketch into executable machine code that runs at native compiled speed. You don't need to worry about Metal, Vulkan, or Direct3D. rocinante takes care of all of that.
+
+Because rocinante is meant for professional work, teaching, and debugging, a mistake in the code never closes the window. rocinante shows the mistake over the last good frame, pointing clearly to the line and the error, saying in plain words what is wrong and, in most cases, showing the fix. No cryptic compiler or linker errors.
+
+It's still an alpha, so not all of this is there yet. Text, user interfaces, images, sound, 3D, and packaging a sketch as a desktop or phone app are on the way. The README and this page say what's done.
 
 ## Why not Python, or JavaScript like p5.js?
 
