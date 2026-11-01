@@ -183,7 +183,10 @@ p, li, dd { max-width: var(--measure); }
 .foot-links a { color: var(--ink); }
 
 /* code */
-pre { background: var(--code-bg); border-radius: 6px; padding: 14px 16px; margin: 0; overflow-x: auto; font-size: 0.92rem; line-height: 1.55; tab-size: 2; }
+/* Code and commands wrap rather than run out of the page (a command cut off at the edge
+   of a phone cannot be checked before it is copied), breaking inside a long address when
+   it has to. Error messages keep their columns, since their carets point at them. */
+pre { background: var(--code-bg); border-radius: 6px; padding: 14px 16px; margin: 0; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.92rem; line-height: 1.55; tab-size: 2; }
 pre.roci { border-left: 3px solid var(--accent); }
 /* Numbered code, as Processing's reference shows it: each line an element, its number
    written by the style sheet in a gutter down the left, so copying takes no numbers. */
