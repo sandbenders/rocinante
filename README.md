@@ -17,7 +17,7 @@ That line is a complete rocinante sketch. Run it and a window opens with a circl
 
 rocinante is an open-source creative coding framework with its own easy to learn and powerful language. It comes out of years of working with [Processing](https://processing.org/), [openFrameworks](https://openframeworks.cc/) and [Cinder](https://libcinder.org/), and it borrows the turtle, ideas and also some syntax from [Logo](https://el.media.mit.edu/logo-foundation/). The goal is to make coding FUN AGAIN, especially for creative coders. You write a line and get a picture, mistakes come with a plain explanation, and when you save the file the running sketch updates.
 
-Read [MANIFESTO.md](MANIFESTO.md) for why it exists.
+Read [MANIFESTO.md](MANIFESTO.md) for why it exists, and the [FAQ](https://sandbenders.github.io/rocinante/faq/) for the questions people ask: why not Processing, Python or OpenGL, why Logo, where the objects are, and who is behind it.
 
 ## Status
 
@@ -27,7 +27,7 @@ Early, but you can write and run sketches today. The language exists and the `ro
 - **`roci check`** reads a sketch and says what is wrong, in plain words with your own line fixed (`--errors json` gives the messages as data). **`roci fmt`** writes sketches in one house style. **`roci man rect`** shows how a verb is written.
 - **`roci new`, `roci init` and `roci add`** make a sketch folder (with git, and Git LFS if you want it) and copy files into its `assets/`. **`roci get`** copies a library from a git address into `libs/`, and **`roci update`** fetches a newer copy and says what changed.
 - **A sketch can be several files.** Every `.roci` file in a sketch folder is part of the same program: put verbs and constants in `palette.roci`, use them in `sketch.roci`, and messages name the right file. Save any of them and the sketch reloads (see `examples/starfield`). Libraries are folders in `libs/` brought in with `use "name"` (see `examples/constellation`), copied there from a git address by `roci get`.
-- The language so far has drawing, style and colour, gradients, transforms, random numbers and noise, lists and records, verbs you teach with `learn`, `if`, `repeat`, `for`, `while`, the list verbs (`keep`, `collect`, `sort`, `shuffle` and more), keys, the mouse and fingers (`on key`, `on mouse down right`, `on touch down`, `pressed`, `held "space"`, `wheel`, `touches`), `floor`, `round` and `ceil`, `every`, tweens and easing, tables, the turtle, 2D collision (`touching`, `contact`, `hits`, `inside`, `cast`), messages between windows, and windows you can size, fix, move, make borderless or keep on top, read from (`main_window.width`) and change with `set`. Text, user interface widgets, images, sound and 3D come in later phases.
+- The language so far has drawing, style and color, gradients, transforms, random numbers and noise, lists and records, verbs you teach with `learn`, `if`, `repeat`, `for`, `while`, the list verbs (`keep`, `collect`, `sort`, `shuffle` and more), keys, the mouse and fingers (`on key`, `on mouse down right`, `on touch down`, `pressed`, `held "space"`, `wheel`, `touches`), `floor`, `round` and `ceil`, `every`, tweens and easing, tables, the turtle, 2D collision (`touching`, `contact`, `hits`, `inside`, `cast`), messages between windows, and windows you can size, fix, move, make borderless or keep on top, read from (`main_window.width`) and change with `set`. Text, user interface widgets, images, sound and 3D come in later phases.
 
 Under it is the engine, which also has an Odin API (and a C API). It draws on macOS (Metal), Linux, FreeBSD and OpenBSD (Vulkan), Windows (Direct3D 12), and on an iPhone and an Android phone, and 100,000 circles a frame hold about 60 frames a second on the computers tried so far. Packaging a sketch into an app (`roci package`) is not written yet.
 
@@ -72,7 +72,7 @@ These are wanted, but not planned for the first stable release:
 - **3D physics** (gravity, joints and stacking in 3D). Collision detection works in 2D and 3D, and physics simulation in 2D.
 - **Training models** inside rocinante. For now, trained models run locally but are trained elsewhere.
 - **Help for writing sketches with AI assistants**: a sketch-writing skill and an MCP server built on `roci`'s checker and headless run.
-- **Editor tools in the source**: inline sliders and colour pickers that edit the number in your file, and a frame scrubber that steps backwards through a running sketch.
+- **Editor tools in the source**: inline sliders and color pickers that edit the number in your file, and a frame scrubber that steps backwards through a running sketch.
 - **Turtle export** to plotter and embroidery formats.
 - **Translated keywords and error messages.**
 
@@ -101,7 +101,7 @@ You need git, the Odin release named in `ODIN_VERSION` (check it with `odin vers
 | Debian 13+, Ubuntu 25.04+ | the `linux-amd64` or `linux-arm64` archive (their `odin` package is another program)                                                                    | `sudo apt install git clang libsdl3-dev`                                                               |
 | Fedora 43+                | the `linux-amd64` or `linux-arm64` archive                                                                                                              | `sudo dnf install git clang SDL3-devel`                                                                |
 | FreeBSD                   | `sudo pkg install odin-lang`                                                                                                                            | `sudo pkg install git sdl3`                                                                            |
-| OpenBSD                   | built from source: `doas pkg_add gmake llvm%19`, then `gmake release-native` in Odin's repository (the guide has the steps) | `doas pkg_add git sdl3`                                                                                |
+| OpenBSD                   | built from source: `doas pkg_add gmake llvm%19`, then `gmake release-native` in Odin's repository (the guide has the steps)                             | `doas pkg_add git sdl3`                                                                                |
 | macOS                     | `brew install odin`, or the `macos-arm64` archive                                                                                                       | `xcode-select --install`, then `brew install sdl3`                                                     |
 
 Systems with no SDL3 package (Ubuntu 24.04, Debian 12) can build it with `tools/ci/install-sdl3.sh`, as the GitHub pipeline does. The [getting started guide](https://sandbenders.github.io/rocinante/guides/01-getting-started/) has every step. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) Then, from the repository root:
@@ -109,14 +109,14 @@ Systems with no SDL3 package (Ubuntu 24.04, Debian 12) can build it with `tools/
 ```
 odin run build -- ci          # what the pipelines run
 odin run build -- ci --fast   # what the pre-push hook runs
-odin run build -- licences    # dependency licence check
+odin run build -- licences    # dependency license check
 ```
 
 The full `ci` also draws the golden images on Mesa's software Vulkan driver (lavapipe) when it is installed, and says so when it is not.
 
 ## Trying it
 
-The documentation (guides, and a reference of every word with an example and the picture it draws) is at <https://sandbenders.github.io/rocinante/>, built from this repository: `odin run build -- docs` makes it locally, with [Hugo](https://gohugo.io) at the version in `HUGO_VERSION`.
+The documentation (guides, a reference of every word with an example and the picture it draws, every message rocinante can give, and a FAQ) is at <https://sandbenders.github.io/rocinante/>, built from this repository: `odin run build -- docs` makes it locally, with [Hugo](https://gohugo.io) at the version in `HUGO_VERSION`.
 
 Run a sketch (the examples are written in the language as `sketch.roci` files):
 
@@ -156,7 +156,7 @@ Add `-- 3` to any of these to close the window after three seconds. `examples/c/
 
 Releases use calendar versioning, `YYYY.MINOR.MICRO`: the year of the release, the feature release within that year counted from 1, and its fixes counted from 0. Releases before the first stable one are previews and carry their stage: `2026.1.0-alpha` is the first alpha, `2026.1.1-alpha` its first fix and `2026.2.0-alpha` the next. The first stable release is the first version without one.
 
-## Licence
+## License
 
 [Zero-Clause BSD](LICENSE) (0BSD). Use it for anything, with or without credit.
 
