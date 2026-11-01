@@ -19,6 +19,12 @@ docs :: proc() -> bool {
 	if !ok {
 		return false
 	}
+	// The tool's program goes in the tests' folder, which a fresh checkout does not have:
+	// without it Odin stops with "LLVM Error: No such file or directory".
+	if err := os.make_directory_all(TEST_OUT_DIR); err != nil && err != .Exist {
+		fmt.eprintfln("%s", term.err(fmt.tprintf("cannot make the folder %s: %v", TEST_OUT_DIR, err), .Bold_Red))
+		return false
+	}
 	// The pictures are drawn by the real renderer, so the tool runs optimised.
 	ok = step("write the site's source", {"odin", "run", "tools/site", "-o:speed", fmt.tprintf("-out:%s/site-tool%s", TEST_OUT_DIR, EXE), "--", SITE_SOURCE})
 	if !ok {
