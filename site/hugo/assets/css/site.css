@@ -131,8 +131,23 @@ p, li, dd { max-width: var(--measure); }
 .top nav a:hover { color: var(--ink); }
 .top nav a[aria-current] { color: var(--ink); border-bottom-color: var(--accent); }
 /* GitHub, beside the theme switch: its mark in the soft ink of the links. */
-.top nav a.github { display: inline-flex; align-items: center; color: var(--soft); border-bottom: 0; padding: 4px 2px; }
-.top nav a.github:hover { color: var(--ink); }
+.top-right, .tools { display: flex; align-items: center; gap: 4px 18px; }
+.tools a.github { display: inline-flex; align-items: center; color: var(--soft); padding: 4px 2px; }
+.tools a.github:hover { color: var(--ink); }
+/* On a phone the bar does not fit on one line (the name, four words and two icons are
+   about 550 pixels), so it breaks where it reads best: the name and the two icons
+   above, the four words below, each with room for a thumb. */
+@media (max-width: 560px) {
+  .top-inner { gap: 4px 12px; padding-top: 10px; padding-bottom: 6px; }
+  .top-right { display: contents; }
+  .tools { order: 2; }
+  .top nav { order: 3; flex-basis: 100%; justify-content: space-between; gap: 0 12px; font-size: 0.9rem; }
+  .top nav a { padding: 8px 0 6px; }
+  /* The seven systems stay on one line under their title, sharing the width. */
+  .platforms ul { flex: 1 0 100%; flex-wrap: nowrap; justify-content: space-between; gap: 0 4px; }
+  .platforms li { min-width: 0; font-size: 0.7rem; }
+  .platforms svg { width: 24px; height: 24px; }
+}
 .github svg { fill: currentColor; }
 .theme { display: inline-flex; align-items: center; color: var(--soft); background: none; border: 1px solid var(--rule); border-radius: 4px; padding: 3px 6px; cursor: pointer; }
 .theme:hover { color: var(--ink); border-color: var(--soft); }
@@ -345,7 +360,7 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
   .side { position: static; max-height: none; order: 2; border-top: 1px solid var(--rule); padding-top: 16px; }
   .side details:not([open]) ul { display: none; }
   .mistake { grid-template-columns: minmax(0, 1fr); }
-  .demo, .with-toc, .foot-inner { grid-template-columns: minmax(0, 1fr); }
+  .demo, .sketch .demo, .with-toc, .foot-inner { grid-template-columns: minmax(0, 1fr); }
   .toc { display: none; }
   .steps li { grid-template-columns: minmax(0, 1fr); }
   .hero .lead { font-size: 1.1rem; }
