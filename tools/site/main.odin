@@ -205,7 +205,13 @@ message_html :: proc(text: string) -> string {
 		part, label_end := term.message_part(line)
 		switch part {
 		case .Plain:
-			strings.write_string(&b, escape(line))
+			// The source line keeps its columns, which the carets below it point at; every other
+			// line of prose may wrap.
+			if strings.contains(line, "│") {
+				fmt.sbprintf(&b, `<span class="m-source">%s</span>`, escape(line))
+			} else {
+				strings.write_string(&b, escape(line))
+			}
 		case .Labelled:
 			fmt.sbprintf(&b, `<span class="m-label">%s</span><span class="m-example">%s</span>`, escape(line[:label_end]), escape(line[label_end:]))
 		case .Title, .Warning, .Hint, .Carets, .Example:

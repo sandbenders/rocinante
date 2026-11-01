@@ -324,7 +324,10 @@ pre.syntax .opt { color: var(--soft); }
 .messages { display: flex; flex-direction: column; gap: 28px; }
 .message { display: flex; flex-direction: column; gap: 8px; scroll-margin-top: 80px; }
 .message h2 { margin: 0; }
-pre.message-text { background: var(--sheet); border: 1px solid var(--rule); color: var(--ink); white-space: pre; }
+pre.message-text { background: var(--sheet); border: 1px solid var(--rule); color: var(--ink); }
+/* The title and the explanation wrap; the source line and its carets keep their columns
+   and scroll sideways when they are longer than the page. */
+.message-text .m-source, .message-text .m-carets { white-space: pre; overflow-wrap: normal; }
 /* A message's parts, coloured as the terminal colours them. */
 .message-text .m-title { color: var(--msg-error); font-weight: 700; }
 .message-text .m-warning { color: var(--msg-warning); font-weight: 700; }
