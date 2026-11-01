@@ -110,14 +110,17 @@ I chose it because it thinks the way rocinante does. It is simple, compiles to f
 
 There is a second reason. When `roci package` arrives, it will turn a sketch into Odin and build it into a native program, so a sketch you ship will run as fast as one written in Odin by hand, while you only ever see rocinante.
 
-## What happens if my sketch fails in the middle of a performance?
+## What happens if my sketch fails mid-performance?
 
-The window stays open, and the last good frame keeps running. rocinante never lets a mistake close the canvas:
+That's one of the most terrifying experiences: you are performing in front of an audience and suddenly… the software crashes. rocinante, like any other software, isn't completely bulletproof, but I designed it around the idea that errors and bugs should be recoverable. So when something goes wrong, rocinante's window stays open and the last good frame keeps running. rocinante never lets a mistake close the canvas.
 
-- **A mistake in the code you save** (a misspelled word, a missing bracket) is caught before it runs. The old code keeps going, with the message drawn over it, and the next save that fixes it takes over.
-- **A mistake while it runs** (an item that is not in a list, a division by zero) gives an empty value or 0 and a message, once for each place, and the sketch carries on.
-- **A block that never ends** is stopped after two seconds, with a message saying which one.
-- **Escape does not quit**, so a stray key can't end a show. Ctrl+Q (Cmd+Q on a Mac) or the window's close button do, and Ctrl+R (Cmd+R) starts the sketch again from its first line.
+While you work with `roci run`, a mistake in the code you save (a misspelled word, a missing bracket) is caught before it runs. The old code keeps going with the message drawn over it, and the next save that fixes it takes over.
+
+A mistake while the sketch runs (an item that is not in a list, a division by zero) gives an empty value or 0, and the sketch carries on. `roci run` shows a message, once for each place; a shipped sketch will write it to its log instead, so the audience never sees it.
+
+Under `roci run`, a block that never ends is stopped after two seconds, with a message saying which one.
+
+And Escape does not quit, so a stray key can't end your performance by mistake. Ctrl+Q (Cmd+Q on a Mac) or the window's close button does, and under `roci run`, Ctrl+R (Cmd+R) starts the sketch again from its first line.
 
 A crash of rocinante itself is treated as a bug of the highest priority. If you meet one, please [report it](https://github.com/sandbenders/rocinante/issues).
 
