@@ -104,11 +104,11 @@ I built rocinante with the help of AI, putting the Symbiotic Future into practic
 
 ## How has the almighty god Odin got involved in rocinante?
 
-No ravens were harmed. This [Odin](https://odin-lang.org/) is a programming language, created by Ginger Bill, and the core of rocinante is written in it: the engine, the language and the `roci` program.
+No ravens were harmed. This [Odin](https://odin-lang.org/) is a programming language, created by Ginger Bill, and the core of rocinante is written in it, including the engine, the language and the `roci` program.
 
-It was chosen because it thinks the way rocinante does. It is simple, compiles to fast native code, keeps data plain and in one piece, and does arithmetic on whole vectors, so `p.pos + p.vel` in a sketch is the same idea in the engine underneath. Its own collection of libraries brings SDL3, through which rocinante talks to the GPU on every system.
+I chose it because it thinks the way rocinante does. It is simple, compiles to fast native code, keeps data plain and in one piece, and does arithmetic on whole vectors, so `p.pos + p.vel` in a sketch is the same idea in the engine underneath. Odin also shaped rocinante itself: its verbs on plain data, its vectors in braces and its useful zero values all come from there. Its own collection of libraries brings SDL3, through which rocinante talks to the GPU on every system.
 
-There is a second reason. When `roci package` arrives, it will turn a sketch into Odin and build it into a native program, so a sketch you ship runs as fast as one written in Odin by hand, while you only ever see rocinante.
+There is a second reason. When `roci package` arrives, it will turn a sketch into Odin and build it into a native program, so a sketch you ship will run as fast as one written in Odin by hand, while you only ever see rocinante.
 
 ## What happens if my sketch fails in the middle of a performance?
 
