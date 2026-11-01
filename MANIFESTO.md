@@ -46,7 +46,7 @@ Coding has become bureaucracy. Most of what we type is ceremony that serves the 
 
 **Small and predictable beats clever.** rocinante has few words and one shape (a verb, then what it acts on), so once you've guessed the pattern you can guess the rest. No semicolons, no braces around blocks, no punctuation that exists only for the parser.
 
-**Everywhere, from one sketch.** FreeBSD, Linux, macOS, Windows, iOS and Android. The same file runs on all of them, and `roci package ios` turns it into something you can ship. Where a platform owner imposes rules we can't remove ([Apple's signing](https://support.apple.com/en-euro/guide/security/sec7c917bf14/web), for one), we make them as painless as we can and tell you plainly what's left.
+**Everywhere, from one sketch.** FreeBSD, Linux, macOS, OpenBSD, Windows, iOS and Android. The same file runs on all of them, and `roci package ios` turns it into something you can ship. Where a platform owner imposes rules we can't remove ([Apple's signing](https://support.apple.com/en-euro/guide/security/sec7c917bf14/web), for one), we make them as painless as we can and tell you plainly what's left.
 
 **Batteries included.** 2D, 3D, text, images, sound, MIDI, OSC, cameras, video, files, networks, sensors, multiple windows that talk to each other. Everything the classic frameworks do, built on current libraries instead of ones the graphics world has moved past.
 

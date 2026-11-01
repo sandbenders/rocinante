@@ -67,7 +67,7 @@ check_hugo :: proc() -> bool {
 	pinned := strings.trim_space(string(data))
 	state, stdout, _, err := os.process_exec({command = {"hugo", "version"}}, context.allocator)
 	if err != nil || state.exit_code != 0 {
-		fmt.eprintfln("%s Hugo is needed to build the documentation, and it is not installed. Get version %s from https://github.com/gohugoio/hugo/releases/tag/v%s (Arch: pacman -S hugo; macOS: brew install hugo; FreeBSD: pkg install gohugo).", term.err("hugo:", .Bold_Red), pinned, pinned)
+		fmt.eprintfln("%s Hugo is needed to build the documentation, and it is not installed. Get version %s from https://github.com/gohugoio/hugo/releases/tag/v%s (Arch: pacman -S hugo; macOS: brew install hugo; FreeBSD: pkg install gohugo; OpenBSD: pkg_add hugo).", term.err("hugo:", .Bold_Red), pinned, pinned)
 		return false
 	}
 	have := strings.trim_space(string(stdout))

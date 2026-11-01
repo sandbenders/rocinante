@@ -8,7 +8,7 @@ A rocinante program is called a **sketch**. You write it in a plain text file, `
 
 ## Installing
 
-For the alpha, rocinante is built from its source, on Windows, Linux, FreeBSD or macOS. You need three things: **git**, **Odin** (the language rocinante is written in) at the version named in the repository's `ODIN_VERSION` file, and **SDL3** (windows, input and graphics). `odin version` says which Odin you have.
+For the alpha, rocinante is built from its source, on Windows, Linux, FreeBSD, OpenBSD or macOS. You need three things: **git**, **Odin** (the language rocinante is written in) at the version named in the repository's `ODIN_VERSION` file, and **SDL3** (windows, input and graphics). `odin version` says which Odin you have.
 
 ### Windows
 
@@ -50,6 +50,19 @@ sudo pkg install git odin-lang sdl3
 
 Check that `odin version` matches `ODIN_VERSION`.
 
+### OpenBSD
+
+OpenBSD packages SDL3; Odin is built from its source, which takes a few minutes. Use the version named in `ODIN_VERSION` as the branch:
+
+```
+doas pkg_add git gmake sdl3 llvm%19
+git clone --branch dev-2026-10 --depth 1 https://github.com/odin-lang/Odin
+cd Odin
+LLVM_CONFIG=/usr/local/llvm19/bin/llvm-config gmake release-native
+```
+
+Then put that `Odin` folder on your path (the `odin` program has to stay beside its `base`, `core` and `vendor` folders), and check that `odin version` matches `ODIN_VERSION`.
+
 ### macOS
 
 1. Install Apple's command-line tools, which include git: `xcode-select --install`.
@@ -57,7 +70,7 @@ Check that `odin version` matches `ODIN_VERSION`.
 
 ### Building `roci`
 
-On Linux, FreeBSD and macOS:
+On Linux, FreeBSD, OpenBSD and macOS:
 
 ```
 git clone https://github.com/sandbenders/rocinante
@@ -120,7 +133,7 @@ Every message says where the problem is, what it is in plain words, and shows a 
 
 Two keys work in every sketch window:
 
-| What it does | Windows, Linux, FreeBSD | macOS |
+| What it does | Windows, Linux, FreeBSD, OpenBSD | macOS |
 |---|---|---|
 | start the sketch again from its first line | Ctrl+R | Cmd+R |
 | close the sketch | Ctrl+Q | Cmd+Q |

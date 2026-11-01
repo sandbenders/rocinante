@@ -29,7 +29,7 @@ Early, but you can write and run sketches today. The language exists and the `ro
 - **A sketch can be several files.** Every `.roci` file in a sketch folder is part of the same program: put verbs and constants in `palette.roci`, use them in `sketch.roci`, and messages name the right file. Save any of them and the sketch reloads (see `examples/starfield`). Libraries are folders in `libs/` brought in with `use "name"` (see `examples/constellation`), copied there from a git address by `roci get`.
 - The language so far has drawing, style and colour, gradients, transforms, random numbers and noise, lists and records, verbs you teach with `learn`, `if`, `repeat`, `for`, `while`, the list verbs (`keep`, `collect`, `sort`, `shuffle` and more), keys, the mouse and fingers (`on key`, `on mouse down right`, `on touch down`, `pressed`, `held "space"`, `wheel`, `touches`), `floor`, `round` and `ceil`, `every`, tweens and easing, tables, the turtle, 2D collision (`touching`, `contact`, `hits`, `inside`, `cast`), messages between windows, and windows you can size, fix, move, make borderless or keep on top, read from (`main_window.width`) and change with `set`. Text, user interface widgets, images, sound and 3D come in later phases.
 
-Under it is the engine, which also has an Odin API (and a C API). It draws on macOS (Metal), Linux and FreeBSD (Vulkan), Windows (Direct3D 12), and on an iPhone and an Android phone, and 100,000 circles a frame hold about 60 frames a second on the computers tried so far. Packaging a sketch into an app (`roci package`) is not written yet.
+Under it is the engine, which also has an Odin API (and a C API). It draws on macOS (Metal), Linux, FreeBSD and OpenBSD (Vulkan), Windows (Direct3D 12), and on an iPhone and an Android phone, and 100,000 circles a frame hold about 60 frames a second on the computers tried so far. Packaging a sketch into an app (`roci package`) is not written yet.
 
 Phase 0 (2026-10-27) tested the riskiest parts with four spikes: a window and GPU device on every desktop system, a shader-drawn circle on a real iPhone and a real Android phone, generating Odin from a typed IR, and Dear ImGui with a screen reader. Phase 1, the window and the 2D core, is built and measured on all of them. Phase 2, the language itself, was closed on 2026-10-30, after a test with newcomers confirmed its design; Phase 3 (text, user interface widgets, images, canvases and shaders) is next. The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
 
@@ -60,7 +60,7 @@ The core is written in [Odin](https://odin-lang.org/) and draws through the GPU 
 
 You use one command, `roci`. `roci run` runs a sketch and reloads it whenever you save. It interprets the sketch, so it works without installing anything else. `roci package <target>` compiles the sketch to native code through Odin and turns it into an app. Packaging fetches the right version of Odin for you and needs your platform's usual build tools (Xcode, MSVC or clang), and `roci doctor` lists what's missing and how to install it.
 
-The same sketch file runs on FreeBSD, Linux, macOS, Windows, iOS and Android. You write, run and package sketches on a FreeBSD, Linux, macOS or Windows computer; iOS and Android are targets only, where the packaged app runs. Not every computer can package every target (an iOS app can only be built on a Mac), and `roci doctor` tells you which ones yours can.
+The same sketch file runs on FreeBSD, Linux, macOS, OpenBSD, Windows, iOS and Android. You write, run and package sketches on a FreeBSD, Linux, macOS, OpenBSD or Windows computer; iOS and Android are targets only, where the packaged app runs. Not every computer can package every target (an iOS app can only be built on a Mac), and `roci doctor` tells you which ones yours can.
 
 ## Roadmap
 
@@ -68,7 +68,7 @@ These are wanted, but not planned for the first stable release:
 
 - **A rocinante shader dialect.** Shaders are written in HLSL for now. Later, a small shader language in rocinante's own style will compile to HLSL.
 - **A web target**, so sketches can be shared in a browser.
-- **More processors on the desktop.** The first stable release runs on x86-64 computers with FreeBSD, Linux or Windows, and on Macs with Apple silicon. Later: arm64 FreeBSD, Linux and Windows computers, and Intel Macs.
+- **More processors on the desktop.** The first stable release runs on x86-64 computers with FreeBSD, Linux, OpenBSD or Windows, and on Macs with Apple silicon. Later: arm64 FreeBSD, Linux, OpenBSD and Windows computers, and Intel Macs.
 - **3D physics** (gravity, joints and stacking in 3D). Collision detection works in 2D and 3D, and physics simulation in 2D.
 - **Training models** inside rocinante. For now, trained models run locally but are trained elsewhere.
 - **Help for writing sketches with AI assistants**: a sketch-writing skill and an MCP server built on `roci`'s checker and headless run.
@@ -101,6 +101,7 @@ You need git, the Odin release named in `ODIN_VERSION` (check it with `odin vers
 | Debian 13+, Ubuntu 25.04+ | the `linux-amd64` or `linux-arm64` archive (their `odin` package is another program)                                                                    | `sudo apt install git clang libsdl3-dev`                                                               |
 | Fedora 43+                | the `linux-amd64` or `linux-arm64` archive                                                                                                              | `sudo dnf install git clang SDL3-devel`                                                                |
 | FreeBSD                   | `sudo pkg install odin-lang`                                                                                                                            | `sudo pkg install git sdl3`                                                                            |
+| OpenBSD                   | built from source: `doas pkg_add gmake llvm%19`, then `gmake release-native` in Odin's repository (the guide has the steps) | `doas pkg_add git sdl3`                                                                                |
 | macOS                     | `brew install odin`, or the `macos-arm64` archive                                                                                                       | `xcode-select --install`, then `brew install sdl3`                                                     |
 
 Systems with no SDL3 package (Ubuntu 24.04, Debian 12) can build it with `tools/ci/install-sdl3.sh`, as the GitHub pipeline does. The [getting started guide](https://sandbenders.github.io/rocinante/guides/01-getting-started/) has every step. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) Then, from the repository root:

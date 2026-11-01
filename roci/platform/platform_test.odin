@@ -296,7 +296,7 @@ test_sdl_is_quit_only_by_the_last_app_that_started_it :: proc(t: ^testing.T) {
 @(test)
 test_a_wayland_desktop_asks_sdl_for_wayland_first :: proc(t: ^testing.T) {
 	hint, ok := video_driver_hint("wayland-1", "")
-	when ODIN_OS == .Linux || ODIN_OS == .FreeBSD {
+	when ODIN_OS == .Linux || ODIN_OS == .FreeBSD || ODIN_OS == .OpenBSD {
 		testing.expect(t, ok)
 		testing.expect_value(t, hint, cstring("wayland,x11"))
 	} else {

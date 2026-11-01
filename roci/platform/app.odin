@@ -116,11 +116,11 @@ gpu_debug_wanted :: proc "contextless" (value: string) -> bool {
 }
 
 // The video drivers to ask SDL for, in order, given the session's WAYLAND_DISPLAY
-// and the user's own SDL_VIDEO_DRIVER: Wayland, then X11, on a Wayland desktop
-// of Linux or FreeBSD; nothing (SDL's own choice) when the user chose, when the
-// session is not Wayland, and on other systems.
+// and the user's own SDL_VIDEO_DRIVER: Wayland, then X11, on a Wayland desktop of
+// Linux, FreeBSD or OpenBSD; nothing (SDL's own choice) when the user chose, when
+// the session is not Wayland, and on other systems.
 video_driver_hint :: proc "contextless" (wayland_display, chosen: string) -> (hint: cstring, ok: bool) {
-	when ODIN_OS == .Linux || ODIN_OS == .FreeBSD {
+	when ODIN_OS == .Linux || ODIN_OS == .FreeBSD || ODIN_OS == .OpenBSD {
 		if wayland_display != "" && chosen == "" {
 			return "wayland,x11", true
 		}
