@@ -143,10 +143,6 @@ p, li, dd { max-width: var(--measure); }
   .tools { order: 2; }
   .top nav { order: 3; flex-basis: 100%; justify-content: space-between; gap: 0 12px; font-size: 0.9rem; }
   .top nav a { padding: 8px 0 6px; }
-  /* The seven systems stay on one line under their title, sharing the width. */
-  .platforms ul { flex: 1 0 100%; flex-wrap: nowrap; justify-content: space-between; gap: 0 4px; }
-  .platforms li { min-width: 0; font-size: 0.7rem; }
-  .platforms svg { width: 24px; height: 24px; }
 }
 .github svg { fill: currentColor; }
 .theme { display: inline-flex; align-items: center; color: var(--soft); background: none; border: 1px solid var(--rule); border-radius: 4px; padding: 3px 6px; cursor: pointer; }
@@ -220,6 +216,12 @@ pre.shell code::before { content: "$ "; opacity: 0.55; }
 .platforms ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px 22px; }
 .platforms li { display: flex; flex-direction: column; align-items: center; gap: 5px; max-width: none; font: 0.78rem var(--mono); color: var(--soft); }
 .platforms svg { width: 28px; height: 28px; fill: var(--ink); }
+/* On a phone the seven systems stay on one line under their title, sharing the width. */
+@media (max-width: 560px) {
+  .platforms ul { flex: 1 0 100%; flex-wrap: nowrap; justify-content: space-between; gap: 0 4px; }
+  .platforms li { min-width: 0; font-size: 0.7rem; }
+  .platforms svg { width: 24px; height: 24px; }
+}
 /* The line and the window it opens, as they sit on a screen: the file beside its window, the same height. */
 .demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 16px; align-items: stretch; }
 .pane { margin: 0; display: flex; flex-direction: column; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--sheet); }
