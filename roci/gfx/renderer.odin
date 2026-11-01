@@ -194,24 +194,30 @@ Shader_Source :: struct {
 	fragment_entry: cstring,
 }
 
+// Each program's compiled code in every format. A package variable, so the slices
+// handed out point at the program's own data, never at a copy on the stack.
+Program_Code :: struct {
+	spv_v, spv_f, msl_v, msl_f, dxil_v, dxil_f: []byte,
+}
+
+PROGRAM_CODE := [Program]Program_Code{
+	.Shapes = {SHAPES_VERT_SPV, SHAPES_FRAG_SPV, SHAPES_VERT_MSL, SHAPES_FRAG_MSL, SHAPES_VERT_DXIL, SHAPES_FRAG_DXIL},
+	.Mesh   = {MESH_VERT_SPV, MESH_FRAG_SPV, MESH_VERT_MSL, MESH_FRAG_MSL, MESH_VERT_DXIL, MESH_FRAG_DXIL},
+	.Text   = {TEXT_VERT_SPV, TEXT_FRAG_SPV, TEXT_VERT_MSL, TEXT_FRAG_MSL, TEXT_VERT_DXIL, TEXT_FRAG_DXIL},
+}
+
 shader_source_for :: proc(program: Program, formats: sdl.GPUShaderFormat) -> (source: Shader_Source, ok: bool) {
-	spv_v, spv_f, msl_v, msl_f, dxil_v, dxil_f: []byte
-	switch program {
-	case .Shapes: spv_v, spv_f, msl_v, msl_f, dxil_v, dxil_f = SHAPES_VERT_SPV, SHAPES_FRAG_SPV, SHAPES_VERT_MSL, SHAPES_FRAG_MSL, SHAPES_VERT_DXIL, SHAPES_FRAG_DXIL
-	case .Mesh:   spv_v, spv_f, msl_v, msl_f, dxil_v, dxil_f = MESH_VERT_SPV, MESH_FRAG_SPV, MESH_VERT_MSL, MESH_FRAG_MSL, MESH_VERT_DXIL, MESH_FRAG_DXIL
-	case .Text:   spv_v, spv_f, msl_v, msl_f, dxil_v, dxil_f = TEXT_VERT_SPV, TEXT_FRAG_SPV, TEXT_VERT_MSL, TEXT_FRAG_MSL, TEXT_VERT_DXIL, TEXT_FRAG_DXIL
-	}
 	switch {
 	case .SPIRV in formats:
-		return {{.SPIRV}, spv_v, spv_f, "main", "main"}, true
+		return {{.SPIRV}, PROGRAM_CODE[program].spv_v, PROGRAM_CODE[program].spv_f, "main", "main"}, true
 	case .MSL in formats:
 		// SPIRV-Cross renames the entry point main to main0 in Metal.
-		return {{.MSL}, msl_v, msl_f, "main0", "main0"}, true
+		return {{.MSL}, PROGRAM_CODE[program].msl_v, PROGRAM_CODE[program].msl_f, "main0", "main0"}, true
 	case .DXIL in formats:
-		if len(dxil_v) == 0 || len(dxil_f) == 0 {
+		if len(PROGRAM_CODE[program].dxil_v) == 0 || len(PROGRAM_CODE[program].dxil_f) == 0 {
 			return {}, false
 		}
-		return {{.DXIL}, dxil_v, dxil_f, "vs_main", "ps_main"}, true
+		return {{.DXIL}, PROGRAM_CODE[program].dxil_v, PROGRAM_CODE[program].dxil_f, "vs_main", "ps_main"}, true
 	}
 	return {}, false
 }
