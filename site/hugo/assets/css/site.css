@@ -3,6 +3,7 @@
    by rocinante's own lexer: verbs, connecting words, values, numbers, text. */
 :root {
   --paper: #f7f7f4;
+  --coda: #d1d3d4;
   --sheet: #ffffff;
   --ink: #1b1d21;
   --soft: #5b6068;
@@ -38,6 +39,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --paper: #15171b;
+    --coda: #26292e;
     --sheet: #1b1e23;
     --ink: #e8e9e6;
     --soft: #a3a8b0;
@@ -67,6 +69,7 @@
 }
 :root[data-theme="dark"] {
   --paper: #15171b;
+  --coda: #26292e;
   --sheet: #1b1e23;
   --ink: #e8e9e6;
   --soft: #a3a8b0;
@@ -146,6 +149,14 @@ p, li, dd { max-width: var(--measure); }
 
 .frame { flex: 1; width: 100%; max-width: 1180px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
 .content { min-width: 0; }
+/* The home page's last word before the footer: where the name comes from, a band
+   across the page in a slightly smaller type. */
+.coda { background: var(--coda); color: var(--ink); }
+.coda-inner { max-width: 1180px; margin: 0 auto; padding: 36px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); font-size: 0.92rem; }
+.coda-inner p { max-width: 72ch; margin: 0; }
+.coda-quote { margin: 0 0 20px; }
+.coda-quote blockquote { margin: 0; font-style: italic; }
+.coda-quote figcaption { margin-top: 8px; }
 .foot { border-top: 1px solid var(--rule); background: var(--sheet); color: var(--soft); font-size: 0.9rem; }
 .foot-inner { max-width: 1180px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 36px max(16px, env(safe-area-inset-left, 0px)); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px 56px; align-items: start; }
 .foot-about { margin: 0; max-width: 60ch; }
