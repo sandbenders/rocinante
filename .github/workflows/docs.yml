@@ -1,10 +1,13 @@
 # SPDX-License-Identifier: 0BSD
 #
-# The documentation site, published on GitHub Pages from the mirror. A thin wrapper,
-# like ci.yml: `odin run build -- docs` writes the site's source with tools/site
+# The documentation site, built from the mirror and sent to rocinante-lang.org. A thin
+# wrapper, like ci.yml: `odin run build -- docs` writes the site's source with tools/site
 # (the reference's pictures drawn on Mesa's software Vulkan, as the golden images
-# are) and builds it with the Hugo pinned in HUGO_VERSION.
-# The repository's Pages source must be set to "GitHub Actions" once, in Settings.
+# are) and builds it with the Hugo pinned in HUGO_VERSION; the finished files are then
+# copied with rsync to the web server, over a key that can write nothing but the
+# site's own folder. The key, the server's address and its host key are the secrets
+# DEPLOY_SSH_KEY, DEPLOY_HOST and DEPLOY_KNOWN_HOSTS. Only pushes to main and manual
+# runs reach it, never a pull request, so a fork cannot read them.
 name: docs
 
 on:
@@ -14,16 +17,14 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # One publication at a time; a newer push waits rather than cancelling one halfway.
 concurrency:
-  group: pages
+  group: docs
   cancel-in-progress: false
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -52,8 +53,6 @@ jobs:
           key: sdl3-ubuntu-24.04-${{ steps.sdl.outputs.tag }}-${{ hashFiles('tools/ci/install-sdl3.sh') }}
       - name: Build SDL3
         run: tools/ci/install-sdl3.sh "$HOME/sdl3" "${{ steps.sdl.outputs.tag }}"
-      - id: pages
-        uses: actions/configure-pages@v5
       - name: Build the site
         run: |
           export PATH="$HOME/odin:$HOME/hugo:$PATH"
@@ -63,18 +62,19 @@ jobs:
           # The pictures are drawn offscreen on lavapipe, as the golden images are.
           export VK_DRIVER_FILES="$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | tr '\n' ':')"
           export SDL_VIDEODRIVER=offscreen
-          export HUGO_BASEURL="${{ steps.pages.outputs.base_url }}/"
+          export HUGO_BASEURL="https://rocinante-lang.org/"
           odin run build -- docs
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: output/site/public
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-24.04
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Send the site to rocinante-lang.org
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          # The server's key must be the one recorded in DEPLOY_KNOWN_HOSTS: no guessing.
+          rsync -az --delete \
+            -e "ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
+            output/site/public/ "deploy@${DEPLOY_HOST}:/"

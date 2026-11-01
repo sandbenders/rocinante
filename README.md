@@ -17,7 +17,7 @@ That line is a complete rocinante sketch. Run it and a window opens with a circl
 
 rocinante is an open-source creative coding framework with its own easy to learn and powerful language. It comes out of years of working with [Processing](https://processing.org/), [openFrameworks](https://openframeworks.cc/) and [Cinder](https://libcinder.org/), and it borrows the turtle, ideas and also some syntax from [Logo](https://el.media.mit.edu/logo-foundation/). The goal is to make coding FUN AGAIN, especially for creative coders. You write a line and get a picture, mistakes come with a plain explanation, and when you save the file the running sketch updates.
 
-Read [MANIFESTO.md](MANIFESTO.md) for why it exists, and the [FAQ](https://sandbenders.github.io/rocinante/faq/) for the questions people ask: why not Processing, Python or OpenGL, why Logo, where the objects are, and who is behind it.
+Read [MANIFESTO.md](MANIFESTO.md) for why it exists, and the [FAQ](https://rocinante-lang.org/faq/) for the questions people ask: why not Processing, Python or OpenGL, why Logo, where the objects are, and who is behind it.
 
 ## Status
 
@@ -104,7 +104,7 @@ You need git, the Odin release named in `ODIN_VERSION` (check it with `odin vers
 | OpenBSD                   | built from source: `doas pkg_add gmake llvm%19`, then `gmake release-native` in Odin's repository (the guide has the steps)                             | `doas pkg_add git sdl3`                                                                                |
 | macOS                     | `brew install odin`, or the `macos-arm64` archive                                                                                                       | `xcode-select --install`, then `brew install sdl3`                                                     |
 
-Systems with no SDL3 package (Ubuntu 24.04, Debian 12) can build it with `tools/ci/install-sdl3.sh`, as the GitHub pipeline does. The [getting started guide](https://sandbenders.github.io/rocinante/guides/01-getting-started/) has every step. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) Then, from the repository root:
+Systems with no SDL3 package (Ubuntu 24.04, Debian 12) can build it with `tools/ci/install-sdl3.sh`, as the GitHub pipeline does. The [getting started guide](https://rocinante-lang.org/guides/01-getting-started/) has every step. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) Then, from the repository root:
 
 ```
 odin run build -- ci          # what the pipelines run
@@ -116,7 +116,7 @@ The full `ci` also draws the golden images on Mesa's software Vulkan driver (lav
 
 ## Trying it
 
-The documentation (guides, a reference of every word with an example and the picture it draws, every message rocinante can give, and a FAQ) is at <https://sandbenders.github.io/rocinante/>, built from this repository: `odin run build -- docs` makes it locally, with [Hugo](https://gohugo.io) at the version in `HUGO_VERSION`.
+The documentation (guides, a reference of every word with an example and the picture it draws, every message rocinante can give, and a FAQ) is at <https://rocinante-lang.org/>, built from this repository: `odin run build -- docs` makes it locally, with [Hugo](https://gohugo.io) at the version in `HUGO_VERSION`.
 
 Run a sketch (the examples are written in the language as `sketch.roci` files):
 

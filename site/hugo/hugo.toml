@@ -1,6 +1,6 @@
 # The documentation site. Its reference, messages and coloured guides are written by
 # `odin run tools/site`, which copies this folder to output/site first; build there.
-baseURL = "https://sandbenders.github.io/rocinante/"
+baseURL = "https://rocinante-lang.org/"
 locale = "en"
 title = "rocinante"
 disableKinds = ["taxonomy", "term", "rss"]
