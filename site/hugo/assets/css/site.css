@@ -194,6 +194,13 @@ pre.roci.numbered { border-left: 0; padding-left: 0; counter-reset: line; backgr
 .numbered .ln { display: block; position: relative; min-height: 1.55em; padding-left: 3.9em; }
 .numbered .ln::before { counter-increment: line; content: counter(line); position: absolute; left: 0; width: 2.4em; text-align: right; color: var(--gutter-ink); font-size: 0.86em; line-height: 1.8; user-select: none; }
 .pane > pre.numbered { background: linear-gradient(to right, var(--gutter) 0 3em, var(--sheet) 3em); }
+/* On a phone the gutter is a little over half as wide: room for three digits and no more. */
+@media (max-width: 560px) {
+  pre.roci.numbered { background: linear-gradient(to right, var(--gutter) 0 2.1em, var(--code-bg) 2.1em); }
+  .pane > pre.numbered { background: linear-gradient(to right, var(--gutter) 0 2.1em, var(--sheet) 2.1em); }
+  .numbered .ln { padding-left: 2.7em; }
+  .numbered .ln::before { width: 1.6em; }
+}
 .roci .v { color: var(--hl-verb); font-weight: 600; }
 .roci .w { color: var(--hl-word); }
 .roci .k { color: var(--hl-key); font-weight: 600; }
