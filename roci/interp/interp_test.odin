@@ -10,6 +10,7 @@ import "../"
 import "../gfx"
 import "../folder"
 import "../lang"
+import "../maths"
 import "../platform"
 import "../registry"
 import "core:fmt"
@@ -67,6 +68,15 @@ test_the_smallest_program_draws_one_circle :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(commands), 1)
 	testing.expect_value(t, commands[0].kind, gfx.Kind.Circle)
 	testing.expect_value(t, [3]f32{commands[0].args[0], commands[0].args[1], commands[0].args[2]}, [3]f32{100, 100, 50})
+}
+
+@(test)
+test_the_smallest_program_draws_a_black_circle :: proc(t: ^testing.T) {
+	p := run_text(t, "circle at 100 100 radius 50")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, commands[0].style.fill, maths.Colour{0, 0, 0, 255})
+	testing.expect(t, commands[0].style.fill_on, "the default fill is on")
 }
 
 @(test)

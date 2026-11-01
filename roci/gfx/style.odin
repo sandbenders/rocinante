@@ -24,10 +24,10 @@ Style :: struct {
 	stroke_paint: Gradient_Ref,
 }
 
-// What every frame starts with: white fill, no outline,
-// thickness 1, fully opaque, round caps and mitred corners (Processing's defaults).
+// What every frame starts with: black fill, no outline,
+// thickness 1, fully opaque, round caps and mitred corners.
 DEFAULT_STYLE :: Style{
-	fill      = {255, 255, 255, 255},
+	fill      = {0, 0, 0, 255},
 	fill_on   = true,
 	stroke    = {0, 0, 0, 255},
 	stroke_on = false,

@@ -61,7 +61,7 @@ no stroke
 circle at 360 100 radius 50
 ```
 
-`no fill` and `no stroke` turn one off. A new sketch fills in white, with no stroke.
+`no fill` and `no stroke` turn one off. A new sketch fills in black, with no stroke.
 
 ## Colors
 
