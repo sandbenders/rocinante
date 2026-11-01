@@ -138,11 +138,17 @@ What you make is yours. Your sketches, the pictures they draw and the apps you b
 
 ## Who is behind rocinante, and how can I help?
 
-rocinante was started by [Fabrizio Poltronieri](https://github.com/sandbenders), an artist, researcher and educator who has made work with code for decades; the [manifesto](https://github.com/sandbenders/rocinante/blob/main/MANIFESTO.md) tells why. It is open source and meant to stay that way, belonging to the people who make things with it, and the hope is to give it a home in a foundation as it grows.
+My name is [Fabrizio Poltronieri](https://github.com/sandbenders), and so far I am the only one working on rocinante, with the help of Claude Code. You are invited to help build it!
+
+I am a mathematician, graphic designer, artist, researcher and educator with a PhD in semiotics, who has made work with code for decades. rocinante's [manifesto](https://github.com/sandbenders/rocinante/blob/main/MANIFESTO.md) tells why I started it.
+
+rocinante is part of my long-term research into better tools and concepts for creative work. It started long ago, born out of my frustration with other tools and frameworks. It first appeared as a Python library, stitching other libraries together and trying out a syntax that gradually became what rocinante is today. I have been writing code since I was nine years old, more than forty years ago, in many programming languages, including C, C++, Python, Rust and, more recently, Odin.
+
+rocinante is open source and meant to stay that way, belonging to the people who make things with it.
 
 There are many ways to help, and most need no programming:
 
-- **Make things with it** and show them. Nothing helps more than sketches people want to copy.
-- **Tell us where it got in your way.** A message that confused you, a guide that lost you, a word you expected and didn't find: [report it](https://github.com/sandbenders/rocinante/issues). These are bugs, and they get fixed like bugs.
+- **Make things with it** and show them. Nothing helps more than sketches people want to share.
+- **Tell me where it got in your way.** A message that confused you, a guide that lost you, a word you expected and didn't find: please [report it](https://github.com/sandbenders/rocinante/issues). These are bugs, and I will try my best to fix them.
 - **Teach with it**, and say what your students tripped on.
-- **Write code.** Issues and pull requests are welcome on [GitHub](https://github.com/sandbenders/rocinante); the [README](https://github.com/sandbenders/rocinante#contributing) explains how a contribution reaches the project.
+- **Write code.** Issues and pull requests are welcome on [GitHub](https://github.com/sandbenders/rocinante); the [README](https://github.com/sandbenders/rocinante#contributing) explains how contributions reach the project.
