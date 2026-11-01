@@ -8,21 +8,21 @@ disableKinds = ["taxonomy", "term", "rss"]
 enableRobotsTXT = true
 
 [sitemap]
-  changeFreq = "weekly"
+changeFreq = "weekly"
 
 [markup.goldmark.renderer]
-  # The generated pages hold coloured code as HTML.
-  unsafe = true
+# The generated pages hold coloured code as HTML.
+unsafe = true
 
 [markup.tableOfContents]
-  # A guide lists its sections, and the parts of each, beside it.
-  startLevel = 2
-  endLevel = 3
+# A guide lists its sections, and the parts of each, beside it.
+startLevel = 2
+endLevel = 3
 
 [params]
-  # What a page without a summary of its own says it is, and what a link shared elsewhere shows.
-  description = "rocinante is a creative coding language and framework: a line makes a picture, mistakes come with a plain explanation, and the running sketch updates as you save."
-  image = "img/logo-sketch.png"
-  release = "alpha"
-  repository = "https://github.com/sandbenders/rocinante"
-  contact = "fabrizio@fabriziopoltronieri.com"
+# What a page without a summary of its own says it is, and what a link shared elsewhere shows.
+description = "rocinante is a creative coding language and framework: a line makes a picture, mistakes come with a plain explanation, and the running sketch updates as you save."
+image = "img/logo-sketch.png"
+release = "alpha"
+repository = "https://github.com/sandbenders/rocinante"
+contact = "hello@rocinante-lang.org"
