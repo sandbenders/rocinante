@@ -126,9 +126,9 @@ A crash of rocinante itself is treated as a bug of the highest priority. If you 
 
 ## Which computers does it run on? Can I make phone apps?
 
-You write and run sketches on **FreeBSD, Linux, macOS and Windows**: x86-64 computers, and Macs with Apple silicon. The same sketch file runs on all four.
+You write and run sketches on macOS, Windows, Linux, FreeBSD and OpenBSD: x86-64 computers and Macs with Apple silicon. The same sketch file runs on all five.
 
-**iPhones and Android phones** are places a sketch goes, not places you write it. `roci package ios` and `roci package android` will turn a sketch into an app you install or publish; they are on the way and not in the alpha yet. An iPhone app can only be built on a Mac, because Apple's tools run only there, and an Android app on macOS, Linux or Windows.
+iPhones and Android phones are places a sketch goes, not places you write it. `roci package ios` and `roci package android` will turn a sketch into an app you install or publish. They are on the way, but not in the alpha yet. You can build an iPhone app only on a Mac, because Apple's tools run only there, and you can build an Android app on macOS, Linux (on x86-64) or Windows.
 
 ## Is it free? Can I sell what I make with it?
 
