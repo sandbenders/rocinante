@@ -4,17 +4,17 @@ summary: "Why another creative coding tool, why Logo, where the objects are, wha
 type: "faq"
 ---
 
-## Why bother? We already have Processing, openFrameworks and Cinder!
+## Why bother? We already have Processing, openFrameworks and Cinder
 
 We do, and they're wonderful. rocinante comes out of decades of making work with all three, and it borrows from each of them. Processing gave a generation of artists a way in, and openFrameworks and Cinder gave them speed.
 
-My main problems with them relate to the syntax of the languages they are built in, and their reliance on technologies that are either deprecated on some platforms or have better modern alternatives. I have spent decades working with different object-oriented languages, and I think creative coding can be simpler and more elegant, with interpreters and compilers that use updated libraries and technologies, making their use transparent to the users.
+My main problems with them relate to the syntax of the languages they are built on, and their reliance on technologies that are either deprecated on some platforms or have better modern alternatives. I have spent decades working with different object-oriented languages, and I think creative coding can be simpler and more elegant, with interpreters and compilers that use updated libraries and technologies, making their use transparent to the users.
 
 Another problem is packaging. It is still hard to package the final piece and distribute it to the whole modern ecosystem, including different platforms and mobile devices.
 
-rocinante provides one simple language that I have been crafting for years, both for my personal use and for use in classrooms, that doesn't require learning Java, Python, or C++. Even so, it is expressive, powerful, and complete enough to build full multiplatform applications, including a light unit test system. You write a few friendly words and its engine draws them on the GPU. With one command, you can package it, without having to deal with build files.
+rocinante provides one simple language I have been crafting for years, both for my personal use and for use in classrooms, that doesn't require learning Java, Python, or C++. Even so, it is expressive, powerful, and complete enough to build full multiplatform applications, including a light unit test system. You write a few friendly words and its engine draws them on the GPU. With one command, you can package it, without having to deal with build files.
 
-The language ships with an interpreter, allowing hot reload. You change it and see it. Save the file in your favorite editor and the running sketch updates, keeping its values so particles keep flying while you change their color. When you feel the work is done, a simple command compiles your sketch into executable machine code that runs at native compiled speed. You don't need to worry about Metal, Vulkan, or Direct3D. rocinante takes care of all of that.
+The language ships with an interpreter, allowing hot reload. Change it and see it. Save the file in your favorite editor and the running sketch updates, keeping its values, so particles keep flying while you change their color. When you feel the work is done, a simple command compiles your sketch into executable machine code that runs at native compiled speed. You don't need to worry about Metal, Vulkan, or Direct3D. rocinante takes care of all of that.
 
 Because rocinante is meant for professional work, teaching, and debugging, a mistake in the code never closes the window. rocinante shows the mistake over the last good frame, pointing clearly to the line and the error, saying in plain words what is wrong and, in most cases, showing the fix. No cryptic compiler or linker errors.
 
@@ -22,15 +22,11 @@ It's still an alpha, so not all of this is there yet. Text, user interfaces, ima
 
 ## Why not Python, or JavaScript like p5.js?
 
-Both are fine languages, and p5.js is a lovely way to make things in a browser. They were made for everything, though, and creative coding is one thing among many: a sketch starts with imports and setup, a mistake comes back as a stack trace, and the speed is the speed of the language.
+Both are fine languages, and p5.js is a lovely way to make things in a browser, although I must confess I dislike JavaScript. For many years I taught an MA class called "Creative Coding for Artists", using Python as the main language, with an early version of rocinante as a library. The trouble is that both languages were made for everything, and creative coding is one thing among many. So a sketch starts with imports and setup, a mistake comes back as a stack trace, and the speed is the speed of the language. I felt my students' pain, and that of my fellow artists, too.
 
-rocinante is made for one job, so it can do that job with less in the way:
+rocinante is made for one job, so it can do it with less in the way: there is no setup, a mistake is explained in plain words, and a shipped sketch runs as native code.
 
-- **No setup.** `circle at 100 100 radius 50` is a whole program.
-- **Mistakes in plain words.** The language is small enough for every error to say where, what, and what would work.
-- **Native speed, native places.** A sketch draws through the GPU's own interface, and a shipped one will be native code: an installation that runs for a year, a phone app, a sketch with a hundred thousand shapes.
-
-A web version is on the [roadmap](https://github.com/sandbenders/rocinante#roadmap), so sketches can be shared in a browser too.
+A web version is on the [roadmap](https://github.com/sandbenders/rocinante#roadmap), so you will be able to share sketches in a browser too.
 
 ## I love OpenGL and have been using it for decades! Why not support it?
 
