@@ -1870,6 +1870,10 @@ trace_example :: proc(t: ^testing.T, name: string, frames: int, chosen: lang.Pas
 	if !testing.expectf(t, loaded, "%s does not load", name) {
 		return
 	}
+	// No time limit on a block: with the passes off, the benchmark's frame took more than
+	// the two seconds a block may run on a slow pipeline computer running four tests at
+	// once, so the two runs disagreed about an error that only timing had made.
+	p.budget = max(f64)
 	start(p)
 	trace.frames = make([dynamic]u64, context.temp_allocator)
 	for f in 0 ..< frames {
