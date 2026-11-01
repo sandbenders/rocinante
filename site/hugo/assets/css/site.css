@@ -150,6 +150,7 @@ p, li, dd { max-width: var(--measure); }
 .foot-inner { max-width: 1180px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 36px max(16px, env(safe-area-inset-left, 0px)); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px 56px; align-items: start; }
 .foot-about { margin: 0; max-width: 60ch; }
 .foot-about p { margin: 0; }
+.foot-about .foot-made { margin-top: 10px; font: 0.8rem var(--mono); }
 .foot-about .mark { font-size: 1rem; display: inline; }
 /* In the footer the logo speaks the line under it: above the text, its tail towards the name. */
 .foot-about > .logo { display: block; height: 52px; margin: 0 0 2px -4px; color: var(--ink); }
