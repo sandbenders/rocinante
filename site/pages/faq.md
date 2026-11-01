@@ -92,15 +92,15 @@ There are no classes, methods, inheritance or constructors to learn, only verbs 
 
 ## Why another language when AI can code anything?
 
-Because making things with code is not only about getting code. It's about the playing: trying an idea, seeing it, changing a number and seeing it again. rocinante is built for that loop, and an AI can join it rather than replace it.
+Because making things with code is not only about getting code done. It's about the play, the fun, the challenge. Creative coding is about trying an idea, seeing it, changing a number and seeing it again. Failing and trying again. Discovering the wonder of a mistake that turns into a surprising image, an amazing sound, an astonishing piece of interaction. rocinante is built for that loop, and an AI can join it rather than replace it.
 
-A small language helps the people and the AI alike:
+This is exactly what I call the "Symbiotic Future", a concept I coined and have been writing and talking about for years. Over the decades, culture has helped build a dark picture of AI's role. In the dystopian societies of films such as *Metropolis* (1927) and *2001: A Space Odyssey* (1968), machines take over and replace humans. More recently, the idea of the singularity has reawakened the fear that ordinary humans will someday be overtaken by artificially intelligent machines, cognitively enhanced biological intelligence, or both.
 
-- **You can read what was written.** rocinante has few words and one shape, so a sketch, whoever wrote it, can be read and changed by its author. Code you can't read is code you can't play with.
-- **Mistakes are explained.** Every error says where, what and how to fix it, in words you can learn from, whether the mistake was yours or a machine's.
-- **There is one way to write each thing.** The grammar is written down and `roci fmt` keeps every sketch in one style, which makes rocinante easy for tools, AI included, to write correctly.
+While such stories are compelling as entertainment, my vision as an artist and researcher who has worked with creative AI for over two decades is very different. I believe in an increasingly symbiotic future, where AI and humans play together in real time, sharing transparent processes and decisions, with collaboration as a critical concept. The main objective is to challenge and enhance both human and computer creativity. I do not think computers will replace human creativity, but I believe they will collaborate ever more closely to enhance our perceptions of, and through, creative acts. For more, see [*The Language of Creative AI*](https://link.springer.com/book/10.1007/978-3-031-10960-7), a book I co-edited.
 
-rocinante itself was built with the help of AI, by someone who has researched creative AI for more than twenty years. The idea is a partnership, where people and machines make things together and people stay in charge of what's made.
+A small language like rocinante also helps people and AI alike. rocinante has few words and one shape, so a sketch can be read and changed by you, whoever wrote it. Code you can't read is code you can't play with. rocinante's grammar is written down, and `roci fmt` keeps every sketch in one style, which makes it easy for tools, AI included, to write rocinante correctly.
+
+I built rocinante with the help of AI, putting the Symbiotic Future into practice once more.
 
 ## How has the almighty god Odin got involved in rocinante?
 
