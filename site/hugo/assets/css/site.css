@@ -11,12 +11,8 @@
   --accent: #2443c8;
   --accent-soft: #e6eafb;
   --code-bg: #f1f2ee;
-  /* The windows' title bars and the line-number gutters, in two golds. */
-  --bar: #ffe9a9;
-  --bar-ink: #5c4710;
-  --bar-rule: #f0d27a;
-  --gutter: #ffcb56;
-  --gutter-ink: #634800;
+  --gutter: #e3e5df;
+  --gutter-ink: #6b7079;
   /* code */
   /* Four kinds told apart for red-green colour blindness too: verbs blue (and bold), the
      language's other words orange, values teal, names in ink; comments grey and italic. */
@@ -50,11 +46,8 @@
     --accent: #8ea4ff;
     --accent-soft: #252c4a;
     --code-bg: #1f2227;
-    --bar: #3a3018;
-    --bar-ink: #ecd9a2;
-    --bar-rule: #574720;
-    --gutter: #54420f;
-    --gutter-ink: #f5d27a;
+    --gutter: #181b1f;
+    --gutter-ink: #8a9099;
     --hl-verb: #8ea4ff;
     --hl-word: #f0a050;
     --hl-key: #f0a050;
@@ -82,11 +75,8 @@
   --accent: #8ea4ff;
   --accent-soft: #252c4a;
   --code-bg: #1f2227;
-  --bar: #3a3018;
-  --bar-ink: #ecd9a2;
-  --bar-rule: #574720;
-  --gutter: #54420f;
-  --gutter-ink: #f5d27a;
+  --gutter: #181b1f;
+  --gutter-ink: #8a9099;
   --hl-verb: #8ea4ff;
   --hl-word: #f0a050;
   --hl-key: #f0a050;
@@ -205,9 +195,9 @@ pre.shell code::before { content: "$ "; opacity: 0.55; }
 /* The line and the window it opens, as they sit on a screen: the file beside its window, the same height. */
 .demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 16px; align-items: stretch; }
 .pane { margin: 0; display: flex; flex-direction: column; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--sheet); }
-.pane .window-bar { display: flex; align-items: center; gap: 10px; padding: 6px 12px; background: var(--bar); border-bottom: 1px solid var(--bar-rule); font: 0.8rem var(--mono); color: var(--bar-ink); }
+.pane .window-bar { display: flex; align-items: center; gap: 10px; padding: 6px 12px; background: var(--code-bg); border-bottom: 1px solid var(--rule); font: 0.8rem var(--mono); color: var(--soft); }
 .pane .dots { display: flex; gap: 6px; }
-.pane .dots span { width: 9px; height: 9px; border-radius: 50%; background: var(--gutter); }
+.pane .dots span { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); }
 .editor .hero-code { flex: 1; border-radius: 0; border-left: 0; background: var(--sheet); }
 /* A pane holds its code or message edge to edge, under its title bar. */
 .pane > pre, .pane > pre.message-text { flex: 1; border: 0; border-radius: 0; background: var(--sheet); }
