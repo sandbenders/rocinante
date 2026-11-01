@@ -153,7 +153,8 @@ p, li, dd { max-width: var(--measure); }
    across the page in a slightly smaller type. */
 .coda { background: var(--coda); color: var(--ink); }
 .coda-inner { max-width: 1180px; margin: 0 auto; padding: 36px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); font-size: 0.92rem; }
-.coda-inner p { max-width: 72ch; margin: 0; }
+.coda-inner h2 { margin: 0 0 16px; }
+.coda-inner p { max-width: none; margin: 0; }
 .coda-quote { margin: 0 0 20px; }
 .coda-quote blockquote { margin: 0; font-style: italic; }
 .coda-quote figcaption { margin-top: 8px; }
