@@ -244,6 +244,7 @@ rocinante/
   MANIFESTO.md
   README.md            what rocinante is, project status, how to contribute (§11)
   CONTRIBUTING.md      a pointer to README's Contributing section, for GitHub and GitLab to show
+  CODE_OF_CONDUCT.md   the Contributor Covenant 2.1 as published (CC BY 4.0, credited in the file), reports to Fabrizio's address
   CHANGELOG.md         a pointer to the releases page; release notes live on the tags (§11)
   LICENSE              0BSD text (§10)
   roci/                public API, prelude, stable verb ABI (package roci)
