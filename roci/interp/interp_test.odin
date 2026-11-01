@@ -20,12 +20,15 @@ import "core:time"
 import sdl "vendor:sdl3"
 
 // Runs `text` for `frames` frames. The caller frees it with `finish`.
-run_text :: proc(t: ^testing.T, text: string, frames := 0, loc := #caller_location) -> ^Interp {
+run_text :: proc(t: ^testing.T, text: string, frames := 0, loc := #caller_location, untimed := false) -> ^Interp {
 	roci.start_headless(1)
 	p, ok := load("test.roci", text)
 	if !ok {
 		testing.expectf(t, false, "the sketch has errors:\n%s", lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator), loc = loc)
 		return p
+	}
+	if untimed {
+		p.budget = max(f64) // a test of what a block draws, not of how fast a computer is
 	}
 	start(p)
 	for _ in 0 ..< frames {
@@ -1735,7 +1738,9 @@ test_the_touch_example_rings_holds_and_throws :: proc(t: ^testing.T) {
 
 @(test)
 test_the_benchmark_example_draws_its_hundred_thousand_circles :: proc(t: ^testing.T) {
-	p := run_text(t, example_text("benchmark"), 1)
+	// No time limit on the block: a slow pipeline computer running four tests at once took
+	// longer than the two seconds a block may run, and the frame stopped at 97,095 circles.
+	p := run_text(t, example_text("benchmark"), 1, untimed = true)
 	defer finish(p)
 	circles := 0
 	for c in roci.recorded(first_window()) {
