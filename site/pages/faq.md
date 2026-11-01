@@ -132,7 +132,7 @@ iPhones and Android phones are places a sketch goes, not places you write it. `r
 
 ## Is it free? Can I sell what I make with it?
 
-Yes, and yes. rocinante is open source under the [Zero-Clause BSD license](https://opensource.org/license/0BSD), one of the most permissive there is: use it, change it, share it and sell what you make, for any purpose, with no conditions, not even a credit line (though a mention is always welcome).
+Yes, and yes. rocinante is open source under the [Zero-Clause BSD license](https://opensource.org/license/0BSD), one of the most permissive there is. You can use it, change it, share it and sell what you make, for any purpose, with no conditions, not even a credit line (though a mention is always welcome!). It is free now, and always will be.
 
 What you make is yours. Your sketches, the pictures they draw and the apps you build from them belong to you, under whatever license you choose.
 
