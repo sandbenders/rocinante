@@ -46,12 +46,13 @@ If what you love is writing shaders, you will be able to: your own shaders arriv
 
 ## Logo? Is it not so 60s?
 
-Logo was born in 1967, and its best ideas have aged better than most of what came after:
+Logo was born in 1967, and in my opinion, as a semioticist, mathematician and artist, its best ideas have aged better than most of what came after. Logo uses words, not symbols, so `forward 100` reads as what it does.
 
-- **Words, not symbols.** `forward 100` reads as what it does.
-- **A low floor.** Seymour Papert, one of Logo's makers, wanted a child to step onto it, and children did. One line of rocinante makes a picture.
-- **Teaching the computer new words.** In Logo you teach the turtle with `to`; in rocinante with `learn`, and a taught verb works exactly like a built-in one.
-- **The turtle.** It's still one of the best ways to think about drawing, and every rocinante window has one.
+Logo also has a low floor: Seymour Papert, one of its makers, wanted a child to be able to step onto it, and children did. Logo has a long and successful history in schools; see, for example, [what happened in Costa Rica](https://www.microworlds.com/support/logo-philosophy-costa-rica.html).
+
+In Logo you teach the computer new words with `to`; in rocinante you do it with `learn`, and a word you teach works exactly like a built-in one.
+
+And the turtle is still one of the best ways to think about drawing, and every rocinante window has one:
 
 ```roci
 repeat 5 [
@@ -60,7 +61,7 @@ repeat 5 [
 ]
 ```
 
-What rocinante leaves behind are the parts of Logo that tripped people up, which the people who made Logo wrote about themselves: names that change meaning depending on who called you, colons in front of names, and lines whose meaning you could only work out by counting how many inputs each word takes. In rocinante, each input of a verb is one thing (a number, a name, or a calculation in round brackets), so you can always see where a call ends.
+What rocinante leaves behind are the parts of Logo that tripped people up, which Logo's makers wrote about themselves: names that change meaning depending on who called you, colons in front of names, and lines whose meaning you could only work out by counting how many inputs each word takes. In rocinante, each input of a verb is one thing, a number, a name or a calculation in round brackets, so you can always see where a call ends.
 
 ## Where are the objects?
 
