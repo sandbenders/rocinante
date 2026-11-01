@@ -51,6 +51,7 @@
       <div><dt>say hello</dt><dd><a href="mailto:{{ site.Params.contact }}">{{ site.Params.contact }}</a></dd></div>
       <div><dt>read the code</dt><dd><a href="{{ site.Params.repository }}">{{ site.Params.repository | replaceRE "^https://" "" }}</a></dd></div>
       <div><dt>something wrong?</dt><dd><a href="{{ site.Params.repository }}/issues">report a problem</a></dd></div>
+      <div><dt>how we behave</dt><dd><a href="{{ "code-of-conduct/" | relURL }}">code of conduct</a></dd></div>
     </dl>
   </div>
 </footer>

@@ -151,6 +151,19 @@ a_guide_picture_is_named_by_its_section :: proc(t: ^testing.T) {
 	testing.expect_value(t, picture_alt(&p), "What the example under “Gradients” draws")
 }
 
+@(test)
+the_code_of_conduct_page_is_made_from_the_file_at_the_top_of_the_repository :: proc(t: ^testing.T) {
+	text, ok := read(CONDUCT_FILE)
+	testing.expect(t, ok, "the file is read from the repository's root")
+	page := conduct_page(text)
+	testing.expect(t, strings.has_prefix(page, "---\ntitle: \"Code of conduct\"\n"))
+	testing.expect(t, strings.contains(page, "\ntype: \"conduct\"\n---\n## Our Pledge"), "the text follows the details, without the file's own title")
+	testing.expect(t, !strings.contains(page, "# Contributor Covenant Code of Conduct"))
+	testing.expect(t, len(CONDUCT_SUMMARY) <= SUMMARY_LONGEST, "the summary is shown whole")
+	testing.expect(t, strings.has_suffix(conduct_page("# Title\n\nBody"), "---\nBody"))
+	testing.expect(t, strings.has_suffix(conduct_page("Body"), "---\nBody"), "a file with no title keeps all its text")
+}
+
 // A guide's or a page's summary is what a search engine shows under its link and what a
 // shared link's card says, so every one has one, short enough to be shown whole.
 SUMMARY_LONGEST :: 155

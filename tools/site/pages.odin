@@ -357,6 +357,32 @@ write_page :: proc(out, name: string) -> bool {
 	return write(fmt.tprintf("%s/content/%s", out, name), colour_code_blocks(text))
 }
 
+// The code of conduct is the file at the top of the repository, which GitHub shows in
+// its own places, and the site's page is made from it, so the two cannot differ.
+CONDUCT_FILE :: "CODE_OF_CONDUCT.md"
+CONDUCT_SUMMARY :: "How people take part in rocinante: the Contributor Covenant, what it asks of everyone, and where to report a problem."
+
+write_conduct :: proc(out: string) -> bool {
+	text, read_ok := read(CONDUCT_FILE)
+	if !read_ok {
+		fmt.eprintfln("site: cannot read %s", CONDUCT_FILE)
+		return false
+	}
+	return write(fmt.tprintf("%s/content/code-of-conduct.md", out), conduct_page(text))
+}
+
+// The file's own title is left out, because the page's layout writes its title, and the
+// page's details are put in front.
+conduct_page :: proc(text: string) -> string {
+	body := text
+	if strings.has_prefix(body, "# ") {
+		if end := strings.index_byte(body, '\n'); end >= 0 {
+			body = body[end + 1:]
+		}
+	}
+	return fmt.tprintf("---\ntitle: \"Code of conduct\"\nsummary: \"%s\"\ntype: \"conduct\"\n---\n%s", CONDUCT_SUMMARY, strings.trim_left_space(body))
+}
+
 // One guide of site/guides, by its file name, with the pictures its examples ask for.
 write_guide :: proc(out, name: string) -> bool {
 	text, read_ok := read(fmt.tprintf("site/guides/%s", name))

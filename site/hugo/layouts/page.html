@@ -22,6 +22,20 @@
   </nav>
   {{ end }}
 </div>
+{{ else if eq .Type "conduct" }}
+<div class="with-toc">
+  <main id="content" class="content guide">
+    <h1>{{ .Title }}</h1>
+    {{ .Content }}
+    <p class="edit"><a href="{{ site.Params.repository }}/blob/main/CODE_OF_CONDUCT.md">edit this page on GitHub</a></p>
+  </main>
+  {{ if .Fragments.Headings }}
+  <nav class="toc" aria-label="On this page">
+    <p class="toc-title">on this page</p>
+    {{ .TableOfContents }}
+  </nav>
+  {{ end }}
+</div>
 {{ else }}
 <div class="with-toc">
   <main id="content" class="content guide">
