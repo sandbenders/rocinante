@@ -365,6 +365,18 @@ pre.message-text { background: var(--sheet); border: 1px solid var(--rule); colo
 .guide table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
 .guide th, .guide td { border-bottom: 1px solid var(--rule); padding: 6px 10px; text-align: left; }
 .guide td code { white-space: nowrap; }
+/* On a phone a table of three or four columns has no width to scroll into, so each row
+   stacks: its first cell, the name of the row, then the others at the full width. The
+   header row is kept for screen readers and hidden from the eye, since the cells read
+   without it. */
+@media (max-width: 560px) {
+  .guide table { overflow-x: visible; }
+  .guide thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .guide tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+  .guide td { display: block; border: 0; padding: 2px 0; }
+  .guide td:first-child { font-weight: 600; }
+  .guide td code { white-space: normal; }
+}
 
 @media (max-width: 820px) {
   .with-side { grid-template-columns: minmax(0, 1fr); gap: 16px; }
