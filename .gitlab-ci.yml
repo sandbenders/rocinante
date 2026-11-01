@@ -4,10 +4,12 @@
 # the build script's `ci` command.
 #
 # Assumes the ORION runner uses the Docker executor and carries the tag `orion`;
-# change `image` and `tags` here if it is set up differently.
+# change `image` and `tags` here if it is set up differently. The image is built on
+# ORION from tools/ci/orion.Dockerfile (the command is at its top): Arch with every
+# package the pipeline needs already installed, and the pinned Odin in /opt/odin.
 
 default:
-  image: archlinux:latest
+  image: rocinante-ci:latest
   tags: [orion]
 
 variables:
@@ -16,11 +18,15 @@ variables:
   ROCI_REQUIRE_LAVAPIPE: "1" # and so must the golden images
 
 .setup: &setup
-  # vulkan-swrast is Mesa's software Vulkan (lavapipe), which draws the golden
-  # images (CLAUDE.md section 9).
-  - pacman -Syu --noconfirm clang curl tar git sdl3 diffutils vulkan-swrast
-  - tools/ci/install-odin.sh "$ODIN_DIR"
-  - export PATH="$ODIN_DIR:$PATH"
+  # The image's Odin when it is the release named in ODIN_VERSION; otherwise that
+  # release is fetched, so a new pin never waits for the image to be rebuilt.
+  - |
+    if /opt/odin/odin version 2>/dev/null | grep -q "$(tr -d '[:space:]' < ODIN_VERSION)"; then
+      export PATH="/opt/odin:$PATH"
+    else
+      tools/ci/install-odin.sh "$ODIN_DIR"
+      export PATH="$ODIN_DIR:$PATH"
+    fi
 
 # Fast check on merge requests only.
 fast:
