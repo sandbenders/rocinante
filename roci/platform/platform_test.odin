@@ -300,6 +300,7 @@ test_a_wayland_desktop_asks_sdl_for_wayland_first :: proc(t: ^testing.T) {
 		testing.expect(t, ok)
 		testing.expect_value(t, hint, cstring("wayland,x11"))
 	} else {
+		_ = hint
 		testing.expect(t, !ok) // other systems have one video driver
 	}
 	_, ok = video_driver_hint("wayland-1", "x11") // the user's own choice stands
