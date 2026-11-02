@@ -128,6 +128,7 @@ Every message says where the problem is, what it is in plain words, and shows a 
 | `roci check sketch.roci` | says what is wrong without opening a window |
 | `roci fmt` | rewrites every sketch in the folder in the house style |
 | `roci man circle` | shows how a word is written |
+| `roci test` | runs the checks a sketch carries and compares its picture with the stored one ([guide](../13-checks-and-snapshots/)) |
 | `roci new name`, `roci init` | make a sketch folder, or one here |
 | `roci add photo.png` | copies a file into the sketch's `assets` |
 
