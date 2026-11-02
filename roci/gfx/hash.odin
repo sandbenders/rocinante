@@ -44,6 +44,7 @@ hash_style :: proc "contextless" (h: u64, s: Style) -> u64 {
 	h = hash_f32_pair(h, s.stroke.b, s.stroke.a)
 	h = hash_f32_pair(h, s.thickness, s.alpha)
 	h = hash_u64(h, u64(s.fill_on) | u64(s.stroke_on) << 1 | u64(s.cap) << 8 | u64(s.join) << 16)
+	h = hash_f32_pair(h, s.font_size, f32(s.font) + f32(s.align) * 65536)
 	h = hash_u64(h, s.fill_paint.hash)
 	return hash_u64(h, s.stroke_paint.hash)
 }
@@ -64,7 +65,7 @@ look_hash :: proc "contextless" (s: Style, t: Transform) -> u64 {
 shape_hash :: proc "contextless" (c: Command) -> u64 {
 	h := hash_u64(FNV_OFFSET, u64(c.kind) | u64(c.origin) << 8)
 	args := c.args
-	if c.kind == .Text {
+	if c.kind == .Text || c.kind == .Typeset {
 		args[5] = 0 // where the characters sit in the list's storage is not part of the picture
 	}
 	h = hash_f32_pair(h, args[0], args[1])

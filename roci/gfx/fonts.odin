@@ -1,0 +1,176 @@
+// SPDX-License-Identifier: 0BSD
+//
+// Fonts for real text. Faces are loaded once and shared; a face at a size (and a
+// line alignment) is one SDL_ttf font, opened the first time it is asked for. The
+// two faces every sketch has, Inter regular and bold, are inside the program
+// (fonts/), so text needs no file and looks the same on every computer. Measuring
+// text needs no GPU; drawing it is the renderer's (typeset.odin).
+package gfx
+
+import "base:runtime"
+import "core:strings"
+import sdl "vendor:sdl3"
+import ttf "vendor:sdl3/ttf"
+
+INTER_REGULAR :: #load("fonts/Inter-Regular.ttf")
+INTER_BOLD :: #load("fonts/Inter-Bold.ttf")
+
+// Face numbers a sketch can always use.
+FACE_DEFAULT :: u16(0) // Inter regular
+FACE_BOLD :: u16(1)
+
+DEFAULT_FONT_SIZE :: f32(20)
+
+Align :: enum u8 {
+	Left,
+	Center,
+	Right,
+}
+
+Face :: struct {
+	name:  string,
+	data:  []u8, // kept alive for as long as the face is open
+	io:    ^sdl.IOStream,
+	base:  ^ttf.Font,
+}
+
+Font_Key :: struct {
+	face:  u16,
+	pixels: u32, // the size as a whole number of 64ths of a pixel
+	align: Align,
+}
+
+Fonts :: struct {
+	started: bool,
+	faces:   [dynamic]Face,
+	opened:  map[Font_Key]^ttf.Font,
+}
+
+// Fonts are not thread-safe in SDL_ttf, and tests run in parallel threads, so each
+// thread has its own set. The app loop runs on one thread.
+@(thread_local) fonts: Fonts
+
+// Starts SDL_ttf and loads the two built-in faces, once for this thread. Gives
+// false when SDL_ttf will not start.
+fonts_start :: proc() -> bool {
+	context.allocator = runtime.heap_allocator()
+	if fonts.started {
+		return len(fonts.faces) > 0
+	}
+	fonts.started = true
+	if !ttf.Init() {
+		return false
+	}
+	fonts.opened = make(map[Font_Key]^ttf.Font)
+	ok := add_face_memory("Inter", INTER_REGULAR) && add_face_memory("Inter Bold", INTER_BOLD)
+	if !ok {
+		fonts_stop()
+		fonts.started = true // not tried again
+	}
+	return ok
+}
+
+// Closes every font. The renderer's text cache must be dropped first.
+fonts_stop :: proc() {
+	context.allocator = runtime.heap_allocator()
+	if !fonts.started {
+		return
+	}
+	for _, font in fonts.opened {
+		ttf.CloseFont(font)
+	}
+	delete(fonts.opened)
+	for face in fonts.faces {
+		ttf.CloseFont(face.base)
+		sdl.CloseIO(face.io)
+		if face.data != nil && raw_data(face.data) != raw_data(INTER_REGULAR) && raw_data(face.data) != raw_data(INTER_BOLD) {
+			delete(face.data)
+		}
+		delete(face.name)
+	}
+	delete(fonts.faces)
+	fonts = {}
+	ttf.Quit()
+}
+
+// Adds a face from bytes that stay alive (the built-in ones) or that this package
+// now owns. Gives false when SDL_ttf cannot read them.
+add_face_memory :: proc(name: string, data: []u8) -> bool {
+	context.allocator = runtime.heap_allocator()
+	io := sdl.IOFromConstMem(raw_data(data), uint(len(data)))
+	if io == nil {
+		return false
+	}
+	base := ttf.OpenFontIO(io, false, DEFAULT_FONT_SIZE)
+	if base == nil {
+		sdl.CloseIO(io)
+		return false
+	}
+	append(&fonts.faces, Face{name = strings.clone(name), data = data, io = io, base = base})
+	return true
+}
+
+// Adds a face from font file bytes (a sketch's `assets/fonts` file) and gives its
+// number, or false when the bytes are not a font. The bytes are copied.
+add_face :: proc(name: string, bytes: []u8) -> (face: u16, ok: bool) {
+	context.allocator = runtime.heap_allocator()
+	if !fonts_start() {
+		return 0, false
+	}
+	data := make([]u8, len(bytes))
+	copy(data, bytes)
+	if !add_face_memory(name, data) {
+		delete(data)
+		return 0, false
+	}
+	return u16(len(fonts.faces) - 1), true
+}
+
+// The number of the face with this name, or false. Names compare as written.
+find_face :: proc(name: string) -> (face: u16, ok: bool) {
+	if !fonts_start() {
+		return 0, false
+	}
+	for f, i in fonts.faces {
+		if f.name == name {
+			return u16(i), true
+		}
+	}
+	return 0, false
+}
+
+// The font for a face, a size in pixels and a line alignment, opened on first use.
+font_for :: proc(face: u16, pixels: f32, align: Align) -> ^ttf.Font {
+	context.allocator = runtime.heap_allocator()
+	if !fonts_start() || int(face) >= len(fonts.faces) {
+		return nil
+	}
+	key := Font_Key{face, u32(max(pixels, 1) * 64), align}
+	if font, found := fonts.opened[key]; found {
+		return font
+	}
+	font := ttf.CopyFont(fonts.faces[face].base)
+	if font == nil {
+		return nil
+	}
+	ttf.SetFontSize(font, max(pixels, 1))
+	ttf.SetFontWrapAlignment(font, ttf.HorizontalAlignment(int(align)))
+	fonts.opened[key] = font
+	return font
+}
+
+// How big a text is, in logical pixels, at a size, with lines broken where `wrap`
+// says (0 for only where the text has line breaks). A text nobody can show gives 0.
+measure_typeset :: proc(face: u16, size: f32, align: Align, text: string, wrap: f32 = 0) -> (width, height: f32) {
+	font := font_for(face, size, align)
+	if font == nil || len(text) == 0 {
+		return 0, 0
+	}
+	// The wrapped measure is the one that breaks lines at line breaks too, and with
+	// a wrap width of 0 it breaks nowhere else.
+	w, h: i32
+	if !ttf.GetStringSizeWrapped(font, raw_data(text), uint(len(text)), i32(max(wrap, 0)), &w, &h) {
+		return 0, 0
+	}
+	return f32(w), f32(h)
+}

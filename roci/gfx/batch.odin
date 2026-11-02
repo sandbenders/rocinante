@@ -18,6 +18,7 @@ Pipeline :: enum u8 {
 	Shapes,
 	Paths,
 	Text,
+	Typeset,
 }
 
 // What the shader draws. Points are circles of the stroke colour, so they have
@@ -91,6 +92,7 @@ Stats :: struct {
 Batcher :: struct {
 	instances: [dynamic]Instance,
 	glyphs:    [dynamic]Glyph_Instance,
+	typeset:   [dynamic]Typeset_Item,
 	mesh:      Mesh,
 	batches:   [dynamic]Batch,
 	look_hashes: [dynamic]u64, // this frame's `look_hash` of each of the list's looks
@@ -101,6 +103,7 @@ Batcher :: struct {
 batcher_destroy :: proc(b: ^Batcher) {
 	delete(b.instances)
 	delete(b.glyphs)
+	delete(b.typeset)
 	mesh_destroy(&b.mesh)
 	delete(b.batches)
 	delete(b.look_hashes)
@@ -147,6 +150,7 @@ paint_row :: proc(b: ^Batcher, list: ^Command_List, ref: Gradient_Ref, may_reset
 build_commands :: proc(b: ^Batcher, list: ^Command_List, canvas: [2]f32, may_reset: bool) -> bool {
 	clear(&b.instances)
 	clear(&b.glyphs)
+	clear(&b.typeset)
 	clear(&b.mesh.vertices)
 	clear(&b.mesh.indices)
 	clear(&b.batches)
@@ -210,6 +214,10 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 			return true
 		}
 	}
+	if pipeline == .Typeset {
+		first = len(b.typeset)
+		append(&b.typeset, typeset_item(list, command))
+	}
 	if pipeline == .Paths {
 		first = len(b.mesh.indices)
 		mesh_add_command(&b.mesh, command, fill_row, stroke_row)
@@ -236,6 +244,8 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 // Which pipeline draws a command.
 pipeline_for :: proc "contextless" (c: Command) -> Pipeline {
 	switch {
+	case c.kind == .Typeset:
+		return .Typeset
 	case c.kind == .Text:
 		return .Text
 	case needs_mesh(c):
@@ -308,7 +318,7 @@ to_instance :: proc "contextless" (c: Command, fill_row := u32(0), stroke_row :=
 		i.kind = .Triangle
 		i.shape = {a[0] - cx, a[1] - cy, a[2] - cx, a[3] - cy, a[4] - cx, a[5] - cy}
 		hw, hh = (hi_x - lo_x) / 2, (hi_y - lo_y) / 2
-	case .Quad, .Arc, .Text:
+	case .Quad, .Arc, .Text, .Typeset:
 		return {}
 	}
 	t := transform_move(c.transform, cx, cy)
@@ -349,4 +359,35 @@ paint_for_gpu :: proc "contextless" (colour: maths.Colour, alpha: f32, gradient_
 		return {1, 1, 1, alpha / 255}
 	}
 	return colour_for_gpu(colour, alpha)
+}
+
+// One piece of real text as the renderer needs it: what to set, in which face
+// and size, where, and in which colour. The text points into the command list, so
+// it is good for this frame only.
+Typeset_Item :: struct {
+	text:      string,
+	x, y:      f32,
+	wrap:      f32,
+	size:      f32,
+	face:      u16,
+	align:     Align,
+	colour:    [4]f32, // straight alpha
+	transform: Transform,
+	content:   u64, // a hash of the text, to find it again
+}
+
+typeset_item :: proc(list: ^Command_List, c: Command) -> Typeset_Item {
+	offset, length := int(c.args[5]), int(c.args[6])
+	return Typeset_Item{
+		text      = string(list.text[offset:offset + length]),
+		x         = c.args[0],
+		y         = c.args[1],
+		wrap      = c.args[2],
+		size      = c.style.font_size,
+		face      = c.style.font,
+		align     = c.style.align,
+		colour    = colour_for_gpu(c.style.fill, c.style.alpha),
+		transform = c.transform,
+		content   = c.content,
+	}
 }

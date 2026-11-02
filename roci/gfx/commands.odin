@@ -26,7 +26,8 @@ Kind :: enum u8 {
 	Triangle,
 	Quad,
 	Arc,
-	Text, // the overlay font (font.odin); see `debug_text`
+	Text,    // the overlay font (font.odin); see `debug_text`
+	Typeset, // real text, laid out and drawn through SDL_ttf (fonts.odin, typeset.odin); see `typeset`
 }
 
 // What a position means. `Default` is each shape's own
@@ -456,4 +457,50 @@ rewind :: proc(list: ^Command_List, m: List_Mark) {
 	list.style, list.transform, list.look_changed, list.span = m.style, m.transform, m.look_changed, m.span
 	list.background, list.background_paint = m.background, m.background_paint
 	list.turtle = m.turtle
+}
+
+// The face (fonts.odin) real text is set in from now on.
+set_font :: proc(list: ^Command_List, face: u16) {
+	list.look_changed = true
+	list.style.font = face
+}
+
+// The size of real text from now on, in logical pixels. A size that is not a
+// positive number is ignored.
+set_font_size :: proc(list: ^Command_List, pixels: f32) {
+	if !finite(pixels) || pixels <= 0 {
+		return
+	}
+	list.look_changed = true
+	list.style.font_size = min(pixels, MAX_FONT_SIZE)
+}
+
+// Where a text's lines sit against its x: its left edge, its middle or its right edge.
+set_align :: proc(list: ^Command_List, align: Align) {
+	list.look_changed = true
+	list.style.align = align
+}
+
+MAX_FONT_SIZE :: f32(2000)
+
+// Real text in the fill colour, in the current face, size and alignment, with its
+// top at y and its left, middle or right (by `align`) at x. Lines break at `\n`, and
+// also so no line is longer than `wrap` pixels when `wrap` is above 0. Gives false
+// when a number is not finite or the text is too long; empty text is fine and
+// records nothing. The size of the text is measured when it is recorded, so it can
+// be asked for without drawing.
+typeset :: proc(list: ^Command_List, text: string, x, y: f32, wrap: f32 = 0) -> bool {
+	if !finite(x, y, wrap) {
+		return false
+	}
+	if len(text) == 0 {
+		return true
+	}
+	offset := len(list.text)
+	if offset + len(text) >= 1 << 24 {
+		return false
+	}
+	w, h := measure_typeset(list.style.font, list.style.font_size, list.style.align, text, max(wrap, 0))
+	append(&list.text, text)
+	return record(list, .Typeset, .Corner, {x, y, max(wrap, 0), w, h, f32(offset), f32(len(text)), 0}, hash.fnv64a(transmute([]u8)text))
 }

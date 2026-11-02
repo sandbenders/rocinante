@@ -1,0 +1,27 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct main0_out
+{
+    float4 _entryPointOutput [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 input_uv [[user(locn0)]];
+    float4 input_colour [[user(locn1), flat]];
+    float input_coloured [[user(locn2), flat]];
+};
+
+fragment main0_out main0(main0_in in [[stage_in]], texture2d<float> atlas_texture [[texture(0)]], sampler atlas_textureSmplr [[sampler(0)]])
+{
+    main0_out out = {};
+    float4 _94 = atlas_texture.sample(atlas_textureSmplr, in.input_uv);
+    float4 _86 = _94;
+    float _99 = in.input_colour.w * _86.w;
+    out._entryPointOutput = float4(mix(in.input_colour.xyz, _94.xyz, float3(in.input_coloured)) * _99, _99);
+    return out;
+}
+

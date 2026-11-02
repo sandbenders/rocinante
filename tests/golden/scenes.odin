@@ -37,6 +37,7 @@ SCENES := [?]Scene{
 	{"gradient_strokes_and_meshes", gradient_strokes_and_meshes},
 	{"gradient_background", gradient_background},
 	{"debug_text", debug_text},
+	{"typeset_text", typeset_text},
 }
 
 named :: proc(name: string) -> maths.Colour {
@@ -352,5 +353,39 @@ debug_text :: proc(list: ^gfx.Command_List) {
 	gfx.set_alpha(list, 150)
 	gfx.set_fill(list, named("navy"))
 	gfx.debug_text(list, "turned", 0, 0, 2)
+	gfx.pop(list)
+}
+
+// Real text: the built-in faces at several sizes, alignment against one x, a wrapped
+// paragraph, accented letters, and text carried by a transform.
+typeset_text :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(250))
+	gfx.set_fill(list, maths.grey(20))
+	gfx.set_font_size(list, 24)
+	gfx.typeset(list, "Hamburgefonstiv", 6, 4)
+	gfx.set_font(list, gfx.FACE_BOLD)
+	gfx.set_font_size(list, 14)
+	gfx.typeset(list, "bold, 14 pixels", 6, 34)
+	gfx.set_font(list, gfx.FACE_DEFAULT)
+	gfx.set_font_size(list, 12)
+	gfx.set_fill(list, named("crimson"))
+	gfx.set_align(list, .Left)
+	gfx.typeset(list, "left", 100, 54)
+	gfx.set_align(list, .Center)
+	gfx.typeset(list, "center", 100, 68)
+	gfx.set_align(list, .Right)
+	gfx.typeset(list, "right", 100, 82)
+	gfx.set_align(list, .Left)
+	gfx.set_fill(list, named("teal"))
+	gfx.typeset(list, "a longer line that wraps in its box", 6, 100, 90)
+	gfx.set_fill(list, maths.grey(20))
+	gfx.typeset(list, "caf\xc3\xa9 \xc3\xa5ngstr\xc3\xb6m", 110, 104)
+	gfx.push(list, .Style_And_Transform)
+	gfx.move(list, 150, 130)
+	gfx.turn(list, -20)
+	gfx.set_alpha(list, 150)
+	gfx.set_fill(list, named("navy"))
+	gfx.set_font_size(list, 16)
+	gfx.typeset(list, "turned", 0, 0)
 	gfx.pop(list)
 }

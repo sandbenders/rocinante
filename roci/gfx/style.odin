@@ -22,6 +22,11 @@ Style :: struct {
 	// then hold its first colour, which is what is drawn if the gradient cannot be.
 	fill_paint:   Gradient_Ref,
 	stroke_paint: Gradient_Ref,
+	// What real text is set in: the face (fonts.odin), its size in logical pixels
+	// and where the lines sit against the text's x.
+	font:         u16,
+	font_size:    f32,
+	align:        Align,
 }
 
 // What every frame starts with: black fill, no outline,
@@ -35,6 +40,9 @@ DEFAULT_STYLE :: Style{
 	alpha     = 255,
 	cap       = .Round,
 	join      = .Miter,
+	font      = FACE_DEFAULT,
+	font_size = DEFAULT_FONT_SIZE,
+	align     = .Left,
 }
 
 // A window's background when nothing sets one: light grey, 230.

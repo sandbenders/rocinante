@@ -36,6 +36,18 @@ TEXT_VERT_SPV :: #load("../../shaders/compiled/text.vert.spv")
 TEXT_FRAG_SPV :: #load("../../shaders/compiled/text.frag.spv")
 TEXT_VERT_MSL :: #load("../../shaders/compiled/text.vert.msl")
 TEXT_FRAG_MSL :: #load("../../shaders/compiled/text.frag.msl")
+TYPESET_VERT_SPV :: #load("../../shaders/compiled/typeset.vert.spv")
+TYPESET_FRAG_SPV :: #load("../../shaders/compiled/typeset.frag.spv")
+TYPESET_VERT_MSL :: #load("../../shaders/compiled/typeset.vert.msl")
+TYPESET_FRAG_MSL :: #load("../../shaders/compiled/typeset.frag.msl")
+// The typeset shader has its own DXIL guard: until compile-dxil.sh has made it on Windows, text is the only thing Direct3D 12 cannot draw.
+when #exists("../../shaders/compiled/typeset.vert.dxil") && #exists("../../shaders/compiled/typeset.frag.dxil") {
+	TYPESET_VERT_DXIL :: #load("../../shaders/compiled/typeset.vert.dxil")
+	TYPESET_FRAG_DXIL :: #load("../../shaders/compiled/typeset.frag.dxil")
+} else {
+	TYPESET_VERT_DXIL :: []byte{}
+	TYPESET_FRAG_DXIL :: []byte{}
+}
 when #exists("../../shaders/compiled/shapes.vert.dxil") && #exists("../../shaders/compiled/shapes.frag.dxil") && #exists("../../shaders/compiled/mesh.vert.dxil") && #exists("../../shaders/compiled/mesh.frag.dxil") && #exists("../../shaders/compiled/text.vert.dxil") && #exists("../../shaders/compiled/text.frag.dxil") {
 	SHAPES_VERT_DXIL :: #load("../../shaders/compiled/shapes.vert.dxil")
 	SHAPES_FRAG_DXIL :: #load("../../shaders/compiled/shapes.frag.dxil")
@@ -66,6 +78,7 @@ Program :: enum {
 	Shapes,
 	Mesh,
 	Text,
+	Typeset,
 }
 
 Pipeline_Key :: struct {
@@ -109,6 +122,7 @@ Renderer :: struct {
 	font_texture: ^sdl.GPUTexture,
 	font_sampler: ^sdl.GPUSampler,
 	uploaded_glyphs:       u64,
+	typeset: Typeset_State, // real text (typeset.odin)
 	uploaded_glyph_count:  int,
 
 	// Hashes of what is on the GPU now, so an unchanged scene uploads nothing.
@@ -165,6 +179,7 @@ renderer_destroy :: proc(r: ^Renderer) {
 	if r.font_sampler != nil {
 		sdl.ReleaseGPUSampler(r.device, r.font_sampler)
 	}
+	typeset_destroy(r)
 	delete(r.error)
 	r^ = {}
 }
@@ -204,6 +219,7 @@ PROGRAM_CODE := [Program]Program_Code{
 	.Shapes = {SHAPES_VERT_SPV, SHAPES_FRAG_SPV, SHAPES_VERT_MSL, SHAPES_FRAG_MSL, SHAPES_VERT_DXIL, SHAPES_FRAG_DXIL},
 	.Mesh   = {MESH_VERT_SPV, MESH_FRAG_SPV, MESH_VERT_MSL, MESH_FRAG_MSL, MESH_VERT_DXIL, MESH_FRAG_DXIL},
 	.Text   = {TEXT_VERT_SPV, TEXT_FRAG_SPV, TEXT_VERT_MSL, TEXT_FRAG_MSL, TEXT_VERT_DXIL, TEXT_FRAG_DXIL},
+	.Typeset = {TYPESET_VERT_SPV, TYPESET_FRAG_SPV, TYPESET_VERT_MSL, TYPESET_FRAG_MSL, TYPESET_VERT_DXIL, TYPESET_FRAG_DXIL},
 }
 
 shader_source_for :: proc(program: Program, formats: sdl.GPUShaderFormat) -> (source: Shader_Source, ok: bool) {
@@ -327,6 +343,13 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 		{location = 2, format = .FLOAT4, offset = u32(offset_of(Glyph_Instance, colour))},
 		{location = 3, format = .UINT, offset = u32(offset_of(Glyph_Instance, glyph))},
 	}
+	typeset_buffers := [1]sdl.GPUVertexBufferDescription{{slot = 0, pitch = size_of(Typeset_Vertex), input_rate = .VERTEX}}
+	typeset_attributes := [4]sdl.GPUVertexAttribute{
+		{location = 0, format = .FLOAT2, offset = u32(offset_of(Typeset_Vertex, position))},
+		{location = 1, format = .FLOAT2, offset = u32(offset_of(Typeset_Vertex, uv))},
+		{location = 2, format = .FLOAT4, offset = u32(offset_of(Typeset_Vertex, colour))},
+		{location = 3, format = .FLOAT, offset = u32(offset_of(Typeset_Vertex, coloured))},
+	}
 	switch program {
 	case .Text:
 		info.vertex_input_state = {
@@ -334,6 +357,13 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 			num_vertex_buffers         = 1,
 			vertex_attributes          = raw_data(glyph_attributes[:]),
 			num_vertex_attributes      = len(glyph_attributes),
+		}
+	case .Typeset:
+		info.vertex_input_state = {
+			vertex_buffer_descriptions = raw_data(typeset_buffers[:]),
+			num_vertex_buffers         = 1,
+			vertex_attributes          = raw_data(typeset_attributes[:]),
+			num_vertex_attributes      = len(typeset_attributes),
 		}
 	case .Shapes:
 		info.vertex_input_state = {
@@ -704,16 +734,20 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 	case ._8: r.stats.samples = 8
 	}
 
-	shapes, mesh, text: ^sdl.GPUGraphicsPipeline
+	shapes, mesh, text, typeset: ^sdl.GPUGraphicsPipeline
 	ok := ensure_gradient_texture(r)
 	for batch in b.batches {
 		switch batch.pipeline {
 		case .Shapes: if shapes == nil && ok {shapes = get_pipeline(r, .Shapes, format, samples)}
 		case .Paths:  if mesh == nil && ok {mesh = get_pipeline(r, .Mesh, format, samples)}
 		case .Text:   if text == nil && ok {text = get_pipeline(r, .Text, format, samples)}
+		case .Typeset: if typeset == nil && ok && can_typeset(r) {typeset = get_pipeline(r, .Typeset, format, samples)}
 		}
 	}
 	if (len(b.instances) > 0 && shapes == nil) || (len(b.mesh.indices) > 0 && mesh == nil) || (len(b.glyphs) > 0 && text == nil) {
+		ok = false
+	}
+	if ok && typeset != nil && !typeset_prepare(r, commands, b, f32(pixels.x) / max(canvas.x, 1)) {
 		ok = false
 	}
 	if ok && !upload(r, commands, b) {
@@ -741,6 +775,7 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 	bound: Pipeline = .Shapes
 	have_bound := false
 	for batch in b.batches {
+		if batch.pipeline == .Typeset && (typeset == nil || len(r.typeset.draws) == 0) {continue}
 		if !have_bound || batch.pipeline != bound {
 			bound, have_bound = batch.pipeline, true
 			switch batch.pipeline {
@@ -765,6 +800,13 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
 				glyphs := sdl.GPUBufferBinding{buffer = r.glyphs.buffer}
 				sdl.BindGPUVertexBuffers(pass, 0, &glyphs, 1)
+			case .Typeset:
+				sdl.BindGPUGraphicsPipeline(pass, typeset)
+				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
+				glyph_vertices := sdl.GPUBufferBinding{buffer = r.typeset.vertex_buffer.buffer}
+				sdl.BindGPUVertexBuffers(pass, 0, &glyph_vertices, 1)
+				glyph_indices := sdl.GPUBufferBinding{buffer = r.typeset.index_buffer.buffer}
+				sdl.BindGPUIndexBuffer(pass, glyph_indices, ._32BIT)
 			}
 		}
 		switch batch.pipeline {
@@ -774,6 +816,14 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 			sdl.DrawGPUIndexedPrimitives(pass, u32(batch.count), 1, u32(batch.first), 0, 0)
 		case .Text:
 			sdl.DrawGPUPrimitives(pass, 6, u32(batch.count), 0, u32(batch.first))
+		case .Typeset:
+			for d in r.typeset.draws {
+				if d.item < batch.first || d.item >= batch.first + batch.count {continue}
+				atlas := sdl.GPUTextureSamplerBinding{texture = d.atlas, sampler = r.typeset.sampler}
+				sdl.BindGPUFragmentSamplers(pass, 0, &atlas, 1)
+				sdl.DrawGPUIndexedPrimitives(pass, d.count, 1, d.first, 0, 0)
+				r.stats.draws += 1
+			}
 		}
 		r.stats.draws += 1
 	}
