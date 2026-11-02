@@ -12,6 +12,8 @@
 # package's own licence file.
 
 vendor:sdl3     Zlib
+# vendor:sdl3/ttf is part of vendor:sdl3 above. SDL_ttf is Zlib; the FreeType (FreeType Project Licence, BSD-style), HarfBuzz (Old MIT) and
+# PlutoSVG (MIT) it is built with have their LICENSE files beside Odin's binding (read 2026-11-02).
 vendor:box2d    MIT
 vendor:cgltf    MIT
 # miniaudio: README says public domain or MIT-0 (checked 2026-10-24).
