@@ -180,9 +180,9 @@ test_a_copied_font_is_found_in_assets_next_time_without_the_computers_copy :: pr
 }
 
 @(test)
-test_a_font_that_may_not_be_shared_is_used_here_and_never_copied :: proc(t: ^testing.T) {
+test_a_font_with_no_free_licence_is_copied_too_and_the_writer_is_warned :: proc(t: ^testing.T) {
 	installed := make_installed_fonts(t, "output/tests/installed_b", "Other Free", "Keep Me")
-	sketch := "output/tests/font_locked_sketch"
+	sketch :: "output/tests/font_locked_sketch"
 	_ = os.remove_all(sketch)
 	testing.expect(t, folder.ensure_directory(sketch))
 	folder.system_font_dirs = {installed}
@@ -196,11 +196,13 @@ test_a_font_that_may_not_be_shared_is_used_here_and_never_copied :: proc(t: ^tes
 	watch(p, path)
 	start(p)
 	defer finish_all()
-	testing.expect(t, roci.has_font("Keep Me"), "it is used on this computer")
+	testing.expect(t, roci.has_font("Keep Me"))
 	testing.expect_value(t, len(p.errors), 1)
-	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Font_Not_Shared)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Font_Licence)
 	testing.expect_value(t, p.errors[0].args[1], "its licence says it may not be shared.")
-	testing.expect(t, !os.exists("output/tests/font_locked_sketch/assets"), "nothing is copied")
+	testing.expect(t, os.exists(sketch + "/assets/fonts/Keep Me.ttf"), "copied all the same")
+	testing.expect_value(t, len(p.notices), 1)
+	testing.expect_value(t, p.notices[0], "copied the font Keep Me into assets/fonts, so your sketch looks the same everywhere")
 }
 
 @(test)
@@ -208,10 +210,12 @@ test_an_installed_font_of_a_lone_file_is_used_with_nowhere_to_copy_it :: proc(t:
 	installed := make_installed_fonts(t, "output/tests/installed_c", "Lone Free", "Lone Locked")
 	folder.system_font_dirs = {installed}
 	defer folder.system_font_dirs = nil
-	p := run_text(t, "font \"Lone Free\"\ntext \"a\" at 1 1")
+	p := run_text(t, "font \"Lone Free\"\ntext \"a\" at 1 1\nfont \"Lone Locked\"")
 	defer finish(p)
 	testing.expect(t, roci.has_font("Lone Free"))
-	testing.expect_value(t, len(p.errors), 0)
+	testing.expect(t, roci.has_font("Lone Locked"))
+	testing.expect_value(t, len(p.errors), 1) // only the one with no free licence is said
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Font_Licence)
 	testing.expect_value(t, len(p.notices), 0)
 }
 

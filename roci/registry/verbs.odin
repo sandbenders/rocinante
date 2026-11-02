@@ -144,7 +144,7 @@ VERBS := []Verb{
 		{{{"words", .Text}, {"x", .Number}, {"y", .Number}}, TEXT_OPTIONS, .None},
 		{{{"words", .Text}, {"position", .Vector}}, TEXT_OPTIONS, .None},
 	}, "Draws text with its top at a point, in the current font."},
-	{"font", {{{{"name", .Text}}, {{"size", {.Number}, false}}, .None}}, "Sets the font, and its size, for the text drawn from now on: Inter or Inter Bold, or a font file in assets/fonts."},
+	{"font", {{{{"name", .Text}}, {{"size", {.Number}, false}}, .None}}, "Sets the font, and its size, for the text drawn from now on: Inter or Inter Bold, a font file in assets/fonts, or a font installed on the computer, which is copied into assets/fonts."},
 	{"align", {{{{"side", .Name}}, nil, .None}}, "Sets where a text sits against its point from now on: left, center or right."},
 	{"measure", {{{{"text", .Text}}, nil, .Vector}}, "How big a text is in the current font, as a vector of its width and height."},
 

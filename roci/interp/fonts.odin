@@ -2,10 +2,10 @@
 //
 // Fonts a sketch brings: `font "Mono"` finds Inter's two faces inside the program, then
 // a font file in the sketch's `assets/`, by its name with or without `.ttf`, `.otf`,
-// `.ttc` or `.otc`, and last a font installed on the computer. An installed font whose
-// own licence fields name a free licence is copied into `assets/fonts` the first time
-// (so the sketch looks the same everywhere and travels with it) and says so in a line;
-// any other is used on this computer only and the sketch is told it cannot travel. A
+// `.ttc` or `.otc`, and last a font installed on the computer. An installed font is
+// copied into `assets/fonts` the first time (so the sketch looks the same everywhere
+// and travels with it) and says so in a line; one whose own licence fields do not name
+// a free licence also gets a warning, and nothing more: sharing it is the writer's call. A
 // font is read once, the first time a sketch asks for it, and a name nothing answers
 // is not looked for again while the sketch runs.
 package interp
@@ -67,9 +67,9 @@ font_from_assets :: proc(it: ^Interp, root, name: string) -> bool {
 	return false
 }
 
-// Finds an installed font by name. One that may be shared is copied into the sketch
-// (`root` is "" for a lone file, which has no folder to copy into) and one that may
-// not is used here and said not to travel.
+// Finds an installed font by name and copies it into the sketch (`root` is "" for a
+// lone file, which has no folder to copy into). A font whose licence is not known to
+// be free is copied too, with a warning: sharing it is the writer's decision.
 @(private)
 font_from_system :: proc(it: ^Interp, root, name: string, span: lang.Span) -> bool {
 	path, found := folder.find_system_font(name)
@@ -85,21 +85,21 @@ font_from_system :: proc(it: ^Interp, root, name: string, span: lang.Span) -> bo
 	if !roci.add_font(name, bytes) {
 		return false
 	}
-	if licence == .Open {
-		if root != "" {
-			copy_font_into(it, root, name, path, bytes, info)
-		}
-		return true
+	if root != "" {
+		copy_font_into(it, root, name, path, bytes, info, licence)
 	}
-	why := "its licence does not say that it may be shared." if licence == .Unknown else "its licence says it may not be shared."
-	fail(it, .Font_Not_Shared, span, name, why, "", "font \"Inter\"")
+	if licence != .Open {
+		// What the licence means for sharing is the writer's own business: say it and go on.
+		why := "its licence does not say that it may be shared." if licence == .Unknown else "its licence says it may not be shared."
+		fail(it, .Font_Licence, span, name, why, "", "font \"Inter\"")
+	}
 	return true
 }
 
 // Puts a copy of an installed font into `assets/fonts` under the name the sketch
 // asked for, unless a file of that name is there, and says so in one line.
 @(private)
-copy_font_into :: proc(it: ^Interp, root, name, from: string, bytes: []u8, info: folder.Font_Info) {
+copy_font_into :: proc(it: ^Interp, root, name, from: string, bytes: []u8, info: folder.Font_Info, licence: folder.Font_Licence) {
 	directory := concat(root, "/assets/fonts")
 	if !folder.ensure_directory(concat(root, "/assets")) || !folder.ensure_directory(directory) {
 		return
@@ -111,7 +111,11 @@ copy_font_into :: proc(it: ^Interp, root, name, from: string, bytes: []u8, info:
 	if os.write_entire_file(target, bytes) != nil {
 		return
 	}
-	notice(it, fmt.tprintf("copied the font %s into assets/fonts, under the %s, so your sketch travels with it", name, folder.font_licence_name(info)))
+	if licence == .Open {
+		notice(it, fmt.tprintf("copied the font %s into assets/fonts, under the %s, so your sketch travels with it", name, folder.font_licence_name(info)))
+	} else {
+		notice(it, fmt.tprintf("copied the font %s into assets/fonts, so your sketch looks the same everywhere", name))
+	}
 }
 
 @(private)

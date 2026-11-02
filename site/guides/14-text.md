@@ -99,17 +99,17 @@ Use one that is there:  font "Inter"
 
 ## Fonts installed on your computer
 
-Name a font that is installed on your computer and rocinante finds it: `font "Helvetica Neue"` looks for a file of that name in the computer's fonts when your sketch has none. What happens next depends on the font's own licence, which rocinante reads from the file. A font under a free licence (the SIL Open Font License, Apache, Ubuntu, MIT or public domain) is copied into `assets/fonts` the first time, with one line to say so, so your sketch looks the same on every computer and travels with its font. Any other font, or one that does not say, is used on this computer only, and the sketch is told it cannot travel:
+Name a font that is installed on your computer and rocinante finds it: `font "Helvetica Neue"` looks for a file of that name in the computer's fonts when your sketch has none. The first time, the font is copied into `assets/fonts` and one line says so, so your sketch looks the same on every computer and travels with its font. If the font's own licence does not name a free one (the SIL Open Font License, Apache, Ubuntu, MIT or public domain), you get a warning too. It is only a reminder: the sketch carries on, and whether you may share the font is for you to check.
 
 ```message
-── Warning: `Locked Sans` cannot travel with your sketch ─── sketch.roci:1:1
+── Warning: Check the licence of `Locked Sans` before you share your sketch ─── sketch.roci:1:1
 
 1 │ font "Locked Sans" size 30
   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-`Locked Sans` is a font installed on this computer, and its licence says it may not be shared. It works here, but on any other computer your sketch falls back to Inter, and `roci package` will not bundle it. To share it, put a font you are allowed to share in `assets/fonts` and name it.
+`Locked Sans` is a font installed on this computer, and its licence says it may not be shared. It works here. If the font goes out with your sketch, in `assets/fonts` or any other way, make sure its licence lets you.
 
-Inter is a good start:  font "Inter"
+A font that is free to share:  font "Inter"
 ```
 
 Emoji are drawn at the size of the text around them, one em wide, and measured the same way, so `measure` and a box around a line with an emoji in it fit.
@@ -117,3 +117,55 @@ Emoji are drawn at the size of the text around them, one em wide, and measured t
 ## Other scripts and emoji
 
 Inter covers the Latin alphabets, Greek and Cyrillic. For other scripts and emoji, rocinante looks for a font on the computer (Hiragino and Apple Color Emoji on a Mac, Noto or Segoe UI elsewhere), and shapes the text properly: Arabic joins and runs right to left, Devanagari gathers its marks. Those fonts belong to the computer, so they are never copied into your sketch: where there is none, a missing character shows as an empty box. To be sure a script looks the same everywhere, put a font that has it in `assets/fonts` and name it.
+
+## Putting it together
+
+A whole sketch of words: two weights, a line aligned against its x, a paragraph that wraps, and labels whose boxes are made from `measure`. It is `examples/text`, and runs with `roci run examples/text`.
+
+```roci picture
+// Words in Inter, in two weights and many sizes. A line is aligned against its x, a long
+// one wraps at a width, and measure says how big a text is, so a label can have a
+// box that fits it exactly.
+window size 640 420 title "text"
+
+learn label words spot with hue 160 [
+  size = measure words
+  fill (hsb hue 60 240)
+  rect at (spot.x - 10) (spot.y - 6) size (size.x + 20) (size.y + 12)
+  fill 30
+  text words at spot
+]
+
+draw [
+  background 248
+  fill 30
+  font "Inter Bold" size 56
+  text "Words" at 32 24
+  font "Inter" size 20
+  fill gray
+  text "set in Inter, shaped and drawn by the GPU" at 36 92
+
+  stroke 200
+  line from 480 140 to 480 290
+  no stroke
+  fill crimson
+  font "Inter Bold" size 18
+  align left
+  text "left" at 480 150
+  align center
+  text "center" at 480 190
+  align right
+  text "right" at 480 230
+  align left
+
+  fill 30
+  font "Inter" size 17
+  text "A longer paragraph wraps inside the width it is given, and keeps going onto as many lines as it needs. Line breaks in the text work too." at 36 140 width 380
+
+  font "Inter Bold" size 18
+  label "boxes that fit" { 36, 320 } hue 20
+  label "any text" { 220, 320 } hue 120
+  font "Inter Bold" size 26
+  label "at any size" { 330, 316 } hue 210
+]
+```

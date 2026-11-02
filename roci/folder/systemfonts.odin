@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: 0BSD
 //
 // Fonts installed on the computer, for `font "Name"` when the sketch's own `assets/`
-// has no such file. A font may travel with a sketch only when its licence says it
-// can, so this file also reads the licence fields of a font file (the OpenType
-// `name` table's copyright, licence description and licence URL, and the `OS/2`
-// table's embedding bits) and decides: a licence that names a free licence
-// (SIL Open Font License, Apache, Ubuntu, MIT, public domain) and no restriction
-// bit is shareable; anything else, including a font that cannot be read, is used
-// on this computer and never copied.
+// has no such file. The font is copied into the sketch whatever its licence; this
+// file also reads the licence fields of a font file (the OpenType `name` table's
+// copyright, licence description and licence URL, and the `OS/2` table's embedding
+// bits) so the sketch can be warned when nothing names a free licence (SIL Open Font
+// License, Apache, Ubuntu, MIT, public domain) or a restriction bit is set. What to
+// do about it is the writer's business.
 package folder
 
 import "core:os"

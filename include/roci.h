@@ -98,7 +98,7 @@ void roci_text(const char *words, double x, double y);
 /* Draws text with its top at a point, in the current font. */
 void roci_text_v(const char *words, roci_vec2 position);
 
-/* Sets the font, and its size, for the text drawn from now on: Inter or Inter Bold, or a font file in assets/fonts. */
+/* Sets the font, and its size, for the text drawn from now on: Inter or Inter Bold, a font file in assets/fonts, or a font installed on the computer, which is copied into assets/fonts. */
 void roci_font(const char *name);
 
 /* Sets where a text sits against its point from now on: left, center or right. */
