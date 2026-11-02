@@ -69,6 +69,7 @@ abi_table_init :: proc "contextless" () {
 	{"roci_text_v", "text", 1, typeid_of(type_of(abi_text_v)), "", ""},
 	{"roci_font", "font", 0, typeid_of(type_of(abi_font)), "", ""},
 	{"roci_align", "align", 0, typeid_of(type_of(abi_align)), "", ""},
+	{"roci_leading", "leading", 0, typeid_of(type_of(abi_leading)), "", ""},
 	{"roci_measure", "measure", 0, typeid_of(type_of(abi_measure)), "", ""},
 	{"roci_font_size", "", 0, typeid_of(type_of(abi_font_size)), "void roci_font_size(double pixels)", "Sets the size of the text drawn from now on, in pixels."},
 	{"roci_ellipse", "ellipse", 0, typeid_of(type_of(abi_ellipse)), "", ""},

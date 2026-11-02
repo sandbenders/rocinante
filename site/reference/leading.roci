@@ -1,0 +1,6 @@
+background 250
+fill 30
+font "Inter" size 22
+text "Lines of text\nat the font's own\nspacing" at 30 30
+leading 1.8
+text "Lines of text\nspaced one and\na bit sizes apart" at 220 30

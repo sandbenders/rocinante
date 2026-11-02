@@ -18,6 +18,7 @@ API_NAMES := [?]Api_Entry{
 	{"text", "text"},
 	{"font", "font"},
 	{"align", "align"},
+	{"leading", "leading"},
 	{"measure", "measure"},
 	{"fullscreen", "fullscreen"},
 	{"quit", "quit"},

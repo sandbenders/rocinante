@@ -81,6 +81,25 @@ test_a_font_added_from_bytes_is_found_by_its_name :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_leading_is_a_sticky_style_and_a_look_for_one_text :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	leading(1.6)
+	text("one", 0, 0)
+	text("two", 0, 20, Look{leading = 2.0})
+	text("three", 0, 40)
+	list := &the.windows[0].list
+	testing.expect_value(t, gfx.command_at(list, 0).style.leading, f32(1.6))
+	testing.expect_value(t, gfx.command_at(list, 1).style.leading, f32(2))
+	testing.expect_value(t, gfx.command_at(list, 2).style.leading, f32(1.6))
+	a := measure("a\nb")
+	leading(0)
+	testing.expect(t, measure("a\nb").y < a.y, "measure follows the leading")
+	abi_leading(3)
+	testing.expect_value(t, the.windows[0].list.style.leading, f32(3))
+}
+
+@(test)
 test_the_c_functions_for_text_draw_and_measure :: proc(t: ^testing.T) {
 	begin()
 	defer finish()

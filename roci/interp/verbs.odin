@@ -229,6 +229,8 @@ make_look :: proc(it: ^Interp, options: []lang.IR_Option) -> (look: roci.Look, o
 			case "center": look.align = .Center
 			case "right":  look.align = .Right
 			}
+		case "leading":
+			look.leading = as_number(eval(it, o.args[0]))
 		case "style":
 			merge_style_record(it, &look, eval(it, o.args[0]))
 		case "as":
@@ -435,6 +437,8 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		case "center": roci.align(.Center)
 		case "right":  roci.align(.Right)
 		}
+	case .Leading:
+		roci.leading(as_number(a[0]))
 	case .Measure:
 		return vec2(roci.measure(as_text(a[0])))
 	case .Fill:

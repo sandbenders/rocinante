@@ -53,12 +53,18 @@ align :: proc(side: Align) {
 	gfx.set_align(current_list(), side)
 }
 
+// Sets the distance between the lines of the text drawn from now on, as a multiple of
+// its size (1.5 puts the baselines one and a half sizes apart). 0 is the font's own.
+leading :: proc(multiple: f64) {
+	gfx.set_leading(current_list(), f32(multiple))
+}
+
 // How big a text is in the current font, size and alignment: its width and height
 // in pixels, with line breaks making lines. Empty text, or a font that cannot be
 // opened, is 0 by 0.
 measure :: proc(content: string, wrap := f64(0)) -> [2]f64 {
 	style := current_list().style
-	w, h := gfx.measure_typeset(style.font, style.font_size, style.align, content, f32(wrap))
+	w, h := gfx.measure_typeset(style.font, style.font_size, style.align, content, f32(wrap), style.leading)
 	return {f64(w), f64(h)}
 }
 

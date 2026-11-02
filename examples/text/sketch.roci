@@ -1,5 +1,5 @@
 // Words in Inter, in two weights and many sizes. A line is aligned against its x, a long
-// one wraps at a width, and measure says how big a text is, so a label can have a
+// one wraps at a width with the lines as far apart as leading says, and measure says how big a text is, so a label can have a
 // box that fits it exactly.
 window size 640 420 title "text"
 
@@ -35,7 +35,7 @@ draw [
 
   fill 30
   font "Inter" size 17
-  text "A longer paragraph wraps inside the width it is given, and keeps going onto as many lines as it needs. Line breaks in the text work too." at 36 140 width 380
+  text "A longer paragraph wraps inside the width it is given, and keeps going onto as many lines as it needs. Line breaks in the text work too." at 36 140 width 380 leading 1.5
 
   font "Inter Bold" size 18
   label "boxes that fit" { 36, 320 } hue 20

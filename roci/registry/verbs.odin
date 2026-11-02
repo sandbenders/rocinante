@@ -31,6 +31,7 @@ TEXT_OPTIONS := []Option{
 	{"size", {.Number}, false},
 	{"font", {.Text}, false},
 	{"align", {.Name}, false},
+	{"leading", {.Number}, false},
 	{"width", {.Number}, false},
 }
 
@@ -146,6 +147,7 @@ VERBS := []Verb{
 	}, "Draws text with its top at a point, in the current font."},
 	{"font", {{{{"name", .Text}}, {{"size", {.Number}, false}}, .None}}, "Sets the font, and its size, for the text drawn from now on: Inter or Inter Bold, a font file in assets/fonts, or a font installed on the computer, which is copied into assets/fonts."},
 	{"align", {{{{"side", .Name}}, nil, .None}}, "Sets where a text sits against its point from now on: left, center or right."},
+	{"leading", {{{{"multiple", .Number}}, nil, .None}}, "Sets the space between the lines of a text from now on, as a multiple of its size: 1.5 puts the lines one and a half sizes apart, and 0 is the font's own spacing."},
 	{"measure", {{{{"text", .Text}}, nil, .Vector}}, "How big a text is in the current font, as a vector of its width and height."},
 
 	// Style

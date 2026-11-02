@@ -27,6 +27,9 @@ Style :: struct {
 	font:         u16,
 	font_size:    f32,
 	align:        Align,
+	// The distance between the baselines of a text's lines as a multiple of the size;
+	// 0 is the font's own spacing.
+	leading:      f32,
 }
 
 // What every frame starts with: black fill, no outline,

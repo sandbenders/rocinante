@@ -371,6 +371,7 @@ Typeset_Item :: struct {
 	size:      f32,
 	face:      u16,
 	align:     Align,
+	leading:   f32,
 	colour:    [4]f32, // straight alpha
 	transform: Transform,
 	content:   u64, // a hash of the text, to find it again
@@ -386,6 +387,7 @@ typeset_item :: proc(list: ^Command_List, c: Command) -> Typeset_Item {
 		size      = c.style.font_size,
 		face      = c.style.font,
 		align     = c.style.align,
+		leading   = c.style.leading,
 		colour    = colour_for_gpu(c.style.fill, c.style.alpha),
 		transform = c.transform,
 		content   = c.content,

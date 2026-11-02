@@ -39,6 +39,46 @@ a_line_break_makes_a_second_line :: proc(t: ^testing.T) {
 }
 
 @(test)
+leading_sets_the_distance_between_lines_as_a_multiple_of_the_size :: proc(t: ^testing.T) {
+	_, own := measure_typeset(FACE_DEFAULT, 20, .Left, "a\nb\nc")
+	_, tight := measure_typeset(FACE_DEFAULT, 20, .Left, "a\nb\nc", 0, 1)
+	_, loose := measure_typeset(FACE_DEFAULT, 20, .Left, "a\nb\nc", 0, 2)
+	_, zero := measure_typeset(FACE_DEFAULT, 20, .Left, "a\nb\nc", 0, 0)
+	testing.expect_value(t, zero, own) // 0 is the font's own spacing
+	testing.expect(t, tight < own && own < loose)
+	// two sizes apart: each of the three lines is a box 2 * 20 pixels tall
+	testing.expect_value(t, loose, f32(120))
+	// a line's box is the leading too, so one line is as tall as that
+	_, once := measure_typeset(FACE_DEFAULT, 20, .Left, "a", 0, 2)
+	testing.expect_value(t, once, f32(40))
+}
+
+@(test)
+leading_is_part_of_the_style_and_clamped :: proc(t: ^testing.T) {
+	list: Command_List
+	defer destroy(&list)
+	begin_frame(&list)
+	set_leading(&list, 1.5)
+	testing.expect_value(t, list.style.leading, f32(1.5))
+	set_leading(&list, -3)
+	testing.expect_value(t, list.style.leading, f32(0))
+	set_leading(&list, 1000)
+	testing.expect_value(t, list.style.leading, MAX_LEADING)
+	set_leading(&list, 1.25)
+	set_leading(&list, max(f32)*max(f32)) // not finite: nothing changes
+	testing.expect_value(t, list.style.leading, f32(1.25))
+	typeset(&list, "a\nb", 0, 0)
+	batcher: Batcher
+	defer batcher_destroy(&batcher)
+	build(&batcher, &list, {100, 100})
+	testing.expect_value(t, batcher.typeset[0].leading, f32(1.25))
+	// the same text with another leading is another text
+	other := batcher.typeset[0]
+	other.leading = 2
+	testing.expect(t, text_key(other, 20, 0) != text_key(batcher.typeset[0], 20, 0))
+}
+
+@(test)
 the_two_built_in_faces_are_there_by_name :: proc(t: ^testing.T) {
 	face, ok := find_face("Inter")
 	testing.expect(t, ok && face == FACE_DEFAULT)

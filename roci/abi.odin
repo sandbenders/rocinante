@@ -753,6 +753,12 @@ abi_align :: proc "c" (side: cstring) {
 	}
 }
 
+@(export, link_name = "roci_leading")
+abi_leading :: proc "c" (multiple: f64) {
+	context = runtime.default_context()
+	leading(multiple)
+}
+
 @(export, link_name = "roci_measure")
 abi_measure :: proc "c" (content: cstring) -> Abi_Vec2 {
 	context = runtime.default_context()

@@ -1,6 +1,6 @@
 ---
 title: "Text"
-summary: "Words on the window: text, font, size and align, wrapping, measuring a text, fonts of your own, and other scripts."
+summary: "Words on the window: text, font, size, align and leading, wrapping, measuring a text, fonts of your own, and other scripts."
 weight: 14
 ---
 
@@ -58,6 +58,20 @@ align left
 text "A longer text breaks into lines by itself when it has a width." at 20 190 width 360 size 18
 ```
 
+## Space between lines
+
+`leading` sets how far apart the lines of a text are, as a multiple of the size: `1.5` puts the baselines one and a half sizes apart, `1` packs them closer, and `0` (the start) is the font's own spacing. Like `font` and `align`, it can be a line of its own, lasting until changed, or a word of one `text`:
+
+```roci picture
+background 250
+fill 30
+font "Inter" size 20
+text "The font's own spacing,\nbetween these lines." at 30 30
+leading 1.8
+text "Leading 1.8 opens\nthe lines out." at 230 30
+text "Or a word of one text,\nleading 1." at 30 160 leading 1
+```
+
 ## Measuring
 
 `measure` gives the size of a text in the current font, as a vector of its width and height. That is how to draw a box that fits it, or put one thing after another:
@@ -73,7 +87,7 @@ text "fits" at 40 60
 text "next to it" at (40 + box.x + 16) 60 size 32 font "Inter"
 ```
 
-A text with nothing in it measures 0 by 0. `measure` follows `font`, `size` and `align`, so set them first.
+A text with nothing in it measures 0 by 0. `measure` follows `font`, `size`, `align` and `leading`, so set them first.
 
 ## Other fonts
 
@@ -124,7 +138,7 @@ A whole sketch of words: two weights, a line aligned against its x, a paragraph 
 
 ```roci picture
 // Words in Inter, in two weights and many sizes. A line is aligned against its x, a long
-// one wraps at a width, and measure says how big a text is, so a label can have a
+// one wraps at a width with the lines as far apart as leading says, and measure says how big a text is, so a label can have a
 // box that fits it exactly.
 window size 640 420 title "text"
 
@@ -160,7 +174,7 @@ draw [
 
   fill 30
   font "Inter" size 17
-  text "A longer paragraph wraps inside the width it is given, and keeps going onto as many lines as it needs. Line breaks in the text work too." at 36 140 width 380
+  text "A longer paragraph wraps inside the width it is given, and keeps going onto as many lines as it needs. Line breaks in the text work too." at 36 140 width 380 leading 1.5
 
   font "Inter Bold" size 18
   label "boxes that fit" { 36, 320 } hue 20

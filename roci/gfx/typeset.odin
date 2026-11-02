@@ -82,6 +82,7 @@ text_key :: proc(item: Typeset_Item, pixels, wrap: f32) -> u64 {
 	h := hash_u64(FNV_OFFSET, item.content)
 	h = hash_u64(h, u64(len(item.text)))
 	h = hash_f32_pair(h, pixels, wrap)
+	h = hash_f32_pair(h, item.leading, 1)
 	return hash_u64(h, u64(item.face) | u64(item.align) << 16)
 }
 
@@ -95,7 +96,7 @@ cached_text :: proc(r: ^Renderer, item: Typeset_Item, scale: f32) -> (entry: Cac
 		s.cache[key] = found
 		return found, true
 	}
-	font := font_for(item.face, pixels, item.align)
+	font := font_for(item.face, pixels, item.align, item.leading)
 	if font == nil {
 		return {}, false
 	}

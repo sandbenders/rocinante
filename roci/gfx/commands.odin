@@ -481,6 +481,18 @@ set_align :: proc(list: ^Command_List, align: Align) {
 	list.style.align = align
 }
 
+// Sets the distance between the lines of the text drawn from now on, as a multiple of
+// its size (1.5 puts the baselines one and a half sizes apart); 0 is the font's own.
+set_leading :: proc(list: ^Command_List, multiple: f32) {
+	if !finite(multiple) {
+		return
+	}
+	list.look_changed = true
+	list.style.leading = clamp(multiple, 0, MAX_LEADING)
+}
+
+MAX_LEADING :: f32(10)
+
 MAX_FONT_SIZE :: f32(2000)
 
 // Real text in the fill colour, in the current face, size and alignment, with its
@@ -500,7 +512,7 @@ typeset :: proc(list: ^Command_List, text: string, x, y: f32, wrap: f32 = 0) -> 
 	if offset + len(text) >= 1 << 24 {
 		return false
 	}
-	w, h := measure_typeset(list.style.font, list.style.font_size, list.style.align, text, max(wrap, 0))
+	w, h := measure_typeset(list.style.font, list.style.font_size, list.style.align, text, max(wrap, 0), list.style.leading)
 	append(&list.text, text)
 	return record(list, .Typeset, .Corner, {x, y, max(wrap, 0), w, h, f32(offset), f32(len(text)), 0}, hash.fnv64a(transmute([]u8)text))
 }

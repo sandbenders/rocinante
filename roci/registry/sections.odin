@@ -17,7 +17,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"circle", "ellipse", "rect", "square", "line", "point", "triangle", "quad", "arc",
 	}},
 	{"Text", "Words on the window, set in Inter or a font of your own.", {
-		"text", "font", "align", "measure",
+		"text", "font", "align", "leading", "measure",
 	}},
 	{"Color and style", "How shapes look: the color inside them, the line around them, and colors made from numbers.", {
 		"background", "clear", "fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "caps", "joins",

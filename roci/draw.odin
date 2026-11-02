@@ -38,6 +38,7 @@ Look :: struct {
 	font:      Maybe(string),
 	size:      Maybe(f64),
 	align:     Maybe(Align),
+	leading:   Maybe(f64),
 }
 
 // ---- looks ----
@@ -81,6 +82,7 @@ begin_look :: proc(list: ^gfx.Command_List, look: Look) -> bool {
 	}
 	if s, ok := look.size.?; ok {gfx.set_font_size(list, f32(s))}
 	if side, ok := look.align.?; ok {gfx.set_align(list, side)}
+	if m, ok := look.leading.?; ok {gfx.set_leading(list, f32(m))}
 	return true
 }
 

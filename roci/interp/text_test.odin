@@ -74,6 +74,19 @@ test_measure_gives_a_vector_that_follows_the_font_size :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_leading_is_a_verb_and_a_word_of_text_and_measure_follows_it :: proc(t: ^testing.T) {
+	expect_printed(t, "a = measure \"a\\nb\\nc\"\nleading 2\nb = measure \"a\\nb\\nc\"\nleading 0\nc = measure \"a\\nb\\nc\"\nprint (b.y > a.y)\nprint (c.y is a.y)", "true\ntrue")
+	p := run_text(t, "text \"x\" at 1 1 leading 1.5\ntext \"y\" at 2 2")
+	defer finish(p)
+	found := typeset_commands()
+	defer delete(found)
+	if testing.expect_value(t, len(found), 2) {
+		testing.expect_value(t, found[0].style.leading, f32(1.5))
+		testing.expect_value(t, found[1].style.leading, f32(0))
+	}
+}
+
+@(test)
 test_an_unknown_font_is_said_once_and_the_text_still_draws :: proc(t: ^testing.T) {
 	p := run_text(t, "font \"No Such Font\"\ntext \"x\" at 1 1 font \"Nor This\"\ntext \"y\" at 2 2 font \"Nor This\"")
 	defer finish(p)

@@ -104,6 +104,9 @@ void roci_font(const char *name);
 /* Sets where a text sits against its point from now on: left, center or right. */
 void roci_align(const char *side);
 
+/* Sets the space between the lines of a text from now on, as a multiple of its size: 1.5 puts the lines one and a half sizes apart, and 0 is the font's own spacing. */
+void roci_leading(double multiple);
+
 /* How big a text is in the current font, as a vector of its width and height. */
 roci_vec2 roci_measure(const char *text);
 

@@ -39,6 +39,7 @@ Font_Key :: struct {
 	face:  u16,
 	pixels: u32, // the size as a whole number of 64ths of a pixel
 	align: Align,
+	leading: u32, // the line spacing as a whole number of thousandths of the size; 0 is the font's own
 }
 
 // Fonts the system may have, tried in order to draw characters Inter has not (other
@@ -170,12 +171,12 @@ find_face :: proc(name: string) -> (face: u16, ok: bool) {
 }
 
 // The font for a face, a size in pixels and a line alignment, opened on first use.
-font_for :: proc(face: u16, pixels: f32, align: Align) -> ^ttf.Font {
+font_for :: proc(face: u16, pixels: f32, align: Align, leading: f32 = 0) -> ^ttf.Font {
 	context.allocator = runtime.heap_allocator()
 	if !fonts_start() || int(face) >= len(fonts.faces) {
 		return nil
 	}
-	key := Font_Key{face, u32(max(pixels, 1) * 64), align}
+	key := Font_Key{face, u32(max(pixels, 1) * 64), align, u32(max(leading, 0) * 1000)}
 	if font, found := fonts.opened[key]; found {
 		return font
 	}
@@ -185,6 +186,9 @@ font_for :: proc(face: u16, pixels: f32, align: Align) -> ^ttf.Font {
 	}
 	ttf.SetFontSize(font, max(pixels, 1))
 	ttf.SetFontWrapAlignment(font, ttf.HorizontalAlignment(int(align)))
+	if leading > 0 {
+		ttf.SetFontLineSkip(font, i32(max(leading * max(pixels, 1), 1) + 0.5))
+	}
 	add_fallbacks(font, max(pixels, 1))
 	fonts.opened[key] = font
 	return font
@@ -192,8 +196,8 @@ font_for :: proc(face: u16, pixels: f32, align: Align) -> ^ttf.Font {
 
 // How big a text is, in logical pixels, at a size, with lines broken where `wrap`
 // says (0 for only where the text has line breaks). A text nobody can show gives 0.
-measure_typeset :: proc(face: u16, size: f32, align: Align, text: string, wrap: f32 = 0) -> (width, height: f32) {
-	font := font_for(face, size, align)
+measure_typeset :: proc(face: u16, size: f32, align: Align, text: string, wrap: f32 = 0, leading: f32 = 0) -> (width, height: f32) {
+	font := font_for(face, size, align, leading)
 	if font == nil || len(text) == 0 {
 		return 0, 0
 	}
