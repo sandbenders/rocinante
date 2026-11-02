@@ -16,3 +16,4 @@ draw [
   forward 30
   show turtle
 ]
+pen down

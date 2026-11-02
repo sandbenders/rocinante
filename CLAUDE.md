@@ -11,7 +11,7 @@ Read `MANIFESTO.md` before starting any work. Every decision below serves it.
 - `main` moves between sessions and other work lands without this file being re-read: run `git fetch` and read `git log --oneline origin/main -20` before trusting anything below.
 - Branch first, never commit on `main`, never push (§3). Fabrizio pushes, opens the merge request and merges. When he says a branch is merged, check `git rev-list --count origin/main..<branch>` is 0, fast-forward `main` and delete every merged local branch with `git branch -d`, without waiting to be asked (decided 2026-10-28).
 - Run `odin run build -- ci` before handing a branch over.
-- Phases 0, 1 and 2 are closed (§8; Phase 2 on 2026-10-30). The language exists: the front end, checker, interpreter, `roci run` (live reload, overlay), `roci fmt`, `roci man`, sketch folders, sketches of several files, libraries (`use`, `libs/`, `roci get`, `roci update`), input (`pressed`, `held`, mouse buttons by name, `wheel`, the window `cursor`, `on touch down`, `on touch up`, `finger`, `touches`), the turtle, 2D collision, tables, `tween` and `ease`; the code map below says what each piece does. Phase 3 (text, UI, images, canvases, shaders) is next.
+- Phases 0, 1 and 2 are closed (§8; Phase 2 on 2026-10-30): the language exists end to end (front end, checker, interpreter, `roci run`/`check`/`fmt`/`man`/`test`, libraries, input, the turtle, collision, tables, tweens); the code map below says what each piece does. Phase 3 (text, UI, images, canvases, shaders) is next.
 
 ## Commands
 
@@ -28,6 +28,7 @@ VK_DRIVER_FILES=$(command ls /usr/share/vulkan/icd.d/lvp_icd*.json | tr '\n' ':'
 odin check <dir> -vet -strict-style           # type-check one package
 odin test <dir>                               # run its @(test) procedures (core:testing)
 odin test <dir> -define:ODIN_TEST_NAMES=package.test_name   # run a single test
+odin test cli -out:output/tests/cli -define:ODIN_TEST_NAMES=main.test_name   # the cli package is `main`; the name is package.test_name for every package, so check the package line of the test file
 odin test <dir> -out:output/tests/<name>.exe  # on Windows: keep the test program out of the repository root, as ci does
 ```
 
@@ -50,7 +51,7 @@ odin run cli -- man [word]                    # how a verb or statement is writt
 odin run cli -- test [folder or file] [--accept [--frames N] [--seed N]]   # run the checks of a sketch and compare its picture with tests/snapshot-1.png; --accept stores the picture
 odin run cli -- new <name> | init | add <file>   # a sketch folder, its files in this folder, a file into assets/
 odin run cli -- get <git address> [--as name] | update [name]   # copy a library into libs/ from git, and fetch newer copies (run in a sketch folder)
-ROCI_UPDATE_ERRORS=1 odin test roci/lang      # write tests/errors/**/*.txt, tests/check/*.types and examples/*/sketch.types again (review them like code); roci/interp does the same for tests/errors/runtime
+ROCI_UPDATE_ERRORS=1 odin test roci/lang      # write tests/errors/**/*.txt, tests/check/*.types and examples/*/sketch.types again (review them like code); roci/interp does the same for tests/errors/runtime (run both after a message changes, as a runtime message such as `Expect_Failed` is rendered by interp)
 ROCI_GPU_DEBUG=1 odin run examples/shapes     # any program with GPU validation on (off by default)
 ROCI_PASSES=off output/roci run <sketch>      # the interpreter with no optimisation pass: the reference the passes are compared with
 odin run tests/golden [-- update | scene]     # golden images: scenes drawn offscreen, compared with tests/golden/*.png
@@ -141,6 +142,9 @@ The phone scripts need SDL 3.4.18 built for the phone, which is not in the repos
 - `roci/folder`'s tests expect the repository to be a git repository (a sketch inside one is left to it), so a test copy made with `git archive` fails them; copy with `git clone`.
 - This computer has Podman, not Docker. `podman build -f tools/ci/orion.Dockerfile -t rocinante-ci .` and `podman run --rm -v <clone>:/builds/rocinante:Z rocinante-ci sh -c '...'` on a fresh clone reproduce ORION's jobs.
 - A style verb on its own line (`stroke black`, `thickness 48`) lasts until changed, so it also reaches shapes written later that were meant to have none: turn it off (`no stroke`) where it should stop. In a `draw` block it lasts for the frame only, so a style line above the block never reaches what the block draws.
+- BSD `sed` (macOS, FreeBSD, OpenBSD) has no `\b` word boundary, so `sed 's/\bplural(/x(/'` does nothing and says nothing: use the plain text, or the edit tool.
+- A guide quotes an error message only in a ```` ```message ```` block holding the text of a `.txt` under `tests/errors` exactly (runtime ones included); `tools/site`'s tests fail on any other quotation, and on a message left in a plain block.
+- `count`, `item`, `keep`, `find` and the other built-in verbs are reserved, so they cannot be names of a parameter or a variable (an example that used `count` failed the checker): `n` is a safe name.
 
 ---
 
