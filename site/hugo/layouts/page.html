@@ -25,7 +25,8 @@
 {{ else if eq .Type "tool" }}
 <div class="with-toc">
   <main id="content" class="content guide">
-    <h1><code>{{ .Title }}</code></h1>
+    {{ if hasPrefix .Title "roci " }}<p class="crumb"><a href="../tools/">tools</a></p>{{ end }}
+    <h1>{{ if hasPrefix .Title "roci " }}<code>{{ .Title }}</code>{{ else }}{{ .Title }}{{ end }}</h1>
     {{ .Content }}
     {{ with .File }}<p class="edit"><a href="{{ site.Params.repository }}/blob/main/site/pages/{{ .LogicalName }}">edit this page on GitHub</a></p>{{ end }}
   </main>
