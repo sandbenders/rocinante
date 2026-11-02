@@ -1,0 +1,7 @@
+background 250
+fill 30
+font "Inter Bold" size 48
+text "Hello" at 30 40
+font "Inter" size 20
+fill teal
+text "Words, set in Inter. A longer line wraps at the width you give it." at 30 120 width 340

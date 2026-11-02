@@ -31,7 +31,8 @@ check_labelled :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> (ir: ^I
 	for o in k.options {
 		written_any ||= registry.is_label_word(verb.name, o.word)
 	}
-	if len(k.args) > 0 {
+	lead := registry.label_lead(verb.name)
+	if len(k.args) > lead {
 		any_labelled := false
 		for form in forms {
 			any_labelled ||= len(form.words) > 0
@@ -57,6 +58,16 @@ check_labelled :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> (ir: ^I
 		return error_ir(c, e.span), true
 	}
 
+	// The values written by position before the label words (`text "hi" at 20 20`).
+	if len(k.args) < lead {
+		param := verb.shapes[forms[0].shape].params[len(k.args)]
+		note(c, .Wrong_Argument_Kind, e.span, verb.name, fmt.tprintf("%s first, before the words", kind_words(param.kind)), count_words(len(k.args)), fix(c, e.span, full_example(verb, forms[0])))
+		return error_ir(c, e.span), true
+	}
+	lead_values := make([]^IR, lead, context.temp_allocator)
+	for i in 0 ..< lead {
+		lead_values[i] = check_expr(c, k.args[i], false)
+	}
 	// Check what each label word was given, once.
 	written := make([dynamic]Written, context.temp_allocator)
 	for o in k.options {
@@ -76,6 +87,9 @@ check_labelled :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> (ir: ^I
 			append(&values, check_expr(c, a, false))
 		}
 		append(&written, Written{word = o.word, option = o, args = values[:]})
+	}
+	for v in lead_values {
+		if v.type == T_ERROR {return error_ir(c, e.span), true}
 	}
 	for w in written {
 		for a in w.args {
@@ -140,6 +154,14 @@ check_labelled :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> (ir: ^I
 			args[w.first + i] = a
 		}
 	}
+	for i in 0 ..< lead {
+		param := shape.params[i]
+		if !registry.accepts(param.kind, registry_kind(c.types, lead_values[i].type)) {
+			note(c, .Wrong_Argument_Kind, lead_values[i].span, verb.name, fmt.tprintf("%s first", kind_words(param.kind)), describe(c.types, lead_values[i].type), fix(c, lead_values[i].span, sample_for_kind(param.kind)))
+			return error_ir(c, e.span), true
+		}
+		args[i] = lead_values[i]
+	}
 	options := check_options(c, e.span, k, verb, shape, T_ERROR)
 	type := type_of_kind(c.types, shape.gives)
 	if !as_stmt && type == T_NONE {
@@ -197,6 +219,9 @@ zeros :: proc(count: int) -> string {
 full_example :: proc(verb: ^registry.Verb, form: registry.Label_Form) -> string {
 	parts := make([dynamic]string, context.temp_allocator)
 	append(&parts, verb.name)
+	for i in 0 ..< form.lead {
+		append(&parts, sample_for_kind(verb.shapes[form.shape].params[i].kind))
+	}
 	for w in form.words {
 		append(&parts, w.word, zeros(w.count))
 	}
@@ -239,6 +264,9 @@ labels_needed :: proc(c: ^Checker, e: ^Expr, k: Call) {
 	form := forms[chosen]
 	parts := make([dynamic]string, context.temp_allocator)
 	append(&parts, verb.name)
+	for i in 0 ..< form.lead {
+		append(&parts, text_at(c, k.args[i].span))
+	}
 	for w in form.words {
 		append(&parts, w.word)
 		for i in w.first ..< w.first + w.count {

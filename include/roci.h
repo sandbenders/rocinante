@@ -92,6 +92,24 @@ void roci_circle(double x, double y, double radius);
 /* Draws a circle around a point. */
 void roci_circle_v(roci_vec2 position, double radius);
 
+/* Draws text with its top at a point, in the current font. */
+void roci_text(const char *words, double x, double y);
+
+/* Draws text with its top at a point, in the current font. */
+void roci_text_v(const char *words, roci_vec2 position);
+
+/* Sets the font, and its size, for the text drawn from now on: Inter or Inter Bold, or a font file in assets/fonts. */
+void roci_font(const char *name);
+
+/* Sets where a text sits against its point from now on: left, center or right. */
+void roci_align(const char *side);
+
+/* How big a text is in the current font, as a vector of its width and height. */
+roci_vec2 roci_measure(const char *text);
+
+/* Sets the size of the text drawn from now on, in pixels. */
+void roci_font_size(double pixels);
+
 /* Draws an ellipse. */
 void roci_ellipse(double x, double y, double width, double height);
 

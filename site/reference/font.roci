@@ -1,0 +1,6 @@
+background 250
+fill 30
+font "Inter" size 36
+text "Inter" at 30 40
+font "Inter Bold" size 36
+text "Inter Bold" at 30 100

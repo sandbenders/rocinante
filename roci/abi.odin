@@ -716,3 +716,46 @@ abi_frame_count :: proc "c" () -> c.int {
 	context = runtime.default_context()
 	return c.int(frame_count())
 }
+
+// ---- text ----
+
+@(export, link_name = "roci_text")
+abi_text :: proc "c" (content: cstring, x, y: f64) {
+	context = runtime.default_context()
+	text(text_from_abi(content), x, y)
+}
+
+@(export, link_name = "roci_text_v")
+abi_text_v :: proc "c" (content: cstring, position: Abi_Vec2) {
+	context = runtime.default_context()
+	text(text_from_abi(content), vec_from_abi(position))
+}
+
+@(export, link_name = "roci_font")
+abi_font :: proc "c" (name: cstring) {
+	context = runtime.default_context()
+	font(text_from_abi(name))
+}
+
+@(export, link_name = "roci_font_size")
+abi_font_size :: proc "c" (pixels: f64) {
+	context = runtime.default_context()
+	font_size(pixels)
+}
+
+@(export, link_name = "roci_align")
+abi_align :: proc "c" (side: cstring) {
+	context = runtime.default_context()
+	switch text_from_abi(side) {
+	case "left":   align(.Left)
+	case "center": align(.Center)
+	case "right":  align(.Right)
+	}
+}
+
+@(export, link_name = "roci_measure")
+abi_measure :: proc "c" (content: cstring) -> Abi_Vec2 {
+	context = runtime.default_context()
+	size := measure(text_from_abi(content))
+	return {size.x, size.y}
+}

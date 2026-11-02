@@ -515,6 +515,9 @@ test_every_label_form_names_a_real_shape_and_covers_each_input_once :: proc(t: ^
 			continue // a shape written positionally
 		}
 		covered := make([]int, inputs, context.temp_allocator)
+		for i in 0 ..< min(form.lead, inputs) {
+			covered[i] += 1 // written by position
+		}
 		for w in form.words {
 			testing.expectf(t, slice.contains(CONNECTING_WORDS[:], w.word), "`%s` shape %d: `%s` is not a connecting word", form.verb, form.shape, w.word)
 			for i in w.first ..< w.first + w.count {
@@ -779,4 +782,30 @@ test_every_built_in_value_says_what_it_is :: proc(t: ^testing.T) {
 	for def in VALUE_DEFS {
 		testing.expectf(t, len(def.doc) > 10 && (strings.has_suffix(def.doc, ".") || strings.has_suffix(def.doc, "…")), "`%s` needs a one-line description", def.name)
 	}
+}
+
+@(test)
+test_a_label_form_can_start_with_values_written_by_position :: proc(t: ^testing.T) {
+	testing.expect_value(t, label_lead("text"), 1)
+	testing.expect_value(t, label_lead("circle"), 0)
+	testing.expect_value(t, label_lead("nothing at all"), 0)
+	written, ok := write_with_labels("text", {"\"hi\"", "10", "20"}, context.temp_allocator)
+	testing.expect(t, ok)
+	testing.expect_value(t, written, "text \"hi\" at 10 20")
+	vector, vector_ok := write_with_labels("text", {"\"hi\"", "p"}, context.temp_allocator)
+	testing.expect(t, vector_ok)
+	testing.expect_value(t, vector, "text \"hi\" at p")
+}
+
+@(test)
+test_the_text_verbs_and_their_words_are_in_the_language :: proc(t: ^testing.T) {
+	for name in ([?]string{"text", "font", "align", "measure"}) {
+		_, found := find_verb(name)
+		testing.expectf(t, found, "`%s` is a verb", name)
+	}
+	testing.expect(t, slice.contains(CONNECTING_WORDS[:], "align"))
+	testing.expect_value(t, len(word_choices("align", "side")), 3)
+	testing.expect_value(t, len(word_choices("text", "align")), 3)
+	measure, _ := find_verb("measure")
+	testing.expect_value(t, measure.shapes[0].gives, Kind.Vector)
 }

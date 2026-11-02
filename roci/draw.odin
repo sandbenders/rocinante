@@ -34,6 +34,10 @@ Look :: struct {
 	alpha:     Maybe(f64),
 	no_fill:   bool,
 	no_stroke: bool,
+	// Text only: the font (a name `font` knows), its size in pixels, and where the lines sit.
+	font:      Maybe(string),
+	size:      Maybe(f64),
+	align:     Maybe(Align),
 }
 
 // ---- looks ----
@@ -72,6 +76,11 @@ begin_look :: proc(list: ^gfx.Command_List, look: Look) -> bool {
 	if look.no_stroke {gfx.no_stroke(list)}
 	if t, ok := look.thickness.?; ok {gfx.set_thickness(list, f32(t))}
 	if a, ok := look.alpha.?; ok {gfx.set_alpha(list, f32(a))}
+	if name, ok := look.font.?; ok {
+		if face, found := gfx.find_face(name); found {gfx.set_font(list, face)}
+	}
+	if s, ok := look.size.?; ok {gfx.set_font_size(list, f32(s))}
+	if side, ok := look.align.?; ok {gfx.set_align(list, side)}
 	return true
 }
 

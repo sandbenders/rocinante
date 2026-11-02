@@ -16,6 +16,9 @@ REFERENCE_SECTIONS := []Reference_Section{
 	{"Shapes", "The shapes a sketch draws. Positions are in pixels from the top left of the window.", {
 		"circle", "ellipse", "rect", "square", "line", "point", "triangle", "quad", "arc",
 	}},
+	{"Text", "Words on the window, set in Inter or a font of your own.", {
+		"text", "font", "align", "measure",
+	}},
 	{"Color and style", "How shapes look: the color inside them, the line around them, and colors made from numbers.", {
 		"background", "clear", "fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "caps", "joins",
 		"rgb", "hsb", "oklch", "gradient", "mix", "with",

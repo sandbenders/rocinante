@@ -219,6 +219,16 @@ make_look :: proc(it: ^Interp, options: []lang.IR_Option) -> (look: roci.Look, o
 			look.thickness = as_number(eval(it, o.args[0]))
 		case "alpha":
 			look.alpha = alpha_to_byte(as_number(eval(it, o.args[0])))
+		case "size":
+			look.size = as_number(eval(it, o.args[0]))
+		case "font":
+			look.font = as_text(eval(it, o.args[0]))
+		case "align":
+			switch as_text(eval(it, o.args[0])) {
+			case "left":   look.align = .Left
+			case "center": look.align = .Center
+			case "right":  look.align = .Right
+			}
 		case "style":
 			merge_style_record(it, &look, eval(it, o.args[0]))
 		case "as":
@@ -398,6 +408,35 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case .Arc:
 		roci.arc(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look^, origin)
 
+	case .Text:
+		if name, named := look.font.?; named && !ensure_font(it, name) {
+			fail(it, .Font_Missing, e.span, name, "", "", "font \"Inter\"")
+		}
+		wrap := 0.0
+		if v, found := option_value(it, call.options, "width"); found {
+			wrap = as_number(v)
+		}
+		if call.shape == 0 {
+			roci.text_xy(as_text(a[0]), n(a, 1), n(a, 2), look^, wrap)
+		} else {
+			roci.text_v(as_text(a[0]), p(a, 1), look^, wrap)
+		}
+	case .Font:
+		size := 0.0
+		if v, found := option_value(it, call.options, "size"); found {
+			size = as_number(v)
+		}
+		if !ensure_font(it, as_text(a[0])) || !roci.font(as_text(a[0]), size) {
+			fail(it, .Font_Missing, e.span, as_text(a[0]), "", "", "font \"Inter\"")
+		}
+	case .Align:
+		switch as_text(a[0]) {
+		case "left":   roci.align(.Left)
+		case "center": roci.align(.Center)
+		case "right":  roci.align(.Right)
+		}
+	case .Measure:
+		return vec2(roci.measure(as_text(a[0])))
 	case .Fill:
 		if paint, ok := to_paint(it, a[0], call.options); ok {
 			roci.fill_paint(paint)

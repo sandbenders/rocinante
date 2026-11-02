@@ -1278,3 +1278,49 @@ test_a_check_may_sit_in_a_file_next_to_the_sketch :: proc(t: ^testing.T) {
 	got := check_files(files)
 	testing.expect_value(t, len(got.checked.diagnostics), 0)
 }
+
+// ---- text ----
+
+@(test)
+test_text_is_written_with_its_words_first_and_the_point_after_at :: proc(t: ^testing.T) {
+	expect_errors(t, "text \"hello\" at 20 30", {})
+	expect_errors(t, "text \"hello\" at { 20, 30 }", {})
+	expect_errors(t, "text \"hello\" at 20 30 size 24 font \"Inter\" align center width 200 fill red", {})
+	expect_errors(t, "p = { 1, 2 }\ntext \"x\" at p", {})
+	expect_errors(t, "text (\"a\" + \"b\") at 1 2", {})
+}
+
+@(test)
+test_text_names_what_is_missing_or_wrong :: proc(t: ^testing.T) {
+	expect_errors(t, "text \"hello\"", {.Missing_Required_Word})
+	expect_errors(t, "text at 1 2", {.Wrong_Argument_Kind})
+	expect_errors(t, "text 5 at 1 2", {.Wrong_Argument_Kind})
+	expect_errors(t, "text \"a\" at 1 2 at 3 4", {.Word_Twice})
+	expect_errors(t, "text \"a\" at \"b\" 2", {.Wrong_Argument_Kind})
+	expect_errors(t, "text \"a\" at 1 2 align middle", {.Unknown_Choice})
+	expect_errors(t, "x = text \"a\" at 1 2", {.Value_Of_Nothing})
+}
+
+@(test)
+test_text_with_bare_numbers_gets_the_labelled_line :: proc(t: ^testing.T) {
+	got := check_text("text \"hello\" 20 30")
+	if testing.expect(t, len(got.checked.diagnostics) >= 1) {
+		d := got.checked.diagnostics[0]
+		testing.expect_value(t, d.id, Message_Id.Labels_Needed)
+		testing.expect_value(t, d.args[3], "text \"hello\" at 20 30")
+	}
+	missing := check_text("text \"hello\"")
+	testing.expect_value(t, missing.checked.diagnostics[0].args[3], "text \"hello\" at 0 0")
+}
+
+@(test)
+test_the_text_verbs_around_text_check :: proc(t: ^testing.T) {
+	expect_errors(t, "font \"Inter\"", {})
+	expect_errors(t, "font \"Inter\" size 30", {})
+	expect_errors(t, "align right", {})
+	expect_errors(t, "align up", {.Unknown_Choice})
+	expect_errors(t, "size = measure \"hello\"\ncircle at size radius 5", {})
+	expect_errors(t, "box = measure \"hello\"\nprint box.x", {})
+	expect_errors(t, "font 5", {.Wrong_Argument_Kind})
+	expect_errors(t, "x = font \"Inter\"", {.Value_Of_Nothing})
+}

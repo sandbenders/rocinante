@@ -120,6 +120,7 @@ Message_Id :: enum u8 {
 	Recursion_Too_Deep,
 	Runs_Too_Long,
 	Expect_Failed,
+	Font_Missing,
 }
 
 Entry :: struct {
@@ -401,6 +402,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Index_Out_Of_Range = {.Error, "There is no item {c} in `{a}`",
 		"`{a}` has {b} in it, so item {c} is not there. Items are numbered from 1, and the sketch carries on with an empty value. Check the count first.",
 		"Check first:", "{d}"},
+	.Font_Missing = {.Error, "I do not know a font called `{a}`",
+		"The fonts a sketch has are Inter and Inter Bold, and any font file in its `assets/fonts` folder under its own name. The text is drawn in the font before it, and the sketch carries on.",
+		"Use one that is there:", "{d}"},
 	.Division_By_Zero = {.Error, "This divides by zero",
 		"The number you divide by is 0 here, and nothing can be divided by 0. The sketch carries on with 0 as the answer. Check the number first.",
 		"Check first:", "{d}"},
@@ -457,7 +461,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing:
 		return true
 	case:
 		return false

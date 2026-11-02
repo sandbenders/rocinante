@@ -38,6 +38,8 @@ Install git, clang (which Odin uses to link) and SDL3, and Odin itself where the
 
 Arch keeps its `odin` package current; check that `odin version` matches `ODIN_VERSION`. Debian, Ubuntu and Fedora do not package Odin (the `odin` package on Debian and Ubuntu is a different program, for medical imaging), so on those download Odin from its [releases](https://github.com/odin-lang/Odin/releases): the `linux-amd64` or `linux-arm64` archive of the version in `ODIN_VERSION`. Unpack it and add its folder to your `PATH`.
 
+Text needs SDL3_ttf as well (`sudo pacman -S sdl3_ttf` on Arch). The Debian, Ubuntu, Fedora and BSD package names are being confirmed; the script below builds it too, and needs the FreeType and HarfBuzz development packages (`libfreetype-dev libharfbuzz-dev` on Debian and Ubuntu).
+
 Older releases (Ubuntu 24.04, Debian 12) have no SDL3 package. Build it with the repository's own script, which the pipelines use: `tools/ci/install-sdl3.sh ~/sdl3`, then point the compiler at it with `export LIBRARY_PATH=~/sdl3/lib` and `export LD_LIBRARY_PATH=~/sdl3/lib`. It needs `cmake`, `ninja` and the development packages of X11 or Wayland.
 
 ### FreeBSD
@@ -66,7 +68,7 @@ Then put that `Odin` folder on your path (the `odin` program has to stay beside 
 ### macOS
 
 1. Install Apple's command-line tools, which include git: `xcode-select --install`.
-2. Install Odin and SDL3 with [Homebrew](https://brew.sh): `brew install odin sdl3`. Check that `odin version` matches `ODIN_VERSION`; if Homebrew's Odin is newer or older, download the `macos-arm64` archive of the right version from Odin's [releases](https://github.com/odin-lang/Odin/releases) instead.
+2. Install Odin, SDL3 and SDL3_ttf (for text) with [Homebrew](https://brew.sh): `brew install odin sdl3 sdl3_ttf`. Check that `odin version` matches `ODIN_VERSION`; if Homebrew's Odin is newer or older, download the `macos-arm64` archive of the right version from Odin's [releases](https://github.com/odin-lang/Odin/releases) instead.
 
 ### Building `roci`
 

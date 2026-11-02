@@ -1,0 +1,12 @@
+background 250
+stroke gray
+line from 200 20 to 200 280
+no stroke
+fill 30
+font "Inter" size 24
+align left
+text "left" at 200 50
+align center
+text "center" at 200 130
+align right
+text "right" at 200 210

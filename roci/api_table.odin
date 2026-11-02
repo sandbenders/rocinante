@@ -15,6 +15,10 @@ Api_Entry :: struct {
 API_NAMES := [?]Api_Entry{
 	{"window", "window"},
 	{"title", "title"},
+	{"text", "text"},
+	{"font", "font"},
+	{"align", "align"},
+	{"measure", "measure"},
 	{"fullscreen", "fullscreen"},
 	{"quit", "quit"},
 	{"background", "background"},

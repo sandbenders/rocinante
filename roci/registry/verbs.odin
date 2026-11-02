@@ -20,6 +20,20 @@ STYLE_OPTIONS := []Option{
 	{"as", {.Name}, false},
 }
 
+// What a text takes besides the style words: its size in pixels, its font (a name),
+// where its lines sit against the point, and how wide a line may be before it wraps.
+TEXT_OPTIONS := []Option{
+	{"fill", {.Colour}, false},
+	{"stroke", {.Colour}, false},
+	{"thickness", {.Number}, false},
+	{"alpha", {.Number}, false},
+	{"style", {.Any}, false},
+	{"size", {.Number}, false},
+	{"font", {.Text}, false},
+	{"align", {.Name}, false},
+	{"width", {.Number}, false},
+}
+
 // `gradient [ red teal ] angle 90 stops [ 0 20 100 ] as radial at 30 30 in rgb`
 GRADIENT_OPTIONS := []Option{
 	{"angle", {.Number}, false},
@@ -124,6 +138,15 @@ VERBS := []Verb{
 	{"arc", {
 		{{{"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}, {"start", .Number}, {"stop", .Number}}, STYLE_OPTIONS, .None},
 	}, "Draws part of an ellipse, between two angles in degrees."},
+
+	// Text
+	{"text", {
+		{{{"words", .Text}, {"x", .Number}, {"y", .Number}}, TEXT_OPTIONS, .None},
+		{{{"words", .Text}, {"position", .Vector}}, TEXT_OPTIONS, .None},
+	}, "Draws text with its top at a point, in the current font."},
+	{"font", {{{{"name", .Text}}, {{"size", {.Number}, false}}, .None}}, "Sets the font, and its size, for the text drawn from now on: Inter or Inter Bold, or a font file in assets/fonts."},
+	{"align", {{{{"side", .Name}}, nil, .None}}, "Sets where a text sits against its point from now on: left, center or right."},
+	{"measure", {{{{"text", .Text}}, nil, .Vector}}, "How big a text is in the current font, as a vector of its width and height."},
 
 	// Style
 	{"fill", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the color of areas from now on."},

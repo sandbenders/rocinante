@@ -137,7 +137,7 @@ option_kinds :: proc(info: Call_Info, word: string, given: int) -> (kinds: []reg
 	}
 	// A verb written with labels takes no positional values, so its other words (`fill`, `at`,
 	// `title`) belong to any of its forms.
-	labelled := given == 0 && registry.has_label_forms(info.verb.name)
+	labelled := given == registry.label_lead(info.verb.name) && registry.has_label_forms(info.verb.name)
 	for shape in info.verb.shapes {
 		if len(shape.params) != given && !labelled {
 			continue
@@ -468,7 +468,7 @@ shape_takes :: proc(info: Call_Info, count: int) -> bool {
 // still have been one of them.
 @(private)
 option_could_be_value :: proc(info: Call_Info, given: int) -> bool {
-	if info.verb == nil {
+	if info.verb == nil || (registry.has_label_forms(info.verb.name) && given >= registry.label_lead(info.verb.name)) {
 		return false
 	}
 	for shape in info.verb.shapes {

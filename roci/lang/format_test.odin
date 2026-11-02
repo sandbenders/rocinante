@@ -324,3 +324,10 @@ test_a_check_is_formatted_like_the_verb_it_tests :: proc(t: ^testing.T) {
 		"learn double n [ give n * 2 ]\n\ncheck \"double\" [\n  expect double 21 is 42\n  expect (double -1) is -2\n]\n",
 	)
 }
+
+@(test)
+test_text_keeps_its_words_first_and_puts_at_before_the_style_words :: proc(t: ^testing.T) {
+	expect_formatted(t, "text \"hi\" fill red at 1 2\n", "text \"hi\" at 1 2 fill red\n")
+	expect_formatted(t, "text   \"hi\"   at {1,2}   size 20   align center\n", "text \"hi\" at { 1, 2 } size 20 align center\n")
+	expect_formatted(t, "text (\"a\" + \"b\") at 1 2 width 100\n", "text (\"a\" + \"b\") at 1 2 width 100\n")
+}

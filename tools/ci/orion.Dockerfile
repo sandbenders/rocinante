@@ -15,7 +15,7 @@ FROM archlinux:latest
 # clang links Odin's programs; sdl3 is linked by the engine's tests; diffutils for
 # the format checks; vulkan-swrast is Mesa's software Vulkan (lavapipe), which draws
 # the golden images. The package cache is emptied so the image stays small.
-RUN pacman -Syu --noconfirm clang curl tar git sdl3 diffutils vulkan-swrast \
+RUN pacman -Syu --noconfirm clang curl tar git sdl3 sdl3_ttf diffutils vulkan-swrast \
  && yes | pacman -Scc
 
 # The pinned Odin, in /opt/odin.

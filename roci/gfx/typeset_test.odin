@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package gfx
 
+import "core:os"
 import "core:testing"
 
 @(test)
@@ -185,4 +186,17 @@ transparent_or_unfilled_text_draws_nothing :: proc(t: ^testing.T) {
 	build(&batcher, &list, {100, 100})
 	testing.expect_value(t, len(batcher.typeset), 0)
 	testing.expect_value(t, batcher.stats.skipped, 2)
+}
+
+@(test)
+system_fallback_fonts_that_exist_are_added_and_the_rest_are_skipped :: proc(t: ^testing.T) {
+	testing.expect(t, fonts_start())
+	any_there := false
+	for file in FALLBACK_FONT_FILES {
+		any_there ||= os.exists(file)
+	}
+	testing.expect_value(t, len(fonts.fallback_paths) > 0, any_there)
+	// a character Inter has not is still measured, with a fallback's glyph or the empty box
+	w, h := measure_typeset(FACE_DEFAULT, 20, .Left, "\xe6\x97\xa5")
+	testing.expect(t, w > 0 && h > 0)
 }

@@ -16,6 +16,7 @@ Word_Choices :: struct {
 }
 
 ORIGIN_WORDS := []string{"center", "corner"}
+ALIGN_WORDS := []string{"left", "center", "right"}
 GRADIENT_KINDS := []string{"linear", "radial", "conic"}
 MIX_SPACES := []string{"oklab", "rgb", "oklch"}
 CURSOR_WORDS := []string{"arrow", "none"}
@@ -24,6 +25,8 @@ MOUSE_BUTTON_WORDS := []string{"left", "middle", "right", "back", "forward"}
 
 WORD_CHOICES := []Word_Choices{
 	{"caps", "style", {"butt", "round", "square"}},
+	{"align", "side", ALIGN_WORDS},
+	{"text", "align", ALIGN_WORDS},
 	{"joins", "style", {"miter", "round", "bevel"}},
 	{"noise", "as", {"perlin", "simplex"}},
 	{"ease", "as", EASE_WORDS},

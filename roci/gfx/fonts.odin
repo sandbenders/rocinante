@@ -8,6 +8,7 @@
 package gfx
 
 import "base:runtime"
+import "core:os"
 import "core:strings"
 import sdl "vendor:sdl3"
 import ttf "vendor:sdl3/ttf"
@@ -40,9 +41,29 @@ Font_Key :: struct {
 	align: Align,
 }
 
+// Fonts the system may have, tried in order to draw characters Inter has not (other
+// scripts, emoji). They are used where they are installed and never copied, so a
+// sketch shows those characters on the computers that have such a font and the
+// empty box of a missing character on the ones that do not.
+FALLBACK_FONT_FILES := [?]string{
+	// macOS
+	"/System/Library/Fonts/Hiragino Sans GB.ttc", "/System/Library/Fonts/AppleSDGothicNeo.ttc", "/System/Library/Fonts/GeezaPro.ttc",
+	"/System/Library/Fonts/Kohinoor.ttc", "/System/Library/Fonts/Apple Color Emoji.ttc", "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+	// Windows
+	"C:/Windows/Fonts/YuGothR.ttc", "C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/segoeui.ttf", "C:/Windows/Fonts/seguiemj.ttf",
+	// Linux and the BSDs
+	"/usr/share/fonts/noto/NotoSansCJK-Regular.ttc", "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+	"/usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc", "/usr/local/share/fonts/noto/NotoSansCJK-Regular.ttc",
+	"/usr/share/fonts/noto/NotoSansArabic-Regular.ttf", "/usr/share/fonts/noto/NotoSansDevanagari-Regular.ttf",
+	"/usr/share/fonts/noto/NotoColorEmoji.ttf", "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", "/usr/share/fonts/TTF/DejaVuSans.ttf",
+	"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+}
+
 Fonts :: struct {
 	started: bool,
 	faces:   [dynamic]Face,
+	fallbacks: [dynamic]^ttf.Font, // the system fonts added to the fonts made so far; closed with them
+	fallback_paths: [dynamic]cstring,
 	opened:  map[Font_Key]^ttf.Font,
 }
 
@@ -62,6 +83,7 @@ fonts_start :: proc() -> bool {
 		return false
 	}
 	fonts.opened = make(map[Font_Key]^ttf.Font)
+	find_fallbacks()
 	ok := add_face_memory("Inter", INTER_REGULAR) && add_face_memory("Inter Bold", INTER_BOLD)
 	if !ok {
 		fonts_stop()
@@ -88,6 +110,14 @@ fonts_stop :: proc() {
 		}
 		delete(face.name)
 	}
+	for fallback in fonts.fallbacks {
+		ttf.CloseFont(fallback)
+	}
+	delete(fonts.fallbacks)
+	for path in fonts.fallback_paths {
+		delete(path)
+	}
+	delete(fonts.fallback_paths)
 	delete(fonts.faces)
 	fonts = {}
 	ttf.Quit()
@@ -155,6 +185,7 @@ font_for :: proc(face: u16, pixels: f32, align: Align) -> ^ttf.Font {
 	}
 	ttf.SetFontSize(font, max(pixels, 1))
 	ttf.SetFontWrapAlignment(font, ttf.HorizontalAlignment(int(align)))
+	add_fallbacks(font, max(pixels, 1))
 	fonts.opened[key] = font
 	return font
 }
@@ -173,4 +204,31 @@ measure_typeset :: proc(face: u16, size: f32, align: Align, text: string, wrap: 
 		return 0, 0
 	}
 	return f32(w), f32(h)
+}
+
+// The fallback files this computer has, found once.
+@(private)
+find_fallbacks :: proc() {
+	for file in FALLBACK_FONT_FILES {
+		if os.exists(file) {
+			append(&fonts.fallback_paths, strings.clone_to_cstring(file))
+		}
+	}
+}
+
+// Adds the system's fallback fonts to a font just made at a size. A fallback has to be
+// the same size as the font it serves, so each font gets its own.
+@(private)
+add_fallbacks :: proc(font: ^ttf.Font, pixels: f32) {
+	for path in fonts.fallback_paths {
+		fallback := ttf.OpenFont(path, pixels)
+		if fallback == nil {
+			continue
+		}
+		if !ttf.AddFallbackFont(font, fallback) {
+			ttf.CloseFont(fallback)
+			continue
+		}
+		append(&fonts.fallbacks, fallback)
+	}
 }

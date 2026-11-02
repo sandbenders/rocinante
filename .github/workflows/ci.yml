@@ -26,6 +26,7 @@ jobs:
             libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
             libdrm-dev libgbm-dev libegl1-mesa-dev libasound2-dev libpulse-dev \
             libudev-dev libdbus-1-dev libibus-1.0-dev \
+            libfreetype-dev libharfbuzz-dev \
             libvulkan1 mesa-vulkan-drivers
       - name: Install Odin
         run: tools/ci/install-odin.sh "$HOME/odin"
