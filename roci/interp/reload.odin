@@ -123,7 +123,7 @@ is_effect :: proc(s: ^lang.IR_Stmt) -> bool {
 	#partial switch k in s.kind {
 	case lang.IR_Assign:
 		return len(k.fields) > 0 || makes_window(k.value)
-	case lang.IR_Draw, lang.IR_On, lang.IR_Every, lang.IR_Unchecked, lang.IR_Error_Stmt:
+	case lang.IR_Draw, lang.IR_On, lang.IR_Every, lang.IR_Check, lang.IR_Unchecked, lang.IR_Error_Stmt:
 		return false
 	}
 	return true
@@ -465,8 +465,13 @@ update_overlay :: proc(p: ^Interp) {
 	case p.problem_title != "":
 		title, lines = p.problem_title, p.problem_lines
 	case len(p.errors) > 0:
-		e := p.errors[0]
-		title, lines = lang.plain_message(p.src, lang.Diagnostic{id = e.id, span = e.span, args = e.args})
+		// What a check ran into is for `roci test` to say; the picture shows only the sketch's own.
+		for e in p.errors {
+			if !e.in_check {
+				title, lines = lang.plain_message(p.src, lang.Diagnostic{id = e.id, span = e.span, args = e.args})
+				break
+			}
+		}
 	}
 	if shown, _ := roci.overlay_text(); title == shown {
 		return

@@ -1,0 +1,37 @@
+// The verbs of the flower, each with a check right under it. A check says what a verb is
+// meant to do, so it reads like an example of using it. roci run never looks at a check;
+// roci test runs them all and says which expect did not hold.
+
+learn petals ring [ give 6 * ring ]
+
+check "petals" [
+  expect petals 1 is 6
+  expect petals 3 is 18
+]
+
+learn reach ring [ give 25 + ring * 30 ]
+
+check "reach" [
+  expect reach 1 is 55
+  expect reach 4 is 145
+  expect (reach 2) > (reach 1)
+]
+
+learn turned i n [ give 360 / n * i ]
+
+check "turned" [
+  expect turned 0 4 is 0
+  expect turned 1 4 is 90
+  expect turned 3 6 is 180
+]
+
+learn ring_of_petals ring [
+  n = petals ring
+  for i from 1 to n [
+    push [
+      turn (turned i n)
+      move 0 (0 - (reach ring))
+      circle at 0 0 radius (5 + ring * 2) fill (hsb (i * 255 / n) 150 235)
+    ]
+  ]
+]

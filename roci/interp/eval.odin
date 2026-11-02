@@ -384,21 +384,14 @@ binary :: proc(it: ^Interp, e: ^lang.IR, k: lang.IR_Binary) -> Value {
 		return as_bool(left) || as_bool(eval(it, k.rhs))
 	}
 	right := eval(it, k.rhs)
-	switch k.op {
-	case .Is:
-		return equal(left, right)
-	case .Is_Not:
-		return !equal(left, right)
-	case .Less:
-		return as_number(left) < as_number(right)
-	case .Less_Equal:
-		return as_number(left) <= as_number(right)
-	case .Greater:
-		return as_number(left) > as_number(right)
-	case .Greater_Equal:
-		return as_number(left) >= as_number(right)
+	#partial switch k.op {
+	case .Is, .Is_Not, .Less, .Less_Equal, .Greater, .Greater_Equal:
+		return compare_values(k.op, left, right)
 	case .And, .Or:
 		return false
+	}
+	switch k.op {
+	case .Is, .Is_Not, .Less, .Less_Equal, .Greater, .Greater_Equal, .And, .Or:
 	case .Add, .Subtract, .Multiply, .Divide, .Modulo:
 	}
 	if k.op == .Add {
@@ -496,4 +489,24 @@ report_division :: proc(it: ^Interp, e: ^lang.IR, k: lang.IR_Binary) {
 	divisor := lang.span_text(it.src, k.rhs.span)
 	line := strings.trim_space(lang.line_text(it.src, lang.position_of(it.src, e.span.start).line))
 	fail(it, .Division_By_Zero, e.span, "", "", "", strings.concatenate({"if ", divisor, " is not 0 [ ", line, " ]"}, context.temp_allocator))
+}
+
+// A comparison of two values: `is` and `is not` by what they hold, the others as numbers.
+// `expect` uses it too, so a check says exactly what an `if` would.
+compare_values :: proc(op: lang.Binary_Op, left, right: Value) -> bool {
+	#partial switch op {
+	case .Is:
+		return equal(left, right)
+	case .Is_Not:
+		return !equal(left, right)
+	case .Less:
+		return as_number(left) < as_number(right)
+	case .Less_Equal:
+		return as_number(left) <= as_number(right)
+	case .Greater:
+		return as_number(left) > as_number(right)
+	case .Greater_Equal:
+		return as_number(left) >= as_number(right)
+	}
+	return false
 }

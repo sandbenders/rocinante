@@ -228,6 +228,18 @@ Draw :: struct {
 	body:   Block,
 }
 
+// `check "name" [ expect ... ]`: a test of the verbs above it. It never runs in a sketch.
+Check :: struct {
+	name: string, // what the text says, unquoted
+	quoted: string, // the name as written, with its quotes
+	body: Block,
+}
+
+// `expect condition`, inside a check: the condition has to hold.
+Expect :: struct {
+	cond: ^Expr,
+}
+
 Use :: struct {
 	name: string,
 }
@@ -252,6 +264,8 @@ Stmt_Kind :: union {
 	On,
 	Draw,
 	Use,
+	Check,
+	Expect,
 	Error_Stmt,
 }
 

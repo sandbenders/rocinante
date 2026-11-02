@@ -43,6 +43,9 @@ Message_Id :: enum u8 {
 	Shadows_Library,
 	Library_Name_Taken,
 	Colours_Expected,
+	Check_Needs_Name,
+	Check_Not_Top,
+	Expect_Outside_Check,
 	// Brackets
 	Missing_Close_Square,
 	Missing_Close_Round,
@@ -116,6 +119,7 @@ Message_Id :: enum u8 {
 	Division_By_Zero,
 	Recursion_Too_Deep,
 	Runs_Too_Long,
+	Expect_Failed,
 }
 
 Entry :: struct {
@@ -164,7 +168,7 @@ CATALOGUE := [Message_Id]Entry{
 		"`title` takes only the text and names the window the code runs in. Another window is changed with `set`, then the window, then `title` and the text.",
 		"Write:", "{b}"},
 	.Definitions_Only = {.Error, "`{a}` holds definitions only",
-		"A file next to sketch.roci holds verbs taught with `learn`, constants written in capitals and `use` lines. What runs is written in sketch.roci, or inside a verb, so splitting a sketch into files never changes what it does.",
+		"A file next to sketch.roci holds verbs taught with `learn`, constants written in capitals, `use` lines and checks. What runs is written in sketch.roci, or inside a verb, so splitting a sketch into files never changes what it does.",
 		"In sketch.roci:", "{b}"},
 	.Verb_Twice = {.Error, "`{a}` is taught twice",
 		"A verb has one definition, and `{a}` is already taught in {b}. Rename one of them.",
@@ -189,6 +193,15 @@ CATALOGUE := [Message_Id]Entry{
 		"Write:", "{b}"},
 	.Colours_Expected = {.Error, "A gradient is a list of colors, and this list holds {a}",
 		"A list used where a color goes makes a gradient, so every item in it has to be a color. If the colors are in a name already, use the name without square brackets around it.",
+		"Write:", "{b}"},
+	.Check_Needs_Name = {.Error, "`check` needs a name in quotes",
+		"A check has a name that says what it checks, written as text, so a check that fails can tell you which one it was.",
+		"Write:", "{b}"},
+	.Check_Not_Top = {.Error, "`check` goes outside every block",
+		"A check tests the verbs written above it, so it is a line of its own at the top of a file, not inside a block.",
+		"Write:", "{b}"},
+	.Expect_Outside_Check = {.Error, "`expect` belongs inside a check",
+		"`expect` says what has to be true, and it is run by `roci test`, inside a check that gives it a name. In the sketch itself, a line that must only run when something holds is an `if`.",
 		"Write:", "{b}"},
 
 	.Missing_Close_Square = {.Error, "This block is never closed",
@@ -397,6 +410,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Runs_Too_Long = {.Error, "This took too long",
 		"The sketch spent more than {b} seconds on one frame, so it was stopped and the last good frame stays on screen. A loop that never ends, or one that is far too big, does this.",
 		"Make it smaller:", "{d}"},
+	.Expect_Failed = {.Error, "A check did not hold: {a}",
+		"{b}",
+		"", ""},
 }
 
 // Replaces `{a}`, `{b}` and `{c}` in a template. Anything else, braces included,
@@ -441,7 +457,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed:
 		return true
 	case:
 		return false

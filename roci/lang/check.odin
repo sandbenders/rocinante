@@ -240,7 +240,7 @@ collect_assignments :: proc(c: ^Checker, stmts: []^Stmt) {
 			collect_assignments(c, k.body.stmts)
 		case Draw:
 			collect_assignments(c, k.body.stmts)
-		case Expr_Stmt, Learn, Give, Stop, Use, Error_Stmt:
+		case Expr_Stmt, Learn, Give, Stop, Use, Check, Expect, Error_Stmt: // a check keeps its own names
 		}
 	}
 }
@@ -535,6 +535,10 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 	case Use:
 		check_use(c, s, k)
 		out.kind = IR_Unchecked{}
+	case Check:
+		out.kind = check_check(c, k)
+	case Expect:
+		out.kind = IR_Expect{cond = check_condition(c, k.cond, "expect")}
 	case Give:
 		out.kind = check_give(c, k)
 	case Stop:
@@ -1062,7 +1066,7 @@ check_definitions_only :: proc(c: ^Checker, stmts: []^Stmt) {
 		}
 		allowed := false
 		#partial switch k in s.kind {
-		case Learn, Use, Error_Stmt:
+		case Learn, Use, Check, Error_Stmt:
 			allowed = true
 		case Assign:
 			allowed = len(k.target.parts) == 1 && is_constant_name(k.target.parts[0])
@@ -1132,4 +1136,22 @@ turtle_type :: proc(c: ^Checker) -> Type_Id {
 		add_field(c.types, shape, "down", T_BOOLEAN)
 	}
 	return record_of(c.types, shape)
+}
+
+// A check is checked like a taught verb with no parameters that is called by `roci test`: the
+// names it makes are its own, and it sees the sketch's.
+@(private)
+check_check :: proc(c: ^Checker, k: Check) -> IR_Stmt_Kind {
+	saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch := c.locals, c.verb_locals, c.verb, c.walking, c.in_touch
+	c.in_touch = 0
+	c.locals = make([dynamic]^Symbol, c.alloc)
+	c.verb_locals = make([dynamic]^Symbol, c.alloc)
+	c.walking = make([dynamic]string, c.alloc)
+	ctx := Verb_Ctx{name = k.name}
+	c.verb = &ctx
+	c.deferred += 1 // it runs after the sketch has set itself up, so every name has a value
+	body := check_block(c, k.body, false)
+	c.deferred -= 1
+	c.locals, c.verb_locals, c.verb, c.walking, c.in_touch = saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch
+	return IR_Check{name = k.name, body = body}
 }

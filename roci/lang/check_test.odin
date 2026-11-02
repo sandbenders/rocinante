@@ -1246,3 +1246,35 @@ test_the_turtle_is_a_record_of_pos_angle_and_down :: proc(t: ^testing.T) {
 	// The turtle's word is the language's, so it can never be a name of the writer's.
 	expect_errors(t, "turtle = 3", {.Reserved_Name})
 }
+
+// ---- check and expect ----
+
+@(test)
+test_a_check_sees_the_verbs_and_names_of_the_sketch :: proc(t: ^testing.T) {
+	expect_errors(t, "learn double n [ give n * 2 ]\ncheck \"double\" [\n  expect double 21 is 42\n]\n", {})
+	expect_errors(t, "limit = 10\ncheck \"limit\" [\n  expect limit > 5\n]\n", {})
+}
+
+@(test)
+test_the_names_a_check_makes_are_its_own :: proc(t: ^testing.T) {
+	// `x` is a number in the sketch and text in the check: no conflict, because the check's is its own.
+	expect_types(t, "x = 1\ncheck \"own\" [\n  y = \"a\"\n  expect y is \"a\"\n]\n", "x: a number")
+	expect_errors(t, "check \"a\" [\n  y = 1\n]\ncheck \"b\" [\n  y = \"text\"\n]\n", {})
+	expect_errors(t, "check \"x\" [\n  expect 1 is 1\n]\nprint y\n", {.Unknown_Name})
+}
+
+@(test)
+test_expect_needs_something_true_or_false :: proc(t: ^testing.T) {
+	expect_errors(t, "check \"x\" [\n  expect \"text\"\n]\n", {.Condition_Not_Boolean})
+	expect_errors(t, "check \"x\" [\n  expect 3 > 2 and 1 is 1\n]\n", {})
+}
+
+@(test)
+test_a_check_may_sit_in_a_file_next_to_the_sketch :: proc(t: ^testing.T) {
+	files := []File_Text{
+		{name = "extra.roci", text = "learn double n [ give n * 2 ]\ncheck \"double\" [\n  expect double 2 is 4\n]\n"},
+		{name = "sketch.roci", text = "y = double 2\n"},
+	}
+	got := check_files(files)
+	testing.expect_value(t, len(got.checked.diagnostics), 0)
+}

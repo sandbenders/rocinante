@@ -1,0 +1,11 @@
+── `expect` belongs inside a check ───────────────────── sketch.roci:1:1
+
+1 │ expect 1 is 1
+  │ ^^^^^^
+
+`expect` says what has to be true, and it is run by `roci test`, inside a check that gives it a name. In the sketch itself, a line that must only run when something holds is an `if`.
+
+Write:
+    check "what it checks" [
+      expect 1 is 1
+    ]

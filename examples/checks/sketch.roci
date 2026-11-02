@@ -1,0 +1,11 @@
+// A flower of rings, drawn with the verbs in shapes.roci. Run it as usual, or run
+// roci test examples/checks to see its checks and the picture stored for it hold.
+window size 360 360 title "checks"
+
+draw [
+  background 245
+  move (width / 2) (height / 2)
+  for ring from 1 to 4 [ ring_of_petals ring ]
+  fill white
+  circle at 0 0 radius 14
+]

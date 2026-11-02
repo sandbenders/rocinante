@@ -530,6 +530,7 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 			testing.expectf(t, ok, "%s.roci has check errors", path)
 			p.budget = 0.05 // the same check as a real run, with a smaller budget
 			start(p)
+			run_checks(p)
 			triggered := false
 			for e in p.errors {
 				triggered ||= e.id == id
@@ -2031,4 +2032,141 @@ show turtle`
 	testing.expect_value(t, len(cs), 2)
 	testing.expect_value(t, cs[1].kind, gfx.Kind.Triangle)
 	testing.expect_value(t, len(p.errors), 0)
+}
+
+// ---- checks ----
+
+@(test)
+test_a_sketch_that_runs_skips_its_checks :: proc(t: ^testing.T) {
+	p := run_text(t, "learn double n [ give n * 2 ]\ncheck \"double\" [\n  print \"checking\"\n  expect double 21 is 43\n]\nprint \"running\"")
+	defer finish(p)
+	testing.expect_value(t, printed(p), "running")
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, len(p.checks), 0)
+	testing.expect_value(t, check_count(p), 1)
+}
+
+@(test)
+test_run_checks_runs_each_check_and_counts_its_expects :: proc(t: ^testing.T) {
+	text := `learn double n [ give n * 2 ]
+check "double" [
+  expect double 21 is 42
+  expect double -1 is -2
+  expect double 4 is 9
+]
+check "bigger" [
+  expect 3 > 2
+  expect 2 >= 2
+  expect 1 <= 2
+  expect "a" is not "b"
+  expect [ 1 2 ] is [ 1 2 ]
+]`
+	p := run_text(t, text)
+	defer finish(p)
+	run_checks(p)
+	if !testing.expect_value(t, len(p.checks), 2) {
+		return
+	}
+	testing.expect_value(t, p.checks[0].name, "double")
+	testing.expect_value(t, p.checks[0].expects, 3)
+	testing.expect_value(t, p.checks[0].failed, 1)
+	testing.expect(t, !passed(p.checks[0]))
+	testing.expect_value(t, p.checks[1].expects, 5)
+	testing.expect(t, passed(p.checks[1]))
+	// The one failure is a message of its own, which says what the two sides were.
+	testing.expect_value(t, len(p.errors), 1)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Expect_Failed)
+	testing.expect_value(t, p.errors[0].args[0], "double")
+	testing.expect_value(t, p.errors[0].args[1], "I expected `double 4` to be 9, but it is 8.")
+}
+
+@(test)
+test_a_check_keeps_its_names_to_itself_and_sees_the_sketchs :: proc(t: ^testing.T) {
+	text := `total = 10
+check "reads" [
+  mine = total + 1
+  expect mine is 11
+]
+check "separate" [
+  mine = 5
+  expect mine is 5
+]
+print total`
+	p := run_text(t, text)
+	defer finish(p)
+	run_checks(p)
+	testing.expect(t, passed(p.checks[0]) && passed(p.checks[1]))
+	testing.expect_value(t, printed(p), "10")
+	// A check runs after the sketch has set itself up, so a name set later in it has its value.
+	p2 := run_text(t, "check \"late\" [\n  expect later is 3\n]\nlater = 3")
+	defer finish(p2)
+	run_checks(p2)
+	testing.expect(t, passed(p2.checks[0]))
+}
+
+@(test)
+test_a_check_that_runs_into_a_problem_does_not_hold_even_if_every_expect_does :: proc(t: ^testing.T) {
+	p := run_text(t, "items = [ 1 2 ]\ncheck \"edge\" [\n  expect (item 5 of items) is 0\n]")
+	defer finish(p)
+	run_checks(p)
+	testing.expect_value(t, p.checks[0].failed, 0)
+	testing.expect_value(t, p.checks[0].problems, 1)
+	testing.expect(t, !passed(p.checks[0]))
+}
+
+@(test)
+test_the_sentence_of_a_failed_expect_says_what_both_sides_were :: proc(t: ^testing.T) {
+	text := `a = 6
+check "sentences" [
+  expect a is 7
+  expect a is (a + 1)
+  expect a is not 6
+  expect a < 2
+  expect a is a - 6
+  expect (0.1 + 0.2) is 0.3
+  expect "x" is "y"
+  expect a > 100 or false
+]`
+	p := run_text(t, text)
+	defer finish(p)
+	run_checks(p)
+	want := []string{
+		"I expected `a` to be 7, but it is 6.",
+		"`a` is 6 and `(a + 1)` is 7, but they should be the same.",
+		"`a` and `6` are both 6, but they should differ.",
+		"`a` is 6 and `2` is 2, so `a < 2` does not hold.",
+		"`a` is 6 and `a - 6` is 0, but they should be the same.",
+		"I expected `(0.1 + 0.2)` to be 0.3, but it is 0.30000000000000004. They differ only by rounding, which is normal for decimals: compare whole numbers, or check that the difference is small.",
+		"I expected `\"x\"` to be \"y\", but it is \"x\".",
+		"`a > 100 or false` is false.",
+	}
+	if !testing.expect_value(t, len(p.errors), len(want)) {
+		return
+	}
+	for sentence, i in want {
+		testing.expect_value(t, p.errors[i].args[1], sentence)
+	}
+}
+
+@(test)
+test_what_a_check_ran_into_is_not_painted_on_the_sketchs_picture :: proc(t: ^testing.T) {
+	p := run_text(t, "window size 100 100\ncheck \"c\" [\n  expect 1 is 2\n]")
+	defer finish(p)
+	run_checks(p)
+	roci.step()
+	title, _ := roci.overlay_text()
+	testing.expect_value(t, title, "")
+	testing.expect(t, p.errors[0].in_check)
+}
+
+@(test)
+test_run_checks_does_nothing_for_a_sketch_with_check_errors :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	p, ok := load("sketch.roci", "check \"c\" [\n  expect nowhere is 1\n]")
+	defer {
+		finish(p)
+	}
+	testing.expect(t, !ok)
+	run_checks(p)
+	testing.expect_value(t, len(p.checks), 0)
 }

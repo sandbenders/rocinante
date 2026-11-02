@@ -1,0 +1,5 @@
+learn double n [ give n * 2 ]
+
+check "double" [
+  expect double 21 is 43
+]

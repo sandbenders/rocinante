@@ -1028,3 +1028,25 @@ test_a_word_where_a_verb_takes_a_word_is_that_word_even_when_it_is_also_a_verb :
 	expect_tree(t, "caps round", "(call caps (name round))")
 	expect_tree(t, "x = round 1.5", "(assign x (call round (num 1.5)))")
 }
+
+// ---- check and expect ----
+
+@(test)
+test_a_check_holds_expects_and_its_name :: proc(t: ^testing.T) {
+	expect_tree(t, "check \"double\" [\n  expect 1 is 1\n]\n", "(check \"double\"\n  (body\n    (expect (is (num 1) (num 1)))\n  )\n)")
+}
+
+@(test)
+test_a_check_needs_a_name_in_quotes_and_goes_outside_every_block :: proc(t: ^testing.T) {
+	expect_ids(t, "check [ expect 1 is 1 ]\n", {.Check_Needs_Name})
+	expect_ids(t, "check 3 [ expect 1 is 1 ]\n", {.Check_Needs_Name})
+	expect_ids(t, "if true [\n  check \"x\" [ expect 1 is 1 ]\n]\n", {.Check_Not_Top})
+}
+
+@(test)
+test_expect_is_only_for_inside_a_check :: proc(t: ^testing.T) {
+	expect_ids(t, "expect 1 is 1\n", {.Expect_Outside_Check})
+	expect_ids(t, "check \"x\" [ expect 1 is 1 ]\nexpect 2 is 2\n", {.Expect_Outside_Check})
+	// A check inside a check is a block inside a block, and the inner expects belong to a check.
+	expect_ids(t, "check \"x\" [\n  if true [ expect 1 is 1 ]\n]\n", {})
+}

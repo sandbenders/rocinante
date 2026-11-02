@@ -49,6 +49,8 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 		case "on":     return parse_on(p)
 		case "draw":   return parse_draw(p)
 		case "use":    return parse_use(p)
+		case "check":  return parse_check(p)
+		case "expect": return parse_expect(p)
 		case "else":
 			report(p, .Else_Without_If, t.span, "", fmt.aprintf("if condition [ ... ]\n%s", line_with(p, t.span, "else"), allocator = p.alloc))
 			advance(p)
@@ -748,4 +750,45 @@ parse_on :: proc(p: ^Parser) -> Stmt_Kind {
 	report(p, .Unknown_Event, at, word, strings.join(names[:], ", ", p.alloc), example)
 	skip_line(p)
 	return Error_Stmt{}
+}
+
+// `check "name" [ ... ]`: written outside every block, with a name in quotes.
+@(private)
+parse_check :: proc(p: ^Parser) -> Stmt_Kind {
+	check_token := cur(p)
+	advance(p)
+	t := cur(p)
+	if t.kind != .Text {
+		at := t.span
+		if t.kind == .Newline || t.kind == .End_Of_File || t.kind == .Open_Square {
+			at = Span{t.span.file, p.last_end, p.last_end}
+		}
+		fixed := insertion(p, p.last_end, " \"what it checks\"") if at.start == at.end else line_with(p, t.span, fmt.tprintf("\"%s\"", text_of(p, t)))
+		report(p, .Check_Needs_Name, at, "", fixed)
+		skip_line(p)
+		return Error_Stmt{}
+	}
+	advance(p)
+	if len(p.groups) > 0 {
+		report(p, .Check_Not_Top, check_token.span, text_of(p, t), fmt.tprintf("check %s [ ... ]", text_of(p, t)))
+		// The block is still read, so what is inside it is not blamed twice.
+	}
+	p.check_depth += 1
+	defer p.check_depth -= 1
+	body, ok := parse_block_after(p, "check")
+	if !ok {
+		return Error_Stmt{}
+	}
+	return Check{name = unescape(text_of(p, t), p.alloc), quoted = text_of(p, t), body = body}
+}
+
+// `expect condition`: only inside a check.
+@(private)
+parse_expect :: proc(p: ^Parser) -> Stmt_Kind {
+	expect_token := advance(p)
+	if p.check_depth == 0 {
+		line := strings.trim_space(line_text(p.src, position_of(p.src, expect_token.span.start).line))
+		report(p, .Expect_Outside_Check, expect_token.span, "", fmt.aprintf("check \"what it checks\" [\n  %s\n]", line, allocator = p.alloc))
+	}
+	return Expect{cond = parse_expression(p)}
 }

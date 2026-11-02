@@ -1,0 +1,8 @@
+── `check` goes outside every block ──────────────────── sketch.roci:2:3
+
+2 │   check "x" [ expect 1 is 1 ]
+  │   ^^^^^
+
+A check tests the verbs written above it, so it is a line of its own at the top of a file, not inside a block.
+
+Write:  check "x" [ ... ]

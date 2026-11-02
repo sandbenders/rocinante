@@ -21,6 +21,7 @@ COMMANDS :: `roci, a small language for sketches.
   roci get <address>   copy a library from a git repository into libs/
   roci update [name]   fetch newer copies of the libraries roci get made
   roci run [file]      run a sketch; with --frames N, without a window
+  roci test [folder]   run the checks of a sketch and compare its picture with the stored one
   roci fmt [file]      write a sketch in the house style
   roci man [word]      how a verb or statement is written
 
@@ -58,6 +59,8 @@ main :: proc() {
 		code = run_run(os.args[2:], &out, &err)
 	case "fmt":
 		code = run_fmt(os.args[2:], &out, &err)
+	case "test":
+		code = run_test(os.args[2:], &out, &err)
 	case "man":
 		code = run_man(os.args[2:], &out, &err)
 	case "help", "--help", "-h":

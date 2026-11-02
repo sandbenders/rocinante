@@ -94,6 +94,7 @@ Parser :: struct {
 	groups:      [dynamic]Group_Kind, // what is open: a block, a group, a vector, a list
 	one_line:    bool, // the block being parsed opens and closes on one line, where two spaces end a call
 	learn_depth: int,
+	check_depth: int, // how many `check` blocks the statement being read is inside
 	wraps:       [dynamic]Span, // calls that need round brackets, in this statement
 	nest_depth:  int,
 	deep_shown:  bool,
@@ -425,6 +426,8 @@ GRAMMAR_RULES := [?]struct{rule, parser: string}{
 	{"every_statement", "parse_every"},
 	{"draw_statement", "parse_draw"},
 	{"use_statement", "parse_use"},
+	{"check_statement", "parse_check"},
+	{"expect_statement", "parse_expect"},
 	{"on_statement", "parse_on"},
 	{"call", "parse_call"},
 	{"option", "parse_call"},

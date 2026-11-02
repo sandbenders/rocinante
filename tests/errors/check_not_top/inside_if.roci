@@ -1,0 +1,3 @@
+if true [
+  check "x" [ expect 1 is 1 ]
+]

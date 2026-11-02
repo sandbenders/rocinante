@@ -229,6 +229,18 @@ IR_Draw :: struct {
 // instances (below).
 IR_Unchecked :: struct {}
 
+// `check "name" [ ... ]`: the interpreter runs it only for `roci test`, in a frame of its own
+// whose names are its own.
+IR_Check :: struct {
+	name: string,
+	body: IR_Block,
+}
+
+// `expect condition`. A comparison is kept whole, so a failure can say what both sides were.
+IR_Expect :: struct {
+	cond: ^IR,
+}
+
 IR_Give :: struct {
 	value: ^IR,
 }
@@ -272,6 +284,8 @@ IR_Stmt_Kind :: union {
 	IR_Every,
 	IR_On,
 	IR_Draw,
+	IR_Check,
+	IR_Expect,
 	IR_Unchecked,
 	IR_Give,
 	IR_Stop,

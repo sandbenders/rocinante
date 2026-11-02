@@ -110,7 +110,7 @@ has_give :: proc(stmts: []^Stmt) -> bool {
 			if has_give(k.body.stmts) {
 				return true
 			}
-		case Assign, Expr_Stmt, Learn, Stop, Every, On, Draw, Use, Error_Stmt:
+		case Assign, Expr_Stmt, Learn, Stop, Every, On, Draw, Use, Check, Expect, Error_Stmt:
 		}
 	}
 	return false
@@ -153,7 +153,7 @@ terminates :: proc(stmts: []^Stmt) -> (ends, stops: bool) {
 		case With:
 			_, s2 := terminates(k.body.stmts)
 			stops ||= s2
-		case Assign, Expr_Stmt, Learn, Every, On, Draw, Use, Error_Stmt:
+		case Assign, Expr_Stmt, Learn, Every, On, Draw, Use, Check, Expect, Error_Stmt:
 		}
 	}
 	return false, stops

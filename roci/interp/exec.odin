@@ -94,6 +94,10 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 		if every, is_every := &s.kind.(lang.IR_Every); is_every {
 			register_every(it, every)
 		}
+	case lang.IR_Check:
+		// A check never runs in a sketch; `run_checks` runs it.
+	case lang.IR_Expect:
+		exec_expect(it, s, k)
 	case lang.IR_Give:
 		if it.frame != nil {
 			it.frame.result = eval(it, k.value)

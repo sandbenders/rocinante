@@ -315,3 +315,12 @@ taught_by_siblings :: proc(path: string) -> []Taught_Verb {
 	}
 	return taught[:]
 }
+
+@(test)
+test_a_check_is_formatted_like_the_verb_it_tests :: proc(t: ^testing.T) {
+	expect_formatted(
+		t,
+		"learn double n [ give n*2 ]\ncheck   \"double\" [\nexpect   double 21   is 42\nexpect (double -1) is -2\n]\n",
+		"learn double n [ give n * 2 ]\n\ncheck \"double\" [\n  expect double 21 is 42\n  expect (double -1) is -2\n]\n",
+	)
+}

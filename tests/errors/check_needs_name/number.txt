@@ -1,0 +1,8 @@
+── `check` needs a name in quotes ────────────────────── sketch.roci:1:7
+
+1 │ check 3 [ expect 1 is 1 ]
+  │       ^
+
+A check has a name that says what it checks, written as text, so a check that fails can tell you which one it was.
+
+Write:  check "3" [ expect 1 is 1 ]

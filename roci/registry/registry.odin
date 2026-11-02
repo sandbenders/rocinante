@@ -68,7 +68,7 @@ CONNECTING_WORDS := [?]string{
 
 // Words the language itself uses, which no verb or name may take.
 KEYWORDS := [?]string{
-	"and", "draw", "each", "else", "every", "for", "give", "hidden", "if", "is", "it", "learn",
+	"and", "check", "draw", "each", "else", "every", "expect", "for", "give", "hidden", "if", "is", "it", "learn",
 	"not", "on", "or", "receive", "repeat", "result", "stop", "use", "while", "with",
 }
 

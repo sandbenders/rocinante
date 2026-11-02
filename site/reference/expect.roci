@@ -1,0 +1,12 @@
+learn bigger a b [
+  if a > b [ give a ]
+  give b
+]
+
+check "bigger" [
+  expect bigger 3 8 is 8
+  expect bigger 8 3 is 8
+  expect (bigger 5 5) > 4
+]
+
+circle at 200 150 radius (bigger 30 60)

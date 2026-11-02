@@ -56,6 +56,9 @@ REFERENCE_SECTIONS := []Reference_Section{
 	{"Teaching verbs", "New verbs of your own, and libraries of other people's.", {
 		"learn", "give", "stop", "use",
 	}},
+	{"Testing", "Checks that say how a verb is meant to behave. `roci run` skips them and `roci test` runs them.", {
+		"check", "expect",
+	}},
 	{"Printing", "Writing values to the console, to see what a sketch is doing.", {
 		"print",
 	}},

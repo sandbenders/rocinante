@@ -32,6 +32,7 @@ statement      = [ NEWLINE ] ( assignment | if_statement | repeat_statement
                | while_statement | for_statement | for_each_statement
                | learn_statement | give_statement | stop_statement | with_statement
                | every_statement | on_statement | draw_statement | use_statement
+               | check_statement | expect_statement
                | call ) NEWLINE ;
 
 block          = "[" { statement } "]" ;
@@ -60,6 +61,10 @@ every_statement = "every" argument 'unit' block ;
 draw_statement  = "draw" [ argument ] block ;
 (* At the top of a file, outside every block. The name is a folder of libs/, or a git URL that ends in one. *)
 use_statement   = "use" TEXT ;
+(* A test for the verbs written above it. `roci run` skips it; `roci test` runs it. Outside every block, like `use`. The name is TEXT. *)
+check_statement = "check" TEXT block ;
+(* Only inside a check: the condition has to hold, and `roci test` says what the two sides of `is` were when it does not. *)
+expect_statement = "expect" expression ;
 
 (* The event phrases and what follows them are the registry's EVENTS; a window may come first (`on garden key "space"`), and the second
    form is `on w receive msg [ ... ]`. *)

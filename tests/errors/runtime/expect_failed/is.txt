@@ -1,0 +1,6 @@
+── A check did not hold: double ──────────────────────── sketch.roci:4:3
+
+4 │   expect double 21 is 43
+  │   ^^^^^^^^^^^^^^^^^^^^^^
+
+I expected `double 21` to be 43, but it is 42.

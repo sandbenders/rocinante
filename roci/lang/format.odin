@@ -222,7 +222,7 @@ stmts_text :: proc(p: ^Printer, stmts: []^Stmt, level: int, end: int) -> string 
 @(private)
 is_spaced_kind :: proc(s: ^Stmt) -> bool {
 	#partial switch _ in s.kind {
-	case Learn, Draw, On, Every:
+	case Learn, Draw, On, Every, Check:
 		return true
 	}
 	return false
@@ -348,6 +348,14 @@ stmt_text :: proc(p: ^Printer, s: ^Stmt, level: int) -> string {
 		}
 		strings.write_string(&b, " ")
 		strings.write_string(&b, block_text(p, k.body, level, level * 2 + 12))
+	case Check:
+		head := strings.concatenate({"check ", k.quoted}, context.temp_allocator)
+		strings.write_string(&b, head)
+		strings.write_string(&b, " ")
+		strings.write_string(&b, block_text(p, k.body, level, column(level, head) + 1))
+	case Expect:
+		strings.write_string(&b, "expect ")
+		strings.write_string(&b, expr_text(p, k.cond, level, level * 2 + 7))
 	case Use:
 		strings.write_string(&b, strings.trim_space(span_text(p.src, s.span)))
 	case Error_Stmt:

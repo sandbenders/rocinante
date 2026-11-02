@@ -47,6 +47,7 @@ Runtime_Error :: struct {
 	id:   lang.Message_Id,
 	span: lang.Span,
 	args: [4]string,
+	in_check: bool, // it happened while a check ran, so the picture does not show it
 }
 
 Interp :: struct {
@@ -95,6 +96,9 @@ Interp :: struct {
 	writes:    u64, // counts changes to lists and records, to tell when a list's shapes changed
 	shape_cache: [SHAPE_CACHE_SIZE]Shape_Cache, // box trees of the lists the collision verbs asked about most recently
 	tweens:    [dynamic]Tween, // the places being moved a little each frame (tween.odin)
+	checks:    [dynamic]Check_Result, // what `run_checks` found, one for each check (checks.odin)
+	check_at:  int, // the check being run, counting from 1; 0 when none is
+	events:    int, // every runtime error said, counting the ones `fail` left out as already said
 }
 
 // The interpreter the running frame belongs to. The app loop calls plain
@@ -180,6 +184,7 @@ destroy :: proc(p: ^Interp) {
 		drop_tween(&t)
 	}
 	delete(p.tweens)
+	delete(p.checks)
 	virtual.arena_destroy(&p.values[p.values_now])
 	virtual.arena_destroy(&p.arena)
 	free(p)
@@ -260,12 +265,13 @@ tick :: proc(p: ^Interp, span: lang.Span) -> bool {
 
 // Says a runtime error once for each place it happens.
 fail :: proc(p: ^Interp, id: lang.Message_Id, span: lang.Span, a, b, c, d: string) {
+	p.events += 1
 	key := span.start * 16 + int(id)
 	if p.seen[key] {
 		return
 	}
 	p.seen[key] = true
-	append(&p.errors, Runtime_Error{id = id, span = span, args = {strings.clone(a, p.program_memory), strings.clone(b, p.program_memory), strings.clone(c, p.program_memory), strings.clone(d, p.program_memory)}})
+	append(&p.errors, Runtime_Error{id = id, span = span, in_check = p.check_at != 0, args = {strings.clone(a, p.program_memory), strings.clone(b, p.program_memory), strings.clone(c, p.program_memory), strings.clone(d, p.program_memory)}})
 }
 
 // The writer's own line with `replacement` where `at` was; when it cannot be

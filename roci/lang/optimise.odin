@@ -103,6 +103,10 @@ walk_stmt :: proc(o: ^Optimiser, s: ^IR_Stmt) {
 		}
 		walk_expr(o, k.window)
 		walk_block(o, k.body)
+	case IR_Check:
+		walk_block(o, k.body)
+	case IR_Expect:
+		walk_expr(o, k.cond)
 	case IR_Draw:
 		walk_expr(o, k.window)
 		walk_block(o, k.body)

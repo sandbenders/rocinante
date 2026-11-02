@@ -146,6 +146,17 @@ dump_stmt :: proc(b: ^strings.Builder, src: Source, s: ^Stmt, depth: int) {
 		dump_block(b, src, "body", k.body, depth + 1)
 		indent(b, depth)
 		strings.write_string(b, ")\n")
+	case Check:
+		indent(b, depth)
+		fmt.sbprintf(b, "(check %q\n", k.name)
+		dump_block(b, src, "body", k.body, depth + 1)
+		indent(b, depth)
+		strings.write_string(b, ")\n")
+	case Expect:
+		indent(b, depth)
+		strings.write_string(b, "(expect ")
+		dump_expr(b, src, k.cond)
+		strings.write_string(b, ")\n")
 	case Use:
 		indent(b, depth)
 		fmt.sbprintf(b, "(use %q)\n", k.name)
