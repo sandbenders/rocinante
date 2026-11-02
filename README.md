@@ -124,6 +124,7 @@ Run a sketch (the examples are written in the language as `sketch.roci` files):
 odin run cli -- run examples/garden/sketch.roci        # two windows: click, press 1 2 3, space and c
 odin run cli -- run examples/two_windows/sketch.roci
 odin run cli -- run examples/starfield                    # a sketch of two files: sketch.roci and palette.roci
+odin run cli -- run examples/checks                       # verbs with their checks beside them (shapes.roci), drawn as a flower of rings
 odin run cli -- run sketch.roci --frames 60 --screenshot out.png   # headless, saves the last frame
 ```
 
@@ -136,6 +137,7 @@ odin run cli -- get github.com/someone/flocking          # copy a library into l
 odin run cli -- check sketch.roci                      # say what is wrong, with the fix
 odin run cli -- fmt                                    # write every .roci file here in the house style
 odin run cli -- man rect                               # how a verb is written (no word: every verb)
+odin run cli -- test examples/checks                   # run the checks of a sketch and compare its picture with the stored one; --accept stores a new picture
 ```
 
 Build the binary once with `odin build cli -out:output/roci -o:speed` and use `output/roci run sketch.roci` for a quick start.
