@@ -14,6 +14,7 @@
 package gfx
 
 import "../maths"
+import "core:math"
 
 Turtle :: struct {
 	at:      [2]f64, // where it is, in the coordinates shapes are drawn in; meaningful once `placed`
@@ -74,6 +75,55 @@ turtle_line :: proc(list: ^Command_List, from, to: [2]f64) -> bool {
 	style := list.style
 	set_stroke(list, TURTLE_INK)
 	ok := line(list, f32(from.x), f32(from.y), f32(to.x), f32(to.y))
+	list.style, list.look_changed = style, true
+	return ok
+}
+
+// Which way the turtle faces, in degrees clockwise from up, from 0 up to but not
+// including 360 (turning four times 90 reads 0, not 360).
+turtle_angle :: proc "contextless" (list: ^Command_List) -> f64 {
+	h := math.mod(list.turtle.heading, 360)
+	if h < 0 {
+		h += 360
+	}
+	return h + 0 // never -0
+}
+
+// Whether the turtle's pen is down, so that moving draws.
+turtle_is_down :: proc "contextless" (list: ^Command_List) -> bool {
+	return !list.turtle.pen_up
+}
+
+// How big the drawn turtle is: its tip to the middle of its base.
+TURTLE_LENGTH :: 20.0
+TURTLE_HALF_BASE :: 7.0
+
+// Draws the turtle where it is: a small triangle pointing the way it faces, in the
+// stroke colour (black while the stroke is off), solid while the pen is down and
+// only an outline while it is up. The style is put back afterwards, and the turtle
+// itself does not move.
+turtle_show :: proc(list: ^Command_List, home: [2]f64) -> bool {
+	at := turtle_position(list, home)
+	sine, cosine := maths.sin_cos_deg(list.turtle.heading)
+	ahead := [2]f64{sine, -cosine} // the way it faces
+	across := [2]f64{cosine, sine} // to its right
+	tip := at + ahead * (TURTLE_LENGTH * 2 / 3)
+	base := at - ahead * (TURTLE_LENGTH / 3)
+	left_corner := base - across * TURTLE_HALF_BASE
+	right_corner := base + across * TURTLE_HALF_BASE
+
+	style := list.style
+	ink := style.stroke if style.stroke_on else TURTLE_INK
+	if list.turtle.pen_up {
+		no_fill(list)
+		set_stroke(list, ink)
+		set_thickness(list, 2)
+	} else {
+		set_fill(list, ink)
+		no_stroke(list)
+	}
+	list.style.stroke_paint, list.style.fill_paint = {}, {}
+	ok := triangle(list, f32(tip.x), f32(tip.y), f32(right_corner.x), f32(right_corner.y), f32(left_corner.x), f32(left_corner.y))
 	list.style, list.look_changed = style, true
 	return ok
 }

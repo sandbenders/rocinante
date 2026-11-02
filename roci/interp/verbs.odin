@@ -476,6 +476,8 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.pen_down()
 	case .Home:
 		roci.home()
+	case .Show_Turtle:
+		roci.show_turtle()
 
 	case .Map:
 		return roci.map_range(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4))

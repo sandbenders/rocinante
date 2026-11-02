@@ -1978,3 +1978,57 @@ test_the_particles_example_keeps_its_ten_thousand_sparks_in_bounded_memory :: pr
 	testing.expect(t, p.collections > 0, "the arena was copied along the way")
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_the_turtle_is_a_value_a_sketch_reads :: proc(t: ^testing.T) {
+	text := `window size 200 100
+print turtle.pos
+print turtle.angle
+print turtle.down
+forward 10
+right 450
+pen up
+print turtle.pos
+print turtle.angle
+print turtle.down
+home
+print turtle.angle
+left 90
+print turtle.angle`
+	p := run_text(t, text)
+	defer finish(p)
+	// Forward 10 walked up before the turn, and 450 degrees of turning reads as 90.
+	testing.expect_value(t, printed(p), "{ 100, 50 }\n0\ntrue\n{ 100, 40 }\n90\nfalse\n0\n270")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_the_turtle_read_in_draw_is_the_one_of_this_frame :: proc(t: ^testing.T) {
+	text := `window size 200 100
+draw [
+  right 90
+  forward 20
+  p = turtle.pos
+  print p
+]`
+	p := run_text(t, text)
+	defer finish(p)
+	clear(&p.printed)
+	roci.step()
+	roci.step()
+	// Every frame starts the turtle at home again.
+	testing.expect_value(t, printed(p), "{ 120, 50 }\n{ 120, 50 }")
+}
+
+@(test)
+test_show_turtle_draws_a_triangle_where_the_turtle_is :: proc(t: ^testing.T) {
+	text := `window size 200 100
+forward 10
+show turtle`
+	p := run_text(t, text)
+	defer finish(p)
+	cs := roci.recorded(first_window())
+	testing.expect_value(t, len(cs), 2)
+	testing.expect_value(t, cs[1].kind, gfx.Kind.Triangle)
+	testing.expect_value(t, len(p.errors), 0)
+}

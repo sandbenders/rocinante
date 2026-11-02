@@ -184,3 +184,79 @@ test_rewind_puts_the_turtle_back :: proc(t: ^testing.T) {
 	testing.expect_value(t, list.turtle, Turtle{})
 	testing.expect_value(t, len(list.commands), 0)
 }
+
+@(test)
+test_the_angle_reads_from_0_to_360 :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	testing.expect_value(t, turtle_angle(&list), 0.0)
+	turtle_right(&list, 90)
+	testing.expect_value(t, turtle_angle(&list), 90.0)
+	turtle_right(&list, 270)
+	testing.expect_value(t, turtle_angle(&list), 0.0) // four right angles, not 360
+	turtle_right(&list, -90)
+	testing.expect_value(t, turtle_angle(&list), 270.0) // anticlockwise from up
+	turtle_right(&list, -720)
+	testing.expect_value(t, turtle_angle(&list), 270.0)
+	turtle_right(&list, 90)
+	testing.expect(t, !math.is_nan(turtle_angle(&list)))
+	testing.expect_value(t, math.sign_bit(turtle_angle(&list)), false) // never -0
+}
+
+@(test)
+test_the_pen_state_is_readable :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	testing.expect(t, turtle_is_down(&list))
+	turtle_pen(&list, false)
+	testing.expect(t, !turtle_is_down(&list))
+	turtle_pen(&list, true)
+	testing.expect(t, turtle_is_down(&list))
+}
+
+@(test)
+test_the_shown_turtle_is_a_triangle_pointing_the_way_it_faces :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	testing.expect(t, turtle_show(&list, HOME))
+	testing.expect_value(t, len(list.commands), 1)
+	c := command_at(&list, 0)
+	testing.expect_value(t, c.kind, Kind.Triangle)
+	// Facing up: the tip is above the middle, the base corners below it and apart.
+	testing.expect(t, c.args[1] < 300)
+	testing.expect(t, c.args[3] > 300 && c.args[5] > 300)
+	testing.expect(t, c.args[2] > c.args[4])
+	// Pen down: solid, in the turtle's ink, with no outline.
+	style := c.style
+	testing.expect(t, style.fill_on && !style.stroke_on)
+	testing.expect_value(t, style.fill, TURTLE_INK)
+}
+
+@(test)
+test_the_shown_turtle_is_an_outline_when_the_pen_is_up_and_changes_nothing :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	set_fill(&list, maths.Colour{1, 2, 3, 255})
+	set_stroke(&list, maths.Colour{9, 8, 7, 255})
+	set_thickness(&list, 5)
+	before := list.style
+	turtle_pen(&list, false)
+	turtle_right(&list, 90)
+	testing.expect(t, turtle_show(&list, HOME))
+	c := command_at(&list, 0)
+	style := c.style
+	testing.expect(t, !style.fill_on && style.stroke_on)
+	testing.expect_value(t, style.stroke, maths.Colour{9, 8, 7, 255})
+	// Facing right: the tip is to the right of the middle.
+	testing.expect(t, c.args[0] > 400)
+	testing.expect_value(t, list.style, before)
+	testing.expect_value(t, turtle_position(&list, HOME), HOME) // looking does not move it
+}
+
+@(test)
+test_a_turtle_that_cannot_be_drawn_is_not_recorded :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	testing.expect(t, !turtle_show(&list, {math.inf_f64(1), 0}))
+	testing.expect_value(t, len(list.commands), 0)
+}

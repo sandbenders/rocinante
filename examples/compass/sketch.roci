@@ -1,0 +1,18 @@
+// The turtle reads itself as it walks a spiral: a dot at each corner, coloured by
+// the way it faces there. At the end it lifts its pen, steps on, and show turtle
+// draws it as an outline; with the pen down it would be solid.
+window size 480 360 title "compass"
+
+draw [
+  background 245
+  stroke gray
+  thickness 2
+  for i from 1 to 60 [
+    forward (i * 0.7)
+    right 21
+    circle at turtle.pos radius 3 fill (hsb turtle.angle 200 230)
+  ]
+  pen up
+  forward 30
+  show turtle
+]

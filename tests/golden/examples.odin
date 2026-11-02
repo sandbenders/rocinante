@@ -29,6 +29,7 @@ EXAMPLES := [?]Example{
 	{"starfield", 5, {1}}, // two files: sketch.roci and palette.roci
 	{"constellation", 5, {1}}, // a library: libs/stars
 	{"tree", 5, {1}}, // the turtle
+	{"compass", 5, {1}}, // the turtle read as a value (turtle.pos, turtle.angle) and drawn with show turtle
 	{"bricks", 120, {1}}, // collision: a brick broken by then
 	{"mouse", 5, {1}}, // the canvas before any input: the starting dots and the grid
 	{"ease", 200, {1}}, // ease and tween: a dot past its end, the ball on its way

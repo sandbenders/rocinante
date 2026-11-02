@@ -907,6 +907,7 @@ type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
 	switch def.name {
 	case "finger":  return finger_type(c)
 	case "touches": return list_of(c.types, finger_type(c))
+	case "turtle":  return turtle_type(c)
 	}
 	if def.kind == .Vector {
 		return vector_of(c.types, def.size)
@@ -1115,4 +1116,20 @@ check_colour_list :: proc(c: ^Checker, ir: ^IR, e: ^Expr) {
 		replacement = text_at(c, literal.items[0].span)
 	}
 	note(c, .Colours_Expected, e.span, holds, fix(c, e.span, replacement))
+}
+
+// The record the turtle is (`turtle`): `pos`, `angle` and `down`, one shape for the
+// whole sketch, kept under a place no record is made at, like the finger's.
+@(private)
+turtle_type :: proc(c: ^Checker) -> Type_Id {
+	TURTLE_SITE :: -2
+	shape, known := c.sites[TURTLE_SITE]
+	if !known {
+		shape = new_shape(c.types, c.alloc)
+		c.sites[TURTLE_SITE] = shape
+		add_field(c.types, shape, "pos", vector_of(c.types, 2))
+		add_field(c.types, shape, "angle", T_NUMBER)
+		add_field(c.types, shape, "down", T_BOOLEAN)
+	}
+	return record_of(c.types, shape)
 }

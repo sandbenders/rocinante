@@ -1,0 +1,5 @@
+repeat 6 [
+  forward 40
+  right 60
+  circle at turtle.pos radius 4 fill red
+]

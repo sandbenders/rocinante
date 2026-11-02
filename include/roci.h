@@ -233,6 +233,9 @@ void roci_pen_down(void);
 /* Sends the turtle back to the middle of the window, facing up, without drawing. */
 void roci_home(void);
 
+/* Draws the turtle itself where it is: a small triangle pointing the way it faces, solid while its pen is down and an outline while it is up. */
+void roci_show_turtle(void);
+
 /* Moves a number from one range to another. */
 double roci_map(double value, double from_low, double from_high, double to_low, double to_high);
 

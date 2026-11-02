@@ -534,6 +534,12 @@ abi_home :: proc "c" () {
 	home()
 }
 
+@(export, link_name = "roci_show_turtle")
+abi_show_turtle :: proc "c" () {
+	context = runtime.default_context()
+	show_turtle()
+}
+
 // ---- maths ----
 
 @(export, link_name = "roci_map")

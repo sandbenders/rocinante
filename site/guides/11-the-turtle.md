@@ -1,6 +1,6 @@
 ---
 title: "The turtle"
-summary: "Drawing by walking and turning, as in Logo: forward, right, the pen, push, and trees."
+summary: "Drawing by walking and turning, as in Logo: forward, right, the pen, push, trees, and reading where it is."
 weight: 11
 ---
 
@@ -60,6 +60,27 @@ draw [
   back 140
   pen down
   branch 80
+]
+```
+
+
+## Where is the turtle?
+
+`turtle` is a value you can read. It is a record with three fields: `pos`, where the turtle is; `angle`, the way it faces in degrees turning clockwise from up (always from 0 up to 360); and `down`, true while its pen is down. A turtle that has turned a whole four right angles reads 0 again.
+
+`show turtle` draws the turtle itself where it is: a small triangle pointing the way it faces. It is solid while the pen is down and only an outline while the pen is up. It uses the stroke color (black when there is no stroke) and leaves the style as it was.
+
+```roci picture
+draw [
+  background 240
+  stroke teal
+  thickness 3
+  for i from 1 to 40 [
+    forward (i * 1.2)
+    right 25
+    circle at turtle.pos radius 3 fill (hsb turtle.angle 180 220)
+  ]
+  show turtle
 ]
 ```
 

@@ -74,7 +74,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "false", "finger", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "pressed", "tau", "time", "touches", "true", "wheel", "width",
+	"anywhere", "false", "finger", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "pressed", "tau", "time", "touches", "true", "turtle", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -102,6 +102,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"time", .Number, 0, "Seconds since the sketch started."},
 	{"touches", .List, 0, "The fingers down in the window now, in the order they went down, each a record like `finger`."},
 	{"true", .Boolean, 0, "The value of a condition that holds."},
+	{"turtle", .Record, 0, "The turtle of the window the code runs in: a record with `pos` (where it is), `angle` (degrees clockwise from up) and `down` (true while its pen is down)."},
 	{"wheel", .Vector, 2, "How far the mouse wheel turned since the last frame: `wheel.y` up, `wheel.x` to the right."},
 	{"width", .Number, 0, "The width of the window the code runs in, in pixels."},
 }

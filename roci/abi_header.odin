@@ -112,6 +112,7 @@ abi_table_init :: proc "contextless" () {
 	{"roci_pen_up", "pen up", 0, typeid_of(type_of(abi_pen_up)), "", ""},
 	{"roci_pen_down", "pen down", 0, typeid_of(type_of(abi_pen_down)), "", ""},
 	{"roci_home", "home", 0, typeid_of(type_of(abi_home)), "", ""},
+	{"roci_show_turtle", "show turtle", 0, typeid_of(type_of(abi_show_turtle)), "", ""},
 	{"roci_map", "map", 0, typeid_of(type_of(abi_map)), "", ""},
 	{"roci_clamp", "clamp", 0, typeid_of(type_of(abi_clamp)), "", ""},
 	{"roci_dist", "dist", 0, typeid_of(type_of(abi_dist)), "", ""},

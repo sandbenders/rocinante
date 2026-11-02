@@ -32,6 +32,7 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 		switch k.name {
 		case "finger":  return finger_record(it, e.type, it.finger)
 		case "touches": return touches_list(it, e.type)
+		case "turtle":  return turtle_record(it, e.type)
 		}
 		return builtin_value(it, k.name)
 	case lang.IR_Swizzle:

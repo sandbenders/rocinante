@@ -36,3 +36,24 @@ touches_list :: proc(it: ^Interp, type: lang.Type_Id) -> Value {
 	}
 	return out
 }
+
+// `turtle`: the current window's turtle as a record of the checker's turtle type
+// (`pos`, `angle` and `down`).
+turtle_record :: proc(it: ^Interp, type: lang.Type_Id) -> Value {
+	shape := lang.shape_of(it.types, type)
+	if shape < 0 {
+		return nil
+	}
+	state := roci.turtle_state()
+	r := new_record(it, shape)
+	if at := field_index(it, shape, "pos"); at >= 0 {
+		r.fields[at] = vec2(state.pos)
+	}
+	if at := field_index(it, shape, "angle"); at >= 0 {
+		r.fields[at] = state.angle
+	}
+	if at := field_index(it, shape, "down"); at >= 0 {
+		r.fields[at] = state.down
+	}
+	return r
+}

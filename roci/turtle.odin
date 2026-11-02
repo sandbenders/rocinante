@@ -54,3 +54,27 @@ turtle_position :: proc() -> [2]f64 {
 	w := current_win()
 	return gfx.turtle_position(&w.list, turtle_home_point(w))
 }
+
+// Where the turtle is, which way it faces and whether its pen is down: what a
+// sketch reads as `turtle`.
+Turtle_State :: struct {
+	pos:   [2]f64, // in the coordinates shapes are drawn in
+	angle: f64,    // degrees clockwise from up, from 0 up to but not including 360
+	down:  bool,   // whether moving draws
+}
+
+// The current window's turtle.
+turtle_state :: proc() -> Turtle_State {
+	w := current_win()
+	return {
+		pos = gfx.turtle_position(&w.list, turtle_home_point(w)),
+		angle = gfx.turtle_angle(&w.list),
+		down = gfx.turtle_is_down(&w.list),
+	}
+}
+
+// Draws the turtle itself where it is, pointing the way it faces.
+show_turtle :: proc() {
+	w := current_win()
+	gfx.turtle_show(&w.list, turtle_home_point(w))
+}

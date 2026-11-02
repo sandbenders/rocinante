@@ -24,7 +24,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"move", "turn", "grow", "shear", "push",
 	}},
 	{"The turtle", "A pen that walks and turns, as in Logo. Each window has one.", {
-		"forward", "back", "left", "right", "pen up", "pen down", "home",
+		"forward", "back", "left", "right", "pen up", "pen down", "home", "show turtle", "turtle",
 	}},
 	{"Running", "When the lines of a sketch run: once, every frame, again and again, or when something happens.", {
 		"draw", "every", "on", "if", "repeat", "while", "for", "for each",

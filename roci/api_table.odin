@@ -53,6 +53,7 @@ API_NAMES := [?]Api_Entry{
 	{"pen up", "pen_up"},
 	{"pen down", "pen_down"},
 	{"home", "home"},
+	{"show turtle", "show_turtle"},
 	{"map", "map_range"},
 	{"clamp", "clamp_between"},
 	{"dist", "dist"},

@@ -1238,3 +1238,11 @@ test_a_connecting_word_read_as_a_value_is_one_message :: proc(t: ^testing.T) {
 	expect_errors(t, "g = gradient [ red teal ] angle 90", {})
 	expect_errors(t, "xs = []\nadd 1 to xs", {})
 }
+
+@(test)
+test_the_turtle_is_a_record_of_pos_angle_and_down :: proc(t: ^testing.T) {
+	expect_types(t, "p = turtle.pos\na = turtle.angle\nd = turtle.down", "p: a vector of 2 numbers\na: a number\nd: true or false")
+	expect_types(t, "marks = []\ndraw [ add turtle to marks ]", "marks: a list of records with pos, angle and down")
+	// The turtle's word is the language's, so it can never be a name of the writer's.
+	expect_errors(t, "turtle = 3", {.Reserved_Name})
+}
