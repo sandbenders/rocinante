@@ -121,6 +121,7 @@ Message_Id :: enum u8 {
 	Runs_Too_Long,
 	Expect_Failed,
 	Font_Missing,
+	Font_Not_Shared,
 }
 
 Entry :: struct {
@@ -405,6 +406,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Font_Missing = {.Error, "I do not know a font called `{a}`",
 		"The fonts a sketch has are Inter and Inter Bold, and any font file in its `assets/fonts` folder under its own name. The text is drawn in the font before it, and the sketch carries on.",
 		"Use one that is there:", "{d}"},
+	.Font_Not_Shared = {.Warning, "`{a}` cannot travel with your sketch",
+		"`{a}` is a font installed on this computer, and {b} It works here, but on any other computer your sketch falls back to Inter, and `roci package` will not bundle it. To share it, put a font you are allowed to share in `assets/fonts` and name it.",
+		"Inter is a good start:", "{d}"},
 	.Division_By_Zero = {.Error, "This divides by zero",
 		"The number you divide by is 0 here, and nothing can be divided by 0. The sketch carries on with 0 as the answer. Check the number first.",
 		"Check first:", "{d}"},
@@ -461,7 +465,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Not_Shared:
 		return true
 	case:
 		return false

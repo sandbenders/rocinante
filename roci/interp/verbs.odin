@@ -409,7 +409,7 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.arc(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look^, origin)
 
 	case .Text:
-		if name, named := look.font.?; named && !ensure_font(it, name) {
+		if name, named := look.font.?; named && !ensure_font(it, name, e.span) {
 			fail(it, .Font_Missing, e.span, name, "", "", "font \"Inter\"")
 		}
 		wrap := 0.0
@@ -426,7 +426,7 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		if v, found := option_value(it, call.options, "size"); found {
 			size = as_number(v)
 		}
-		if !ensure_font(it, as_text(a[0])) || !roci.font(as_text(a[0]), size) {
+		if !ensure_font(it, as_text(a[0]), e.span) || !roci.font(as_text(a[0]), size) {
 			fail(it, .Font_Missing, e.span, as_text(a[0]), "", "", "font \"Inter\"")
 		}
 	case .Align:

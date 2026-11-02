@@ -199,8 +199,10 @@ measure_typeset :: proc(face: u16, size: f32, align: Align, text: string, wrap: 
 	}
 	// The wrapped measure is the one that breaks lines at line breaks too, and with
 	// a wrap width of 0 it breaks nowhere else.
+	// emoji count as the em space they are drawn in place of (emoji.odin)
+	swapped, _ := split_emoji(text, context.temp_allocator)
 	w, h: i32
-	if !ttf.GetStringSizeWrapped(font, raw_data(text), uint(len(text)), i32(max(wrap, 0)), &w, &h) {
+	if !ttf.GetStringSizeWrapped(font, raw_data(swapped), uint(len(swapped)), i32(max(wrap, 0)), &w, &h) {
 		return 0, 0
 	}
 	return f32(w), f32(h)

@@ -200,3 +200,44 @@ system_fallback_fonts_that_exist_are_added_and_the_rest_are_skipped :: proc(t: ^
 	w, h := measure_typeset(FACE_DEFAULT, 20, .Left, "\xe6\x97\xa5")
 	testing.expect(t, w > 0 && h > 0)
 }
+
+@(test)
+emoji_are_swapped_for_an_em_space_with_their_joiners_and_flags_kept_whole :: proc(t: ^testing.T) {
+	testing.expect(t, fonts_start())
+	plain, none := split_emoji("no emoji here", context.temp_allocator)
+	testing.expect_value(t, plain, "no emoji here")
+	testing.expect_value(t, len(none), 0)
+
+	// a face, a thumbs up with a skin tone, a family joined by joiners, a flag
+	text := "a\U0001F642b\U0001F44D\U0001F3FDc\U0001F468‍\U0001F469‍\U0001F467d\U0001F1EF\U0001F1F5e"
+	swapped, clusters := split_emoji(text, context.temp_allocator)
+	testing.expect_value(t, len(clusters), 4)
+	testing.expect_value(t, swapped, "a b c d e")
+	testing.expect_value(t, clusters[1].characters, "\U0001F44D\U0001F3FD")
+	testing.expect_value(t, clusters[2].characters, "\U0001F468‍\U0001F469‍\U0001F467")
+	testing.expect_value(t, clusters[3].characters, "\U0001F1EF\U0001F1F5")
+	// the offsets point at the spaces in the new text
+	for c in clusters {
+		testing.expect_value(t, swapped[c.offset:][:3], " ")
+	}
+}
+
+@(test)
+a_symbol_inter_has_stays_text_and_a_stray_joiner_is_left_alone :: proc(t: ^testing.T) {
+	testing.expect(t, fonts_start())
+	// arrows are in Inter; a lone zero width joiner is not an emoji
+	same, clusters := split_emoji("→ ‍", context.temp_allocator)
+	testing.expect_value(t, same, "→ ‍")
+	testing.expect_value(t, len(clusters), 0)
+}
+
+@(test)
+an_emoji_measures_as_one_em_whatever_size_its_font_is_made_in :: proc(t: ^testing.T) {
+	testing.expect(t, fonts_start())
+	space_w, _ := measure_typeset(FACE_DEFAULT, 20, .Left, " ")
+	w, h := measure_typeset(FACE_DEFAULT, 20, .Left, "\U0001F642")
+	testing.expect_value(t, w, space_w)
+	testing.expect(t, h < 40)
+	w2, _ := measure_typeset(FACE_DEFAULT, 20, .Left, "\U0001F642\U0001F642")
+	testing.expect_value(t, w2, space_w * 2)
+}

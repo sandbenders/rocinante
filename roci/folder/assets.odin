@@ -20,7 +20,7 @@ FOLDER_OF_TYPE := [?][2]string{
 	{"webp", "images"}, {"exr", "images"}, {"psd", "images"}, {"tif", "images"}, {"tiff", "images"},
 	{"wav", "sounds"}, {"flac", "sounds"}, {"mp3", "sounds"}, {"ogg", "sounds"}, {"aiff", "sounds"}, {"opus", "sounds"}, {"aac", "sounds"},
 	{"mp4", "videos"}, {"mov", "videos"}, {"webm", "videos"}, {"mkv", "videos"}, {"avi", "videos"}, {"mpg", "videos"}, {"mpeg", "videos"},
-	{"ttf", "fonts"}, {"otf", "fonts"}, {"woff", "fonts"}, {"woff2", "fonts"},
+	{"ttf", "fonts"}, {"otf", "fonts"}, {"ttc", "fonts"}, {"otc", "fonts"}, {"woff", "fonts"}, {"woff2", "fonts"},
 	{"gltf", "3d-models"}, {"glb", "3d-models"}, {"obj", "3d-models"}, {"fbx", "3d-models"}, {"svg", "3d-models"},
 	{"tflite", "ml-models"}, {"litertlm", "ml-models"},
 	{"hlsl", "shaders"}, {"glsl", "shaders"}, {"wgsl", "shaders"},

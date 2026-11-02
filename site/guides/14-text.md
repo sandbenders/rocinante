@@ -77,7 +77,7 @@ A text with nothing in it measures 0 by 0. `measure` follows `font`, `size` and 
 
 ## Other fonts
 
-A font file in `assets/fonts` is a font of the sketch. Use it by its file name, with or without the extension:
+A font file in `assets/fonts` is a font of the sketch. Use it by its file name, with or without the extension (`.ttf`, `.otf`, `.ttc` or `.otc`):
 
 ```
 font "Mono.ttf"
@@ -96,6 +96,23 @@ The fonts a sketch has are Inter and Inter Bold, and any font file in its `asset
 
 Use one that is there:  font "Inter"
 ```
+
+## Fonts installed on your computer
+
+Name a font that is installed on your computer and rocinante finds it: `font "Helvetica Neue"` looks for a file of that name in the computer's fonts when your sketch has none. What happens next depends on the font's own licence, which rocinante reads from the file. A font under a free licence (the SIL Open Font License, Apache, Ubuntu, MIT or public domain) is copied into `assets/fonts` the first time, with one line to say so, so your sketch looks the same on every computer and travels with its font. Any other font, or one that does not say, is used on this computer only, and the sketch is told it cannot travel:
+
+```message
+── Warning: `Locked Sans` cannot travel with your sketch ─── sketch.roci:1:1
+
+1 │ font "Locked Sans" size 30
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`Locked Sans` is a font installed on this computer, and its licence says it may not be shared. It works here, but on any other computer your sketch falls back to Inter, and `roci package` will not bundle it. To share it, put a font you are allowed to share in `assets/fonts` and name it.
+
+Inter is a good start:  font "Inter"
+```
+
+Emoji are drawn at the size of the text around them, one em wide, and measured the same way, so `measure` and a box around a line with an emoji in it fit.
 
 ## Other scripts and emoji
 

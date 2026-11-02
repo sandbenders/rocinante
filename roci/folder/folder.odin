@@ -117,7 +117,6 @@ fill :: proc(result: ^Scaffold, options: Options, allocator := context.allocator
 }
 
 // Makes a folder and the ones above it; one that is there already is fine.
-@(private)
 ensure_directory :: proc(path: string) -> bool {
 	err := os.make_directory_all(path)
 	return err == nil || err == .Exist

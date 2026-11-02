@@ -38,6 +38,7 @@ Cached_Text :: struct {
 	used:      u64, // the frame it was last asked for
 	width:     f32, // in device pixels
 	height:    f32,
+	emoji:     []Emoji_Draw, // the emoji of the text, each drawn on its own (see emoji.odin)
 }
 
 Typeset_State :: struct {
@@ -55,7 +56,7 @@ Typeset_State :: struct {
 typeset_destroy :: proc(r: ^Renderer) {
 	s := &r.typeset
 	for _, entry in s.cache {
-		ttf.DestroyText(entry.text)
+		destroy_cached_text(entry)
 	}
 	delete(s.cache)
 	if s.engine != nil {
@@ -90,14 +91,17 @@ cached_text :: proc(r: ^Renderer, item: Typeset_Item, scale: f32) -> (entry: Cac
 	pixels, wrap := item.size * scale, item.wrap * scale
 	key := text_key(item, pixels, wrap)
 	if found, cached := s.cache[key]; cached {
-		s.cache[key] = Cached_Text{found.text, s.frame, found.width, found.height}
+		found.used = s.frame
+		s.cache[key] = found
 		return found, true
 	}
 	font := font_for(item.face, pixels, item.align)
 	if font == nil {
 		return {}, false
 	}
-	text := ttf.CreateText(s.engine, font, raw_data(item.text), uint(len(item.text)))
+	// Emoji are swapped for a space of fixed width and drawn apart (emoji.odin).
+	replaced, clusters := split_emoji(item.text, context.temp_allocator)
+	text := ttf.CreateText(s.engine, font, raw_data(replaced), uint(len(replaced)))
 	if text == nil {
 		return {}, false
 	}
@@ -106,7 +110,8 @@ cached_text :: proc(r: ^Renderer, item: Typeset_Item, scale: f32) -> (entry: Cac
 	}
 	w, h: i32
 	ttf.GetTextSize(text, &w, &h)
-	entry = Cached_Text{text, s.frame, f32(w), f32(h)}
+	entry = Cached_Text{text = text, used = s.frame, width = f32(w), height = f32(h)}
+	entry.emoji = make_emoji_draws(s.engine, font, text, clusters)
 	s.cache[key] = entry
 	return entry, true
 }
@@ -125,7 +130,7 @@ forget_old_texts :: proc(r: ^Renderer) {
 		}
 	}
 	for key in old {
-		ttf.DestroyText(s.cache[key].text)
+		destroy_cached_text(s.cache[key])
 		delete_key(&s.cache, key)
 	}
 }
@@ -182,6 +187,9 @@ typeset_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batch
 				append(&s.indices, base + u32(seq.indices[k]))
 			}
 			append(&s.draws, Typeset_Draw{i, seq.atlas_texture, first, u32(len(s.indices)) - first})
+		}
+		for e in entry.emoji {
+			emoji_vertices(r, i, e, item, shift, scale)
 		}
 	}
 	forget_old_texts(r)

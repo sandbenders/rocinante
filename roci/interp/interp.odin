@@ -98,6 +98,7 @@ Interp :: struct {
 	tweens:    [dynamic]Tween, // the places being moved a little each frame (tween.odin)
 	checks:    [dynamic]Check_Result, // what `run_checks` found, one for each check (checks.odin)
 	check_at:  int, // the check being run, counting from 1; 0 when none is
+	fonts_missed: map[string]bool, // font names already looked for everywhere and not found (fonts.odin)
 	events:    int, // every runtime error said, counting the ones `fail` left out as already said
 }
 
@@ -185,6 +186,7 @@ destroy :: proc(p: ^Interp) {
 	}
 	delete(p.tweens)
 	delete(p.checks)
+	delete(p.fonts_missed)
 	virtual.arena_destroy(&p.values[p.values_now])
 	virtual.arena_destroy(&p.arena)
 	free(p)

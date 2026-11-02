@@ -1,0 +1,8 @@
+── Warning: `Locked Sans` cannot travel with your sketch ─── sketch.roci:1:1
+
+1 │ font "Locked Sans" size 30
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`Locked Sans` is a font installed on this computer, and its licence says it may not be shared. It works here, but on any other computer your sketch falls back to Inter, and `roci package` will not bundle it. To share it, put a font you are allowed to share in `assets/fonts` and name it.
+
+Inter is a good start:  font "Inter"

@@ -505,6 +505,9 @@ RUNTIME_ERRORS_DIR :: "tests/errors/runtime"
 @(test)
 test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing.T) {
 	update := os.get_env("ROCI_UPDATE_ERRORS", context.temp_allocator) != ""
+	// The fonts the font messages' sketches find installed.
+	folder.system_font_dirs = {make_installed_fonts(t, "output/tests/installed_messages", "Free Sans", "Locked Sans")}
+	defer folder.system_font_dirs = nil
 	for id in lang.Message_Id {
 		if !lang.is_runtime(id) {
 			continue

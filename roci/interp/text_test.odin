@@ -3,6 +3,7 @@ package interp
 
 import "../"
 import "../gfx"
+import "../folder"
 import "../lang"
 import "core:os"
 import "core:testing"
@@ -105,6 +106,122 @@ test_a_font_file_in_the_sketchs_assets_is_found_by_name :: proc(t: ^testing.T) {
 	testing.expect(t, roci.has_font("Mine"))
 	testing.expect(t, roci.has_font("Other.otf"))
 	testing.expect(t, !roci.has_font("Broken"), "bytes that are not a font are not a font")
+	testing.expect_value(t, len(p.errors), 1)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Font_Missing)
+}
+
+// A folder of installed fonts for a test: Inter under `free`, and under `locked` the
+// same font with the embedding bits saying it may not be shared. Gives the folder.
+make_installed_fonts :: proc(t: ^testing.T, root: string, free, locked: string) -> string {
+	_ = os.remove_all(root)
+	testing.expect(t, folder.ensure_directory(root))
+	testing.expect(t, os.write_entire_file(concat(root, "/", free, ".ttf"), gfx.INTER_REGULAR) == nil)
+	copied := make([]u8, len(gfx.INTER_REGULAR), context.temp_allocator)
+	copy(copied, gfx.INTER_REGULAR)
+	for i in 0 ..< int(u16(copied[4]) << 8 | u16(copied[5])) {
+		record := 12 + i * 16
+		if string(copied[record:][:4]) == "OS/2" {
+			at := int(u32(copied[record + 8]) << 24 | u32(copied[record + 9]) << 16 | u32(copied[record + 10]) << 8 | u32(copied[record + 11])) + 8
+			copied[at], copied[at + 1] = 0, 2
+		}
+	}
+	testing.expect(t, os.write_entire_file(concat(root, "/", locked, ".ttf"), copied) == nil)
+	return root
+}
+
+@(test)
+test_a_free_installed_font_is_copied_into_the_sketch_and_said :: proc(t: ^testing.T) {
+	installed := make_installed_fonts(t, "output/tests/installed_a", "Copy Me", "Keep Me")
+	sketch := "output/tests/font_copy_sketch"
+	_ = os.remove_all(sketch)
+	testing.expect(t, folder.ensure_directory(sketch))
+	folder.system_font_dirs = {installed}
+	defer folder.system_font_dirs = nil
+	path := "output/tests/font_copy_sketch/sketch.roci"
+	text := "font \"Copy Me\"\ntext \"a\" at 1 1\nfont \"Copy Me\"\ntext \"b\" at 2 2\n"
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)text) == nil)
+	roci.start_headless(1)
+	p, ok := load(path, text)
+	testing.expect(t, ok)
+	watch(p, path)
+	start(p)
+	defer finish_all()
+	testing.expect(t, roci.has_font("Copy Me"))
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, len(p.notices), 1)
+	if len(p.notices) == 1 {
+		testing.expect_value(t, p.notices[0], "copied the font Copy Me into assets/fonts, under the SIL Open Font License, so your sketch travels with it")
+	}
+	copied, err := os.read_entire_file("output/tests/font_copy_sketch/assets/fonts/Copy Me.ttf", context.temp_allocator)
+	testing.expect(t, err == nil)
+	testing.expect_value(t, len(copied), len(gfx.INTER_REGULAR))
+}
+
+@(test)
+test_a_copied_font_is_found_in_assets_next_time_without_the_computers_copy :: proc(t: ^testing.T) {
+	sketch :: "output/tests/font_again_sketch"
+	_ = os.remove_all(sketch)
+	testing.expect(t, folder.ensure_directory(sketch + "/assets/fonts"))
+	testing.expect(t, os.write_entire_file("output/tests/font_again_sketch/assets/fonts/Travelled.ttf", gfx.INTER_REGULAR) == nil)
+	folder.system_font_dirs = {"output/tests/no_fonts_here"}
+	defer folder.system_font_dirs = nil
+	path := "output/tests/font_again_sketch/sketch.roci"
+	text := "font \"Travelled\"\ntext \"a\" at 1 1\n"
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)text) == nil)
+	roci.start_headless(1)
+	p, ok := load(path, text)
+	testing.expect(t, ok)
+	watch(p, path)
+	start(p)
+	defer finish_all()
+	testing.expect(t, roci.has_font("Travelled"))
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, len(p.notices), 0)
+}
+
+@(test)
+test_a_font_that_may_not_be_shared_is_used_here_and_never_copied :: proc(t: ^testing.T) {
+	installed := make_installed_fonts(t, "output/tests/installed_b", "Other Free", "Keep Me")
+	sketch := "output/tests/font_locked_sketch"
+	_ = os.remove_all(sketch)
+	testing.expect(t, folder.ensure_directory(sketch))
+	folder.system_font_dirs = {installed}
+	defer folder.system_font_dirs = nil
+	path := "output/tests/font_locked_sketch/sketch.roci"
+	text := "font \"Keep Me\"\ntext \"a\" at 1 1\ntext \"b\" at 1 30\n"
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)text) == nil)
+	roci.start_headless(1)
+	p, ok := load(path, text)
+	testing.expect(t, ok)
+	watch(p, path)
+	start(p)
+	defer finish_all()
+	testing.expect(t, roci.has_font("Keep Me"), "it is used on this computer")
+	testing.expect_value(t, len(p.errors), 1)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Font_Not_Shared)
+	testing.expect_value(t, p.errors[0].args[1], "its licence says it may not be shared.")
+	testing.expect(t, !os.exists("output/tests/font_locked_sketch/assets"), "nothing is copied")
+}
+
+@(test)
+test_an_installed_font_of_a_lone_file_is_used_with_nowhere_to_copy_it :: proc(t: ^testing.T) {
+	installed := make_installed_fonts(t, "output/tests/installed_c", "Lone Free", "Lone Locked")
+	folder.system_font_dirs = {installed}
+	defer folder.system_font_dirs = nil
+	p := run_text(t, "font \"Lone Free\"\ntext \"a\" at 1 1")
+	defer finish(p)
+	testing.expect(t, roci.has_font("Lone Free"))
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, len(p.notices), 0)
+}
+
+@(test)
+test_a_name_nothing_has_is_looked_for_once :: proc(t: ^testing.T) {
+	folder.system_font_dirs = {"output/tests/no_fonts_here"}
+	defer folder.system_font_dirs = nil
+	p := run_text(t, "draw [ font \"Not Anywhere\"\n text \"a\" at 1 1 ]", 3)
+	defer finish(p)
+	testing.expect_value(t, len(p.fonts_missed), 1)
 	testing.expect_value(t, len(p.errors), 1)
 	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Font_Missing)
 }
