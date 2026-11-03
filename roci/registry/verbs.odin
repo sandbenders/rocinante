@@ -12,7 +12,7 @@ package registry
 // The style words every drawing verb accepts. `as` after the
 // required arguments is the origin: `as center` or `as corner`.
 STYLE_OPTIONS := []Option{
-	{"fill", {.Colour}, false},
+	{"fill", {.Paint}, false},
 	{"stroke", {.Colour}, false},
 	{"thickness", {.Number}, false},
 	{"alpha", {.Number}, false},
@@ -50,6 +50,14 @@ IMAGE_SIZED_OPTIONS := []Option{
 	{"tint", {.Colour}, false},
 	{"alpha", {.Number}, false},
 	{"as", {.Name}, false},
+}
+
+// How a picture fills: `fill photo as tile size 64 at 10 10`. `as` takes cover, fit, stretch,
+// tile or center; `size` is the width of one copy for tile; `at` shifts the picture in pixels.
+FILL_IMAGE_OPTIONS := []Option{
+	{"as", {.Name}, false},
+	{"size", {.Number}, false},
+	{"at", {.Number, .Number}, false},
 }
 
 // `gradient [ red teal ] angle 90 stops [ 0 20 100 ] as radial at 30 30 in rgb`
@@ -179,7 +187,10 @@ VERBS := []Verb{
 	{"tint", {{{{"color", .Colour}}, nil, .None}}, "Sets the color pictures are drawn through from now on: white leaves them as they are, and its alpha makes them see-through."},
 
 	// Style
-	{"fill", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the color of areas from now on."},
+	{"fill", {
+		{{{"color", .Colour}}, GRADIENT_OPTIONS, .None},
+		{{{"picture", .Image}}, FILL_IMAGE_OPTIONS, .None},
+	}, "Sets the color of areas from now on, or fills them with a picture: each shape is a mask the picture shows through."},
 	{"no fill", {{{}, nil, .None}}, "Turns area color off from now on."},
 	{"stroke", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the color of outlines and lines from now on."},
 	{"no stroke", {{{}, nil, .None}}, "Turns outlines off from now on."},

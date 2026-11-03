@@ -17,6 +17,7 @@ Kind :: enum u8 {
 	Number,
 	Text,
 	Colour,
+	Paint, // what a shape's fill takes: a colour, a grey, a gradient or a picture
 	Vector,
 	List,
 	Block, // a [ ] block of statements
@@ -157,7 +158,7 @@ property_words :: proc(def: Property_Def) -> string {
 	case .Vector:  return "a vector of 2 numbers" if def.size == 2 else "a vector"
 	case .Window:  return "a window"
 	case .Image:   return "a picture"
-	case .None, .List, .Block, .Name, .Gradient, .Any, .Expr_Block, .Colour, .Table, .Record: return "a value"
+	case .None, .List, .Block, .Name, .Gradient, .Any, .Expr_Block, .Colour, .Paint, .Table, .Record: return "a value"
 	}
 	return "a value"
 }

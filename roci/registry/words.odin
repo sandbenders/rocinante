@@ -18,6 +18,7 @@ Word_Choices :: struct {
 ORIGIN_WORDS := []string{"center", "corner"}
 ALIGN_WORDS := []string{"left", "center", "right"}
 GRADIENT_KINDS := []string{"linear", "radial", "conic"}
+IMAGE_FILL_WORDS := []string{"cover", "fit", "stretch", "tile", "center"}
 MIX_SPACES := []string{"oklab", "rgb", "oklch"}
 CURSOR_WORDS := []string{"arrow", "none"}
 EASE_WORDS := []string{"smooth", "linear", "in", "out", "back", "elastic", "bounce"}
@@ -36,6 +37,7 @@ WORD_CHOICES := []Word_Choices{
 	{"window", "cursor", CURSOR_WORDS},
 	{"set", "cursor", CURSOR_WORDS},
 	{"fill", "as", GRADIENT_KINDS},
+	{"fill picture", "as", IMAGE_FILL_WORDS}, // the shape of `fill` that takes a picture
 	{"stroke", "as", GRADIENT_KINDS},
 	{"background", "as", GRADIENT_KINDS},
 	{"gradient", "as", GRADIENT_KINDS},

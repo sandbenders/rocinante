@@ -195,8 +195,14 @@ void roci_arc(double x, double y, double width, double height, double start, dou
 /* Text in the built-in overlay font, in the fill color; whole-number scales look best. */
 void roci_debug_text(const char *text, double x, double y, double scale);
 
-/* Sets the color of areas from now on. */
+/* Sets the color of areas from now on, or fills them with a picture: each shape is a mask the picture shows through. */
 void roci_fill(roci_color color);
+
+/* Sets the color of areas from now on, or fills them with a picture: each shape is a mask the picture shows through. */
+void roci_fill_image(roci_image_id picture);
+
+/* Fills with a picture. `fit` is 0 cover, 1 fit, 2 stretch, 3 tile or 4 center; `tile` is the width of one copy for tile (0 is the picture's own size); `at_x` and `at_y` shift the picture for tile and center. */
+void roci_fill_image_as(roci_image_id picture, int fit, double tile, double at_x, double at_y);
 
 /* Fills with a gray, 0 to 255, from now on. */
 void roci_fill_gray(double value);

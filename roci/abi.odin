@@ -336,6 +336,18 @@ abi_fill :: proc "c" (colour: Abi_Color) {
 	fill(color_from_abi(colour))
 }
 
+@(export, link_name = "roci_fill_image")
+abi_fill_image :: proc "c" (picture: c.int) {
+	context = runtime.default_context()
+	fill_image(Image(picture))
+}
+
+@(export, link_name = "roci_fill_image_as")
+abi_fill_image_as :: proc "c" (picture: c.int, fit: c.int, tile, at_x, at_y: f64) {
+	context = runtime.default_context()
+	fill_image(Image(picture), Image_Fit(clamp(fit, 0, 4)), tile, at_x, at_y)
+}
+
 @(export, link_name = "roci_fill_gray")
 abi_fill_gray :: proc "c" (value: f64) {
 	context = runtime.default_context()

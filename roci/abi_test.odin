@@ -16,7 +16,7 @@ type_for_kind :: proc(kind: registry.Kind) -> (id: typeid, ok: bool) {
 	switch kind {
 	case .Number:      return f64, true
 	case .Text, .Name: return cstring, true
-	case .Colour:      return Abi_Color, true
+	case .Colour, .Paint: return Abi_Color, true
 	case .Image:       return c.int, true
 	case .Vector:      return Abi_Vec2, true
 	case .None, .Window, .List, .Table, .Block, .Gradient, .Any, .Boolean, .Expr_Block, .Record: return nil, false

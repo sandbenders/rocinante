@@ -86,7 +86,10 @@ accepts :: proc(want, got: Kind) -> bool {
 	if want == .Expr_Block && got == .Block {
 		return true
 	}
-	return want == .Colour && (got == .Number || got == .List || got == .Gradient)
+	if want == .Paint && (got == .Image || got == .Colour) {
+		return true
+	}
+	return (want == .Colour || want == .Paint) && (got == .Number || got == .List || got == .Gradient)
 }
 
 // Picks the shape of a verb group for these argument kinds: first by count,

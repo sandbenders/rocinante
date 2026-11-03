@@ -1340,3 +1340,18 @@ test_canvases_are_pictures_that_are_drawn_into_with_a_block :: proc(t: ^testing.
 	expect_errors(t, "c = canvas 100\n", {.Wrong_Argument_Count})
 	expect_errors(t, "c = canvas 100 80\nc.width = 5", {.Bad_Field})
 }
+
+@(test)
+test_a_picture_fills_and_its_words_are_checked :: proc(t: ^testing.T) {
+	expect_errors(t, "photo = load \"a.png\"\nfill photo\nfill photo as tile size 40 at 1 2\nfill photo as cover\ncircle at 1 2 radius 3 fill photo", {})
+	// a word of a gradient is not a word of a picture, and the other way round
+	expect_errors(t, "photo = load \"a.png\"\nfill photo as radial", {.Unknown_Choice})
+	expect_errors(t, "fill red as cover", {.Unknown_Choice})
+	expect_errors(t, "photo = load \"a.png\"\nfill photo as covr", {.Unknown_Choice})
+	// only a fill takes a picture: an outline, a background, a tint or a mix do not
+	expect_errors(t, "photo = load \"a.png\"\nstroke photo", {.Wrong_Argument_Kind})
+	expect_errors(t, "photo = load \"a.png\"\nbackground photo", {.Wrong_Argument_Kind})
+	expect_errors(t, "photo = load \"a.png\"\ncircle at 1 2 radius 3 stroke photo", {.Wrong_Argument_Kind})
+	expect_errors(t, "photo = load \"a.png\"\nwith fill photo [ circle at 1 2 radius 3 ]", {})
+	expect_errors(t, "photo = load \"a.png\"\nfill photo size \"x\"", {.Wrong_Argument_Kind})
+}

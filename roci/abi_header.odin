@@ -101,6 +101,8 @@ abi_table_init :: proc "contextless" () {
 	{"roci_arc", "arc", 0, typeid_of(type_of(abi_arc)), "", ""},
 	{"roci_debug_text", "", 0, typeid_of(type_of(abi_debug_text)), "void roci_debug_text(const char *text, double x, double y, double scale)", "Text in the built-in overlay font, in the fill color; whole-number scales look best."},
 	{"roci_fill", "fill", 0, typeid_of(type_of(abi_fill)), "", ""},
+	{"roci_fill_image", "fill", 1, typeid_of(type_of(abi_fill_image)), "", ""},
+	{"roci_fill_image_as", "", 0, typeid_of(type_of(abi_fill_image_as)), "void roci_fill_image_as(roci_image_id picture, int fit, double tile, double at_x, double at_y)", "Fills with a picture. `fit` is 0 cover, 1 fit, 2 stretch, 3 tile or 4 center; `tile` is the width of one copy for tile (0 is the picture's own size); `at_x` and `at_y` shift the picture for tile and center."},
 	{"roci_fill_gray", "", 0, typeid_of(type_of(abi_fill_gray)), "void roci_fill_gray(double value)", "Fills with a gray, 0 to 255, from now on."},
 	{"roci_no_fill", "no fill", 0, typeid_of(type_of(abi_no_fill)), "", ""},
 	{"roci_stroke", "stroke", 0, typeid_of(type_of(abi_stroke)), "", ""},
@@ -171,7 +173,7 @@ abi_c_type :: proc(kind: registry.Kind) -> (name: string, ok: bool) {
 	case .None:                 return "void", true
 	case .Number:               return "double", true
 	case .Text, .Name:          return "const char *", true
-	case .Colour:               return "roci_color", true
+	case .Colour, .Paint:       return "roci_color", true
 	case .Vector:               return "roci_vec2", true
 	case .Window:               return "roci_window_id", true
 	case .Image:                return "roci_image_id", true

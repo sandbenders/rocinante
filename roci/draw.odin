@@ -14,15 +14,18 @@ import "maths"
 
 Colour :: maths.Colour
 Gradient :: gfx.Gradient
+Image_Fit :: gfx.Image_Fit
+Image_Fill :: gfx.Image_Fill
 Origin :: gfx.Origin
 Cap :: geom.Cap
 Join :: geom.Join
 Scope :: gfx.Scope
 
-// What fills or outlines a shape: a plain colour or a gradient.
+// What fills or outlines a shape: a plain colour, a gradient or (for a fill only) a picture.
 Paint :: union {
 	Colour,
 	Gradient,
+	Image_Fill,
 }
 
 // Style for one element only: whatever is
@@ -50,6 +53,7 @@ apply_paint_fill :: proc(list: ^gfx.Command_List, paint: Paint) {
 	switch p in paint {
 	case Colour:   gfx.set_fill(list, p)
 	case Gradient: gfx.set_fill_gradient(list, p)
+	case Image_Fill: gfx.set_fill_image(list, p)
 	}
 }
 
@@ -58,6 +62,7 @@ apply_paint_stroke :: proc(list: ^gfx.Command_List, paint: Paint) {
 	switch p in paint {
 	case Colour:   gfx.set_stroke(list, p)
 	case Gradient: gfx.set_stroke_gradient(list, p)
+	case Image_Fill: // only a fill takes a picture; an outline keeps what it was
 	}
 }
 
@@ -222,6 +227,7 @@ background :: proc(paint: Paint) {
 	switch p in paint {
 	case Colour:   gfx.background(list, p)
 	case Gradient: gfx.background_gradient(list, p)
+	case Image_Fill: // only a fill takes a picture
 	}
 }
 
@@ -238,6 +244,14 @@ clear_window :: proc() {
 
 fill_paint :: proc(paint: Paint) {
 	apply_paint_fill(current_list(), paint)
+}
+
+// Fills shapes with a picture (a loaded one or a canvas) from now on: each shape is a mask the
+// picture shows through. `fit` says how it sits in the shape's box; `tile` is the width of
+// one copy for `.Tile` (0 is the picture's own size), and `at_x` `at_y` shift it in
+// logical pixels for `.Tile` and `.Center`. Not a kept picture: nothing changes.
+fill_image :: proc(picture: Image, fit := Image_Fit.Cover, tile := 0.0, at_x := 0.0, at_y := 0.0) {
+	gfx.set_fill_image(current_list(), Image_Fill{image = picture, fit = fit, tile = f32(tile), at = {f32(at_x), f32(at_y)}})
 }
 
 // `fill 128`: a grey.

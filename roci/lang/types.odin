@@ -273,7 +273,7 @@ type_of_kind :: proc(ts: ^Types, kind: registry.Kind, first_list: Type_Id = T_ER
 	case .Number:   return T_NUMBER
 	case .Text:     return T_TEXT
 	case .Boolean:  return T_BOOLEAN
-	case .Colour:   return T_COLOUR
+	case .Colour, .Paint: return T_COLOUR
 	case .Gradient: return T_GRADIENT
 	case .Window:   return T_WINDOW
 	case .Image:    return T_IMAGE

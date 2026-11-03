@@ -415,6 +415,11 @@ report_kinds :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Verb, args:
 check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Verb, shape: registry.Shape, list_type: Type_Id) -> []IR_Option {
 	out := make([dynamic]IR_Option, c.alloc)
 	seen := make([dynamic]string, context.temp_allocator)
+	// `fill` with a picture has words of its own (`as tile`), listed apart from a color's.
+	choices_for := verb.name
+	if verb.name == "fill" && len(shape.params) == 1 && shape.params[0].kind == .Image {
+		choices_for = "fill picture"
+	}
 	for o in k.options {
 		def: registry.Option
 		found := false
@@ -443,13 +448,13 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 			}
 			if i < len(def.kinds) && def.kinds[i] == .Name {
 				if word, ok := as_word(c, a); ok {
-					check_choice(c, verb.name, o.word, o.word, word, a.span)
+					check_choice(c, choices_for, o.word, o.word, word, a.span)
 					append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
 					continue
 				}
 			}
 			ir := check_expr(c, a, false)
-			if i < len(def.kinds) && def.kinds[i] == .Colour {
+			if i < len(def.kinds) && (def.kinds[i] == .Colour || def.kinds[i] == .Paint) {
 				check_colour_list(c, ir, a)
 			}
 			// A pair of numbers (`at 10 20`) may be written as one vector (`at p`).
@@ -457,7 +462,7 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 			if !is_pair && i < len(def.kinds) && ir.type != T_ERROR && !registry.accepts(def.kinds[i], registry_kind(c.types, ir.type)) {
 				need := fmt.tprintf("%s after `%s`", kind_words(def.kinds[i]), o.word)
 				example := sample_for_kind(def.kinds[i])
-				if words := registry.word_choices(verb.name, o.word); def.kinds[i] == .Name && len(words) > 0 {
+				if words := registry.word_choices(choices_for, o.word); def.kinds[i] == .Name && len(words) > 0 {
 					example = words[0] // `cursor arrow`, not a word another verb takes
 				}
 				note(c, .Wrong_Argument_Kind, a.span, verb.name, need, describe(c.types, ir.type), fix(c, a.span, example))

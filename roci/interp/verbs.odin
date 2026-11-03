@@ -135,8 +135,41 @@ to_paint :: proc(it: ^Interp, v: Value, options: []lang.IR_Option = nil) -> (roc
 		if g := gradient_from(it, v, options); g != nil {
 			return g^, true
 		}
+	case roci.Image:
+		return picture_fill(it, x, options), true
 	}
 	return nil, false
+}
+
+// A picture as a fill, and the connecting words that say how it sits in a shape.
+@(private)
+picture_fill :: proc(it: ^Interp, picture: roci.Image, options: []lang.IR_Option) -> roci.Image_Fill {
+	fill := roci.Image_Fill{image = picture}
+	for o in options {
+		if len(o.args) == 0 {
+			continue
+		}
+		switch o.word {
+		case "as":
+			switch as_text(eval(it, o.args[0])) {
+			case "cover":   fill.fit = .Cover
+			case "fit":     fill.fit = .Fit
+			case "stretch": fill.fit = .Stretch
+			case "tile":    fill.fit = .Tile
+			case "center":  fill.fit = .Center
+			}
+		case "size":
+			fill.tile = f32(as_number(eval(it, o.args[0])))
+		case "at":
+			if len(o.args) >= 2 {
+				fill.at = {f32(as_number(eval(it, o.args[0]))), f32(as_number(eval(it, o.args[1])))}
+			} else {
+				pair := as_pair(eval(it, o.args[0]))
+				fill.at = {f32(pair.x), f32(pair.y)}
+			}
+		}
+	}
+	return fill
 }
 
 // A gradient from a list of colours and the connecting words that shape it.

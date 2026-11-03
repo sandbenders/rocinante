@@ -56,6 +56,7 @@ kind_name :: proc(kind: Kind) -> string {
 	case .Number:     return "number"
 	case .Text:       return "text"
 	case .Colour:     return "color"
+	case .Paint:      return "color"
 	case .Vector:     return "vector"
 	case .List:       return "list"
 	case .Table:      return "table"
@@ -112,6 +113,7 @@ sample :: proc(kind: Kind, index: int, verb := "", after := "") -> string {
 	case .Number:     return numbers[index % len(numbers)]
 	case .Text:       return "\"hello\""
 	case .Colour:     return "red"
+	case .Paint:      return "red"
 	case .Vector:     return "{ 100, 100 }"
 	case .List:       return "[ 1 2 3 ]"
 	case .Table:      return "table"
@@ -139,6 +141,7 @@ gives_words :: proc(kind: Kind) -> string {
 	case .Any:    return "a value"
 	case .Number: return "a number"
 	case .Colour: return "a color"
+	case .Paint:  return "a color or a picture"
 	case .Window: return "a window"
 	case .Image:  return "a picture"
 	case .List:   return "a list"

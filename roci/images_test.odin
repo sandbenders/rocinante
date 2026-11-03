@@ -125,3 +125,44 @@ test_the_c_functions_for_pictures :: proc(t: ^testing.T) {
 	testing.expect_value(t, [2]f32{gfx.command_at(list, 3).args[2], gfx.command_at(list, 3).args[3]}, [2]f32{11, 12})
 	testing.expect_value(t, gfx.command_at(list, 0).style.tint, Colour{0, 255, 0, 255})
 }
+
+@(test)
+test_fill_image_sets_the_fill_for_the_shapes_after_it_and_the_c_functions_do_the_same :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	pixels := make([]u8, 4 * 4 * 4, context.temp_allocator)
+	picture, ok := add_image_pixels(4, 4, pixels)
+	testing.expect(t, ok)
+	rect(0, 0, 5, 5)
+	fill_image(picture)
+	rect(0, 0, 5, 5)
+	fill_image(picture, .Tile, 30, 2, 3)
+	rect(0, 0, 5, 5)
+	fill_paint(Colour{1, 2, 3, 255})
+	rect(0, 0, 5, 5)
+	fill_image(Image(7777), .Fit) // not a picture: the fill stays
+	rect(0, 0, 5, 5)
+	abi_fill_image(i32(picture))
+	rect(0, 0, 5, 5)
+	abi_fill_image_as(i32(picture), 4, 0, 6, 7)
+	rect(0, 0, 5, 5)
+	abi_fill_image_as(i32(picture), 99, 0, 0, 0) // a mode that does not exist is the last one
+	rect(0, 0, 5, 5)
+	stroke_paint(Image_Fill{image = picture}) // only a fill takes a picture
+	background(Image_Fill{image = picture})
+	list := &the.windows[0].list
+	testing.expect_value(t, len(list.commands), 8)
+	fills: [8]gfx.Image_Fill
+	for i in 0 ..< 8 {
+		fills[i] = gfx.command_at(list, i).style.fill_image
+	}
+	testing.expect_value(t, fills[0].image, Image(0))
+	testing.expect_value(t, fills[1], gfx.Image_Fill{image = picture})
+	testing.expect_value(t, fills[2], gfx.Image_Fill{image = picture, fit = .Tile, tile = 30, at = {2, 3}})
+	testing.expect_value(t, fills[3].image, Image(0))
+	testing.expect_value(t, fills[4].image, Image(0))
+	testing.expect_value(t, fills[5], gfx.Image_Fill{image = picture})
+	testing.expect_value(t, fills[6], gfx.Image_Fill{image = picture, fit = .Center, at = {6, 7}})
+	testing.expect_value(t, fills[7].fit, gfx.Image_Fit.Center)
+	testing.expect_value(t, list.style.stroke_on, false)
+}

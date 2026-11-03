@@ -223,3 +223,67 @@ test_a_lone_file_has_no_assets_to_load_from_and_a_picture_field_that_is_misspelt
 	_, ok = load("test.roci", "photo = load \"cat.png\"\nphoto.width = 5")
 	testing.expect(t, !ok, "a picture's size can be read but not changed")
 }
+
+@(test)
+test_fill_takes_a_picture_and_its_words_say_how_it_sits :: proc(t: ^testing.T) {
+	p := run_picture_sketch(t, "pictures_fill", `photo = load "cat.png"
+fill photo
+circle at 10 10 radius 5
+fill photo as fit
+rect at 0 0 size 10 10
+fill photo as stretch
+rect at 0 0 size 10 10
+fill photo as tile size 40 at 3 4
+rect at 0 0 size 10 10
+fill photo as center at { 1, 2 }
+rect at 0 0 size 10 10
+fill red
+rect at 0 0 size 10 10
+rect at 0 0 size 10 10 fill photo
+`)
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	commands := roci.recorded(first_window())
+	if !testing.expect_value(t, len(commands), 7) {
+		return
+	}
+	fills: [7]gfx.Image_Fill
+	for c, i in commands {
+		fills[i] = c.style.fill_image
+	}
+	testing.expect(t, fills[0].image != 0)
+	testing.expect_value(t, fills[0].fit, gfx.Image_Fit.Cover) // the start
+	testing.expect_value(t, fills[1].fit, gfx.Image_Fit.Fit)
+	testing.expect_value(t, fills[2].fit, gfx.Image_Fit.Stretch)
+	testing.expect_value(t, fills[3].fit, gfx.Image_Fit.Tile)
+	testing.expect_value(t, fills[3].tile, f32(40))
+	testing.expect_value(t, fills[3].at, [2]f32{3, 4})
+	testing.expect_value(t, fills[4].fit, gfx.Image_Fit.Center)
+	testing.expect_value(t, fills[4].at, [2]f32{1, 2})
+	testing.expect_value(t, fills[5].image, gfx.Image_Id(0)) // a color puts the picture away
+	testing.expect_value(t, fills[6].image, fills[0].image)  // one element, with the fill word
+	testing.expect_value(t, commands[6].style.fill, [4]f32{255, 0, 0, 255}) // the color before it is kept underneath
+}
+
+@(test)
+test_a_picture_that_is_not_there_fills_with_nothing_new :: proc(t: ^testing.T) {
+	p := run_picture_sketch(t, "pictures_fill_missing", "fill teal\nphoto = load \"nope.png\"\nfill photo\nrect at 0 0 size 5 5")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	if testing.expect_value(t, len(commands), 1) {
+		testing.expect_value(t, commands[0].style.fill_image.image, gfx.Image_Id(0))
+		testing.expect_value(t, commands[0].style.fill, [4]f32{0, 128, 128, 255})
+	}
+}
+
+@(test)
+test_a_with_group_can_fill_with_a_picture :: proc(t: ^testing.T) {
+	p := run_picture_sketch(t, "pictures_fill_with", "photo = load \"cat.png\"\nwith fill photo [ rect at 0 0 size 5 5 ]\nrect at 0 0 size 5 5")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	commands := roci.recorded(first_window())
+	if testing.expect_value(t, len(commands), 2) {
+		testing.expect(t, commands[0].style.fill_image.image != 0)
+		testing.expect_value(t, commands[1].style.fill_image.image, gfx.Image_Id(0)) // the group ended
+	}
+}

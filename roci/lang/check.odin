@@ -374,6 +374,7 @@ kind_words :: proc(kind: registry.Kind) -> string {
 	case .Number:   return "a number"
 	case .Text:     return "text"
 	case .Colour:   return "a color"
+	case .Paint:    return "a color or a picture"
 	case .Vector:   return "a vector"
 	case .List:     return "a list"
 	case .Table:    return "a table"
@@ -1029,7 +1030,7 @@ check_style_option :: proc(c: ^Checker, o: Option_Use) -> IR_Option {
 	}
 	for a, i in o.args {
 		ir := check_expr(c, a, false)
-		if i < len(def.kinds) && def.kinds[i] == .Colour {
+		if i < len(def.kinds) && (def.kinds[i] == .Colour || def.kinds[i] == .Paint) {
 			check_colour_list(c, ir, a)
 		}
 		if i < len(def.kinds) && ir.type != T_ERROR && !registry.accepts(def.kinds[i], registry_kind(c.types, ir.type)) {
