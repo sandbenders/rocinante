@@ -300,6 +300,10 @@ apply_look :: proc(look: roci.Look) {
 call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	verb := call.verb
 	code := verb_code(verb)
+	// `draw into` runs its block itself, with every verb drawing onto the canvas.
+	if code == .Draw_Into {
+		return draw_into(it, e, call)
+	}
 	// `push` runs its block itself; no other core verb takes one.
 	if code == .Push {
 		roci.push()
@@ -462,6 +466,13 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 	case .Tint:
 		roci.tint(as_colour(a[0]))
+	case .Canvas:
+		picture, made := roci.canvas(n(a, 0), n(a, 1))
+		if !made {
+			fail(it, .Canvas_Size, e.span, "", "", "", "c = canvas 300 200")
+			return nil
+		}
+		return picture
 	case .Fill:
 		if paint, ok := to_paint(it, a[0], call.options); ok {
 			roci.fill_paint(paint)
@@ -610,4 +621,27 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 // registry gains one it does not.
 handled :: proc(name: string) -> bool {
 	return code_for_name(name) != .None
+}
+
+// `draw into c [ ... ]`: runs the block with every drawing verb recording onto the canvas.
+@(private)
+draw_into :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
+	picture := as_image(eval(it, call.args[0]))
+	if !roci.begin_into(picture) {
+		why := "It is not a canvas: a picture loaded from a file cannot be drawn into, and canvases are made with `canvas`."
+		if roci.is_drawing_into() {
+			why = "A canvas is being drawn into already, and a `draw into` cannot sit inside another."
+		}
+		fail(it, .Not_A_Canvas, e.span, "", why, "", "c = canvas 300 200")
+		return nil
+	}
+	if len(call.args) > 1 {
+		if block, ok := call.args[1].kind.(lang.IR_Block_Value); ok {
+			if flow := exec_block(it, block.block); flow != .Normal {
+				it.pending = flow
+			}
+		}
+	}
+	roci.end_into()
+	return nil
 }

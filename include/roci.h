@@ -132,6 +132,15 @@ void roci_image_sized(roci_image_id picture, double x, double y, double width, d
 /* Draws a loaded picture with its top left at a point, at its own size, or at a width or height (the other side follows) or a size. */
 void roci_image_sized_v(roci_image_id picture, roci_vec2 position, roci_vec2 size);
 
+/* Makes a canvas: a picture you draw into with `draw into`. It keeps what is drawn on it from frame to frame, and is shown with `image`. Make it once, not every frame. */
+roci_image_id roci_canvas(double width, double height);
+
+/* Draws onto a canvas from now on, until roci_end_into; gives 1, or 0 when the picture is not a canvas or one is being drawn into already. */
+int roci_begin_into(roci_image_id canvas);
+
+/* Goes back to drawing into the window. */
+void roci_end_into(void);
+
 /* Sets the color pictures are drawn through from now on: white leaves them as they are, and its alpha makes them see-through. */
 void roci_tint(roci_color color);
 

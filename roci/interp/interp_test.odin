@@ -2186,6 +2186,10 @@ make_message_sketch :: proc(t: ^testing.T) -> string {
 	testing.expect(t, folder.ensure_directory(root + "/assets/images/b"))
 	testing.expect(t, os.write_entire_file(root + "/sketch.roci", transmute([]byte)string("circle at 1 1 radius 1\n")) == nil)
 	testing.expect(t, os.write_entire_file(root + "/assets/images/broken.png", transmute([]byte)string("not a picture")) == nil)
+	if png, encoded := gfx.png_encode(gfx.Image{2, 2, make([]u8, 16, context.temp_allocator)}); encoded {
+		testing.expect(t, os.write_entire_file(root + "/assets/images/small.png", png) == nil)
+		delete(png)
+	}
 	testing.expect(t, os.write_entire_file(root + "/assets/images/a/twin.png", transmute([]byte)string("x")) == nil)
 	testing.expect(t, os.write_entire_file(root + "/assets/images/b/twin.png", transmute([]byte)string("x")) == nil)
 	return root + "/sketch.roci"

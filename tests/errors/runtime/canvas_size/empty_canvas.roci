@@ -1,0 +1,2 @@
+c = canvas 0 100
+image c at 0 0

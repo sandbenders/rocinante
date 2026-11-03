@@ -103,6 +103,8 @@ Sketch :: struct {
 	shot_renderer: gfx.Renderer,
 	shot_ready:   bool,
 	cursor_shown: Cursor, // what the one cursor of the program is now
+	canvases:     [dynamic]Image, // every canvas made, for drawing their rounds before the windows
+	into:         Image,   // the canvas the verbs draw onto now, or 0 for the window (canvases.odin)
 }
 
 @(thread_local)
@@ -171,6 +173,7 @@ shutdown :: proc() {
 	delete(the.overlay_lines)
 	delete(the.reuse)
 	delete(the.error)
+	delete(the.canvases)
 	gfx.images_stop()
 	the = {}
 }
@@ -268,6 +271,9 @@ win_for_platform :: proc(id: platform.Window_Id) -> ^Win {
 // The list the drawing verbs record into.
 @(private)
 current_list :: proc() -> ^gfx.Command_List {
+	if list := into_list(); list != nil {
+		return list
+	}
 	return &current_win().list
 }
 

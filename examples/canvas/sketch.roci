@@ -1,0 +1,33 @@
+// Canvas: a picture you draw into. It keeps what is drawn on it from frame to frame, so
+// painting a little of the background over it every frame makes the old drawing fade into
+// trails. Two dots circle on the canvas, and holding the mouse paints a third; image
+// shows the canvas, whole and again small. Press space to wipe it.
+window size 640 420 title "canvas"
+trails = canvas 640 420
+draw into trails [ background 18 ]
+
+on key "space" [ draw into trails [ background 18 ] ]
+
+draw [
+  draw into trails [
+    fill 18
+    alpha 8
+    rect at 0 0 size width height
+    alpha 100
+    tone = frame * 4 % 256
+    opposite = (tone + 128) % 256
+    fill (hsb tone 170 255)
+    circle at (320 + cos (time * 90) * 220) (210 + sin (time * 90) * 140) radius 9
+    fill (hsb opposite 170 255)
+    circle at (320 + cos (time * 140) * 120) (210 + sin (time * 220) * 90) radius 6
+    if pressed [
+      fill white
+      circle at mouse radius 12
+    ]
+  ]
+  image trails at 0 0
+  stroke white
+  thickness 2
+  rect at 482 14 size 144 96 fill 18
+  image trails at 484 16 size 140 92
+]

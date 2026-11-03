@@ -807,6 +807,25 @@ abi_image_sized_v :: proc "c" (picture: c.int, position, size: Abi_Vec2) {
 	image_sized_v(Image(picture), vec_from_abi(position), vec_from_abi(size))
 }
 
+@(export, link_name = "roci_canvas")
+abi_canvas :: proc "c" (width, height: f64) -> c.int {
+	context = runtime.default_context()
+	made, ok := canvas(width, height)
+	return c.int(made) if ok else 0
+}
+
+@(export, link_name = "roci_begin_into")
+abi_begin_into :: proc "c" (picture: c.int) -> c.int {
+	context = runtime.default_context()
+	return 1 if begin_into(Image(picture)) else 0
+}
+
+@(export, link_name = "roci_end_into")
+abi_end_into :: proc "c" () {
+	context = runtime.default_context()
+	end_into()
+}
+
 @(export, link_name = "roci_tint")
 abi_tint :: proc "c" (colour: Abi_Color) {
 	context = runtime.default_context()

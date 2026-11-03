@@ -1,0 +1,14 @@
+c = canvas 360 120
+draw into c [
+  background [ navy teal ]
+  fill white
+  font "Inter Bold" size 40
+  align center
+  text "drawn once" at 180 36
+  fill gold
+  circle at 330 90 radius 14
+]
+background 245
+image c at 20 20
+image c at 20 160 width 180
+image c at 220 160 size 160 100

@@ -36,6 +36,7 @@ ABI_NOT_IN_C := [?]Abi_Skip{
 	{"pick", 0, "takes a list; no C form yet"},
 	{"push", 0, "takes a block; C has roci_push and roci_pop"},
 	{"random", 1, "`random from 1 to 3` is roci_random_between"},
+	{"draw into", 0, "takes a block; C has roci_begin_into and roci_end_into"},
 }
 
 // Filled when the program starts: `typeid_of` is not a constant, and a table this
@@ -78,6 +79,9 @@ abi_table_init :: proc "contextless" () {
 	{"roci_image_v", "image", 1, typeid_of(type_of(abi_image_v)), "", ""},
 	{"roci_image_sized", "image", 2, typeid_of(type_of(abi_image_sized)), "", ""},
 	{"roci_image_sized_v", "image", 3, typeid_of(type_of(abi_image_sized_v)), "", ""},
+	{"roci_canvas", "canvas", 0, typeid_of(type_of(abi_canvas)), "", ""},
+	{"roci_begin_into", "", 0, typeid_of(type_of(abi_begin_into)), "int roci_begin_into(roci_image_id canvas)", "Draws onto a canvas from now on, until roci_end_into; gives 1, or 0 when the picture is not a canvas or one is being drawn into already."},
+	{"roci_end_into", "", 0, typeid_of(type_of(abi_end_into)), "void roci_end_into(void)", "Goes back to drawing into the window."},
 	{"roci_tint", "tint", 0, typeid_of(type_of(abi_tint)), "", ""},
 	{"roci_font_size", "", 0, typeid_of(type_of(abi_font_size)), "void roci_font_size(double pixels)", "Sets the size of the text drawn from now on, in pixels."},
 	{"roci_ellipse", "ellipse", 0, typeid_of(type_of(abi_ellipse)), "", ""},

@@ -124,6 +124,8 @@ Message_Id :: enum u8 {
 	Font_Licence,
 	Image_Missing,
 	Image_Unreadable,
+	Not_A_Canvas,
+	Canvas_Size,
 }
 
 Entry :: struct {
@@ -417,6 +419,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Image_Unreadable = {.Error, "`{a}` is not a picture I can read",
 		"I read PNG, JPEG, BMP, TGA and QOI pictures. `{a}` is another kind of file, or it is damaged. The picture draws nothing, and the sketch carries on.",
 		"Load one I can read:", "{d}"},
+	.Not_A_Canvas = {.Error, "I can only draw into a canvas",
+		"{b} Nothing is drawn, and the sketch carries on.",
+		"Make a canvas once, then draw into it:", "{d}"},
+	.Canvas_Size = {.Error, "A canvas needs a size I can make",
+		"A canvas has a width and a height of at least 1 pixel and at most 16384, and the canvas could not be made, so the picture is empty and draws nothing.",
+		"For example:", "{d}"},
 	.Division_By_Zero = {.Error, "This divides by zero",
 		"The number you divide by is 0 here, and nothing can be divided by 0. The sketch carries on with 0 as the answer. Check the number first.",
 		"Check first:", "{d}"},
@@ -473,7 +481,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Not_A_Canvas, .Canvas_Size:
 		return true
 	case:
 		return false

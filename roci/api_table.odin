@@ -20,6 +20,8 @@ API_NAMES := [?]Api_Entry{
 	{"align", "align"},
 	{"leading", "leading"},
 	{"image", "image"},
+	{"canvas", "canvas"},
+	{"draw into", "draw_into"},
 	{"tint", "tint"},
 	{"measure", "measure"},
 	{"fullscreen", "fullscreen"},

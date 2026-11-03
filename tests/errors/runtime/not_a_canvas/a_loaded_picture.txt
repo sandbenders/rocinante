@@ -1,0 +1,8 @@
+── I can only draw into a canvas ─────────────────────── sketch.roci:4:1
+
+4 │ draw into photo [ circle at 10 10 radius 5 ]
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is not a canvas: a picture loaded from a file cannot be drawn into, and canvases are made with `canvas`. Nothing is drawn, and the sketch carries on.
+
+Make a canvas once, then draw into it:  c = canvas 300 200

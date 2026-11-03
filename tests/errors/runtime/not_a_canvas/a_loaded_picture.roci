@@ -1,0 +1,4 @@
+c = canvas 100 100
+draw into c [ circle at 10 10 radius 5 ]
+photo = load "small.png"
+draw into photo [ circle at 10 10 radius 5 ]

@@ -93,6 +93,8 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 // the batches are still built (it is the CPU's share of the frame).
 @(private)
 show_frame :: proc(w: ^Win) {
+	// What was drawn into canvases comes first, so this window can show it.
+	flush_canvases(&the.renderer if the.started && !the.headless else nil)
 	marked := gfx.mark(&w.list)
 	defer gfx.rewind(&w.list, marked)
 	if the.overlay_title != "" {

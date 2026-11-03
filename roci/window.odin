@@ -147,12 +147,18 @@ draw :: proc{draw_default, draw_window}
 
 // Width of the current window in logical pixels (`width`).
 width :: proc() -> f64 {
-	return f64(current_win().width)
+	return surface_size().x
 }
 
 // Height of the current window in logical pixels (`height`).
 height :: proc() -> f64 {
-	return f64(current_win().height)
+	return surface_size().y
+}
+
+// Whether `background` or `clear` was written in a window's frame, for tests.
+window_background_set :: proc(w: Window) -> bool {
+	win := win_for(w)
+	return win != nil && win.list.background_set
 }
 
 // What a window has recorded for its frame, whole commands, for tests and tools.

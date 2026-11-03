@@ -39,15 +39,15 @@ Each window gets its own `draw` block, named after the window:
 
 ```roci
 palette = window size 200 200 title "palette"
-canvas = window size 400 300 title "canvas"
+stage = window size 400 300 title "stage"
 draw palette [ background tomato ]
-draw canvas [
+draw stage [
   background 240
   circle at mouse radius 20
 ]
 ```
 
-`on` can name a window too: `on canvas key "space" [ ... ]` runs only for keys pressed in that window.
+`on` can name a window too: `on stage key "space" [ ... ]` runs only for keys pressed in that window.
 
 ## Sending values between windows
 
@@ -55,11 +55,11 @@ draw canvas [
 
 ```roci
 control = window size 200 150 title "control"
-canvas = window size 400 300 title "canvas"
+stage = window size 400 300 title "stage"
 spot = { 200, 150 }
-on control mouse down [ send canvas { at: mouse * 2 } ]
-on canvas receive message [ spot = message.at ]
-draw canvas [
+on control mouse down [ send stage { at: mouse * 2 } ]
+on stage receive message [ spot = message.at ]
+draw stage [
   background 30
   circle at spot radius 20 fill gold
 ]

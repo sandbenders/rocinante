@@ -174,6 +174,8 @@ VERBS := []Verb{
 		{{{"picture", .Image}, {"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}}, IMAGE_SIZED_OPTIONS, .None},
 		{{{"picture", .Image}, {"position", .Vector}, {"size", .Vector}}, IMAGE_SIZED_OPTIONS, .None},
 	}, "Draws a loaded picture with its top left at a point, at its own size, or at a width or height (the other side follows) or a size."},
+	{"canvas", {{{{"width", .Number}, {"height", .Number}}, nil, .Image}}, "Makes a canvas: a picture you draw into with `draw into`. It keeps what is drawn on it from frame to frame, and is shown with `image`. Make it once, not every frame."},
+	{"draw into", {{{{"canvas", .Image}, {"body", .Block}}, nil, .None}}, "Runs a block whose drawing goes onto a canvas instead of the window, from the default style. `clear` or `background` inside it start the canvas over; `width` and `height` are its size."},
 	{"tint", {{{{"color", .Colour}}, nil, .None}}, "Sets the color pictures are drawn through from now on: white leaves them as they are, and its alpha makes them see-through."},
 
 	// Style

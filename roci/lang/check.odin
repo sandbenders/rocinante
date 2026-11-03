@@ -240,7 +240,16 @@ collect_assignments :: proc(c: ^Checker, stmts: []^Stmt) {
 			collect_assignments(c, k.body.stmts)
 		case Draw:
 			collect_assignments(c, k.body.stmts)
-		case Expr_Stmt, Learn, Give, Stop, Use, Check, Expect, Error_Stmt: // a check keeps its own names
+		case Expr_Stmt:
+			// A verb that runs a block (`push [ ... ]`, `draw into c [ ... ]`) makes names like any other block.
+			if call, is_call := k.expr.kind.(Call); is_call {
+				for a in call.args {
+					if block, is_block := a.kind.(Block_Lit); is_block {
+						collect_assignments(c, block.block.stmts)
+					}
+				}
+			}
+		case Learn, Give, Stop, Use, Check, Expect, Error_Stmt: // a check keeps its own names
 		}
 	}
 }

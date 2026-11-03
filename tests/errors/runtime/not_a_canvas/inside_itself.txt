@@ -1,0 +1,8 @@
+── I can only draw into a canvas ─────────────────────── sketch.roci:3:3
+
+3 │   draw into c [ circle at 10 10 radius 5 ]
+  │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A canvas is being drawn into already, and a `draw into` cannot sit inside another. Nothing is drawn, and the sketch carries on.
+
+Make a canvas once, then draw into it:  c = canvas 300 200

@@ -47,7 +47,14 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 		case "with":   return parse_with(p)
 		case "every":  return parse_every(p)
 		case "on":     return parse_on(p)
-		case "draw":   return parse_draw(p)
+		case "draw":
+			// `draw into c [ ... ]` draws onto a canvas where it is written: a verb with a block.
+			if p.at + 1 < len(p.tokens) && p.tokens[p.at + 1].kind == .Name && text_of(p, p.tokens[p.at + 1]) == "into" {
+				if info, used, ok := find_callee(p); ok {
+					return Expr_Stmt{expr = parse_call(p, info, used, false)}
+				}
+			}
+			return parse_draw(p)
 		case "use":    return parse_use(p)
 		case "check":  return parse_check(p)
 		case "expect": return parse_expect(p)

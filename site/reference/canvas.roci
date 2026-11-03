@@ -1,0 +1,9 @@
+c = canvas 160 120
+draw into c [
+  background 30
+  fill orange
+  circle at (width / 2) (height / 2) radius 40
+]
+image c at 20 20
+image c at 200 20 width 180 tint teal
+image c at 20 160 size 100 100

@@ -1,0 +1,8 @@
+── A canvas needs a size I can make ──────────────────── sketch.roci:1:5
+
+1 │ c = canvas 0 100
+  │     ^^^^^^^^^^^^
+
+A canvas has a width and a height of at least 1 pixel and at most 16384, and the canvas could not be made, so the picture is empty and draws nothing.
+
+For example:  c = canvas 300 200

@@ -1324,3 +1324,19 @@ test_the_text_verbs_around_text_check :: proc(t: ^testing.T) {
 	expect_errors(t, "font 5", {.Wrong_Argument_Kind})
 	expect_errors(t, "x = font \"Inter\"", {.Value_Of_Nothing})
 }
+
+@(test)
+test_a_name_made_inside_the_block_of_a_verb_is_a_name_of_the_sketch :: proc(t: ^testing.T) {
+	expect_errors(t, "draw [\n  push [\n    n = 3\n    circle at n 5 radius 2\n  ]\n]", {})
+	expect_errors(t, "c = canvas 50 50\ndraw [ draw into c [ n = 3\n circle at n 5 radius 2 ] ]", {})
+	// a name used before any write is still not a name
+	expect_errors(t, "push [ circle at m 5 radius 2 ]", {.Unknown_Name})
+}
+
+@(test)
+test_canvases_are_pictures_that_are_drawn_into_with_a_block :: proc(t: ^testing.T) {
+	expect_errors(t, "c = canvas 100 80\ndraw into c [ circle at 5 5 radius 2 ]\nimage c at 0 0\nprint c.width", {})
+	expect_errors(t, "c = canvas 100 80\ndraw into 5 [ circle at 5 5 radius 2 ]", {.Wrong_Argument_Kind})
+	expect_errors(t, "c = canvas 100\n", {.Wrong_Argument_Count})
+	expect_errors(t, "c = canvas 100 80\nc.width = 5", {.Bad_Field})
+}
