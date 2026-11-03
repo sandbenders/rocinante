@@ -8,6 +8,7 @@
 package golden
 
 import "core:fmt"
+import "core:os"
 import "core:slice"
 
 import "../../roci"
@@ -45,6 +46,14 @@ EXAMPLES := [?]Example{
 	{"touch", 5, {1}}, // the two rings it starts with; fingers come from a touch screen or the mouse
 	{"particles", 60, {1}}, // the fountain a second after it starts: 10,000 records
 	{"logo", 3, {1}}, // rocinante's logo, drawn from its SVG's own numbers
+	{"circle", 3, {1}}, // the smallest sketch: one line, one circle
+	{"images", 5, {1}}, // pictures from assets: sizes, tints, alpha, a turning badge
+	{"canvas", 60, {1}}, // a canvas that keeps its drawing: two dots with fading trails
+}
+
+// Examples with a sketch.roci that have no picture to compare, and why.
+NO_PICTURE := [?]string{
+	"benchmark", // 100,000 small circles hardly compress, and an interpreter test checks its work
 }
 
 // How many pixels may differ for a picture of this many: the scenes allow
@@ -54,6 +63,22 @@ allowed_pixels :: proc(img: gfx.Image) -> int {
 }
 
 run_examples :: proc(update: bool, only: []string) -> (ran, failures: int) {
+	// An example with a sketch has to be in the list (or say why not), so a new one is never left out.
+	if entries, err := os.read_all_directory_by_path("examples", context.temp_allocator); err == nil {
+		for entry in entries {
+			if !os.exists(fmt.tprintf("examples/%s/sketch.roci", entry.name)) || slice.contains(NO_PICTURE[:], entry.name) {
+				continue
+			}
+			listed := false
+			for example in EXAMPLES {
+				listed ||= example.name == entry.name
+			}
+			if !listed {
+				report(fmt.tprintf("example_%s", entry.name), false, "examples/ has a sketch that is not in EXAMPLES (tests/golden/examples.odin): add it, or add it to NO_PICTURE with a reason")
+				failures += 1
+			}
+		}
+	}
 	for example in EXAMPLES {
 		for number in example.windows {
 			name := fmt.tprintf("example_%s_%d", example.name, number)
