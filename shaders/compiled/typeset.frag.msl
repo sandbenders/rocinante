@@ -18,10 +18,21 @@ struct main0_in
 fragment main0_out main0(main0_in in [[stage_in]], texture2d<float> atlas_texture [[texture(0)]], sampler atlas_textureSmplr [[sampler(0)]])
 {
     main0_out out = {};
-    float4 _108 = atlas_texture.sample(atlas_textureSmplr, in.input_uv);
-    float4 _100 = _108;
-    float _113 = in.input_colour.w * _100.w;
-    out._entryPointOutput = float4(select(mix(in.input_colour.xyz, _108.xyz, float3(in.input_coloured)), _108.xyz * in.input_colour.xyz, bool3(in.input_coloured > 1.5)) * _113, _113);
+    float4 _223;
+    do
+    {
+        float4 _145 = atlas_texture.sample(atlas_textureSmplr, in.input_uv);
+        float4 _136 = _145;
+        if (in.input_coloured > 2.5)
+        {
+            _223 = float4((_145.xyz * in.input_colour.xyz) * in.input_colour.w, _136.w * in.input_colour.w);
+            break;
+        }
+        float _173 = in.input_colour.w * _136.w;
+        _223 = float4(select(mix(in.input_colour.xyz, _145.xyz, float3(in.input_coloured)), _145.xyz * in.input_colour.xyz, bool3(in.input_coloured > 1.5)) * _173, _173);
+        break;
+    } while(false);
+    out._entryPointOutput = _223;
     return out;
 }
 

@@ -366,6 +366,7 @@ paint_for_gpu :: proc "contextless" (colour: maths.Colour, alpha: f32, gradient_
 // it is good for this frame only.
 Typeset_Item :: struct {
 	image:     Image_Id, // not 0: a picture of this number, w by h at x y, in place of text
+	premultiplied: bool, // the picture is a canvas, whose colours are already multiplied by its alpha
 	w, h:      f32,
 	text:      string,
 	x, y:      f32,
@@ -402,6 +403,7 @@ image_item :: proc(c: Command) -> Typeset_Item {
 	x, y, w, h := local_bounds(c)
 	return Typeset_Item{
 		image     = Image_Id(c.args[4]),
+		premultiplied = canvas_of(Image_Id(c.args[4])) != nil,
 		x         = x,
 		y         = y,
 		w         = w,

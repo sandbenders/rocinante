@@ -5,8 +5,9 @@
 // the layout and the transform). Each corner holds its colour and whether its atlas
 // holds plain glyphs (the colour of the text takes their coverage) or colour glyphs
 // such as emoji (the glyph's own colours). A picture is drawn through the same
-// shader with 2: its own colours multiplied by the tint. The output is
-// premultiplied, like the other shaders.
+// shader with 2: its own colours multiplied by the tint, and with 3 for a picture whose
+// colours are already multiplied by its alpha (a canvas, which the renderer drew into).
+// The output is premultiplied, like the other shaders.
 
 cbuffer Frame : register(b0, space1)
 {
@@ -22,7 +23,7 @@ struct VSInput
     float2 position : TEXCOORD0; // canvas pixels
     float2 uv : TEXCOORD1;
     float4 colour : TEXCOORD2;
-    float coloured : TEXCOORD3; // 0 for plain glyphs, 1 for colour glyphs, 2 for a picture
+    float coloured : TEXCOORD3; // 0 for plain glyphs, 1 for colour glyphs, 2 for a picture, 3 for a premultiplied one
 };
 
 struct VSOutput
@@ -47,6 +48,11 @@ VSOutput vs_main(VSInput input)
 float4 ps_main(VSOutput input) : SV_Target0
 {
     float4 glyph = atlas_texture.Sample(atlas_sampler, input.uv);
+    if (input.coloured > 2.5)
+    {
+        // already premultiplied: the tint scales every part of it by its colour and alpha
+        return float4(glyph.rgb * input.colour.rgb * input.colour.a, glyph.a * input.colour.a);
+    }
     float alpha = input.colour.a * glyph.a;
     float3 rgb = input.coloured > 1.5 ? glyph.rgb * input.colour.rgb
                                       : lerp(input.colour.rgb, glyph.rgb, input.coloured);

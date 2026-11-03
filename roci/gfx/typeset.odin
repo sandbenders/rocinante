@@ -254,12 +254,19 @@ can_typeset :: proc(r: ^Renderer) -> bool {
 // kept for the frames after. Nil when the picture is not there or the GPU would not
 // make a texture of it (`r.error` says so); a picture that failed is not tried again.
 image_texture :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, id: Image_Id) -> ^sdl.GPUTexture {
-	if texture, found := r.images[id]; found {
-		return texture
-	}
 	data := image_data(id)
 	if data == nil {
 		return nil
+	}
+	if data.canvas != nil {
+		// the canvas as it was drawn last, or nothing yet
+		if gpu, found := r.canvases[id]; found && gpu.rendered {
+			return gpu.textures[gpu.current]
+		}
+		return nil
+	}
+	if texture, found := r.images[id]; found {
+		return texture
 	}
 	if r.images == nil {
 		r.images = make(map[Image_Id]^sdl.GPUTexture)
@@ -323,7 +330,7 @@ image_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item_index
 	uvs := [4][2]f32{{0, 0}, {1, 0}, {1, 1}, {0, 1}}
 	for k in 0 ..< 4 {
 		x, y := transform_apply(item.transform, corners[k].x, corners[k].y)
-		append(&s.vertices, Typeset_Vertex{{x, y}, uvs[k], item.colour, 2})
+		append(&s.vertices, Typeset_Vertex{{x, y}, uvs[k], item.colour, 3 if item.premultiplied else 2})
 	}
 	append(&s.indices, base, base + 1, base + 2, base, base + 2, base + 3)
 	append(&s.draws, Typeset_Draw{item_index, texture, first, 6})

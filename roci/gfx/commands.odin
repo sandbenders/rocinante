@@ -117,6 +117,7 @@ Command_List :: struct {
 	gradients:  [dynamic]Gradient, // the gradients this frame's commands use; ids index it from 1
 	text:       [dynamic]u8,       // the characters of this frame's text commands, end to end
 	background_paint: Gradient_Ref, // a gradient behind everything, when set
+	background_set:   bool,         // `background` or `clear` was written since the frame (or, for a canvas, the last render) began
 	turtle:     Turtle, // turtle.odin
 }
 
@@ -129,6 +130,7 @@ begin_frame :: proc(list: ^Command_List) {
 	clear(&list.gradients)
 	clear(&list.text)
 	list.background_paint = {}
+	list.background_set = false
 	list.background = DEFAULT_BACKGROUND
 	list.style = DEFAULT_STYLE
 	list.transform = IDENTITY
@@ -275,6 +277,7 @@ debug_text :: proc(list: ^Command_List, text: string, x, y: f32, scale: f32 = 2)
 background :: proc(list: ^Command_List, colour: maths.Colour) {
 	list.background = colour
 	list.background_paint = {}
+	list.background_set = true
 }
 
 // A gradient behind everything (`background [ navy black ] angle 90`). It is
@@ -285,12 +288,15 @@ background_gradient :: proc(list: ^Command_List, g: Gradient) {
 	}
 	list.background = g.colours[0]
 	list.background_paint = register_gradient(list, g)
+	list.background_set = true
 }
 
 // `clear` empties the window, leaving it transparent.
 clear_window :: proc(list: ^Command_List) {
 	clear(&list.commands)
 	list.background = {0, 0, 0, 0}
+	list.background_paint = {}
+	list.background_set = true
 }
 
 // ---- style ----

@@ -23,8 +23,9 @@ import _ "core:image/tga"
 Image_Id :: distinct u32
 
 Image_Data :: struct {
-	width, height: int,
-	pixels:        []u8, // width * height * 4
+	width, height: int,    // logical, for a canvas
+	pixels:        []u8,   // width * height * 4; nil for a canvas, whose pixels are drawn
+	canvas:        ^Canvas, // not nil: this picture is a canvas (canvas.odin)
 }
 
 // The biggest side of a picture, so one file cannot ask for a texture no GPU makes.
@@ -73,7 +74,7 @@ image_decode :: proc(bytes_in: []u8) -> (data: Image_Data, ok: bool) {
 		}
 		pixels[i * 4], pixels[i * 4 + 1], pixels[i * 4 + 2], pixels[i * 4 + 3] = c[0], c[1], c[2], c[3]
 	}
-	return Image_Data{loaded.width, loaded.height, pixels}, true
+	return Image_Data{width = loaded.width, height = loaded.height, pixels = pixels}, true
 }
 
 // Keeps RGBA pixels (copied) and gives their number. False for a size that is
@@ -85,7 +86,7 @@ image_add_pixels :: proc(width, height: int, pixels: []u8) -> (Image_Id, bool) {
 	}
 	copied := make([]u8, len(pixels))
 	copy(copied, pixels)
-	append(&image_store, Image_Data{width, height, copied})
+	append(&image_store, Image_Data{width = width, height = height, pixels = copied})
 	return Image_Id(len(image_store)), true
 }
 
@@ -121,6 +122,9 @@ images_stop :: proc() {
 	context.allocator = runtime.heap_allocator()
 	for data in image_store {
 		delete(data.pixels)
+		if data.canvas != nil {
+			canvas_destroy(data.canvas)
+		}
 	}
 	delete(image_store)
 	image_store = nil
