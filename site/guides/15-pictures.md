@@ -1,6 +1,6 @@
 ---
 title: "Pictures"
-summary: "Loading pictures from the assets folder, drawing them at their own size or a size you choose, tinting them, and making them see-through."
+summary: "Loading pictures from assets, drawing them at any size, tinting them, filling shapes with them and making them see-through."
 weight: 15
 ---
 
@@ -61,6 +61,45 @@ image photo at 210 130 width 180
 ```
 
 A picture's own transparent pixels stay transparent, so a badge with clear corners shows what is behind it.
+
+## Filling shapes with a picture
+
+`fill` takes a picture as well as a color. Every shape drawn after it becomes a mask that the picture shows through, so a circle becomes a round window onto the picture. A picture is a value like any other, so it can go in a canvas or a record too:
+
+```roci picture
+photo = load "landscape.png"
+background 245
+fill photo
+circle at 100 100 radius 70
+ellipse at 290 100 size 160 100
+triangle { 120, 240 } { 280, 240 } { 200, 120 }
+```
+
+How the picture sits in the shape is said with `as`:
+
+- `cover` is the start: the picture is scaled to cover the shape and what overflows is cropped.
+- `fit` scales it to show the whole picture, leaving the shape empty where the picture does not reach.
+- `stretch` bends it to the shape's width and height.
+- `tile` repeats it at its own size, or `size 64` wide with the height following.
+- `center` keeps its own size, in the middle.
+
+`at` moves the picture inside the shape, in pixels, for `tile` and `center`:
+
+```roci picture
+photo = load "landscape.png"
+badge = load "sprite.png"
+background 245
+fill photo as fit
+rect at 10 10 size 180 100
+fill photo as stretch
+rect at 210 10 size 180 100
+fill badge as tile size 30 at 8 8
+rect at 10 130 size 180 150
+fill photo as center
+rect at 210 130 size 180 150
+```
+
+A stroke is drawn over the picture, and `alpha` and `tint` apply to it as they do to a drawn picture. `fill red` puts the picture away. `fill` with a picture is for shapes: lines, outlines, backgrounds and text keep their colors for now.
 
 ## When a picture is not there
 

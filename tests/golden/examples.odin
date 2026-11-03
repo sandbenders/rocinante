@@ -49,6 +49,7 @@ EXAMPLES := [?]Example{
 	{"circle", 3, {1}}, // the smallest sketch: one line, one circle
 	{"images", 5, {1}}, // pictures from assets: sizes, tints, alpha, a turning badge
 	{"canvas", 60, {1}}, // a canvas that keeps its drawing: two dots with fading trails
+	{"fills", 5, {1}}, // shapes filled with a picture: cover, fit, stretch, tile and center, and an outline over one
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.
