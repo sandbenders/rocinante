@@ -18,21 +18,33 @@ struct main0_in
 fragment main0_out main0(main0_in in [[stage_in]], texture2d<float> atlas_texture [[texture(0)]], sampler atlas_textureSmplr [[sampler(0)]])
 {
     main0_out out = {};
-    float4 _223;
+    float4 _309;
     do
     {
-        float4 _145 = atlas_texture.sample(atlas_textureSmplr, in.input_uv);
-        float4 _136 = _145;
-        if (in.input_coloured > 2.5)
+        int _194 = int(in.input_coloured + 0.5);
+        int _199 = (_194 >= 2) ? (_194 - 2) : 0;
+        float2 _184 = in.input_uv;
+        if ((_199 & 4) != 0)
         {
-            _223 = float4((_145.xyz * in.input_colour.xyz) * in.input_colour.w, _136.w * in.input_colour.w);
+            _184 = fract(_184);
+        }
+        float4 _211 = atlas_texture.sample(atlas_textureSmplr, _184, level(0.0));
+        float4 _185 = _211;
+        if (((_199 & 2) != 0) && ((((_184.x < 0.0) || (_184.x > 1.0)) || (_184.y < 0.0)) || (_184.y > 1.0)))
+        {
+            _309 = float4(0.0);
             break;
         }
-        float _173 = in.input_colour.w * _136.w;
-        _223 = float4(select(mix(in.input_colour.xyz, _145.xyz, float3(in.input_coloured)), _145.xyz * in.input_colour.xyz, bool3(in.input_coloured > 1.5)) * _173, _173);
+        if ((_199 & 1) != 0)
+        {
+            _309 = float4((_211.xyz * in.input_colour.xyz) * in.input_colour.w, _185.w * in.input_colour.w);
+            break;
+        }
+        float _260 = in.input_colour.w * _185.w;
+        _309 = float4(select(mix(in.input_colour.xyz, _211.xyz, float3(in.input_coloured)), _211.xyz * in.input_colour.xyz, bool3(_194 >= 2)) * _260, _260);
         break;
     } while(false);
-    out._entryPointOutput = _223;
+    out._entryPointOutput = _309;
     return out;
 }
 

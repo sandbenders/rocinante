@@ -32,6 +32,26 @@ Style :: struct {
 	leading:      f32,
 	// What pictures are drawn through: their colours are multiplied by it. White changes nothing.
 	tint:         maths.Colour,
+	// A picture instead of the plain colour: the shape is a mask the picture shows
+	// through (imagefill.odin). Not 0 id: it is drawn, and `fill` holds the colour
+	// the shape would have if it could not be.
+	fill_image:   Image_Fill,
+}
+
+// How a picture fills a shape.
+Image_Fit :: enum u8 {
+	Cover,   // scale to cover the shape's box, crop what overflows
+	Fit,     // scale to show the whole picture inside the box, empty bands where it does not reach
+	Stretch, // scale each side to the box
+	Tile,    // repeat at the picture's own size, or `tile` pixels wide
+	Center,  // the picture's own size, in the middle
+}
+
+Image_Fill :: struct {
+	image: Image_Id,  // 0: no picture fills
+	fit:   Image_Fit,
+	tile:  f32,       // for Tile: the width of one copy in logical pixels (0 is the picture's own); the height follows
+	at:    [2]f32,    // for Tile and Center: how far the picture is shifted, in logical pixels
 }
 
 // What every frame starts with: black fill, no outline,

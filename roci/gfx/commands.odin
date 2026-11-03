@@ -318,6 +318,21 @@ set_fill :: proc(list: ^Command_List, colour: maths.Colour) {
 	list.look_changed = true
 	list.style.fill, list.style.fill_on = colour, true
 	list.style.fill_paint = {}
+	list.style.fill_image = {}
+}
+
+// Fills with a picture from now on (a kept picture or a canvas): the shapes are masks it
+// shows through. A number that is not a kept picture changes nothing, as a gradient
+// with no colours does.
+set_fill_image :: proc(list: ^Command_List, fill: Image_Fill) {
+	if image_data(fill.image) == nil || !finite(fill.tile, fill.at.x, fill.at.y) {
+		return
+	}
+	list.look_changed = true
+	list.style.fill_on = true
+	list.style.fill_paint = {}
+	list.style.fill_image = fill
+	list.style.fill_image.tile = max(fill.tile, 0)
 }
 
 // Fills with a gradient from now on.
@@ -328,6 +343,7 @@ set_fill_gradient :: proc(list: ^Command_List, g: Gradient) {
 	}
 	list.style.fill, list.style.fill_on = g.colours[0], true
 	list.style.fill_paint = register_gradient(list, g)
+	list.style.fill_image = {}
 }
 
 set_stroke_gradient :: proc(list: ^Command_List, g: Gradient) {

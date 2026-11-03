@@ -49,6 +49,9 @@ hash_style :: proc "contextless" (h: u64, s: Style) -> u64 {
 	h = hash_f32_pair(h, s.tint.r, s.tint.g)
 	h = hash_f32_pair(h, s.tint.b, s.tint.a)
 	h = hash_u64(h, s.fill_paint.hash)
+	h = hash_u64(h, u64(s.fill_image.image) | u64(s.fill_image.fit) << 32)
+	h = hash_f32_pair(h, s.fill_image.tile, s.fill_image.at.x)
+	h = hash_f32_pair(h, s.fill_image.at.y, 0)
 	return hash_u64(h, s.stroke_paint.hash)
 }
 

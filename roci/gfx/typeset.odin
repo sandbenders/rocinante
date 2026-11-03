@@ -159,6 +159,10 @@ typeset_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batch
 	}
 	s.frame += 1
 	for item, i in b.typeset {
+		if item.filled {
+			image_fill_vertices(r, commands, i, item)
+			continue
+		}
 		if item.image != 0 {
 			image_vertices(r, commands, i, item)
 			continue

@@ -201,6 +201,16 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 	if fill_reset || stroke_reset {
 		return false
 	}
+	if command.style.fill_image.image != 0 && command.style.fill_on && image_fillable(command.kind) && has_area(command) {
+		// The fill goes through the typeset pipeline as a masked picture; the outline, if
+		// there is one, is the same command with the fill off, drawn after it.
+		append(&b.typeset, fill_item(command))
+		extend_batch(b, .Typeset, len(b.typeset) - 1, 1, command, look)
+		outline := command
+		outline.style.fill_on = false
+		outline.style.fill_image = {}
+		return !is_visible(outline) || add_command(b, list, outline, look, may_reset)
+	}
 	pipeline := pipeline_for(command)
 	// What this command adds to its pipeline's buffer: one instance, the indices of
 	// its triangles, or its glyphs. A command that adds nothing is skipped.
@@ -228,6 +238,17 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 		}
 		b.stats.path_commands += 1
 	}
+	extend_batch(b, pipeline, first, added, command, look)
+	if pipeline == .Shapes {
+		append(&b.instances, to_instance(command, fill_row, stroke_row))
+	}
+	return true
+}
+
+// Puts `added` entries starting at `first` into the last batch, or a new one when the
+// pipeline changes.
+@(private)
+extend_batch :: proc(b: ^Batcher, pipeline: Pipeline, first, added: int, command: Command, look: u64) {
 	if len(b.batches) == 0 || b.batches[len(b.batches) - 1].pipeline != pipeline {
 		append(&b.batches, Batch{pipeline = pipeline, first = first, hash = FNV_OFFSET})
 	}
@@ -235,10 +256,6 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 	batch.count += added
 	// command_hash, with the look hashed once for every command that shares it
 	batch.hash = hash_u64(batch.hash, hash_u64(shape_hash(command), look))
-	if pipeline == .Shapes {
-		append(&b.instances, to_instance(command, fill_row, stroke_row))
-	}
-	return true
 }
 
 // Which pipeline draws a command.
@@ -367,6 +384,9 @@ paint_for_gpu :: proc "contextless" (colour: maths.Colour, alpha: f32, gradient_
 Typeset_Item :: struct {
 	image:     Image_Id, // not 0: a picture of this number, w by h at x y, in place of text
 	premultiplied: bool, // the picture is a canvas, whose colours are already multiplied by its alpha
+	filled:    bool,     // the picture fills `shape` (imagefill.odin) instead of being drawn on its own
+	shape:     Command,  // for a fill: the shape that is the mask
+	fill:      Image_Fill,
 	w, h:      f32,
 	text:      string,
 	x, y:      f32,
