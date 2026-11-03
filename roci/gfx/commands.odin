@@ -28,6 +28,7 @@ Kind :: enum u8 {
 	Arc,
 	Text,    // the overlay font (font.odin); see `debug_text`
 	Typeset, // real text, laid out and drawn through SDL_ttf (fonts.odin, typeset.odin); see `typeset`
+	Image,   // a loaded picture (images.odin), drawn as a textured quad through the typeset pipeline; see `draw_image`
 }
 
 // What a position means. `Default` is each shape's own
@@ -56,6 +57,7 @@ Span :: struct {
 //     Quad     x1 y1 x2 y2 x3 y3 x4 y4
 //     Arc      x y width height start stop     (angles in degrees)
 //     Text     x y scale width height offset length     (the text is in the list's `text`)
+//     Image    x y width height picture                 (`picture` is the Image_Id)
 Command :: struct {
 	kind:      Kind,
 	origin:    Origin,
@@ -492,6 +494,24 @@ set_leading :: proc(list: ^Command_List, multiple: f32) {
 }
 
 MAX_LEADING :: f32(10)
+
+// Sets the colour pictures are drawn through from now on: each pixel's colour is
+// multiplied by it, and its alpha by the tint's. White (the start) leaves them as
+// they are.
+set_tint :: proc(list: ^Command_List, colour: maths.Colour) {
+	list.look_changed = true
+	list.style.tint = colour
+}
+
+// Draws a loaded picture with its top left (or, `as center`, its middle) at x y, `width`
+// by `height` logical pixels, through the current tint and alpha. Gives false when a
+// number is not finite or the picture is not a kept one.
+draw_image :: proc(list: ^Command_List, id: Image_Id, x, y, width, height: f32, origin := Origin.Default) -> bool {
+	if image_data(id) == nil {
+		return false
+	}
+	return record(list, .Image, origin, {x, y, abs(width), abs(height), f32(id), 0, 0, 0}, u64(id))
+}
 
 MAX_FONT_SIZE :: f32(2000)
 

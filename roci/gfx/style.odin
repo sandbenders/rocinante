@@ -30,6 +30,8 @@ Style :: struct {
 	// The distance between the baselines of a text's lines as a multiple of the size;
 	// 0 is the font's own spacing.
 	leading:      f32,
+	// What pictures are drawn through: their colours are multiplied by it. White changes nothing.
+	tint:         maths.Colour,
 }
 
 // What every frame starts with: black fill, no outline,
@@ -46,6 +48,7 @@ DEFAULT_STYLE :: Style{
 	font      = FACE_DEFAULT,
 	font_size = DEFAULT_FONT_SIZE,
 	align     = .Left,
+	tint      = {255, 255, 255, 255},
 }
 
 // A window's background when nothing sets one: light grey, 230.

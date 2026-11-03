@@ -159,6 +159,10 @@ typeset_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batch
 	}
 	s.frame += 1
 	for item, i in b.typeset {
+		if item.image != 0 {
+			image_vertices(r, commands, i, item)
+			continue
+		}
 		entry, ok := cached_text(r, item, scale)
 		if !ok {
 			continue
@@ -242,4 +246,85 @@ typeset_upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer) -> bool {
 can_typeset :: proc(r: ^Renderer) -> bool {
 	_, ok := shader_source_for(.Typeset, sdl.GetGPUShaderFormats(r.device))
 	return ok
+}
+
+// ---- pictures ----
+
+// The texture of a kept picture, made and filled the first time it is asked for and
+// kept for the frames after. Nil when the picture is not there or the GPU would not
+// make a texture of it (`r.error` says so); a picture that failed is not tried again.
+image_texture :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, id: Image_Id) -> ^sdl.GPUTexture {
+	if texture, found := r.images[id]; found {
+		return texture
+	}
+	data := image_data(id)
+	if data == nil {
+		return nil
+	}
+	if r.images == nil {
+		r.images = make(map[Image_Id]^sdl.GPUTexture)
+	}
+	r.images[id] = nil // a picture that cannot be made stays nil
+	texture := sdl.CreateGPUTexture(r.device, {
+		type                 = .D2,
+		format               = .R8G8B8A8_UNORM,
+		usage                = {.SAMPLER},
+		width                = u32(data.width),
+		height               = u32(data.height),
+		layer_count_or_depth = 1,
+		num_levels           = 1,
+	})
+	if texture == nil {
+		set_error(r, "creating a picture's texture")
+		return nil
+	}
+	bytes := len(data.pixels)
+	transfer := sdl.CreateGPUTransferBuffer(r.device, {usage = .UPLOAD, size = u32(bytes)})
+	if transfer == nil {
+		sdl.ReleaseGPUTexture(r.device, texture)
+		set_error(r, "making room to upload a picture")
+		return nil
+	}
+	mapped := sdl.MapGPUTransferBuffer(r.device, transfer, false)
+	if mapped == nil {
+		sdl.ReleaseGPUTransferBuffer(r.device, transfer)
+		sdl.ReleaseGPUTexture(r.device, texture)
+		set_error(r, "mapping a picture's upload")
+		return nil
+	}
+	copy(([^]byte)(mapped)[:bytes], data.pixels)
+	sdl.UnmapGPUTransferBuffer(r.device, transfer)
+	pass := sdl.BeginGPUCopyPass(commands)
+	sdl.UploadToGPUTexture(
+		pass,
+		{transfer_buffer = transfer, offset = 0, pixels_per_row = u32(data.width), rows_per_layer = u32(data.height)},
+		{texture = texture, w = u32(data.width), h = u32(data.height), d = 1},
+		false,
+	)
+	sdl.EndGPUCopyPass(pass)
+	sdl.ReleaseGPUTransferBuffer(r.device, transfer)
+	r.images[id] = texture
+	return texture
+}
+
+// Adds a picture's quad to the frame: four corners on the canvas (the transform
+// applied), the whole picture across them, and the tint as the colour; the shader
+// multiplies the two (`coloured` 2).
+@(private)
+image_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item_index: int, item: Typeset_Item) {
+	s := &r.typeset
+	texture := image_texture(r, commands, item.image)
+	if texture == nil {
+		return
+	}
+	base := u32(len(s.vertices))
+	first := u32(len(s.indices))
+	corners := [4][2]f32{{item.x, item.y}, {item.x + item.w, item.y}, {item.x + item.w, item.y + item.h}, {item.x, item.y + item.h}}
+	uvs := [4][2]f32{{0, 0}, {1, 0}, {1, 1}, {0, 1}}
+	for k in 0 ..< 4 {
+		x, y := transform_apply(item.transform, corners[k].x, corners[k].y)
+		append(&s.vertices, Typeset_Vertex{{x, y}, uvs[k], item.colour, 2})
+	}
+	append(&s.indices, base, base + 1, base + 2, base, base + 2, base + 3)
+	append(&s.draws, Typeset_Draw{item_index, texture, first, 6})
 }

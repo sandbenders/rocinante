@@ -593,7 +593,7 @@ test_which_pipeline_draws_which_kind_by_default :: proc(t: ^testing.T) {
 		want := Pipeline.Shapes
 		if kind == .Quad || kind == .Arc {want = .Paths}
 		if kind == .Text {want = .Text}
-		if kind == .Typeset {want = .Typeset}
+		if kind == .Typeset || kind == .Image {want = .Typeset}
 		testing.expect_value(t, pipeline_for(Command{kind = kind, style = DEFAULT_STYLE}), want)
 	}
 }

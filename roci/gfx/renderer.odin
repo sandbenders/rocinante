@@ -123,6 +123,7 @@ Renderer :: struct {
 	font_sampler: ^sdl.GPUSampler,
 	uploaded_glyphs:       u64,
 	typeset: Typeset_State, // real text (typeset.odin)
+	images:  map[Image_Id]^sdl.GPUTexture, // the textures of the pictures drawn so far (typeset.odin)
 	uploaded_glyph_count:  int,
 
 	// Hashes of what is on the GPU now, so an unchanged scene uploads nothing.
@@ -180,6 +181,10 @@ renderer_destroy :: proc(r: ^Renderer) {
 		sdl.ReleaseGPUSampler(r.device, r.font_sampler)
 	}
 	typeset_destroy(r)
+	for _, texture in r.images {
+		sdl.ReleaseGPUTexture(r.device, texture)
+	}
+	delete(r.images)
 	delete(r.error)
 	r^ = {}
 }

@@ -38,6 +38,7 @@ SCENES := [?]Scene{
 	{"gradient_background", gradient_background},
 	{"debug_text", debug_text},
 	{"typeset_text", typeset_text},
+	{"images", images},
 }
 
 named :: proc(name: string) -> maths.Colour {
@@ -388,4 +389,49 @@ typeset_text :: proc(list: ^gfx.Command_List) {
 	gfx.set_font_size(list, 16)
 	gfx.typeset(list, "turned", 0, 0)
 	gfx.pop(list)
+}
+
+// A picture made of pixels: a colour ramp across, a dark diagonal and a transparent
+// corner, so a wrong row, channel or alpha shows.
+test_picture :: proc(w, h: int) -> gfx.Image_Id {
+	pixels := make([]u8, w * h * 4, context.temp_allocator)
+	for y in 0 ..< h {
+		for x in 0 ..< w {
+			i := (y * w + x) * 4
+			pixels[i] = u8(x * 255 / (w - 1))
+			pixels[i + 1] = u8(y * 255 / (h - 1))
+			pixels[i + 2] = 160
+			pixels[i + 3] = 255
+			if x == y {
+				pixels[i], pixels[i + 1], pixels[i + 2] = 20, 20, 20
+			}
+			if x < w / 4 && y < h / 4 {
+				pixels[i + 3] = 0
+			}
+		}
+	}
+	id, _ := gfx.image_add_pixels(w, h, pixels)
+	return id
+}
+
+images :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(235))
+	picture := test_picture(16, 16)
+	gfx.draw_image(list, picture, 8, 8, 64, 64)                  // magnified
+	gfx.draw_image(list, picture, 84, 8, 32, 32, .Center)         // centred on the point, not at its corner
+	gfx.set_tint(list, named("tomato"))
+	gfx.draw_image(list, picture, 130, 8, 48, 48)                 // tinted
+	gfx.set_tint(list, maths.Colour{255, 255, 255, 255})
+	gfx.set_alpha(list, 128)
+	gfx.draw_image(list, picture, 8, 84, 48, 48)                  // half transparent
+	gfx.set_alpha(list, 255)
+	gfx.push(list, .Style_And_Transform)
+	gfx.move(list, 110, 108)
+	gfx.turn(list, 30)
+	gfx.draw_image(list, picture, 0, 0, 40, 40, .Center)          // turned
+	gfx.pop(list)
+	gfx.set_fill(list, maths.grey(20))
+	gfx.set_font_size(list, 10)
+	gfx.typeset(list, "text between pictures", 66, 62)
+	gfx.draw_image(list, picture, 160, 100, 24, 40)               // stretched
 }

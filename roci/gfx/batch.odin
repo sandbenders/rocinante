@@ -216,7 +216,7 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 	}
 	if pipeline == .Typeset {
 		first = len(b.typeset)
-		append(&b.typeset, typeset_item(list, command))
+		append(&b.typeset, image_item(command) if command.kind == .Image else typeset_item(list, command))
 	}
 	if pipeline == .Paths {
 		first = len(b.mesh.indices)
@@ -244,7 +244,7 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 // Which pipeline draws a command.
 pipeline_for :: proc "contextless" (c: Command) -> Pipeline {
 	switch {
-	case c.kind == .Typeset:
+	case c.kind == .Typeset || c.kind == .Image:
 		return .Typeset
 	case c.kind == .Text:
 		return .Text
@@ -318,7 +318,7 @@ to_instance :: proc "contextless" (c: Command, fill_row := u32(0), stroke_row :=
 		i.kind = .Triangle
 		i.shape = {a[0] - cx, a[1] - cy, a[2] - cx, a[3] - cy, a[4] - cx, a[5] - cy}
 		hw, hh = (hi_x - lo_x) / 2, (hi_y - lo_y) / 2
-	case .Quad, .Arc, .Text, .Typeset:
+	case .Quad, .Arc, .Text, .Typeset, .Image:
 		return {}
 	}
 	t := transform_move(c.transform, cx, cy)
@@ -365,6 +365,8 @@ paint_for_gpu :: proc "contextless" (colour: maths.Colour, alpha: f32, gradient_
 // and size, where, and in which colour. The text points into the command list, so
 // it is good for this frame only.
 Typeset_Item :: struct {
+	image:     Image_Id, // not 0: a picture of this number, w by h at x y, in place of text
+	w, h:      f32,
 	text:      string,
 	x, y:      f32,
 	wrap:      f32,
@@ -389,6 +391,22 @@ typeset_item :: proc(list: ^Command_List, c: Command) -> Typeset_Item {
 		align     = c.style.align,
 		leading   = c.style.leading,
 		colour    = colour_for_gpu(c.style.fill, c.style.alpha),
+		transform = c.transform,
+		content   = c.content,
+	}
+}
+
+// The item for a picture: its box on the canvas (the origin worked out), its tint
+// with the style's alpha, and the transform it was recorded under.
+image_item :: proc(c: Command) -> Typeset_Item {
+	x, y, w, h := local_bounds(c)
+	return Typeset_Item{
+		image     = Image_Id(c.args[4]),
+		x         = x,
+		y         = y,
+		w         = w,
+		h         = h,
+		colour    = colour_for_gpu(c.style.tint, c.style.alpha),
 		transform = c.transform,
 		content   = c.content,
 	}
