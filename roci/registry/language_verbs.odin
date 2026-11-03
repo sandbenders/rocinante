@@ -23,7 +23,7 @@ LANGUAGE_VERBS := []Verb{
 		{{{"table", .Table}}, nil, .Number},
 	}, "How many items a list has, or names a table has."},
 	{"item", {{{{"index", .Number}}, {{"of", {.List}, true}}, .Any}}, "The item at a place in a list, counting from 1: `item 1 of scores`."},
-	{"load", {{{{"name", .Text}}, nil, .Image}}, "Loads a picture from the sketch's assets folder by its file name (PNG, JPEG, BMP, TGA or QOI): `photo = load \"cat.png\"`. A picture that is not there gives an empty one, which draws nothing."},
+	{"load", {{{{"name", .Text}}, nil, .Image}}, "Loads a picture from the sketch's assets folder by its file name (PNG, JPEG, BMP, TGA or QOI): `photo = load \"cat.png\"`. A picture knows its size in pixels: `photo.width` and `photo.height`, which can be read and not changed. A picture that is not there gives an empty one, which draws nothing."},
 	{"set", {{{{"window", .Window}}, SET_OPTIONS, .None}}, "Changes a window that is open, with the words of `window`: `set w size 400 300 resizable false`."},
 	{"send", {{{{"window", .Window}, {"value", .Any}}, nil, .None}}, "Sends a value to a window; it arrives on that window's next frame: `send w 5`."},
 	{"print", {{{{"value", .Any}}, nil, .None}}, "Writes a value to the console."},
