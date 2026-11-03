@@ -1,0 +1,8 @@
+── I could not load a picture called `cat.png` ───────── sketch.roci:1:9
+
+1 │ photo = load "cat.png"
+  │         ^^^^^^^^^^^^^^
+
+Pictures are found by their file name in your sketch's `assets` folder, and there is no file of that name there. `roci add` copies one in for you. The picture draws nothing, and the sketch carries on.
+
+Load one that is there:  photo = load "cat.png"

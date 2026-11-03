@@ -21,6 +21,7 @@ Kind :: enum u8 {
 	List,
 	Block, // a [ ] block of statements
 	Window,
+	Image, // a loaded picture: `photo = load "cat.png"`
 	Name, // a plain word such as `center` after `as`
 	Gradient, // made by `gradient`, or written as a list of colours where a colour goes
 	Any,
@@ -63,7 +64,7 @@ Verb :: struct {
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
 	"align", "alpha", "angle", "as", "at", "bordered", "by", "cursor", "fill", "focusable", "focused", "font", "from", "fullscreen", "grab", "height", "in",
-	"largest", "leading", "lines", "maximized", "minimized", "modal", "of", "over", "parent", "radius", "ratio", "resizable", "size", "smallest", "start", "stops", "stroke", "style", "thickness", "title", "to", "topmost", "visible", "width",
+	"largest", "leading", "lines", "maximized", "minimized", "modal", "of", "over", "parent", "radius", "ratio", "resizable", "size", "smallest", "start", "stops", "stroke", "style", "thickness", "tint", "title", "to", "topmost", "visible", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.
@@ -155,6 +156,7 @@ property_words :: proc(def: Property_Def) -> string {
 	case .Boolean: return "true or false"
 	case .Vector:  return "a vector of 2 numbers" if def.size == 2 else "a vector"
 	case .Window:  return "a window"
+	case .Image:   return "a picture"
 	case .None, .List, .Block, .Name, .Gradient, .Any, .Expr_Block, .Colour, .Table, .Record: return "a value"
 	}
 	return "a value"

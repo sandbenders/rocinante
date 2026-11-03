@@ -1,0 +1,7 @@
+photo = load "landscape.png"
+background 245
+image photo at 20 20 width 170
+tint teal
+image photo at 210 20 width 170
+tint (rgb 255 255 255 alpha 40)
+image photo at 20 160 width 170

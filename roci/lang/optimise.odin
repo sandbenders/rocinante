@@ -175,7 +175,7 @@ mark_typed :: proc(o: ^Optimiser, e: ^IR) {
 		e.fast = .Sure_Number if sure_number(e) else .Number
 	case .Boolean:
 		e.fast = .Boolean
-	case .None, .Text, .Colour, .Gradient, .Window, .Block, .Vector, .List, .Record, .Table, .Variable, .Boxed, .Error:
+	case .None, .Text, .Colour, .Gradient, .Window, .Image, .Block, .Vector, .List, .Record, .Table, .Variable, .Boxed, .Error:
 	}
 }
 

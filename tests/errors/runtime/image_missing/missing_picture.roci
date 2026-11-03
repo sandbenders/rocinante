@@ -1,0 +1,2 @@
+photo = load "cat.png"
+image photo at 20 20

@@ -696,12 +696,12 @@ test_a_verb_with_and_without_give_is_used_the_right_way :: proc(t: ^testing.T) {
 
 @(test)
 test_a_constant_cannot_be_given_to_a_verb_that_changes_it :: proc(t: ^testing.T) {
-	expect_errors(t, "learn tint p [ p.red = 255 ]\nPALETTE = { red: 0 }\ntint PALETTE", {.Constant_Changed_By_Verb})
-	expect_errors(t, "learn tint p [ p.red = 255 ]\npalette = { red: 0 }\ntint palette", {})
+	expect_errors(t, "learn recolor p [ p.red = 255 ]\nPALETTE = { red: 0 }\nrecolor PALETTE", {.Constant_Changed_By_Verb})
+	expect_errors(t, "learn recolor p [ p.red = 255 ]\npalette = { red: 0 }\nrecolor palette", {})
 	expect_errors(t, "learn fill_up xs [ add 1 to xs ]\nNUMBERS = [ 1 ]\nfill_up NUMBERS", {.Constant_Changed_By_Verb})
 	// A constant given to a verb that only reads it is fine, and so is a copy.
 	expect_errors(t, "learn show p [ circle at p.x p.x radius 5 ]\nP = { x: 1 }\nshow P", {})
-	expect_errors(t, "learn tint p [ p.red = 255 ]\nPALETTE = { red: 0 }\ntint (copy PALETTE)", {})
+	expect_errors(t, "learn recolor p [ p.red = 255 ]\nPALETTE = { red: 0 }\nrecolor (copy PALETTE)", {})
 	// The change is passed along: a parameter handed on to a verb that changes it.
 	expect_errors(t, "learn inner p [ p.red = 1 ]\nlearn outer q [ inner q ]\nPALETTE = { red: 0 }\nouter PALETTE", {.Constant_Changed_By_Verb})
 }

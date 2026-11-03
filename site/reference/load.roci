@@ -1,0 +1,3 @@
+photo = load "landscape.png"
+print ("the picture is " + photo.width + " by " + photo.height)
+image photo at 40 50 width 320

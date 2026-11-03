@@ -1,0 +1,8 @@
+── `broken.png` is not a picture I can read ──────────── sketch.roci:1:9
+
+1 │ photo = load "broken.png"
+  │         ^^^^^^^^^^^^^^^^^
+
+I read PNG, JPEG, BMP, TGA and QOI pictures. `broken.png` is another kind of file, or it is damaged. The picture draws nothing, and the sketch carries on.
+
+Load one I can read:  photo = load "broken.png"

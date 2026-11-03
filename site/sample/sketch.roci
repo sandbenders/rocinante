@@ -1,0 +1,3 @@
+// The folder the reference's examples run in, so they can load the pictures in assets/images
+// (landscape.png and sprite.png, drawn by tools/pictures). Nothing runs this file.
+circle at 100 100 radius 50

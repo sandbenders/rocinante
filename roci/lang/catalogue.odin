@@ -122,6 +122,8 @@ Message_Id :: enum u8 {
 	Expect_Failed,
 	Font_Missing,
 	Font_Licence,
+	Image_Missing,
+	Image_Unreadable,
 }
 
 Entry :: struct {
@@ -409,6 +411,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Font_Licence = {.Warning, "Check the licence of `{a}` before you share your sketch",
 		"`{a}` is a font installed on this computer, and {b} It works here. If the font goes out with your sketch, in `assets/fonts` or any other way, make sure its licence lets you.",
 		"A font that is free to share:", "{d}"},
+	.Image_Missing = {.Error, "I could not load a picture called `{a}`",
+		"{b} The picture draws nothing, and the sketch carries on.",
+		"Load one that is there:", "{d}"},
+	.Image_Unreadable = {.Error, "`{a}` is not a picture I can read",
+		"I read PNG, JPEG, BMP, TGA and QOI pictures. `{a}` is another kind of file, or it is damaged. The picture draws nothing, and the sketch carries on.",
+		"Load one I can read:", "{d}"},
 	.Division_By_Zero = {.Error, "This divides by zero",
 		"The number you divide by is 0 here, and nothing can be divided by 0. The sketch carries on with 0 as the answer. Check the number first.",
 		"Check first:", "{d}"},
@@ -465,7 +473,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable:
 		return true
 	case:
 		return false

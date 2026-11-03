@@ -139,7 +139,7 @@ check_unary :: proc(c: ^Checker, e: ^Expr, k: Unary) -> ^IR {
 		if k.op == .Negate {
 			return new_ir(c, e.span, operand.type, IR_Unary{op = k.op, operand = operand})
 		}
-	case .None, .Text, .Gradient, .Window, .Block, .List, .Table, .Record:
+	case .None, .Text, .Gradient, .Window, .Image, .Block, .List, .Table, .Record:
 	}
 	if kind_of(c.types, operand.type) == .Number && k.op == .Negate || kind_of(c.types, operand.type) == .Boolean && k.op == .Not {
 		return new_ir(c, e.span, resolve(c.types, operand.type), IR_Unary{op = k.op, operand = operand})

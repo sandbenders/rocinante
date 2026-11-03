@@ -1,0 +1,30 @@
+// The picture the pictures example and the reference load as landscape.png: a sunset over
+// hills and water, drawn by rocinante itself. Made with:
+//   roci run tools/pictures/landscape.roci --frames 1 --screenshot landscape.png
+window size 320 200 title "landscape" resizable false
+background [ #1d2b53 #7e2553 #ff6b4a #ffd37a ] angle 90
+no stroke
+fill #fff1b8
+circle at 220 112 radius 34
+fill [ #ffe08a #ff9a5c ] angle 90
+circle at 220 112 radius 28
+fill #5b2a6e
+ellipse at 70 150 size 260 110
+fill #43235a
+ellipse at 250 160 size 250 100
+fill #2b1744
+ellipse at 150 178 size 340 80
+alpha 80
+rect at 0 150 size 320 50 fill (gradient [ #ff9a5c #7e2553 #1d2b53 ] angle 90)
+alpha 70
+fill #ffe9b0
+rect at 200 154 size 40 3
+rect at 208 162 size 26 3
+rect at 214 170 size 14 3
+alpha 100
+fill #fff1b8
+circle at 40 30 radius 1.5
+circle at 90 18 radius 1
+circle at 150 40 radius 1.2
+circle at 270 24 radius 1.4
+circle at 300 60 radius 1

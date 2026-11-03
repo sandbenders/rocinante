@@ -63,6 +63,7 @@ kind_name :: proc(kind: Kind) -> string {
 	case .Block:      return "[ ... ]"
 	case .Expr_Block: return "[ expression ]"
 	case .Window:     return "window"
+	case .Image:      return "picture"
 	case .Name:       return "word"
 	case .Gradient:   return "gradient"
 	case .Any:        return "value"
@@ -115,6 +116,7 @@ sample :: proc(kind: Kind, index: int, verb := "", after := "") -> string {
 	case .List:       return "[ 1 2 3 ]"
 	case .Table:      return "table"
 	case .Window:     return "w"
+	case .Image:      return "photo"
 	case .Boolean:    return "true"
 	case .Gradient:   return "[ red teal ]"
 	case .Name:       return "center"
@@ -138,6 +140,7 @@ gives_words :: proc(kind: Kind) -> string {
 	case .Number: return "a number"
 	case .Colour: return "a color"
 	case .Window: return "a window"
+	case .Image:  return "a picture"
 	case .List:   return "a list"
 	case .Gradient: return "a gradient"
 	}
@@ -158,9 +161,9 @@ manual_page :: proc(verb: ^Verb, allocator := context.temp_allocator) -> Manual_
 			append(&values, sample(param.kind, j, verb.name, param.name))
 		}
 		syntax, example: string
-		if text, labelled := write_with_labels(verb.name, names[:], allocator); labelled {
+		if text, labelled := write_with_labels(verb.name, names[:], allocator, i); labelled {
 			syntax = text
-			example, _ = write_with_labels(verb.name, values[:], allocator)
+			example, _ = write_with_labels(verb.name, values[:], allocator, i)
 		} else {
 			// Written positionally, with the connecting words that are not required after.
 			required := make([dynamic]string, allocator)

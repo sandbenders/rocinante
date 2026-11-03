@@ -1,0 +1,2 @@
+photo = load "twin.png"
+image photo at 20 20

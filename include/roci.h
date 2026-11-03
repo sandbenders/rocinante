@@ -6,7 +6,7 @@
  *
  * Numbers are double, text is a NUL-terminated const char *, colors are
  * roci_color (four floats, each 0 to 255), points are roci_vec2, windows are
- * roci_window_id (an int; 0 is none) and true and false are int. A verb with
+ * roci_window_id and pictures roci_image_id (ints; 0 is none) and true and false are int. A verb with
  * several shapes has one function per shape: the first keeps the verb's name and
  * the others add a suffix (_v is the form that takes points).
  */
@@ -20,6 +20,7 @@ extern "C" {
 typedef struct { float r, g, b, a; } roci_color;
 typedef struct { double x, y; } roci_vec2;
 typedef int roci_window_id;
+typedef int roci_image_id;
 
 typedef enum { ROCI_NUMBER, ROCI_TEXT, ROCI_BOOLEAN, ROCI_VEC2 } roci_value_kind;
 
@@ -109,6 +110,30 @@ void roci_leading(double multiple);
 
 /* How big a text is in the current font, as a vector of its width and height. */
 roci_vec2 roci_measure(const char *text);
+
+/* Decodes the bytes of a picture file (PNG, JPEG, BMP, TGA or QOI) and gives its number, or 0 when they are not a picture. */
+roci_image_id roci_load_image(const unsigned char *bytes, int length);
+
+/* How wide a picture is, in pixels (0 for no picture). */
+double roci_image_width(roci_image_id picture);
+
+/* How high a picture is, in pixels (0 for no picture). */
+double roci_image_height(roci_image_id picture);
+
+/* Draws a loaded picture with its top left at a point, at its own size, or at a width or height (the other side follows) or a size. */
+void roci_image(roci_image_id picture, double x, double y);
+
+/* Draws a loaded picture with its top left at a point, at its own size, or at a width or height (the other side follows) or a size. */
+void roci_image_v(roci_image_id picture, roci_vec2 position);
+
+/* Draws a loaded picture with its top left at a point, at its own size, or at a width or height (the other side follows) or a size. */
+void roci_image_sized(roci_image_id picture, double x, double y, double width, double height);
+
+/* Draws a loaded picture with its top left at a point, at its own size, or at a width or height (the other side follows) or a size. */
+void roci_image_sized_v(roci_image_id picture, roci_vec2 position, roci_vec2 size);
+
+/* Sets the color pictures are drawn through from now on: white leaves them as they are, and its alpha makes them see-through. */
+void roci_tint(roci_color color);
 
 /* Sets the size of the text drawn from now on, in pixels. */
 void roci_font_size(double pixels);

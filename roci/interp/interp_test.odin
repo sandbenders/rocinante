@@ -508,6 +508,8 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 	// The fonts the font messages' sketches find installed.
 	folder.system_font_dirs = {make_installed_fonts(t, "output/tests/installed_messages", "Free Sans", "Locked Sans")}
 	defer folder.system_font_dirs = nil
+	// A sketch folder with a file that is not a picture, for the picture messages.
+	sketch_path := make_message_sketch(t)
 	for id in lang.Message_Id {
 		if !lang.is_runtime(id) {
 			continue
@@ -531,6 +533,7 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 			roci.start_headless(1)
 			p, ok := load("sketch.roci", string(data))
 			testing.expectf(t, ok, "%s.roci has check errors", path)
+			p.path = sketch_path
 			p.budget = 0.05 // the same check as a real run, with a smaller budget
 			start(p)
 			run_checks(p)
@@ -2172,4 +2175,18 @@ test_run_checks_does_nothing_for_a_sketch_with_check_errors :: proc(t: ^testing.
 	testing.expect(t, !ok)
 	run_checks(p)
 	testing.expect_value(t, len(p.checks), 0)
+}
+
+// A sketch folder the runtime messages' sketches run in: it has a file that is not
+// a picture, and two files of one name. Gives the path of its sketch.roci.
+make_message_sketch :: proc(t: ^testing.T) -> string {
+	root :: "output/tests/runtime_messages"
+	_ = os.remove_all(root)
+	testing.expect(t, folder.ensure_directory(root + "/assets/images/a"))
+	testing.expect(t, folder.ensure_directory(root + "/assets/images/b"))
+	testing.expect(t, os.write_entire_file(root + "/sketch.roci", transmute([]byte)string("circle at 1 1 radius 1\n")) == nil)
+	testing.expect(t, os.write_entire_file(root + "/assets/images/broken.png", transmute([]byte)string("not a picture")) == nil)
+	testing.expect(t, os.write_entire_file(root + "/assets/images/a/twin.png", transmute([]byte)string("x")) == nil)
+	testing.expect(t, os.write_entire_file(root + "/assets/images/b/twin.png", transmute([]byte)string("x")) == nil)
+	return root + "/sketch.roci"
 }

@@ -97,6 +97,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 				}
 			}
 		}
+	case .Load:
+		return load_picture(it, as_text(eval(it, call.args[0])), e.span)
 	case .Count:
 		v := eval(it, call.args[0])
 		if l := as_list(v); l != nil {

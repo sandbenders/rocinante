@@ -1,19 +1,19 @@
 // Blocks that run later may use names given further down the sketch.
 draw [
   background 0
-  fill tint
+  fill ink
   circle at pos radius size
   frames_seen = frames_seen + 1
 ]
 
 on key "space" [ size = size + 10 ]
 on mouse down [ pos = mouse ]
-every 2 seconds [ tint = red ]
+every 2 seconds [ ink = red ]
 every 10 frames [ frames_seen = 0 ]
 
 size = 20
 pos = { 100, 100 }
-tint = teal
+ink = teal
 frames_seen = 0
 
 w = window size 400 300

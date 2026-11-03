@@ -1,0 +1,7 @@
+photo = load "landscape.png"
+badge = load "sprite.png"
+background 245
+image photo at 20 20 width 220
+image photo at 260 20 size 120 120
+image badge at 30 170
+image badge at 160 170 height 60 as center

@@ -1,0 +1,8 @@
+── I could not load a picture called `twin.png` ──────── sketch.roci:1:9
+
+1 │ photo = load "twin.png"
+  │         ^^^^^^^^^^^^^^^
+
+Two or more files have that name: assets/images/a/twin.png and assets/images/b/twin.png. Say which one you mean with its folder. The picture draws nothing, and the sketch carries on.
+
+Load one that is there:  photo = load "images/a/twin.png"

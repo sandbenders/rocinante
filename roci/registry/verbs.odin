@@ -35,6 +35,23 @@ TEXT_OPTIONS := []Option{
 	{"width", {.Number}, false},
 }
 
+// What `image` takes besides its picture and place: how wide or high to draw it (the
+// other side follows the picture's shape), the colour to draw it through, and the origin.
+IMAGE_OPTIONS := []Option{
+	{"width", {.Number}, false},
+	{"height", {.Number}, false},
+	{"tint", {.Colour}, false},
+	{"alpha", {.Number}, false},
+	{"as", {.Name}, false},
+}
+
+// The same without width and height, for the shapes that give the size themselves.
+IMAGE_SIZED_OPTIONS := []Option{
+	{"tint", {.Colour}, false},
+	{"alpha", {.Number}, false},
+	{"as", {.Name}, false},
+}
+
 // `gradient [ red teal ] angle 90 stops [ 0 20 100 ] as radial at 30 30 in rgb`
 GRADIENT_OPTIONS := []Option{
 	{"angle", {.Number}, false},
@@ -149,6 +166,15 @@ VERBS := []Verb{
 	{"align", {{{{"side", .Name}}, nil, .None}}, "Sets where a text sits against its point from now on: left, center or right."},
 	{"leading", {{{{"multiple", .Number}}, nil, .None}}, "Sets the space between the lines of a text from now on, as a multiple of its size: 1.5 puts the lines one and a half sizes apart, and 0 is the font's own spacing."},
 	{"measure", {{{{"text", .Text}}, nil, .Vector}}, "How big a text is in the current font, as a vector of its width and height."},
+
+	// Pictures
+	{"image", {
+		{{{"picture", .Image}, {"x", .Number}, {"y", .Number}}, IMAGE_OPTIONS, .None},
+		{{{"picture", .Image}, {"position", .Vector}}, IMAGE_OPTIONS, .None},
+		{{{"picture", .Image}, {"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}}, IMAGE_SIZED_OPTIONS, .None},
+		{{{"picture", .Image}, {"position", .Vector}, {"size", .Vector}}, IMAGE_SIZED_OPTIONS, .None},
+	}, "Draws a loaded picture with its top left at a point, at its own size, or at a width or height (the other side follows) or a size."},
+	{"tint", {{{{"color", .Colour}}, nil, .None}}, "Sets the color pictures are drawn through from now on: white leaves them as they are, and its alpha makes them see-through."},
 
 	// Style
 	{"fill", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the color of areas from now on."},

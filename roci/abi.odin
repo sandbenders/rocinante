@@ -759,6 +759,60 @@ abi_leading :: proc "c" (multiple: f64) {
 	leading(multiple)
 }
 
+// ---- pictures ----
+
+@(export, link_name = "roci_load_image")
+abi_load_image :: proc "c" (bytes: [^]u8, length: c.int) -> c.int {
+	context = runtime.default_context()
+	if bytes == nil || length <= 0 {
+		return 0
+	}
+	picture, ok := add_image(bytes[:length])
+	return c.int(picture) if ok else 0
+}
+
+@(export, link_name = "roci_image_width")
+abi_image_width :: proc "c" (picture: c.int) -> f64 {
+	context = runtime.default_context()
+	return image_size(Image(picture)).x
+}
+
+@(export, link_name = "roci_image_height")
+abi_image_height :: proc "c" (picture: c.int) -> f64 {
+	context = runtime.default_context()
+	return image_size(Image(picture)).y
+}
+
+@(export, link_name = "roci_image")
+abi_image :: proc "c" (picture: c.int, x, y: f64) {
+	context = runtime.default_context()
+	image_xy(Image(picture), x, y)
+}
+
+@(export, link_name = "roci_image_v")
+abi_image_v :: proc "c" (picture: c.int, position: Abi_Vec2) {
+	context = runtime.default_context()
+	image_v(Image(picture), vec_from_abi(position))
+}
+
+@(export, link_name = "roci_image_sized")
+abi_image_sized :: proc "c" (picture: c.int, x, y, width, height: f64) {
+	context = runtime.default_context()
+	image_sized_xy(Image(picture), x, y, width, height)
+}
+
+@(export, link_name = "roci_image_sized_v")
+abi_image_sized_v :: proc "c" (picture: c.int, position, size: Abi_Vec2) {
+	context = runtime.default_context()
+	image_sized_v(Image(picture), vec_from_abi(position), vec_from_abi(size))
+}
+
+@(export, link_name = "roci_tint")
+abi_tint :: proc "c" (colour: Abi_Color) {
+	context = runtime.default_context()
+	tint(color_from_abi(colour))
+}
+
 @(export, link_name = "roci_measure")
 abi_measure :: proc "c" (content: cstring) -> Abi_Vec2 {
 	context = runtime.default_context()

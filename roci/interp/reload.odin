@@ -96,6 +96,7 @@ shutdown :: proc() {
 	if running != nil {
 		destroy(running)
 	}
+	forget_decoded_pictures()
 }
 
 @(private)
@@ -242,7 +243,7 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> 
 			c := (^Carry)(data)
 			return convert(c.old, it, v, c.type, depth)
 		}, &carry, depth)
-	case f64, bool, Vec, maths.Colour, roci.Window:
+	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
 	}
 	return v
 }

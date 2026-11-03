@@ -280,6 +280,10 @@ Drawn :: struct {
 	size:    [2]int,   // the size of the window it shows, in the sketch's pixels
 }
 
+// The sketch whose `assets/` folder the examples run in, so `load "landscape.png"` finds
+// a picture: site/sample holds the pictures the reference and the guides use.
+SAMPLE_SKETCH :: "site/sample/sketch.roci"
+
 // Runs an example headless, in a 400 by 300 window unless told otherwise, with the
 // mouse in the window, and writes the picture of its first window when it drew anything.
 draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := EXAMPLE_HEIGHT, scale := 2, always := false, frames := EXAMPLE_FRAMES) -> (drawn: Drawn, ok: bool) {
@@ -288,6 +292,7 @@ draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := E
 	roci.set_default_window_size(width, height)
 	p, loaded := interp.load("example.roci", code)
 	defer interp.destroy(p)
+	p.home = SAMPLE_SKETCH // the pictures the examples load
 	if !loaded {
 		return drawn, false
 	}

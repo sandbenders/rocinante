@@ -98,6 +98,8 @@ Interp :: struct {
 	tweens:    [dynamic]Tween, // the places being moved a little each frame (tween.odin)
 	checks:    [dynamic]Check_Result, // what `run_checks` found, one for each check (checks.odin)
 	check_at:  int, // the check being run, counting from 1; 0 when none is
+	home:     string, // the file the program was read from, so `load` and `font` can find its assets even when it is not watched
+	pictures: map[string]Picture_Entry, // what `load` found, by name (images.odin)
 	fonts_missed: map[string]bool, // font names already looked for everywhere and not found (fonts.odin)
 	events:    int, // every runtime error said, counting the ones `fail` left out as already said
 }
@@ -144,6 +146,9 @@ load_files :: proc(files: []lang.File_Text) -> (p: ^Interp, ok: bool) {
 	for f, i in files {
 		kept[i] = lang.File_Text{name = strings.clone(f.name, p.program_memory), library = strings.clone(f.library, p.program_memory), text = f.text}
 	}
+	if len(kept) > 0 {
+		p.home = kept[len(kept) - 1].name
+	}
 	if len(kept) == 1 {
 		kept[0].text = strings.clone(kept[0].text, p.program_memory)
 		p.src = lang.make_source(kept[0].name, kept[0].text, 0, p.program_memory)
@@ -187,6 +192,7 @@ destroy :: proc(p: ^Interp) {
 	delete(p.tweens)
 	delete(p.checks)
 	delete(p.fonts_missed)
+	drop_pictures(p)
 	virtual.arena_destroy(&p.values[p.values_now])
 	virtual.arena_destroy(&p.arena)
 	free(p)

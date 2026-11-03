@@ -231,6 +231,8 @@ make_look :: proc(it: ^Interp, options: []lang.IR_Option) -> (look: roci.Look, o
 			}
 		case "leading":
 			look.leading = as_number(eval(it, o.args[0]))
+		case "tint":
+			look.tint = as_colour(eval(it, o.args[0]))
 		case "style":
 			merge_style_record(it, &look, eval(it, o.args[0]))
 		case "as":
@@ -441,6 +443,25 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.leading(as_number(a[0]))
 	case .Measure:
 		return vec2(roci.measure(as_text(a[0])))
+	case .Image:
+		picture := as_image(a[0])
+		width, height: Maybe(f64)
+		if call.shape < 2 {
+			if v, found := option_value(it, call.options, "width"); found {
+				width = as_number(v)
+			}
+			if v, found := option_value(it, call.options, "height"); found {
+				height = as_number(v)
+			}
+		}
+		switch call.shape {
+		case 0: roci.image_xy(picture, n(a, 1), n(a, 2), look^, origin, width, height)
+		case 1: roci.image_v(picture, p(a, 1), look^, origin, width, height)
+		case 2: roci.image_sized_xy(picture, n(a, 1), n(a, 2), n(a, 3), n(a, 4), look^, origin)
+		case 3: roci.image_sized_v(picture, p(a, 1), p(a, 2), look^, origin)
+		}
+	case .Tint:
+		roci.tint(as_colour(a[0]))
 	case .Fill:
 		if paint, ok := to_paint(it, a[0], call.options); ok {
 			roci.fill_paint(paint)

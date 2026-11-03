@@ -171,6 +171,7 @@ shutdown :: proc() {
 	delete(the.overlay_lines)
 	delete(the.reuse)
 	delete(the.error)
+	gfx.images_stop()
 	the = {}
 }
 

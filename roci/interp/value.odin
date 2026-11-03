@@ -48,6 +48,7 @@ Value :: union {
 	maths.Colour,
 	^roci.Gradient,
 	roci.Window,
+	roci.Image,
 	^List,
 	^Record,
 	^Table,
@@ -83,6 +84,14 @@ as_text :: proc(v: Value) -> string {
 		return s
 	}
 	return ""
+}
+
+// A picture, or the empty one (which draws nothing) for anything else.
+as_image :: proc(v: Value) -> roci.Image {
+	if picture, ok := v.(roci.Image); ok {
+		return picture
+	}
+	return 0
 }
 
 // The first two components of a vector as a pair, or zero.
@@ -221,7 +230,7 @@ promote :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
 		g := new(roci.Gradient, it.long)
 		g^ = x^
 		return g
-	case f64, bool, Vec, maths.Colour, roci.Window:
+	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
 	}
 	return v
 }
@@ -268,7 +277,7 @@ deep_copy :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
 		g := new(roci.Gradient, it.alloc)
 		g^ = x^
 		return g
-	case f64, bool, Vec, maths.Colour, roci.Window:
+	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
 	}
 	return v
 }
@@ -298,6 +307,9 @@ equal :: proc(a, b: Value, depth := 0) -> bool {
 		return ok && x == y
 	case roci.Window:
 		y, ok := b.(roci.Window)
+		return ok && x == y
+	case roci.Image:
+		y, ok := b.(roci.Image)
 		return ok && x == y
 	case ^roci.Gradient:
 		y, ok := b.(^roci.Gradient)
@@ -390,6 +402,8 @@ format :: proc(it: ^Interp, v: Value, allocator := context.temp_allocator, depth
 		return strings.concatenate({"rgb ", format_number(f64(x.r), allocator), " ", format_number(f64(x.g), allocator), " ", format_number(f64(x.b), allocator), " alpha ", format_number(byte_to_alpha(f64(x.a)), allocator)}, allocator)
 	case roci.Window:
 		return strings.concatenate({"window ", format_number(f64(x), allocator)}, allocator)
+	case roci.Image:
+		return strings.concatenate({"a ", format_number(roci.image_size(x).x, allocator), " by ", format_number(roci.image_size(x).y, allocator), " picture"}, allocator)
 	case ^roci.Gradient:
 		return "a gradient"
 	case ^List:

@@ -28,6 +28,7 @@ record_example :: proc(code, apng_path: string, width, height: int, halve: bool)
 	roci.set_default_window_size(width, height)
 	p, loaded := interp.load("example.roci", code)
 	defer interp.destroy(p)
+	p.home = SAMPLE_SKETCH // the pictures the examples load
 	if !loaded {
 		return false, false
 	}

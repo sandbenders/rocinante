@@ -332,6 +332,7 @@ sample_of :: proc(c: ^Checker, type: Type_Id) -> string {
 	case .Boolean: return "true"
 	case .Colour:  return "red"
 	case .Window:  return "w"
+	case .Image:   return "photo"
 	case .Vector:  return strings.concatenate({"{ ", strings.join(slice.repeat([]string{"0"}, item.a, context.temp_allocator), ", ", context.temp_allocator), " }"}, context.temp_allocator)
 	case .List:    return "[ 1 2 3 ]"
 	case .Table:   return "table"
@@ -348,6 +349,7 @@ sample_for_kind :: proc(kind: registry.Kind) -> string {
 	case .List:     return "[ 1 2 3 ]"
 	case .Table:    return "table"
 	case .Window:   return "w"
+	case .Image:    return "photo"
 	case .Boolean:  return "true"
 	case .Gradient: return "[ red teal ]"
 	case .Name:     return "center"
@@ -369,6 +371,7 @@ kind_words :: proc(kind: registry.Kind) -> string {
 	case .Record:   return "a record"
 	case .Block, .Expr_Block: return "a block"
 	case .Window:   return "a window"
+	case .Image:    return "a picture"
 	case .Name:     return "a word"
 	case .Gradient: return "a gradient"
 	case .Any:      return "any value"
@@ -737,6 +740,9 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 		whole := Span{span.file, span.start, k.value.span.end}
 		note(c, .Set_Window, whole, label, "", "", fix(c, whole, fmt.tprintf("set %s %s %s", window_text, last, text_at(c, k.value.span))))
 		return IR_Error_Stmt{}
+	case .Image:
+		note(c, .Bad_Field, last_span, last, "a picture", fmt.tprintf("`%s` can be read but not changed.", last), fix(c, last_span, "width"))
+		return IR_Error_Stmt{}
 	case .Vector:
 		want := swizzle_type(c, item.a, last)
 		if want == T_ERROR {
@@ -983,6 +989,12 @@ check_field :: proc(c: ^Checker, base: ^IR, part: string, span: Span) -> ^IR {
 		}
 		bad_window_property(c, part, span)
 		return error_ir(c, base.span)
+	case .Image:
+		if part == "width" || part == "height" {
+			return new_ir(c, base.span, T_NUMBER, IR_Field{base = base, name = part})
+		}
+		note(c, .Bad_Field, span, part, "a picture", "A picture has a width and a height.", fix(c, span, "width"))
+		return error_ir(c, base.span)
 	case .Record:
 		if field, found := shape_field(c.types, item.a, part); found {
 			return new_ir(c, base.span, field.type, IR_Field{base = base, name = part})
@@ -1107,7 +1119,7 @@ check_colour_list :: proc(c: ^Checker, ir: ^IR, e: ^Expr) {
 	}
 	element := resolve(c.types, Type_Id(c.types.items[resolve(c.types, ir.type)].a))
 	#partial switch kind_of(c.types, element) {
-	case .Text, .Boolean, .Window, .Vector, .List, .Record, .Gradient, .Block:
+	case .Text, .Boolean, .Window, .Image, .Vector, .List, .Record, .Gradient, .Block:
 	case:
 		return
 	}

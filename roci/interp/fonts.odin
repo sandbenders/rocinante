@@ -30,10 +30,7 @@ ensure_font :: proc(it: ^Interp, name: string, span: lang.Span) -> bool {
 	if it.fonts_missed[name] {
 		return false
 	}
-	root, found := "", false
-	if it.path != "" {
-		root, found = folder.program_root(it.path)
-	}
+	root, found := assets_root(it)
 	if found && font_from_assets(it, root, name) {
 		return true
 	}

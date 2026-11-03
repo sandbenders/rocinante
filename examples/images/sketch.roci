@@ -1,0 +1,29 @@
+// Pictures: load finds a file by name in assets, and image draws it at its own size, at a
+// width or a height (the other side follows) or stretched to a size. tint colors a picture,
+// alpha makes it see-through and as center puts its middle at the point. Press the mouse
+// to move the turning badge.
+window size 640 420 title "pictures"
+photo = load "landscape.png"
+badge = load "sprite.png"
+spot = { 540, 330 }
+
+draw [
+  background 245
+  image photo at 20 20
+  image photo at 360 20 width 260
+  image photo at 20 240 size 150 150
+  image photo at 190 240 height 90 tint teal
+  fill 30
+  font "Inter" size 13
+  text ("landscape.png is " + photo.width + " by " + photo.height) at 360 200
+  if pressed [ spot = mouse ]
+  push [
+    move spot.x spot.y
+    turn (time * 40)
+    image badge at 0 0 as center
+  ]
+  image badge at 360 240 alpha 40
+  image badge at 360 340 width 48 tint red
+  tint (hsb 150 140 255)
+  image badge at 430 340 height 48
+]

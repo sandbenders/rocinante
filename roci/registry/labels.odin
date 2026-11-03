@@ -51,6 +51,10 @@ LABELS := []Label_Form{
 	{verb = "window", shape = 0, words = {{"size", 0, 2}}},
 	{verb = "text", shape = 0, words = {{"at", 1, 2}}, lead = 1},
 	{verb = "text", shape = 1, words = {{"at", 1, 1}}, lead = 1},
+	{verb = "image", shape = 0, words = {{"at", 1, 2}}, lead = 1},
+	{verb = "image", shape = 1, words = {{"at", 1, 1}}, lead = 1},
+	{verb = "image", shape = 2, words = {{"at", 1, 2}, {"size", 3, 2}}, lead = 1},
+	{verb = "image", shape = 3, words = {{"at", 1, 1}, {"size", 2, 1}}, lead = 1},
 }
 
 // The forms of a verb, or none when the verb is written positionally.
@@ -136,13 +140,13 @@ label_max_count :: proc(verb: string, word: string) -> int {
 // A call of the verb written with labels from its values in input order, for the
 // shape that takes this many: `circle` with `100 100 50` gives `circle at 100 100
 // radius 50`. False when the verb has no labelled form with that many inputs.
-write_with_labels :: proc(verb: string, values: []string, allocator := context.temp_allocator) -> (text: string, ok: bool) {
+write_with_labels :: proc(verb: string, values: []string, allocator := context.temp_allocator, shape := -1) -> (text: string, ok: bool) {
 	found, has := find_verb(verb)
 	if !has {
 		return "", false
 	}
 	for form in LABELS {
-		if form.verb != verb || len(form.words) == 0 || len(found.shapes[form.shape].params) != len(values) {
+		if form.verb != verb || len(form.words) == 0 || len(found.shapes[form.shape].params) != len(values) || (shape >= 0 && form.shape != shape) {
 			continue
 		}
 		parts := make([dynamic]string, allocator)

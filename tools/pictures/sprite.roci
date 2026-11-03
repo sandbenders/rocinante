@@ -1,0 +1,23 @@
+// The picture the pictures example and the reference load as sprite.png: a badge with
+// transparent corners, which shows how a picture's alpha draws. Made with:
+//   roci run tools/pictures/sprite.roci --frames 1 --screenshot sprite.png
+window size 96 96 title "sprite" resizable false
+clear
+no stroke
+fill #1d2b53
+circle at 48 48 radius 46
+fill #ffd37a
+circle at 48 48 radius 38
+fill #ff6b4a
+circle at 48 48 radius 28
+fill #fff1b8
+star_points = 5
+push [
+  move 48 48
+  repeat 5 [
+    turn 72
+    triangle { -7, -8 } { 7, -8 } { 0, -34 }
+  ]
+]
+fill #1d2b53
+circle at 48 48 radius 8

@@ -19,6 +19,9 @@ REFERENCE_SECTIONS := []Reference_Section{
 	{"Text", "Words on the window, set in Inter or a font of your own.", {
 		"text", "font", "align", "leading", "measure",
 	}},
+	{"Pictures", "Pictures loaded from the sketch's assets folder, drawn anywhere and through a color.", {
+		"load", "image", "tint",
+	}},
 	{"Color and style", "How shapes look: the color inside them, the line around them, and colors made from numbers.", {
 		"background", "clear", "fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "caps", "joins",
 		"rgb", "hsb", "oklch", "gradient", "mix", "with",

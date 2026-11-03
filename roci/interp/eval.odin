@@ -258,6 +258,13 @@ read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
 		}
 		return nil
 	}
+	if picture, is_picture := base.(roci.Image); is_picture {
+		switch name {
+		case "width":  return roci.image_size(picture).x
+		case "height": return roci.image_size(picture).y
+		}
+		return nil
+	}
 	if r := as_record(base); r != nil {
 		if at := field_index(it, r.shape, name); at >= 0 {
 			return r.fields[at]

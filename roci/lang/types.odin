@@ -22,6 +22,7 @@ Type_Kind :: enum u8 {
 	Colour,
 	Gradient,
 	Window,
+	Image,
 	Block,
 	Vector,   // `a` is the number of components
 	List,     // `a` is the element's type
@@ -69,10 +70,11 @@ T_GRADIENT :: Type_Id(6)
 T_WINDOW :: Type_Id(7)
 T_BLOCK :: Type_Id(8)
 T_BOXED :: Type_Id(9)
+T_IMAGE :: Type_Id(10)
 
 types_init :: proc(allocator := context.allocator) -> Types {
 	ts := Types{items = make([dynamic]Type, allocator), bindings = make([dynamic]Type_Id, allocator), shapes = make([dynamic]Shape, allocator)}
-	for kind in ([]Type_Kind{.Error, .None, .Number, .Text, .Boolean, .Colour, .Gradient, .Window, .Block, .Boxed}) {
+	for kind in ([]Type_Kind{.Error, .None, .Number, .Text, .Boolean, .Colour, .Gradient, .Window, .Block, .Boxed, .Image}) {
 		append(&ts.items, Type{kind = kind})
 	}
 	return ts
@@ -253,6 +255,7 @@ registry_kind :: proc(ts: ^Types, id: Type_Id) -> registry.Kind {
 	case .Colour:   return .Colour
 	case .Gradient: return .Gradient
 	case .Window:   return .Window
+	case .Image:    return .Image
 	case .Block:    return .Block
 	case .Vector:   return .Vector
 	case .List:     return .List
@@ -273,6 +276,7 @@ type_of_kind :: proc(ts: ^Types, kind: registry.Kind, first_list: Type_Id = T_ER
 	case .Colour:   return T_COLOUR
 	case .Gradient: return T_GRADIENT
 	case .Window:   return T_WINDOW
+	case .Image:    return T_IMAGE
 	case .Block, .Expr_Block: return T_BLOCK
 	case .Name:     return T_TEXT
 	case .Vector:   return vector_of(ts, 2)
@@ -302,6 +306,7 @@ describe :: proc(ts: ^Types, id: Type_Id) -> string {
 	case .Colour:   return "a color"
 	case .Gradient: return "a gradient"
 	case .Window:   return "a window"
+	case .Image:    return "a picture"
 	case .Block:    return "a block"
 	case .Boxed:    return "a mix of values"
 	case .Variable: return "something not known yet"
@@ -318,6 +323,7 @@ describe :: proc(ts: ^Types, id: Type_Id) -> string {
 		case .Number:   plural = "numbers"
 		case .Colour:   plural = "colors"
 		case .Window:   plural = "windows"
+		case .Image:    plural = "pictures"
 		case .Boolean:  plural = "true or false values"
 		case .Text:     plural = "text"
 		case .Gradient: plural = "gradients"

@@ -71,6 +71,14 @@ abi_table_init :: proc "contextless" () {
 	{"roci_align", "align", 0, typeid_of(type_of(abi_align)), "", ""},
 	{"roci_leading", "leading", 0, typeid_of(type_of(abi_leading)), "", ""},
 	{"roci_measure", "measure", 0, typeid_of(type_of(abi_measure)), "", ""},
+	{"roci_load_image", "", 0, typeid_of(type_of(abi_load_image)), "roci_image_id roci_load_image(const unsigned char *bytes, int length)", "Decodes the bytes of a picture file (PNG, JPEG, BMP, TGA or QOI) and gives its number, or 0 when they are not a picture."},
+	{"roci_image_width", "", 0, typeid_of(type_of(abi_image_width)), "double roci_image_width(roci_image_id picture)", "How wide a picture is, in pixels (0 for no picture)."},
+	{"roci_image_height", "", 0, typeid_of(type_of(abi_image_height)), "double roci_image_height(roci_image_id picture)", "How high a picture is, in pixels (0 for no picture)."},
+	{"roci_image", "image", 0, typeid_of(type_of(abi_image)), "", ""},
+	{"roci_image_v", "image", 1, typeid_of(type_of(abi_image_v)), "", ""},
+	{"roci_image_sized", "image", 2, typeid_of(type_of(abi_image_sized)), "", ""},
+	{"roci_image_sized_v", "image", 3, typeid_of(type_of(abi_image_sized_v)), "", ""},
+	{"roci_tint", "tint", 0, typeid_of(type_of(abi_tint)), "", ""},
 	{"roci_font_size", "", 0, typeid_of(type_of(abi_font_size)), "void roci_font_size(double pixels)", "Sets the size of the text drawn from now on, in pixels."},
 	{"roci_ellipse", "ellipse", 0, typeid_of(type_of(abi_ellipse)), "", ""},
 	{"roci_ellipse_v", "ellipse", 1, typeid_of(type_of(abi_ellipse_v)), "", ""},
@@ -162,6 +170,7 @@ abi_c_type :: proc(kind: registry.Kind) -> (name: string, ok: bool) {
 	case .Colour:               return "roci_color", true
 	case .Vector:               return "roci_vec2", true
 	case .Window:               return "roci_window_id", true
+	case .Image:                return "roci_image_id", true
 	case .List, .Table, .Block, .Gradient, .Any, .Boolean, .Expr_Block, .Record: return "", false
 	}
 	return "", false
@@ -221,7 +230,7 @@ abi_header :: proc(allocator := context.allocator) -> string {
  *
  * Numbers are double, text is a NUL-terminated const char *, colors are
  * roci_color (four floats, each 0 to 255), points are roci_vec2, windows are
- * roci_window_id (an int; 0 is none) and true and false are int. A verb with
+ * roci_window_id and pictures roci_image_id (ints; 0 is none) and true and false are int. A verb with
  * several shapes has one function per shape: the first keeps the verb's name and
  * the others add a suffix (_v is the form that takes points).
  */
@@ -235,6 +244,7 @@ extern "C" {
 typedef struct { float r, g, b, a; } roci_color;
 typedef struct { double x, y; } roci_vec2;
 typedef int roci_window_id;
+typedef int roci_image_id;
 
 typedef enum { ROCI_NUMBER, ROCI_TEXT, ROCI_BOOLEAN, ROCI_VEC2 } roci_value_kind;
 

@@ -138,7 +138,7 @@ move_value :: proc(p: ^Interp, v: Value, moved: ^map[rawptr]rawptr) -> Value {
 		g^ = x^
 		moved[x] = g
 		return g
-	case f64, bool, Vec, maths.Colour, roci.Window:
+	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
 	}
 	return v
 }
