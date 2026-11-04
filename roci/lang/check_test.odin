@@ -1355,3 +1355,24 @@ test_a_picture_fills_and_its_words_are_checked :: proc(t: ^testing.T) {
 	expect_errors(t, "photo = load \"a.png\"\nwith fill photo [ circle at 1 2 radius 3 ]", {})
 	expect_errors(t, "photo = load \"a.png\"\nfill photo size \"x\"", {.Wrong_Argument_Kind})
 }
+
+@(test)
+test_the_words_after_a_paint_are_checked_for_what_the_paint_is :: proc(t: ^testing.T) {
+	photo := "photo = load \"a.png\"\n"
+	expect_errors(t, strings.concatenate({photo, "circle at 1 2 radius 3 fill photo as tile size 40 at 1 2 alpha 50"}, context.temp_allocator), {})
+	expect_errors(t, strings.concatenate({photo, "circle at 1 2 radius 3 fill photo as covr"}, context.temp_allocator), {.Unknown_Choice})
+	expect_errors(t, strings.concatenate({photo, "circle at 1 2 radius 3 fill photo as radial"}, context.temp_allocator), {.Unknown_Choice})
+	expect_errors(t, strings.concatenate({photo, "circle at 1 2 radius 3 fill photo as tile angle 90"}, context.temp_allocator), {.Wrong_Argument_Kind})
+	expect_errors(t, strings.concatenate({photo, "circle at 1 2 radius 3 fill photo as tile size \"x\""}, context.temp_allocator), {.Wrong_Argument_Kind})
+	// a gradient list takes its own words, now also on one element
+	expect_errors(t, "circle at 1 2 radius 3 fill [ red teal ] as radial at 30 30 in rgb", {})
+	expect_errors(t, "circle at 1 2 radius 3 stroke [ red teal ] as conic angle 45 stops [ 0 100 ]", {})
+	expect_errors(t, "circle at 1 2 radius 3 fill [ red teal ] as tile", {.Unknown_Choice})
+	// a plain color: `as center` is the shape's origin, anything else is no word of a color
+	expect_errors(t, "circle at 1 2 radius 3 fill red as center", {})
+	expect_errors(t, "circle at 1 2 radius 3 as center fill red as center", {.Word_Twice})
+	expect_errors(t, "circle at 1 2 radius 3 fill red as tile", {.Wrong_Argument_Kind})
+	expect_errors(t, "with fill red as center [ circle at 1 2 radius 3 ]", {.Wrong_Argument_Kind})
+	expect_errors(t, strings.concatenate({photo, "with fill photo as tile size 30 [ circle at 1 2 radius 3 ]"}, context.temp_allocator), {})
+	expect_errors(t, strings.concatenate({photo, "with fill photo as radial [ circle at 1 2 radius 3 ]"}, context.temp_allocator), {.Unknown_Choice})
+}

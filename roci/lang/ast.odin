@@ -93,6 +93,9 @@ Option_Use :: struct {
 	word: string,
 	span: Span,
 	args: []^Expr,
+	// For `fill` and `stroke`: the words written straight after the value that belong to
+	// it (`fill photo as tile size 64`, `stroke [ red teal ] as radial`).
+	with: []Option_Use,
 }
 
 // A verb and what follows it. A verb group's shape is the checker's choice (by

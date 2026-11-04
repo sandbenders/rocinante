@@ -577,7 +577,12 @@ parse_with :: proc(p: ^Parser) -> Stmt_Kind {
 			}
 			append(&args, parse_argument(p, plain = true))
 		}
-		append(&styles, Option_Use{word = word, span = Span{t.span.file, t.span.start, p.last_end}, args = args[:]})
+		used := Option_Use{word = word, span = Span{t.span.file, t.span.start, p.last_end}, args = args[:]}
+		if word == "fill" || word == "stroke" {
+			used.with = parse_paint_words(p)
+			used.span.end = p.last_end
+		}
+		append(&styles, used)
 	}
 	if len(styles) == 0 && cur(p).kind != .Open_Square {
 		record = parse_argument(p, plain = true)

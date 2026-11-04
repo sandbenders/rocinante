@@ -287,3 +287,33 @@ test_a_with_group_can_fill_with_a_picture :: proc(t: ^testing.T) {
 		testing.expect_value(t, commands[1].style.fill_image.image, gfx.Image_Id(0)) // the group ended
 	}
 }
+
+@(test)
+test_the_words_after_a_fill_shape_one_element_only :: proc(t: ^testing.T) {
+	p := run_picture_sketch(t, "pictures_fill_words", `photo = load "cat.png"
+circle at 5 5 radius 3 fill photo as stretch
+rect at 0 0 size 9 9 fill photo as tile size 30 at 2 3
+rect at 0 0 size 9 9 fill photo as center at { 4, 5 } alpha 50
+rect at 0 0 size 9 9 fill [ red teal ] as radial
+rect at 20 20 size 10 10 fill red as center
+rect at 0 0 size 9 9
+`)
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	commands := roci.recorded(first_window())
+	if !testing.expect_value(t, len(commands), 6) {
+		return
+	}
+	testing.expect_value(t, commands[0].style.fill_image.fit, gfx.Image_Fit.Stretch)
+	testing.expect_value(t, commands[1].style.fill_image.fit, gfx.Image_Fit.Tile)
+	testing.expect_value(t, commands[1].style.fill_image.tile, f32(30))
+	testing.expect_value(t, commands[1].style.fill_image.at, [2]f32{2, 3})
+	testing.expect_value(t, commands[2].style.fill_image.fit, gfx.Image_Fit.Center)
+	testing.expect_value(t, commands[2].style.fill_image.at, [2]f32{4, 5})
+	testing.expect_value(t, commands[2].style.alpha, f32(127.5))
+	testing.expect(t, commands[3].style.fill_paint.id != 0) // a radial gradient, for this shape only
+	testing.expect_value(t, commands[4].origin, gfx.Origin.Center) // a color's `as center` is the origin
+	testing.expect_value(t, commands[4].style.fill, [4]f32{255, 0, 0, 255})
+	testing.expect_value(t, commands[5].style.fill_image.image, gfx.Image_Id(0)) // nothing stuck
+	testing.expect_value(t, commands[5].style.fill_paint.id, u32(0))
+}

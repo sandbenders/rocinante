@@ -241,11 +241,11 @@ make_look :: proc(it: ^Interp, options: []lang.IR_Option) -> (look: roci.Look, o
 		}
 		switch o.word {
 		case "fill":
-			if paint, ok := to_paint(it, eval(it, o.args[0])); ok {
+			if paint, ok := to_paint(it, eval(it, o.args[0]), o.extra); ok {
 				look.fill = paint
 			}
 		case "stroke":
-			if paint, ok := to_paint(it, eval(it, o.args[0])); ok {
+			if paint, ok := to_paint(it, eval(it, o.args[0]), o.extra); ok {
 				look.stroke = paint
 			}
 		case "thickness":

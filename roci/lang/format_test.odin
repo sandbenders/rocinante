@@ -331,3 +331,9 @@ test_text_keeps_its_words_first_and_puts_at_before_the_style_words :: proc(t: ^t
 	expect_formatted(t, "text   \"hi\"   at {1,2}   size 20   align center\n", "text \"hi\" at { 1, 2 } size 20 align center\n")
 	expect_formatted(t, "text (\"a\" + \"b\") at 1 2 width 100\n", "text (\"a\" + \"b\") at 1 2 width 100\n")
 }
+
+@(test)
+test_the_words_of_a_paint_stay_with_it_and_the_label_words_go_first :: proc(t: ^testing.T) {
+	expect_formatted(t, "rect size 5 5 at 0 0 fill photo   as tile size 64\n", "rect at 0 0 size 5 5 fill photo as tile size 64\n")
+	expect_formatted(t, "with fill   photo as fit [ circle at 1 2 radius 3 ]\n", "with fill photo as fit [ circle at 1 2 radius 3 ]\n")
+}

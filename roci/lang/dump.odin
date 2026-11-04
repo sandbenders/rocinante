@@ -173,6 +173,9 @@ dump_option :: proc(b: ^strings.Builder, src: Source, o: Option_Use) {
 		strings.write_string(b, " ")
 		dump_expr(b, src, a)
 	}
+	for w in o.with {
+		dump_option(b, src, w)
+	}
 	strings.write_string(b, ")")
 }
 

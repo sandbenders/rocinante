@@ -1050,3 +1050,13 @@ test_expect_is_only_for_inside_a_check :: proc(t: ^testing.T) {
 	// A check inside a check is a block inside a block, and the inner expects belong to a check.
 	expect_ids(t, "check \"x\" [\n  if true [ expect 1 is 1 ]\n]\n", {})
 }
+
+@(test)
+test_the_words_after_a_fill_or_stroke_value_belong_to_it :: proc(t: ^testing.T) {
+	expect_tree(t, "circle at 1 2 radius 3 fill photo as tile size 64 at 5 6 alpha 50", "(call circle (opt at (num 1) (num 2)) (opt radius (num 3)) (opt fill (name photo) (opt as (name tile)) (opt size (num 64)) (opt at (num 5) (num 6))) (opt alpha (num 50)))")
+	expect_tree(t, "rect at 0 0 size 5 5 stroke [ red teal ] as radial angle 90", "(call rect (opt at (num 0) (num 0)) (opt size (num 5) (num 5)) (opt stroke (list (name red) (name teal)) (opt as (name radial)) (opt angle (num 90))))")
+	// `size` and `at` are the shape's own unless an `as` came first; `corner` is only ever an origin
+	expect_tree(t, "rect at 0 0 fill red size 5 5", "(call rect (opt at (num 0) (num 0)) (opt fill (name red)) (opt size (num 5) (num 5)))")
+	expect_tree(t, "rect at 0 0 size 5 5 fill red as corner", "(call rect (opt at (num 0) (num 0)) (opt size (num 5) (num 5)) (opt fill (name red)) (opt as (name corner)))")
+	expect_tree(t, "with fill photo as fit [ ]", "(with (opt fill (name photo) (opt as (name fit)))\n  (body\n  )\n)")
+}

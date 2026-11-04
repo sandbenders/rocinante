@@ -1039,7 +1039,11 @@ check_style_option :: proc(c: ^Checker, o: Option_Use) -> IR_Option {
 		}
 		append(&args, ir)
 	}
-	return IR_Option{word = o.word, args = args[:]}
+	extra: []IR_Option
+	if (o.word == "fill" || o.word == "stroke") && len(o.with) > 0 && len(args) > 0 {
+		extra, _ = check_paint_words(c, o, args[0], false)
+	}
+	return IR_Option{word = o.word, args = args[:], extra = extra}
 }
 
 @(private)

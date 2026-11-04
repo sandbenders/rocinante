@@ -122,6 +122,7 @@ walk_options :: proc(o: ^Optimiser, options: []IR_Option) {
 		for a in opt.args {
 			walk_expr(o, a)
 		}
+		walk_options(o, opt.extra)
 	}
 }
 

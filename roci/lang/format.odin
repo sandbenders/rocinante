@@ -528,6 +528,9 @@ option_text :: proc(p: ^Printer, o: Option_Use, level: int, column: int) -> stri
 	for a in o.args {
 		append(&parts, expr_text(p, a, level, column + len(o.word) + 1))
 	}
+	for w in o.with {
+		append(&parts, option_text(p, w, level, column + len(strings.join(parts[:], " ", context.temp_allocator)) + 1))
+	}
 	return strings.join(parts[:], " ", context.temp_allocator)
 }
 

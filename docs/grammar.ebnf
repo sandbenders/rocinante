@@ -77,7 +77,13 @@ on_statement    = "on" ( [ argument ] 'event phrase' { argument } | argument "re
 (* A verb a library teaches may be written with the library before it, `physics.wiggle ball`; it has to be
    named so when two libraries teach the same word. *)
 call           = 'verb' { argument } { option } ;
-option         = 'connecting word' { argument } ;
+option         = 'connecting word' { argument } [ paint_words ] ;
+
+(* After the value of a `fill` or `stroke`: an `as` (not `corner`, which is always the shape's
+   origin) belongs to the value, and so do the size, at, in, angle and stops straight after it.
+   What the words mean depends on the value (a picture, a gradient list or a plain color), which
+   the checker knows and the parser does not (decided 2026-11-04). *)
+paint_words    = 'as' NAME { 'size' | 'at' | 'in' | 'angle' | 'stops' } ;
 
 (* One thing per argument. *)
 argument       = NUMBER | TEXT | COLOUR | path | group | vector_or_record | list | block

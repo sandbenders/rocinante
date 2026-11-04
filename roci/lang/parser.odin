@@ -409,6 +409,7 @@ fixed_number :: proc(text: string) -> (replacement: string, found: bool) {
 // so the grammar and the parser cannot drift apart.
 GRAMMAR_RULES := [?]struct{rule, parser: string}{
 	{"program", "parse"},
+	{"paint_words", "parse_paint_words"},
 	{"statement", "parse_statement"},
 	{"block", "parse_block"},
 	{"assignment", "parse_assignment"},

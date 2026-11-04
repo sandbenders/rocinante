@@ -469,7 +469,27 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 			}
 			append(&args, ir)
 		}
-		append(&out, IR_Option{word = o.word, args = args[:]})
+		extra: []IR_Option
+		if (o.word == "fill" || o.word == "stroke") && len(o.with) > 0 && len(args) > 0 {
+			origin_word := ""
+			extra, origin_word = check_paint_words(c, o, args[0], true)
+			if origin_word != "" {
+				// `fill red as center`: a plain color has no mode, so the word is the shape's origin.
+				word_at := o.with[0].args[0].span
+				if slice_contains(seen[:], "as") {
+					note(c, .Word_Twice, o.with[0].span, verb.name, "as", "", line_replacing(c.src, Span{o.with[0].span.file, o.with[0].span.start - 1, o.with[0].span.end}, "", c.alloc))
+				} else {
+					append(&seen, "as")
+					check_choice(c, choices_for, "as", "as", origin_word, word_at)
+					word_args := make([]^IR, 1, c.alloc)
+					word_args[0] = new_ir(c, word_at, T_TEXT, IR_Word{word = origin_word})
+					append(&out, IR_Option{word = o.word, args = args[:]})
+					append(&out, IR_Option{word = "as", args = word_args})
+					continue
+				}
+			}
+		}
+		append(&out, IR_Option{word = o.word, args = args[:], extra = extra})
 	}
 	for d in shape.options {
 		if d.required && !slice_contains(seen[:], d.word) {
@@ -477,6 +497,74 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 		}
 	}
 	return out[:]
+}
+
+// The words after the value of a `fill` or `stroke` (`Option_Use.with`), checked for what the
+// value is: a picture takes `as cover|fit|stretch|tile|center`, `size` and `at`; a gradient
+// (a list of colors) takes `as linear|radial|conic`, `angle`, `stops`, `at` and `in`. A plain
+// color takes none, except that `as center` is the shape's origin, which is given back as
+// `origin_word` (when `may_reroute`; a `with` group has no origin and says so).
+@(private)
+check_paint_words :: proc(c: ^Checker, o: Option_Use, value: ^IR, may_reroute: bool) -> (extra: []IR_Option, origin_word: string) {
+	kind := registry_kind(c.types, value.type)
+	table: []registry.Option
+	choices_for := o.word
+	switch kind {
+	case .Image:
+		table = registry.FILL_IMAGE_OPTIONS
+		choices_for = "fill picture"
+	case .List, .Gradient:
+		table = registry.GRADIENT_OPTIONS
+	case .None, .Number, .Text, .Colour, .Paint, .Vector, .Block, .Window, .Name, .Any, .Boolean, .Expr_Block, .Table, .Record:
+		if value.type == T_ERROR {
+			return
+		}
+		first := o.with[0]
+		if may_reroute && first.word == "as" && len(first.args) == 1 {
+			if word, ok := as_word(c, first.args[0]); ok && word == "center" && len(o.with) == 1 {
+				return nil, word
+			}
+		}
+		// Nothing to say a color's words about: show the line without them.
+		note(c, .Wrong_Argument_Kind, first.span, o.word, fmt.tprintf("a picture or a gradient before `%s`", first.word), describe(c.types, value.type), fix(c, first.span, ""))
+		return
+	}
+	out := make([dynamic]IR_Option, c.alloc)
+	for w in o.with {
+		def: registry.Option
+		found := false
+		for d in table {
+			if d.word == w.word {
+				def, found = d, true
+			}
+		}
+		if !found {
+			noun := "a gradient" if kind != .Image else "a picture"
+			note(c, .Wrong_Argument_Kind, w.span, o.word, fmt.tprintf("%s that takes `%s`", "a picture" if kind == .Image else "a gradient", w.word), noun, fix(c, w.span, ""))
+			continue
+		}
+		args := make([dynamic]^IR, c.alloc)
+		for a, i in w.args {
+			if i >= len(def.kinds) {
+				break
+			}
+			if def.kinds[i] == .Name {
+				if word, ok := as_word(c, a); ok {
+					check_choice(c, choices_for, w.word, w.word, word, a.span)
+					append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
+					continue
+				}
+			}
+			ir := check_expr(c, a, false)
+			is_pair := len(def.kinds) == 2 && len(w.args) == 1 && registry_kind(c.types, ir.type) == .Vector
+			if !is_pair && ir.type != T_ERROR && !registry.accepts(def.kinds[i], registry_kind(c.types, ir.type)) {
+				note(c, .Wrong_Argument_Kind, a.span, o.word, fmt.tprintf("%s after `%s`", kind_words(def.kinds[i]), w.word), describe(c.types, ir.type), fix(c, a.span, sample_for_kind(def.kinds[i])))
+			}
+			append(&args, ir)
+		}
+		append(&out, IR_Option{word = w.word, args = args[:]})
+	}
+	return out[:], ""
 }
 
 @(private)

@@ -396,7 +396,12 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			append(&option_args, value)
 			p.last_value = value.span
 		}
-		append(&options, Option_Use{word = word, span = Span{t.span.file, t.span.start, p.last_end}, args = option_args[:]})
+		used := Option_Use{word = word, span = Span{t.span.file, t.span.start, p.last_end}, args = option_args[:]}
+		if _, has_as := option_kinds(info, "as", len(args)); has_as && (word == "fill" || word == "stroke") {
+			used.with = parse_paint_words(p)
+			used.span.end = p.last_end
+		}
+		append(&options, used)
 	}
 	if len(commas) > 0 {
 		report(p, .Comma_In_Call, commas[0], "", line_without(p, commas[:]))
@@ -406,6 +411,64 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 		p.last_call = info
 	}
 	return new_expr(p, span_from(p, first.span), call)
+}
+
+// The words of a paint (see `Option_Use.with`): after the value of a `fill` or `stroke`, an
+// `as` belongs to the value (not the shape's origin, unless it is `corner`, which no paint
+// has), and then so do the `size`, `at`, `in`, `angle` and `stops` that follow it. Whether
+// the value is a color, a gradient or a picture is for the checker, which sends an
+// `as center` after a plain color back to the shape.
+@(private)
+parse_paint_words :: proc(p: ^Parser) -> []Option_Use {
+	words := make([dynamic]Option_Use, p.alloc)
+	for {
+		t := cur(p)
+		if t.kind != .Name || call_ends_at(p, t) {
+			break
+		}
+		word := text_of(p, t)
+		n := 0
+		switch word {
+		case "as", "size", "in", "angle", "stops": n = 1
+		case "at": n = 2
+		case: return words[:]
+		}
+		if len(words) == 0 && word != "as" {
+			break
+		}
+		if word == "as" {
+			next := p.tokens[p.at + 1]
+			if next.kind == .Name && text_of(p, next) == "corner" {
+				break
+			}
+		}
+		advance(p)
+		args := make([dynamic]^Expr, p.alloc)
+		for len(args) < n {
+			next := cur(p)
+			if call_ends_at(p, next) {
+				break
+			}
+			if word == "as" || word == "in" {
+				if next.kind != .Name {
+					break
+				}
+				advance(p)
+				parts := make([]string, 1, p.alloc)
+				parts[0] = text_of(p, next)
+				append(&args, new_expr(p, next.span, Path{parts = parts}))
+				p.last_value = next.span
+				continue
+			}
+			if !is_argument_start(p, next) {
+				break
+			}
+			append(&args, parse_argument(p, plain = true))
+			p.last_value = args[len(args) - 1].span
+		}
+		append(&words, Option_Use{word = word, span = Span{t.span.file, t.span.start, p.last_end}, args = args[:]})
+	}
+	return words[:]
 }
 
 // `circle(100, 100, 50)`: a verb is not called with round brackets.

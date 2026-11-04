@@ -106,6 +106,7 @@ IR_Binary :: struct {
 IR_Option :: struct {
 	word: string,
 	args: []^IR,
+	extra: []IR_Option, // for a fill or stroke: the words that shape its picture or gradient
 }
 
 // A call of a built-in verb, with the shape of its group the checker chose. A taught
