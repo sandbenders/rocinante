@@ -1,22 +1,19 @@
-// Picture fills: fill takes a picture as well as a color, and every shape after it becomes a
-// mask the picture shows through. as says how it sits in the shape: cover (the start)
-// fills the shape and crops the rest, fit shows the whole picture, stretch bends it to the
-// shape, tile repeats it (size is the width of one copy) and center keeps its own size.
-// at moves it inside the shape. A stroke is still drawn over the picture.
+// Picture fills: fill takes a picture as well as a color, and the shape becomes a mask the
+// picture shows through. as says how it sits in the shape: cover (the start) fills the shape
+// and crops the rest, fit shows the whole picture, stretch bends it to the shape, tile repeats
+// it (size is the width of one copy) and center keeps its own size. at moves it inside the
+// shape. The words go straight after the picture, on one shape, or on a line of their own to
+// reach every shape after it. A stroke is still drawn over the picture.
 window size 640 420 title "picture fills"
 photo = load "landscape.png"
 badge = load "sprite.png"
 
 draw [
   background 245
-  fill photo
-  circle at 100 100 radius 70
-  fill photo as fit
-  rect at 200 30 size 160 140
-  fill photo as stretch
-  ellipse at 470 100 size 200 130
-  fill badge as tile size 40
-  rect at 20 200 size 190 190
+  circle at 100 100 radius 70 fill photo
+  rect at 200 30 size 160 140 fill photo as fit
+  ellipse at 470 100 size 200 130 fill photo as stretch
+  rect at 20 200 size 190 190 fill badge as tile size 40
   fill photo as center at (cos (time * 60) * 30) 0
   rect at 230 200 size 170 190
   fill photo

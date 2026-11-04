@@ -83,21 +83,21 @@ How the picture sits in the shape is said with `as`:
 - `tile` repeats it at its own size, or `size 64` wide with the height following.
 - `center` keeps its own size, in the middle.
 
-`at` moves the picture inside the shape, in pixels, for `tile` and `center`:
+`at` moves the picture inside the shape, in pixels, for `tile` and `center`. The words go straight after the picture, so they belong to one shape:
 
 ```roci picture
 photo = load "landscape.png"
 badge = load "sprite.png"
 background 245
-fill photo as fit
-rect at 10 10 size 180 100
-fill photo as stretch
-rect at 210 10 size 180 100
-fill badge as tile size 30 at 8 8
-rect at 10 130 size 180 150
-fill photo as center
-rect at 210 130 size 180 150
+rect at 10 10 size 180 100 fill photo as fit
+rect at 210 10 size 180 100 fill photo as stretch
+rect at 10 130 size 180 150 fill badge as tile size 30 at 8 8
+rect at 210 130 size 180 150 fill photo as center
 ```
+
+On a line of their own they last, like any style: `fill photo as fit` is the fill of every shape after it, and `with fill photo as fit [ ... ]` is the fill of the shapes in the block. The same goes for a gradient (`fill [ red teal ] as radial`).
+
+An `as` after a plain color is still the shape's origin, so `circle at 10 10 radius 5 fill red as center` puts the middle of the circle at the point. After a picture or a gradient it is the way the paint sits.
 
 A stroke is drawn over the picture, and `alpha` and `tint` apply to it as they do to a drawn picture. `fill red` puts the picture away. `fill` with a picture is for shapes: lines, outlines, backgrounds and text keep their colors for now.
 
