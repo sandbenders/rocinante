@@ -13,6 +13,28 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 
+// A walker's full path with `/` between its parts, as these tests split it. Windows
+// gives full paths with backslashes, and a split on `/` then panicked, which hung the
+// test runner; elsewhere a backslash is part of a name and stays.
+slashed :: proc(path: string) -> string {
+	when ODIN_OS == .Windows {
+		forward, _ := strings.replace_all(path, "\\", "/", context.temp_allocator)
+		return forward
+	} else {
+		return path
+	}
+}
+
+@(test)
+test_a_walkers_path_is_split_on_slashes_everywhere :: proc(t: ^testing.T) {
+	testing.expect_value(t, slashed("examples/text/sketch.roci"), "examples/text/sketch.roci")
+	when ODIN_OS == .Windows {
+		testing.expect_value(t, slashed("C:\\me\\examples\\text\\sketch.roci"), "C:/me/examples/text/sketch.roci")
+	} else {
+		testing.expect_value(t, slashed("/me/a\\b.roci"), "/me/a\\b.roci")
+	}
+}
+
 // Checks every sketch under `root` (only files called sketch.roci when `only_sketch`),
 // and compares what each name is with the `.types` file beside it. Gives how many.
 @(private = "file")
@@ -27,7 +49,7 @@ check_corpus :: proc(t: ^testing.T, root: string, only_sketch: bool) -> int {
 			continue
 		}
 		count += 1
-		base := strings.clone(strings.trim_suffix(fi.fullpath, ".roci"), context.temp_allocator) // the walker reuses its buffer
+		base := strings.clone(strings.trim_suffix(slashed(fi.fullpath), ".roci"), context.temp_allocator) // the walker reuses its buffer
 		data, err := os.read_entire_file(fmt.tprintf("%s.roci", base), context.temp_allocator)
 		if !testing.expectf(t, err == nil, "cannot read %s.roci", base) {
 			continue
@@ -96,8 +118,8 @@ program_source :: proc(t: ^testing.T, base: string, sketch_text: string) -> Sour
 		if fi.type == .Directory || !strings.has_suffix(fi.name, ".roci") {
 			continue
 		}
-		data, _ := os.read_entire_file(fi.fullpath, context.temp_allocator)
-		after := fi.fullpath[strings.index(fi.fullpath, "/libs/") + len("/libs/"):]
+		data, _ := os.read_entire_file(slashed(fi.fullpath), context.temp_allocator)
+		after := slashed(fi.fullpath)[strings.index(slashed(fi.fullpath), "/libs/") + len("/libs/"):]
 		append(&files, File_Text{name = strings.clone(fmt.tprintf("libs/%s", after), context.temp_allocator), library = strings.clone(after[:strings.index_byte(after, '/')], context.temp_allocator), text = string(data)})
 	}
 	order_files(files[:])

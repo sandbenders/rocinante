@@ -38,10 +38,10 @@ find_cases :: proc() -> [dynamic]Case {
 		if fi.type == .Directory || !strings.has_suffix(fi.name, ".roci") {
 			continue
 		}
-		if strings.contains(fi.fullpath, "/runtime/") {
+		if strings.contains(slashed(fi.fullpath), "/runtime/") {
 			continue
 		}
-		path := strings.clone(strings.trim_suffix(fi.fullpath, ".roci"), context.temp_allocator) // the walker reuses its buffer
+		path := strings.clone(strings.trim_suffix(slashed(fi.fullpath), ".roci"), context.temp_allocator) // the walker reuses its buffer
 		marker := strings.index(path, "tests/errors/")
 		if marker < 0 {
 			continue
@@ -162,12 +162,12 @@ check_case :: proc(t: ^testing.T, c: Case) -> (Checked_Text, bool) {
 		if fi.type == .Directory || !strings.has_suffix(fi.name, ".roci") {
 			continue
 		}
-		data, err := os.read_entire_file(fi.fullpath, context.temp_allocator)
-		if !testing.expectf(t, err == nil, "cannot read %s", fi.fullpath) {
+		data, err := os.read_entire_file(slashed(fi.fullpath), context.temp_allocator)
+		if !testing.expectf(t, err == nil, "cannot read %s", slashed(fi.fullpath)) {
 			return {}, false
 		}
 		// <case>/libs/<library>/x.roci belongs to the library; the other files are the sketch's.
-		relative := strings.clone(strings.trim_prefix(fi.fullpath[strings.index(fi.fullpath, c.path) + len(c.path):], "/"), context.temp_allocator)
+		relative := strings.clone(strings.trim_prefix(slashed(fi.fullpath)[strings.index(slashed(fi.fullpath), c.path) + len(c.path):], "/"), context.temp_allocator)
 		library := ""
 		if strings.has_prefix(relative, "libs/") {
 			rest := relative[len("libs/"):]

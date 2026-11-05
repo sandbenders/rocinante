@@ -162,7 +162,7 @@ sketch_paths :: proc() -> []string {
 		defer os.walker_destroy(&w)
 		for fi in os.walker_walk(&w) {
 			if fi.type != .Directory && strings.has_suffix(fi.name, ".roci") {
-				append(&paths, strings.clone(fi.fullpath, context.temp_allocator))
+				append(&paths, strings.clone(slashed(fi.fullpath), context.temp_allocator))
 			}
 		}
 	}
@@ -308,9 +308,9 @@ taught_by_siblings :: proc(path: string) -> []Taught_Verb {
 		if fi.type == .Directory || !strings.has_suffix(fi.name, ".roci") || !strings.contains(folder, "examples") {
 			continue
 		}
-		if data, err := os.read_entire_file(fi.fullpath, context.temp_allocator); err == nil {
-			after := fi.fullpath[strings.index(fi.fullpath, "/libs/") + len("/libs/"):]
-			append(&taught, ..taught_in(fi.fullpath, string(data), context.temp_allocator, strings.clone(after[:strings.index_byte(after, '/')], context.temp_allocator)))
+		if data, err := os.read_entire_file(slashed(fi.fullpath), context.temp_allocator); err == nil {
+			after := slashed(fi.fullpath)[strings.index(slashed(fi.fullpath), "/libs/") + len("/libs/"):]
+			append(&taught, ..taught_in(slashed(fi.fullpath), string(data), context.temp_allocator, strings.clone(after[:strings.index_byte(after, '/')], context.temp_allocator)))
 		}
 	}
 	return taught[:]
