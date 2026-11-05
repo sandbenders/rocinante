@@ -99,7 +99,36 @@ On a line of their own they last, like any style: `fill photo as fit` is the fil
 
 An `as` after a plain color is still the shape's origin, so `circle at 10 10 radius 5 fill red as center` puts the middle of the circle at the point. After a picture or a gradient it is the way the paint sits.
 
-A stroke is drawn over the picture, and `alpha` and `tint` apply to it as they do to a drawn picture. `fill red` puts the picture away. `fill` with a picture is for shapes: lines, outlines, backgrounds and text keep their colors for now.
+A stroke is drawn over the picture, and `alpha` and `tint` apply to it as they do to a drawn picture. `fill red` puts the picture away.
+
+## Pictures as text, outlines and backgrounds
+
+The same words paint more than the inside of a shape. A text takes a picture for its `fill`, and its letters are cut out of the picture:
+
+```roci picture
+photo = load "landscape.png"
+background 245
+font "Inter Bold" size 96
+text "photo" at 40 30 fill photo as cover
+font "Inter" size 28
+text "letters cut from a picture" at 40 170 fill photo as stretch
+```
+
+`stroke` takes a picture the same way, for the outline of any shape and for lines and points, and `background` fills the whole window behind everything:
+
+```roci picture
+photo = load "landscape.png"
+badge = load "sprite.png"
+background photo as cover
+no fill
+thickness 24
+stroke badge as tile size 24
+circle at 130 150 radius 70
+stroke photo as cover
+rect at 230 80 size 140 140
+```
+
+Each picture sits in the box of the thing it paints: the letters' box for a text, the shape's box for an outline. So `cover` fills that box, and a thick outline reaches a little outside it, where the picture's edge colors continue. Text takes its picture from a file only: a canvas keeps its pixels on the graphics card, so a text filled with one stays in its color. Emoji in such a text are cut from the picture too, as plain shapes.
 
 ## When a picture is not there
 

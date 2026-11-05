@@ -1,0 +1,29 @@
+// A picture as paint: it fills a window (background), the letters of a text and the outlines
+// of shapes (stroke), by the same words as a shape's fill: as cover, fit, stretch, tile or
+// center, with size for a tile and at to shift it. A text is cut out of the picture by its
+// letters, and an outline by its thickness. Each picture sits in the box of the text or shape
+// it paints, so cover fills that box.
+window size 640 420 title "picture paint"
+photo = load "landscape.png"
+badge = load "sprite.png"
+
+draw [
+  background photo as cover
+  no stroke
+  rect at 20 20 size 600 160 fill white alpha 80
+  font "Inter Bold" size 110
+  text "rocinante" at 40 18 fill photo as cover
+  font "Inter" size 26
+  text "letters cut from a picture" at 44 138 fill photo as stretch
+  rect at 20 200 size 600 200 fill white alpha 80
+  no fill
+  thickness 22
+  stroke photo as cover
+  rect at 50 230 size 220 140
+  circle at 390 300 radius 62
+  stroke badge as tile size 24
+  arc at 390 300 size 170 170 from 200 to 340
+  thickness 14
+  stroke photo as stretch
+  line from 480 240 to 600 360
+]

@@ -53,6 +53,7 @@ EXAMPLES := [?]Example{
 	{"outline", 3, {1}}, // the same ball against a picture as a rectangle and as its outline
 	{"export", 5, {1}}, // a ring of dots; s and r save pictures, which a golden run never presses
 	{"blend", 3, {1}}, // seven blends over the same gray, and a bright wall clipped to a box
+	{"paint", 3, {1}}, // a picture as the window, the letters of a text and the outlines of shapes
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.
