@@ -63,15 +63,41 @@ init :: proc(app: ^App) -> bool {
 	// On a Wayland desktop, Wayland first: SDL 3.4 otherwise falls back to XWayland on
 	// compositors without the fifo-v1 protocol (niri), where window sizes and
 	// settings get lost and scaled displays draw at density 1 (decided 2026-10-29).
-	if hint, ok := video_driver_hint(string(sdl.getenv("WAYLAND_DISPLAY")), string(sdl.getenv(sdl.HINT_VIDEO_DRIVER))); ok {
+	hint, ours := video_driver_hint(string(sdl.getenv("WAYLAND_DISPLAY")), string(sdl.getenv(sdl.HINT_VIDEO_DRIVER)))
+	if ours {
 		sdl.SetHint(sdl.HINT_VIDEO_DRIVER, hint)
 	}
+	ok, was_wayland := init_once(app)
+	if ok {
+		return true
+	}
+	// Our own Wayland choice can fail on a computer whose Vulkan driver cannot show
+	// windows on Wayland (OpenBSD's Mesa has no VK_KHR_wayland_surface): X11 through
+	// XWayland then works, so try it before giving up (found 2026-11-05).
+	if ours && should_retry_on_x11(was_wayland) {
+		delete(app.error)
+		app.error = ""
+		sdl.SetHint(sdl.HINT_VIDEO_DRIVER, "x11")
+		ok, _ = init_once(app)
+		return ok
+	}
+	return false
+}
+
+// Whether a failed start on this video driver is worth another try on X11: it was
+// Wayland, the one driver whose GPU support differs from X11's on the same computer.
+should_retry_on_x11 :: proc "contextless" (was_wayland: bool) -> bool {
+	return was_wayland
+}
+
+@(private)
+init_once :: proc(app: ^App) -> (ok: bool, was_wayland: bool) {
 	// The left button acts as a finger on the desktop too (SDL does it only on the
 	// phones by default), so a touch sketch can be tried without a touch screen; a
 	// finger also moves the mouse, SDL's default everywhere (decided 2026-10-29).
 	sdl.SetHint(sdl.HINT_MOUSE_TOUCH_EVENTS, "1")
 	if !sdl.Init({.VIDEO}) {
-		return fail(app, "SDL_Init")
+		return fail(app, "SDL_Init"), false
 	}
 	intrinsics.atomic_add(&apps_running, 1)
 	app.video = strings.clone_from_cstring(sdl.GetCurrentVideoDriver())
@@ -95,15 +121,16 @@ init :: proc(app: ^App) -> bool {
 	if app.device == nil {
 		fail(app, "SDL_CreateGPUDevice")
 		quit_sdl()
+		was_wayland = app.video == "wayland"
 		delete(app.video)
 		app.video = ""
-		return false
+		return false, was_wayland
 	}
 	app.driver = string(sdl.GetGPUDeviceDriver(app.device))
 	// The name has no fixed format, so it is for people and for the golden images'
 	// check that lavapipe drew them, never for choosing what to do.
 	app.gpu = strings.clone_from_cstring(sdl.GetStringProperty(sdl.GetGPUDeviceProperties(app.device), sdl.PROP_GPU_DEVICE_NAME_STRING, ""))
-	return true
+	return true, false
 }
 
 // The environment variable that turns the GPU's debug mode on.

@@ -331,3 +331,9 @@ test_fingers_go_down_move_and_come_up_and_a_cancel_is_an_up :: proc(t: ^testing.
 	_, ok = translate(e)
 	testing.expect(t, !ok)
 }
+
+@(test)
+test_only_a_failed_wayland_start_is_tried_again_on_x11 :: proc(t: ^testing.T) {
+	testing.expect(t, should_retry_on_x11(true))
+	testing.expect(t, !should_retry_on_x11(false))
+}
