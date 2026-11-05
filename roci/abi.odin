@@ -208,6 +208,18 @@ abi_background :: proc "c" (colour: Abi_Color) {
 	background(color_from_abi(colour))
 }
 
+@(export, link_name = "roci_background_image")
+abi_background_image :: proc "c" (picture: c.int) {
+	context = runtime.default_context()
+	background_image(Image(picture))
+}
+
+@(export, link_name = "roci_background_image_as")
+abi_background_image_as :: proc "c" (picture: c.int, fit: c.int, tile, at_x, at_y: f64) {
+	context = runtime.default_context()
+	background_image(Image(picture), Image_Fit(clamp(fit, 0, 4)), tile, at_x, at_y)
+}
+
 @(export, link_name = "roci_background_gray")
 abi_background_gray :: proc "c" (value: f64) {
 	context = runtime.default_context()
@@ -364,6 +376,18 @@ abi_no_fill :: proc "c" () {
 abi_stroke :: proc "c" (colour: Abi_Color) {
 	context = runtime.default_context()
 	stroke(color_from_abi(colour))
+}
+
+@(export, link_name = "roci_stroke_image")
+abi_stroke_image :: proc "c" (picture: c.int) {
+	context = runtime.default_context()
+	stroke_image(Image(picture))
+}
+
+@(export, link_name = "roci_stroke_image_as")
+abi_stroke_image_as :: proc "c" (picture: c.int, fit: c.int, tile, at_x, at_y: f64) {
+	context = runtime.default_context()
+	stroke_image(Image(picture), Image_Fit(clamp(fit, 0, 4)), tile, at_x, at_y)
 }
 
 @(export, link_name = "roci_stroke_gray")

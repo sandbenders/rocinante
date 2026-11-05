@@ -174,6 +174,15 @@ recorded :: proc(w: Window, allocator := context.temp_allocator) -> []gfx.Comman
 	return out
 }
 
+// The picture a window has behind everything (its id is 0 when there is none), for tests and tools.
+recorded_background_picture :: proc(w: Window) -> gfx.Image_Fill {
+	win := win_for(w)
+	if win == nil {
+		return {}
+	}
+	return win.list.background_image
+}
+
 // A hash of what a window's frame shows (its commands, without their place in the
 // sketch, its background and its size), so a tool can tell a frame that changed from
 // one that did not without drawing either. 0 for a window that is not open.
@@ -189,6 +198,8 @@ frame_hash :: proc(w: Window) -> u64 {
 	bg := win.list.background
 	append(&parts, u64(transmute(u32)bg.r) << 32 | u64(transmute(u32)bg.g), u64(transmute(u32)bg.b) << 32 | u64(transmute(u32)bg.a))
 	append(&parts, win.list.background_paint.hash, u64(win.width) << 32 | u64(win.height))
+	bi := win.list.background_image
+	append(&parts, u64(bi.image) | u64(bi.fit) << 32, u64(transmute(u32)bi.tile) << 32 | u64(transmute(u32)bi.at.x), u64(transmute(u32)bi.at.y))
 	return hash.fnv64a(slice.to_bytes(parts[:]))
 }
 

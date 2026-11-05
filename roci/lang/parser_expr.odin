@@ -397,7 +397,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			p.last_value = value.span
 		}
 		used := Option_Use{word = word, span = Span{t.span.file, t.span.start, p.last_end}, args = option_args[:]}
-		if _, has_as := option_kinds(info, "as", len(args)); has_as && (word == "fill" || word == "stroke") {
+		if word == "fill" || word == "stroke" {
 			used.with = parse_paint_words(p)
 			used.span.end = p.last_end
 		}

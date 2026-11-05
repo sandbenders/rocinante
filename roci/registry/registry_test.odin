@@ -721,7 +721,10 @@ test_every_word_argument_lists_its_words_and_every_list_has_a_place :: proc(t: ^
 			continue
 		}
 		// the shape of `fill` that takes a picture has its own list, kept under this name
-		name := "fill" if c.verb == "fill picture" else c.verb
+		name := c.verb
+		if strings.has_suffix(c.verb, " picture") {
+			name = strings.trim_suffix(c.verb, " picture")
+		}
 		v, found := find_verb(name)
 		if !testing.expectf(t, found, "`%s` is not a verb", c.verb) {
 			continue
@@ -750,7 +753,7 @@ test_fill_takes_a_picture_as_a_shape_of_its_own_and_a_paint_option_takes_one_too
 	// a gradient list or a grey still reaches the color shape
 	i, _ = shape_for(fill, {.List})
 	testing.expect_value(t, i, 0)
-	// the per-element `fill` word takes a picture and every paint; `stroke` does not take a picture
+	// the per-element `fill` and `stroke` words take a picture and every paint
 	for kind in ([?]Kind{.Colour, .Number, .List, .Gradient, .Image}) {
 		testing.expectf(t, accepts(.Paint, kind), "a paint takes %v", kind)
 	}
@@ -758,7 +761,7 @@ test_fill_takes_a_picture_as_a_shape_of_its_own_and_a_paint_option_takes_one_too
 	testing.expect(t, !accepts(.Colour, .Image))
 	for option in STYLE_OPTIONS {
 		if option.word == "stroke" {
-			testing.expect_value(t, option.kinds[0], Kind.Colour)
+			testing.expect_value(t, option.kinds[0], Kind.Paint)
 		}
 		if option.word == "fill" {
 			testing.expect_value(t, option.kinds[0], Kind.Paint)

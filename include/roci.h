@@ -78,8 +78,14 @@ void roci_send_vec2(roci_window_id to, roci_vec2 point);
 /* Shows the sketch until every window is closed, or for `frames` frames when that is more than 0. Gives 1 when it ran and 0 when the graphics could not start. */
 int roci_run(int frames);
 
-/* Sets the color or gradient behind everything in the window, wherever it is written. */
+/* Sets the color, gradient or picture behind everything in the window, wherever it is written: `background photo as cover`. */
 void roci_background(roci_color color);
+
+/* Sets the color, gradient or picture behind everything in the window, wherever it is written: `background photo as cover`. */
+void roci_background_image(roci_image_id picture);
+
+/* Paints the whole window with a picture, behind everything. `fit` is 0 cover, 1 fit, 2 stretch, 3 tile or 4 center; `tile` is the width of one copy for tile (0 is the picture's own size); `at_x` and `at_y` shift the picture for tile and center. */
+void roci_background_image_as(roci_image_id picture, int fit, double tile, double at_x, double at_y);
 
 /* Paints the whole window a gray, 0 to 255. */
 void roci_background_gray(double value);
@@ -210,8 +216,14 @@ void roci_fill_gray(double value);
 /* Turns area color off from now on. */
 void roci_no_fill(void);
 
-/* Sets the color of outlines and lines from now on. */
+/* Sets the color of outlines and lines from now on, or draws them with a picture: each outline is a mask the picture shows through. */
 void roci_stroke(roci_color color);
+
+/* Sets the color of outlines and lines from now on, or draws them with a picture: each outline is a mask the picture shows through. */
+void roci_stroke_image(roci_image_id picture);
+
+/* Outlines with a picture. `fit` is 0 cover, 1 fit, 2 stretch, 3 tile or 4 center; `tile` is the width of one copy for tile (0 is the picture's own size); `at_x` and `at_y` shift the picture for tile and center. */
+void roci_stroke_image_as(roci_image_id picture, int fit, double tile, double at_x, double at_y);
 
 /* Outlines with a gray, 0 to 255, from now on. */
 void roci_stroke_gray(double value);

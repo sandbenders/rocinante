@@ -1376,10 +1376,15 @@ test_a_picture_fills_and_its_words_are_checked :: proc(t: ^testing.T) {
 	expect_errors(t, "photo = load \"a.png\"\nfill photo as radial", {.Unknown_Choice})
 	expect_errors(t, "fill red as cover", {.Unknown_Choice})
 	expect_errors(t, "photo = load \"a.png\"\nfill photo as covr", {.Unknown_Choice})
-	// only a fill takes a picture: an outline, a background, a tint or a mix do not
-	expect_errors(t, "photo = load \"a.png\"\nstroke photo", {.Wrong_Argument_Kind})
-	expect_errors(t, "photo = load \"a.png\"\nbackground photo", {.Wrong_Argument_Kind})
-	expect_errors(t, "photo = load \"a.png\"\ncircle at 1 2 radius 3 stroke photo", {.Wrong_Argument_Kind})
+	// an outline, a background and a text take a picture too, with the same words
+	expect_errors(t, "photo = load \"a.png\"\nstroke photo\nstroke photo as tile size 20 at 1 2\nbackground photo\nbackground photo as stretch", {})
+	expect_errors(t, "photo = load \"a.png\"\ncircle at 1 2 radius 3 stroke photo\ncircle at 1 2 radius 3 stroke photo as fit", {})
+	expect_errors(t, "photo = load \"a.png\"\ntext \"hi\" at 1 2 size 40 fill photo as cover", {})
+	expect_errors(t, "photo = load \"a.png\"\nwith stroke photo as tile [ circle at 1 2 radius 3 ]", {})
+	expect_errors(t, "photo = load \"a.png\"\nstroke photo as radial", {.Unknown_Choice})
+	expect_errors(t, "photo = load \"a.png\"\nbackground photo as covr", {.Unknown_Choice})
+	// a tint and a mix still do not
+	expect_errors(t, "photo = load \"a.png\"\ntint photo", {.Wrong_Argument_Kind})
 	expect_errors(t, "photo = load \"a.png\"\nwith fill photo [ circle at 1 2 radius 3 ]", {})
 	expect_errors(t, "photo = load \"a.png\"\nfill photo size \"x\"", {.Wrong_Argument_Kind})
 }

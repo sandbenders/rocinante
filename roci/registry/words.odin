@@ -41,6 +41,8 @@ WORD_CHOICES := []Word_Choices{
 	{"set", "cursor", CURSOR_WORDS},
 	{"fill", "as", GRADIENT_KINDS},
 	{"fill picture", "as", IMAGE_FILL_WORDS}, // the shape of `fill` that takes a picture
+	{"stroke picture", "as", IMAGE_FILL_WORDS},
+	{"background picture", "as", IMAGE_FILL_WORDS},
 	{"stroke", "as", GRADIENT_KINDS},
 	{"background", "as", GRADIENT_KINDS},
 	{"gradient", "as", GRADIENT_KINDS},

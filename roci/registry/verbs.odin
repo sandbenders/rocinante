@@ -13,7 +13,7 @@ package registry
 // required arguments is the origin: `as center` or `as corner`.
 STYLE_OPTIONS := []Option{
 	{"fill", {.Paint}, false},
-	{"stroke", {.Colour}, false},
+	{"stroke", {.Paint}, false},
 	{"thickness", {.Number}, false},
 	{"alpha", {.Number}, false},
 	{"blend", {.Name}, false},
@@ -24,7 +24,7 @@ STYLE_OPTIONS := []Option{
 // What a text takes besides the style words: its size in pixels, its font (a name),
 // where its lines sit against the point, and how wide a line may be before it wraps.
 TEXT_OPTIONS := []Option{
-	{"fill", {.Colour}, false},
+	{"fill", {.Paint}, false},
 	{"stroke", {.Colour}, false},
 	{"thickness", {.Number}, false},
 	{"alpha", {.Number}, false},
@@ -129,7 +129,10 @@ VERBS := []Verb{
 	{"title", {{{{"text", .Text}}, nil, .None}}, "Sets the title of the window the code runs in. Another window is changed with `set`."},
 	{"fullscreen", {{{}, nil, .None}}, "Makes the window fill the screen."},
 	{"quit", {{{}, nil, .None}}, "Closes the sketch."},
-	{"background", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the color or gradient behind everything in the window, wherever it is written."},
+	{"background", {
+		{{{"color", .Colour}}, GRADIENT_OPTIONS, .None},
+		{{{"picture", .Image}}, FILL_IMAGE_OPTIONS, .None},
+	}, "Sets the color, gradient or picture behind everything in the window, wherever it is written: `background photo as cover`."},
 	{"clear", {{{}, nil, .None}}, "Empties the window, leaving it transparent."},
 
 	// 2D shapes
@@ -196,7 +199,10 @@ VERBS := []Verb{
 		{{{"picture", .Image}}, FILL_IMAGE_OPTIONS, .None},
 	}, "Sets the color of areas from now on, or fills them with a picture: each shape is a mask the picture shows through."},
 	{"no fill", {{{}, nil, .None}}, "Turns area color off from now on."},
-	{"stroke", {{{{"color", .Colour}}, GRADIENT_OPTIONS, .None}}, "Sets the color of outlines and lines from now on."},
+	{"stroke", {
+		{{{"color", .Colour}}, GRADIENT_OPTIONS, .None},
+		{{{"picture", .Image}}, FILL_IMAGE_OPTIONS, .None},
+	}, "Sets the color of outlines and lines from now on, or draws them with a picture: each outline is a mask the picture shows through."},
 	{"no stroke", {{{}, nil, .None}}, "Turns outlines off from now on."},
 	{"thickness", {{{{"pixels", .Number}}, nil, .None}}, "Sets the width of outlines and lines, in pixels."},
 	{"alpha", {{{{"amount", .Number}}, nil, .None}}, "Sets how solid fill and stroke are: 0 (gone) to 100 (solid) in the language, 0 to 255 in the Odin and C APIs."},

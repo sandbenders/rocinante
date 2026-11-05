@@ -417,8 +417,8 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 	seen := make([dynamic]string, context.temp_allocator)
 	// `fill` with a picture has words of its own (`as tile`), listed apart from a color's.
 	choices_for := verb.name
-	if verb.name == "fill" && len(shape.params) == 1 && shape.params[0].kind == .Image {
-		choices_for = "fill picture"
+	if (verb.name == "fill" || verb.name == "stroke" || verb.name == "background") && len(shape.params) == 1 && shape.params[0].kind == .Image {
+		choices_for = strings.concatenate({verb.name, " picture"}, context.temp_allocator)
 	}
 	for o in k.options {
 		def: registry.Option

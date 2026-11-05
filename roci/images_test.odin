@@ -148,7 +148,7 @@ test_fill_image_sets_the_fill_for_the_shapes_after_it_and_the_c_functions_do_the
 	rect(0, 0, 5, 5)
 	abi_fill_image_as(i32(picture), 99, 0, 0, 0) // a mode that does not exist is the last one
 	rect(0, 0, 5, 5)
-	stroke_paint(Image_Fill{image = picture}) // only a fill takes a picture
+	stroke_paint(Image_Fill{image = picture}) // an outline takes a picture too, and the fill is not touched by it
 	background(Image_Fill{image = picture})
 	list := &the.windows[0].list
 	testing.expect_value(t, len(list.commands), 8)
@@ -164,5 +164,40 @@ test_fill_image_sets_the_fill_for_the_shapes_after_it_and_the_c_functions_do_the
 	testing.expect_value(t, fills[5], gfx.Image_Fill{image = picture})
 	testing.expect_value(t, fills[6], gfx.Image_Fill{image = picture, fit = .Center, at = {6, 7}})
 	testing.expect_value(t, fills[7].fit, gfx.Image_Fit.Center)
-	testing.expect_value(t, list.style.stroke_on, false)
+	testing.expect_value(t, list.style.stroke_on, true)
+	testing.expect_value(t, list.style.stroke_image, gfx.Image_Fill{image = picture})
+	testing.expect_value(t, list.background_image, gfx.Image_Fill{image = picture})
+}
+
+@(test)
+test_stroke_and_background_take_a_picture_like_fill_does_and_a_colour_takes_it_back :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	pixels := make([]u8, 4 * 4 * 4, context.temp_allocator)
+	picture, ok := add_image_pixels(4, 4, pixels)
+	testing.expect(t, ok)
+	list := current_list()
+	stroke_image(picture, .Tile, 20, 1, 2)
+	testing.expect_value(t, list.style.stroke_image, gfx.Image_Fill{image = picture, fit = .Tile, tile = 20, at = {1, 2}})
+	testing.expect(t, list.style.stroke_on)
+	stroke_image(Image(7777), .Fit) // not a picture: it stays
+	testing.expect_value(t, list.style.stroke_image.image, picture)
+	stroke_paint(Colour{1, 2, 3, 255})
+	testing.expect_value(t, list.style.stroke_image.image, Image(0))
+	abi_stroke_image(i32(picture))
+	testing.expect_value(t, list.style.stroke_image, gfx.Image_Fill{image = picture})
+	abi_stroke_image_as(i32(picture), 4, 0, 6, 7)
+	testing.expect_value(t, list.style.stroke_image, gfx.Image_Fill{image = picture, fit = .Center, at = {6, 7}})
+	// A picture behind everything; a colour or a gradient takes it away again.
+	background_image(picture, .Stretch)
+	testing.expect_value(t, list.background_image, gfx.Image_Fill{image = picture, fit = .Stretch})
+	background_grey(10)
+	testing.expect_value(t, list.background_image.image, Image(0))
+	abi_background_image(i32(picture))
+	testing.expect_value(t, list.background_image, gfx.Image_Fill{image = picture})
+	abi_background_image_as(i32(picture), 3, 30, 1, 2)
+	testing.expect_value(t, list.background_image, gfx.Image_Fill{image = picture, fit = .Tile, tile = 30, at = {1, 2}})
+	background(Colour{9, 9, 9, 255})
+	testing.expect_value(t, list.background_image.image, Image(0))
+	testing.expect(t, list.background_set)
 }

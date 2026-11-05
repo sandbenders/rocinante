@@ -64,7 +64,7 @@ apply_paint_stroke :: proc(list: ^gfx.Command_List, paint: Paint) {
 	switch p in paint {
 	case Colour:   gfx.set_stroke(list, p)
 	case Gradient: gfx.set_stroke_gradient(list, p)
-	case Image_Fill: // only a fill takes a picture; an outline keeps what it was
+	case Image_Fill: gfx.set_stroke_image(list, p)
 	}
 }
 
@@ -230,8 +230,15 @@ background :: proc(paint: Paint) {
 	switch p in paint {
 	case Colour:   gfx.background(list, p)
 	case Gradient: gfx.background_gradient(list, p)
-	case Image_Fill: // only a fill takes a picture
+	case Image_Fill: gfx.background_image(list, p)
 	}
+}
+
+// Paints the whole window with a picture, behind everything: `fit` says how it sits in
+// the window, `tile` is the width of one copy for `.Tile` (0 is the picture's own size),
+// and `at_x` `at_y` shift it in logical pixels for `.Tile` and `.Center`.
+background_image :: proc(picture: Image, fit := Image_Fit.Cover, tile := 0.0, at_x := 0.0, at_y := 0.0) {
+	gfx.background_image(current_list(), Image_Fill{image = picture, fit = fit, tile = f32(tile), at = {f32(at_x), f32(at_y)}})
 }
 
 background_grey :: proc(value: f64) {
@@ -266,6 +273,12 @@ fill :: proc{fill_paint, fill_grey}
 
 no_fill :: proc() {
 	gfx.no_fill(current_list())
+}
+
+// Outlines with a picture from now on: each outline is a mask the picture shows through,
+// placed in the shape's box as a picture fill is.
+stroke_image :: proc(picture: Image, fit := Image_Fit.Cover, tile := 0.0, at_x := 0.0, at_y := 0.0) {
+	gfx.set_stroke_image(current_list(), Image_Fill{image = picture, fit = fit, tile = f32(tile), at = {f32(at_x), f32(at_y)}})
 }
 
 stroke_paint :: proc(paint: Paint) {
