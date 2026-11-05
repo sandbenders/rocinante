@@ -21,7 +21,12 @@ Program :: struct {
 // Folders whose files are not the sketch's own code: its assets, the libraries
 // vendored into it, what it writes, and anything hidden (git's, the cache).
 is_foreign_folder :: proc(name: string) -> bool {
-	return name == "assets" || name == "libs" || name == "output" || strings.has_prefix(name, ".")
+	return name == "assets" || name == "libs" || name == "output" || is_hidden(name)
+}
+
+@(private)
+is_hidden :: proc(name: string) -> bool {
+	return strings.has_prefix(name, ".")
 }
 
 // Every .roci file in a folder and the folders inside it that the sketch owns, as
@@ -40,19 +45,9 @@ walk_roci :: proc(root: string, own_code_only: bool, allocator: runtime.Allocato
 	found := make([dynamic]string, allocator)
 	cwd, _ := os.get_working_directory(context.temp_allocator)
 	here := strings.concatenate({cwd, "/"}, context.temp_allocator)
-	w: os.Walker
-	os.walker_init(&w, root)
-	defer os.walker_destroy(&w)
-	for fi in os.walker_walk(&w) {
-		if fi.type == .Directory {
-			skipped := is_foreign_folder(fi.name) if own_code_only else strings.has_prefix(fi.name, ".")
-			if skipped && fi.fullpath != root {
-				os.walker_skip_dir(&w)
-			}
-			continue
-		}
+	for fi in walk_files(root, is_foreign_folder if own_code_only else is_hidden) {
 		if strings.has_suffix(fi.name, ".roci") {
-			// The walker gives full paths; show them from where we are.
+			// The walk gives full paths; show them from where we are.
 			shown := trim_folder(fi.fullpath, here)
 			append(&found, strings.clone(shown, allocator))
 		}

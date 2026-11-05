@@ -191,14 +191,11 @@ asset_files :: proc(root: string, allocator := context.allocator) -> []string {
 	if !os.is_directory(directory) {
 		return files[:]
 	}
-	w: os.Walker
-	os.walker_init(&w, directory)
-	defer os.walker_destroy(&w)
-	// The walker gives full paths; show them from the sketch folder.
+	// The walk gives full paths; show them from the sketch folder.
 	absolute, _ := filepath.abs(directory, context.temp_allocator)
 	prefix := strings.concatenate({absolute, "/"}, context.temp_allocator)
-	for fi in os.walker_walk(&w) {
-		if fi.type == .Directory || fi.name == ".keep" {
+	for fi in walk_files(directory) {
+		if fi.name == ".keep" {
 			continue
 		}
 		relative := strings.concatenate({"assets/", trim_folder(fi.fullpath, prefix)}, context.temp_allocator)
@@ -208,7 +205,35 @@ asset_files :: proc(root: string, allocator := context.allocator) -> []string {
 	return files[:]
 }
 
-// A full path from the walker without the folder `prefix` in front, with `/` between
+// Every file under `dir`, at any depth, with its full path, on the temp allocator;
+// folders that `skip` names are not gone into. Odin's `os.Walker` (dev-2026-10) leaves
+// the last folder it read open on Windows, because `walker_destroy` clears the
+// iterator's file before destroying the iterator, which then skips `FindClose`; an
+// open folder there cannot be renamed or removed, so `roci get` failed. Each folder is
+// read whole with `os.read_all_directory_by_path` instead, which closes it.
+@(private)
+walk_files :: proc(dir: string, skip: proc(name: string) -> bool = nil) -> []os.File_Info {
+	found := make([dynamic]os.File_Info, context.temp_allocator)
+	walk_into(&found, dir, skip)
+	return found[:]
+}
+
+@(private)
+walk_into :: proc(found: ^[dynamic]os.File_Info, dir: string, skip: proc(name: string) -> bool) {
+	entries, err := os.read_all_directory_by_path(dir, context.temp_allocator)
+	if err != nil {
+		return
+	}
+	for fi in entries {
+		if fi.type != .Directory {
+			append(found, fi)
+		} else if skip == nil || !skip(fi.name) {
+			walk_into(found, fi.fullpath, skip)
+		}
+	}
+}
+
+// A full path from the walk without the folder `prefix` in front, with `/` between
 // its parts. Windows gives full paths with backslashes (`C:\x\assets\cat.png`), so
 // both are spelled with `/` there first; elsewhere a backslash is part of a name and
 // stays.

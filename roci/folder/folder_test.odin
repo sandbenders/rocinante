@@ -199,6 +199,31 @@ test_a_walker_path_is_shown_from_its_folder_with_slashes :: proc(t: ^testing.T) 
 }
 
 @(test)
+test_a_walk_finds_every_file_skips_what_it_is_told_and_leaves_the_folder_free :: proc(t: ^testing.T) {
+	root := fresh("walk")
+	testing.expect(t, ensure_directory(path_in(root, "parts/deeper")))
+	testing.expect(t, ensure_directory(path_in(root, ".hidden")))
+	for file in ([]string{"a.roci", "parts/b.roci", "parts/deeper/c.roci", ".hidden/d.roci"}) {
+		testing.expect(t, os.write_entire_file(path_in(root, file), transmute([]u8)string("x")) == nil)
+	}
+	names := make([dynamic]string, context.temp_allocator)
+	for fi in walk_files(root) {
+		append(&names, fi.name)
+	}
+	testing.expect_value(t, len(names), 4)
+	skipped := walk_files(root, is_hidden)
+	testing.expect_value(t, len(skipped), 3)
+	for fi in skipped {
+		testing.expectf(t, fi.name != "d.roci", "`%s` is in a hidden folder", fi.fullpath)
+	}
+	testing.expect_value(t, len(walk_files(path_in(root, "missing"))), 0)
+	// Windows refuses to rename a folder that a walk left open.
+	moved := strings.concatenate({root, "_moved"}, context.temp_allocator)
+	_ = os.remove_all(moved)
+	testing.expect_value(t, os.rename(root, moved), nil)
+}
+
+@(test)
 test_the_known_types_are_listed_by_folder_for_the_message_that_teaches :: proc(t: ^testing.T) {
 	text := known_types()
 	testing.expect(t, strings.contains(text, "images: .png"))
