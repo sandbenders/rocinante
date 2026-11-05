@@ -106,14 +106,6 @@ test_a_value_the_shader_does_not_have_is_said_and_the_others_still_go :: proc(t:
 }
 
 @(test)
-test_an_effect_cannot_run_inside_a_canvas :: proc(t: ^testing.T) {
-	p := run_effect_sketch(t, "effects_canvas", "c = canvas 50 50\ndraw into c [ effect \"wave.hlsl\" ]")
-	defer finish(p)
-	testing.expect_value(t, len(p.errors), 1)
-	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Shader_Window)
-}
-
-@(test)
 test_a_shader_is_translated_once_and_again_when_its_file_changes :: proc(t: ^testing.T) {
 	p := run_effect_sketch(t, "effects_reload", "draw [ effect \"wave.hlsl\" ]")
 	defer finish(p)
@@ -217,4 +209,13 @@ test_a_built_in_effect_is_told_a_value_it_does_not_read :: proc(t: ^testing.T) {
 	p := run_effect_sketch(t, "effects_builtin_value", "effect \"blur\" by { strength: 2 }")
 	defer finish(p)
 	testing.expect_value(t, len(p.errors), 1)
+}
+
+@(test)
+test_an_effect_inside_a_canvas_is_taken_without_a_message :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "effects_canvas", "c = canvas 50 50\ndraw into c [ effect \"wave.hlsl\" ]")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	effects, _ := roci.recorded_effects(first_window())
+	testing.expect_value(t, len(effects), 0)
 }

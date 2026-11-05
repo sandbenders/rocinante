@@ -58,9 +58,7 @@ effect_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) {
 		// what the effect starts with, then what the sketch gives
 		values = slice_join(defaults, values)
 	}
-	if !roci.effect(id, values) {
-		fail(it, .Shader_Window, e.span, name, "", "", "draw [\n  circle at mouse radius 40\n  effect \"wave.hlsl\"\n]")
-	}
+	_ = roci.effect(id, values)
 }
 
 @(private)

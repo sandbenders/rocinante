@@ -52,7 +52,7 @@ A color arrives as 0 to 1, ready for the shader's math. A name the shader does n
 
 ## Several effects, and where they run
 
-Effects run in the order they are written, each over the picture the one before it made, so a wave and then a vignette is two lines. An effect belongs to the window it is written for and runs once the whole frame is drawn: it cannot be written inside `draw into`, because a canvas is not a window. Everything the window shows, including `image` of a canvas, goes through it.
+Effects run in the order they are written, each over the picture the one before it made, so a wave and then a vignette is two lines. An effect written in the window's own drawing runs once the whole frame is drawn, and everything the window shows, including `image` of a canvas, goes through it. Written inside `draw into`, it runs over that canvas once the frame's drawing into it is done, and what it makes stays on the canvas: an effect written every frame works on its own result again, so a `blur` makes trails that spread (`examples/smoke`), and an effect for the picture of the canvas alone, with the canvas left as it was, is an `image` of it drawn into a second canvas. A canvas holds colors multiplied by their alpha, which the built-in effects take into account.
 
 ## Effects that come with rocinante
 

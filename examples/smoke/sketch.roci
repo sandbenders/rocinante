@@ -1,0 +1,23 @@
+// Smoke: an effect on a canvas. Two embers circle on a canvas that is blurred a little every
+// frame, so each one leaves a soft trail that spreads and fades; a little of the dark is
+// painted over it every frame, and the window shows the canvas under a vignette. The blur
+// belongs to the canvas: the vignette, written outside, belongs to the window.
+window size 640 420 title "smoke"
+haze = canvas 640 420
+draw into haze [ background 10 ]
+
+draw [
+  draw into haze [
+    fill 10
+    alpha 3
+    rect at 0 0 size width height
+    alpha 100
+    fill (hsb (frame * 3 % 256) 200 255)
+    circle at (320 + cos (time * 70) * 220) (210 + sin (time * 110) * 130) radius 8
+    fill (hsb (frame * 3 % 256 + 128) 200 255)
+    circle at (320 + cos (time * 130) * 120) (210 + sin (time * 90) * 90) radius 5
+    effect "blur" by { amount: 3 }
+  ]
+  image haze at 0 0
+  effect "vignette"
+]

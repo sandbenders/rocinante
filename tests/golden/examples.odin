@@ -58,6 +58,7 @@ EXAMPLES := [?]Example{
 	{"effects", 3, {1}}, // two shaders of its own over five stripes: a wave with a tint, and a vignette
 	{"spiral", 20, {1}}, // shapes filled by one shader: a spiral of black and white bands with an accent arm, in a window-sized rectangle and two circles
 	{"neon", 20, {1}}, // the built-in effects: glow, split, grain and vignette over bright rings
+	{"smoke", 90, {1}}, // an effect on a canvas: embers whose trails are blurred on the canvas each frame, under a window vignette
 	{"glass", 20, {1}}, // a corridor of glowing glass made by one shader as a fill, with motes of light added over it
 	{"tunnel", 20, {1}}, // a raymarched tunnel made by one shader, the sketch's own dots and word laid over it, and a lens effect on top
 }

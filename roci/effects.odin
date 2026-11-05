@@ -73,13 +73,15 @@ shader_value_names :: proc(shader: Shader, allocator := context.temp_allocator) 
 	return names
 }
 
-// Runs `shader` over the current window's frame once it is drawn. The values that name no
+// Runs `shader` over the current window's frame once it is drawn, or, inside `draw into`, over
+// the canvas as it is when this frame's drawing into it is done (what it makes stays on the canvas,
+// so an effect written every frame works on its own result again). The values that name no
 // global of the shader are ignored (`shader_value_names` says which there are); a global
 // given fewer numbers than it has keeps the rest at 0. Gives false when there is no window,
-// or the shader is not good, or a canvas is being drawn into (an effect runs over a window).
+// or the shader is not good.
 effect :: proc(shader: Shader, values: []Effect_Value = nil) -> bool {
 	w := current_win()
-	if w == nil || into_list() != nil {
+	if w == nil {
 		return false
 	}
 	data := gfx.shader_data(shader)
@@ -88,7 +90,10 @@ effect :: proc(shader: Shader, values: []Effect_Value = nil) -> bool {
 	}
 	block := shader_block(data, values)
 	mouse := w.mouse
-	gfx.effect(&w.list, shader, f32(time_now()), f32(the.frame), {f32(mouse.x), f32(mouse.y)}, block)
+	gfx.effect(current_list(), shader, f32(time_now()), f32(the.frame), {f32(mouse.x), f32(mouse.y)}, block)
+	if canvas := gfx.canvas_of(the.into); canvas != nil {
+		gfx.canvas_touch(canvas)
+	}
 	return true
 }
 

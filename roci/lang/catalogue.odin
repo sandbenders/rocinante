@@ -133,7 +133,6 @@ Message_Id :: enum u8 {
 	Shader_Missing,
 	Shader_Broken,
 	Shader_Value,
-	Shader_Window,
 }
 
 Entry :: struct {
@@ -448,9 +447,6 @@ CATALOGUE := [Message_Id]Entry{
 	.Shader_Value = {.Error, "The shader `{a}` has no value called `{b}`",
 		"{c} A value is a global at the top of the shader, such as `float amount;`. The effect is drawn without it, and the sketch carries on.",
 		"Give it one it has:", "{d}"},
-	.Shader_Window = {.Error, "An effect runs over a window, not over a canvas",
-		"`effect` takes the finished picture of the window, so it cannot be written inside `draw into`. It is left out, and the sketch carries on.",
-		"Write it in the window's own drawing:", "{d}"},
 	.Not_A_Canvas = {.Error, "I can only draw into a canvas",
 		"{b} Nothing is drawn, and the sketch carries on.",
 		"Make a canvas once, then draw into it:", "{d}"},
@@ -513,7 +509,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Save_Failed, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value, .Shader_Window:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Save_Failed, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

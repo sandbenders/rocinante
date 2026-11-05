@@ -3,6 +3,7 @@ package roci
 
 import "core:math"
 import "core:testing"
+import "gfx"
 
 TEST_SHADER :: "float amount;\nfloat4 tint;\nfloat4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0\n{\n    return scene.Sample(scene_sampler, uv) * amount + tint;\n}\n"
 
@@ -63,16 +64,33 @@ fewer_numbers_than_a_value_has_leave_the_rest_at_zero :: proc(t: ^testing.T) {
 }
 
 @(test)
-an_effect_does_not_run_inside_a_canvas_or_for_a_shader_that_is_not_there :: proc(t: ^testing.T) {
+an_effect_does_not_run_for_a_shader_that_is_not_there :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	testing.expect(t, !effect(0))
+	testing.expect(t, !effect(42))
+}
+
+@(test)
+an_effect_inside_a_canvas_is_recorded_on_the_canvas_and_not_on_the_window :: proc(t: ^testing.T) {
 	start_headless(1)
 	defer shutdown()
 	shader, _ := add_shader(TEST_SHADER)
-	testing.expect(t, !effect(0))
-	testing.expect(t, !effect(42))
+	circle(1, 1, 1)
 	c, _ := canvas(20, 20)
 	begin_into(c)
-	testing.expect(t, !effect(shader))
+	testing.expect(t, effect(shader, {{name = "amount", floats = {3, 0, 0, 0}, count = 1}}))
 	end_into()
+	effects, _ := recorded_effects(open_windows()[0])
+	testing.expect_value(t, len(effects), 0)
+	// the drawing into the canvas had no shape, but the round is kept for its effect
+	canvas_data := gfx.canvas_of(c)
+	gfx.canvas_close_round(canvas_data)
+	testing.expect_value(t, len(canvas_data.rounds), 1)
+	round := canvas_data.rounds[0].list
+	testing.expect_value(t, len(round.effects), 1)
+	testing.expect_value(t, round.effects[0].shader, shader)
+	testing.expect_value(t, (cast([^]f32)raw_data(round.effect_values[:]))[0], f32(3))
 }
 
 @(test)

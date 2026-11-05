@@ -45,7 +45,7 @@ begin_into :: proc(picture: Image) -> bool {
 // Goes back to drawing into the window.
 end_into :: proc() {
 	canvas := gfx.canvas_of(the.into)
-	if canvas != nil && (len(canvas.list.commands) > 0 || canvas.list.background_set) {
+	if canvas != nil && (len(canvas.list.commands) > 0 || canvas.list.background_set || len(canvas.list.effects) > 0) {
 		gfx.canvas_touch(canvas)
 	}
 	the.into = 0
