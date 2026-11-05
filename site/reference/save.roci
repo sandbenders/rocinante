@@ -1,0 +1,4 @@
+fill gold
+circle at 200 150 radius 80
+text "press s to save a picture" at 110 270
+on key "s" [ save "shot.png" ]

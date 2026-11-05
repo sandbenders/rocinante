@@ -1,0 +1,27 @@
+// Saving pictures: press s to save the window as output/shot.png, and press r to start or
+// stop recording a frame sequence into output/frames, one numbered file for each frame.
+window size 480 320 title "export"
+recording = false
+saved = 0
+
+on key "s" [
+  save "shot.png"
+  saved = saved + 1
+]
+
+on key "r" [ recording = not recording ]
+
+draw [
+  background (hsb 150 120 60)
+  for i from 0 to 11 [
+    spin = frame * 3 + i * 30
+    fill (hsb (i * 20) 180 255)
+    circle at (240 + (cos spin) * 110) (170 + (sin spin) * 110) radius 18
+  ]
+  if recording [ save "frames/frame-####.png" ]
+  fill white
+  font "Inter" size 15
+  text "s saves a picture, r records frames" at 20 20
+  text ("saved " + saved + " pictures") at 20 44
+  if recording [ text "recording" at 20 68 fill tomato ]
+]

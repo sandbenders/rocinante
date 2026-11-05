@@ -51,6 +51,7 @@ EXAMPLES := [?]Example{
 	{"canvas", 60, {1}}, // a canvas that keeps its drawing: two dots with fading trails
 	{"fills", 5, {1}}, // shapes filled with a picture: cover, fit, stretch, tile and center, and an outline over one
 	{"outline", 3, {1}}, // the same ball against a picture as a rectangle and as its outline
+	{"export", 5, {1}}, // a ring of dots; s and r save pictures, which a golden run never presses
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.

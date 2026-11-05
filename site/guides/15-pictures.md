@@ -1,6 +1,6 @@
 ---
 title: "Pictures"
-summary: "Loading pictures from assets, drawing them at any size, tinting them, filling shapes with them and making them see-through."
+summary: "Loading pictures from assets, drawing them at any size, tinting and filling with them, and saving the window as a PNG or a frame sequence."
 weight: 15
 ---
 
@@ -117,3 +117,22 @@ Load one that is there:  photo = load "cat.png"
 ```
 
 A file that is not a picture, and two files with one name, are said the same way, with the folder to name in the second case.
+
+## Saving a picture of the window
+
+`save "shot.png"` writes a picture of the window as a PNG file. It is the finished frame the line ran in, without the error overlay, at the window's own sharpness (twice as many pixels on a high-density screen). A plain name goes in the sketch's `output` folder, which git leaves out, and any folders in the name are made; an absolute path is used as it is.
+
+```roci
+on key "s" [ save "shot.png" ]
+```
+
+A run of `#` in the name is the frame's number, so a `save` in `draw` records every frame, ready for a video tool:
+
+```roci
+draw [
+  circle at (frame * 4) 150 radius 30
+  save "frames/frame-####.png"
+]
+```
+
+That writes `output/frames/frame-0000.png`, `frame-0001.png` and so on. `roci run sketch --frames 120` draws 120 frames with no window, which is the way to record a long sequence quickly. Only PNG is saved, so a name that does not end in `.png` is said and nothing is written; a file that cannot be written is said on the next frame. `examples/export` saves with `s` and records with `r`.
