@@ -60,6 +60,16 @@ test_find_lavapipe_skips_missing_folders_and_folders_named_like_a_manifest :: pr
 }
 
 @(test)
+test_find_vulkan_library_gives_the_first_file_there_is :: proc(t: ^testing.T) {
+	dir := make_icd_dir(t, "vk-library", {"libvulkan.1.dylib", "other.dylib"})
+	first := fmt.tprintf("%s/libvulkan.1.dylib", dir)
+	testing.expect_value(t, find_vulkan_library({"output/build-tests/no-such-file.dylib", first, fmt.tprintf("%s/other.dylib", dir)}), first)
+	testing.expect_value(t, find_vulkan_library({fmt.tprintf("%s/nothing.dylib", dir)}), "")
+	testing.expect_value(t, find_vulkan_library({dir}), "") // a folder is not a library
+	testing.expect_value(t, find_vulkan_library({}), "")
+}
+
+@(test)
 test_with_env_adds_a_new_key :: proc(t: ^testing.T) {
 	env := with_env({"HOME=/home/a", "PATH=/bin"}, "SDL_VIDEODRIVER", "offscreen", context.temp_allocator)
 	testing.expect_value(t, len(env), 3)

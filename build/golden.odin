@@ -4,9 +4,11 @@
 // are drawn on Mesa's software Vulkan (lavapipe), so `ci` draws the scenes there
 // too, whatever GPU the computer has: it points the Vulkan loader at lavapipe's
 // manifests alone and starts SDL with no display. Where lavapipe is missing
-// (macOS and Windows, whose SDL uses Metal and Direct3D 12, or a Linux computer
-// without Mesa's Vulkan drivers) the step is skipped, unless ROCI_REQUIRE_LAVAPIPE
-// is set, as it is in both pipelines.
+// (Windows, whose SDL uses Direct3D 12, a Mac without Homebrew's `mesa`, or a Linux
+// computer without Mesa's Vulkan drivers) the step is skipped, unless
+// ROCI_REQUIRE_LAVAPIPE is set, as it is in both pipelines. On a Mac, Homebrew's
+// `mesa` has lavapipe, and SDL is told where Homebrew's Vulkan loader is, since
+// macOS does not look in /opt/homebrew/lib for it by itself.
 package build
 
 import "core:fmt"
@@ -17,8 +19,22 @@ import "core:time"
 
 import "../tools/term"
 
-// Where Mesa installs its Vulkan driver manifests: Linux, then FreeBSD's ports.
-VULKAN_ICD_DIRS :: []string{"/usr/share/vulkan/icd.d", "/usr/local/share/vulkan/icd.d", "/etc/vulkan/icd.d"}
+// Where Mesa installs its Vulkan driver manifests: Linux, FreeBSD's ports and Homebrew
+// (Apple silicon, then Intel, which shares /usr/local with FreeBSD's ports).
+VULKAN_ICD_DIRS :: []string{"/usr/share/vulkan/icd.d", "/usr/local/share/vulkan/icd.d", "/etc/vulkan/icd.d", "/opt/homebrew/share/vulkan/icd.d"}
+
+// Where Homebrew's Vulkan loader is, which SDL on a Mac is told to use.
+VULKAN_LIBRARY_PATHS :: []string{"/opt/homebrew/lib/libvulkan.1.dylib", "/usr/local/lib/libvulkan.1.dylib"}
+
+// The first of `paths` that is a file, or nothing.
+find_vulkan_library :: proc(paths: []string) -> string {
+	for path in paths {
+		if os.is_file(path) {
+			return path
+		}
+	}
+	return ""
+}
 
 // The device name lavapipe gives, which tests/golden prints.
 LAVAPIPE_DEVICE :: "device llvmpipe"
@@ -79,7 +95,7 @@ check_golden :: proc() -> bool {
 	fmt.printfln("%s", term.out(fmt.tprintf("== %s", name), .Bold_Cyan))
 	required := os.get_env("ROCI_REQUIRE_LAVAPIPE", context.temp_allocator) != ""
 	manifests: []string
-	when ODIN_OS != .Darwin && ODIN_OS != .Windows {
+	when ODIN_OS != .Windows {
 		manifests = find_lavapipe(VULKAN_ICD_DIRS, context.temp_allocator)
 	}
 	available := len(manifests) > 0
@@ -91,6 +107,11 @@ check_golden :: proc() -> bool {
 		base, _ := os.environ(context.temp_allocator)
 		env := with_env(base, "VK_DRIVER_FILES", strings.join(manifests, ":", context.temp_allocator), context.temp_allocator)
 		env = with_env(env, "SDL_VIDEODRIVER", "offscreen", context.temp_allocator)
+		when ODIN_OS == .Darwin {
+			if library := find_vulkan_library(VULKAN_LIBRARY_PATHS); library != "" {
+				env = with_env(env, "SDL_VULKAN_LIBRARY", library, context.temp_allocator)
+			}
+		}
 		command := []string{"odin", "run", "tests/golden", fmt.tprintf("-out:%s/golden%s", TEST_OUT_DIR, EXE)}
 		state: os.Process_State
 		err: os.Error
@@ -106,7 +127,7 @@ check_golden :: proc() -> bool {
 		fmt.printfln("   %s%s", term.out_icon(.Ok), term.out(fmt.tprintf("ok, %.1f s", time.duration_seconds(time.since(started))), .Green))
 		return true
 	case .Skipped:
-		fmt.printfln("   %s", term.out("skipped, no lavapipe here (Mesa's software Vulkan; the pipelines require it)", .Dim))
+		fmt.printfln("   %s", term.out("skipped, no lavapipe here (Mesa's software Vulkan, `brew install mesa` on a Mac; the pipelines require it)", .Dim))
 		return true
 	case .Failed:
 		fmt.eprintfln("%s", term.err(fmt.tprintf("%s failed (exit code %d)", name, exit_code), .Bold_Red))
