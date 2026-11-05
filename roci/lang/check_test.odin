@@ -1451,3 +1451,12 @@ test_effect_takes_a_shader_name_and_a_record_of_values :: proc(t: ^testing.T) {
 	expect_errors(t, "effect \"wave.hlsl\" by 5", {.Wrong_Argument_Kind})
 	expect_errors(t, "effect \"wave.hlsl\" at 1 2", {.Unexpected_Token})
 }
+
+@(test)
+test_shade_takes_a_shader_name_and_a_record_of_values :: proc(t: ^testing.T) {
+	expect_errors(t, "shade \"spiral.hlsl\"", {})
+	expect_errors(t, "shade \"spiral.hlsl\" by { arms: 3, accent: red }\nrect at 0 0 size 10 10", {})
+	expect_errors(t, "shade 5", {.Wrong_Argument_Kind})
+	expect_errors(t, "shade", {.Wrong_Argument_Count})
+	expect_errors(t, "shade \"a.hlsl\" by 5", {.Wrong_Argument_Kind})
+}

@@ -23,7 +23,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"load", "image", "tint", "canvas", "draw into", "save", "pixel", "pixels", "picture", "crop", "resize", "filter", "mask",
 	}},
 	{"Effects", "Shaders of your own that run over the finished picture.", {
-		"effect",
+		"effect", "shade",
 	}},
 	{"Color and style", "How shapes look: the color inside them, the line around them, and colors made from numbers.", {
 		"background", "clear", "fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "blend", "clip", "no clip", "caps", "joins",

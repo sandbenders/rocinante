@@ -9,6 +9,7 @@ import "core:os"
 import "core:testing"
 import "core:time"
 
+GOOD_FILL :: "float amount;\nfloat4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0\n{\n    return float4(uv, amount, 1.0);\n}\n"
 GOOD_EFFECT :: "float amount;\nfloat4 tint;\nfloat4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0\n{\n    return scene.Sample(scene_sampler, uv) * amount + tint * time;\n}\n"
 
 // A sketch folder with a good shader called `wave.hlsl` and a broken one, `broken.hlsl`, in
@@ -18,6 +19,7 @@ run_effect_sketch :: proc(t: ^testing.T, folder_name, text: string) -> ^Interp {
 	_ = os.remove_all(root)
 	testing.expect(t, folder.ensure_directory(concat(root, "/assets/shaders")))
 	testing.expect(t, os.write_entire_file(concat(root, "/assets/shaders/wave.hlsl"), transmute([]byte)string(GOOD_EFFECT)) == nil)
+	testing.expect(t, os.write_entire_file(concat(root, "/assets/shaders/paint.hlsl"), transmute([]byte)string(GOOD_FILL)) == nil)
 	testing.expect(t, os.write_entire_file(concat(root, "/assets/shaders/broken.hlsl"), transmute([]byte)string("float4 ps_main() : SV_Target0 { return nothing_here; }\n")) == nil)
 	path := concat(root, "/sketch.roci")
 	testing.expect(t, os.write_entire_file(path, transmute([]byte)text) == nil)
@@ -140,4 +142,45 @@ test_a_shader_is_translated_once_and_again_when_its_file_changes :: proc(t: ^tes
 	testing.expect_value(t, len(effects), 1)
 	testing.expect_value(t, p.shaders["wave.hlsl"].id, entry.id)
 	testing.expect(t, gfx.shader_data(entry.id).version > version)
+}
+
+@(test)
+test_shade_fills_the_shapes_after_it_and_fill_puts_a_color_back :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "shade_basic", "rect at 0 0 size 10 10\nshade \"paint.hlsl\" by { amount: 0.5 }\ncircle at 20 20 radius 5\nfill red\ncircle at 40 40 radius 5")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 3)
+	testing.expect_value(t, commands[0].style.fill_shader.shader, gfx.Shader_Id(0))
+	testing.expect(t, commands[1].style.fill_shader.shader != 0)
+	testing.expect_value(t, commands[2].style.fill_shader.shader, gfx.Shader_Id(0))
+	_, values := roci.recorded_effects(first_window())
+	testing.expect_value(t, (cast([^]f32)raw_data(values))[0], f32(0.5))
+}
+
+@(test)
+test_a_file_used_as_a_fill_and_as_an_effect_is_two_shaders :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "shade_two", "shade \"paint.hlsl\"\ncircle at 1 1 radius 1\neffect \"paint.hlsl\"")
+	defer finish(p)
+	// as an effect it reads the prelude with `scene`, which its text does not mention: fine
+	testing.expect_value(t, len(p.shaders), 2)
+	testing.expect_value(t, p.shaders["paint.hlsl"].state, Shader_State.Good)
+	testing.expect(t, p.shaders["paint.hlsl\x00fill"].id != p.shaders["paint.hlsl"].id)
+}
+
+@(test)
+test_shade_says_a_missing_broken_or_mistaken_shader_like_effect_does :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "shade_problems", "shade \"nothing.hlsl\"\nshade \"broken.hlsl\"\nshade \"paint.hlsl\" by { amnt: 1 }\ncircle at 1 1 radius 1")
+	defer finish(p)
+	ids: [dynamic]lang.Message_Id
+	defer delete(ids)
+	for e in p.errors {
+		append(&ids, e.id)
+	}
+	testing.expect_value(t, len(ids), 3)
+	testing.expect_value(t, ids[0], lang.Message_Id.Shader_Missing)
+	testing.expect_value(t, ids[1], lang.Message_Id.Shader_Broken)
+	testing.expect_value(t, ids[2], lang.Message_Id.Shader_Value)
+	// the circle is still drawn, filled by the last good shader (here none: the third was good)
+	testing.expect_value(t, len(roci.recorded(first_window())), 1)
 }

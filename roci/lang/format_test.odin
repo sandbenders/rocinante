@@ -357,3 +357,8 @@ test_effect_is_written_with_its_values_after_by :: proc(t: ^testing.T) {
 	expect_formatted(t, "effect   \"wave.hlsl\"   by   { amount:0.5, tint:red }\n", "effect \"wave.hlsl\" by { amount: 0.5, tint: red }\n")
 	expect_formatted(t, "draw [ effect \"a.hlsl\" ]\n", "draw [ effect \"a.hlsl\" ]\n")
 }
+
+@(test)
+test_shade_is_written_with_its_values_after_by :: proc(t: ^testing.T) {
+	expect_formatted(t, "shade   \"a.hlsl\"   by   { arms:3 }\n", "shade \"a.hlsl\" by { arms: 3 }\n")
+}
