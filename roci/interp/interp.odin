@@ -51,6 +51,7 @@ Runtime_Error :: struct {
 }
 
 Interp :: struct {
+	save_span: lang.Span, // the last `save` call, which a file that cannot be written is blamed on
 	checked:   lang.Checked,
 	src:       lang.Source,
 	types:     ^lang.Types,

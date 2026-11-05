@@ -95,16 +95,21 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 show_frame :: proc(w: ^Win) {
 	// What was drawn into canvases comes first, so this window can show it.
 	flush_canvases(&the.renderer if the.started && !the.headless else nil)
-	marked := gfx.mark(&w.list)
-	defer gfx.rewind(&w.list, marked)
-	if the.overlay_title != "" {
-		draw_overlay(w)
-	}
 	canvas := [2]f32{f32(w.width), f32(w.height)}
 	if w.handle != nil {
 		m := platform.window_metrics(w.handle)
 		w.width, w.height = m.width, m.height
 		canvas = {f32(m.width), f32(m.height)}
+	}
+	// Pictures asked for with `save` are the finished frame, before the error overlay.
+	if len(w.saves) > 0 {
+		gfx.build(&w.batcher, &w.list, canvas)
+		write_saves(w)
+	}
+	marked := gfx.mark(&w.list)
+	defer gfx.rewind(&w.list, marked)
+	if the.overlay_title != "" {
+		draw_overlay(w)
 	}
 	gfx.build(&w.batcher, &w.list, canvas)
 	if w.handle == nil {

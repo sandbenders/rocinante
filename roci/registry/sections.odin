@@ -20,7 +20,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"text", "font", "align", "leading", "measure",
 	}},
 	{"Pictures", "Pictures loaded from the sketch's assets folder or drawn on a canvas, shown anywhere and through a color.", {
-		"load", "image", "tint", "canvas", "draw into",
+		"load", "image", "tint", "canvas", "draw into", "save",
 	}},
 	{"Color and style", "How shapes look: the color inside them, the line around them, and colors made from numbers.", {
 		"background", "clear", "fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "caps", "joins",

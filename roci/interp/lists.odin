@@ -65,6 +65,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	#partial switch code {
 	case .Touching, .Contact, .Hits, .Inside, .Cast:
 		return collision_verb(it, e, call, code)
+	case .Save:
+		save_picture(it, e, as_text(eval(it, call.args[0])))
 	case .Outline:
 		return outline_verb(it, call)
 	case .Add:

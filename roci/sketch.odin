@@ -37,6 +37,7 @@ Win :: struct {
 	draw:         proc(),           // runs every frame, when set; otherwise the list drawn at set-up is shown as it is
 	on_receive:   proc(value: Value),
 	inbox:        [dynamic]Value,   // messages sent to this window, delivered on the next frame
+	saves:        [dynamic]string,  // picture files asked for this frame, written once it is drawn (save.odin)
 	width:        int,              // logical size, as sketches see it
 	height:       int,
 	title:        string,
@@ -96,6 +97,7 @@ Sketch :: struct {
 	log:          [dynamic]Happened, // what happened in the frame in progress
 	last_key:     string,
 	hook:         proc(w: Window), // run for each window in each frame
+	save_problems: [dynamic]Save_Problem, // files that could not be written, for the language to say (save.odin)
 	overlay_title: string, // what the error overlay says, or "" for none
 	overlay_lines: [dynamic]string,
 	reuse:        [dynamic]^Win, // windows of the last run a restart gives to the first `window` calls
@@ -169,6 +171,11 @@ shutdown :: proc() {
 		platform.shutdown(&the.shot_app)
 	}
 	delete(the.log)
+	for problem in the.save_problems {
+		delete(problem.path)
+		delete(problem.why)
+	}
+	delete(the.save_problems)
 	set_overlay("", nil)
 	delete(the.overlay_lines)
 	delete(the.reuse)
@@ -183,6 +190,10 @@ destroy_win :: proc(w: ^Win) {
 	gfx.destroy(&w.list)
 	gfx.batcher_destroy(&w.batcher)
 	delete(w.inbox)
+	for path in w.saves {
+		delete(path)
+	}
+	delete(w.saves)
 	delete(w.title)
 	delete(w.fingers)
 	if w.handle != nil {
