@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package folder
 
+import "core:fmt"
 import "core:os"
 import "core:testing"
 
@@ -162,4 +163,90 @@ the_default_places_are_named_for_this_system :: proc(t: ^testing.T) {
 
 concat_path :: proc(root, file: string) -> string {
 	return os.join_path({root, file}, context.temp_allocator) or_else ""
+}
+
+INTER_BOLD :: "roci/gfx/fonts/Inter-Bold.ttf"
+
+@(test)
+a_fonts_names_are_read_without_reading_the_whole_file :: proc(t: ^testing.T) {
+	info, ok := read_font_names(INTER)
+	testing.expect(t, ok)
+	testing.expect_value(t, info.family, "Inter")
+	testing.expect_value(t, info.style, "Regular")
+	whole, whole_ok := read_font_info(inter_bytes(t), context.temp_allocator)
+	testing.expect(t, whole_ok)
+	testing.expect_value(t, whole.family, info.family)
+	testing.expect_value(t, whole.style, info.style)
+	testing.expect_value(t, whole.licence, info.licence)
+
+	bold, bold_ok := read_font_names(INTER_BOLD)
+	testing.expect(t, bold_ok)
+	testing.expect_value(t, simple_name(bold.style), "bold")
+
+	root :: "output/tests/system_fonts_names"
+	_ = os.remove_all(root)
+	testing.expect(t, ensure_directory(root))
+	// a collection: Inter's table directory copied to the end, and a header that points at it
+	bytes := inter_bytes(t)
+	directory := 12 + int(be16(bytes, 4)) * 16
+	collection := make([]u8, len(bytes) + directory, context.temp_allocator)
+	copy(collection, bytes)
+	copy(collection[len(bytes):], bytes[:directory])
+	copy(collection[:16], "ttcf\x00\x01\x00\x00\x00\x00\x00\x01")
+	at := u32(len(bytes))
+	collection[12], collection[13], collection[14], collection[15] = u8(at >> 24), u8(at >> 16), u8(at >> 8), u8(at)
+	testing.expect(t, os.write_entire_file(concat_path(root, "inter.ttc"), collection) == nil)
+	in_collection, collection_ok := read_font_names(concat_path(root, "inter.ttc"))
+	testing.expect(t, collection_ok)
+	testing.expect_value(t, in_collection.family, "Inter")
+
+	// not fonts: missing, too short, another kind of file, a directory cut short, no name table
+	_, ok = read_font_names(concat_path(root, "missing.ttf"))
+	testing.expect(t, !ok)
+	cases := [][]u8{
+		transmute([]u8)string("short"),
+		transmute([]u8)string("not a font, but long enough"),
+		bytes[:40],
+		transmute([]u8)string("\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+		transmute([]u8)string("ttcf\x00\x01\x00\x00\x00\x00\x00\x01\x00\x00\xff\xff"),
+	}
+	for c, i in cases {
+		path := concat_path(root, fmt.tprintf("bad%d.ttf", i))
+		testing.expect(t, os.write_entire_file(path, c) == nil)
+		_, bad_ok := read_font_names(path)
+		testing.expectf(t, !bad_ok, "case %d is not a font", i)
+	}
+}
+
+@(test)
+an_installed_font_is_found_by_its_family_when_its_file_is_named_otherwise :: proc(t: ^testing.T) {
+	root :: "output/tests/system_fonts_family"
+	_ = os.remove_all(root)
+	testing.expect(t, ensure_directory(root + "/sub"))
+	regular, _ := os.read_entire_file(INTER, context.temp_allocator)
+	bold, _ := os.read_entire_file(INTER_BOLD, context.temp_allocator)
+	// the bold comes first by name, and a file that only looks like a font is passed over
+	testing.expect(t, os.write_entire_file(root + "/a.ttf", bold) == nil)
+	testing.expect(t, os.write_entire_file(root + "/b.ttf", transmute([]u8)string("x")) == nil)
+	testing.expect(t, os.write_entire_file(root + "/sub/c.otf", regular) == nil)
+	system_font_dirs = {root}
+	defer system_font_dirs = nil
+
+	path, found := find_system_font("Inter")
+	testing.expect(t, found)
+	testing.expect_value(t, path, root + "/sub/c.otf")
+	_, found = find_system_font("Intern")
+	testing.expect(t, !found)
+
+	// with no regular, any style of the family answers
+	testing.expect(t, os.remove(root + "/sub/c.otf") == nil)
+	path, found = find_system_font("inter")
+	testing.expect(t, found)
+	testing.expect_value(t, path, root + "/a.ttf")
+
+	// a file named for the font still wins over a family found inside another
+	testing.expect(t, os.write_entire_file(root + "/Inter.ttf", regular) == nil)
+	path, found = find_system_font("Inter")
+	testing.expect(t, found)
+	testing.expect_value(t, path, root + "/Inter.ttf")
 }

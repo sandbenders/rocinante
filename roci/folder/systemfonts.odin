@@ -9,12 +9,15 @@
 // do about it is the writer's business.
 package folder
 
+import "base:runtime"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:unicode/utf16"
 
 Font_Info :: struct {
 	family:    string,
+	style:     string, // the subfamily (name id 2): Regular, Bold, Italic…
 	copyright: string,
 	licence:   string, // the licence description (name id 13)
 	url:       string, // the licence URL (name id 14)
@@ -65,17 +68,70 @@ read_font_info :: proc(bytes: []u8, allocator := context.allocator) -> (info: Fo
 		info.embedding = be16(bytes, os2_at + 8)
 		info.has_os2 = true
 	}
-	count := int(be16(bytes, name_at + 2))
-	strings_at := name_at + int(be16(bytes, name_at + 4))
+	read_name_table(bytes[name_at:][:min(name_len, len(bytes) - name_at)], &info, allocator)
+	return info, true
+}
+
+// Reads a font file's family and style names only, without reading the whole file:
+// its table directory and its `name` table. False when it is not a font this can read.
+// Strings are made with the temporary allocator.
+read_font_names :: proc(path: string) -> (info: Font_Info, ok: bool) {
+	f, err := os.open(path)
+	if err != nil {
+		return {}, false
+	}
+	defer os.close(f)
+	head: [16]u8
+	if n, _ := os.read_at(f, head[:], 0); n < 12 {
+		return {}, false
+	}
+	start := 0
+	if string(head[:4]) == "ttcf" {
+		start = int(be32(head[:], 12))
+		if n, _ := os.read_at(f, head[:12], i64(start)); n < 12 {
+			return {}, false
+		}
+	}
+	version := string(head[:4])
+	if version != "\x00\x01\x00\x00" && version != "OTTO" && version != "true" {
+		return {}, false
+	}
+	directory := make([]u8, int(be16(head[:], 4)) * 16, context.temp_allocator)
+	if n, _ := os.read_at(f, directory, i64(start + 12)); n < len(directory) {
+		return {}, false
+	}
+	for i in 0 ..< len(directory) / 16 {
+		record := directory[i * 16:][:16]
+		if string(record[:4]) != "name" {
+			continue
+		}
+		table := make([]u8, int(be32(record, 12)), context.temp_allocator)
+		if n, _ := os.read_at(f, table, i64(be32(record, 8))); n < 6 {
+			return {}, false
+		}
+		read_name_table(table, &info, context.temp_allocator)
+		return info, true
+	}
+	return {}, false
+}
+
+// The names a font's `name` table holds, its bytes given alone.
+@(private)
+read_name_table :: proc(table: []u8, info: ^Font_Info, allocator: runtime.Allocator) {
+	if len(table) < 6 {
+		return
+	}
+	count := int(be16(table, 2))
+	strings_at := int(be16(table, 4))
 	// Windows and Unicode names are UTF-16, Macintosh ones are plain Roman text; the
 	// first of each id found is kept, English Windows names first.
 	best := [15]int{}
 	for i in 0 ..< count {
-		record := name_at + 6 + i * 12
-		if record + 12 > len(bytes) {
+		record := 6 + i * 12
+		if record + 12 > len(table) {
 			break
 		}
-		platform, language, id := be16(bytes, record), be16(bytes, record + 4), int(be16(bytes, record + 6))
+		platform, language, id := be16(table, record), be16(table, record + 4), int(be16(table, record + 6))
 		if id > 14 {
 			continue
 		}
@@ -88,21 +144,21 @@ read_font_info :: proc(bytes: []u8, allocator := context.allocator) -> (info: Fo
 		if rank <= best[id] {
 			continue
 		}
-		length, offset := int(be16(bytes, record + 8)), int(be16(bytes, record + 10))
+		length, offset := int(be16(table, record + 8)), int(be16(table, record + 10))
 		from := strings_at + offset
-		if from + length > len(bytes) {
+		if from + length > len(table) {
 			continue
 		}
-		text := decode_name(bytes[from:][:length], platform != 1, allocator)
+		text := decode_name(table[from:][:length], platform != 1, allocator)
 		best[id] = rank
 		switch id {
 		case 0:  info.copyright = text
 		case 1:  info.family = text
+		case 2:  info.style = text
 		case 13: info.licence = text
 		case 14: info.url = text
 		}
 	}
-	return info, true
 }
 
 @(private)
@@ -240,9 +296,11 @@ simple_name :: proc(name: string) -> string {
 }
 
 // The font file installed on this computer for a name, or "" when there is none.
-// The file's name has to be the font's name (`Helvetica Neue`, `HelveticaNeue`) or
-// the name and `Regular`, with or without a hyphen; the folders are searched a few
-// levels down, those of the user first. The path is made with the temporary allocator.
+// A file named for the font (`Helvetica Neue`, `HelveticaNeue`), or for the name and
+// `Regular`, with or without a hyphen, is found from its name alone. Otherwise each
+// font file is asked its family name, so `Consolas` finds Windows' `consola.ttf`, and
+// a regular style wins over the others. The folders are searched a few levels down,
+// those of the user first. The path is made with the temporary allocator.
 find_system_font :: proc(name: string) -> (path: string, found: bool) {
 	wanted := simple_name(name)
 	if wanted == "" {
@@ -250,8 +308,9 @@ find_system_font :: proc(name: string) -> (path: string, found: bool) {
 	}
 	dirs := system_font_dirs if system_font_dirs != nil else default_font_dirs()
 	exact, regular := "", ""
+	fonts := make([dynamic]string, context.temp_allocator)
 	for dir in dirs {
-		search_font_dir(dir, wanted, 0, &exact, &regular)
+		search_font_dir(dir, wanted, 0, &exact, &regular, &fonts)
 		if exact != "" {
 			break
 		}
@@ -259,20 +318,38 @@ find_system_font :: proc(name: string) -> (path: string, found: bool) {
 	if exact != "" {
 		return exact, true
 	}
-	return regular, regular != ""
+	if regular != "" {
+		return regular, true
+	}
+	any_style := ""
+	for font in fonts {
+		info, ok := read_font_names(font)
+		if !ok || simple_name(info.family) != wanted {
+			continue
+		}
+		if simple_name(info.style) == "regular" {
+			return font, true
+		}
+		if any_style == "" {
+			any_style = font
+		}
+	}
+	return any_style, any_style != ""
 }
 
 @(private)
-search_font_dir :: proc(dir, wanted: string, depth: int, exact, regular: ^string) {
+search_font_dir :: proc(dir, wanted: string, depth: int, exact, regular: ^string, fonts: ^[dynamic]string) {
 	entries, err := os.read_all_directory_by_path(dir, context.temp_allocator)
 	if err != nil {
 		return
 	}
+	// in the order of their names, so every computer finds the same file first
+	slice.sort_by(entries, proc(a, b: os.File_Info) -> bool {return a.name < b.name})
 	for entry in entries {
 		full := strings.concatenate({dir, "/", entry.name}, context.temp_allocator)
 		if entry.type == .Directory {
 			if depth < 4 {
-				search_font_dir(full, wanted, depth + 1, exact, regular)
+				search_font_dir(full, wanted, depth + 1, exact, regular, fonts)
 			}
 			continue
 		}
@@ -288,6 +365,7 @@ search_font_dir :: proc(dir, wanted: string, depth: int, exact, regular: ^string
 		if !is_font {
 			continue
 		}
+		append(fonts, full)
 		stem := simple_name(entry.name[:dot])
 		if stem == wanted && exact^ == "" {
 			exact^ = full
