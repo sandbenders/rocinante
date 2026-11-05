@@ -1,0 +1,43 @@
+// The pixels of a picture. pixel reads one color, crop takes a part, resize scales (as nearest
+// keeps hard edges, so a few pixels become big squares), filter changes the colors or blurs,
+// and the picture itself is never changed: each of them gives a new one. Press the mouse on
+// the landscape to look at a place in it: the magnifier is a crop made big, and the color
+// beside it is the pixel under the spot.
+window size 680 420 title "pixels"
+photo = load "landscape.png"
+small = resize photo size 96 0
+spot = { 192, 100 }
+
+draw [
+  background 245
+  if pressed [ spot = mouse - { 20, 20 } ]
+  image photo at 20 20
+  fx = clamp spot.x 8 312
+  fy = clamp spot.y 6 194
+  zoom = crop photo at (fx - 8) (fy - 6) size 16 12
+  image (resize zoom size 192 144 as nearest) at 360 20
+  no fill
+  stroke white
+  rect at (20 + fx - 8) (20 + fy - 6) size 16 12
+  c = pixel photo at spot.x spot.y
+  fill c
+  no stroke
+  circle at 580 190 radius 20
+  fill 40
+  font "Inter" size 13
+  text ("rgb " + round c.r + " " + round c.g + " " + round c.b) at 360 178
+  text "the pixel under the spot" at 360 196
+  font "Inter" size 12
+  image (filter small as gray) at 20 250
+  text "gray" at 20 354
+  image (filter small as invert) at 126 250
+  text "invert" at 126 354
+  image (filter small as blur by 3) at 232 250
+  text "blur" at 232 354
+  image (filter small as edges) at 338 250
+  text "edges" at 338 354
+  image (filter small as posterize by 3) at 444 250
+  text "posterize" at 444 354
+  image (filter small as pixelate by 6) at 550 250
+  text "pixelate" at 550 354
+]

@@ -1,0 +1,10 @@
+photo = load "landscape.png"
+stencil = canvas 200 200
+draw into stencil [
+  background black
+  no stroke
+  fill white
+  circle at 100 100 radius 80
+]
+background 40
+image (mask photo by stencil) at 100 50 width 200

@@ -1,0 +1,8 @@
+photo = load "landscape.png"
+image photo at 20 20
+c = pixel photo at 100 40
+no stroke
+fill c
+rect at 20 200 size 120 60
+fill (pixel photo at 100 100)
+rect at 160 200 size 120 60

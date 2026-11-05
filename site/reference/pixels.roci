@@ -1,0 +1,8 @@
+photo = load "landscape.png"
+small = resize photo size 8 6
+row = crop small at 0 3 size 8 1
+colors = pixels row
+for i from 0 to 7 [
+  fill (item (i + 1) of colors)
+  rect at (20 + i * 45) 30 size 40 40
+]

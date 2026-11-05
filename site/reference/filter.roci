@@ -1,0 +1,10 @@
+photo = load "landscape.png"
+background 245
+image photo at 10 10 width 120
+image (filter photo as gray) at 140 10 width 120
+image (filter photo as invert) at 270 10 width 120
+image (filter photo as blur by 5) at 10 100 width 120
+image (filter photo as threshold by 110) at 140 100 width 120
+image (filter photo as edges) at 270 100 width 120
+image (filter photo as posterize by 3) at 10 190 width 120
+image (filter photo as pixelate by 6) at 140 190 width 120

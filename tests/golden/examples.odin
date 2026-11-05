@@ -54,6 +54,7 @@ EXAMPLES := [?]Example{
 	{"export", 5, {1}}, // a ring of dots; s and r save pictures, which a golden run never presses
 	{"blend", 3, {1}}, // seven blends over the same gray, and a bright wall clipped to a box
 	{"paint", 3, {1}}, // a picture as the window, the letters of a text and the outlines of shapes
+	{"pixels", 3, {1}}, // pixel, crop, resize and filter: a magnifier and six filtered thumbnails
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.

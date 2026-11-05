@@ -1,6 +1,6 @@
 ---
 title: "Pictures"
-summary: "Loading pictures from assets, drawing them at any size, tinting and filling with them, and saving the window as a PNG or a frame sequence."
+summary: "Loading pictures from assets, drawing them, painting with them, reading and changing their pixels, and saving the window as a PNG."
 weight: 15
 ---
 
@@ -129,6 +129,54 @@ rect at 230 80 size 140 140
 ```
 
 Each picture sits in the box of the thing it paints: the letters' box for a text, the shape's box for an outline. So `cover` fills that box, and a thick outline reaches a little outside it, where the picture's edge colors continue. Text takes its picture from a file only: a canvas keeps its pixels on the graphics card, so a text filled with one stays in its color. Emoji in such a text are cut from the picture too, as plain shapes.
+
+## Reading and changing pixels
+
+A picture never changes. `pixel` reads one of its colors, and `crop`, `resize`, `filter` and `mask` each give a new picture made from it. `pixel photo at 10 20` counts from the top left, and a place outside the picture is clear black:
+
+```roci picture
+photo = load "landscape.png"
+image photo at 20 20
+sky = pixel photo at 100 10
+sun = pixel photo at 220 100
+fill sky
+no stroke
+rect at 20 200 size 120 60
+fill sun
+rect at 160 200 size 120 60
+```
+
+`pixels photo` gives every color as a list, left to right and top to bottom, for a picture of up to a million pixels (`resize` a bigger one first). `picture from colors size 3 2` goes the other way and makes a picture from a list of colors:
+
+```roci picture
+colors = [ red orange gold teal navy purple ]
+small = picture from colors size 3 2
+image small at 20 20 size 240 160
+```
+
+`crop` keeps the part inside a box, and `resize` scales. A smaller picture takes the average of the pixels it stands for, and `as nearest` keeps hard edges, so a few pixels become big squares. A side given as 0 follows the picture's shape:
+
+```roci picture
+photo = load "landscape.png"
+part = crop photo at 150 60 size 40 30
+image (resize part size 190 0) at 10 10
+image (resize part size 190 0 as nearest) at 210 10
+```
+
+`filter` takes one of `gray`, `invert`, `threshold`, `posterize`, `blur`, `edges` and `pixelate`, and `by` says how much: a brightness for `threshold` (0 to 255, the start 128), a number of steps for `posterize` (4), a radius in pixels for `blur` (2) and a block size in pixels for `pixelate` (8). `mask photo by shape` shows the picture only where the shape picture is white and solid, stretching the shape over it, so a canvas you drew a white circle on makes a round window.
+
+```roci picture
+photo = load "landscape.png"
+background 245
+image photo at 10 10 width 120
+image (filter photo as gray) at 140 10 width 120
+image (filter photo as blur by 5) at 270 10 width 120
+image (filter photo as edges) at 10 100 width 120
+image (filter photo as posterize by 3) at 140 100 width 120
+image (filter photo as pixelate by 6) at 270 100 width 120
+```
+
+These work on a canvas too, but a canvas keeps its pixels on the graphics card, so reading one copies them back first and stalls the frame. Do it once and keep the answer, not for every pixel of every frame. A made picture is remembered by what made it, so asking for the same crop or filter of the same picture each frame costs nothing after the first time, and the pictures the sketch made and has not used for a long while are let go if there are very many. Per-pixel loops in a sketch are slow; `filter`, `resize` and `mask` do the whole picture in one step, so reach for them first (`examples/pixels` shows a magnifier made of `crop` and `resize`).
 
 ## When a picture is not there
 

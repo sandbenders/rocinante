@@ -1,0 +1,6 @@
+photo = load "landscape.png"
+small = resize photo size 24 0
+smooth = resize small size 180 0
+hard = resize small size 180 0 as nearest
+image smooth at 10 10
+image hard at 210 10

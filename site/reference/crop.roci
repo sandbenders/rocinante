@@ -1,0 +1,4 @@
+photo = load "landscape.png"
+image photo at 10 10 width 180
+part = crop photo at 80 20 size 70 70
+image part at 210 10 width 170
