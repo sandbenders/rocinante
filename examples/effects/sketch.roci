@@ -1,0 +1,17 @@
+// Shaders of your own. effect runs a shader over the finished picture of the window, so it
+// can warp, tint or darken everything drawn: wave.hlsl waves the stripes and tints them, and
+// vignette.hlsl darkens the corners around the mouse. Both are in assets/shaders and are read
+// again when you save them, so you can change a number in one while the sketch runs. The
+// values after by are the shader's own globals, given by name.
+window size 480 320 title "effects"
+colors = [ tomato gold seagreen steelblue orchid ]
+
+draw [
+  background 235
+  for i from 1 to 5 [
+    fill (item i of colors)
+    rect at (24 + (i - 1) * 88) 40 size 72 240
+  ]
+  effect "wave.hlsl" by { amount: 0.015, speed: 3, tint: white }
+  effect "vignette.hlsl" by { strength: 0.5 }
+]

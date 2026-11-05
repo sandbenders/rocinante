@@ -25,3 +25,7 @@ vendor:stb      Public-Domain
 vendor:portmidi MIT
 # sancho: rocinante's own PNG writer and deflate, published on their own; its LICENSE is 0BSD (checked 2026-10-30).
 vendor/sancho   0BSD
+# shaderc (Google, wraps glslang) and SPIRV-Cross, translating a sketch's own shaders while it runs: Apache-2.0 both, by their LICENSE files
+# (shaderc's README and SPIRV-Cross's LICENSE; glslang inside shaderc has BSD-3-Clause, MIT and Apache-2.0 parts, checked 2026-11-05).
+vendor/shaderc      Apache-2.0
+vendor/spirvcross   Apache-2.0

@@ -1,0 +1,7 @@
+background 235
+colors = [ tomato gold seagreen steelblue orchid ]
+for i from 1 to 5 [
+  fill (item i of colors)
+  rect at (20 + (i - 1) * 74) 40 size 60 220
+]
+effect "wave.hlsl" by { amount: 0.02, phase: time * 3 }

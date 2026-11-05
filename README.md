@@ -119,6 +119,8 @@ cd /usr/local/lib && doas ln -s libSDL3_ttf.so.0.2.2 libSDL3_ttf.so.0.2 && doas 
 
 FreeType comes with the base system (`/usr/X11R6`). OpenBSD's linker has no unversioned `.so` names and does not search `/usr/local/lib` by itself, hence the two-number symlink and `ldconfig -m`; when Odin still cannot find `-lSDL3_ttf`, add `-extra-linker-flags:"-L/usr/local/lib"`. Color emoji need PlutoSVG: build `plutovg` (v1.3.1) and `plutosvg` (v0.0.8, `-Dfreetype=enabled`) with `meson` the same way, then configure SDL_ttf with `-DSDLTTF_PLUTOSVG=ON`. On a Wayland session OpenBSD's Mesa cannot show Vulkan windows, so rocinante falls back to X11 through XWayland by itself. `tools/ci/install-sdl3.sh` builds SDL3 and SDL3_ttf together, with FreeType and HarfBuzz from the system.
 
+A sketch's own shaders (`effect`) are translated while it runs by [shaderc](https://github.com/google/shaderc) and [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross), which the engine links: `sudo pacman -S shaderc spirv-cross` on Arch, `brew install shaderc spirv-cross` on macOS, `sudo apt install libshaderc-dev libspirv-cross-c-shared-dev` on Debian and Ubuntu (the package names on Fedora, FreeBSD and OpenBSD, and the libraries for Windows, are still being confirmed). Direct3D 12 takes neither of the formats they make, so a sketch's own shaders wait there.
+
 Systems with no SDL3 package (Ubuntu 24.04, Debian 12) can build it with `tools/ci/install-sdl3.sh`, as the GitHub pipeline does. The [getting started guide](https://rocinante-lang.org/guides/01-getting-started/) has every step. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) Then, from the repository root:
 
 ```
