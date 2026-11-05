@@ -454,7 +454,7 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 				}
 			}
 			ir := check_expr(c, a, false)
-			if i < len(def.kinds) && (def.kinds[i] == .Colour || def.kinds[i] == .Paint) {
+			if i < len(def.kinds) && (def.kinds[i] == .Colour || def.kinds[i] == .Paint || (verb.name == "picture" && def.kinds[i] == .List)) {
 				check_colour_list(c, ir, a)
 			}
 			// A pair of numbers (`at 10 20`) may be written as one vector (`at p`).

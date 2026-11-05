@@ -1,0 +1,6 @@
+── I could not read the pixels of a canvas ───────────── sketch.roci:2:7
+
+2 │ print (pixel c at 5 5)
+  │       ^^^^^^^^^^^^^^^^
+
+The graphics card would not give the canvas back (there are no graphics to read it with), so there are no pixels to read. The answer is empty, and the sketch carries on.

@@ -38,6 +38,13 @@ test_blend_and_clip_are_written_the_way_they_are_read :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_the_pixel_verbs_are_written_the_way_they_are_read :: proc(t: ^testing.T) {
+	expect_formatted(t, "photo=load \"a.png\"\nc  =  pixel photo   at 1 2\n", "photo = load \"a.png\"\nc = pixel photo at 1 2\n")
+	expect_formatted(t, "x = filter photo   as blur by 3\ny = crop photo at 1 2 size 3 4\n", "x = filter photo as blur by 3\ny = crop photo at 1 2 size 3 4\n")
+	expect_formatted(t, "p = picture from colors size 2 1\nm = mask photo by p\nr = resize photo size 8 0 as nearest\n", "p = picture from colors size 2 1\nm = mask photo by p\nr = resize photo size 8 0 as nearest\n")
+}
+
+@(test)
 test_literals_are_written_as_they_were_and_brackets_have_one_space_inside :: proc(t: ^testing.T) {
 	expect_formatted(t, "v={1,2}\nl=[1   2 3]\nr={a:1,b:\"x\"}\nc=#FF8800\n", "v = { 1, 2 }\nl = [ 1 2 3 ]\nr = { a: 1, b: \"x\" }\nc = #FF8800\n")
 	expect_formatted(t, "e=[]\nf={}\n", "e = []\nf = {}\n")

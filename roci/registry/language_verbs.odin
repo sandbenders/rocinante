@@ -22,6 +22,26 @@ OUTLINE_OPTIONS := []Option{
 	{"alpha", {.Number}, false},
 }
 
+// What `crop` takes: the box to keep, from the picture's top left, in pixels.
+CROP_OPTIONS := []Option{
+	{"at", {.Number, .Number}, true},
+	{"size", {.Number, .Number}, true},
+}
+
+// What `resize` takes: the new size (a side given as 0 follows the picture's shape), and whether to
+// mix pixels (`smooth`, the start) or keep hard edges (`nearest`).
+RESIZE_OPTIONS := []Option{
+	{"size", {.Number, .Number}, true},
+	{"as", {.Name}, false},
+}
+
+// What `filter` takes: which filter, and how much of it (a brightness, a number of steps, a radius
+// or a block size in pixels, by the filter).
+FILTER_OPTIONS := []Option{
+	{"as", {.Name}, true},
+	{"by", {.Number}, false},
+}
+
 LANGUAGE_VERBS := []Verb{
 	{"add", {{LIST_ITEM, {{"to", {.List}, true}}, .None}}, "Puts an item at the end of a list: `add p to particles`."},
 	{"remove", {{LIST_ITEM, {{"from", {.Any}, true}}, .None}}, "Takes an item out of a list, or a name out of a table: `remove p from particles`, `remove \"cat\" from counts`."},
@@ -32,6 +52,13 @@ LANGUAGE_VERBS := []Verb{
 	{"item", {{{{"index", .Number}}, {{"of", {.List}, true}}, .Any}}, "The item at a place in a list, counting from 1: `item 1 of scores`."},
 	{"save", {{{{"name", .Text}}, nil, .None}}, "Saves a picture of the window as a PNG file once the frame is drawn: `save \"shot.png\"`. A plain name goes in the sketch's `output` folder, an absolute path is used as it is, and the folders are made. A run of `#` in the name is the frame number, so a `save` in `draw` makes a frame sequence: `save \"frame-####.png\"` writes frame-0001.png, frame-0002.png and so on."},
 	{"load", {{{{"name", .Text}}, nil, .Image}}, "Loads a picture from the sketch's assets folder by its file name (PNG, JPEG, BMP, TGA or QOI): `photo = load \"cat.png\"`. A picture knows its size in pixels: `photo.width` and `photo.height`, which can be read and not changed. A picture that is not there gives an empty one, which draws nothing."},
+	{"pixel", {{{{"picture", .Image}}, {{"at", {.Number, .Number}, true}}, .Colour}}, "The color of one pixel of a picture or canvas, counting from the top left: `pixel photo at 10 20`. A place outside the picture is clear black. Reading a canvas copies it back from the graphics card first, which stalls the frame, so do it once and keep the answer."},
+	{"pixels", {{{{"picture", .Image}}, nil, .List}}, "Every color of a picture, left to right and top to bottom, as a list: `pixels photo`. Up to a million pixels; `crop` or `resize` a bigger one first."},
+	{"picture", {{{}, {{"from", {.List}, true}, {"size", {.Number, .Number}, true}}, .Image}}, "Makes a picture from a list of colors, left to right and top to bottom: `picture from colors size 4 3`. A list that is too short leaves the rest clear."},
+	{"crop", {{{{"picture", .Image}}, CROP_OPTIONS, .Image}}, "A new picture of the part of a picture inside a box, in pixels from its top left: `crop photo at 10 20 size 100 80`. The part outside the picture is left out."},
+	{"resize", {{{{"picture", .Image}}, RESIZE_OPTIONS, .Image}}, "A new picture of another size: `resize photo size 100 80`. A side given as 0 follows the picture's shape, so `size 100 0` keeps it. `as nearest` keeps hard edges, which pixel art wants; the start is smooth."},
+	{"filter", {{{{"picture", .Image}}, FILTER_OPTIONS, .Image}}, "A new picture with a filter applied: gray, invert, threshold, posterize, blur, edges or pixelate: `filter photo as blur by 4`. `by` is a brightness for threshold (0 to 255, the start 128), a number of steps for posterize (4), a radius in pixels for blur (2) and a block size in pixels for pixelate (8)."},
+	{"mask", {{{{"picture", .Image}}, {{"by", {.Image}, true}}, .Image}}, "A new picture that shows only where a stencil picture is white and solid: `mask photo by shape`. The stencil is stretched over the picture."},
 	{"set", {{{{"window", .Window}}, SET_OPTIONS, .None}}, "Changes a window that is open, with the words of `window`: `set w size 400 300 resizable false`."},
 	{"send", {{{{"window", .Window}, {"value", .Any}}, nil, .None}}, "Sends a value to a window; it arrives on that window's next frame: `send w 5`."},
 	{"print", {{{{"value", .Any}}, nil, .None}}, "Writes a value to the console."},

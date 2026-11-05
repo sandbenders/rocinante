@@ -1,0 +1,2 @@
+c = canvas 20 20
+print (pixel c at 5 5)

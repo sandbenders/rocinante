@@ -87,6 +87,8 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 		show_frame(w)
 	}
 	the.frame += 1
+	gfx.images_tick()
+	evict_derived()
 }
 
 // Builds a window's batches and draws them, unless the sketch is headless, where

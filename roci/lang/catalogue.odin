@@ -125,6 +125,9 @@ Message_Id :: enum u8 {
 	Image_Missing,
 	Image_Unreadable,
 	Save_Failed,
+	Picture_Size,
+	Picture_Too_Big,
+	Pixels_Unavailable,
 	Not_A_Canvas,
 	Canvas_Size,
 }
@@ -423,6 +426,15 @@ CATALOGUE := [Message_Id]Entry{
 	.Save_Failed = {.Error, "I could not save `{a}`",
 		"{b} The sketch carries on.",
 		"Save a PNG like this:", "{d}"},
+	.Picture_Size = {.Error, "I cannot make a picture of that size",
+		"{b} The picture is empty and draws nothing, and the sketch carries on.",
+		"For example:", "{d}"},
+	.Picture_Too_Big = {.Error, "This picture has too many pixels to list",
+		"`pixels` gives every color as an item of a list, and a picture of {b} pixels would make a list of that many. Up to a million are listed. Make the picture smaller first, and the sketch carries on with an empty list.",
+		"Make it smaller first:", "{d}"},
+	.Pixels_Unavailable = {.Error, "I could not read the pixels of a canvas",
+		"{b} The answer is empty, and the sketch carries on.",
+		"", ""},
 	.Not_A_Canvas = {.Error, "I can only draw into a canvas",
 		"{b} Nothing is drawn, and the sketch carries on.",
 		"Make a canvas once, then draw into it:", "{d}"},
@@ -485,7 +497,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Save_Failed, .Not_A_Canvas, .Canvas_Size:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Save_Failed, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size:
 		return true
 	case:
 		return false

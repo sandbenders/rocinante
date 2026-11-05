@@ -18,8 +18,8 @@ TEST_VERBS_EXTRA := []registry.Verb{
 	{"right", {{TEST_STEP, nil, .None}}, "x"},
 	{"text", {{{{"text", .Text}}, TEST_TEXT_OPTIONS, .None}}, "x"},
 	{"touching", {{{{"a", .Any}, {"b", .Any}}, nil, .None}}, "x"},
-	// Two shapes: `picture photo width 200` could read `width` as a value for the longer one.
-	{"picture", {
+	// Two shapes: `snapshot photo width 200` could read `width` as a value for the longer one.
+	{"snapshot", {
 		{{{"photo", .Any}}, TEST_PICTURE_OPTIONS, .None},
 		{{{"photo", .Any}, {"x", .Number}, {"y", .Number}}, nil, .None},
 	}, "x"},
@@ -190,8 +190,8 @@ test_width_and_height_are_values_until_the_arguments_are_filled :: proc(t: ^test
 
 @(test)
 test_a_word_that_is_both_an_option_and_a_value_is_flagged :: proc(t: ^testing.T) {
-	got := parse_text("picture photo width 200")
-	testing.expect_value(t, strings.trim_space(got.tree), "(call picture (name photo) (opt width (num 200)))")
+	got := parse_text("snapshot photo width 200")
+	testing.expect_value(t, strings.trim_space(got.tree), "(call snapshot (name photo) (opt width (num 200)))")
 	if testing.expect_value(t, len(got.result.diagnostics), 1) {
 		testing.expect_value(t, got.result.diagnostics[0].id, Message_Id.Ambiguous_Word)
 		testing.expect_value(t, severity_of(got.result.diagnostics[0]), Severity.Warning)
@@ -818,7 +818,7 @@ test_the_caret_follows_columns_in_code_points_and_tabs_show_as_spaces :: proc(t:
 test_hints_and_warnings_are_labelled :: proc(t: ^testing.T) {
 	hint := parse_text("x = (((1)))")
 	testing.expect(t, strings.contains(render_all(hint.src, hint.result.diagnostics, context.temp_allocator), "Hint: Three brackets deep"))
-	warning := parse_text("picture photo width 200")
+	warning := parse_text("snapshot photo width 200")
 	testing.expect(t, strings.contains(render_all(warning.src, warning.result.diagnostics, context.temp_allocator), "Warning: `width` could be read two ways"))
 }
 

@@ -1152,6 +1152,35 @@ test_blend_and_clip_are_checked_like_the_other_style_words :: proc(t: ^testing.T
 }
 
 @(test)
+test_the_pixel_verbs_are_checked_for_their_words_and_what_they_give :: proc(t: ^testing.T) {
+	PHOTO :: "photo = load \"a.png\"\n"
+	expect_errors(t, PHOTO + "c = pixel photo at 3 4\nprint c.r\nd = pixel photo at { 3, 4 }\nfill c", {})
+	expect_errors(t, PHOTO + "colors = pixels photo\nfirst = item 1 of colors\nfill first\nprint (count colors)", {})
+	expect_errors(t, "p = picture from [ red green ] size 2 1\nimage p at 0 0", {})
+	expect_errors(t, "colors = [ red blue ]\np = picture from colors size 2 1\nq = picture from [ 10 200 ] size { 2, 1 }", {})
+	expect_errors(t, PHOTO + "a = crop photo at 1 2 size 3 4\nb = resize photo size 10 0\nc = resize photo size 10 10 as nearest\nd = filter photo as blur by 3\ne = mask photo by a\nimage a at 0 0", {})
+	expect_errors(t, PHOTO + "image (filter photo as gray) at 0 0", {})
+	for word in ([?]string{"gray", "invert", "threshold", "posterize", "blur", "edges", "pixelate"}) {
+		expect_errors(t, strings.concatenate({PHOTO, "x = filter photo as ", word}, context.temp_allocator), {})
+	}
+	// The words that are not there, and the ones that have to be.
+	expect_errors(t, PHOTO + "x = filter photo as sepia", {.Unknown_Choice})
+	expect_errors(t, PHOTO + "x = resize photo size 5 5 as soft", {.Unknown_Choice})
+	expect_errors(t, PHOTO + "x = filter photo", {.Missing_Required_Word})
+	expect_errors(t, PHOTO + "x = pixel photo", {.Missing_Required_Word})
+	expect_errors(t, PHOTO + "x = crop photo at 1 2", {.Missing_Required_Word})
+	expect_errors(t, PHOTO + "x = resize photo", {.Missing_Required_Word})
+	expect_errors(t, PHOTO + "x = mask photo", {.Missing_Required_Word})
+	expect_errors(t, "x = picture size 2 2", {.Missing_Required_Word})
+	// What they take is a picture, and a list of colors is only colors.
+	expect_errors(t, "x = pixel 5 at 1 1", {.Wrong_Argument_Kind})
+	expect_errors(t, PHOTO + "x = picture from [ \"a\" \"b\" ] size 2 1", {.Colours_Expected})
+	expect_errors(t, PHOTO + "x = mask photo by 5", {.Wrong_Argument_Kind})
+	// A color from `pixel` is a color, so it cannot be used as a number.
+	expect_errors(t, PHOTO + "c = pixel photo at 1 1\nprint (c + 1)", {.Operator_Types})
+}
+
+@(test)
 test_a_list_may_hold_shapes_of_different_kinds :: proc(t: ^testing.T) {
 	// The records merge into one shape with every field, and each stays the shape
 	// its own braces make it.

@@ -531,6 +531,9 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 				continue
 			}
 			roci.start_headless(1)
+			// The message about missing graphics needs graphics to be missing, on any computer.
+			roci.set_graphics_refused(id == .Pixels_Unavailable)
+			defer roci.set_graphics_refused(false)
 			p, ok := load("sketch.roci", string(data))
 			testing.expectf(t, ok, "%s.roci has check errors", path)
 			p.path = sketch_path

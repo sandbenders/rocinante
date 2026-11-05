@@ -21,12 +21,16 @@ GRADIENT_KINDS := []string{"linear", "radial", "conic"}
 IMAGE_FILL_WORDS := []string{"cover", "fit", "stretch", "tile", "center"}
 MIX_SPACES := []string{"oklab", "rgb", "oklch"}
 CURSOR_WORDS := []string{"arrow", "none"}
+FILTER_WORDS := []string{"gray", "invert", "threshold", "posterize", "blur", "edges", "pixelate"}
+RESIZE_WORDS := []string{"smooth", "nearest"}
 BLEND_WORDS := []string{"normal", "add", "multiply", "screen", "subtract", "lighten"}
 EASE_WORDS := []string{"smooth", "linear", "in", "out", "back", "elastic", "bounce"}
 MOUSE_BUTTON_WORDS := []string{"left", "middle", "right", "back", "forward"}
 
 WORD_CHOICES := []Word_Choices{
 	{"caps", "style", {"butt", "round", "square"}},
+	{"filter", "as", FILTER_WORDS},
+	{"resize", "as", RESIZE_WORDS},
 	{"blend", "mode", BLEND_WORDS},
 	{"", "blend", BLEND_WORDS}, // the style word of a shape, a text, a picture and `with`
 	{"align", "side", ALIGN_WORDS},

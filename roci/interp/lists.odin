@@ -69,6 +69,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		save_picture(it, e, as_text(eval(it, call.args[0])))
 	case .Outline:
 		return outline_verb(it, call)
+	case .Pixel, .Pixels, .Picture, .Crop, .Resize, .Filter, .Mask:
+		return picture_verb(it, e, call, code)
 	case .Add:
 		item := eval(it, call.args[0])
 		list := as_list(option_or_nil(it, call.options, "to"))

@@ -111,6 +111,13 @@ Verb_Code :: enum u8 {
 	Inside,
 	Cast,
 	Outline,
+	Pixel,
+	Pixels,
+	Picture,
+	Crop,
+	Resize,
+	Filter,
+	Mask,
 }
 
 // The registry's name of each code. A test fails when the registry gains a verb
@@ -216,6 +223,13 @@ VERB_CODE_NAMES := [Verb_Code]string{
 	.Inside = "inside",
 	.Cast = "cast",
 	.Outline = "outline",
+	.Pixel = "pixel",
+	.Pixels = "pixels",
+	.Picture = "picture",
+	.Crop = "crop",
+	.Resize = "resize",
+	.Filter = "filter",
+	.Mask = "mask",
 }
 
 // The code of each verb of `registry.ALL_VERBS`, by its place there.

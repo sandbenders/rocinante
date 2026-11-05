@@ -106,6 +106,9 @@ Sketch :: struct {
 	shot_ready:   bool,
 	cursor_shown: Cursor, // what the one cursor of the program is now
 	canvases:     [dynamic]Image, // every canvas made, for drawing their rounds before the windows
+	derived:      map[u64]Derived_Picture, // the pictures `crop`, `resize`, `filter`, `mask` and `picture` made, by what made them (pixels.odin)
+	derived_budget: int, // bytes the made pictures may hold before the longest unused go; 0 for the usual (tests lower it)
+	canvas_reads: map[Image]Canvas_Read,   // the last read-back of each canvas that was asked about
 	into:         Image,   // the canvas the verbs draw onto now, or 0 for the window (canvases.odin)
 }
 
@@ -181,6 +184,11 @@ shutdown :: proc() {
 	delete(the.reuse)
 	delete(the.error)
 	delete(the.canvases)
+	delete(the.derived)
+	for _, read in the.canvas_reads {
+		delete(read.pixels)
+	}
+	delete(the.canvas_reads)
 	gfx.images_stop()
 	the = {}
 }

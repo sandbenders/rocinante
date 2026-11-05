@@ -188,12 +188,24 @@ test_the_header_compiles_as_c_and_as_cplusplus :: proc(t: ^testing.T) {
 		{"cc", "-fsyntax-only", "-Wall", "-Wextra", "-Werror", "-x", "c", "include/roci.h"},
 		{"c++", "-fsyntax-only", "-Wall", "-Wextra", "-Werror", "-x", "c++", "include/roci.h"},
 	}) {
-		state, stdout, stderr, err := os.process_exec({command = desc}, context.allocator)
+		// A compiler that is killed by the system while the tests run side by side (an exit code of 9
+		// with nothing said, seen now and then on a Mac) is run again; one that rejects the header says why.
+		state: os.Process_State
+		stdout, stderr: []byte
+		err: os.Error
+		for _ in 0 ..< 3 {
+			state, stdout, stderr, err = os.process_exec({command = desc}, context.allocator)
+			if err != nil || state.exit_code == 0 || len(stderr) > 0 {
+				break
+			}
+			delete(stdout)
+			delete(stderr)
+		}
 		defer delete(stdout)
 		defer delete(stderr)
 		if err != nil {
 			continue // no such compiler here
 		}
-		testing.expectf(t, state.exit_code == 0, "%s rejects include/roci.h: %s", desc[0], string(stderr))
+		testing.expectf(t, state.exit_code == 0, "%s rejects include/roci.h (exit code %d, stdout %q): %s", desc[0], state.exit_code, string(stdout), string(stderr))
 	}
 }

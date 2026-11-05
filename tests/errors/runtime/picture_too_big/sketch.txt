@@ -1,0 +1,10 @@
+── This picture has too many pixels to list ─────────── sketch.roci:2:10
+
+2 │ colors = pixels big
+  │          ^^^^^^^^^^
+
+`pixels` gives every color as an item of a list, and a picture of 1100000 pixels would make a list of that many. Up to a million are listed. Make the picture smaller first, and the sketch carries on with an empty list.
+
+Make it smaller first:
+    small = resize photo size 64 0
+    colors = pixels small

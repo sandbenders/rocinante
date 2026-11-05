@@ -1,0 +1,8 @@
+── I cannot make a picture of that size ──────────────── sketch.roci:1:9
+
+1 │ small = picture from [ red ] size 0 5
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A picture is at least 1 by 1 pixels and at most 16384 on a side, and 32 million pixels in all. The picture is empty and draws nothing, and the sketch carries on.
+
+For example:  small = picture from [ red blue ] size 2 1
