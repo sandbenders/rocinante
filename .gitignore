@@ -10,6 +10,7 @@ output/
 /golden
 /golden.exe
 /SDL3.dll
+/SDL3_ttf.dll
 /imgui.ini
 /ui
 /ui.exe
