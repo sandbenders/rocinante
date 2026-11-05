@@ -149,14 +149,28 @@ OPEN_LICENCE_WORDS := [?]string{
 	"opensource.org/licenses/mit", "public domain", "creativecommons.org/publicdomain", "cc0",
 }
 
+// Words in a font's licence fields that forbid sharing it. They win over a free
+// licence named in the same fields: Windows' Segoe UI and Arial say "Any other use is
+// prohibited" and then name the MIT License, which covers only their Hebrew layout code.
+@(private)
+CLOSED_LICENCE_WORDS := [?]string{
+	"any other use is prohibited", "may not be redistributed", "may not redistribute",
+	"redistribution is prohibited", "redistribution is not permitted",
+}
+
 // What a font's own fields say about sharing it. The embedding bit 2 ("restricted
-// licence") always wins, and otherwise a free licence has to be named: a font that
-// says nothing is not assumed free.
+// licence") always wins, then words that forbid sharing, and otherwise a free licence
+// has to be named: a font that says nothing is not assumed free.
 font_licence :: proc(info: Font_Info) -> Font_Licence {
 	if info.has_os2 && info.embedding & 0x0002 != 0 {
 		return .Restricted
 	}
 	all := strings.to_lower(strings.concatenate({info.copyright, " ", info.licence, " ", info.url}, context.temp_allocator), context.temp_allocator)
+	for word in CLOSED_LICENCE_WORDS {
+		if strings.contains(all, word) {
+			return .Restricted
+		}
+	}
 	for word in OPEN_LICENCE_WORDS {
 		if strings.contains(all, word) {
 			return .Open

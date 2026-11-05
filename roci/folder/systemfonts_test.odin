@@ -60,6 +60,23 @@ a_font_that_says_nothing_is_not_assumed_free :: proc(t: ^testing.T) {
 }
 
 @(test)
+words_that_forbid_sharing_win_over_a_free_licence_named_beside_them :: proc(t: ^testing.T) {
+	// Windows' Segoe UI and Arial, shortened: their MIT text covers only the Hebrew layout code.
+	segoe := Font_Info {
+		copyright = "© 2025 Microsoft Corporation. All Rights Reserved. Hebrew OpenType Layout logic copyright © 2003 & 2007, Ralph Hancock & John Hudson. This layout logic for Biblical Hebrew is open source software under the MIT License.",
+		licence   = "Microsoft supplied font. You may use this font to create, display, and print content. Any other use is prohibited.\r\n\r\nThe following license, based on the MIT license (http://en.wikipedia.org/wiki/MIT_License), applies to the OpenType Layout logic for Biblical Hebrew.",
+		embedding = 8,
+		has_os2   = true,
+	}
+	testing.expect_value(t, font_licence(segoe), Font_Licence.Restricted)
+	for words in ([]string{"This font may not be redistributed.", "You MAY NOT REDISTRIBUTE it.", "Redistribution is prohibited.", "Redistribution is not permitted."}) {
+		testing.expectf(t, font_licence({licence = words, url = "https://opensource.org/licenses/MIT"}) == .Restricted, "`%s` forbids sharing", words)
+	}
+	// a free licence that speaks of redistribution in its own words stays free
+	testing.expect_value(t, font_licence({licence = "This Font Software is licensed under the SIL Open Font License, Version 1.1. Redistribution and use in source and binary forms are permitted."}), Font_Licence.Open)
+}
+
+@(test)
 the_licence_name_comes_from_the_fields :: proc(t: ^testing.T) {
 	testing.expect_value(t, font_licence_name({licence = "Apache License 2.0"}), "Apache License")
 	testing.expect_value(t, font_licence_name({licence = "Ubuntu Font Licence 1.0"}), "Ubuntu Font Licence")
