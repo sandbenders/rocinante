@@ -36,6 +36,29 @@ Style :: struct {
 	// through (imagefill.odin). Not 0 id: it is drawn, and `fill` holds the colour
 	// the shape would have if it could not be.
 	fill_image:   Image_Fill,
+	// How what is drawn mixes with what is already there, and the box nothing is drawn
+	// outside of: `clip` keeps the box in canvas (logical) pixels as the corners of a
+	// rectangle, already carried through the transform that was current (`set_clip`).
+	blend:        Blend_Mode,
+	clip:         Clip,
+}
+
+// How a shape's colours combine with the picture behind it. Normal puts the shape over it;
+// the others are the usual ways to mix light and ink.
+Blend_Mode :: enum u8 {
+	Normal,   // the shape covers what is behind it, by its alpha
+	Add,      // the colours are added: light on dark glows
+	Multiply, // the colours are multiplied: shadows and ink, never lighter
+	Screen,   // the opposite of multiply: never darker
+	Subtract, // the shape's colours are taken away from what is behind it
+	Lighten,  // each channel keeps the lighter of the two (darken has no such blend: a fixed blend cannot keep the background where a shape is clear)
+}
+
+// The rectangle drawing is kept inside, in canvas pixels: from its top left corner to its
+// bottom right. Off means no limit.
+Clip :: struct {
+	on:   bool,
+	rect: [4]f32, // x0 y0 x1 y1
 }
 
 // How a picture fills a shape.

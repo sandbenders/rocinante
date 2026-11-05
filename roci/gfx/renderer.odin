@@ -17,6 +17,7 @@
 // not retried every frame, so a broken shader never takes the window down.
 package gfx
 
+import "core:math"
 import "core:mem"
 import "core:strings"
 import sdl "vendor:sdl3"
@@ -85,6 +86,7 @@ Pipeline_Key :: struct {
 	program: Program,
 	format:  sdl.GPUTextureFormat,
 	samples: sdl.GPUSampleCount,
+	blend:   Blend_Mode,
 }
 
 Msaa_Key :: struct {
@@ -275,10 +277,41 @@ samples_for :: proc(r: ^Renderer, format: sdl.GPUTextureFormat) -> sdl.GPUSample
 	return ._1
 }
 
+// What the GPU does with a shader's colour (already multiplied by its alpha) and what is
+// behind it. Normal is the shape over its background by its alpha; the others change how
+// the colours combine and leave the alpha channel as Normal does. Multiply keeps the
+// background where the shape is clear, and Screen is `s + d - s * d`.
+blend_state_for :: proc(mode: Blend_Mode) -> sdl.GPUColorTargetBlendState {
+	state := sdl.GPUColorTargetBlendState{
+		src_color_blendfactor = .ONE,
+		dst_color_blendfactor = .ONE_MINUS_SRC_ALPHA,
+		color_blend_op        = .ADD,
+		src_alpha_blendfactor = .ONE,
+		dst_alpha_blendfactor = .ONE_MINUS_SRC_ALPHA,
+		alpha_blend_op        = .ADD,
+		enable_blend          = true,
+	}
+	switch mode {
+	case .Normal:
+	case .Add:
+		state.dst_color_blendfactor = .ONE
+	case .Multiply:
+		state.src_color_blendfactor = .DST_COLOR
+	case .Screen:
+		state.dst_color_blendfactor = .ONE_MINUS_SRC_COLOR
+	case .Subtract:
+		state.dst_color_blendfactor = .ONE
+		state.color_blend_op = .REVERSE_SUBTRACT
+	case .Lighten:
+		state.color_blend_op = .MAX
+	}
+	return state
+}
+
 // The pipeline for drawing a program into a target of this format and sample
 // count, made on first use. Gives nil, with `r.error` set, when it cannot be made.
-get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount) -> ^sdl.GPUGraphicsPipeline {
-	key := Pipeline_Key{program, format, samples}
+get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount, blend_mode := Blend_Mode.Normal) -> ^sdl.GPUGraphicsPipeline {
+	key := Pipeline_Key{program, format, samples, blend_mode}
 	if existing, found := r.pipelines[key]; found {
 		return existing
 	}
@@ -304,16 +337,7 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 	defer sdl.ReleaseGPUShader(r.device, vertex)
 	defer sdl.ReleaseGPUShader(r.device, fragment)
 
-	// Premultiplied alpha: the shaders multiply the colour by its alpha.
-	blend := sdl.GPUColorTargetBlendState{
-		src_color_blendfactor = .ONE,
-		dst_color_blendfactor = .ONE_MINUS_SRC_ALPHA,
-		color_blend_op        = .ADD,
-		src_alpha_blendfactor = .ONE,
-		dst_alpha_blendfactor = .ONE_MINUS_SRC_ALPHA,
-		alpha_blend_op        = .ADD,
-		enable_blend          = true,
-	}
+	blend := blend_state_for(blend_mode)
 	target := sdl.GPUColorTargetDescription{format = format, blend_state = blend}
 	info := sdl.GPUGraphicsPipelineCreateInfo{
 		vertex_shader     = vertex,
@@ -748,20 +772,18 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 	case ._8: r.stats.samples = 8
 	}
 
-	shapes, mesh, text, typeset: ^sdl.GPUGraphicsPipeline
+	// Each pipeline a batch needs, in the blend it asks for, is made on first use and found
+	// again by `batch_pipeline` while drawing. A batch whose pipeline cannot be made fails the frame.
 	ok := ensure_gradient_texture(r)
+	typeset_ready := can_typeset(r)
 	for batch in b.batches {
-		switch batch.pipeline {
-		case .Shapes: if shapes == nil && ok {shapes = get_pipeline(r, .Shapes, format, samples)}
-		case .Paths:  if mesh == nil && ok {mesh = get_pipeline(r, .Mesh, format, samples)}
-		case .Text:   if text == nil && ok {text = get_pipeline(r, .Text, format, samples)}
-		case .Typeset: if typeset == nil && ok && can_typeset(r) {typeset = get_pipeline(r, .Typeset, format, samples)}
+		if !ok {break}
+		if batch.pipeline == .Typeset && !typeset_ready {continue}
+		if batch_pipeline(r, batch, format, samples) == nil {
+			ok = false
 		}
 	}
-	if (len(b.instances) > 0 && shapes == nil) || (len(b.mesh.indices) > 0 && mesh == nil) || (len(b.glyphs) > 0 && text == nil) {
-		ok = false
-	}
-	if ok && typeset != nil && !typeset_prepare(r, commands, b, f32(pixels.x) / max(canvas.x, 1)) {
+	if ok && typeset_ready && !typeset_prepare(r, commands, b, f32(pixels.x) / max(canvas.x, 1)) {
 		ok = false
 	}
 	if ok && !upload(r, commands, b) {
@@ -787,20 +809,33 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 	uniforms := Frame_Uniforms{canvas_size = canvas}
 	gradients := sdl.GPUTextureSamplerBinding{texture = r.gradient_texture, sampler = r.gradient_sampler}
 	bound: Pipeline = .Shapes
+	bound_blend := Blend_Mode.Normal
 	have_bound := false
+	clipped := false // a scissor smaller than the target is set
+	scale := f32(pixels.x) / max(canvas.x, 1)
 	for batch in b.batches {
-		if batch.pipeline == .Typeset && (typeset == nil || len(r.typeset.draws) == 0) {continue}
-		if !have_bound || batch.pipeline != bound {
-			bound, have_bound = batch.pipeline, true
+		if batch.pipeline == .Typeset && (!typeset_ready || len(r.typeset.draws) == 0) {continue}
+		// A batch inside a clip is cut to its box in device pixels; the next batch without
+		// one gets the whole target back.
+		if batch.clip.on {
+			sdl.SetGPUScissor(pass, scissor_for(batch.clip, scale, pixels))
+			clipped = true
+		} else if clipped {
+			sdl.SetGPUScissor(pass, sdl.Rect{0, 0, i32(pixels.x), i32(pixels.y)})
+			clipped = false
+		}
+		if !have_bound || batch.pipeline != bound || batch.blend != bound_blend {
+			bound, bound_blend, have_bound = batch.pipeline, batch.blend, true
+			pipeline := batch_pipeline(r, batch, format, samples)
 			switch batch.pipeline {
 			case .Shapes:
-				sdl.BindGPUGraphicsPipeline(pass, shapes)
+				sdl.BindGPUGraphicsPipeline(pass, pipeline)
 				sdl.BindGPUFragmentSamplers(pass, 0, &gradients, 1)
 				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
 				binding := sdl.GPUBufferBinding{buffer = r.instances.buffer}
 				sdl.BindGPUVertexBuffers(pass, 0, &binding, 1)
 			case .Paths:
-				sdl.BindGPUGraphicsPipeline(pass, mesh)
+				sdl.BindGPUGraphicsPipeline(pass, pipeline)
 				sdl.BindGPUFragmentSamplers(pass, 0, &gradients, 1)
 				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
 				vertices := sdl.GPUBufferBinding{buffer = r.mesh_vertices.buffer}
@@ -808,14 +843,14 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 				indices := sdl.GPUBufferBinding{buffer = r.mesh_indices.buffer}
 				sdl.BindGPUIndexBuffer(pass, indices, ._32BIT)
 			case .Text:
-				sdl.BindGPUGraphicsPipeline(pass, text)
+				sdl.BindGPUGraphicsPipeline(pass, pipeline)
 				fonts := sdl.GPUTextureSamplerBinding{texture = r.font_texture, sampler = r.font_sampler}
 				sdl.BindGPUFragmentSamplers(pass, 0, &fonts, 1)
 				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
 				glyphs := sdl.GPUBufferBinding{buffer = r.glyphs.buffer}
 				sdl.BindGPUVertexBuffers(pass, 0, &glyphs, 1)
 			case .Typeset:
-				sdl.BindGPUGraphicsPipeline(pass, typeset)
+				sdl.BindGPUGraphicsPipeline(pass, pipeline)
 				sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
 				glyph_vertices := sdl.GPUBufferBinding{buffer = r.typeset.vertex_buffer.buffer}
 				sdl.BindGPUVertexBuffers(pass, 0, &glyph_vertices, 1)
@@ -842,6 +877,30 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 		r.stats.draws += 1
 	}
 	return true
+}
+
+// The pipeline a batch is drawn with, in the blend it asks for: the program of its
+// pipeline, made on first use. Nil, with `r.error` set, when it cannot be made.
+@(private)
+batch_pipeline :: proc(r: ^Renderer, batch: Batch, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount) -> ^sdl.GPUGraphicsPipeline {
+	program: Program
+	switch batch.pipeline {
+	case .Shapes:  program = .Shapes
+	case .Paths:   program = .Mesh
+	case .Text:    program = .Text
+	case .Typeset: program = .Typeset
+	}
+	return get_pipeline(r, program, format, samples, batch.blend)
+}
+
+// A clip's box in device pixels, cut to the target: `scale` is device pixels per canvas
+// pixel. A box that has no area (or lies outside) is an empty scissor, which draws nothing.
+scissor_for :: proc "contextless" (clip: Clip, scale: f32, pixels: [2]u32) -> sdl.Rect {
+	x0 := clamp(i32(math.floor(clip.rect[0] * scale)), 0, i32(pixels.x))
+	y0 := clamp(i32(math.floor(clip.rect[1] * scale)), 0, i32(pixels.y))
+	x1 := clamp(i32(math.ceil(clip.rect[2] * scale)), 0, i32(pixels.x))
+	y1 := clamp(i32(math.ceil(clip.rect[3] * scale)), 0, i32(pixels.y))
+	return sdl.Rect{x0, y0, max(x1 - x0, 0), max(y1 - y0, 0)}
 }
 
 // Draws a frame into a window: acquires its swapchain texture, records the

@@ -72,6 +72,8 @@ draw_overlay :: proc(w: ^Win) {
 	list.look_changed = true
 	gfx.no_stroke(list)
 	gfx.set_alpha(list, 255)
+	gfx.set_blend(list, .Normal)
+	gfx.no_clip(list)
 	gfx.set_fill(list, {24, 12, 14, 240})
 	gfx.rect(list, 0, 0, f32(w.width), f32(height))
 	gfx.set_fill(list, {220, 60, 60, 255})

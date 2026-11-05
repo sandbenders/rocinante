@@ -366,7 +366,7 @@ test_paths_split_the_shapes_into_batches_in_painting_order :: proc(t: ^testing.T
 	b := drawn(&list)
 	defer batcher_destroy(&b)
 	testing.expect_value(t, len(b.batches), 3)
-	testing.expect_value(t, b.batches[0], Batch{.Shapes, 0, 2, b.batches[0].hash})
+	testing.expect_value(t, b.batches[0], Batch{pipeline = .Shapes, first = 0, count = 2, hash = b.batches[0].hash})
 	testing.expect_value(t, b.batches[1].pipeline, Pipeline.Paths)
 	testing.expect_value(t, b.batches[1].first, 0)
 	testing.expect_value(t, b.batches[1].count, len(b.mesh.indices)) // the quad's and the arc's triangles

@@ -70,6 +70,8 @@ Glyph_Instance :: struct {
 // `Text`, `Batcher.glyphs`.
 Batch :: struct {
 	pipeline: Pipeline,
+	blend:    Blend_Mode, // how it mixes with what is behind it; a change of blend or clip starts a new batch
+	clip:     Clip,
 	first:    int,
 	count:    int,
 	hash:     u64, // changes when anything in the batch changes
@@ -249,8 +251,9 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 // pipeline changes.
 @(private)
 extend_batch :: proc(b: ^Batcher, pipeline: Pipeline, first, added: int, command: Command, look: u64) {
-	if len(b.batches) == 0 || b.batches[len(b.batches) - 1].pipeline != pipeline {
-		append(&b.batches, Batch{pipeline = pipeline, first = first, hash = FNV_OFFSET})
+	last := len(b.batches) - 1
+	if last < 0 || b.batches[last].pipeline != pipeline || b.batches[last].blend != command.style.blend || b.batches[last].clip != command.style.clip {
+		append(&b.batches, Batch{pipeline = pipeline, blend = command.style.blend, clip = command.style.clip, first = first, hash = FNV_OFFSET})
 	}
 	batch := &b.batches[len(b.batches) - 1]
 	batch.count += added

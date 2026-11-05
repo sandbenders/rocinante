@@ -395,6 +395,37 @@ set_joins :: proc(list: ^Command_List, join: geom.Join) {
 	list.style.join = join
 }
 
+// How later shapes mix with what is behind them (`blend`).
+set_blend :: proc(list: ^Command_List, mode: Blend_Mode) {
+	list.look_changed = true
+	list.style.blend = mode
+}
+
+// Keeps later drawing inside the box `x y width height`, which is worked out in the
+// current transform and kept as its bounding box on the canvas: a turned or sheared box
+// clips to the smallest upright box round it. A box with no size, or numbers that are not
+// numbers, clips everything away. Replaces any clip there was.
+set_clip :: proc(list: ^Command_List, x, y, width, height: f32) {
+	list.look_changed = true
+	if !finite(x, y, width, height) {
+		list.style.clip = Clip{on = true}
+		return
+	}
+	corners := [4][2]f32{{x, y}, {x + width, y}, {x + width, y + height}, {x, y + height}}
+	lo, hi := [2]f32{max(f32), max(f32)}, [2]f32{-max(f32), -max(f32)}
+	for c in corners {
+		px, py := transform_apply(list.transform, c.x, c.y)
+		lo = {min(lo.x, px), min(lo.y, py)}
+		hi = {max(hi.x, px), max(hi.y, py)}
+	}
+	list.style.clip = Clip{on = true, rect = {lo.x, lo.y, hi.x, hi.y}}
+}
+
+no_clip :: proc(list: ^Command_List) {
+	list.look_changed = true
+	list.style.clip = {}
+}
+
 // ---- transforms ----
 
 move :: proc(list: ^Command_List, x, y: f32) {
