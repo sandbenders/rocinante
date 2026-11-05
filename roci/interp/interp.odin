@@ -101,6 +101,7 @@ Interp :: struct {
 	check_at:  int, // the check being run, counting from 1; 0 when none is
 	home:     string, // the file the program was read from, so `load` and `font` can find its assets even when it is not watched
 	pictures: map[string]Picture_Entry, // what `load` found, by name (images.odin)
+	shaders:  map[string]Shader_Entry,  // what `effect` found, by name (effects.odin)
 	fonts_missed: map[string]bool, // font names already looked for everywhere and not found (fonts.odin)
 	events:    int, // every runtime error said, counting the ones `fail` left out as already said
 }
@@ -194,6 +195,7 @@ destroy :: proc(p: ^Interp) {
 	delete(p.checks)
 	delete(p.fonts_missed)
 	drop_pictures(p)
+	drop_shaders(p)
 	virtual.arena_destroy(&p.values[p.values_now])
 	virtual.arena_destroy(&p.arena)
 	free(p)
@@ -281,6 +283,18 @@ fail :: proc(p: ^Interp, id: lang.Message_Id, span: lang.Span, a, b, c, d: strin
 	}
 	p.seen[key] = true
 	append(&p.errors, Runtime_Error{id = id, span = span, in_check = p.check_at != 0, args = {strings.clone(a, p.program_memory), strings.clone(b, p.program_memory), strings.clone(c, p.program_memory), strings.clone(d, p.program_memory)}})
+}
+
+// Takes back a runtime error said at a place, so it can be said again (a shader that was
+// mended says nothing, and one that is broken another way says that).
+@(private)
+forget_error :: proc(p: ^Interp, id: lang.Message_Id, span: lang.Span) {
+	delete_key(&p.seen, span.start * 16 + int(id))
+	for i := len(p.errors) - 1; i >= 0; i -= 1 {
+		if p.errors[i].id == id && p.errors[i].span == span {
+			ordered_remove(&p.errors, i)
+		}
+	}
 }
 
 // The writer's own line with `replacement` where `at` was; when it cannot be

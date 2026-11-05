@@ -2193,6 +2193,9 @@ make_message_sketch :: proc(t: ^testing.T) -> string {
 		testing.expect(t, os.write_entire_file(root + "/assets/images/small.png", png) == nil)
 		delete(png)
 	}
+	testing.expect(t, folder.ensure_directory(root + "/assets/shaders"))
+	testing.expect(t, os.write_entire_file(root + "/assets/shaders/broken.hlsl", transmute([]byte)string("float4 ps_main() : SV_Target0 { return oops; }\n")) == nil)
+	testing.expect(t, os.write_entire_file(root + "/assets/shaders/good.hlsl", transmute([]byte)string("float4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0 { return scene.Sample(scene_sampler, uv); }\n")) == nil)
 	testing.expect(t, os.write_entire_file(root + "/assets/images/a/twin.png", transmute([]byte)string("x")) == nil)
 	testing.expect(t, os.write_entire_file(root + "/assets/images/b/twin.png", transmute([]byte)string("x")) == nil)
 	return root + "/sketch.roci"

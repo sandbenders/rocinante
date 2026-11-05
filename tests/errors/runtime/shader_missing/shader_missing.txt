@@ -1,0 +1,8 @@
+── I could not find a shader called `wave.hlsl` ──────── sketch.roci:2:1
+
+2 │ effect "wave.hlsl"
+  │ ^^^^^^^^^^^^^^^^^^
+
+Shaders are found by their file name in your sketch's `assets` folder, and there is no file of that name there. The effect is left out, and the sketch carries on.
+
+Use one that is there:  effect "wave.hlsl"

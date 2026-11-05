@@ -1,0 +1,12 @@
+── An effect runs over a window, not over a canvas ──── sketch.roci:2:15
+
+2 │ draw into c [ effect "good.hlsl" ]
+  │               ^^^^^^^^^^^^^^^^^^
+
+`effect` takes the finished picture of the window, so it cannot be written inside `draw into`. It is left out, and the sketch carries on.
+
+Write it in the window's own drawing:
+    draw [
+      circle at mouse radius 40
+      effect "wave.hlsl"
+    ]

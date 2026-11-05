@@ -351,3 +351,9 @@ test_the_words_of_a_paint_stay_with_it_and_the_label_words_go_first :: proc(t: ^
 	expect_formatted(t, "rect size 5 5 at 0 0 fill photo   as tile size 64\n", "rect at 0 0 size 5 5 fill photo as tile size 64\n")
 	expect_formatted(t, "with fill   photo as fit [ circle at 1 2 radius 3 ]\n", "with fill photo as fit [ circle at 1 2 radius 3 ]\n")
 }
+
+@(test)
+test_effect_is_written_with_its_values_after_by :: proc(t: ^testing.T) {
+	expect_formatted(t, "effect   \"wave.hlsl\"   by   { amount:0.5, tint:red }\n", "effect \"wave.hlsl\" by { amount: 0.5, tint: red }\n")
+	expect_formatted(t, "draw [ effect \"a.hlsl\" ]\n", "draw [ effect \"a.hlsl\" ]\n")
+}

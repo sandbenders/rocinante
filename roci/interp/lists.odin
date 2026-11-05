@@ -67,6 +67,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return collision_verb(it, e, call, code)
 	case .Save:
 		save_picture(it, e, as_text(eval(it, call.args[0])))
+	case .Effect:
+		effect_verb(it, e, call)
 	case .Outline:
 		return outline_verb(it, call)
 	case .Pixel, .Pixels, .Picture, .Crop, .Resize, .Filter, .Mask:

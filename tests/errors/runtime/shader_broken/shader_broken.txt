@@ -1,0 +1,9 @@
+── There is a mistake in the shader `broken.hlsl` ────── sketch.roci:1:1
+
+1 │ effect "broken.hlsl"
+  │ ^^^^^^^^^^^^^^^^^^^^
+
+broken.hlsl:1: error: 'oops' : unknown variable
+broken.hlsl:1: error: 'return' : type does not match, or is not convertible to, the function's return type
+
+The effect is left out until it is mended, and the sketch carries on. The shader is read again when you save it.

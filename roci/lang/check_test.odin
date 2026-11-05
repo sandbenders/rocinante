@@ -1438,3 +1438,16 @@ test_the_words_after_a_paint_are_checked_for_what_the_paint_is :: proc(t: ^testi
 	expect_errors(t, strings.concatenate({photo, "with fill photo as tile size 30 [ circle at 1 2 radius 3 ]"}, context.temp_allocator), {})
 	expect_errors(t, strings.concatenate({photo, "with fill photo as radial [ circle at 1 2 radius 3 ]"}, context.temp_allocator), {.Unknown_Choice})
 }
+
+@(test)
+test_effect_takes_a_shader_name_and_a_record_of_values :: proc(t: ^testing.T) {
+	expect_errors(t, "effect \"wave.hlsl\"", {})
+	expect_errors(t, "effect \"wave.hlsl\" by { amount: 0.5, tint: red, spot: { 1, 2 } }", {})
+	expect_errors(t, "values = { amount: 1 }\neffect \"wave.hlsl\" by values", {})
+	expect_errors(t, "draw [ effect \"wave.hlsl\" by { phase: time } ]", {})
+	// the name is text, the values a record
+	expect_errors(t, "effect 5", {.Wrong_Argument_Kind})
+	expect_errors(t, "effect", {.Wrong_Argument_Count})
+	expect_errors(t, "effect \"wave.hlsl\" by 5", {.Wrong_Argument_Kind})
+	expect_errors(t, "effect \"wave.hlsl\" at 1 2", {.Unexpected_Token})
+}

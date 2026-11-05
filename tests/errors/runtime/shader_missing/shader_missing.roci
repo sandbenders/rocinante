@@ -1,0 +1,2 @@
+circle at 10 10 radius 5
+effect "wave.hlsl"
