@@ -104,7 +104,20 @@ You need git, the Odin release named in `ODIN_VERSION` (check it with `odin vers
 | OpenBSD                   | built from source: `doas pkg_add gmake llvm%19`, then `gmake release-native` in Odin's repository (the guide has the steps)                             | `doas pkg_add git sdl3`                                                                                |
 | macOS                     | `brew install odin`, or the `macos-arm64` archive                                                                                                       | `xcode-select --install`, then `brew install sdl3 sdl3_ttf`                                                   |
 
-Text is drawn with SDL3_ttf, so it needs that library too: `sudo pacman -S sdl3_ttf` on Arch, `brew install sdl3_ttf` on macOS, and the system's SDL3_ttf package on the others (the package names on FreeBSD, OpenBSD, Debian and Ubuntu and the Windows library are still being confirmed). `tools/ci/install-sdl3.sh` builds SDL3 and SDL3_ttf together, with FreeType and HarfBuzz from the system.
+Text is drawn with SDL3_ttf, so it needs that library too: `sudo pacman -S sdl3_ttf` on Arch, `brew install sdl3_ttf` on macOS, and the system's SDL3_ttf package on the others (the package names on FreeBSD, Debian and Ubuntu and the Windows library are still being confirmed). OpenBSD has no SDL3_ttf package, so build it from source:
+
+```
+doas pkg_add cmake ninja sdl3 harfbuzz git
+git clone --branch release-3.2.2 https://github.com/libsdl-org/SDL_ttf.git
+cd SDL_ttf
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+  -DCMAKE_PREFIX_PATH="/usr/local;/usr/X11R6" -DSDLTTF_VENDORED=OFF -DSDLTTF_HARFBUZZ=ON -DSDLTTF_PLUTOSVG=OFF
+cmake --build build
+doas cmake --install build
+cd /usr/local/lib && doas ln -s libSDL3_ttf.so.0.2.2 libSDL3_ttf.so.0.2 && doas ldconfig -m /usr/local/lib
+```
+
+FreeType comes with the base system (`/usr/X11R6`). OpenBSD's linker has no unversioned `.so` names and does not search `/usr/local/lib` by itself, hence the two-number symlink and `ldconfig -m`; when Odin still cannot find `-lSDL3_ttf`, add `-extra-linker-flags:"-L/usr/local/lib"`. Color emoji need PlutoSVG: build `plutovg` (v1.3.1) and `plutosvg` (v0.0.8, `-Dfreetype=enabled`) with `meson` the same way, then configure SDL_ttf with `-DSDLTTF_PLUTOSVG=ON`. On a Wayland session OpenBSD's Mesa cannot show Vulkan windows, so rocinante falls back to X11 through XWayland by itself. `tools/ci/install-sdl3.sh` builds SDL3 and SDL3_ttf together, with FreeType and HarfBuzz from the system.
 
 Systems with no SDL3 package (Ubuntu 24.04, Debian 12) can build it with `tools/ci/install-sdl3.sh`, as the GitHub pipeline does. The [getting started guide](https://rocinante-lang.org/guides/01-getting-started/) has every step. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) Then, from the repository root:
 
