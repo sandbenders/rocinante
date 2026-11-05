@@ -50,6 +50,7 @@ EXAMPLES := [?]Example{
 	{"images", 5, {1}}, // pictures from assets: sizes, tints, alpha, a turning badge
 	{"canvas", 60, {1}}, // a canvas that keeps its drawing: two dots with fading trails
 	{"fills", 5, {1}}, // shapes filled with a picture: cover, fit, stretch, tile and center, and an outline over one
+	{"outline", 3, {1}}, // the same ball against a picture as a rectangle and as its outline
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.

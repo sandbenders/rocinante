@@ -1,0 +1,8 @@
+ship = load "ship.png"
+image ship at 140 90
+corners = outline ship at { 140, 90 }
+for each p in corners [ circle at p radius 3 fill navy ]
+ball = { pos: { 150, 100 }, radius: 14 }
+hull = { points: outline ship at { 140, 90 } }
+if touching ball hull [ fill tomato ] else [ fill teal ]
+circle at ball.pos radius 14

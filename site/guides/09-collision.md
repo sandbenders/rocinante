@@ -1,6 +1,6 @@
 ---
 title: "Collision"
-summary: "Shapes as records, and the five verbs that say whether, where and what they touch."
+summary: "Shapes as records, the five verbs that say whether, where and what they touch, and outline for the solid part of a picture."
 weight: 9
 ---
 
@@ -87,3 +87,20 @@ rect at 300 100 size 40 100
 ```
 
 Asked about a long list many times, `hits` and `cast` keep a tree of where the shapes are, so a thousand shapes stay quick.
+
+## outline: the solid part of a picture
+
+A picture is not a shape, and as a rectangle it counts its see-through corners as solid. `outline` traces the part of a picture that is not see-through and gives its corners as a list of vectors, which is what the `points` of a polygon are:
+
+```roci picture
+ship = load "ship.png"
+hull = { points: outline ship at { 140, 90 } }
+ball = { pos: { 152, 102 }, radius: 14 }
+image ship at 140 90
+if touching ball hull [ fill tomato ] else [ fill teal ]
+circle at ball.pos radius ball.radius
+```
+
+The ball sits in a transparent corner of the picture, so it does not touch. `at` says where the picture is drawn, so the corners land on it, and `size` stretches them as `image ... size` does. A pixel counts as solid when it is more than 50 percent solid; `alpha 20` lets fainter pixels count and `alpha 0` takes every pixel that is not completely clear. Only the biggest solid piece is traced, without its holes, and the corners follow the edge to within about a pixel, so a round sprite gives a few dozen corners and not one for every pixel.
+
+Work the outline out once, where the sketch sets itself up, and move it with the picture by tracing again only when the picture changes or moves: tracing walks every pixel. A canvas has no outline, because its pixels live on the graphics card.

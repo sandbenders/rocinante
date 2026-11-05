@@ -1,0 +1,18 @@
+// The picture the outline example loads as ship.png: a star with transparent corners and
+// notches between its points, so its whole picture and its solid part are very different
+// shapes. Made with:
+//   roci run tools/pictures/ship.roci --frames 1 --screenshot ship.png
+window size 120 120 title "ship" resizable false
+clear
+no stroke
+fill #ffd37a
+push [
+  move 60 60
+  repeat 5 [
+    turn 72
+    triangle { -17, -14 } { 17, -14 } { 0, -56 }
+  ]
+]
+circle at 60 60 radius 22
+fill #ff6b4a
+circle at 60 60 radius 12

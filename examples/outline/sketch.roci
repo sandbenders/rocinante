@@ -1,0 +1,38 @@
+// Collision with the solid part of a picture: outline gives the corners of what is not
+// see-through in a picture, and a record made with them as its points is a shape. The ball
+// sits in the same place against both stars. The left star is tested as the whole picture,
+// transparent corners and all; the right star as its outline, so the ball only touches
+// where there is star. Press the mouse to move the ball.
+window size 640 300 title "outline"
+ship = load "ship.png"
+LEFT = { 60, 90 }
+RIGHT = { 380, 90 }
+whole = { pos: LEFT, size: { ship.width, ship.height } }
+solid_part = { points: outline ship at RIGHT }
+ball = { pos: { 74, 104 }, radius: 14 }
+
+draw [
+  background 245
+  image ship at LEFT
+  image ship at RIGHT
+  if pressed [ ball.pos = { mouse.x % 320, mouse.y } ]
+  twin = { pos: ball.pos + { 320, 0 }, radius: ball.radius }
+  // The outline's corners, joined.
+  corners = solid_part.points
+  n = count corners
+  for i from 1 to n [
+    next = (i % n) + 1
+    line from (item i of corners) to (item next of corners) stroke navy thickness 1.5
+  ]
+  fill teal
+  if touching ball whole [ fill tomato ]
+  circle at ball.pos radius ball.radius
+  fill teal
+  if touching twin solid_part [ fill tomato ]
+  circle at twin.pos radius twin.radius
+  fill 30
+  font "Inter" size 15
+  text "the whole picture" at 60 230
+  text "its outline" at 380 230
+  text (n + " corners in the outline") at 380 255
+]

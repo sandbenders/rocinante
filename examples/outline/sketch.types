@@ -1,0 +1,10 @@
+ship: a picture
+LEFT: a vector of 2 numbers
+RIGHT: a vector of 2 numbers
+whole: a record with pos and size
+solid_part: a record with points
+ball: a record with pos and radius
+twin: a record with pos and radius
+corners: a list of vectors of 2 numbers
+n: a number
+next: a number

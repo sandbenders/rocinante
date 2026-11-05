@@ -7,7 +7,7 @@
 window size 720 560 title "style" resizable false
 
 glow = { fill: (rgb 255 200 90), stroke: white, thickness: 3 }
-outline = { stroke: white, thickness: 2 }
+ring = { stroke: white, thickness: 2 }
 
 draw [
   background 28
@@ -57,7 +57,7 @@ draw [
 
   // Squares about their middle.
   for i from 0 to 2 [
-    square at (330 + i * 70) 370 size 44 as center fill (hsb (i * 40 + 120) 160 230) style outline
+    square at (330 + i * 70) 370 size 44 as center fill (hsb (i * 40 + 120) 160 230) style ring
     push [
       move (330 + i * 70) 450
       turn (time * 30 + i * 30)
