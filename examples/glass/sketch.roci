@@ -1,0 +1,27 @@
+// A corridor of glowing glass, with nothing in it but one shader. shade makes glass.hlsl the
+// fill, and the rectangle that covers the window is where it is drawn: for every pixel the
+// shader works out how deep into the corridor it looks and how the light falls on the glass,
+// and time carries you forward. The sketch's own part is the motes of light that drift past,
+// added to the glow with blend, and the lean of the camera, which follows the mouse. Change a
+// number after by, or the colors in glass.hlsl, and save while it runs.
+window size 480 270 title "glass"
+motes = 16
+
+draw [
+  lean = { (mouse.x / width - 0.5) * 0.3, (mouse.y / height - 0.5) * 0.2 }
+  shade "glass.hlsl" by { speed: 1, glow: 1.15, look: lean }
+  rect at 0 0 size width height
+  no stroke
+  blend add
+  for i from 1 to motes [
+    a = i * 137.5
+    run = (time * 0.12 + i / motes) % 1
+    r = 20 + run * run * 260
+    x = 240 + r * cos a * 1.5
+    y = 135 + r * sin a
+    tone = 10 + 20 * (i % 3)
+    fill (hsb tone 200 255)
+    alpha (run * 55)
+    circle at x y radius (2 + run * 9)
+  ]
+]
