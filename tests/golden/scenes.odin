@@ -39,6 +39,7 @@ SCENES := [?]Scene{
 	{"debug_text", debug_text},
 	{"typeset_text", typeset_text},
 	{"images", images},
+	{"effects", effects},
 }
 
 named :: proc(name: string) -> maths.Colour {
@@ -434,4 +435,48 @@ images :: proc(list: ^gfx.Command_List) {
 	gfx.set_font_size(list, 10)
 	gfx.typeset(list, "text between pictures", 66, 62)
 	gfx.draw_image(list, picture, 160, 100, 24, 40)               // stretched
+}
+
+// A shader of its own over the frame: the picture is waved sideways and mixed with a colour
+// given by name, then a second effect darkens the edges (two effects, one after the other).
+WAVE_SHADER :: `float amount;
+float4 tint;
+
+float4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0
+{
+    float2 p = uv;
+    p.x += sin(p.y * 40.0) * amount;
+    float4 c = scene.Sample(scene_sampler, p);
+    return lerp(c, tint * c.a, 0.25);
+}
+`
+
+VIGNETTE_SHADER :: `float4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0
+{
+    float4 c = scene.Sample(scene_sampler, uv);
+    float d = distance(uv, float2(0.5, 0.5));
+    return c * (1.0 - smoothstep(0.35, 0.75, d));
+}
+`
+
+effects :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(235))
+	colours := [?]string{"tomato", "gold", "seagreen", "steelblue", "orchid"}
+	for name, i in colours {
+		gfx.set_fill(list, named(name))
+		gfx.rect(list, 10 + f32(i) * 36, 20, 30, 110)
+	}
+	wave, _ := gfx.shader_add(WAVE_SHADER)
+	vignette, _ := gfx.shader_add(VIGNETTE_SHADER)
+	values := make([]u8, gfx.shader_data(wave).params.size, context.temp_allocator)
+	for p in gfx.shader_data(wave).params.list {
+		floats := (cast([^]f32)raw_data(values[p.offset:]))[:p.floats]
+		if p.name == "amount" {
+			floats[0] = 0.02
+		} else if p.name == "tint" {
+			floats[0], floats[1], floats[2], floats[3] = 1, 1, 1, 1
+		}
+	}
+	gfx.effect(list, wave, 0, 0, {0, 0}, values)
+	gfx.effect(list, vignette, 0, 0, {0, 0}, nil)
 }

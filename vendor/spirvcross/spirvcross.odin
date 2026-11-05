@@ -92,3 +92,53 @@ foreign lib {
 	compiler_set_decoration :: proc(compiler: Compiler, id: u32, decoration: c.int, argument: c.uint) ---
 	compiler_set_name :: proc(compiler: Compiler, id: u32, name: cstring) ---
 }
+
+// ---- reflection: the members of a uniform buffer ----
+
+Resources :: distinct rawptr
+Type :: distinct rawptr
+
+Reflected_Resource :: struct {
+	id:           u32,
+	base_type_id: u32,
+	type_id:      u32,
+	name:         cstring,
+}
+
+RESOURCE_TYPE_UNIFORM_BUFFER :: 1
+BASETYPE_FP32 :: 13
+
+@(default_calling_convention = "c", link_prefix = "spvc_")
+foreign lib {
+	compiler_create_shader_resources :: proc(compiler: Compiler, resources: ^Resources) -> Result ---
+	resources_get_resource_list_for_type :: proc(resources: Resources, type: c.int, list: ^[^]Reflected_Resource, count: ^c.size_t) -> Result ---
+	compiler_get_type_handle :: proc(compiler: Compiler, id: u32) -> Type ---
+	type_get_basetype :: proc(type: Type) -> c.int ---
+	type_get_vector_size :: proc(type: Type) -> c.uint ---
+	type_get_columns :: proc(type: Type) -> c.uint ---
+	type_get_num_member_types :: proc(type: Type) -> c.uint ---
+	type_get_member_type :: proc(type: Type, index: c.uint) -> u32 ---
+	compiler_get_member_name :: proc(compiler: Compiler, id: u32, index: c.uint) -> cstring ---
+	compiler_type_struct_member_offset :: proc(compiler: Compiler, type: Type, index: c.uint, offset: ^c.uint) -> Result ---
+	compiler_get_declared_struct_size :: proc(compiler: Compiler, type: Type, size: ^c.size_t) -> Result ---
+}
+
+// ---- Metal: which buffer, texture and sampler number a binding gets ----
+
+EXECUTION_MODEL_FRAGMENT :: 4
+
+Msl_Resource_Binding :: struct {
+	stage:       c.int,
+	desc_set:    c.uint,
+	binding:     c.uint,
+	count:       c.uint,
+	msl_buffer:  c.uint,
+	msl_texture: c.uint,
+	msl_sampler: c.uint,
+}
+
+@(default_calling_convention = "c", link_prefix = "spvc_")
+foreign lib {
+	msl_resource_binding_init_2 :: proc(binding: ^Msl_Resource_Binding) ---
+	compiler_msl_add_resource_binding_2 :: proc(compiler: Compiler, binding: ^Msl_Resource_Binding) -> Result ---
+}

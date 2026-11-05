@@ -120,6 +120,8 @@ Command_List :: struct {
 	background_image: Image_Fill,   // a picture behind everything, when its id is not 0
 	background_set:   bool,         // `background` or `clear` was written since the frame (or, for a canvas, the last render) began
 	turtle:     Turtle, // turtle.odin
+	effects:       [dynamic]Effect, // shaders run over the finished frame, in order (shaders.odin)
+	effect_values: [dynamic]u8,     // the bytes of their own values, end to end
 }
 
 // Starts a frame: forgets last frame's commands and puts the style, the
@@ -130,6 +132,8 @@ begin_frame :: proc(list: ^Command_List) {
 	clear(&list.saved)
 	clear(&list.gradients)
 	clear(&list.text)
+	clear(&list.effects)
+	clear(&list.effect_values)
 	list.background_paint = {}
 	list.background_image = {}
 	list.background_set = false
@@ -154,6 +158,8 @@ destroy :: proc(list: ^Command_List) {
 	delete(list.saved)
 	delete(list.gradients)
 	delete(list.text)
+	delete(list.effects)
+	delete(list.effect_values)
 	list^ = {}
 }
 

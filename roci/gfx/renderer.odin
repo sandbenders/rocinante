@@ -125,6 +125,7 @@ Renderer :: struct {
 	font_sampler: ^sdl.GPUSampler,
 	uploaded_glyphs:       u64,
 	typeset: Typeset_State, // real text (typeset.odin)
+	effects: Effect_Gpu,    // shaders of the sketch's own run over the frame (renderer_effect.odin)
 	images:  map[Image_Id]^sdl.GPUTexture, // the textures of the pictures drawn so far (typeset.odin)
 	canvases: map[Image_Id]Canvas_Gpu,     // the textures of the canvases (renderer_canvas.odin)
 	text_fills: map[u64]Text_Fill_Texture, // the textures of texts filled with a picture (textfill.odin)
@@ -204,6 +205,7 @@ renderer_destroy :: proc(r: ^Renderer) {
 		}
 	}
 	delete(r.canvases)
+	effect_gpu_destroy(r)
 	delete(r.error)
 	r^ = {}
 }
@@ -764,6 +766,15 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 // pixels). Gives false when something failed; `r.error` says what, and the frame
 // is left as far as it got but is safe to submit.
 render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTexture, format: sdl.GPUTextureFormat, pixels: [2]u32, canvas: [2]f32, list: ^Command_List, b: ^Batcher) -> bool {
+	if len(list.effects) > 0 && can_run_effects(r) {
+		return render_with_effects(r, commands, target, format, pixels, canvas, list, b)
+	}
+	return render_scene(r, commands, target, format, pixels, canvas, list, b)
+}
+
+// The frame the list describes, drawn into `target`.
+@(private)
+render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTexture, format: sdl.GPUTextureFormat, pixels: [2]u32, canvas: [2]f32, list: ^Command_List, b: ^Batcher) -> bool {
 	r.stats = {}
 	release_stale_textures(r)
 	samples := samples_for(r, format)
