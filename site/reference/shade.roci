@@ -1,0 +1,7 @@
+background 30
+shade "spiral.hlsl" by { arms: 3, rings: 7, wobble: 0.5, speed: 0, accent: rgb 230 25 25 }
+rect at 20 20 size 360 260
+shade "spiral.hlsl" by { arms: 5, rings: 4, wobble: 0.9, speed: 0, accent: rgb 20 90 230 }
+stroke white
+thickness 4
+circle at 200 150 radius 90

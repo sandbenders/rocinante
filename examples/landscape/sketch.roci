@@ -43,14 +43,14 @@ draw [
   ]
 
   for layer from 0 to 3 [
-    shade = mix (rgb 110 90 140) (rgb 20 18 35) (layer / 3)
+    level = mix (rgb 110 90 140) (rgb 20 18 35) (layer / 3)
     base = 250 + layer * 45
     for i from 0 to 89 [
       x0 = i * 8
       x1 = x0 + 8
       y0 = base - (fbm (x0 * 0.004) (layer * 10) (time * 0.03) - 0.5) * 420
       y1 = base - (fbm (x1 * 0.004) (layer * 10) (time * 0.03) - 0.5) * 420
-      quad { x0, y0 } { x1, y1 } { x1, 420 } { x0, 420 } fill shade
+      quad { x0, y0 } { x1, y1 } { x1, 420 } { x0, 420 } fill level
     ]
   ]
 ]

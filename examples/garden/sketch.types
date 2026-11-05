@@ -20,4 +20,4 @@ near_hill: a color
 base: a number
 tall: a number
 sway: a number
-shade: a number
+level: a number

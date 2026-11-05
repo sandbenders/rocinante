@@ -11,8 +11,8 @@ GAP = 24
 
 bars = []
 for i from 1 to 24 [
-  shade = floor (random from 1 to 8)
-  add { height: random from 30 to 320, shade: shade, tint: item shade of PALETTE, x: 0 } to bars
+  level = floor (random from 1 to 8)
+  add { height: random from 30 to 320, level: level, tint: item level of PALETTE, x: 0 } to bars
 ]
 shown = sort bars by [ it.height ]
 step = 0
@@ -38,7 +38,7 @@ learn next_step [
   if step is 1 [ shown = shuffle bars ]
   if step is 2 [ shown = sort bars by [ it.height ] ]
   if step is 3 [ shown = keep bars [ it.height > 150 ] ]
-  if step is 4 [ shown = sort bars by [ it.shade ] ]
+  if step is 4 [ shown = sort bars by [ it.level ] ]
   arrange
 ]
 
@@ -48,7 +48,7 @@ every 2.5 seconds [ next_step ]
 
 on key "space" [ shown = shuffle bars  arrange ]
 on key "h" [ shown = sort bars by [ it.height ]  arrange ]
-on key "c" [ shown = sort bars by [ it.shade ]  arrange ]
+on key "c" [ shown = sort bars by [ it.level ]  arrange ]
 on key "k" [ shown = keep bars [ it.height > 150 ]  arrange ]
 on key "s" [ shown = skip bars [ it.height > 150 ]  arrange ]
 on key "p" [ print (collect shown [ it.height ]) ]

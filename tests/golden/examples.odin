@@ -56,6 +56,7 @@ EXAMPLES := [?]Example{
 	{"paint", 3, {1}}, // a picture as the window, the letters of a text and the outlines of shapes
 	{"pixels", 3, {1}}, // pixel, crop, resize and filter: a magnifier and six filtered thumbnails
 	{"effects", 3, {1}}, // two shaders of its own over five stripes: a wave with a tint, and a vignette
+	{"spiral", 20, {1}}, // shapes filled by one shader: a spiral of black and white bands with an accent arm, in a window-sized rectangle and two circles
 	{"tunnel", 20, {1}}, // a raymarched tunnel made by one shader, the sketch's own dots and word laid over it, and a lens effect on top
 }
 

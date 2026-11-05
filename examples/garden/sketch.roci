@@ -173,8 +173,8 @@ draw garden [
     base = GROUND - x / 20 + 8
     tall = 18 + 22 * noise (i * 0.37)
     sway = (noise (i * 0.05) (time * 0.6) - 0.5) * 60 * wind * calm
-    shade = (i % 5) / 8
-    stroke (mix p.grass near_hill shade)
+    level = (i % 5) / 8
+    stroke (mix p.grass near_hill level)
     line from x base to (x + sway) (base - tall)
   ]
 

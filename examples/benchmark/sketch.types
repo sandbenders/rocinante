@@ -1,5 +1,5 @@
 COUNT: a number
 t: a number
-shade: a number
+level: a number
 x: a number
 y: a number

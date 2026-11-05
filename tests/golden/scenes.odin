@@ -40,6 +40,7 @@ SCENES := [?]Scene{
 	{"typeset_text", typeset_text},
 	{"images", images},
 	{"effects", effects},
+	{"shader_fills", shader_fills},
 }
 
 named :: proc(name: string) -> maths.Colour {
@@ -479,4 +480,29 @@ effects :: proc(list: ^gfx.Command_List) {
 	}
 	gfx.effect(list, wave, 0, 0, {0, 0}, values)
 	gfx.effect(list, vignette, 0, 0, {0, 0}, nil)
+}
+
+// A shader that fills shapes: the color is worked out from where each pixel is in the shape's
+// box, so the same shader fills a rectangle, a circle and a triangle each from its own corner
+// to its own corner, and an outline is drawn over the fill by the ordinary pipeline.
+BANDS_SHADER :: `float4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0
+{
+    float bands = floor(uv.x * 6.0);
+    float3 color = lerp(float3(0.1, 0.3, 0.9), float3(1.0, 0.8, 0.1), frac(bands * 0.5) * 2.0);
+    return float4(color * (1.0 - uv.y * 0.6), 1.0);
+}
+`
+
+shader_fills :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(235))
+	bands, _ := gfx.shader_add(BANDS_SHADER, "bands.hlsl", .Fill)
+	gfx.set_fill_shader(list, bands, 0, 0, {0, 0}, nil)
+	gfx.rect(list, 10, 10, 80, 60)
+	gfx.circle(list, 140, 40, 30)
+	gfx.triangle(list, 170, 70, 190, 10, 195, 70)
+	gfx.set_stroke(list, named("black"))
+	gfx.set_thickness(list, 3)
+	gfx.rect(list, 10, 90, 100, 50)       // an outline over the fill
+	gfx.set_fill(list, named("tomato"))   // a plain color puts the fill back
+	gfx.circle(list, 160, 115, 20)
 }

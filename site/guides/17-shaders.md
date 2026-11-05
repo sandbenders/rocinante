@@ -1,6 +1,6 @@
 ---
 title: "Shaders"
-summary: "Effects: shaders of your own, written in HLSL, that run over the finished picture of the window, with values from the sketch and live reloading."
+summary: "Shaders of your own in HLSL: effects over the finished picture and fills for shapes, with values from the sketch and live reloading."
 weight: 17
 ---
 
@@ -70,8 +70,24 @@ broken.hlsl:1: error: 'return' : type does not match, or is not convertible to, 
 The effect is left out until it is mended, and the sketch carries on. The shader is read again when you save it.
 ```
 
+## Shaders as fills
+
+`shade` chooses a shader as the fill, so every shape drawn after it is colored by the shader, until `fill` puts a plain color back. The shape is the mask: the shader works out each pixel's color from where it is in the shape's own box.
+
+```roci picture
+background 30
+shade "spiral.hlsl" by { arms: 3, rings: 7, wobble: 0.5, speed: 0, accent: rgb 230 25 25 }
+rect at 20 20 size 360 260
+shade "spiral.hlsl" by { arms: 5, rings: 4, wobble: 0.9, speed: 0, accent: rgb 20 90 230 }
+stroke white
+thickness 4
+circle at 200 150 radius 90
+```
+
+A fill shader is written like an effect, with two differences: there is no `scene`, because there is no picture to read, and `size` is the size of the shape's box, not the window's. `uv` goes from 0 to 1 across that box and down it, so the same shader fills a big rectangle and a small circle each corner to corner. `time`, `frame` and `mouse` come with it as before, and the values after `by` are its own globals. It gives back `float4(red, green, blue, alpha)`, and an alpha under 1 lets what is behind the shape show through. The outline of a shape is drawn over its fill as usual, and `shade` works inside `draw into` too. A file written for `shade` and one written for `effect` are different shaders even if one file name is used both ways.
+
 ## A shader that draws everything itself
 
 A shader does not have to use `scene`. It can make the whole picture from the numbers it is given, as the shaders on Shadertoy do, and lay what the sketch drew over it. Start the frame with `clear` instead of `background`, so the empty parts of what the sketch drew are see-through, and let the shader put `scene` on top where its alpha is not 0.
 
-`examples/effects` has two shaders, a wave and a vignette that follows the mouse. `examples/tunnel` has a tunnel made from nothing by one shader, with the sketch's dots and word laid over it, and a lens effect over both.
+`examples/effects` has two shaders, a wave and a vignette that follows the mouse, and `examples/spiral` fills a window-sized rectangle and two circles with one spiral shader. `examples/tunnel` has a tunnel made from nothing by one shader, with the sketch's dots and word laid over it, and a lens effect over both.

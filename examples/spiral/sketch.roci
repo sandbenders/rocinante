@@ -1,0 +1,24 @@
+// Shapes filled by a shader. shade chooses spiral.hlsl as the fill, so every shape drawn after
+// it is colored by the shader, which works out each pixel's color from where it is in the
+// shape's box: the big rectangle is the whole window, and the circles are windows of their
+// own on the same spiral with other numbers. fill puts a plain color back, and the spiral
+// turns because time is passed in as a value. Change a number in spiral.hlsl and save to
+// see it change while the sketch runs.
+window size 480 270 title "spiral"
+RED = rgb 230 25 25
+
+draw [
+  shade "spiral.hlsl" by { arms: 3, rings: 7, wobble: 0.5, speed: 1, accent: RED }
+  rect at 0 0 size width height
+  stroke white
+  thickness 4
+  shade "spiral.hlsl" by { arms: 5, rings: 4, wobble: 0.9, speed: -1.5, accent: rgb 20 90 230 }
+  circle at 120 135 radius 70
+  shade "spiral.hlsl" by { arms: 2, rings: 9, wobble: 0.3, speed: 2, accent: rgb 250 190 10 }
+  circle at 360 135 radius 70
+  fill white
+  no stroke
+  font "Inter Bold" size 22
+  align center
+  text "spirals" at 240 244
+]
