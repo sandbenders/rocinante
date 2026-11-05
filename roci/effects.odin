@@ -33,6 +33,28 @@ update_shader :: proc(shader: Shader, source: string, file := "shader") -> (mess
 	return gfx.shader_update(shader, source, file)
 }
 
+// The effects that come with rocinante (`effect "blur"`): the names, and for one name its
+// HLSL source and the values it starts with. `ok` is false for a name that is not one.
+builtin_effect_names :: proc(allocator := context.temp_allocator) -> []string {
+	names := make([]string, len(gfx.BUILTIN_EFFECTS), allocator)
+	for b, i in gfx.BUILTIN_EFFECTS {
+		names[i] = b.name
+	}
+	return names
+}
+
+builtin_effect :: proc(name: string, allocator := context.temp_allocator) -> (source: string, defaults: []Effect_Value, ok: bool) {
+	b := gfx.builtin_effect(name)
+	if b == nil {
+		return
+	}
+	defaults = make([]Effect_Value, len(b.defaults), allocator)
+	for d, i in b.defaults {
+		defaults[i] = {name = d.name, floats = {d.value, 0, 0, 0}, count = 1}
+	}
+	return b.source, defaults, true
+}
+
 // Which set of shaders a number belongs to; a number kept from before a `shutdown` is stale.
 shader_epoch :: proc() -> int {
 	return gfx.shaders_epoch

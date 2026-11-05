@@ -54,6 +54,20 @@ A color arrives as 0 to 1, ready for the shader's math. A name the shader does n
 
 Effects run in the order they are written, each over the picture the one before it made, so a wave and then a vignette is two lines. An effect belongs to the window it is written for and runs once the whole frame is drawn: it cannot be written inside `draw into`, because a canvas is not a window. Everything the window shows, including `image` of a canvas, goes through it.
 
+## Effects that come with rocinante
+
+You do not have to write a shader to blur a picture. A name with no extension is one of the effects that come built in, and each starts with values that look right, so one word does something:
+
+```roci
+draw [
+  circle at mouse radius 40 fill white
+  effect "glow"
+  effect "vignette" by { amount: 0.8 }
+]
+```
+
+The built-in effects are `blur` (`amount`, the radius in pixels), `glow` (`amount`, `strength` and `threshold`: what is brighter than the threshold blooms), `pixelate` (`block`, the size of a pixel), `vignette` (`amount`), `split` (`amount`: red and blue drift apart toward the edges), `grain` (`amount`), `gray` (`amount`, 0 to 1) and `invert` (`amount`, 0 to 1). A value you do not give keeps its start value, and one a shader does not read is said, as for any shader. They are written like any other effect, so they run in order and can sit between your own. `examples/neon` stacks four of them over bright rings.
+
 ## Editing while it runs
 
 A shader is read again every time its file is saved, in the running sketch, with nothing else restarting. Change a number, save, and the picture changes. A mistake in a shader is said in the shader's own words, with its line, and the picture is drawn without the effect until the next save mends it:

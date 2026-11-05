@@ -1,0 +1,30 @@
+// Effects that come with rocinante. Nothing here is a shader of your own: effect "glow" and
+// the other plain names are built in, and each starts with values that look right, so one
+// word does something. They run in the order they are written, over everything the frame
+// drew: the glow blooms the bright rings, split pulls red and blue apart toward the edges,
+// grain flickers and vignette darkens the corners. Every few seconds the picture also turns
+// to big pixels. Give a value with by, like glow by { amount: 30 }, to change how much.
+window size 480 270 title "neon"
+rings = 7
+
+draw [
+  background (rgb 6 6 18)
+  no fill
+  thickness 5
+  for i from 1 to rings [
+    tone = (i * 36 + time * 30) % 256
+    stroke (hsb tone 200 255)
+    r = 24 + i * 15 + 8 * sin (time * 2 + i)
+    ellipse at (240 + 60 * sin (time * 0.7 + i * 0.4)) (135 + 30 * cos (time * 0.9 + i * 0.3)) size (2 * r) (2 * r * 0.7)
+  ]
+  fill white
+  no stroke
+  font "Inter Bold" size 28
+  align center
+  text "neon" at 240 118
+  effect "glow" by { amount: 18, strength: 1.4 }
+  effect "split" by { amount: 4 + 3 * sin time }
+  if (time % 8) > 6 [ effect "pixelate" by { block: 10 } ]
+  effect "grain"
+  effect "vignette"
+]

@@ -6,6 +6,7 @@ import "../folder"
 import "../gfx"
 import "../lang"
 import "core:os"
+import "core:strings"
 import "core:testing"
 import "core:time"
 
@@ -183,4 +184,37 @@ test_shade_says_a_missing_broken_or_mistaken_shader_like_effect_does :: proc(t: 
 	testing.expect_value(t, ids[2], lang.Message_Id.Shader_Value)
 	// the circle is still drawn, filled by the last good shader (here none: the third was good)
 	testing.expect_value(t, len(roci.recorded(first_window())), 1)
+}
+
+@(test)
+test_a_built_in_effect_needs_no_file_and_starts_with_its_own_values :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "effects_builtin", "effect \"glow\"\neffect \"glow\" by { strength: 3 }")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	effects, values := roci.recorded_effects(first_window())
+	testing.expect_value(t, len(effects), 2)
+	// glow reads amount, strength and threshold, in that order
+	first := (cast([^]f32)raw_data(values))[:3]
+	testing.expect_value(t, first[0], f32(14))
+	testing.expect_value(t, first[1], f32(1))
+	testing.expect_value(t, first[2], f32(0.6))
+	second := (cast([^]f32)raw_data(values[effects[1].first:]))[:3]
+	testing.expect_value(t, second[0], f32(14)) // what the sketch does not give stays at the start value
+	testing.expect_value(t, second[1], f32(3))
+}
+
+@(test)
+test_a_name_that_is_not_a_built_in_effect_lists_the_ones_there_are :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "effects_builtin_missing", "effect \"blurry\"")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 1)
+	text := report(p, context.temp_allocator)
+	testing.expect(t, strings.contains(text, "blur, glow, pixelate"), text)
+}
+
+@(test)
+test_a_built_in_effect_is_told_a_value_it_does_not_read :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "effects_builtin_value", "effect \"blur\" by { strength: 2 }")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 1)
 }

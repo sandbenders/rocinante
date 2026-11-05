@@ -39,6 +39,7 @@ Shader_Entry :: struct {
 	message: string,    // for a broken shader, what the translator said
 	others:  string,    // for an ambiguous name, the files that share it
 	suggest: string,
+	builtin: bool,      // one that comes with rocinante: no file, so no modification time
 }
 
 // How long a name that was not there waits before it is looked for again.
@@ -52,9 +53,31 @@ effect_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) {
 		_ = roci.effect(0) // still makes the window, as a drawing verb would
 		return
 	}
-	if !roci.effect(id, shader_values(it, e, call, id, name)) {
+	values := shader_values(it, e, call, id, name)
+	if defaults, is_builtin := builtin_defaults(it, name); is_builtin {
+		// what the effect starts with, then what the sketch gives
+		values = slice_join(defaults, values)
+	}
+	if !roci.effect(id, values) {
 		fail(it, .Shader_Window, e.span, name, "", "", "draw [\n  circle at mouse radius 40\n  effect \"wave.hlsl\"\n]")
 	}
+}
+
+@(private)
+builtin_defaults :: proc(it: ^Interp, name: string) -> ([]roci.Effect_Value, bool) {
+	if entry, found := it.shaders[name]; found && entry.builtin {
+		_, defaults, _ := roci.builtin_effect(name)
+		return defaults, true
+	}
+	return nil, false
+}
+
+@(private)
+slice_join :: proc(a, b: []roci.Effect_Value) -> []roci.Effect_Value {
+	out := make([]roci.Effect_Value, len(a) + len(b), context.temp_allocator)
+	copy(out, a)
+	copy(out[len(a):], b)
+	return out
 }
 
 // `shade "spiral.hlsl" by { ... }`: shapes drawn from now on are filled by the shader, until
@@ -130,8 +153,12 @@ load_shader :: proc(it: ^Interp, name: string, span: lang.Span, fill := false) -
 	entry, known := it.shaders[key]
 	if known && entry.epoch == roci.shader_epoch() {
 		if entry.state == .Good || entry.state == .Broken || entry.state == .Unreadable {
-			info, err := os.stat(entry.path, context.temp_allocator)
-			if err == nil && info.modification_time == entry.mtime {
+			unchanged := entry.builtin // a built-in has no file to change
+			if !unchanged {
+				info, err := os.stat(entry.path, context.temp_allocator)
+				unchanged = err == nil && info.modification_time == entry.mtime
+			}
+			if unchanged {
 				say_shader_problem(it, name, entry, span)
 				return entry.id if entry.state == .Good else 0
 			}
@@ -154,8 +181,24 @@ load_shader :: proc(it: ^Interp, name: string, span: lang.Span, fill := false) -
 // shader that is only being changed keeps its number.
 @(private)
 read_shader :: proc(it: ^Interp, name: string, before: Shader_Entry, fill: bool) -> (entry: Shader_Entry) {
-	root, _ := assets_root(it)
 	entry.id = before.id
+	if !fill {
+		if source, _, is_builtin := roci.builtin_effect(name); is_builtin {
+			entry.builtin = true
+			message: string
+			if entry.id == 0 {
+				entry.id, message = roci.add_shader(source, name, false)
+			} else {
+				message = roci.update_shader(entry.id, source, name)
+			}
+			if message != "" {
+				entry.state = .Broken
+				entry.message = strings.clone(message, runtime.heap_allocator())
+			}
+			return
+		}
+	}
+	root, _ := assets_root(it)
 	if root == "" {
 		entry.state = .Missing
 		return
@@ -234,6 +277,10 @@ say_shader_problem :: proc(it: ^Interp, name: string, entry: Shader_Entry, span:
 	switch entry.state {
 	case .Good:
 	case .Missing:
+		if !strings.contains(name, ".") {
+			fail(it, .Shader_Missing, span, name, fmt.tprintf("That is not one of the effects that come with rocinante (%s), and a shader of your own is a file with its extension, like `wave.hlsl`.", strings.join(roci.builtin_effect_names(), ", ", context.temp_allocator)), "", "effect \"blur\"")
+			return
+		}
 		fail(it, .Shader_Missing, span, name, "Shaders are found by their file name in your sketch's `assets` folder, and there is no file of that name there.", "", "effect \"wave.hlsl\"")
 	case .Ambiguous:
 		fail(it, .Shader_Missing, span, name, strings.concatenate({"Two or more files have that name: ", entry.others, ". Say which one you mean with its folder."}, context.temp_allocator), "", strings.concatenate({"effect \"", entry.suggest, "\""}, context.temp_allocator))
