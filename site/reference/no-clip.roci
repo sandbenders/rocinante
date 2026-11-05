@@ -1,0 +1,7 @@
+clip at 60 60 size 120 180
+fill teal
+circle at 200 150 radius 100
+no clip
+fill gold
+alpha 60
+circle at 200 150 radius 100

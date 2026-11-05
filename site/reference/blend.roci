@@ -1,0 +1,9 @@
+background 20
+no stroke
+blend add
+fill red
+circle at 160 140 radius 70
+fill lime
+circle at 240 140 radius 70
+fill blue
+circle at 200 200 radius 70

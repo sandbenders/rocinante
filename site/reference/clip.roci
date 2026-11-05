@@ -1,0 +1,9 @@
+clip at 110 70 size 180 160
+fill gold
+circle at 200 150 radius 110
+fill tomato
+rect at 90 190 size 220 30
+no clip
+no fill
+stroke navy
+rect at 110 70 size 180 160

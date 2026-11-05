@@ -1,6 +1,6 @@
 ---
 title: "Shapes and color"
-summary: "The shapes, their labels, fill and stroke, styles that last or apply once, gradients."
+summary: "The shapes, their labels, fill and stroke, styles that last or apply once, gradients, blending and clipping."
 weight: 3
 ---
 
@@ -153,3 +153,40 @@ joins round
 no fill
 triangle { 100, 260 } { 200, 120 } { 300, 260 }
 ```
+
+## Blending
+
+`blend` says how what you draw mixes with what is already there. The start is `normal`, which covers it by the shape's alpha. `add` and `screen` make light, `multiply` makes ink and shadow, `subtract` takes color away and `lighten` keeps the brighter of the two:
+
+```roci picture
+background 30
+no stroke
+blend add
+fill red
+circle at 140 130 radius 70
+fill lime
+circle at 220 130 radius 70
+fill blue
+circle at 180 190 radius 70
+```
+
+Like `fill`, a blend lasts until it is changed and starts again as `normal` in each frame. One shape can carry its own (`circle at 100 100 radius 50 blend add`), and a group can too (`with blend multiply [ ... ]`). Text and pictures blend the same way.
+
+## Clipping
+
+`clip` keeps what you draw inside a box. It takes the same words as `rect`, and it lasts until `no clip`:
+
+```roci picture
+clip at 120 60 size 160 180
+fill gold
+circle at 200 150 radius 110
+fill tomato
+rect at 100 170 size 200 30
+no clip
+no fill
+stroke navy
+rect at 120 60 size 160 180
+```
+
+The box is placed by the transform of the moment, so `move` before it and it moves too. A box that has been turned clips to the smallest upright box round it, because the window cuts along straight lines. A new `clip` replaces the old one, and a `push [ ]` or a `with [ ]` puts the clip back as it was when it ends. `examples/blend` shows both.
+

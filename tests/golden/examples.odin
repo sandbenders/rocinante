@@ -52,6 +52,7 @@ EXAMPLES := [?]Example{
 	{"fills", 5, {1}}, // shapes filled with a picture: cover, fit, stretch, tile and center, and an outline over one
 	{"outline", 3, {1}}, // the same ball against a picture as a rectangle and as its outline
 	{"export", 5, {1}}, // a ring of dots; s and r save pictures, which a golden run never presses
+	{"blend", 3, {1}}, // seven blends over the same gray, and a bright wall clipped to a box
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.

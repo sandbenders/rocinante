@@ -1,0 +1,46 @@
+// Blend and clip. Each pair of circles is drawn with another blend, over the same gray:
+// normal covers, add and screen glow, multiply goes dark, subtract takes color away and
+// lighten keeps the brighter of the two. Below, a dim wall is drawn first and the
+// same wall again, bright, inside a clip box that follows the mouse when you press it.
+window size 640 420 title "blend and clip"
+spot = { 320, 310 }
+
+learn pair x [
+  fill orange
+  circle at x 100 radius 30
+  fill dodgerblue
+  circle at (x + 34) 100 radius 30
+]
+
+learn wall bright [
+  for i from 0 to 31 [
+    rect at (i * 20) 200 size 14 200 fill (hsb (i * 8) 200 bright)
+  ]
+]
+
+draw [
+  background 110
+  no stroke
+  with blend normal [ pair 50 ]
+  with blend add [ pair 140 ]
+  with blend multiply [ pair 230 ]
+  with blend screen [ pair 320 ]
+  with blend subtract [ pair 410 ]
+  with blend lighten [ pair 500 ]
+  fill white
+  font "Inter" size 12
+  text "normal" at 36 150
+  text "add" at 130 150
+  text "multiply" at 208 150
+  text "screen" at 304 150
+  text "subtract" at 390 150
+  text "lighten" at 482 150
+  if pressed [ spot = mouse ]
+  wall 110
+  clip at (spot.x - 80) (spot.y - 60) size 160 120
+  wall 255
+  no clip
+  no fill
+  stroke white
+  rect at (spot.x - 80) (spot.y - 60) size 160 120
+]
