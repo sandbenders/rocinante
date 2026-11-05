@@ -26,12 +26,21 @@ Image_Data :: struct {
 	width, height: int,    // logical, for a canvas
 	pixels:        []u8,   // width * height * 4; nil for a canvas, whose pixels are drawn
 	canvas:        ^Canvas, // not nil: this picture is a canvas (canvas.odin)
+	used:          u64,     // `images_clock` when it was last drawn, filled with or read: what lets a picture the sketch made and forgot be let go (`image_release`)
 }
 
 // The biggest side of a picture, so one file cannot ask for a texture no GPU makes.
 MAX_IMAGE_SIDE :: 16384
 
 @(thread_local) image_store: [dynamic]Image_Data
+
+// Counts the frames the sketch has run (`images_tick`), so a picture's `used` says how long
+// ago it was last used.
+@(thread_local) images_clock: u64
+
+// Every picture let go so far, in order, so each renderer can drop the texture it made for
+// them (`release_stale_textures`).
+@(thread_local) released_images: [dynamic]Image_Id
 
 // Counts how many times every picture has been let go, so a number kept from before
 // can be told from one that is good now.
@@ -106,7 +115,46 @@ image_data :: proc(id: Image_Id) -> ^Image_Data {
 	if id == 0 || int(id) > len(image_store) {
 		return nil
 	}
-	return &image_store[int(id) - 1]
+	data := &image_store[int(id) - 1]
+	if data.width == 0 && data.pixels == nil && data.canvas == nil {
+		return nil // let go
+	}
+	return data
+}
+
+// Says a frame has passed.
+images_tick :: proc() {
+	images_clock += 1
+}
+
+// Notes that a picture is being used now.
+image_touch :: proc "contextless" (id: Image_Id) {
+	if id != 0 && int(id) <= len(image_store) {
+		image_store[int(id) - 1].used = images_clock
+	}
+}
+
+// Lets go of a loaded picture's pixels, for the ones a sketch made that nothing needs any
+// more. The number then names nothing: it draws and fills nothing, as a picture that is not
+// there. A canvas is never let go.
+image_release :: proc(id: Image_Id) -> bool {
+	context.allocator = runtime.heap_allocator()
+	data := image_data(id)
+	if data == nil || data.canvas != nil {
+		return false
+	}
+	delete(data.pixels)
+	image_store[int(id) - 1] = {}
+	append(&released_images, id)
+	return true
+}
+
+// How many bytes of pixels a picture holds on the CPU: 0 for a canvas.
+image_bytes :: proc(id: Image_Id) -> int {
+	if data := image_data(id); data != nil {
+		return len(data.pixels)
+	}
+	return 0
 }
 
 // How big a kept picture is, in pixels; 0 by 0 for a number that is not one.
@@ -128,5 +176,8 @@ images_stop :: proc() {
 	}
 	delete(image_store)
 	image_store = nil
+	delete(released_images)
+	released_images = nil
+	images_clock = 0
 	image_epoch += 1
 }

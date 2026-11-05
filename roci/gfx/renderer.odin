@@ -128,6 +128,7 @@ Renderer :: struct {
 	images:  map[Image_Id]^sdl.GPUTexture, // the textures of the pictures drawn so far (typeset.odin)
 	canvases: map[Image_Id]Canvas_Gpu,     // the textures of the canvases (renderer_canvas.odin)
 	text_fills: map[u64]Text_Fill_Texture, // the textures of texts filled with a picture (textfill.odin)
+	released_seen: int, // how many of `released_images` this renderer has dropped the textures of
 	uploaded_glyph_count:  int,
 
 	// Hashes of what is on the GPU now, so an unchanged scene uploads nothing.
@@ -764,6 +765,7 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 // is left as far as it got but is safe to submit.
 render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTexture, format: sdl.GPUTextureFormat, pixels: [2]u32, canvas: [2]f32, list: ^Command_List, b: ^Batcher) -> bool {
 	r.stats = {}
+	release_stale_textures(r)
 	samples := samples_for(r, format)
 	msaa: ^sdl.GPUTexture
 	if samples != ._1 {
@@ -884,6 +886,21 @@ render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTe
 		r.stats.draws += 1
 	}
 	return true
+}
+
+// Lets go of the textures of the pictures the sketch has let go of since the last frame.
+@(private)
+release_stale_textures :: proc(r: ^Renderer) {
+	for r.released_seen < len(released_images) {
+		id := released_images[r.released_seen]
+		r.released_seen += 1
+		if texture, found := r.images[id]; found {
+			if texture != nil {
+				sdl.ReleaseGPUTexture(r.device, texture)
+			}
+			delete_key(&r.images, id)
+		}
+	}
 }
 
 // The pipeline a batch is drawn with, in the blend it asks for: the program of its

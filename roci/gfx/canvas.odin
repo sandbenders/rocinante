@@ -31,6 +31,7 @@ Canvas :: struct {
 	rounds:  [dynamic]Canvas_Round, // finished frames not yet drawn, oldest first
 	density: f32,            // device pixels for each logical pixel
 	pending: bool,           // something was recorded into `list` since the last round was closed
+	drawn:   u64,            // how many rounds have been closed: it changes when what the canvas shows will
 }
 
 // The side of a canvas texture that has `logical` logical pixels at `density`.
@@ -94,6 +95,7 @@ canvas_close_round :: proc(c: ^Canvas) {
 	}
 	round := Canvas_Round{list = c.list}
 	append(&c.rounds, round)
+	c.drawn += 1
 	// the list goes on with the same style, but with nothing recorded and nothing set
 	c.list = Command_List{background = {0, 0, 0, 0}, style = c.list.style, transform = c.list.transform, turtle = c.list.turtle, look_changed = true}
 	c.pending = false

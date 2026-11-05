@@ -290,6 +290,7 @@ background_image :: proc(list: ^Command_List, fill: Image_Fill) {
 	if image_data(fill.image) == nil || !finite(fill.tile, fill.at.x, fill.at.y) {
 		return
 	}
+	image_touch(fill.image)
 	list.background_paint = {}
 	list.background_image = fill
 	list.background_image.tile = max(fill.tile, 0)
@@ -347,6 +348,7 @@ set_fill_image :: proc(list: ^Command_List, fill: Image_Fill) {
 		return
 	}
 	list.look_changed = true
+	image_touch(fill.image)
 	list.style.fill_on = true
 	list.style.fill_paint = {}
 	list.style.fill_image = fill
@@ -381,6 +383,7 @@ set_stroke_image :: proc(list: ^Command_List, fill: Image_Fill) {
 		return
 	}
 	list.look_changed = true
+	image_touch(fill.image)
 	list.style.stroke_on = true
 	list.style.stroke_paint = {}
 	list.style.stroke_image = fill
@@ -597,6 +600,7 @@ draw_image :: proc(list: ^Command_List, id: Image_Id, x, y, width, height: f32, 
 	if image_data(id) == nil {
 		return false
 	}
+	image_touch(id)
 	return record(list, .Image, origin, {x, y, abs(width), abs(height), f32(id), 0, 0, 0}, u64(id))
 }
 
