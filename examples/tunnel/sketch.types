@@ -1,0 +1,5 @@
+dots: a number
+a: a number
+r: a number
+hue: a number
+look: a vector of 2 numbers

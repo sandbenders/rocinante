@@ -70,4 +70,8 @@ broken.hlsl:1: error: 'return' : type does not match, or is not convertible to, 
 The effect is left out until it is mended, and the sketch carries on. The shader is read again when you save it.
 ```
 
-`examples/effects` has two shaders, a wave and a vignette that follows the mouse.
+## A shader that draws everything itself
+
+A shader does not have to use `scene`. It can make the whole picture from the numbers it is given, as the shaders on Shadertoy do, and lay what the sketch drew over it. Start the frame with `clear` instead of `background`, so the empty parts of what the sketch drew are see-through, and let the shader put `scene` on top where its alpha is not 0.
+
+`examples/effects` has two shaders, a wave and a vignette that follows the mouse. `examples/tunnel` has a tunnel made from nothing by one shader, with the sketch's dots and word laid over it, and a lens effect over both.

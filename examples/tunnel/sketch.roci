@@ -1,0 +1,26 @@
+// A flight down a glowing tunnel. The tunnel is not drawn by the sketch: tunnel.hlsl makes it
+// from nothing for every pixel, and lays over it what the sketch did draw, the ring of dots
+// and the word. lens.hlsl then gives the whole picture a camera's flaws. Move the mouse to
+// look around; the numbers after by are the shaders' own values, so try changing glow or
+// strength and saving a shader while it runs.
+window size 480 320 title "tunnel"
+dots = 14
+
+draw [
+  clear
+  no stroke
+  for i from 1 to dots [
+    a = time * 0.8 + i * 360 / dots
+    r = 90 + 18 * sin (time * 2 + i)
+    hue = i * 255 / dots + time * 40
+    fill (hsb (hue % 256) 160 255)
+    circle at (240 + r * cos a) (160 + r * 0.6 * sin a) radius (5 + 3 * sin (time * 3 + i * 2))
+  ]
+  fill white
+  font "Inter Bold" size 30
+  align center
+  text "rocinante" at 240 144
+  look = { sin (time * 0.4) * 0.25 + (mouse.x / width - 0.5) * 0.5, cos (time * 0.3) * 0.12 + (mouse.y / height - 0.5) * 0.3 }
+  effect "tunnel.hlsl" by { look: look, glow: 1.8 }
+  effect "lens.hlsl" by { strength: 1 }
+]
