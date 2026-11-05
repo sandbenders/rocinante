@@ -18,7 +18,7 @@ when ODIN_OS == .Darwin {
 		"system:spirv-cross-reflect",
 		"system:spirv-cross-util",
 		"system:spirv-cross-core",
-		"system:c++",
+		// The C++ runtime is linked by vendor/shaderc, which is always imported beside this.
 	}
 } else when ODIN_OS == .Windows {
 	foreign import lib "system:spirv-cross-c-shared.lib"
