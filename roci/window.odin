@@ -200,6 +200,11 @@ frame_hash :: proc(w: Window) -> u64 {
 	append(&parts, win.list.background_paint.hash, u64(win.width) << 32 | u64(win.height))
 	bi := win.list.background_image
 	append(&parts, u64(bi.image) | u64(bi.fit) << 32, u64(transmute(u32)bi.tile) << 32 | u64(transmute(u32)bi.at.x), u64(transmute(u32)bi.at.y))
+	// The effects and the values they are given, but not the time, the frame and the mouse
+	// that come with every one: a shader that reads only those looks the same to a tool.
+	for e in win.list.effects {
+		append(&parts, u64(e.shader) | u64(e.version) << 32, hash.fnv64a(win.list.effect_values[e.first:e.first + e.count]))
+	}
 	return hash.fnv64a(slice.to_bytes(parts[:]))
 }
 
@@ -332,4 +337,14 @@ set_fullscreen :: proc(w: Window, on: bool) {
 			platform.set_fullscreen(win.handle, on)
 		}
 	}
+}
+
+// The effects a window's frame asks for and the bytes of the values they were given, for
+// tests (effects.odin).
+recorded_effects :: proc(w: Window) -> (effects: []gfx.Effect, values: []u8) {
+	win := win_for(w)
+	if win == nil {
+		return nil, nil
+	}
+	return win.list.effects[:], win.list.effect_values[:]
 }

@@ -190,6 +190,8 @@ shutdown :: proc() {
 	}
 	delete(the.canvas_reads)
 	gfx.images_stop()
+	gfx.shaders_stop()
+	gfx.effect_vertex_stop()
 	the = {}
 }
 

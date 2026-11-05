@@ -49,7 +49,7 @@ shader_params_destroy :: proc(p: ^Shader_Params) {
 // With `params` the uniform blocks are placed as a user's effect shader has them: the block
 // called `Rocinante` is set 3 binding 0 and the other, the shader's own globals, set 3
 // binding 1, and the members of the second are listed in `params`.
-translate_to_spirv :: proc(source: string, stage: Stage, entry: string, params: ^Shader_Params = nil, allocator := context.allocator) -> (code: []u8, message: string, ok: bool) {
+translate_to_spirv :: proc(source: string, stage: Stage, entry: string, params: ^Shader_Params = nil, file := "shader", allocator := context.allocator) -> (code: []u8, message: string, ok: bool) {
 	context.allocator = allocator
 	// shaderc says nothing when the source has no function of the name asked for, and gives a
 	// module that does nothing, so the name has to be somewhere in the text.
@@ -57,7 +57,7 @@ translate_to_spirv :: proc(source: string, stage: Stage, entry: string, params: 
 		return nil, fmt.aprintf("there is no function called %s in the shader", entry), false
 	}
 	kind := shaderc.Shader_Kind.Vertex if stage == .Vertex else shaderc.Shader_Kind.Fragment
-	separate, hlsl_message, hlsl_ok := hlsl_to_spirv(source, kind, entry)
+	separate, hlsl_message, hlsl_ok := hlsl_to_spirv(source, kind, entry, file)
 	if !hlsl_ok {
 		return nil, hlsl_message, false
 	}
@@ -118,7 +118,7 @@ spirv_to_msl :: proc(spirv: []u8, effect := false, allocator := context.allocato
 }
 
 @(private = "file")
-hlsl_to_spirv :: proc(source: string, kind: shaderc.Shader_Kind, entry: string) -> (code: []u8, message: string, ok: bool) {
+hlsl_to_spirv :: proc(source: string, kind: shaderc.Shader_Kind, entry: string, file: string) -> (code: []u8, message: string, ok: bool) {
 	compiler := shaderc.compiler_initialize()
 	if compiler == nil {
 		return nil, strings.clone("could not start the shader compiler"), false
@@ -128,7 +128,7 @@ hlsl_to_spirv :: proc(source: string, kind: shaderc.Shader_Kind, entry: string) 
 	defer shaderc.compile_options_release(options)
 	shaderc.compile_options_set_source_language(options, .Hlsl)
 	shaderc.compile_options_set_target_env(options, .Vulkan, shaderc.ENV_VERSION_VULKAN_1_1)
-	return run_shaderc(compiler, options, source, kind, entry)
+	return run_shaderc(compiler, options, source, kind, entry, file)
 }
 
 @(private = "file")
@@ -142,13 +142,13 @@ glsl_to_spirv :: proc(source: string, kind: shaderc.Shader_Kind) -> (code: []u8,
 	defer shaderc.compile_options_release(options)
 	shaderc.compile_options_set_source_language(options, .Glsl)
 	shaderc.compile_options_set_target_env(options, .Vulkan, shaderc.ENV_VERSION_VULKAN_1_1)
-	return run_shaderc(compiler, options, source, kind, "main")
+	return run_shaderc(compiler, options, source, kind, "main", "shader")
 }
 
 @(private = "file")
-run_shaderc :: proc(compiler: shaderc.Compiler, options: shaderc.Options, source: string, kind: shaderc.Shader_Kind, entry: string) -> (code: []u8, message: string, ok: bool) {
+run_shaderc :: proc(compiler: shaderc.Compiler, options: shaderc.Options, source: string, kind: shaderc.Shader_Kind, entry: string, file: string) -> (code: []u8, message: string, ok: bool) {
 	name := strings.clone_to_cstring(entry, context.temp_allocator)
-	result := shaderc.compile_into_spv(compiler, strings.clone_to_cstring(source, context.temp_allocator), len(source), kind, "shader", name, options)
+	result := shaderc.compile_into_spv(compiler, strings.clone_to_cstring(source, context.temp_allocator), len(source), kind, strings.clone_to_cstring(file, context.temp_allocator), name, options)
 	if result == nil {
 		return nil, strings.clone("the shader compiler ran out of memory"), false
 	}

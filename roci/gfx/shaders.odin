@@ -61,20 +61,20 @@ VSOutput vs_main(uint id : SV_VertexID)
 }
 `
 
-// Translates `source` as an effect and keeps it. Gives its number, and what the translator
+// Translates `source` as an effect and keeps it. `file` is how a message names it. Gives its number, and what the translator
 // said when the source is not good (the shader is kept all the same, so `shader_update`
 // can mend it and a sketch that draws with it draws nothing from it meanwhile).
-shader_add :: proc(source: string) -> (id: Shader_Id, message: string) {
+shader_add :: proc(source: string, file := "shader") -> (id: Shader_Id, message: string) {
 	context.allocator = runtime.heap_allocator()
 	append(&shader_store, Shader_Data{})
 	id = Shader_Id(len(shader_store))
-	message = shader_update(id, source)
+	message = shader_update(id, source, file)
 	return
 }
 
 // Translates the new `source` into shader `id`. Gives what the translator said, "" when
 // the source is good. The version rises either way.
-shader_update :: proc(id: Shader_Id, source: string) -> (message: string) {
+shader_update :: proc(id: Shader_Id, source: string, file := "shader") -> (message: string) {
 	context.allocator = runtime.heap_allocator()
 	data := shader_data(id)
 	if data == nil {
@@ -88,7 +88,7 @@ shader_update :: proc(id: Shader_Id, source: string) -> (message: string) {
 	data.version += 1
 	full := strings.concatenate({EFFECT_PRELUDE, source})
 	defer delete(full)
-	code, said, ok := translate_to_spirv(full, .Fragment, "ps_main", &data.params)
+	code, said, ok := translate_to_spirv(full, .Fragment, "ps_main", &data.params, file)
 	if !ok {
 		data.error = said
 		shader_params_destroy(&data.params)
