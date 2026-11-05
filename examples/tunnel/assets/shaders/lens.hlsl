@@ -5,7 +5,10 @@ float strength;
 
 float hash(float2 p)
 {
-    return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
+    // no sin: its result for a big number differs between graphics drivers
+    float3 p3 = frac(float3(p.x, p.y, p.x) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return frac((p3.x + p3.y) * p3.z);
 }
 
 float4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0
