@@ -21,7 +21,7 @@ float4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target
     float3 color = float3(r, g, b);
 
     float lines = 0.96 + 0.04 * sin(uv.y * size.y * 3.14159);
-    float grain = (hash(uv * size + frame) - 0.5) * 0.06 * strength;
+    float grain = (hash(floor(uv * size) + frame) - 0.5) * 0.06 * strength;
     float vignette = 1.0 - smoothstep(0.35, 0.9, length(centered * float2(1.0, 0.8)) * 1.4) * 0.7 * strength;
     color = (color * lines + grain) * vignette;
     // a touch of contrast
