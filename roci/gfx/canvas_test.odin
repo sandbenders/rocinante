@@ -6,6 +6,7 @@ import "core:testing"
 
 @(test)
 a_canvas_has_a_logical_size_and_no_pixels_of_its_own :: proc(t: ^testing.T) {
+	defer images_stop()
 	id, ok := image_add_canvas(300, 200, 2)
 	testing.expect(t, ok && id != 0)
 	w, h := image_size(id)
@@ -22,6 +23,7 @@ a_canvas_has_a_logical_size_and_no_pixels_of_its_own :: proc(t: ^testing.T) {
 
 @(test)
 a_canvas_of_no_size_or_a_silly_density_is_not_made :: proc(t: ^testing.T) {
+	defer images_stop()
 	for size in ([?][3]f32{{0, 10, 1}, {10, 0, 1}, {-5, 10, 1}, {MAX_IMAGE_SIDE + 1, 10, 1}, {10, 10, 0}, {10, 10, -1}, {10, 10, 9}}) {
 		_, ok := image_add_canvas(int(size[0]), int(size[1]), size[2])
 		testing.expectf(t, !ok, "%v was made", size)
@@ -39,6 +41,7 @@ a_canvas_texture_has_a_whole_number_of_pixels_that_covers_its_size :: proc(t: ^t
 
 @(test)
 starting_to_draw_resets_the_style_and_keeps_what_was_drawn :: proc(t: ^testing.T) {
+	defer images_stop()
 	id, _ := image_add_canvas(50, 50, 1)
 	c := canvas_of(id)
 	set_fill(&c.list, {255, 0, 0, 255})
@@ -57,6 +60,7 @@ starting_to_draw_resets_the_style_and_keeps_what_was_drawn :: proc(t: ^testing.T
 
 @(test)
 a_round_is_closed_only_when_something_was_drawn_and_the_list_starts_empty_again :: proc(t: ^testing.T) {
+	defer images_stop()
 	id, _ := image_add_canvas(50, 50, 1)
 	c := canvas_of(id)
 	canvas_close_round(c)
@@ -79,6 +83,7 @@ a_round_is_closed_only_when_something_was_drawn_and_the_list_starts_empty_again 
 
 @(test)
 a_round_that_starts_over_lets_go_of_the_rounds_before_it :: proc(t: ^testing.T) {
+	defer images_stop()
 	id, _ := image_add_canvas(50, 50, 1)
 	c := canvas_of(id)
 	for _ in 0 ..< 3 {
@@ -104,6 +109,7 @@ a_round_that_starts_over_lets_go_of_the_rounds_before_it :: proc(t: ^testing.T) 
 
 @(test)
 the_old_picture_is_put_first_unless_the_round_starts_over :: proc(t: ^testing.T) {
+	defer images_stop()
 	id, _ := image_add_canvas(80, 60, 1)
 	list: Command_List
 	defer destroy(&list)
@@ -146,6 +152,7 @@ the_background_is_set_by_background_a_gradient_and_clear_and_a_new_frame_forgets
 
 @(test)
 a_canvas_is_drawn_as_a_premultiplied_picture_and_a_loaded_one_is_not :: proc(t: ^testing.T) {
+	defer images_stop()
 	list: Command_List
 	defer destroy(&list)
 	batcher: Batcher
