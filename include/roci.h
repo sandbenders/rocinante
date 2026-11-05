@@ -231,6 +231,18 @@ void roci_caps(const char *style);
 /* Sets how outlines turn corners from now on: miter, round or bevel. */
 void roci_joins(const char *style);
 
+/* Sets how what is drawn from now on mixes with what is behind it: normal (the default), add, multiply, screen, subtract or lighten. It lasts like fill does, and one shape can say it too: `circle at 100 100 radius 50 blend add`. */
+void roci_blend(const char *mode);
+
+/* Keeps drawing from now on inside a box, in the transform of the moment: `clip at 20 20 size 200 100`. A turned box clips to the upright box round it. A new clip replaces the old one, and `no clip` takes it away. */
+void roci_clip(double x, double y, double width, double height);
+
+/* Keeps drawing from now on inside a box, in the transform of the moment: `clip at 20 20 size 200 100`. A turned box clips to the upright box round it. A new clip replaces the old one, and `no clip` takes it away. */
+void roci_clip_v(roci_vec2 position, roci_vec2 size);
+
+/* Takes the clip away, so drawing reaches the whole window again. */
+void roci_no_clip(void);
+
 /* Makes a color from red, green and blue, each 0 to 255. */
 roci_color roci_rgb(double red, double green, double blue);
 

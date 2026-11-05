@@ -23,7 +23,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"load", "image", "tint", "canvas", "draw into", "save",
 	}},
 	{"Color and style", "How shapes look: the color inside them, the line around them, and colors made from numbers.", {
-		"background", "clear", "fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "caps", "joins",
+		"background", "clear", "fill", "no fill", "stroke", "no stroke", "thickness", "alpha", "blend", "clip", "no clip", "caps", "joins",
 		"rgb", "hsb", "oklch", "gradient", "mix", "with",
 	}},
 	{"Transforms", "Moving, turning and growing everything drawn after them.", {

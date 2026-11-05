@@ -19,6 +19,7 @@ Image_Fill :: gfx.Image_Fill
 Origin :: gfx.Origin
 Cap :: geom.Cap
 Join :: geom.Join
+Blend :: gfx.Blend_Mode
 Scope :: gfx.Scope
 
 // What fills or outlines a shape: a plain colour, a gradient or (for a fill only) a picture.
@@ -44,6 +45,7 @@ Look :: struct {
 	leading:   Maybe(f64),
 	// Pictures only: the colour they are drawn through.
 	tint:      Maybe(Colour),
+	blend:     Maybe(Blend),
 }
 
 // ---- looks ----
@@ -91,6 +93,7 @@ begin_look :: proc(list: ^gfx.Command_List, look: Look) -> bool {
 	if side, ok := look.align.?; ok {gfx.set_align(list, side)}
 	if m, ok := look.leading.?; ok {gfx.set_leading(list, f32(m))}
 	if c, ok := look.tint.?; ok {gfx.set_tint(list, c)}
+	if m, ok := look.blend.?; ok {gfx.set_blend(list, m)}
 	return true
 }
 
@@ -295,6 +298,43 @@ caps :: proc(style: Cap) {
 
 joins :: proc(style: Join) {
 	gfx.set_joins(current_list(), style)
+}
+
+// How what is drawn from now on mixes with what is behind it: normal, add, multiply,
+// screen, subtract or lighten.
+blend :: proc(mode: Blend) {
+	gfx.set_blend(current_list(), mode)
+}
+
+// The blend a word names (`add`), and whether it names one.
+blend_named :: proc(word: string) -> (mode: Blend, ok: bool) {
+	switch word {
+	case "normal":   return .Normal, true
+	case "add":      return .Add, true
+	case "multiply": return .Multiply, true
+	case "screen":   return .Screen, true
+	case "subtract": return .Subtract, true
+	case "lighten":  return .Lighten, true
+	}
+	return .Normal, false
+}
+
+// Keeps drawing from now on inside the box `x y width height`, which is placed by the
+// transform of the moment (a turned box clips to the upright box round it). Replaces the
+// clip there was; the box is `clip_v` with a position and a size as vectors.
+clip_xywh :: proc(x, y, width, height: f64) {
+	gfx.set_clip(current_list(), f32(x), f32(y), f32(width), f32(height))
+}
+
+clip_v :: proc(position, size: [2]f64) {
+	clip_xywh(position.x, position.y, size.x, size.y)
+}
+
+clip :: proc{clip_xywh, clip_v}
+
+// Takes the clip away: drawing reaches the whole window again.
+no_clip :: proc() {
+	gfx.no_clip(current_list())
 }
 
 // ---- colour ----

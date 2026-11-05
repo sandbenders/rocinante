@@ -412,6 +412,34 @@ abi_joins :: proc "c" (style: cstring) {
 	}
 }
 
+// "normal", "add", "multiply", "screen", "subtract" or "lighten"; any other word
+// leaves the blend as it is.
+@(export, link_name = "roci_blend")
+abi_blend :: proc "c" (mode: cstring) {
+	context = runtime.default_context()
+	if named, ok := blend_named(text_from_abi(mode)); ok {
+		blend(named)
+	}
+}
+
+@(export, link_name = "roci_clip")
+abi_clip :: proc "c" (x, y, width, height: f64) {
+	context = runtime.default_context()
+	clip(x, y, width, height)
+}
+
+@(export, link_name = "roci_clip_v")
+abi_clip_v :: proc "c" (position, size: Abi_Vec2) {
+	context = runtime.default_context()
+	clip(vec_from_abi(position), vec_from_abi(size))
+}
+
+@(export, link_name = "roci_no_clip")
+abi_no_clip :: proc "c" () {
+	context = runtime.default_context()
+	no_clip()
+}
+
 // ---- colour ----
 
 @(export, link_name = "roci_rgb")

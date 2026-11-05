@@ -31,6 +31,13 @@ test_spacing_is_one_space_and_binary_operators_have_spaces_around_them :: proc(t
 }
 
 @(test)
+test_blend_and_clip_are_written_the_way_they_are_read :: proc(t: ^testing.T) {
+	expect_formatted(t, "blend   add\nno   clip\nclip at 1 2 size 3 4\n", "blend add\nno clip\nclip at 1 2 size 3 4\n")
+	expect_formatted(t, "circle at 1 1 radius 1 blend add fill red\n", "circle at 1 1 radius 1 blend add fill red\n") // style words stay where they were written
+	expect_formatted(t, "with blend add [ circle at 1 1 radius 1 ]\n", "with blend add [ circle at 1 1 radius 1 ]\n")
+}
+
+@(test)
 test_literals_are_written_as_they_were_and_brackets_have_one_space_inside :: proc(t: ^testing.T) {
 	expect_formatted(t, "v={1,2}\nl=[1   2 3]\nr={a:1,b:\"x\"}\nc=#FF8800\n", "v = { 1, 2 }\nl = [ 1 2 3 ]\nr = { a: 1, b: \"x\" }\nc = #FF8800\n")
 	expect_formatted(t, "e=[]\nf={}\n", "e = []\nf = {}\n")

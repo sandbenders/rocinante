@@ -266,6 +266,10 @@ make_look :: proc(it: ^Interp, options: []lang.IR_Option) -> (look: roci.Look, o
 			look.leading = as_number(eval(it, o.args[0]))
 		case "tint":
 			look.tint = as_colour(eval(it, o.args[0]))
+		case "blend":
+			if mode, ok := roci.blend_named(as_text(eval(it, o.args[0]))); ok {
+				look.blend = mode
+			}
 		case "style":
 			merge_style_record(it, &look, eval(it, o.args[0]))
 		case "as":
@@ -324,6 +328,9 @@ apply_look :: proc(look: roci.Look) {
 	}
 	if a, ok := look.alpha.?; ok {
 		roci.alpha(a)
+	}
+	if mode, ok := look.blend.?; ok {
+		roci.blend(mode)
 	}
 }
 
@@ -534,6 +541,18 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		case "round": roci.joins(.Round)
 		case "bevel": roci.joins(.Bevel)
 		}
+	case .Blend:
+		if mode, ok := roci.blend_named(as_text(a[0])); ok {
+			roci.blend(mode)
+		}
+	case .Clip:
+		if call.shape == 0 {
+			roci.clip(n(a, 0), n(a, 1), n(a, 2), n(a, 3))
+		} else {
+			roci.clip(p(a, 0), p(a, 1))
+		}
+	case .No_Clip:
+		roci.no_clip()
 
 	case .Rgb, .Hsb, .Oklch:
 		alpha := 255.0

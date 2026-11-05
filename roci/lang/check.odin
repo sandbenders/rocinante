@@ -1029,6 +1029,14 @@ check_style_option :: proc(c: ^Checker, o: Option_Use) -> IR_Option {
 		}
 	}
 	for a, i in o.args {
+		// A word where the style word takes one (`blend add`) is that word.
+		if i < len(def.kinds) && def.kinds[i] == .Name {
+			if word, ok := as_word(c, a); ok {
+				check_choice(c, "with", o.word, o.word, word, a.span)
+				append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
+				continue
+			}
+		}
 		ir := check_expr(c, a, false)
 		if i < len(def.kinds) && (def.kinds[i] == .Colour || def.kinds[i] == .Paint) {
 			check_colour_list(c, ir, a)

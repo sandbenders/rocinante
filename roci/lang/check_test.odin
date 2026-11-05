@@ -895,6 +895,7 @@ test_a_positional_geometry_call_says_how_to_write_it_with_labels :: proc(t: ^tes
 		{"square 1 2 3", "square at 1 2 size 3"},
 		{"arc 1 2 3 4 5 6", "arc at 1 2 size 3 4 from 5 to 6"},
 		{"w = window 800 600", "w = window size 800 600"},
+		{"clip 1 2 3 4", "clip at 1 2 size 3 4"},
 	}
 	for c in cases {
 		got := check_text(c[0])
@@ -1132,6 +1133,22 @@ test_outline_gives_the_corners_of_a_picture_as_a_shape_of_points :: proc(t: ^tes
 	// Not a picture, an unknown word, and a list of numbers where corners are wanted.
 	expect_errors(t, "print (count (outline 5))", {.Wrong_Argument_Kind})
 	expect_errors(t, PHOTO + "x = outline photo wide 3", {.Unknown_Option})
+}
+
+@(test)
+test_blend_and_clip_are_checked_like_the_other_style_words :: proc(t: ^testing.T) {
+	expect_errors(t, "blend add\nblend multiply\nblend normal", {})
+	expect_errors(t, "circle at 1 1 radius 1 blend add\nrect at 1 1 size 2 2 blend screen\ntext \"a\" at 0 0 blend subtract", {})
+	expect_errors(t, "photo = load \"a.png\"\nimage photo at 0 0 blend lighten", {})
+	expect_errors(t, "with blend add [ circle at 1 1 radius 1 ]\nwith fill red blend subtract [ circle at 1 1 radius 1 ]", {})
+	expect_errors(t, "clip at 1 2 size 3 4\nclip at { 1, 2 } size { 3, 4 }\nclip at { 1, 2 } size 3 4\nno clip", {})
+	// A word that is no blend: said with the words there are, in each of the places.
+	expect_errors(t, "blend glow", {.Unknown_Choice})
+	expect_errors(t, "circle at 1 1 radius 1 blend sub", {.Unknown_Choice})
+	expect_errors(t, "with blend glow [ circle at 1 1 radius 1 ]", {.Unknown_Choice})
+	// A number where the word goes, and a clip that is missing its size.
+	expect_errors(t, "blend 5", {.Wrong_Argument_Kind})
+	expect_errors(t, "clip at 1 2", {.Missing_Required_Word})
 }
 
 @(test)

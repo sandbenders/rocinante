@@ -48,6 +48,8 @@ LABELS := []Label_Form{
 	{verb = "arc", shape = 0, words = {{"at", 0, 2}, {"size", 2, 2}, {"from", 4, 1}, {"to", 5, 1}}},
 	{verb = "triangle", shape = 1, words = {}},
 	{verb = "quad", shape = 1, words = {}},
+	{verb = "clip", shape = 0, words = AT_XY_SIZE_WH},
+	{verb = "clip", shape = 1, words = AT_P_SIZE_V},
 	{verb = "window", shape = 0, words = {{"size", 0, 2}}},
 	{verb = "text", shape = 0, words = {{"at", 1, 2}}, lead = 1},
 	{verb = "text", shape = 1, words = {{"at", 1, 1}}, lead = 1},

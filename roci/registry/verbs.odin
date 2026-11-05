@@ -16,6 +16,7 @@ STYLE_OPTIONS := []Option{
 	{"stroke", {.Colour}, false},
 	{"thickness", {.Number}, false},
 	{"alpha", {.Number}, false},
+	{"blend", {.Name}, false},
 	{"style", {.Any}, false},
 	{"as", {.Name}, false},
 }
@@ -27,6 +28,7 @@ TEXT_OPTIONS := []Option{
 	{"stroke", {.Colour}, false},
 	{"thickness", {.Number}, false},
 	{"alpha", {.Number}, false},
+	{"blend", {.Name}, false},
 	{"style", {.Any}, false},
 	{"size", {.Number}, false},
 	{"font", {.Text}, false},
@@ -42,6 +44,7 @@ IMAGE_OPTIONS := []Option{
 	{"height", {.Number}, false},
 	{"tint", {.Colour}, false},
 	{"alpha", {.Number}, false},
+	{"blend", {.Name}, false},
 	{"as", {.Name}, false},
 }
 
@@ -49,6 +52,7 @@ IMAGE_OPTIONS := []Option{
 IMAGE_SIZED_OPTIONS := []Option{
 	{"tint", {.Colour}, false},
 	{"alpha", {.Number}, false},
+	{"blend", {.Name}, false},
 	{"as", {.Name}, false},
 }
 
@@ -197,6 +201,12 @@ VERBS := []Verb{
 	{"thickness", {{{{"pixels", .Number}}, nil, .None}}, "Sets the width of outlines and lines, in pixels."},
 	{"alpha", {{{{"amount", .Number}}, nil, .None}}, "Sets how solid fill and stroke are: 0 (gone) to 100 (solid) in the language, 0 to 255 in the Odin and C APIs."},
 	{"caps", {{{{"style", .Name}}, nil, .None}}, "Sets how lines and points end from now on: butt, round or square."},
+	{"blend", {{{{"mode", .Name}}, nil, .None}}, "Sets how what is drawn from now on mixes with what is behind it: normal (the default), add, multiply, screen, subtract or lighten. It lasts like fill does, and one shape can say it too: `circle at 100 100 radius 50 blend add`."},
+	{"clip", {
+		{{{"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}}, nil, .None},
+		{{{"position", .Vector}, {"size", .Vector}}, nil, .None},
+	}, "Keeps drawing from now on inside a box, in the transform of the moment: `clip at 20 20 size 200 100`. A turned box clips to the upright box round it. A new clip replaces the old one, and `no clip` takes it away."},
+	{"no clip", {{{}, nil, .None}}, "Takes the clip away, so drawing reaches the whole window again."},
 	{"joins", {{{{"style", .Name}}, nil, .None}}, "Sets how outlines turn corners from now on: miter, round or bevel."},
 
 	// Colour

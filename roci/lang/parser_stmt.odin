@@ -561,9 +561,11 @@ parse_with :: proc(p: ^Parser) -> Stmt_Kind {
 		}
 		word := text_of(p, t)
 		n := 0
+		kinds: []registry.Kind
 		for option in registry.STYLE_OPTIONS {
 			if option.word == word {
 				n = len(option.kinds)
+				kinds = option.kinds
 			}
 		}
 		if n == 0 {
@@ -571,7 +573,15 @@ parse_with :: proc(p: ^Parser) -> Stmt_Kind {
 		}
 		advance(p)
 		args := make([dynamic]^Expr, p.alloc)
-		for _ in 0 ..< n {
+		for i in 0 ..< n {
+			// A word where the style word takes one (`blend add`) is that word, even when it is also a verb.
+			if kinds[i] == .Name && cur(p).kind == .Name {
+				word_token := advance(p)
+				parts := make([]string, 1, p.alloc)
+				parts[0] = text_of(p, word_token)
+				append(&args, new_expr(p, word_token.span, Path{parts = parts}))
+				continue
+			}
 			if call_ends_at(p, cur(p)) || !is_argument_start(p, cur(p)) {
 				break
 			}
