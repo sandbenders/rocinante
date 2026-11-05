@@ -80,7 +80,7 @@ translate_to_spirv :: proc(source: string, stage: Stage, entry: string, params: 
 // `effect` the fragment shader's resources get the numbers the effect pass binds them by:
 // uniform buffers 0 and 1, texture and sampler 0 (SPIRV-Cross would number the buffers in
 // the order the shader first uses them).
-spirv_to_msl :: proc(spirv: []u8, effect := false, allocator := context.allocator) -> (code: []u8, message: string, ok: bool) {
+spirv_to_msl :: proc(spirv: []u8, effect := false, textures := true, allocator := context.allocator) -> (code: []u8, message: string, ok: bool) {
 	ctx: spirvcross.Context
 	if spirvcross.context_create(&ctx) != .Success {
 		return nil, strings.clone("could not start the shader translator", allocator), false
@@ -105,10 +105,12 @@ spirv_to_msl :: proc(spirv: []u8, effect := false, allocator := context.allocato
 			binding.stage, binding.desc_set, binding.binding, binding.msl_buffer = spirvcross.EXECUTION_MODEL_FRAGMENT, 3, c.uint(slot), c.uint(slot)
 			_ = spirvcross.compiler_msl_add_resource_binding_2(compiler, &binding)
 		}
-		binding: spirvcross.Msl_Resource_Binding
-		spirvcross.msl_resource_binding_init_2(&binding)
-		binding.stage, binding.desc_set, binding.binding, binding.msl_texture, binding.msl_sampler = spirvcross.EXECUTION_MODEL_FRAGMENT, 2, 0, 0, 0
-		_ = spirvcross.compiler_msl_add_resource_binding_2(compiler, &binding)
+		if textures {
+			binding: spirvcross.Msl_Resource_Binding
+			spirvcross.msl_resource_binding_init_2(&binding)
+			binding.stage, binding.desc_set, binding.binding, binding.msl_texture, binding.msl_sampler = spirvcross.EXECUTION_MODEL_FRAGMENT, 2, 0, 0, 0
+			_ = spirvcross.compiler_msl_add_resource_binding_2(compiler, &binding)
+		}
 	}
 	text: cstring
 	if spirvcross.compiler_compile(compiler, &text) != .Success {

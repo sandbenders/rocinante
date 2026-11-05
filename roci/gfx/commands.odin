@@ -121,7 +121,15 @@ Command_List :: struct {
 	background_set:   bool,         // `background` or `clear` was written since the frame (or, for a canvas, the last render) began
 	turtle:     Turtle, // turtle.odin
 	effects:       [dynamic]Effect, // shaders run over the finished frame, in order (shaders.odin)
-	effect_values: [dynamic]u8,     // the bytes of their own values, end to end
+	effect_values: [dynamic]u8,     // the bytes of their own values, end to end (effects, and shader fills through `Style.fill_shader`)
+	shader_clock:  Shader_Clock,    // what the shaders that fill read as time, frame and mouse
+}
+
+// The time, frame and mouse a shader fill reads, set when one is chosen.
+Shader_Clock :: struct {
+	time:  f32,
+	frame: f32,
+	mouse: [2]f32,
 }
 
 // Starts a frame: forgets last frame's commands and puts the style, the
@@ -344,6 +352,7 @@ set_fill :: proc(list: ^Command_List, colour: maths.Colour) {
 	list.style.fill, list.style.fill_on = colour, true
 	list.style.fill_paint = {}
 	list.style.fill_image = {}
+	list.style.fill_shader = {}
 }
 
 // Fills with a picture from now on (a kept picture or a canvas): the shapes are masks it
@@ -359,6 +368,23 @@ set_fill_image :: proc(list: ^Command_List, fill: Image_Fill) {
 	list.style.fill_paint = {}
 	list.style.fill_image = fill
 	list.style.fill_image.tile = max(fill.tile, 0)
+	list.style.fill_shader = {}
+}
+
+// Fills with a shader from now on (see `fill_shader`'s doc in shaders.odin).
+set_fill_shader :: proc(list: ^Command_List, shader: Shader_Id, time, frame: f32, mouse: [2]f32, values: []u8) -> bool {
+	data := shader_data(shader)
+	if data == nil || len(data.spirv) == 0 || data.kind != .Fill || !finite(time, frame, mouse.x, mouse.y) {
+		return false
+	}
+	list.look_changed = true
+	list.style.fill_on = true
+	list.style.fill_paint = {}
+	list.style.fill_image = {}
+	list.style.fill_shader = Shader_Fill{shader = shader, version = data.version, first = len(list.effect_values), count = len(values), hash = hash.fnv64a(values)}
+	append(&list.effect_values, ..values)
+	list.shader_clock = Shader_Clock{time, frame, mouse}
+	return true
 }
 
 // Fills with a gradient from now on.
@@ -370,6 +396,7 @@ set_fill_gradient :: proc(list: ^Command_List, g: Gradient) {
 	list.style.fill, list.style.fill_on = g.colours[0], true
 	list.style.fill_paint = register_gradient(list, g)
 	list.style.fill_image = {}
+	list.style.fill_shader = {}
 }
 
 set_stroke_gradient :: proc(list: ^Command_List, g: Gradient) {

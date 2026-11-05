@@ -24,8 +24,8 @@ Effect_Value :: struct {
 
 // Translates `source` and keeps it. Gives what the translator said when it is not a good
 // shader (the shader is kept, and draws nothing until `update_shader` mends it).
-add_shader :: proc(source: string, file := "shader") -> (shader: Shader, message: string) {
-	return gfx.shader_add(source, file)
+add_shader :: proc(source: string, file := "shader", fill := false) -> (shader: Shader, message: string) {
+	return gfx.shader_add(source, file, .Fill if fill else .Effect)
 }
 
 // Translates a changed `source` into `shader`. Gives what the translator said, "" when good.
@@ -61,9 +61,19 @@ effect :: proc(shader: Shader, values: []Effect_Value = nil) -> bool {
 		return false
 	}
 	data := gfx.shader_data(shader)
-	if data == nil || len(data.spirv) == 0 {
+	if data == nil || len(data.spirv) == 0 || data.kind != .Effect {
 		return false
 	}
+	block := shader_block(data, values)
+	mouse := w.mouse
+	gfx.effect(&w.list, shader, f32(time_now()), f32(the.frame), {f32(mouse.x), f32(mouse.y)}, block)
+	return true
+}
+
+// The bytes of a shader's own uniform block with the values given by name put in; the
+// others, and the padding, are 0.
+@(private)
+shader_block :: proc(data: ^gfx.Shader_Data, values: []Effect_Value) -> []u8 {
 	block := make([]u8, data.params.size, context.temp_allocator)
 	for v in values {
 		for p in data.params.list {
@@ -77,9 +87,20 @@ effect :: proc(shader: Shader, values: []Effect_Value = nil) -> bool {
 			break
 		}
 	}
-	mouse := w.mouse
-	gfx.effect(&w.list, shader, f32(time_now()), f32(the.frame), {f32(mouse.x), f32(mouse.y)}, block)
-	return true
+	return block
+}
+
+// Fills the shapes drawn from now on with a fill shader (`add_shader` with `fill`), in the
+// window or the canvas being drawn into, until another fill is chosen. The shader reads
+// `size` as the size of the box of each shape and `uv` as the place in it. Gives false for
+// a shader that is not good or is an effect.
+fill_shader :: proc(shader: Shader, values: []Effect_Value = nil) -> bool {
+	w := current_win()
+	data := gfx.shader_data(shader)
+	if w == nil || data == nil || len(data.spirv) == 0 || data.kind != .Fill {
+		return false
+	}
+	return gfx.set_fill_shader(current_list(), shader, f32(time_now()), f32(the.frame), {f32(w.mouse.x), f32(w.mouse.y)}, shader_block(data, values))
 }
 
 // Whether `finite` numbers only: a value with a NaN or an infinity is not given.

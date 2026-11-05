@@ -103,3 +103,24 @@ a_value_with_nothing_or_a_nan_in_it_is_not_given :: proc(t: ^testing.T) {
 	testing.expect(t, !effect_value_ok({name = "a", floats = {math.nan_f64(), 0, 0, 0}, count = 1}))
 	testing.expect(t, !effect_value_ok({name = "a", floats = {math.inf_f64(1), 0, 0, 0}, count = 1}))
 }
+
+@(test)
+a_fill_shader_fills_shapes_in_a_window_and_in_a_canvas :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	shader, message := add_shader("float amount;\nfloat4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0 { return float4(uv, amount, 1.0); }\n", "paint.hlsl", true)
+	testing.expect_value(t, message, "")
+	testing.expect(t, !effect(shader)) // a fill is not an effect
+	testing.expect(t, fill_shader(shader, {{name = "amount", floats = {0.25, 0, 0, 0}, count = 1}}))
+	circle(1, 1, 1)
+	commands := recorded(open_windows()[0])
+	testing.expect(t, commands[0].style.fill_shader.shader == shader)
+	// in a canvas the same, and the window's fill is not touched
+	c, _ := canvas(20, 20)
+	testing.expect(t, begin_into(c))
+	testing.expect(t, fill_shader(shader))
+	end_into()
+	testing.expect(t, !fill_shader(0))
+	plain, _ := add_shader("float4 ps_main(float4 p : SV_Position, float2 uv : TEXCOORD0) : SV_Target0 { return 1.0; }")
+	testing.expect(t, !fill_shader(plain)) // an effect is not a fill
+}

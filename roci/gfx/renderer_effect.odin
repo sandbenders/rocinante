@@ -22,6 +22,7 @@ Effect_Key :: struct {
 
 Effect_Gpu :: struct {
 	pipelines:     map[Effect_Key]^sdl.GPUGraphicsPipeline,
+	fills:         map[Fill_Key]^sdl.GPUGraphicsPipeline, // the pipelines of the shaders that fill shapes (shaderfill.odin)
 	textures:      [2]^sdl.GPUTexture, // the frame, and what an effect draws, taking turns
 	texture_size:  [2]u32,
 	texture_format: sdl.GPUTextureFormat,
@@ -48,6 +49,10 @@ effect_gpu_destroy :: proc(r: ^Renderer) {
 		sdl.ReleaseGPUGraphicsPipeline(r.device, pipeline)
 	}
 	delete(r.effects.pipelines)
+	for _, pipeline in r.effects.fills {
+		sdl.ReleaseGPUGraphicsPipeline(r.device, pipeline)
+	}
+	delete(r.effects.fills)
 	for texture in r.effects.textures {
 		if texture != nil {
 			sdl.ReleaseGPUTexture(r.device, texture)

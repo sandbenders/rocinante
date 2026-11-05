@@ -832,6 +832,7 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 	bound_blend := Blend_Mode.Normal
 	have_bound := false
 	clipped := false // a scissor smaller than the target is set
+	other_bound := false // a sketch's own shader fill was drawn since the batch's pipeline was bound
 	scale := f32(pixels.x) / max(canvas.x, 1)
 	for batch in b.batches {
 		if batch.pipeline == .Typeset && (!typeset_ready || len(r.typeset.draws) == 0) {continue}
@@ -888,6 +889,24 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 		case .Typeset:
 			for d in r.typeset.draws {
 				if d.item < batch.first || d.item >= batch.first + batch.count {continue}
+				if item := b.typeset[d.item]; item.shaded {
+					// The sketch's own pipeline draws this one; whatever comes next binds its own again.
+					if draw_shader_fill(r, commands, pass, list, item, d, format, samples, canvas) {
+						r.stats.draws += 1
+					}
+					have_bound = false
+					other_bound = true
+					continue
+				}
+				if other_bound {
+					other_bound = false
+					sdl.BindGPUGraphicsPipeline(pass, batch_pipeline(r, batch, format, samples))
+					sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
+					glyph_vertices := sdl.GPUBufferBinding{buffer = r.typeset.vertex_buffer.buffer}
+					sdl.BindGPUVertexBuffers(pass, 0, &glyph_vertices, 1)
+					glyph_indices := sdl.GPUBufferBinding{buffer = r.typeset.index_buffer.buffer}
+					sdl.BindGPUIndexBuffer(pass, glyph_indices, ._32BIT)
+				}
 				atlas := sdl.GPUTextureSamplerBinding{texture = d.atlas, sampler = r.typeset.sampler}
 				sdl.BindGPUFragmentSamplers(pass, 0, &atlas, 1)
 				sdl.DrawGPUIndexedPrimitives(pass, d.count, 1, d.first, 0, 0)

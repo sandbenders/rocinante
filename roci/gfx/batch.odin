@@ -217,6 +217,16 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 	if fill_reset || stroke_reset {
 		return false
 	}
+	if command.style.fill_shader.shader != 0 && command.style.fill_on && image_fillable(command.kind) && has_area(command) {
+		// The fill goes through the typeset vertices as a mesh drawn by the sketch's own shader;
+		// the outline, if there is one, is the same command with the fill off, drawn after it.
+		append(&b.typeset, Typeset_Item{shaded = true, shader = command.style.fill_shader, shape = command, transform = command.transform, content = command.content})
+		extend_batch(b, .Typeset, len(b.typeset) - 1, 1, command, look)
+		outline := command
+		outline.style.fill_on = false
+		outline.style.fill_shader = {}
+		return !is_visible(outline) || add_command(b, list, outline, look, may_reset)
+	}
 	if command.style.fill_image.image != 0 && command.style.fill_on && image_fillable(command.kind) && has_area(command) {
 		// The fill goes through the typeset pipeline as a masked picture; the outline, if
 		// there is one, is the same command with the fill off, drawn after it.
@@ -414,6 +424,8 @@ paint_for_gpu :: proc "contextless" (colour: maths.Colour, alpha: f32, gradient_
 Typeset_Item :: struct {
 	image:     Image_Id, // not 0: a picture of this number, w by h at x y, in place of text
 	premultiplied: bool, // the picture is a canvas, whose colours are already multiplied by its alpha
+	shaded:    bool,     // a shader fills `shape` (shaderfill.odin), drawn by its own pipeline
+	shader:    Shader_Fill, // for a shaded shape: which shader, and its values
 	filled:    bool,     // the picture fills `shape` (imagefill.odin) instead of being drawn on its own
 	stroked:   bool,     // the picture is the outline of `shape`, not its inside (imagefill.odin)
 	masked:    bool,     // a text whose letters are cut out of the picture `fill` (textfill.odin)

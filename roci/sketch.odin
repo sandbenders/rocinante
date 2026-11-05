@@ -192,6 +192,7 @@ shutdown :: proc() {
 	gfx.images_stop()
 	gfx.shaders_stop()
 	gfx.effect_vertex_stop()
+	gfx.fill_vertex_stop()
 	the = {}
 }
 

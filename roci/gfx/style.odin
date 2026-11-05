@@ -39,6 +39,10 @@ Style :: struct {
 	// A picture instead of the plain colour of the outline: the stroke is the mask
 	// (imagefill.odin). Not 0 id: drawn, and `stroke` holds the colour it would have.
 	stroke_image: Image_Fill,
+	// A shader of the sketch's own instead of the plain colour (shaders.odin): the shape
+	// is a mask it draws through. Not 0 shader: it is drawn, and `fill` holds the colour
+	// the shape would have if it could not be.
+	fill_shader:  Shader_Fill,
 	// How what is drawn mixes with what is already there, and the box nothing is drawn
 	// outside of: `clip` keeps the box in canvas (logical) pixels as the corners of a
 	// rectangle, already carried through the transform that was current (`set_clip`).
@@ -62,6 +66,17 @@ Blend_Mode :: enum u8 {
 Clip :: struct {
 	on:   bool,
 	rect: [4]f32, // x0 y0 x1 y1
+}
+
+// A shader that fills shapes and the values it was given: where they are in the list's
+// `effect_values` (the bytes of the shader's own block) and a hash of them, so a change of
+// value is a change of look.
+Shader_Fill :: struct {
+	shader:  Shader_Id, // 0: no shader fills
+	version: int,       // the version the values were laid out for
+	first:   int,
+	count:   int,
+	hash:    u64,
 }
 
 // How a picture fills a shape.

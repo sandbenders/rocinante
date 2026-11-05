@@ -159,6 +159,10 @@ typeset_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batch
 	}
 	s.frame += 1
 	for item, i in b.typeset {
+		if item.shaded {
+			shader_fill_vertices(r, i, item)
+			continue
+		}
 		if item.filled {
 			if item.stroked {
 				image_stroke_vertices(r, commands, i, item)

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package gfx
 
+import "core:math"
 import "core:strings"
 import "core:testing"
 
@@ -89,4 +90,94 @@ a_shader_that_cannot_be_drawn_with_is_not_recorded :: proc(t: ^testing.T) {
 	effect(&list, bad, 0, 0, {}, nil)
 	effect(&list, 9, 0, 0, {}, nil)
 	testing.expect_value(t, len(list.effects), 0)
+}
+
+// ---- shaders that fill shapes ----
+
+FILL_SHADER :: "float amount;\nfloat4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0\n{\n    return float4(uv, amount * time, 1.0);\n}\n"
+
+@(test)
+a_fill_shader_is_translated_with_the_fill_prelude_and_has_no_scene :: proc(t: ^testing.T) {
+	defer shaders_stop()
+	id, message := shader_add(FILL_SHADER, "fill.hlsl", .Fill)
+	testing.expect_value(t, message, "")
+	testing.expect_value(t, shader_data(id).kind, Shader_Use.Fill)
+	testing.expect_value(t, len(shader_data(id).params.list), 1)
+	// the same text as an effect is fine too; one that reads the scene is not a fill
+	_, said := shader_add("float4 ps_main(float4 p : SV_Position, float2 uv : TEXCOORD0) : SV_Target0 { return scene.Sample(scene_sampler, uv); }", "x.hlsl", .Fill)
+	testing.expect(t, strings.contains(said, "scene"), said)
+}
+
+@(test)
+choosing_a_shader_fills_later_shapes_and_another_fill_takes_it_back :: proc(t: ^testing.T) {
+	defer shaders_stop()
+	list := fresh()
+	defer destroy(&list)
+	id, _ := shader_add(FILL_SHADER, "fill.hlsl", .Fill)
+	values := [?]u8{0, 0, 0x80, 0x3f} // 1.0
+	testing.expect(t, set_fill_shader(&list, id, 2, 5, {3, 4}, values[:]))
+	rect(&list, 0, 0, 10, 10)
+	testing.expect_value(t, command_at(&list, 0).style.fill_shader.shader, id)
+	testing.expect_value(t, list.shader_clock, Shader_Clock{2, 5, {3, 4}})
+	testing.expect_value(t, len(list.effect_values), 4)
+	set_fill(&list, {255, 0, 0, 255})
+	rect(&list, 0, 0, 10, 10)
+	testing.expect_value(t, command_at(&list, 1).style.fill_shader.shader, Shader_Id(0))
+	// a gradient and a picture take it back too
+	set_fill_shader(&list, id, 0, 0, {}, values[:])
+	set_fill_gradient(&list, Gradient{count = 2, colours = {{255, 0, 0, 255}, {0, 0, 255, 255}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}}})
+	testing.expect_value(t, list.style.fill_shader.shader, Shader_Id(0))
+}
+
+@(test)
+a_shader_that_is_not_a_good_fill_is_not_chosen :: proc(t: ^testing.T) {
+	defer shaders_stop()
+	list := fresh()
+	defer destroy(&list)
+	effect_shader, _ := shader_add(GOOD_SHADER)
+	bad, _ := shader_add("nonsense", "bad.hlsl", .Fill)
+	testing.expect(t, !set_fill_shader(&list, effect_shader, 0, 0, {}, nil)) // an effect is not a fill
+	testing.expect(t, !set_fill_shader(&list, bad, 0, 0, {}, nil))
+	testing.expect(t, !set_fill_shader(&list, 9, 0, 0, {}, nil))
+	fill, _ := shader_add(FILL_SHADER, "fill.hlsl", .Fill)
+	testing.expect(t, !set_fill_shader(&list, fill, math.nan_f32(), 0, {}, nil))
+	testing.expect_value(t, list.style.fill_shader.shader, Shader_Id(0))
+	// and a fill is not an effect
+	effect(&list, fill, 0, 0, {}, nil)
+	testing.expect_value(t, len(list.effects), 0)
+}
+
+@(test)
+a_shape_with_a_fill_shader_is_a_shaded_item_and_its_outline_follows :: proc(t: ^testing.T) {
+	defer shaders_stop()
+	list := fresh()
+	defer destroy(&list)
+	b: Batcher
+	defer batcher_destroy(&b)
+	id, _ := shader_add(FILL_SHADER, "fill.hlsl", .Fill)
+	set_fill_shader(&list, id, 0, 0, {}, nil)
+	set_stroke(&list, {0, 0, 0, 255})
+	circle(&list, 50, 50, 20)
+	build(&b, &list, {100, 100})
+	testing.expect_value(t, len(b.typeset), 1)
+	testing.expect(t, b.typeset[0].shaded)
+	testing.expect_value(t, b.typeset[0].shader.shader, id)
+	testing.expect(t, len(b.instances) >= 1, "the outline is drawn by the ordinary pipeline")
+}
+
+@(test)
+the_values_of_a_fill_shader_change_the_look_hash :: proc(t: ^testing.T) {
+	defer shaders_stop()
+	id, _ := shader_add(FILL_SHADER, "fill.hlsl", .Fill)
+	a := fresh()
+	defer destroy(&a)
+	b := fresh()
+	defer destroy(&b)
+	one := [?]u8{0, 0, 0x80, 0x3f}
+	two := [?]u8{0, 0, 0, 0x40}
+	set_fill_shader(&a, id, 0, 0, {}, one[:])
+	set_fill_shader(&b, id, 0, 0, {}, two[:])
+	circle(&a, 5, 5, 5)
+	circle(&b, 5, 5, 5)
+	testing.expect(t, command_hash(command_at(&a, 0)) != command_hash(command_at(&b, 0)))
 }
