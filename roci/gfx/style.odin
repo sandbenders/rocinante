@@ -36,6 +36,9 @@ Style :: struct {
 	// through (imagefill.odin). Not 0 id: it is drawn, and `fill` holds the colour
 	// the shape would have if it could not be.
 	fill_image:   Image_Fill,
+	// A picture instead of the plain colour of the outline: the stroke is the mask
+	// (imagefill.odin). Not 0 id: drawn, and `stroke` holds the colour it would have.
+	stroke_image: Image_Fill,
 	// How what is drawn mixes with what is already there, and the box nothing is drawn
 	// outside of: `clip` keeps the box in canvas (logical) pixels as the corners of a
 	// rectangle, already carried through the transform that was current (`set_clip`).

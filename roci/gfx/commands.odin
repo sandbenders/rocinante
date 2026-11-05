@@ -117,6 +117,7 @@ Command_List :: struct {
 	gradients:  [dynamic]Gradient, // the gradients this frame's commands use; ids index it from 1
 	text:       [dynamic]u8,       // the characters of this frame's text commands, end to end
 	background_paint: Gradient_Ref, // a gradient behind everything, when set
+	background_image: Image_Fill,   // a picture behind everything, when its id is not 0
 	background_set:   bool,         // `background` or `clear` was written since the frame (or, for a canvas, the last render) began
 	turtle:     Turtle, // turtle.odin
 }
@@ -130,6 +131,7 @@ begin_frame :: proc(list: ^Command_List) {
 	clear(&list.gradients)
 	clear(&list.text)
 	list.background_paint = {}
+	list.background_image = {}
 	list.background_set = false
 	list.background = DEFAULT_BACKGROUND
 	list.style = DEFAULT_STYLE
@@ -277,6 +279,20 @@ debug_text :: proc(list: ^Command_List, text: string, x, y: f32, scale: f32 = 2)
 background :: proc(list: ^Command_List, colour: maths.Colour) {
 	list.background = colour
 	list.background_paint = {}
+	list.background_image = {}
+	list.background_set = true
+}
+
+// A picture behind everything (`background photo as cover`), filling the whole window
+// by the same rules as a shape's picture fill. A number that is not a kept picture
+// changes nothing.
+background_image :: proc(list: ^Command_List, fill: Image_Fill) {
+	if image_data(fill.image) == nil || !finite(fill.tile, fill.at.x, fill.at.y) {
+		return
+	}
+	list.background_paint = {}
+	list.background_image = fill
+	list.background_image.tile = max(fill.tile, 0)
 	list.background_set = true
 }
 
@@ -288,6 +304,7 @@ background_gradient :: proc(list: ^Command_List, g: Gradient) {
 	}
 	list.background = g.colours[0]
 	list.background_paint = register_gradient(list, g)
+	list.background_image = {}
 	list.background_set = true
 }
 
@@ -296,6 +313,7 @@ clear_window :: proc(list: ^Command_List) {
 	clear(&list.commands)
 	list.background = {0, 0, 0, 0}
 	list.background_paint = {}
+	list.background_image = {}
 	list.background_set = true
 }
 
@@ -353,6 +371,20 @@ set_stroke_gradient :: proc(list: ^Command_List, g: Gradient) {
 	}
 	list.style.stroke, list.style.stroke_on = g.colours[0], true
 	list.style.stroke_paint = register_gradient(list, g)
+	list.style.stroke_image = {}
+}
+
+// Outlines with a picture from now on (a kept picture or a canvas): the stroke is a mask
+// it shows through. A number that is not a kept picture changes nothing.
+set_stroke_image :: proc(list: ^Command_List, fill: Image_Fill) {
+	if image_data(fill.image) == nil || !finite(fill.tile, fill.at.x, fill.at.y) {
+		return
+	}
+	list.look_changed = true
+	list.style.stroke_on = true
+	list.style.stroke_paint = {}
+	list.style.stroke_image = fill
+	list.style.stroke_image.tile = max(fill.tile, 0)
 }
 
 no_fill :: proc(list: ^Command_List) {
@@ -364,6 +396,7 @@ set_stroke :: proc(list: ^Command_List, colour: maths.Colour) {
 	list.look_changed = true
 	list.style.stroke, list.style.stroke_on = colour, true
 	list.style.stroke_paint = {}
+	list.style.stroke_image = {}
 }
 
 no_stroke :: proc(list: ^Command_List) {
@@ -490,6 +523,7 @@ List_Mark :: struct {
 	span:             Span,
 	background:       maths.Colour,
 	background_paint: Gradient_Ref,
+	background_image: Image_Fill,
 	turtle:           Turtle,
 }
 
@@ -498,7 +532,7 @@ mark :: proc(list: ^Command_List) -> List_Mark {
 		commands = len(list.commands), looks = len(list.looks), text = len(list.text),
 		gradients = len(list.gradients), saved = len(list.saved),
 		style = list.style, transform = list.transform, look_changed = list.look_changed,
-		span = list.span, background = list.background, background_paint = list.background_paint, turtle = list.turtle,
+		span = list.span, background = list.background, background_paint = list.background_paint, background_image = list.background_image, turtle = list.turtle,
 	}
 }
 
@@ -510,7 +544,7 @@ rewind :: proc(list: ^Command_List, m: List_Mark) {
 	resize(&list.gradients, m.gradients)
 	resize(&list.saved, m.saved)
 	list.style, list.transform, list.look_changed, list.span = m.style, m.transform, m.look_changed, m.span
-	list.background, list.background_paint = m.background, m.background_paint
+	list.background, list.background_paint, list.background_image = m.background, m.background_paint, m.background_image
 	list.turtle = m.turtle
 }
 

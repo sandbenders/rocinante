@@ -137,20 +137,129 @@ image_fill_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item_
 	}
 	bx, by, bw, bh := local_bounds(item.shape)
 	picture_w, picture_h := f32(data.width), f32(data.height)
-	// 2 for a picture, plus 1 for a premultiplied one, 2 for clipping what the picture does
-	// not reach and 4 for repeating it (typeset.hlsl)
-	coloured := f32(2)
-	if item.premultiplied {coloured += 1}
-	switch item.fill.fit {
-	case .Fit, .Center: coloured += 2
-	case .Tile:         coloured += 4
-	case .Cover, .Stretch:
-	}
+	coloured := picture_flags(item.fill, item.premultiplied)
 	base := u32(len(s.vertices))
 	first := u32(len(s.indices))
 	for p in tri.points {
 		x, y := transform_apply(item.transform, f32(p.x), f32(p.y))
 		uv := picture_uv(item.fill, {bx, by, bw, bh}, picture_w, picture_h, f32(p.x), f32(p.y))
+		append(&s.vertices, Typeset_Vertex{{x, y}, uv, item.colour, coloured})
+	}
+	for index in tri.indices {
+		append(&s.indices, base + index)
+	}
+	append(&s.draws, Typeset_Draw{item_index, texture, first, u32(len(s.indices)) - first})
+}
+
+// Whether a kind of shape can have its outline drawn with a picture: every shape with a
+// stroke, lines and points included (text has no outline).
+image_strokable :: proc "contextless" (kind: Kind) -> bool {
+	switch kind {
+	case .Circle, .Ellipse, .Rect, .Line, .Point, .Triangle, .Quad, .Arc:
+		return true
+	case .Text, .Typeset, .Image:
+		return false
+	}
+	return false
+}
+
+// The item for the outline of a shape: the shape, how the picture sits in its box, and the
+// tint with the style's alpha.
+stroke_item :: proc(c: Command) -> Typeset_Item {
+	return Typeset_Item{
+		image         = c.style.stroke_image.image,
+		premultiplied = canvas_of(c.style.stroke_image.image) != nil,
+		filled        = true,
+		stroked       = true,
+		shape         = c,
+		fill          = c.style.stroke_image,
+		colour        = colour_for_gpu(c.style.tint, c.style.alpha),
+		transform     = c.transform,
+		content       = c.content,
+	}
+}
+
+// The triangles of a shape's outline, in its own space, with the caps and joins of its
+// style. False when there is nothing to stroke.
+@(private)
+stroke_triangulation :: proc(c: Command, tolerance: f64, tri: ^geom.Triangulation) -> bool {
+	options := geom.Stroke_Options{
+		half_width = f64(c.style.thickness) / 2,
+		cap        = c.style.cap,
+		join       = c.style.join,
+		tolerance  = tolerance,
+	}
+	points := make([dynamic]geom.Point, context.temp_allocator)
+	closed := false
+	switch c.kind {
+	case .Rect, .Triangle, .Quad, .Line, .Point:
+		closed = outline_of(c, tolerance, &points)
+	case .Circle, .Ellipse:
+		if !fill_polygon(c, tolerance, &points) {
+			return false
+		}
+		closed = true
+	case .Arc:
+		a := c.args
+		x, y, w, h := local_bounds(c)
+		if a[4] == a[5] {
+			return false
+		}
+		geom.arc_points(&points, f64(x + w / 2), f64(y + h / 2), f64(w) / 2, f64(h) / 2, f64(a[4]), f64(a[5]), tolerance)
+		closed = abs(a[5] - a[4]) >= 360
+		if closed && len(points) > 1 {
+			resize(&points, len(points) - 1) // the last point repeats the first
+		}
+	case .Text, .Typeset, .Image:
+		return false
+	}
+	if len(points) == 0 {
+		return false
+	}
+	geom.stroke_polyline(points[:], closed, options, tri)
+	return len(tri.indices) > 0
+}
+
+// The `coloured` flags (typeset.hlsl) for a picture that fills or outlines a shape: 2 for a
+// picture, plus 1 when it is premultiplied (a canvas), 2 to clip what it does not reach
+// and 4 to repeat it.
+@(private)
+picture_flags :: proc "contextless" (fill: Image_Fill, premultiplied: bool) -> f32 {
+	coloured := f32(2)
+	if premultiplied {coloured += 1}
+	switch fill.fit {
+	case .Fit, .Center: coloured += 2
+	case .Tile:         coloured += 4
+	case .Cover, .Stretch:
+	}
+	return coloured
+}
+
+// Adds the triangles of a shape's outline filled with a picture to the frame.
+@(private)
+image_stroke_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item_index: int, item: Typeset_Item) {
+	s := &r.typeset
+	data := image_data(item.image)
+	texture := image_texture(r, commands, item.image)
+	if texture == nil || data == nil {
+		return
+	}
+	scale := scale_of(item.transform)
+	if !(scale > 0) || math.is_inf(scale) {
+		return
+	}
+	tri: geom.Triangulation
+	defer geom.triangulation_destroy(&tri)
+	if !stroke_triangulation(item.shape, geom.DEFAULT_TOLERANCE / scale, &tri) {
+		return
+	}
+	bx, by, bw, bh := local_bounds(item.shape)
+	coloured := picture_flags(item.fill, item.premultiplied)
+	base := u32(len(s.vertices))
+	first := u32(len(s.indices))
+	for p in tri.points {
+		x, y := transform_apply(item.transform, f32(p.x), f32(p.y))
+		uv := picture_uv(item.fill, {bx, by, bw, bh}, f32(data.width), f32(data.height), f32(p.x), f32(p.y))
 		append(&s.vertices, Typeset_Vertex{{x, y}, uv, item.colour, coloured})
 	}
 	for index in tri.indices {

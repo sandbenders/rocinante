@@ -160,7 +160,15 @@ typeset_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batch
 	s.frame += 1
 	for item, i in b.typeset {
 		if item.filled {
-			image_fill_vertices(r, commands, i, item)
+			if item.stroked {
+				image_stroke_vertices(r, commands, i, item)
+			} else {
+				image_fill_vertices(r, commands, i, item)
+			}
+			continue
+		}
+		if item.masked {
+			text_fill_vertices(r, commands, i, item, scale)
 			continue
 		}
 		if item.image != 0 {
@@ -202,6 +210,7 @@ typeset_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batch
 		}
 	}
 	forget_old_texts(r)
+	forget_old_text_fills(r)
 	if len(s.vertices) == 0 {
 		return true
 	}

@@ -127,6 +127,7 @@ Renderer :: struct {
 	typeset: Typeset_State, // real text (typeset.odin)
 	images:  map[Image_Id]^sdl.GPUTexture, // the textures of the pictures drawn so far (typeset.odin)
 	canvases: map[Image_Id]Canvas_Gpu,     // the textures of the canvases (renderer_canvas.odin)
+	text_fills: map[u64]Text_Fill_Texture, // the textures of texts filled with a picture (textfill.odin)
 	uploaded_glyph_count:  int,
 
 	// Hashes of what is on the GPU now, so an unchanged scene uploads nothing.
@@ -188,6 +189,12 @@ renderer_destroy :: proc(r: ^Renderer) {
 		sdl.ReleaseGPUTexture(r.device, texture)
 	}
 	delete(r.images)
+	for _, made in r.text_fills {
+		if made.texture != nil {
+			sdl.ReleaseGPUTexture(r.device, made.texture)
+		}
+	}
+	delete(r.text_fills)
 	for _, gpu in r.canvases {
 		for texture in gpu.textures {
 			if texture != nil {

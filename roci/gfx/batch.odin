@@ -177,6 +177,20 @@ build_commands :: proc(b: ^Batcher, list: ^Command_List, canvas: [2]f32, may_res
 		}
 		b.stats.commands += 1
 	}
+	// A picture behind everything is a rectangle the size of the canvas filled with it.
+	if list.background_image.image != 0 && canvas.x > 0 && canvas.y > 0 {
+		backdrop := Command{
+			kind      = .Rect,
+			origin    = .Corner,
+			args      = {0, 0, canvas.x, canvas.y, 0, 0, 0, 0},
+			transform = IDENTITY,
+			style     = Style{fill_on = true, alpha = 255, tint = {255, 255, 255, 255}, fill_image = list.background_image},
+		}
+		if !add_command(b, list, backdrop, look_hash(backdrop.style, backdrop.transform), may_reset) {
+			return false
+		}
+		b.stats.commands += 1
+	}
 	for r, i in list.commands {
 		if !add_command(b, list, command_at(list, i), b.look_hashes[r.look], may_reset) {
 			return false
@@ -212,6 +226,19 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 		outline.style.fill_on = false
 		outline.style.fill_image = {}
 		return !is_visible(outline) || add_command(b, list, outline, look, may_reset)
+	}
+	if command.style.stroke_image.image != 0 && command.style.stroke_on && command.style.thickness > 0 && image_strokable(command.kind) {
+		// The outline goes through the typeset pipeline as a masked picture, after the fill,
+		// which is the same command with the outline off.
+		inside := command
+		inside.style.stroke_on = false
+		inside.style.stroke_image = {}
+		if is_visible(inside) && !add_command(b, list, inside, look, may_reset) {
+			return false
+		}
+		append(&b.typeset, stroke_item(command))
+		extend_batch(b, .Typeset, len(b.typeset) - 1, 1, command, look)
+		return true
 	}
 	pipeline := pipeline_for(command)
 	// What this command adds to its pipeline's buffer: one instance, the indices of
@@ -388,6 +415,9 @@ Typeset_Item :: struct {
 	image:     Image_Id, // not 0: a picture of this number, w by h at x y, in place of text
 	premultiplied: bool, // the picture is a canvas, whose colours are already multiplied by its alpha
 	filled:    bool,     // the picture fills `shape` (imagefill.odin) instead of being drawn on its own
+	stroked:   bool,     // the picture is the outline of `shape`, not its inside (imagefill.odin)
+	masked:    bool,     // a text whose letters are cut out of the picture `fill` (textfill.odin)
+	tint:      [4]f32,   // what a masked text's picture is drawn through, with the style's alpha
 	shape:     Command,  // for a fill: the shape that is the mask
 	fill:      Image_Fill,
 	w, h:      f32,
@@ -405,7 +435,18 @@ Typeset_Item :: struct {
 
 typeset_item :: proc(list: ^Command_List, c: Command) -> Typeset_Item {
 	offset, length := int(c.args[5]), int(c.args[6])
+	// A text filled with a picture is its letters cut out of it (textfill.odin). That needs the
+	// picture's pixels, which a canvas keeps on the GPU, so a canvas leaves the text in its colour.
+	masked := false
+	if fill := c.style.fill_image; fill.image != 0 && c.style.fill_on {
+		if data := image_data(fill.image); data != nil && data.canvas == nil && data.pixels != nil {
+			masked = true
+		}
+	}
 	return Typeset_Item{
+		masked    = masked,
+		fill      = c.style.fill_image if masked else Image_Fill{},
+		tint      = colour_for_gpu(c.style.tint, c.style.alpha),
 		text      = string(list.text[offset:offset + length]),
 		x         = c.args[0],
 		y         = c.args[1],
