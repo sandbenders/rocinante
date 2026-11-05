@@ -106,6 +106,7 @@ Verb_Code :: enum u8 {
 	Hits,
 	Inside,
 	Cast,
+	Outline,
 }
 
 // The registry's name of each code. A test fails when the registry gains a verb
@@ -206,6 +207,7 @@ VERB_CODE_NAMES := [Verb_Code]string{
 	.Hits = "hits",
 	.Inside = "inside",
 	.Cast = "cast",
+	.Outline = "outline",
 }
 
 // The code of each verb of `registry.ALL_VERBS`, by its place there.

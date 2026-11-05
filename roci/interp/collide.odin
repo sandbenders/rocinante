@@ -9,6 +9,7 @@ package interp
 
 import "../collide"
 import "../lang"
+import "../"
 import "core:math"
 
 @(private)
@@ -243,4 +244,30 @@ drop_entry :: proc(e: ^Shape_Cache) {
 		collide.tree_destroy(&e.tree)
 	}
 	e^ = {}
+}
+
+// `outline photo [at p] [size v] [alpha n]`: the corners of the picture's solid part as
+// a list of vectors, to be a shape (`{ points: outline photo }`). A picture with nothing
+// solid, an empty one and a canvas give an empty list, which touches nothing.
+@(private)
+outline_verb :: proc(it: ^Interp, call: lang.IR_Call) -> Value {
+	picture := as_image(eval(it, call.args[0]))
+	at: [2]f64
+	size: Maybe([2]f64)
+	alpha := 50.0
+	if pair, found := option_pair(it, call.options, "at"); found {
+		at = pair
+	}
+	if pair, found := option_pair(it, call.options, "size"); found {
+		size = pair
+	}
+	if v, found := option_value(it, call.options, "alpha"); found {
+		alpha = as_number(v)
+	}
+	corners := roci.outline_of(picture, alpha, at, size, context.temp_allocator)
+	out := new_list(it)
+	for c in corners {
+		append(&out.items, vec2(c))
+	}
+	return out
 }

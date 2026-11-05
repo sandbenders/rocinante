@@ -54,7 +54,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"table", "put", "get", "keys",
 	}},
 	{"Collision", "Whether shapes touch, where, and what a line meets. Shapes are plain records.", {
-		"touching", "contact", "hits", "inside", "cast",
+		"touching", "contact", "hits", "inside", "cast", "outline",
 	}},
 	{"Windows", "Opening windows, changing them while they are open, and sending values between them.", {
 		"window", "title", "fullscreen", "set", "send", "width", "height", "quit",

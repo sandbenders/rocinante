@@ -15,6 +15,13 @@ LIST_ITEM := []Param{{"item", .Any}}
 LIST_PARAM := []Param{{"list", .List}}
 LIST_AND_BLOCK := []Param{{"list", .List}, {"body", .Expr_Block}}
 
+// What `outline` takes: where the picture is drawn, how big, and how solid a pixel has to be.
+OUTLINE_OPTIONS := []Option{
+	{"at", {.Number, .Number}, false},
+	{"size", {.Number, .Number}, false},
+	{"alpha", {.Number}, false},
+}
+
 LANGUAGE_VERBS := []Verb{
 	{"add", {{LIST_ITEM, {{"to", {.List}, true}}, .None}}, "Puts an item at the end of a list: `add p to particles`."},
 	{"remove", {{LIST_ITEM, {{"from", {.Any}, true}}, .None}}, "Takes an item out of a list, or a name out of a table: `remove p from particles`, `remove \"cat\" from counts`."},
@@ -51,6 +58,7 @@ LANGUAGE_VERBS := []Verb{
 	{"hits", {{{{"shape", .Any}, {"list", .List}}, nil, .List}}, "The items of a list that touch a shape, in list order: `hits ball bricks`."},
 	{"inside", {{{{"point", .Vector}, {"shape", .Any}}, nil, .Boolean}}, "Whether a point is inside a shape or on its edge: `inside mouse paddle`."},
 	{"cast", {{{{"line", .Any}, {"list", .List}}, nil, .Any}}, "The first item a line meets, from its `from` to its `to`: a record with item, point, normal and distance, every field 0 (and no item) when it meets nothing."},
+	{"outline", {{{{"picture", .Image}}, OUTLINE_OPTIONS, .List}}, "The corners of the solid part of a picture, as a list of vectors that makes a shape of its own: `touching ball { points: outline ship }`. A pixel is solid when it is more than 50 percent solid, or more than the `alpha` given; `at` puts the picture's top left where it is drawn and `size` stretches it as `image` does. Only the biggest solid piece is outlined, without its holes."},
 }
 
 // Every verb the language knows: the API's and the interpreter's. Built once at

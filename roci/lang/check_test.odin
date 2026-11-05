@@ -1124,6 +1124,17 @@ test_collision_verbs_check_their_shapes :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_outline_gives_the_corners_of_a_picture_as_a_shape_of_points :: proc(t: ^testing.T) {
+	PHOTO :: "photo = load \"ship.png\"\n"
+	expect_errors(t, PHOTO + "corners = outline photo\nfirst = item 1 of corners\nprint first.x", {})
+	expect_errors(t, PHOTO + "hull = { points: outline photo at { 10, 20 } size 40 30 alpha 20 }\nprint (touching { 5, 5 } hull)", {})
+	expect_errors(t, PHOTO + "hull = { points: outline photo at 10 20 }\nprint (touching { 5, 5 } hull)", {})
+	// Not a picture, an unknown word, and a list of numbers where corners are wanted.
+	expect_errors(t, "print (count (outline 5))", {.Wrong_Argument_Kind})
+	expect_errors(t, PHOTO + "x = outline photo wide 3", {.Unknown_Option})
+}
+
+@(test)
 test_a_list_may_hold_shapes_of_different_kinds :: proc(t: ^testing.T) {
 	// The records merge into one shape with every field, and each stays the shape
 	// its own braces make it.

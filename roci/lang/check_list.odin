@@ -156,6 +156,8 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 		return table_values(c, args[0].type), true
 	case "keys":
 		return list_of(c.types, T_TEXT), true
+	case "outline":
+		return list_of(c.types, vector_of(c.types, 2)), true
 	case "send":
 		if len(args) == 2 {
 			record_send(c, window_key(k.args[0]), args[1].type)
