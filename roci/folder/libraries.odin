@@ -280,12 +280,12 @@ all_files :: proc(dir: string) -> []string {
 	os.walker_init(&w, dir)
 	defer os.walker_destroy(&w)
 	cwd, _ := os.get_working_directory(context.temp_allocator)
-	prefix := strings.concatenate({dir, "/"}, context.temp_allocator) if strings.has_prefix(dir, "/") else strings.concatenate({cwd, "/", strings.trim_prefix(dir, "./"), "/"}, context.temp_allocator)
+	prefix := strings.concatenate({dir, "/"}, context.temp_allocator) if os.is_absolute_path(dir) else strings.concatenate({cwd, "/", strings.trim_prefix(dir, "./"), "/"}, context.temp_allocator)
 	for fi in os.walker_walk(&w) {
 		if fi.type == .Directory {
 			continue
 		}
-		append(&found, strings.clone(strings.trim_prefix(fi.fullpath, prefix), context.temp_allocator))
+		append(&found, strings.clone(trim_folder(fi.fullpath, prefix), context.temp_allocator))
 	}
 	slice.sort(found[:])
 	return found[:]

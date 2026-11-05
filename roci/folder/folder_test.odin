@@ -186,6 +186,19 @@ test_a_path_that_points_outside_assets_is_recognised :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_a_walker_path_is_shown_from_its_folder_with_slashes :: proc(t: ^testing.T) {
+	testing.expect_value(t, trim_folder("/home/me/sketch/assets/images/cat.png", "/home/me/sketch/assets/"), "images/cat.png")
+	testing.expect_value(t, trim_folder("/elsewhere/cat.png", "/home/me/sketch/assets/"), "/elsewhere/cat.png")
+	when ODIN_OS == .Windows {
+		// the walker's backslashes and a prefix written with `/` still meet
+		testing.expect_value(t, trim_folder("C:\\me\\sketch\\assets\\images\\cat.png", "C:\\me\\sketch\\assets/"), "images/cat.png")
+	} else {
+		// a backslash is part of a name here
+		testing.expect_value(t, trim_folder("/me/assets/a\\b.png", "/me/assets/"), "a\\b.png")
+	}
+}
+
+@(test)
 test_the_known_types_are_listed_by_folder_for_the_message_that_teaches :: proc(t: ^testing.T) {
 	text := known_types()
 	testing.expect(t, strings.contains(text, "images: .png"))

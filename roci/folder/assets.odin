@@ -201,11 +201,30 @@ asset_files :: proc(root: string, allocator := context.allocator) -> []string {
 		if fi.type == .Directory || fi.name == ".keep" {
 			continue
 		}
-		relative := strings.concatenate({"assets/", strings.trim_prefix(fi.fullpath, prefix)}, context.temp_allocator)
+		relative := strings.concatenate({"assets/", trim_folder(fi.fullpath, prefix)}, context.temp_allocator)
 		append(&files, strings.clone(relative, allocator))
 	}
 	slice.sort(files[:])
 	return files[:]
+}
+
+// A full path from the walker without the folder `prefix` in front, with `/` between
+// its parts. Windows gives full paths with backslashes (`C:\x\assets\cat.png`), so
+// both are spelled with `/` there first; elsewhere a backslash is part of a name and
+// stays.
+@(private)
+trim_folder :: proc(full, prefix: string) -> string {
+	return strings.trim_prefix(forward_slashes(full), forward_slashes(prefix))
+}
+
+@(private)
+forward_slashes :: proc(path: string) -> string {
+	when ODIN_OS == .Windows {
+		slashed, _ := strings.replace_all(path, "\\", "/", context.temp_allocator)
+		return slashed
+	} else {
+		return path
+	}
 }
 
 // Whether a path written in a sketch points outside `assets/`: an absolute path, a

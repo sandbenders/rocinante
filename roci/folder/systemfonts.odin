@@ -190,9 +190,9 @@ system_font_dirs: []string
 
 @(private)
 default_font_dirs :: proc() -> []string {
-	home := os.get_env("HOME", context.temp_allocator)
 	dirs := make([dynamic]string, context.temp_allocator)
 	when ODIN_OS == .Darwin {
+		home := os.get_env("HOME", context.temp_allocator)
 		append(&dirs, strings.concatenate({home, "/Library/Fonts"}, context.temp_allocator), "/Library/Fonts", "/System/Library/Fonts", "/System/Library/Fonts/Supplemental")
 	} else when ODIN_OS == .Windows {
 		local := os.get_env("LOCALAPPDATA", context.temp_allocator)
@@ -201,6 +201,7 @@ default_font_dirs :: proc() -> []string {
 		}
 		append(&dirs, "C:/Windows/Fonts")
 	} else {
+		home := os.get_env("HOME", context.temp_allocator)
 		append(&dirs, strings.concatenate({home, "/.local/share/fonts"}, context.temp_allocator), strings.concatenate({home, "/.fonts"}, context.temp_allocator), "/usr/local/share/fonts", "/usr/share/fonts")
 	}
 	return dirs[:]

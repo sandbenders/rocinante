@@ -53,7 +53,7 @@ walk_roci :: proc(root: string, own_code_only: bool, allocator: runtime.Allocato
 		}
 		if strings.has_suffix(fi.name, ".roci") {
 			// The walker gives full paths; show them from where we are.
-			shown := strings.trim_prefix(fi.fullpath, here)
+			shown := trim_folder(fi.fullpath, here)
 			append(&found, strings.clone(shown, allocator))
 		}
 	}
