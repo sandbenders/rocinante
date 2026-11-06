@@ -20,6 +20,7 @@ import "core:time"
 import "gfx"
 import "maths"
 import "platform"
+import "toml"
 import "ui"
 
 // The size a sketch gets when it never calls `window`.
@@ -110,6 +111,10 @@ Sketch :: struct {
 	reuse:        [dynamic]^Win, // windows of the last run a restart gives to the first `window` calls
 	shot_app:     platform.App, // the graphics a headless sketch starts for its first picture
 	shot_renderer: gfx.Renderer,
+	ui_file:      string,           // where the widgets' values are remembered, "" for nowhere (ui_persist.odin)
+	ui_doc:       toml.Document,    // what that file said, with the tables of windows that are not open
+	ui_dirty:     bool,             // a value changed that the file does not have yet
+	ui_changed:   time.Tick,        // when it last did
 	shot_ready:   bool,
 	cursor_shown: Cursor, // what the one cursor of the program is now
 	canvases:     [dynamic]Image, // every canvas made, for drawing their rounds before the windows
@@ -164,6 +169,8 @@ last_error :: proc() -> string {
 
 // Closes every window and gives everything back. The sketch can be started again.
 shutdown :: proc() {
+	ui_flush()
+	ui_forget_file()
 	finish_recordings()
 	print_record_results()
 	for w in the.windows {

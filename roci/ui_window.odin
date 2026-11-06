@@ -22,6 +22,7 @@ ui_frame :: proc() -> ^ui.State {
 	w := current_win()
 	if w.ui == nil {
 		w.ui = ui.create(gfx.INTER_REGULAR)
+		ui_remembered(w)
 	}
 	density := HEADLESS_UI_DENSITY
 	if w.handle != nil {
@@ -57,9 +58,12 @@ ui_toggle_value :: proc(text: string, start: bool) -> bool {
 	s := ui_frame()
 	slot := ui.kept(s, text, 1.0 if start else 0.0)
 	on := slot^ != 0
-	ui.toggle(s, text, &on)
+	if ui.toggle(s, text, &on) {
+		ui_touch()
+	}
 	slot = ui.kept(s, text, 0)
 	slot^ = 1 if on else 0
+	ui.mark(s, text, .Toggle)
 	return on
 }
 
@@ -68,9 +72,12 @@ ui_toggle_value :: proc(text: string, start: bool) -> bool {
 ui_slider_value :: proc(text: string, low, high, start: f64) -> f64 {
 	s := ui_frame()
 	first := clamp(start, min(low, high), max(low, high))
-	value := f32(ui.kept(s, text, first)^)
-	ui.slider(s, text, &value, f32(low), f32(high))
+	value := f32(clamp(ui.kept(s, text, first)^, min(low, high), max(low, high)))
+	if ui.slider(s, text, &value, f32(low), f32(high)) {
+		ui_touch()
+	}
 	ui.kept(s, text, 0)^ = f64(value)
+	ui.mark(s, text, .Number)
 	return f64(value)
 }
 
@@ -79,8 +86,11 @@ ui_slider_value :: proc(text: string, low, high, start: f64) -> f64 {
 ui_number_value :: proc(text: string, low, high, start: f64) -> f64 {
 	s := ui_frame()
 	value := ui.kept(s, text, clamp(start, min(low, high), max(low, high)))^
-	ui.number(s, text, &value, low, high)
+	if ui.number(s, text, &value, low, high) {
+		ui_touch()
+	}
 	ui.kept(s, text, 0)^ = value
+	ui.mark(s, text, .Number)
 	return value
 }
 
@@ -89,7 +99,10 @@ ui_number_value :: proc(text: string, low, high, start: f64) -> f64 {
 ui_textbox_value :: proc(text, start: string, lines := 1) -> string {
 	s := ui_frame()
 	buffer := ui.kept_text(s, text, start)
-	ui.textbox(s, text, buffer, lines)
+	if ui.textbox(s, text, buffer, lines) {
+		ui_touch()
+	}
+	ui.mark(s, text, .Text)
 	return strings.clone(ui.text_in(buffer), context.temp_allocator)
 }
 
@@ -104,13 +117,27 @@ Ui_Pick :: enum {
 // `start` in `items` the first time its text is seen. Gives the place now, from 0.
 ui_pick_value :: proc(text: string, items: []string, start: int, how: Ui_Pick) -> int {
 	s := ui_frame()
-	index := int(ui.kept(s, text, f64(max(start, 0)))^)
+	first := max(start, 0)
+	if name, found := ui.loaded_name(s, text); found {
+		for item, i in items {
+			if item == name {
+				first = i
+				break
+			}
+		}
+	}
+	index := int(ui.kept(s, text, f64(first))^)
+	changed := false
 	switch how {
-	case .Dropdown: ui.dropdown(s, text, items, &index)
-	case .Choice:   ui.choice(s, text, items, &index)
-	case .List:     ui.list(s, text, items, &index)
+	case .Dropdown: changed = ui.dropdown(s, text, items, &index)
+	case .Choice:   changed = ui.choice(s, text, items, &index)
+	case .List:     changed = ui.list(s, text, items, &index)
+	}
+	if changed {
+		ui_touch()
 	}
 	ui.kept(s, text, 0)^ = f64(index)
+	ui.mark(s, text, .Pick, items[index] if index >= 0 && index < len(items) else "")
 	return index
 }
 
@@ -118,6 +145,7 @@ ui_pick_value :: proc(text: string, items: []string, start: int, how: Ui_Pick) -
 ui_forget :: proc() {
 	if w := current_win(); w != nil && w.ui != nil {
 		ui.forget(w.ui)
+		ui_touch()
 	}
 }
 
@@ -151,8 +179,11 @@ UI_RANGE_HANDLE :: ui.RANGE_HANDLE
 ui_colorpicker_value :: proc(text: string, start: [4]f32) -> [4]f32 {
 	s := ui_frame()
 	slot := ui.kept_vector(s, text, start / 255)^
-	ui.colorpicker(s, text, &slot)
+	if ui.colorpicker(s, text, &slot) {
+		ui_touch()
+	}
 	ui.kept_vector(s, text, 0)^ = slot
+	ui.mark(s, text, .Color)
 	return slot * 255
 }
 
@@ -161,9 +192,12 @@ ui_colorpicker_value :: proc(text: string, start: [4]f32) -> [4]f32 {
 ui_knob_value :: proc(text: string, low, high, start: f64) -> f64 {
 	s := ui_frame()
 	first := clamp(start, min(low, high), max(low, high))
-	value := f32(ui.kept(s, text, first)^)
-	ui.knob(s, text, &value, f32(low), f32(high))
+	value := f32(clamp(ui.kept(s, text, first)^, min(low, high), max(low, high)))
+	if ui.knob(s, text, &value, f32(low), f32(high)) {
+		ui_touch()
+	}
 	ui.kept(s, text, 0)^ = f64(value)
+	ui.mark(s, text, .Number)
 	return f64(value)
 }
 
@@ -175,8 +209,11 @@ ui_range_value :: proc(text: string, low, high, start_low, start_high: f64) -> [
 		return f32(clamp(v, min(a, b), max(a, b)))
 	}
 	ends := ui.kept_vector(s, text, {inside(start_low, low, high), inside(start_high, low, high), 0, 0})^
-	ui.range(s, text, &ends[0], &ends[1], f32(low), f32(high))
+	if ui.range(s, text, &ends[0], &ends[1], f32(low), f32(high)) {
+		ui_touch()
+	}
 	ui.kept_vector(s, text, 0)^ = ends
+	ui.mark(s, text, .Vector)
 	return {f64(ends[0]), f64(ends[1])}
 }
 
@@ -185,8 +222,11 @@ ui_range_value :: proc(text: string, low, high, start_low, start_high: f64) -> [
 ui_xypad_value :: proc(text: string, start: [2]f64) -> [2]f64 {
 	s := ui_frame()
 	place := ui.kept_vector(s, text, {clamp(f32(start.x), 0, 1), clamp(f32(start.y), 0, 1), 0, 0})^
-	ui.xypad(s, text, &place[0], &place[1])
+	if ui.xypad(s, text, &place[0], &place[1]) {
+		ui_touch()
+	}
 	ui.kept_vector(s, text, 0)^ = place
+	ui.mark(s, text, .Vector)
 	return {f64(place[0]), f64(place[1])}
 }
 

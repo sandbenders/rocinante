@@ -19,3 +19,5 @@ plan/
 playground/
 # Fonts an example copied from the computer it ran on (the licence is the font's owner's)
 examples/*/assets/fonts/
+# The values the widgets of an example keep, which a hand run of it writes
+examples/*/ui.toml

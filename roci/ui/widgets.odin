@@ -118,7 +118,11 @@ slider :: proc(s: ^State, text: string, value: ^f32, low, high: f32) -> bool {
 kept :: proc(s: ^State, text: string, start: f64) -> ^f64 {
 	key := scoped(s, text)
 	if key not_in s.kept {
-		s.kept[strings.clone(key)] = start
+		first := start
+		if remembered, found := loaded_number(s, key); found {
+			first = remembered
+		}
+		s.kept[strings.clone(key)] = first
 	}
 	return &s.kept[key]
 }
@@ -132,7 +136,11 @@ kept_text :: proc(s: ^State, text, start: string) -> []u8 {
 	key := scoped(s, text)
 	if key not_in s.kept_text {
 		buffer := make([]u8, TEXT_BYTES)
-		copy(buffer[:TEXT_BYTES - 1], start)
+		first := start
+		if remembered, found := s.loaded[key].(string); found {
+			first = remembered
+		}
+		copy(buffer[:TEXT_BYTES - 1], first)
 		s.kept_text[strings.clone(key)] = buffer
 	}
 	return s.kept_text[key]
@@ -451,8 +459,10 @@ list :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 	return changed
 }
 
-// Lets go of every value the widgets keep, so each starts again from its start.
+// Lets go of every value the widgets keep, and what a file said about them, so each starts again
+// from its start.
 forget :: proc(s: ^State) {
+	clear_persistence(s)
 	for key in s.kept_vec {
 		delete(key)
 	}
@@ -475,7 +485,18 @@ forget :: proc(s: ^State) {
 kept_vector :: proc(s: ^State, text: string, start: [4]f32) -> ^[4]f32 {
 	key := scoped(s, text)
 	if key not_in s.kept_vec {
-		s.kept_vec[strings.clone(key)] = start
+		first := start
+		#partial switch x in s.loaded[key] {
+		case Numbers:
+			for i in 0 ..< x.n {
+				first[i] = x.v[i]
+			}
+		case string:
+			if color, ok := color_of_hex(x); ok {
+				first = color
+			}
+		}
+		s.kept_vec[strings.clone(key)] = first
 	}
 	return &s.kept_vec[key]
 }

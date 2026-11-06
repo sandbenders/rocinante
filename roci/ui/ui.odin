@@ -72,6 +72,9 @@ State :: struct {
 	records:        [dynamic]Record, // the frame being built
 	finished:       [dynamic]Record, // the last frame built
 	seen:           map[u32]bool,    // identities used this frame
+	kinds:          map[string]Kept_Kind, // what each kept value is, for ui.toml (keyed like the kept maps)
+	names:          map[string]string,    // the item a drop-down, radio group or list had chosen, by its text
+	loaded:         map[string]Stored,    // what ui.toml said, taken as a widget is first made
 	kept_vec:       map[string][4]f32, // what the colour, range and pad widgets hold, by their text
 	kept_text:      map[string][]u8, // the text boxes' text, by their text: a zero-ended buffer of TEXT_BYTES
 	path:           [dynamic]string, // the panels, tabs and menus the widgets being made are inside
@@ -201,6 +204,10 @@ destroy :: proc(s: ^State) {
 		delete(key)
 	}
 	delete(s.kept_vec)
+	clear_persistence(s)
+	delete(s.kinds)
+	delete(s.names)
+	delete(s.loaded)
 	for part in s.path {
 		delete(part)
 	}

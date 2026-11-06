@@ -91,6 +91,7 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 		the.current = nil
 		show_frame(w)
 	}
+	ui_autosave()
 	the.frame += 1
 	gfx.images_tick()
 	evict_derived()
