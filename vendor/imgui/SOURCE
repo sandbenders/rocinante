@@ -1,0 +1,3 @@
+Dear ImGui v1.93.0 (https://github.com/ocornut/imgui, MIT), fetched into .cache/ui by tools/ui-libs.sh.
+dear_bindings v0.26 (https://github.com/dearimgui/dear_bindings, MIT) made c/ (the C wrappers, compiled with Dear ImGui)
+and, through tools/imgui, imgui.odin. Both are written again with: tools/ui-libs.sh regenerate

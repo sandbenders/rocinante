@@ -21,6 +21,7 @@ commands:
   ci [--fast]   run the checks the pipelines run (--fast: the pre-push subset)
   licences      check dependency licences
   odin          check the installed Odin against ODIN_VERSION
+  ui-libs [regenerate]  build the user interface libraries into .cache/ui (regenerate: make the bindings again, needs python3)
   docs          build the documentation site into output/site/public (needs Hugo, HUGO_VERSION)
   docs serve    preview it at http://localhost:1313/rocinante/, rewriting what changes in site/ as it is saved
 `
@@ -41,6 +42,8 @@ main :: proc() {
 		ok = check_licences(".") && check_tracked_fonts(".")
 	case "odin":
 		ok = check_odin()
+	case "ui-libs":
+		ok = ui_libs(len(args) > 1 && args[1] == "regenerate")
 	case "docs":
 		ok = docs_serve() if len(args) > 1 && args[1] == "serve" else docs()
 	case:
@@ -95,7 +98,7 @@ check_odin :: proc() -> bool {
 
 // Packages whose @(test) procedures `ci` runs, from the repository root (some
 // tests make fixtures under output/). Add each package here as it gets tests.
-TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/folder", "roci/gfx", "roci/interp", "roci/movies", "roci/lang", "roci/maths", "roci/platform", "roci/registry", "cli", "spikes/codegen", "tools/term", "tools/site", "vendor/sancho/deflate", "vendor/sancho/png_writer"}
+TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/folder", "roci/gfx", "roci/interp", "roci/movies", "roci/lang", "roci/maths", "roci/platform", "roci/registry", "cli", "spikes/codegen", "tools/term", "tools/site", "tools/imgui", "vendor/sancho/deflate", "vendor/sancho/png_writer"}
 
 // Where `odin test` writes each package's test program. Left to itself it writes
 // build.exe to the repository root, the very file `odin run build` is running
@@ -117,6 +120,7 @@ ci :: proc(fast: bool) -> bool {
 	ok = check_tracked_fonts(".") && ok
 	// Compile-check every Odin package that exists so far.
 	ok = check_packages() && ok
+	ok = check_ui() && ok
 	if !fast {
 		ok = check_optimised_tests() && ok
 		ok = check_abi() && ok

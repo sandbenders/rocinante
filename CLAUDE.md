@@ -21,6 +21,7 @@ Everything is driven by the build script in `build/`, written in Odin; there is 
 odin run build -- ci            # exactly what both pipelines run
 odin run build -- ci --fast     # the pre-push subset (git config core.hooksPath tools/hooks)
 odin run build -- licences      # dependency licence check against tools/licences.txt
+odin run build -- ui-libs       # build Dear ImGui into .cache/ui (git and a C++ compiler); `ui-libs regenerate` also remakes vendor/imgui (needs python3, only for dear_bindings)
 odin run build -- odin          # check the installed Odin against ODIN_VERSION
 odin run build -- docs          # the documentation site into output/site/public (Hugo, HUGO_VERSION)
 odin run build -- docs serve    # preview it with Hugo, rewriting each file of site/ as it is saved (pictures drawn once)
@@ -117,6 +118,7 @@ The phone scripts need SDL 3.4.18 built for the phone, which is not in the repos
   - **Blend and clip** are part of a look (hashed); a change of either starts a new batch; one pipeline per (program, blend); `set_clip` keeps the upright box round the transformed corners; `draw_overlay` puts both back first. No `darken` (a minimum colour would turn clear corners black).
   - `renderer.odin`, `png.odin`: pipelines are made on first use and a failure is recorded once; drawing is 4x multisampled, premultiplied. PNG is **sancho** (own repo, 0BSD), vendored as a plain copy in `vendor/sancho` with the commit in `vendor/sancho/SOURCE`: a change is made in sancho and copied with `tools/vendor-sancho.sh [ref]`. Shaders are HLSL in `shaders/` with SPIR-V, Metal and DXIL committed in `shaders/compiled/`; Metal needs texture-upload offsets that are multiples of 16.
 - `tests/golden`: `scenes.odin` is where a new golden scene goes; `examples.odin` runs the examples at a fixed seed and compares each window with `example_<name>_<window>.png`; an example with no picture goes in `NO_PICTURE` with a reason. A window with no reference is said and does not fail.
+- `vendor/imgui` and `tools/imgui`: Dear ImGui as Odin. `imgui.odin` is **generated** (`tools/imgui` reads dear_bindings' JSON; edit the generator's `WANTED` list to bind another procedure, never the file) and `c/` holds the C wrappers dear_bindings made, committed so a build needs no Python; `tools/ui-libs.sh` compiles them with Dear ImGui (fetched at its pinned tag) into `.cache/ui/libroci_ui.a`. Enum values are plain constants (`WindowFlags_NoTitleBar`), flags are `i32`, `ImVec2`/`ImVec4` are `[2]f32`/`[4]f32`, and defaults are written for the plain cases only. Dear ImGui has one global context, so only one test may use it. `ci` skips the tests that link it when the library is not built, and fails when `ROCI_REQUIRE_UI` is set (both pipelines build it first).
 - `tools/ci/`: the install scripts both pipelines use, and `orion.Dockerfile` (a new package for the pipeline goes there and needs a rebuild).
 
 **Shell and tool gotchas** (these have all cost time):

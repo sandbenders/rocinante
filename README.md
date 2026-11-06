@@ -121,6 +121,8 @@ FreeType comes with the base system (`/usr/X11R6`). OpenBSD's linker has no unve
 
 A sketch's own shaders (`effect`) are translated while it runs by [shaderc](https://github.com/google/shaderc) and [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross), which the engine links: `sudo pacman -S shaderc spirv-cross` on Arch, `brew install shaderc spirv-cross` on macOS, `sudo apt install libshaderc-dev libspirv-cross-c-shared-dev` on Debian and Ubuntu (the package names on Fedora, FreeBSD and OpenBSD, and the libraries for Windows, are still being confirmed). Direct3D 12 takes neither of the formats they make, so a sketch's own shaders wait there.
 
+The user interface (work in progress) is drawn by [Dear ImGui](https://github.com/ocornut/imgui), which is C++ and is built from source once: `sh tools/ui-libs.sh` (or `odin run build -- ui-libs`) fetches it at its pinned version and compiles it into `.cache/ui` with `git` and a C++ compiler. Without that step `odin run build -- ci` skips the tests that need it, unless `ROCI_REQUIRE_UI` is set, as in both pipelines. The Windows build is not written yet.
+
 Systems with no SDL3 package (Ubuntu 24.04, Debian 12) can build it with `tools/ci/install-sdl3.sh`, as the GitHub pipeline does. The [getting started guide](https://rocinante-lang.org/guides/01-getting-started/) has every step. (An older Odin, `dev-2026-07` built against LLVM 23, failed to compile even a hello world, so check that `odin version` matches the file.) Then, from the repository root:
 
 ```
