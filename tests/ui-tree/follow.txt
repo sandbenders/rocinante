@@ -1,0 +1,7 @@
+Window "follow"
+  Slider "size" value="20.00" number=20 range=10..40 step=0.3 [Focus Increment Decrement Set_Value]
+  Slider "size" value="20.00" number=20 range=10..40 step=0.3 [Focus Increment Decrement Set_Value]
+  Slider "size" value="20.00" number=20 range=10..40 step=0.3 [Focus Increment Decrement Set_Value]
+  Group "world" expanded=true [Focus Click]
+    Check_Box "drift" checked=true [Focus Click]
+    Label "drag a slider"

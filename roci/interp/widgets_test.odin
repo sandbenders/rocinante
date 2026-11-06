@@ -5,6 +5,8 @@ import "../"
 import "../maths"
 import "../platform"
 import "../ui"
+import "core:fmt"
+import "core:os"
 import "core:strings"
 import "core:testing"
 
@@ -557,4 +559,64 @@ test_the_sliders_of_the_follow_example_move_with_their_dots_until_the_switch_sto
 		}
 	}
 	testing.expect(t, found, "the slider reached its end")
+}
+
+// The trees a screen reader is given for the examples that have a interface are kept in
+// tests/ui-tree as text, to be read like code: ROCI_UPDATE_TREES=1 writes them again.
+TREE_EXAMPLES :: [?]string{"ui", "dials", "follow", "imagebuttons"}
+
+@(test)
+test_the_trees_of_the_examples_are_what_the_stored_files_say :: proc(t: ^testing.T) {
+	for name in TREE_EXAMPLES {
+		p := run_text(t, example_text(name), 6)
+		tree := roci.ui_tree(first_window())
+		dump := ui.dump_tree(tree)
+		ui.destroy_tree(&tree)
+		finish(p)
+		path := fmt.tprintf("tests/ui-tree/%s.txt", name)
+		if os.get_env("ROCI_UPDATE_TREES", context.temp_allocator) != "" {
+			_ = os.write_entire_file(path, transmute([]u8)dump)
+		}
+		stored, err := os.read_entire_file(path, context.temp_allocator)
+		if testing.expectf(t, err == nil, "no %s: run with ROCI_UPDATE_TREES=1", path) {
+			testing.expectf(t, string(stored) == dump, "the tree of examples/%s changed:\n%s", name, dump)
+		}
+		delete(dump)
+	}
+}
+
+// A screen reader's request for a node does what the hand would: pressing, setting a slider, and
+// choosing, all reach the sketch's values.
+ask_node :: proc(w: roci.Window, label: string, action: ui.Node_Action, number := 0.0, text := "") -> bool {
+	tree := roci.ui_tree(w)
+	defer ui.destroy_tree(&tree)
+	for n in tree.nodes {
+		if n.label == label {
+			roci.ui_access_action(w, n.id, action, number, text)
+			return true
+		}
+	}
+	return false
+}
+
+@(test)
+test_what_a_screen_reader_asks_of_the_ui_example_reaches_the_sketch :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("ui"), 6)
+	defer finish(p)
+	w := first_window()
+	testing.expect(t, ask_node(w, "pulse", .Click))
+	steps(2)
+	testing.expect_value(t, as_number(global_named(p, "pulses")), 1)
+	testing.expect(t, ask_node(w, "size", .Set_Value, 100))
+	steps(2)
+	testing.expect_value(t, as_number(global_named(p, "dot")), 100)
+	testing.expect(t, ask_node(w, "size", .Increment))
+	steps(2)
+	testing.expect(t, as_number(global_named(p, "dot")) > 100 - 1e-9 && as_number(global_named(p, "dot")) <= 120)
+	testing.expect(t, ask_node(w, "ring", .Click))
+	steps(2)
+	testing.expect_value(t, as_bool(global_named(p, "ring")), false)
+	testing.expect(t, ask_node(w, "reset", .Click))
+	steps(3)
+	testing.expect_value(t, as_number(global_named(p, "dot")), 60)
 }

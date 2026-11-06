@@ -311,6 +311,23 @@ ui_records :: proc(w: Window) -> []ui.Record {
 	return nil
 }
 
+// What a screen reader is told about a window's interface: the tree of its last finished frame, owned
+// by the caller (`ui.destroy_tree`). Empty, with just the window, when it has no interface.
+ui_tree :: proc(w: Window) -> ui.Tree {
+	if win := win_for(w); win != nil && win.ui != nil {
+		return ui.build_tree(win.ui, win.title)
+	}
+	return {}
+}
+
+// Does what a screen reader asked of a node of the window's tree (`ui_tree`, by its id), when the next
+// frame begins: for tests, and for the platform's adapter, which calls it from its own thread.
+ui_access_action :: proc(w: Window, node: u64, action: ui.Node_Action, number := 0.0, text := "") {
+	if win := win_for(w); win != nil && win.ui != nil {
+		ui.push_action(win.ui, node, action, number, text)
+	}
+}
+
 // The mistakes in a window's widgets (two with one label), each said once, in the order found.
 ui_problems :: proc(w: Window) -> []string {
 	if win := win_for(w); win != nil && win.ui != nil {

@@ -35,7 +35,7 @@ WANTED := [?]string {
 	"ImGui_SliderFloat", "ImGui_SliderFloatEx", "ImGui_SliderInt", "ImGui_SliderIntEx",
 	"ImGui_DragFloat", "ImGui_DragFloat2", "ImGui_DragFloatRange2Ex",
 	"ImGui_InputFloat", "ImGui_InputInt", "ImGui_InputDouble", "ImGui_InputDoubleEx", "ImGui_InputTextMultilineEx",
-	"ImGui_GetPlatformIO", "ImGui_TextDisabled", "ImGui_CollapsingHeader", "ImGui_Indent", "ImGui_Unindent", "ImGui_IsKeyPressed", "ImGui_ImageButton",
+	"ImGui_GetPlatformIO", "ImGui_TextDisabled", "ImGui_CollapsingHeader", "ImGui_Indent", "ImGui_Unindent", "ImGui_SetNextItemOpen", "ImGui_IsKeyPressed", "ImGui_ImageButton",
 	"ImGui_InputText", "ImGui_InputTextWithHint", "ImGui_InputTextMultiline",
 	"ImGui_ColorEdit4", "ImGui_ColorPicker4", "ImGui_ProgressBar",
 	"ImGui_BeginCombo", "ImGui_EndCombo", "ImGui_Selectable", "ImGui_SelectableBoolPtr",

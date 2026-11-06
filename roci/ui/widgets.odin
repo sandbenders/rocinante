@@ -45,6 +45,9 @@ note :: proc(s: ^State, role: Role, label: string, value: f32 = 0, text := "", i
 	see_text(s, label)
 	see_text(s, text)
 	id := identity if identity != 0 else imgui.get_item_id()
+	if _, asked := take(s, id, .Focus); asked {
+		imgui.set_keyboard_focus_here_ex(-1) // the widget just made
+	}
 	// A line of text or a bar has no identity of its own, and any number of them may look the same.
 	if role != .Label && role != .Progress {
 		if s.seen[id] {
@@ -65,9 +68,30 @@ note :: proc(s: ^State, role: Role, label: string, value: f32 = 0, text := "", i
 			focused = imgui.is_item_focused(),
 			hovered = imgui.is_item_hovered(),
 			active = imgui.is_item_active(),
+			path = copy_path(s),
 		},
 	)
 	return &s.records[len(s.records) - 1]
+}
+
+// The panels, tabs and menus the widget being noted is inside, as the record keeps them.
+@(private)
+copy_path :: proc(s: ^State) -> []string {
+	path := make([]string, len(s.path))
+	for part, i in s.path {
+		path[i] = strings.clone(part)
+	}
+	return path
+}
+
+// The items of a list-like widget as its record keeps them.
+@(private)
+copy_items :: proc(items: []string) -> []string {
+	out := make([]string, len(items))
+	for item, i in items {
+		out[i] = strings.clone(item)
+	}
+	return out
 }
 
 // Opens a frame when the sketch asks for a widget before one is open.
@@ -89,7 +113,11 @@ label :: proc(s: ^State, text: string) {
 button :: proc(s: ^State, text: string) -> bool {
 	use(s)
 	place(s)
+	id := imgui.get_id(label_id(s, text))
 	clicked := imgui.button_ex(label_id(s, text), {s.width, 0})
+	if _, asked := take(s, id, .Click); asked {
+		clicked = true
+	}
 	note(s, .Button, text).changed = clicked
 	return clicked
 }
@@ -98,7 +126,12 @@ button :: proc(s: ^State, text: string) -> bool {
 toggle :: proc(s: ^State, text: string, value: ^bool) -> bool {
 	use(s)
 	place(s)
+	id := imgui.get_id(label_id(s, text))
 	changed := imgui.checkbox(label_id(s, text), value)
+	if _, asked := take(s, id, .Click); asked {
+		value^ = !value^
+		changed = true
+	}
 	note(s, .Toggle, text, 1 if value^ else 0).changed = changed
 	return changed
 }
@@ -107,8 +140,15 @@ toggle :: proc(s: ^State, text: string, value: ^bool) -> bool {
 slider :: proc(s: ^State, text: string, value: ^f32, low, high: f32) -> bool {
 	use(s)
 	place(s)
+	id := imgui.get_id(label_id(s, text))
 	changed := imgui.slider_float_ex(label_id(s, text), value, low, high, "%.2f")
-	note(s, .Slider, text, value^, fmt.tprintf("%.2f", value^)).changed = changed
+	if moved := f64(value^); nudge(s, id, &moved, f64(low), f64(high), f64(high - low) / 100) {
+		value^ = f32(moved)
+		changed = true
+	}
+	record := note(s, .Slider, text, value^, fmt.tprintf("%.2f", value^))
+	record.changed = changed
+	record.low, record.high, record.step = low, high, (high - low) / 100
 	return changed
 }
 
@@ -160,13 +200,17 @@ text_in :: proc(buffer: []u8) -> string {
 number :: proc(s: ^State, text: string, value: ^f64, low, high: f64) -> bool {
 	use(s)
 	place(s)
+	id := imgui.get_id(label_id(s, text))
 	changed := imgui.input_double_ex(label_id(s, text), value, 1, 10, "%.6g", 0)
+	changed = nudge(s, id, value, low, high, 1) || changed
 	if !imgui.is_item_active() {
 		clamped := clamp(value^, min(low, high), max(low, high))
 		changed = changed || clamped != value^
 		value^ = clamped
 	}
-	note(s, .Number, text, f32(value^), fmt.tprintf("%.6g", value^)).changed = changed
+	record := note(s, .Number, text, f32(value^), fmt.tprintf("%.6g", value^), id)
+	record.changed = changed
+	record.low, record.high, record.step = f32(low), f32(high), 1
 	return changed
 }
 
@@ -175,6 +219,7 @@ textbox :: proc(s: ^State, text: string, buffer: []u8, lines := 1) -> bool {
 	use(s)
 	place(s)
 	changed: bool
+	id := imgui.get_id(label_id(s, text))
 	if lines > 1 {
 		style := imgui.get_style()
 		height := f32(lines) * imgui.get_text_line_height() + style.frame_padding.y * 2
@@ -182,7 +227,16 @@ textbox :: proc(s: ^State, text: string, buffer: []u8, lines := 1) -> bool {
 	} else {
 		changed = imgui.input_text(label_id(s, text), cstring(raw_data(buffer)), uint(len(buffer)))
 	}
-	note(s, .Textbox, text, 0, text_in(buffer)).changed = changed
+	if p, asked := take(s, id, .Set_Value); asked {
+		for i in 0 ..< len(buffer) {
+			buffer[i] = 0
+		}
+		copy(buffer[:TEXT_BYTES - 1], p.text)
+		changed = true
+	}
+	record := note(s, .Textbox, text, 0, text_in(buffer), id)
+	record.changed = changed
+	record.lines = lines
 	return changed
 }
 
@@ -192,6 +246,14 @@ dropdown :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool 
 	place(s)
 	changed := false
 	index^ = clamp(index^, 0, max(len(items) - 1, 0))
+	if p, asked := take(s, imgui.get_id(label_id(s, text)), .Set_Value); asked {
+		for item, i in items {
+			if item == p.text && index^ != i {
+				index^ = i
+				changed = true
+			}
+		}
+	}
 	shown := items[index^] if len(items) > 0 else ""
 	if imgui.begin_combo(label_id(s, text), cstr(shown), 0) {
 		for item, i in items {
@@ -205,7 +267,9 @@ dropdown :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool 
 		}
 		imgui.end_combo()
 	}
-	note(s, .Dropdown, text, f32(index^), shown).changed = changed
+	record := note(s, .Dropdown, text, f32(index^), shown)
+	record.changed = changed
+	record.items = copy_items(items)
 	return changed
 }
 
@@ -220,7 +284,11 @@ choice :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 	group := imgui.get_id(label_id(s, text)) // a group has no item of its own, so its identity is its text's
 	imgui.push_id(label_id(s, text))
 	for item, i in items {
-		if imgui.radio_button(cstr(item), index^ == i) && index^ != i {
+		picked := imgui.radio_button(cstr(item), index^ == i)
+		if _, asked := take_node(s, SUB_ID_BASE + u64(group) * 1024 + u64(min(i, 1023)), .Click); asked {
+			picked = true
+		}
+		if picked && index^ != i {
 			index^ = i
 			changed = true
 		}
@@ -228,7 +296,9 @@ choice :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 	imgui.pop_id()
 	imgui.end_group()
 	shown := items[index^] if len(items) > 0 else ""
-	note(s, .Choice, text, f32(index^), shown, group).changed = changed
+	record := note(s, .Choice, text, f32(index^), shown, group)
+	record.changed = changed
+	record.items = copy_items(items)
 	return changed
 }
 
@@ -407,6 +477,10 @@ begin_container :: proc(s: ^State, kind: Container, text := "") -> (o: Open) {
 	switch kind {
 	case .Panel:
 		place(s)
+		id := imgui.get_id(label_id(s, text))
+		if _, asked := take(s, id, .Click); asked {
+			imgui.set_next_item_open(last_value(s, id) == 0)
+		}
 		o.open = imgui.collapsing_header(label_id(s, text), imgui.TreeNodeFlags_DefaultOpen)
 		note(s, .Panel, text, 1 if o.open else 0)
 		if o.open {
@@ -437,7 +511,11 @@ begin_container :: proc(s: ^State, kind: Container, text := "") -> (o: Open) {
 			o.misplaced = true
 			return
 		}
-		o.open = imgui.begin_tab_item(label_id(s, text), nil, 0)
+		flags: i32 = 0
+		if _, asked := take(s, imgui.get_id(label_id(s, text)), .Click); asked {
+			flags = imgui.TabItemFlags_SetSelected
+		}
+		o.open = imgui.begin_tab_item(label_id(s, text), nil, flags)
 		note(s, .Tab, text, 1 if o.open else 0)
 		if o.open {
 			push_scope(s, text)
@@ -508,7 +586,11 @@ pop_scope :: proc(s: ^State) {
 item :: proc(s: ^State, text: string) -> bool {
 	use(s)
 	place(s)
+	id := imgui.get_id(label_id(s, text))
 	chosen := imgui.menu_item(label_id(s, text))
+	if _, asked := take(s, id, .Click); asked {
+		chosen = true
+	}
 	note(s, .Item, text).changed = chosen
 	return chosen
 }
@@ -529,7 +611,11 @@ list :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 		for entry, i in items {
 			imgui.push_id_int(i32(i))
 			selected := index^ == i
-			if imgui.selectable_bool_ptr(cstr(entry), &selected, 0) && index^ != i {
+			picked := imgui.selectable_bool_ptr(cstr(entry), &selected, 0)
+			if _, asked := take_node(s, SUB_ID_BASE + u64(group) * 1024 + u64(min(i, 1023)), .Click); asked {
+				picked = true
+			}
+			if picked && index^ != i {
 				index^ = i
 				changed = true
 			}
@@ -538,7 +624,9 @@ list :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 		imgui.end_list_box()
 	}
 	shown := items[index^] if len(items) > 0 else ""
-	note(s, .List, text, f32(index^), shown, group).changed = changed
+	record := note(s, .List, text, f32(index^), shown, group)
+	record.changed = changed
+	record.items = copy_items(items)
 	return changed
 }
 
@@ -615,10 +703,14 @@ knob :: proc(s: ^State, text: string, value: ^f32, low, high: f32) -> bool {
 	place(s)
 	size := s.width if s.width > 0 else imgui.get_frame_height() * 2
 	at := imgui.get_cursor_screen_pos()
+	id_ := imgui.get_id(label_id(s, text))
 	imgui.invisible_button(label_id(s, text), {size, size})
 	span := high - low
 	changed := false
 	before := value^
+	if moved := f64(value^); nudge(s, id_, &moved, f64(low), f64(high), f64(span) / 100) {
+		value^ = f32(moved)
+	}
 	if imgui.is_item_active() {
 		io := imgui.get_io()
 		value^ += (io.mouse_delta.x - io.mouse_delta.y) / KNOB_PIXELS_PER_RANGE * span
@@ -653,6 +745,7 @@ knob :: proc(s: ^State, text: string, value: ^f32, low, high: f32) -> bool {
 	record.changed = changed
 	record.rect = {rect_min, rect_max}
 	record.focused, record.hovered, record.active = focused, hovered, active
+	record.low, record.high, record.step = low, high, span / 100
 	return changed
 }
 
@@ -716,6 +809,7 @@ range :: proc(s: ^State, text: string, low_value, high_value: ^f32, low, high: f
 	record.changed = changed
 	record.rect = {at, at + {bar, height}}
 	record.focused, record.hovered, record.active = focused, hovered, active
+	record.low, record.high, record.step = low, high, span / 100
 	return changed
 }
 
@@ -774,7 +868,11 @@ IMAGE_TEXTURE_FLAG :: u64(1) << 62
 image_button :: proc(s: ^State, text: string, image: u32, size: [2]f32) -> bool {
 	use(s)
 	place(s)
+	id := imgui.get_id(label_id(s, text))
 	clicked := imgui.image_button(label_id(s, text), imgui.TextureRef{_tex_id = IMAGE_TEXTURE_FLAG | u64(image)}, size)
+	if _, asked := take(s, id, .Click); asked {
+		clicked = true
+	}
 	note(s, .Image_Button, text).changed = clicked
 	return clicked
 }

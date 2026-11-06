@@ -14,6 +14,8 @@ import "core:strings"
 import imgui "../../vendor/imgui"
 import sdl "vendor:sdl3"
 
+import "core:sync"
+
 import "../gfx"
 
 Theme :: enum {
@@ -60,6 +62,13 @@ Record :: struct {
 	hovered:  bool,
 	active:   bool,   // held down
 	changed:  bool,   // this frame
+	// what a screen reader is told that Dear ImGui does not keep
+	low:      f32,    // a slider's, number's or knob's range
+	high:     f32,
+	step:     f32,    // how far one increment moves it
+	lines:    int,    // a text box's lines
+	items:    []string, // a drop-down's, radio group's or list's items (owned); `value` is the chosen one's place
+	path:     []string, // the panels, tabs and menus it is inside, outermost first (owned)
 }
 
 State :: struct {
@@ -99,6 +108,9 @@ State :: struct {
 	next_name:      string,          // what names the floating window of a widget placed with `at`
 	next_width:     f32,
 	width:          f32,             // the width asked for the widget being made, 0 for its own
+	queue_lock:     sync.Mutex,      // guards `queue`, which a screen reader's thread may add to
+	queue:          [dynamic]Pending, // actions waiting for the next frame
+	actions:        [dynamic]Pending, // the frame's actions, taken by the widgets they name
 	floats:         [dynamic]bool,   // the floating windows open, innermost last: true for a lone widget's
 	float_count:    int,             // floating windows made this frame for something with no text
 	// the SDL_GPU renderer backend, made when something is first drawn
@@ -226,6 +238,7 @@ destroy :: proc(s: ^State) {
 	}
 	delete(s.path)
 	delete(s.floats)
+	free_actions(s)
 	for key, buffer in s.kept_text {
 		delete(key)
 		delete(buffer)
@@ -239,6 +252,14 @@ free_record :: proc(r: Record) {
 	delete(r.label)
 	delete(r.text)
 	delete(r.tip)
+	for item in r.items {
+		delete(item)
+	}
+	delete(r.items)
+	for part in r.path {
+		delete(part)
+	}
+	delete(r.path)
 }
 
 // Makes this window's context the one Dear ImGui's calls act on.
@@ -302,6 +323,7 @@ begin_frame :: proc(s: ^State, size: [2]f32, density, dt: f32) {
 	io.display_framebuffer_scale = {density, density}
 	io.delta_time = max(dt, 1.0 / 1000)
 	imgui.new_frame()
+	take_queue(s)
 	s.in_frame = true
 	s.panel_open = false
 	s.panel_count = 0

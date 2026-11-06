@@ -1,0 +1,4 @@
+Window "image buttons"
+  Button "stamp" [Focus Click]
+  Button "stamp ten" [Focus Click]
+  Label "stamps: 0"

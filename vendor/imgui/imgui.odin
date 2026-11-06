@@ -1721,6 +1721,7 @@ foreign lib {
 	@(link_name = "ImGui_ColorEdit4") color_edit4 :: proc(label: cstring, col: ^[4][4]f32, flags: ColorEditFlags = 0) -> bool ---
 	@(link_name = "ImGui_ColorPicker4") color_picker4 :: proc(label: cstring, col: ^[4][4]f32, flags: ColorEditFlags = 0, ref_col: ^f32 = nil) -> bool ---
 	@(link_name = "ImGui_CollapsingHeader") collapsing_header :: proc(label: cstring, flags: TreeNodeFlags = 0) -> bool ---
+	@(link_name = "ImGui_SetNextItemOpen") set_next_item_open :: proc(is_open: bool, cond: Cond = 0) ---
 	@(link_name = "ImGui_Selectable") selectable :: proc(label: cstring) -> bool ---
 	@(link_name = "ImGui_SelectableBoolPtr") selectable_bool_ptr :: proc(label: cstring, p_selected: ^bool, flags: SelectableFlags = 0) -> bool ---
 	@(link_name = "ImGui_BeginListBox") begin_list_box :: proc(label: cstring, size: [2]f32 = {0, 0}) -> bool ---

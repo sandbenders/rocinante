@@ -1,0 +1,20 @@
+Window "ui"
+  Menu "file" expanded=false [Focus]
+  Group "dot" expanded=true [Focus Click]
+    Slider "size" value="60.00" number=60 range=10..120 step=1.1 description="how big the dot is" [Focus Increment Decrement Set_Value]
+    Check_Box "ring" checked=true [Focus Click]
+    Spin_Button "rings" value="2" number=2 range=1..5 step=1 [Focus Increment Decrement Set_Value]
+  Tab "color" selected=true [Focus Click]
+  Tab_Panel "color"
+    Combo_Box "tone" value="orange" [Focus Set_Value]
+    Radio_Group "look" value="solid" [Focus]
+      Radio_Button "solid" selected=true [Focus Click]
+      Radio_Button "outline" selected=false [Focus Click]
+  Tab "shape" selected=false [Focus Click]
+  Tab_Panel "shape"
+  Tab "words" selected=false [Focus Click]
+  Tab_Panel "words"
+  Button "pulse" [Focus Click]
+  Button "reset" [Focus Click]
+  Progress "progress" value="0%" number=0 range=0..1
+  Label "pulses: 0"
