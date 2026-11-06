@@ -354,3 +354,18 @@ test_a_group_placed_with_at_is_a_window_of_its_own_with_its_width :: proc(t: ^te
 	testing.expect(t, in_box.rect.min.x > 200 && in_box.rect.min.y > 120, "inside the group's window")
 	testing.expect(t, out.rect.min.x < 40, "the next widget is back in the panel")
 }
+
+@(test)
+test_a_range_that_is_the_only_widget_runs_for_many_frames :: proc(t: ^testing.T) {
+	// Dear ImGui stops the program when a cursor that was moved is left past the window's content
+	// with no item after it, which a range as the last widget once did after some frames.
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	a, b: f32 = 0.2, 0.8
+	for _ in 0 ..< 60 {
+		ensure_frame(s, SIZE, 1, 1.0 / 60)
+		_ = range(s, "span", &a, &b, 0, 1)
+		end_frame(s)
+	}
+	testing.expect_value(t, len(records(s)), 1)
+}

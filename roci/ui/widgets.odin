@@ -667,10 +667,6 @@ range :: proc(s: ^State, text: string, low_value, high_value: ^f32, low, high: f
 	height := imgui.get_frame_height()
 	bar := s.width if s.width > RANGE_HANDLE * 2 else f32(RANGE_WIDTH)
 	at := imgui.get_cursor_screen_pos()
-	imgui.dummy({bar, height})
-	imgui.same_line()
-	imgui.text_unformatted(cstr(text))
-	after := imgui.get_cursor_screen_pos()
 	span := high - low
 	travel := bar - RANGE_HANDLE
 	changed := false
@@ -700,7 +696,12 @@ range :: proc(s: ^State, text: string, low_value, high_value: ^f32, low, high: f
 		hovered = hovered || imgui.is_item_hovered()
 		active = active || imgui.is_item_active()
 	}
-	imgui.set_cursor_screen_pos(after)
+	// the cursor goes back to the bar's start and the bar and the text are the items that follow, so
+	// the window grows to hold them (Dear ImGui insists an item comes after a moved cursor)
+	imgui.set_cursor_screen_pos(at)
+	imgui.dummy({bar, height})
+	imgui.same_line()
+	imgui.text_unformatted(cstr(text))
 	list := imgui.get_window_draw_list()
 	mid := at.y + height / 2
 	left := at.x + RANGE_HANDLE / 2
