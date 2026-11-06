@@ -3,6 +3,8 @@ package gfx
 
 import "core:testing"
 
+import "../folder"
+
 inter :: proc(t: ^testing.T) -> Ttf {
 	f, ok := ttf_open(INTER_REGULAR)
 	testing.expect(t, ok)
@@ -144,4 +146,44 @@ a_cut_off_font_never_reads_past_its_end :: proc(t: ^testing.T) {
 		}
 		delete(out)
 	}
+}
+
+// Inter Bold, then Inter Regular, as one collection.
+bold_then_regular :: proc(t: ^testing.T) -> []u8 {
+	collection := folder.join_fonts({INTER_BOLD, INTER_REGULAR}, context.temp_allocator)
+	testing.expect(t, collection != nil)
+	return collection
+}
+
+@(test)
+a_face_of_a_collection_is_opened_by_its_number :: proc(t: ^testing.T) {
+	collection := bold_then_regular(t)
+	bold, bold_ok := ttf_open(collection)
+	regular, regular_ok := ttf_open(collection, 1)
+	testing.expect(t, bold_ok && regular_ok)
+	// a bold A is wider than a regular one
+	testing.expect(t, ttf_advance(bold, ttf_glyph(bold, 'A')) > ttf_advance(regular, ttf_glyph(regular, 'A')))
+	_, third := ttf_open(collection, 2)
+	testing.expect(t, !third, "there are two faces")
+	_, negative := ttf_open(collection, -1)
+	testing.expect(t, !negative)
+	// a plain font has only the first
+	_, plain_first := ttf_open(INTER_REGULAR, 0)
+	_, plain_second := ttf_open(INTER_REGULAR, 1)
+	testing.expect(t, plain_first && !plain_second)
+}
+
+@(test)
+a_face_of_a_collection_is_drawn_in_its_own_weight :: proc(t: ^testing.T) {
+	collection := bold_then_regular(t)
+	bold, bold_ok := add_face("Pair Bold", collection, 0)
+	regular, regular_ok := add_face("Pair Regular", collection, 1)
+	testing.expect(t, bold_ok && regular_ok && bold != regular)
+	wide, _ := measure_typeset(bold, 40, .Left, "Hamburgefonstiv")
+	narrow, _ := measure_typeset(regular, 40, .Left, "Hamburgefonstiv")
+	testing.expectf(t, wide > narrow, "the second face is Regular, narrower than Bold (%v, %v)", wide, narrow)
+	// a face the file does not have is not a font
+	_, third := add_face("Pair Third", collection, 2)
+	testing.expect(t, !third)
+	testing.expect_value(t, fonts.faces[regular].index, 1)
 }

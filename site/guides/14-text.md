@@ -106,7 +106,7 @@ A font that is not there is said once and the text is drawn in the font before i
 1 │ font "Papyrus" size 30
   │ ^^^^^^^^^^^^^^^^^^^^^^
 
-The fonts a sketch has are Inter and Inter Bold, and any font file in its `assets/fonts` folder under its own name. The text is drawn in the font before it, and the sketch carries on.
+The fonts a sketch has are Inter and Inter Bold, and any font file in its `assets/fonts` folder under its own name, or one face of a font collection by that face's own name. The text is drawn in the font before it, and the sketch carries on.
 
 Use one that is there:  font "Inter"
 ```
@@ -114,6 +114,8 @@ Use one that is there:  font "Inter"
 ## Fonts installed on your computer
 
 Name a font that is installed on your computer and rocinante finds it: `font "Helvetica Neue"` looks for a file of that name in the computer's fonts when your sketch has none. The first time, the font is copied into `assets/fonts` and one line says so, so your sketch looks the same on every computer and travels with its font. If the font's own licence does not name a free one (the SIL Open Font License, Apache, Ubuntu, MIT or public domain), you get a warning too. It is only a reminder: the sketch carries on, and whether you may share the font is for you to check.
+
+Many fonts are collections: one file, `Helvetica Neue.ttc`, holds Regular, Bold, Condensed Black and the rest. Name the face you want by its own name, as the font lists it (`font "Helvetica Neue Condensed Black"`, or `font "Helvetica Neue Bold"`), and rocinante opens that face. The collection is copied into `assets/fonts` once, under the name you asked for, and the faces in it are found there by their names afterwards. A name with the family alone (`font "Helvetica Neue"`) is the regular face. A PDF made with `save` has the letters of that face too, because they are drawn as outlines; an SVG names the font, so the viewer needs it.
 
 ```message
 ── Warning: Check the licence of `Locked Sans` before you share your sketch ─── sketch.roci:1:1

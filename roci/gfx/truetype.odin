@@ -56,15 +56,21 @@ u32_at :: proc(d: []u8, at: int) -> int {
 	return u16_at(d, at) << 16 | u16_at(d, at + 2)
 }
 
-// Reads the tables of a font file's bytes (the first font of a collection). False for a font
-// with no TrueType outlines or a file that is not one. The bytes are kept, not copied.
-ttf_open :: proc(data: []u8) -> (f: Ttf, ok: bool) {
+// Reads the tables of a font file's bytes: its first font, or the one at `face` when the file is
+// a collection. False for a font with no TrueType outlines, a face the file does not have, or a
+// file that is not one. The bytes are kept, not copied.
+ttf_open :: proc(data: []u8, face := 0) -> (f: Ttf, ok: bool) {
 	if len(data) < 12 {
 		return
 	}
 	base := 0
 	if string(data[:4]) == "ttcf" {
-		base = u32_at(data, 12)
+		if face < 0 || face >= u32_at(data, 8) {
+			return
+		}
+		base = u32_at(data, 12 + face * 4)
+	} else if face != 0 {
+		return
 	}
 	tag := u32_at(data, base)
 	if tag != 0x00010000 && string(data[base:base + 4]) != "true" {

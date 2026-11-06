@@ -30,6 +30,7 @@ Align :: enum u8 {
 
 Face :: struct {
 	name:  string,
+	index: int, // which font of the file this is, 0 unless the file is a collection
 	data:  []u8, // kept alive for as long as the face is open
 	io:    ^sdl.IOStream,
 	base:  ^ttf.Font,
@@ -126,31 +127,43 @@ fonts_stop :: proc() {
 
 // Adds a face from bytes that stay alive (the built-in ones) or that this package
 // now owns. Gives false when SDL_ttf cannot read them.
-add_face_memory :: proc(name: string, data: []u8) -> bool {
+add_face_memory :: proc(name: string, data: []u8, index := 0) -> bool {
 	context.allocator = runtime.heap_allocator()
 	io := sdl.IOFromConstMem(raw_data(data), uint(len(data)))
 	if io == nil {
 		return false
 	}
-	base := ttf.OpenFontIO(io, false, DEFAULT_FONT_SIZE)
+	base: ^ttf.Font
+	if index == 0 {
+		base = ttf.OpenFontIO(io, false, DEFAULT_FONT_SIZE)
+	} else {
+		// the font a collection holds at that place, which only the properties can ask for
+		props := sdl.CreateProperties()
+		defer sdl.DestroyProperties(props)
+		sdl.SetPointerProperty(props, ttf.PROP_FONT_CREATE_IOSTREAM_POINTER, io)
+		sdl.SetFloatProperty(props, ttf.PROP_FONT_CREATE_SIZE_FLOAT, DEFAULT_FONT_SIZE)
+		sdl.SetNumberProperty(props, ttf.PROP_FONT_CREATE_FACE_NUMBER, i64(index))
+		base = ttf.OpenFontWithProperties(props)
+	}
 	if base == nil {
 		sdl.CloseIO(io)
 		return false
 	}
-	append(&fonts.faces, Face{name = strings.clone(name), data = data, io = io, base = base})
+	append(&fonts.faces, Face{name = strings.clone(name), index = index, data = data, io = io, base = base})
 	return true
 }
 
 // Adds a face from font file bytes (a sketch's `assets/fonts` file) and gives its
-// number, or false when the bytes are not a font. The bytes are copied.
-add_face :: proc(name: string, bytes: []u8) -> (face: u16, ok: bool) {
+// number, or false when the bytes are not a font. The bytes are copied. `index` is which
+// font of a collection to take (0 for the first, or for a plain font).
+add_face :: proc(name: string, bytes: []u8, index := 0) -> (face: u16, ok: bool) {
 	context.allocator = runtime.heap_allocator()
 	if !fonts_start() {
 		return 0, false
 	}
 	data := make([]u8, len(bytes))
 	copy(data, bytes)
-	if !add_face_memory(name, data) {
+	if !add_face_memory(name, data, index) {
 		delete(data)
 		return 0, false
 	}

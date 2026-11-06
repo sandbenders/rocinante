@@ -697,7 +697,7 @@ face_font :: proc(p: ^Pdf, face: u16) -> (Ttf, bool) {
 	if p.no_font[face] || int(face) >= len(fonts.faces) {
 		return {}, false
 	}
-	f, ok := ttf_open(fonts.faces[face].data)
+	f, ok := ttf_open(fonts.faces[face].data, fonts.faces[face].index)
 	if !ok {
 		p.no_font[face] = true
 		return {}, false

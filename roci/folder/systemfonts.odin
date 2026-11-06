@@ -18,6 +18,10 @@ import "core:unicode/utf16"
 Font_Info :: struct {
 	family:    string,
 	style:     string, // the subfamily (name id 2): Regular, Bold, Italic…
+	full:      string, // the full name (name id 4): Helvetica Neue Condensed Black
+	postscript: string, // the PostScript name (name id 6): HelveticaNeue-CondensedBlack
+	typo_family: string, // the typographic family (name id 16), when the family above is a style group
+	typo_style: string, // the typographic subfamily (name id 17)
 	copyright: string,
 	licence:   string, // the licence description (name id 13)
 	url:       string, // the licence URL (name id 14)
@@ -31,13 +35,13 @@ Font_Licence :: enum {
 	Restricted, // the font says it may not be embedded or shared
 }
 
-// Reads the licence fields of a font file (TrueType, OpenType, or a collection, of
-// which the first font is read). Strings are made with the allocator given. False
-// when the bytes are not a font this can read.
-read_font_info :: proc(bytes: []u8, allocator := context.allocator) -> (info: Font_Info, ok: bool) {
+// Reads the licence fields of a font file (TrueType, OpenType, or a collection, of which the
+// font at `face` is read, the first by default). Strings are made with the allocator given.
+// False when the bytes are not a font this can read.
+read_font_info :: proc(bytes: []u8, allocator := context.allocator, face := 0) -> (info: Font_Info, ok: bool) {
 	start := 0
 	if len(bytes) >= 16 && string(bytes[:4]) == "ttcf" {
-		start = int(be32(bytes, 12))
+		start = int(be32(bytes, 12 + max(face, 0) * 4))
 	}
 	if start + 12 > len(bytes) {
 		return {}, false
@@ -88,9 +92,50 @@ read_font_names :: proc(path: string) -> (info: Font_Info, ok: bool) {
 	start := 0
 	if string(head[:4]) == "ttcf" {
 		start = int(be32(head[:], 12))
-		if n, _ := os.read_at(f, head[:12], i64(start)); n < 12 {
-			return {}, false
+	}
+	return read_names_at(f, start)
+}
+
+// The names of every font in a file, one for a plain font and one for each face of a collection,
+// read without reading the whole file. Strings are made with the temporary allocator.
+read_collection_names :: proc(path: string) -> []Font_Info {
+	f, err := os.open(path)
+	if err != nil {
+		return nil
+	}
+	defer os.close(f)
+	head: [16]u8
+	if n, _ := os.read_at(f, head[:], 0); n < 12 {
+		return nil
+	}
+	starts := make([dynamic]int, context.temp_allocator)
+	if string(head[:4]) == "ttcf" {
+		count := min(int(be32(head[:], 8)), 256)
+		offsets := make([]u8, count * 4, context.temp_allocator)
+		if n, _ := os.read_at(f, offsets, 12); n < len(offsets) {
+			return nil
 		}
+		for i in 0 ..< count {
+			append(&starts, int(be32(offsets, i * 4)))
+		}
+	} else {
+		append(&starts, 0)
+	}
+	out := make([dynamic]Font_Info, context.temp_allocator)
+	for start in starts {
+		if info, ok := read_names_at(f, start); ok {
+			append(&out, info)
+		}
+	}
+	return out[:]
+}
+
+// The names of the font that starts at `start` in an open file.
+@(private)
+read_names_at :: proc(f: ^os.File, start: int) -> (info: Font_Info, ok: bool) {
+	head: [12]u8
+	if n, _ := os.read_at(f, head[:], i64(start)); n < 12 {
+		return {}, false
 	}
 	version := string(head[:4])
 	if version != "\x00\x01\x00\x00" && version != "OTTO" && version != "true" {
@@ -125,14 +170,14 @@ read_name_table :: proc(table: []u8, info: ^Font_Info, allocator: runtime.Alloca
 	strings_at := int(be16(table, 4))
 	// Windows and Unicode names are UTF-16, Macintosh ones are plain Roman text; the
 	// first of each id found is kept, English Windows names first.
-	best := [15]int{}
+	best := [18]int{}
 	for i in 0 ..< count {
 		record := 6 + i * 12
 		if record + 12 > len(table) {
 			break
 		}
 		platform, language, id := be16(table, record), be16(table, record + 4), int(be16(table, record + 6))
-		if id > 14 {
+		if id > 17 {
 			continue
 		}
 		rank := 1
@@ -155,8 +200,12 @@ read_name_table :: proc(table: []u8, info: ^Font_Info, allocator: runtime.Alloca
 		case 0:  info.copyright = text
 		case 1:  info.family = text
 		case 2:  info.style = text
+		case 4:  info.full = text
+		case 6:  info.postscript = text
 		case 13: info.licence = text
 		case 14: info.url = text
+		case 16: info.typo_family = text
+		case 17: info.typo_style = text
 		}
 	}
 }
@@ -195,6 +244,94 @@ runes_to_string :: proc(runes: []rune) -> string {
 		strings.write_rune(&builder, r)
 	}
 	return strings.to_string(builder)
+}
+
+// The offset of each font in a file: one, 0, for a plain font, and one for each font of a
+// collection (a `.ttc` or `.otc`, which holds several faces that share tables).
+face_offsets :: proc(bytes: []u8, allocator := context.temp_allocator) -> []int {
+	if len(bytes) >= 16 && string(bytes[:4]) == "ttcf" {
+		count := min(int(be32(bytes, 8)), 256)
+		offsets := make([]int, count, allocator)
+		for i in 0 ..< count {
+			offsets[i] = int(be32(bytes, 12 + i * 4))
+		}
+		return offsets
+	}
+	offsets := make([]int, 1, allocator)
+	return offsets
+}
+
+// Reads the names (and licence fields) of the font that starts at `start` in a file's bytes.
+@(private)
+face_info_at :: proc(bytes: []u8, start: int, allocator: runtime.Allocator) -> (info: Font_Info, ok: bool) {
+	if start < 0 || start + 12 > len(bytes) {
+		return {}, false
+	}
+	version := string(bytes[start:][:4])
+	if version != "\x00\x01\x00\x00" && version != "OTTO" && version != "true" {
+		return {}, false
+	}
+	tables := int(be16(bytes, start + 4))
+	for i in 0 ..< tables {
+		record := start + 12 + i * 16
+		if record + 16 > len(bytes) {
+			return {}, false
+		}
+		if string(bytes[record:][:4]) != "name" {
+			continue
+		}
+		at, length := int(be32(bytes, record + 8)), int(be32(bytes, record + 12))
+		if at < 0 || at + 6 > len(bytes) {
+			return {}, false
+		}
+		read_name_table(bytes[at:][:min(length, len(bytes) - at)], &info, allocator)
+		return info, true
+	}
+	return {}, false
+}
+
+// Whether a face goes by this name (already simple-spelled, `simple_name`): its full name
+// (`Helvetica Neue Condensed Black`), its PostScript name (`HelveticaNeue-CondensedBlack`),
+// or its family and style (`Helvetica Neue` and `Bold`), under the plain or the typographic
+// family, and the family alone for a regular style.
+face_goes_by :: proc(info: Font_Info, wanted: string) -> bool {
+	if wanted == "" {
+		return false
+	}
+	candidates := [?]string{info.full, info.postscript}
+	for candidate in candidates {
+		if candidate != "" && simple_name(candidate) == wanted {
+			return true
+		}
+	}
+	pairs := [?][2]string{{info.family, info.style}, {info.typo_family, info.typo_style}}
+	for pair in pairs {
+		if pair[0] == "" {
+			continue
+		}
+		family := simple_name(pair[0])
+		style := simple_name(pair[1])
+		if style != "" && strings.concatenate({family, style}, context.temp_allocator) == wanted {
+			return true
+		}
+		if (style == "" || style == "regular") && family == wanted {
+			return true
+		}
+	}
+	return false
+}
+
+// Which face of a font file goes by this name: its number counting from 0, and false when no
+// face does. A plain font is one face, 0.
+face_named :: proc(bytes: []u8, name: string) -> (index: int, found: bool) {
+	wanted := simple_name(name)
+	for offset, i in face_offsets(bytes) {
+		info, ok := face_info_at(bytes, offset, context.temp_allocator)
+		if ok && face_goes_by(info, wanted) {
+			return i, true
+		}
+	}
+	return 0, false
 }
 
 // Words in a font's licence fields that name a free licence.
@@ -299,7 +436,8 @@ simple_name :: proc(name: string) -> string {
 // A file named for the font (`Helvetica Neue`, `HelveticaNeue`), or for the name and
 // `Regular`, with or without a hyphen, is found from its name alone. Otherwise each
 // font file is asked its family name, so `Consolas` finds Windows' `consola.ttf`, and
-// a regular style wins over the others. The folders are searched a few levels down,
+// a regular style wins over the others, and a name that is none of those may be a face of a collection
+// (`Helvetica Neue Condensed Black`). The folders are searched a few levels down,
 // those of the user first. The path is made with the temporary allocator.
 find_system_font :: proc(name: string) -> (path: string, found: bool) {
 	wanted := simple_name(name)
@@ -334,7 +472,22 @@ find_system_font :: proc(name: string) -> (path: string, found: bool) {
 			any_style = font
 		}
 	}
-	return any_style, any_style != ""
+	if any_style != "" {
+		return any_style, true
+	}
+	// Last, a face of a collection that goes by the name: `Helvetica Neue Condensed Black` is
+	// one of the faces of Helvetica Neue.ttc, whose first face is the regular one.
+	for font in fonts {
+		if !is_collection_name(font) {
+			continue
+		}
+		for info in read_collection_names(font) {
+			if face_goes_by(info, wanted) {
+				return font, true
+			}
+		}
+	}
+	return "", false
 }
 
 @(private)
@@ -375,6 +528,12 @@ search_font_dir :: proc(dir, wanted: string, depth: int, exact, regular: ^string
 	}
 }
 
+// Is the name that of a font collection (`.ttc` or `.otc`)?
+is_collection_name :: proc(path: string) -> bool {
+	ext := font_extension(path)
+	return ext == ".ttc" || ext == ".otc"
+}
+
 // The extension (with its dot) of a font file name, in lowercase.
 font_extension :: proc(path: string) -> string {
 	dot := strings.last_index_byte(path, '.')
@@ -382,4 +541,48 @@ font_extension :: proc(path: string) -> string {
 		return ""
 	}
 	return strings.to_lower(path[dot:], context.temp_allocator)
+}
+
+// A collection (`.ttc`) made of whole font files, each kept as it is with its table offsets
+// moved to where it now sits: the first font is the first file, and so on. Fonts that share no
+// tables make a bigger file than a real collection, which is the only difference. Tests and
+// tools use it where no installed collection can be counted on. Gives nil for no font or a
+// file that is not a font.
+join_fonts :: proc(fonts: [][]u8, allocator := context.allocator) -> []u8 {
+	if len(fonts) == 0 {
+		return nil
+	}
+	out := make([dynamic]u8, allocator)
+	put32 :: proc(out: ^[dynamic]u8, v: int) {
+		append(out, u8(v >> 24), u8(v >> 16), u8(v >> 8), u8(v))
+	}
+	append(&out, 't', 't', 'c', 'f')
+	put32(&out, 0x00010000)
+	put32(&out, len(fonts))
+	header := 12 + 4 * len(fonts)
+	at := header
+	for font in fonts {
+		if len(font) < 12 {
+			delete(out)
+			return nil
+		}
+		put32(&out, at)
+		at += len(font)
+	}
+	at = header
+	for font in fonts {
+		start := len(out)
+		append(&out, ..font)
+		for i in 0 ..< int(be16(font, 4)) {
+			record := start + 12 + i * 16
+			if record + 16 > len(out) {
+				delete(out)
+				return nil
+			}
+			moved := int(be32(out[:], record + 8)) + at
+			out[record + 8], out[record + 9], out[record + 10], out[record + 11] = u8(moved >> 24), u8(moved >> 16), u8(moved >> 8), u8(moved)
+		}
+		at += len(font)
+	}
+	return out[:]
 }

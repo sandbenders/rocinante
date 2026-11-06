@@ -250,3 +250,109 @@ an_installed_font_is_found_by_its_family_when_its_file_is_named_otherwise :: pro
 	testing.expect(t, found)
 	testing.expect_value(t, path, root + "/Inter.ttf")
 }
+
+// A collection of Inter Bold, then Inter Regular, so Regular is the second face.
+bold_then_regular :: proc(t: ^testing.T) -> []u8 {
+	bold, err := os.read_entire_file(INTER_BOLD, context.temp_allocator)
+	testing.expect(t, err == nil)
+	collection := join_fonts({bold, inter_bytes(t)}, context.temp_allocator)
+	testing.expect(t, collection != nil)
+	return collection
+}
+
+@(test)
+a_collection_made_of_fonts_has_a_face_for_each_and_works_as_a_font :: proc(t: ^testing.T) {
+	collection := bold_then_regular(t)
+	offsets := face_offsets(collection)
+	testing.expect_value(t, len(offsets), 2)
+	testing.expect_value(t, len(face_offsets(inter_bytes(t))), 1)
+	first, first_ok := face_info_at(collection, offsets[0], context.temp_allocator)
+	second, second_ok := face_info_at(collection, offsets[1], context.temp_allocator)
+	testing.expect(t, first_ok && second_ok)
+	testing.expect_value(t, simple_name(first.style), "bold")
+	testing.expect_value(t, simple_name(second.style), "regular")
+	// the first font is what read_font_info reads, and the face number says which
+	info, ok := read_font_info(collection, context.temp_allocator)
+	testing.expect(t, ok)
+	testing.expect_value(t, simple_name(info.style), "bold")
+	info, ok = read_font_info(collection, context.temp_allocator, 1)
+	testing.expect(t, ok)
+	testing.expect_value(t, simple_name(info.style), "regular")
+	testing.expect(t, join_fonts(nil) == nil)
+	testing.expect(t, join_fonts({[]u8{1, 2}}) == nil)
+}
+
+@(test)
+a_face_is_found_by_its_full_postscript_or_family_and_style_name :: proc(t: ^testing.T) {
+	collection := bold_then_regular(t)
+	for name in ([?]string{"Inter Bold", "Inter-Bold", "inter bold", "InterBold"}) {
+		index, found := face_named(collection, name)
+		testing.expectf(t, found && index == 0, "%s: %d %v", name, index, found)
+	}
+	for name in ([?]string{"Inter Regular", "Inter-Regular", "Inter"}) {
+		index, found := face_named(collection, name)
+		testing.expectf(t, found && index == 1, "%s: %d %v", name, index, found)
+	}
+	_, found := face_named(collection, "Inter Black")
+	testing.expect(t, !found)
+	_, found = face_named(collection, "")
+	testing.expect(t, !found)
+	// a plain font is one face
+	index, plain := face_named(inter_bytes(t), "Inter Regular")
+	testing.expect(t, plain && index == 0)
+}
+
+@(test)
+a_face_goes_by_the_names_a_font_gives_it :: proc(t: ^testing.T) {
+	info := Font_Info{family = "Helvetica Neue", style = "Bold", full = "Helvetica Neue Bold", postscript = "HelveticaNeue-Bold"}
+	for name in ([?]string{"Helvetica Neue Bold", "helveticaneuebold", "HelveticaNeue-Bold"}) {
+		testing.expectf(t, face_goes_by(info, simple_name(name)), "%s", name)
+	}
+	testing.expect(t, !face_goes_by(info, simple_name("Helvetica Neue")), "a bold face is not the plain family")
+	testing.expect(t, !face_goes_by(info, ""))
+	// the family alone names its regular face, or a face with no style
+	regular := Font_Info{family = "Helvetica Neue", style = "Regular"}
+	testing.expect(t, face_goes_by(regular, "helveticaneue"))
+	testing.expect(t, face_goes_by(Font_Info{family = "Mono"}, "mono"))
+	// a family that groups styles (id 1) and the typographic one (id 16 and 17)
+	condensed := Font_Info{family = "Helvetica Neue Condensed", style = "Black", typo_family = "Helvetica Neue", typo_style = "Condensed Black"}
+	testing.expect(t, face_goes_by(condensed, "helveticaneuecondensedblack"))
+	testing.expect(t, !face_goes_by(condensed, "helveticaneue"))
+}
+
+@(test)
+an_installed_collection_is_found_by_the_name_of_one_of_its_faces :: proc(t: ^testing.T) {
+	root :: "output/tests/system_fonts_faces"
+	_ = os.remove_all(root)
+	testing.expect(t, ensure_directory(root))
+	testing.expect(t, os.write_entire_file(concat_path(root, "Pair.ttc"), bold_then_regular(t)) == nil)
+	system_font_dirs = {root}
+	defer system_font_dirs = nil
+	// Inter Regular is no file name, and no first face of anything: the second face of Pair.ttc
+	path, found := find_system_font("Inter Regular")
+	testing.expect(t, found)
+	testing.expect_value(t, path, concat_path(root, "Pair.ttc"))
+	_, found = find_system_font("Inter Black")
+	testing.expect(t, !found)
+	testing.expect(t, is_collection_name("a/b/Pair.TTC") && is_collection_name("x.otc"))
+	testing.expect(t, !is_collection_name("x.ttf") && !is_collection_name("ttc"))
+}
+
+@(test)
+the_names_of_every_face_of_a_collection_are_read_without_reading_the_whole_file :: proc(t: ^testing.T) {
+	root :: "output/tests/system_fonts_all_faces"
+	_ = os.remove_all(root)
+	testing.expect(t, ensure_directory(root))
+	testing.expect(t, os.write_entire_file(concat_path(root, "pair.ttc"), bold_then_regular(t)) == nil)
+	faces := read_collection_names(concat_path(root, "pair.ttc"))
+	if testing.expect_value(t, len(faces), 2) {
+		testing.expect_value(t, simple_name(faces[0].style), "bold")
+		testing.expect_value(t, simple_name(faces[1].style), "regular")
+		testing.expect_value(t, faces[1].full, "Inter Regular")
+	}
+	// a plain font is one face; something that is not a font, or not there, none
+	testing.expect_value(t, len(read_collection_names(INTER)), 1)
+	testing.expect_value(t, len(read_collection_names("output/tests/there-is-no-font.ttc")), 0)
+	testing.expect(t, os.write_entire_file(concat_path(root, "text.ttc"), transmute([]u8)string("not a font at all, only text")) == nil)
+	testing.expect_value(t, len(read_collection_names(concat_path(root, "text.ttc"))), 0)
+}

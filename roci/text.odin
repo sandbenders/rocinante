@@ -69,9 +69,10 @@ measure :: proc(content: string, wrap := f64(0)) -> [2]f64 {
 }
 
 // Makes a font from the bytes of a font file (TrueType or OpenType), known from now on
-// by `name`. The bytes are copied. Gives false when they are not a font.
-add_font :: proc(name: string, bytes: []u8) -> bool {
-	_, ok := gfx.add_face(name, bytes)
+// by `name`. The bytes are copied. Gives false when they are not a font. `face` is which
+// font of a collection (0 for the first and for a plain font).
+add_font :: proc(name: string, bytes: []u8, face := 0) -> bool {
+	_, ok := gfx.add_face(name, bytes, face)
 	return ok
 }
 

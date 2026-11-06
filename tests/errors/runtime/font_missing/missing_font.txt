@@ -3,6 +3,6 @@
 1 │ font "Papyrus" size 30
   │ ^^^^^^^^^^^^^^^^^^^^^^
 
-The fonts a sketch has are Inter and Inter Bold, and any font file in its `assets/fonts` folder under its own name. The text is drawn in the font before it, and the sketch carries on.
+The fonts a sketch has are Inter and Inter Bold, and any font file in its `assets/fonts` folder under its own name, or one face of a font collection by that face's own name. The text is drawn in the font before it, and the sketch carries on.
 
 Use one that is there:  font "Inter"

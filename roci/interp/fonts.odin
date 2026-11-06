@@ -57,7 +57,40 @@ font_from_assets :: proc(it: ^Interp, root, name: string) -> bool {
 		if read_err != nil {
 			continue
 		}
-		if roci.add_font(name, bytes) {
+		if roci.add_font(name, bytes, face_of(bytes, name)) {
+			return true
+		}
+	}
+	return font_from_collections(root, name)
+}
+
+// Which face of a font file goes by this name: the face of a collection with that name, and 0 for
+// a plain font or a name no face has.
+@(private)
+face_of :: proc(bytes: []u8, name: string) -> int {
+	index, _ := folder.face_named(bytes, name)
+	return index
+}
+
+// Looks for the name among the faces of the collections in the sketch's `assets/fonts`, so a
+// sketch that has `Helvetica Neue.ttc` there finds `Helvetica Neue Condensed Black` in it and
+// does not copy the collection again.
+@(private)
+font_from_collections :: proc(root, name: string) -> bool {
+	directory := concat(root, "/assets/fonts")
+	entries, err := os.read_all_directory_by_path(directory, context.temp_allocator)
+	if err != nil {
+		return false
+	}
+	for entry in entries {
+		if entry.type == .Directory || !folder.is_collection_name(entry.name) {
+			continue
+		}
+		bytes, read_err := os.read_entire_file(concat(directory, "/", entry.name), context.temp_allocator)
+		if read_err != nil {
+			continue
+		}
+		if index, found := folder.face_named(bytes, name); found && roci.add_font(name, bytes, index) {
 			return true
 		}
 	}
@@ -77,9 +110,10 @@ font_from_system :: proc(it: ^Interp, root, name: string, span: lang.Span) -> bo
 	if read_err != nil {
 		return false
 	}
-	info, readable := folder.read_font_info(bytes, context.temp_allocator)
+	face := face_of(bytes, name)
+	info, readable := folder.read_font_info(bytes, context.temp_allocator, face)
 	licence := folder.font_licence(info) if readable else .Unknown
-	if !roci.add_font(name, bytes) {
+	if !roci.add_font(name, bytes, face) {
 		return false
 	}
 	if root != "" {

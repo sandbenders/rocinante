@@ -417,7 +417,7 @@ CATALOGUE := [Message_Id]Entry{
 		"`{a}` has {b} in it, so item {c} is not there. Items are numbered from 1, and the sketch carries on with an empty value. Check the count first.",
 		"Check first:", "{d}"},
 	.Font_Missing = {.Error, "I do not know a font called `{a}`",
-		"The fonts a sketch has are Inter and Inter Bold, and any font file in its `assets/fonts` folder under its own name. The text is drawn in the font before it, and the sketch carries on.",
+		"The fonts a sketch has are Inter and Inter Bold, and any font file in its `assets/fonts` folder under its own name, or one face of a font collection by that face's own name. The text is drawn in the font before it, and the sketch carries on.",
 		"Use one that is there:", "{d}"},
 	.Font_Licence = {.Warning, "Check the licence of `{a}` before you share your sketch",
 		"`{a}` is a font installed on this computer, and {b} It works here. If the font goes out with your sketch, in `assets/fonts` or any other way, make sure its licence lets you.",

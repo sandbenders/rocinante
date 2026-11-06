@@ -242,3 +242,72 @@ test_a_name_nothing_has_is_looked_for_once :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(p.errors), 1)
 	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Font_Missing)
 }
+
+// A collection of Inter Bold and then Inter Regular, written as `file` in `root`.
+make_font_pair :: proc(t: ^testing.T, root, file: string) {
+	_ = os.remove_all(root)
+	testing.expect(t, folder.ensure_directory(root))
+	collection := folder.join_fonts({gfx.INTER_BOLD, gfx.INTER_REGULAR}, context.temp_allocator)
+	testing.expect(t, os.write_entire_file(concat(root, "/", file), collection) == nil)
+}
+
+@(test)
+test_a_face_of_a_collection_in_assets_is_found_by_its_own_name_and_not_copied :: proc(t: ^testing.T) {
+	sketch :: "output/tests/font_face_sketch"
+	make_font_pair(t, sketch + "/assets/fonts", "Pair.ttc")
+	folder.system_font_dirs = {"output/tests/no_fonts_here"}
+	defer folder.system_font_dirs = nil
+	path := "output/tests/font_face_sketch/sketch.roci"
+	text := "font \"Inter Regular\" size 40\ntext \"Hamburgefonstiv\" at 1 1\n"
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)text) == nil)
+	roci.start_headless(1)
+	p, ok := load(path, text)
+	testing.expect(t, ok)
+	watch(p, path)
+	start(p)
+	defer finish_all()
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, len(p.notices), 0)
+	face, found := gfx.find_face("Inter Regular")
+	testing.expect(t, found)
+	// the second face of Pair.ttc is Regular: as wide as the built-in Inter, and narrower than Bold
+	width, _ := gfx.measure_typeset(face, 40, .Left, "Hamburgefonstiv")
+	regular, _ := gfx.measure_typeset(gfx.FACE_DEFAULT, 40, .Left, "Hamburgefonstiv")
+	bold, _ := gfx.measure_typeset(gfx.FACE_BOLD, 40, .Left, "Hamburgefonstiv")
+	testing.expect_value(t, width, regular)
+	testing.expect(t, width < bold)
+	// nothing was copied: the collection in assets answered
+	entries, _ := os.read_all_directory_by_path("output/tests/font_face_sketch/assets/fonts", context.temp_allocator)
+	testing.expect_value(t, len(entries), 1)
+}
+
+@(test)
+test_an_installed_collection_is_copied_under_the_name_of_the_face_asked_for :: proc(t: ^testing.T) {
+	make_font_pair(t, "output/tests/installed_pair", "Pair.ttc")
+	sketch :: "output/tests/font_face_copy_sketch"
+	_ = os.remove_all(sketch)
+	testing.expect(t, folder.ensure_directory(sketch))
+	folder.system_font_dirs = {"output/tests/installed_pair"}
+	defer folder.system_font_dirs = nil
+	path := "output/tests/font_face_copy_sketch/sketch.roci"
+	text := "font \"Inter Regular\"\ntext \"a\" at 1 1\n"
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)text) == nil)
+	roci.start_headless(1)
+	p, ok := load(path, text)
+	testing.expect(t, ok)
+	watch(p, path)
+	start(p)
+	defer finish_all()
+	testing.expect(t, roci.has_font("Inter Regular"))
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, len(p.notices), 1)
+	// the whole collection is copied (its other faces may be wanted next), under the name asked
+	copied, err := os.read_entire_file("output/tests/font_face_copy_sketch/assets/fonts/Inter Regular.ttc", context.temp_allocator)
+	testing.expect(t, err == nil)
+	testing.expect_value(t, len(copied), len(folder.join_fonts({gfx.INTER_BOLD, gfx.INTER_REGULAR}, context.temp_allocator)))
+	// the copy is found by that name next time, by the face the name goes by
+	face, _ := gfx.find_face("Inter Regular")
+	width, _ := gfx.measure_typeset(face, 40, .Left, "Hamburgefonstiv")
+	regular, _ := gfx.measure_typeset(gfx.FACE_DEFAULT, 40, .Left, "Hamburgefonstiv")
+	testing.expect_value(t, width, regular)
+}
