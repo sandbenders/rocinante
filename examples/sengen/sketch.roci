@@ -1,0 +1,66 @@
+// sengen is a classic early Logo program that plays with words and sentences.
+// Here the five words are set as a poem, as large as the window allows, one color
+// each. Space writes a new one; s saves it as sengen.svg and p as sengen.pdf. The font is
+// Helvetica Neue Condensed Black, a face of the Helvetica Neue collection that comes with a Mac;
+// a computer without it says so and sets the words in Inter.
+
+learn noun [
+  give pick [ "BIRDS" "DOGS" "WORMS" "DONKEYS" "GEESE" "CATS" "GUINEA PIGS" ]
+]
+
+learn verb [
+  give pick [ "HATE" "TRIP" "BITE" "LOVE" ]
+]
+
+learn adjective [
+  give pick [ "RED" "PECULIAR" "JUMPING" "FAT" "FUZZY" "FUZZY WUZZY" ]
+]
+
+window size 800 600 title "sengen"
+
+// The lines touch: they are one capital's height apart, 0.71 of the size.
+LINE = 0.71
+
+sentence = []
+colors = []
+big = 100
+
+// Chooses five words, a color for each, and the size that fits them in the window.
+learn roll [
+  a1 = adjective
+  n1 = noun
+  v1 = verb
+  a2 = adjective
+  n2 = noun
+  sentence = [ a1 n1 v1 a2 n2 ]
+
+  // dark or bright, but always deep
+  colors = []
+  repeat 5 [ add (hsb (random 255) 255 (random from 40 to 255)) to colors ]
+
+  // as large as fits across (the widest word) and down (five lines)
+  font "Helvetica Neue Condensed Black" size 100
+  widest = 0
+  for each word in sentence [
+    m = measure word
+    if m.x > widest [ widest = m.x ]
+  ]
+  across = 100 * width / widest
+  down = height / (5 * LINE)
+  big = across
+  if down < big [ big = down ]
+]
+
+roll
+
+on key "space" [ roll ]
+on key "s" [ save "sengen.svg" ]
+on key "p" [ save "sengen.pdf" ]
+
+draw [
+  background white
+  font "Helvetica Neue Condensed Black" size big
+  for i from 1 to 5 [
+    text (item i of sentence) at (-0.03 * big) (-0.24 * big + (i - 1) * LINE * big) fill (item i of colors)
+  ]
+]

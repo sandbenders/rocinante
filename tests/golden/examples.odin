@@ -65,6 +65,7 @@ EXAMPLES := [?]Example{
 
 // Examples with a sketch.roci that have no picture to compare, and why.
 NO_PICTURE := [?]string{
+	"sengen", // its font, Helvetica Neue Condensed Black, comes with a Mac and is not on the pipelines, so the picture would differ
 	"benchmark", // 100,000 small circles hardly compress, and an interpreter test checks its work
 }
 
