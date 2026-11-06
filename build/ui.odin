@@ -40,6 +40,11 @@ check_ui :: proc() -> bool {
 			return false
 		}
 	}
+	// This runs before any other step, so a fresh clone has no folder for the test program yet.
+	if err := os.make_directory_all(TEST_OUT_DIR); err != nil && err != .Exist {
+		fmt.eprintfln("%s", term.err(fmt.tprintf("cannot make the folder %s: %v", TEST_OUT_DIR, err), .Bold_Red))
+		return false
+	}
 	ok := step("check imgui bindings", {"odin", "check", "vendor/imgui", "-no-entry-point", "-vet", "-strict-style"})
 	ok = step("check imgui bindings tool", {"odin", "check", "tools/imgui", "-vet", "-strict-style"}) && ok
 	ok = step("unit tests: vendor/imgui", {"odin", "test", "vendor/imgui", "-vet", "-strict-style", fmt.tprintf("-out:%s", test_binary("vendor/imgui"))}) && ok
