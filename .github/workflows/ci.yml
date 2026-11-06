@@ -27,7 +27,7 @@ jobs:
             libdrm-dev libgbm-dev libegl1-mesa-dev libasound2-dev libpulse-dev \
             libudev-dev libdbus-1-dev libibus-1.0-dev \
             libfreetype-dev libharfbuzz-dev \
-            libvulkan1 mesa-vulkan-drivers libshaderc-dev libspirv-cross-c-shared-dev
+            libvulkan1 mesa-vulkan-drivers libshaderc-dev
       - name: Install Odin
         run: tools/ci/install-odin.sh "$HOME/odin"
       # SDL3 has no package on Ubuntu 24.04, so the latest stable release is built
@@ -45,6 +45,15 @@ jobs:
           key: sdl3-ubuntu-24.04-${{ steps.sdl.outputs.tag }}-${{ hashFiles('tools/ci/install-sdl3.sh') }}
       - name: Build SDL3
         run: tools/ci/install-sdl3.sh "$HOME/sdl3" "${{ steps.sdl.outputs.tag }}"
+      # Ubuntu 24.04's SPIRV-Cross is too old for the Metal translation's functions, which the
+      # bindings link on every system, so the release rocinante is pinned to is built from source.
+      - name: Restore SPIRV-Cross
+        uses: actions/cache@v6
+        with:
+          path: ~/spirv-cross
+          key: spirv-cross-ubuntu-24.04-${{ hashFiles('tools/ci/install-spirv-cross.sh') }}
+      - name: Build SPIRV-Cross
+        run: tools/ci/install-spirv-cross.sh "$HOME/spirv-cross"
       - name: Run the pipeline
         run: |
           export PATH="$HOME/odin:$PATH"
@@ -52,8 +61,8 @@ jobs:
           # shaderc's own build and Arch do, so the name the bindings link is made here.
           mkdir -p "$HOME/shaderc/lib"
           ln -sf "$(ls /usr/lib/x86_64-linux-gnu/libshaderc.so)" "$HOME/shaderc/lib/libshaderc_shared.so"
-          export LIBRARY_PATH="$HOME/shaderc/lib:$HOME/sdl3/lib:${LIBRARY_PATH:-}"
-          export LD_LIBRARY_PATH="$HOME/sdl3/lib:${LD_LIBRARY_PATH:-}"
+          export LIBRARY_PATH="$HOME/shaderc/lib:$HOME/spirv-cross/lib:$HOME/sdl3/lib:${LIBRARY_PATH:-}"
+          export LD_LIBRARY_PATH="$HOME/spirv-cross/lib:$HOME/sdl3/lib:${LD_LIBRARY_PATH:-}"
           export PKG_CONFIG_PATH="$HOME/sdl3/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
           export ROCI_REQUIRE_SDL3=1 # the C ABI check must run here, not skip
           export ROCI_REQUIRE_LAVAPIPE=1 # and so must the golden images
