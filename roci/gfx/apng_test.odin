@@ -2,7 +2,7 @@
 package gfx
 
 import "core:bytes"
-import "core:compress/zlib"
+import odin_deflate "core:compress/deflate"
 import "core:hash"
 import "core:image/png"
 import "core:testing"
@@ -40,10 +40,11 @@ chunks_of :: proc(t: ^testing.T, data: []u8) -> []Chunk {
 // The pixels of a compressed rectangle, unfiltered the way a reader does.
 @(private = "file")
 unpacked :: proc(t: ^testing.T, z: []u8, w, h: int) -> []u8 {
-	buf: bytes.Buffer
-	err := zlib.inflate(z, &buf, false, (w * 4 + 1) * h)
+	buf: [dynamic]u8
+	defer delete(buf)
+	err := odin_deflate.inflate_zlib(&buf, z, (w * 4 + 1) * h)
 	testing.expect(t, err == nil)
-	raw := bytes.buffer_to_bytes(&buf)
+	raw := buf[:]
 	row := w * 4
 	out := make([]u8, row * h, context.temp_allocator)
 	for y in 0 ..< h {
@@ -63,7 +64,6 @@ unpacked :: proc(t: ^testing.T, z: []u8, w, h: int) -> []u8 {
 			out[y * row + x] = line[x] + guess
 		}
 	}
-	bytes.buffer_destroy(&buf)
 	return out
 }
 
@@ -124,7 +124,7 @@ test_apng_keeps_changed_rectangles_and_merges_repeated_frames :: proc(t: ^testin
 	decoded, err := png.load_from_bytes(data, {.alpha_add_if_missing})
 	testing.expect(t, err == nil)
 	if err == nil {
-		testing.expect(t, bytes.equal(bytes.buffer_to_bytes(&decoded.pixels), a.pixels))
+		testing.expect(t, bytes.equal(decoded.pixels[:], a.pixels))
 		png.destroy(decoded)
 	}
 }

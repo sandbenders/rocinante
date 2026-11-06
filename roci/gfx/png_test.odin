@@ -32,7 +32,7 @@ round_trips :: proc(t: ^testing.T, w, h: int) {
 	testing.expect_value(t, decoded.width, w)
 	testing.expect_value(t, decoded.height, h)
 	testing.expect_value(t, decoded.channels, 4)
-	testing.expectf(t, bytes.equal(bytes.buffer_to_bytes(&decoded.pixels), img.pixels), "%dx%d pixels differ", w, h)
+	testing.expectf(t, bytes.equal(decoded.pixels[:], img.pixels), "%dx%d pixels differ", w, h)
 }
 
 @(test)

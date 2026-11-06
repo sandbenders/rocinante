@@ -58,7 +58,7 @@ OpenBSD packages SDL3; Odin is built from its source, which takes a few minutes.
 
 ```
 doas pkg_add git gmake sdl3 llvm%19
-git clone --branch dev-2026-10 --depth 1 https://github.com/odin-lang/Odin
+git clone --branch dev-2026-11 --depth 1 https://github.com/odin-lang/Odin
 cd Odin
 LLVM_CONFIG=/usr/local/llvm19/bin/llvm-config gmake release-native
 ```

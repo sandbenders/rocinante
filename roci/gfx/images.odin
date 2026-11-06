@@ -11,7 +11,6 @@
 package gfx
 
 import "base:runtime"
-import "core:bytes"
 import "core:image"
 import _ "core:image/bmp"
 import _ "core:image/jpeg"
@@ -63,7 +62,7 @@ image_decode :: proc(bytes_in: []u8) -> (data: Image_Data, ok: bool) {
 	if loaded.width <= 0 || loaded.height <= 0 || loaded.width > MAX_IMAGE_SIDE || loaded.height > MAX_IMAGE_SIDE {
 		return {}, false
 	}
-	source := bytes.buffer_to_bytes(&loaded.pixels)
+	source := loaded.pixels[:]
 	channels, bytes_per := loaded.channels, loaded.depth / 8
 	if channels < 1 || channels > 4 || (bytes_per != 1 && bytes_per != 2) || len(source) < loaded.width * loaded.height * channels * bytes_per {
 		return {}, false

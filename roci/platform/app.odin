@@ -46,12 +46,28 @@ DEFAULT_HEIGHT :: 600
 @(private)
 apps_running: int
 
+// Takes one hold off `count` and says whether it was the last. Kept apart from `quit_sdl` so a
+// test can check the rule without calling SDL_Quit, which no other thread may be using SDL
+// during (the unit tests run in parallel and a quit among them can deadlock SDL's own setup).
+@(private)
+release_hold :: proc(count: ^int) -> (last: bool) {
+	return intrinsics.atomic_sub(count, 1) == 1
+}
+
 // Gives back one app's hold on SDL: its video subsystem (SDL counts how many times it was
 // started), and everything else when it was the last.
 @(private)
 quit_sdl :: proc() {
-	if intrinsics.atomic_sub(&apps_running, 1) == 1 {
-		sdl.Quit()
+	if release_hold(&apps_running) {
+		// The unit tests run in parallel in one process, with threads starting SDL and its
+		// lazy setup beside each one that quits: SDL 3.4.20 then waits forever in its own
+		// init state (seen in a sample of the hung test program). A program that is not a
+		// test has one thread doing this, and cleans everything up.
+		when ODIN_TEST {
+			sdl.QuitSubSystem({.VIDEO})
+		} else {
+			sdl.Quit()
+		}
 	} else {
 		sdl.QuitSubSystem({.VIDEO})
 	}

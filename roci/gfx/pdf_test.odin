@@ -3,7 +3,7 @@ package gfx
 
 import "../maths"
 import "core:bytes"
-import "core:compress/zlib"
+import odin_deflate "core:compress/deflate"
 import "core:strconv"
 import "core:strings"
 import "core:testing"
@@ -34,11 +34,12 @@ pdf_stream :: proc(pdf: []u8, id: int) -> string {
 	}
 	data := body[open + 7:]
 	data = data[:strings.last_index(data, "\nendstream")]
-	buf: bytes.Buffer
-	if zlib.inflate_from_byte_array(transmute([]u8)data, &buf) != nil {
+	context.allocator = context.temp_allocator
+	buf: [dynamic]u8
+	if odin_deflate.inflate_zlib(&buf, transmute([]u8)data) != nil {
 		return ""
 	}
-	return string(buf.buf[:])
+	return string(buf[:])
 }
 
 pdf_page_content :: proc(pdf: []u8) -> string {

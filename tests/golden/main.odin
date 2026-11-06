@@ -54,8 +54,8 @@ load_reference :: proc(path: string) -> (img: gfx.Image, ok: bool) {
 		return {}, false
 	}
 	defer png.destroy(decoded)
-	pixels := make([]u8, len(decoded.pixels.buf))
-	copy(pixels, decoded.pixels.buf[:])
+	pixels := make([]u8, len(decoded.pixels))
+	copy(pixels, decoded.pixels[:])
 	return gfx.Image{decoded.width, decoded.height, pixels}, true
 }
 

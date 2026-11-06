@@ -456,8 +456,8 @@ load_picture :: proc(path: string) -> (image: gfx.Image, ok: bool) {
 	if err != nil {
 		return {}, false
 	}
-	pixels := make([]u8, len(decoded.pixels.buf))
-	copy(pixels, decoded.pixels.buf[:])
+	pixels := make([]u8, len(decoded.pixels))
+	copy(pixels, decoded.pixels[:])
 	return gfx.Image{decoded.width, decoded.height, pixels}, true
 }
 

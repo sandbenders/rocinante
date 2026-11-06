@@ -87,6 +87,7 @@ test_draw_into_runs_a_block_with_the_canvas_as_the_surface :: proc(t: ^testing.T
 	seen: [2]f64
 	@(static) size_inside: ^[2]f64
 	size_inside = &seen
+	defer size_inside = nil
 	ran := draw_into(c, proc() {
 		size_inside^ = {width(), height()}
 		circle(1, 1, 1)
