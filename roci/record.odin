@@ -52,6 +52,7 @@ Recording :: struct {
 	log_path: string,
 	started:  bool, // ffmpeg is running
 	failed:   string, // why it stopped, said when the recording ends
+	exit_code: int, // what ffmpeg exited with, once it has
 	over:     bool, // the memory limit was reached
 }
 
@@ -243,12 +244,35 @@ record_frame :: proc(w: ^Win) {
 		end_recording(w)
 		return
 	}
-	if _, err := os.write(rec.pipe, image.pixels); err != nil {
+	if !write_all(rec.pipe, image.pixels) {
 		rec.failed = "ffmpeg stopped taking frames."
 		end_recording(w)
 		return
 	}
 	rec.frames += 1
+}
+
+// Writes every byte to a pipe. Odin's `write` gives up with an error when the system call is
+// interrupted by a signal (a child exiting, anything), which says nothing about the reader, so
+// a write that made no progress is tried again, a bounded number of times: a reader that is gone
+// fails every time, and the recording ends.
+@(private)
+write_all :: proc(f: ^os.File, data: []u8) -> bool {
+	rest := data
+	failures := 0
+	for len(rest) > 0 {
+		n, err := os.write(f, rest)
+		rest = rest[n:]
+		if err == nil || n > 0 {
+			failures = 0
+			continue
+		}
+		failures += 1
+		if failures >= 50 {
+			return false
+		}
+	}
+	return true
 }
 
 // The arguments ffmpeg is run with for a file: raw frames in, the movie out.
@@ -344,6 +368,7 @@ end_recording :: proc(w: ^Win) {
 	} else if rec.started {
 		os.close(rec.pipe)
 		state, wait_err := os.process_wait(rec.process)
+		rec.exit_code = state.exit_code
 		if rec.log != nil {
 			os.close(rec.log)
 		}
@@ -382,7 +407,7 @@ ffmpeg_words :: proc(rec: ^Recording) -> string {
 		text = strings.trim_space(string(data[:min(len(data), 400)]))
 	}
 	if text == "" {
-		return strings.concatenate({"ffmpeg stopped with an error (its log is ", rec.log_path, ")."}, context.temp_allocator)
+		return strings.concatenate({"ffmpeg stopped with an error (exit code ", itoa_(rec.exit_code), ", its log is ", rec.log_path, ")."}, context.temp_allocator)
 	}
 	return strings.concatenate({"ffmpeg said: ", text, " (its log is ", rec.log_path, ")"}, context.temp_allocator)
 }

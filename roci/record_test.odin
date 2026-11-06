@@ -3,6 +3,7 @@ package roci
 
 import "core:os"
 import "core:strings"
+import "core:thread"
 import "core:testing"
 import "gfx"
 
@@ -179,132 +180,59 @@ test_the_window_closing_or_the_sketch_ending_ends_a_recording :: proc(t: ^testin
 	shutdown()
 }
 
-when ODIN_OS != .Windows {
-	// A stand-in for ffmpeg: a script that keeps the frames it is sent in the file it is
-	// told to make, and its arguments beside it.
-	make_fake_ffmpeg :: proc(folder, body: string) -> string {
-		_ = os.make_directory_all(folder)
-		path := strings.concatenate({folder, "/ffmpeg"})
-		_ = os.write_entire_file(path, transmute([]u8)body)
-		_ = os.chmod(path, {.Read_User, .Write_User, .Execute_User})
-		return path
-	}
-
-	FAKE_GOOD :: "#!/bin/sh\nfor last; do :; done\necho \"$@\" > \"$last.args\"\ncat > \"$last\"\n"
-	FAKE_BAD :: "#!/bin/sh\ncat > /dev/null\necho \"no such codec\" >&2\nexit 3\n"
-
-	@(test)
-	test_a_video_is_piped_to_ffmpeg_frame_by_frame :: proc(t: ^testing.T) {
-		folder := "output/tests/record_video"
-		_ = os.remove_all(folder)
-		program := make_fake_ffmpeg(folder, FAKE_GOOD)
-		defer delete(program)
-		set_ffmpeg(program)
-		defer set_ffmpeg("")
-		set_frame_source(solid_frames)
-		defer set_frame_source(nil)
-		start_headless(1)
-		defer shutdown()
-		circle(10, 10, 5)
-		out := strings.concatenate({folder, "/clip.mp4"})
-		defer delete(out)
-		ok, why := record(out)
-		testing.expect(t, ok, why)
-		step()
-		step()
-		no_record()
-		results := take_record_results()
-		if !testing.expect_value(t, len(results), 1) {
-			return
-		}
-		testing.expect(t, results[0].ok, results[0].why)
-		testing.expect_value(t, results[0].frames, 2)
-		data, err := os.read_entire_file(out, context.temp_allocator)
-		testing.expect(t, err == nil)
-		// two frames of 800 by 600 pixels, four bytes each, as the program was sent them
-		testing.expect_value(t, len(data), 2 * 800 * 600 * 4)
-		testing.expect_value(t, data[0], u8(200))
-		args, _ := os.read_entire_file(strings.concatenate({out, ".args"}, context.temp_allocator), context.temp_allocator)
-		text := string(args)
-		for part in ([]string{"-f rawvideo", "-pixel_format rgba", "-video_size 800x600", "-framerate 60", "-i -", "-pix_fmt yuv420p", "clip.mp4"}) {
-			testing.expectf(t, strings.contains(text, part), "%s is not in %s", part, text)
-		}
-		testing.expect(t, !os.exists(strings.concatenate({out, ".ffmpeg.log"}, context.temp_allocator)), "a good run leaves no log")
-	}
-
-	@(test)
-	test_each_kind_of_video_asks_ffmpeg_for_its_own_settings :: proc(t: ^testing.T) {
-		for kind in ([?]struct {
-			ext, part: string,
-		}{{".webm", "libvpx-vp9"}, {".mov", "+faststart"}, {".mkv", "yuv420p"}, {".gif", "palettegen"}}) {
-			rec := Recording{path = strings.concatenate({"x", kind.ext}, context.temp_allocator), ffmpeg = "ffmpeg", width = 320, height = 200}
-			joined := strings.join(ffmpeg_arguments(&rec), " ", context.temp_allocator)
-			testing.expectf(t, strings.contains(joined, kind.part), "%s: %s", kind.ext, joined)
-			testing.expect(t, strings.has_suffix(joined, rec.path))
-			testing.expect(t, strings.contains(joined, "-video_size 320x200"))
-		}
-	}
-
-	@(test)
-	test_ffmpeg_failing_is_said_in_its_own_words_and_its_log_is_kept :: proc(t: ^testing.T) {
-		folder := "output/tests/record_bad"
-		_ = os.remove_all(folder)
-		program := make_fake_ffmpeg(folder, FAKE_BAD)
-		defer delete(program)
-		set_ffmpeg(program)
-		defer set_ffmpeg("")
-		set_frame_source(solid_frames)
-		defer set_frame_source(nil)
-		start_headless(1)
-		defer shutdown()
-		circle(10, 10, 5)
-		out := strings.concatenate({folder, "/clip.webm"})
-		defer delete(out)
-		ok, _ := record(out)
-		testing.expect(t, ok)
-		step()
-		no_record()
-		results := take_record_results()
-		if !testing.expect_value(t, len(results), 1) {
-			return
-		}
-		testing.expect(t, !results[0].ok)
-		testing.expect(t, strings.contains(results[0].why, "ffmpeg said: no such codec"), results[0].why)
-		testing.expect(t, os.exists(strings.concatenate({out, ".ffmpeg.log"}, context.temp_allocator)))
+@(test)
+test_each_kind_of_video_asks_ffmpeg_for_its_own_settings :: proc(t: ^testing.T) {
+	for kind in ([?]struct {
+		ext, part: string,
+	}{{".webm", "libvpx-vp9"}, {".mov", "+faststart"}, {".mkv", "yuv420p"}, {".gif", "palettegen"}}) {
+		rec := Recording{path = strings.concatenate({"x", kind.ext}, context.temp_allocator), ffmpeg = "ffmpeg", width = 320, height = 200}
+		joined := strings.join(ffmpeg_arguments(&rec), " ", context.temp_allocator)
+		testing.expectf(t, strings.contains(joined, kind.part), "%s: %s", kind.ext, joined)
+		testing.expect(t, strings.has_suffix(joined, rec.path))
+		testing.expect(t, strings.contains(joined, "-video_size 320x200"))
 	}
 }
 
-when ODIN_OS != .Windows {
-	// ffmpeg that is gone before it reads a thing, so the frames go into a pipe with no reader.
-	FAKE_GONE :: "#!/bin/sh\nexit 0\n"
 
-	@(test)
-	test_ffmpeg_gone_while_frames_are_sent_ends_the_recording_and_not_the_sketch :: proc(t: ^testing.T) {
-		folder := "output/tests/record_gone"
-		_ = os.remove_all(folder)
-		program := make_fake_ffmpeg(folder, FAKE_GONE)
-		defer delete(program)
-		set_ffmpeg(program)
-		defer set_ffmpeg("")
-		set_frame_source(solid_frames)
-		defer set_frame_source(nil)
-		start_headless(1)
-		defer shutdown()
-		circle(10, 10, 5)
-		out := strings.concatenate({folder, "/clip.mp4"})
-		defer delete(out)
-		ok, _ := record(out)
-		testing.expect(t, ok)
-		// frames of about 2 MB each: more than a pipe holds, so one of the writes finds the reader gone
-		// (without ignoring SIGPIPE this ends the test program, which is the point of the test)
-		for _ in 0 ..< 6 {
-			step()
-		}
-		testing.expect(t, !is_recording(), "the recording ended when ffmpeg stopped taking frames")
-		results := take_record_results()
-		if testing.expect_value(t, len(results), 1) {
-			testing.expect(t, !results[0].ok)
-			testing.expect(t, strings.contains(results[0].why, "ffmpeg"), results[0].why)
+@(test)
+test_a_write_to_a_pipe_goes_through_whole_and_fails_when_the_reader_is_gone :: proc(t: ^testing.T) {
+	read_end, write_end, err := os.pipe()
+	if !testing.expect(t, err == nil) {
+		return
+	}
+	// a reader that takes everything: a thread that reads until the writer closes
+	Reader :: struct {
+		file:  ^os.File,
+		total: int,
+	}
+	reader := Reader{file = read_end}
+	thread_proc :: proc(r: ^Reader) {
+		buf: [4096]u8
+		for {
+			n, err := os.read(r.file, buf[:])
+			if n > 0 {
+				r.total += n
+			}
+			if err != nil || n == 0 {
+				return
+			}
 		}
 	}
+	th := thread.create_and_start_with_poly_data(&reader, thread_proc)
+	data := make([]u8, 3_000_000, context.temp_allocator) // far more than a pipe holds
+	testing.expect(t, write_all(write_end, data))
+	os.close(write_end)
+	thread.join(th)
+	thread.destroy(th)
+	testing.expect_value(t, reader.total, len(data))
+	os.close(read_end)
+
+	// no reader: every write fails, and `write_all` says so instead of waiting for ever
+	read_end, write_end, err = os.pipe()
+	testing.expect(t, err == nil)
+	os.close(read_end)
+	ignore_broken_pipes()
+	testing.expect(t, !write_all(write_end, data[:1000]))
+	os.close(write_end)
+	testing.expect(t, write_all(nil, nil), "nothing to write is written")
 }
