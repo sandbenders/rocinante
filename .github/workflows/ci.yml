@@ -48,7 +48,11 @@ jobs:
       - name: Run the pipeline
         run: |
           export PATH="$HOME/odin:$PATH"
-          export LIBRARY_PATH="$HOME/sdl3/lib:${LIBRARY_PATH:-}"
+          # Ubuntu's libshaderc-dev names the library libshaderc.so, not libshaderc_shared.so as
+          # shaderc's own build and Arch do, so the name the bindings link is made here.
+          mkdir -p "$HOME/shaderc/lib"
+          ln -sf "$(ls /usr/lib/x86_64-linux-gnu/libshaderc.so)" "$HOME/shaderc/lib/libshaderc_shared.so"
+          export LIBRARY_PATH="$HOME/shaderc/lib:$HOME/sdl3/lib:${LIBRARY_PATH:-}"
           export LD_LIBRARY_PATH="$HOME/sdl3/lib:${LD_LIBRARY_PATH:-}"
           export PKG_CONFIG_PATH="$HOME/sdl3/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
           export ROCI_REQUIRE_SDL3=1 # the C ABI check must run here, not skip
