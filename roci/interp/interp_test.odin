@@ -1889,6 +1889,10 @@ Trace :: struct {
 // moves, clicks, keys, wheel turns and fingers to every window each time.
 @(private = "file")
 trace_example :: proc(t: ^testing.T, name: string, frames: int, chosen: lang.Passes) -> (trace: Trace, ok: bool) {
+	// An example is run in its own folder, where an installed font it names would be copied into its
+	// assets: a licence that is not ours, in a folder git tracks. The computer's fonts are not looked at.
+	folder.system_font_dirs = {"output/tests/no_system_fonts"}
+	defer folder.system_font_dirs = nil
 	program, problem := folder.read_program(fmt.tprintf("examples/%s/sketch.roci", name))
 	if problem != "" {
 		return

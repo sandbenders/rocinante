@@ -38,7 +38,7 @@ main :: proc() {
 		fast := len(args) > 1 && args[1] == "--fast"
 		ok = ci(fast)
 	case "licences":
-		ok = check_licences(".")
+		ok = check_licences(".") && check_tracked_fonts(".")
 	case "odin":
 		ok = check_odin()
 	case "docs":
@@ -114,6 +114,7 @@ test_binary :: proc(package_dir: string, variant := "") -> string {
 ci :: proc(fast: bool) -> bool {
 	ok := check_odin()
 	ok = check_licences(".") && ok
+	ok = check_tracked_fonts(".") && ok
 	// Compile-check every Odin package that exists so far.
 	ok = check_packages() && ok
 	if !fast {

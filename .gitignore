@@ -17,3 +17,5 @@ output/
 plan/
 .DS_Store
 playground/
+# Fonts an example copied from the computer it ran on (the licence is the font's owner's)
+examples/*/assets/fonts/

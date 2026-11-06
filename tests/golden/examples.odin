@@ -109,6 +109,10 @@ run_examples :: proc(update: bool, only: []string) -> (ran, failures: int) {
 
 @(private = "file")
 run_example :: proc(example: Example, number: int, name: string, update: bool) -> bool {
+	// An example runs in its own folder, where an installed font it names would be copied into its
+	// assets, which git tracks: the computer's fonts are not looked at.
+	folder.system_font_dirs = {"output/golden/no_system_fonts"}
+	defer folder.system_font_dirs = nil
 	program, problem := folder.read_program(fmt.tprintf("examples/%s/sketch.roci", example.name))
 	if problem != "" || len(program.files) == 0 {
 		report(name, false, "cannot read the sketch")

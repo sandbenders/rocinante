@@ -193,3 +193,40 @@ check_licences :: proc(root: string) -> bool {
 	}
 	return ok
 }
+
+// The files git tracks that are fonts and are not the ones rocinante ships (roci/gfx/fonts:
+// Inter, under the SIL Open Font License). An installed font that a run copied into a sketch
+// carries the licence of its owner, which may not allow it to be shared, so one must never be
+// committed by accident: `git add -A` after a run that copied one did exactly that.
+unexpected_fonts :: proc(files: []string, allocator := context.temp_allocator) -> []string {
+	found := make([dynamic]string, allocator)
+	for file in files {
+		lower := strings.to_lower(file, context.temp_allocator)
+		is_font := false
+		for extension in ([?]string{".ttf", ".otf", ".ttc", ".otc", ".woff", ".woff2"}) {
+			is_font ||= strings.has_suffix(lower, extension)
+		}
+		if is_font && !strings.has_prefix(file, "roci/gfx/fonts/") {
+			append(&found, file)
+		}
+	}
+	return found[:]
+}
+
+// Says whether git tracks a font that it should not. A folder that is not a git repository (a
+// source archive) has nothing tracked, so nothing is wrong.
+check_tracked_fonts :: proc(root: string) -> bool {
+	state, stdout, _, err := os.process_exec({command = {"git", "-C", root, "ls-files", "-z"}}, context.temp_allocator)
+	if err != nil || !state.success {
+		return true
+	}
+	files := strings.split(string(stdout), "\x00", context.temp_allocator)
+	extra := unexpected_fonts(files)
+	for file in extra {
+		fmt.eprintfln("%s %s", term.err("fonts:", .Bold_Red), fmt.tprintf("%s is a font that git tracks, and it is not one that rocinante ships (roci/gfx/fonts). A font that was installed on a computer may not be shared: take it out of git with `git rm --cached`.", file))
+	}
+	if len(extra) == 0 {
+		fmt.printfln("%s %s", term.out("fonts:", .Bold), term.out("ok (no font but Inter is tracked)", .Green))
+	}
+	return len(extra) == 0
+}

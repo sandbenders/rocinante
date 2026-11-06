@@ -455,3 +455,27 @@ test_check_ignores_non_odin_files :: proc(t: ^testing.T) {
 	defer remove_fixture(root)
 	testing.expect(t, check_licences(root))
 }
+
+@(test)
+fonts_outside_the_ones_rocinante_ships_are_found :: proc(t: ^testing.T) {
+	files := []string{
+		"roci/gfx/fonts/Inter-Regular.ttf", // shipped
+		"roci/gfx/fonts/Inter-LICENSE.txt",
+		"examples/sengen/assets/fonts/Helvetica Neue Condensed Black.ttc",
+		"site/hugo/static/mono.WOFF2",
+		"examples/text/sketch.roci",
+		"vendor/some/font.otf",
+		"fonts.txt",
+	}
+	found := unexpected_fonts(files)
+	testing.expect_value(t, len(found), 3)
+	testing.expect_value(t, found[0], "examples/sengen/assets/fonts/Helvetica Neue Condensed Black.ttc")
+	testing.expect_value(t, found[1], "site/hugo/static/mono.WOFF2")
+	testing.expect_value(t, found[2], "vendor/some/font.otf")
+	testing.expect_value(t, len(unexpected_fonts(nil)), 0)
+}
+
+@(test)
+this_repository_tracks_no_font_it_should_not :: proc(t: ^testing.T) {
+	testing.expect(t, check_tracked_fonts("."))
+}
