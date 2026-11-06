@@ -292,6 +292,7 @@ itoa_ :: proc(n: int) -> string {
 // Runs ffmpeg with a pipe for its input, the first time a frame is ready (its size is known then).
 @(private)
 start_ffmpeg :: proc(rec: ^Recording) -> bool {
+	ignore_broken_pipes()
 	if slash := strings.last_index_byte(rec.path, '/'); slash > 0 {
 		if err := os.make_directory_all(rec.path[:slash]); err != nil && err != .Exist {
 			rec.failed = "The folder for the file could not be made."

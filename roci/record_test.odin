@@ -273,3 +273,38 @@ when ODIN_OS != .Windows {
 		testing.expect(t, os.exists(strings.concatenate({out, ".ffmpeg.log"}, context.temp_allocator)))
 	}
 }
+
+when ODIN_OS != .Windows {
+	// ffmpeg that is gone before it reads a thing, so the frames go into a pipe with no reader.
+	FAKE_GONE :: "#!/bin/sh\nexit 0\n"
+
+	@(test)
+	test_ffmpeg_gone_while_frames_are_sent_ends_the_recording_and_not_the_sketch :: proc(t: ^testing.T) {
+		folder := "output/tests/record_gone"
+		_ = os.remove_all(folder)
+		program := make_fake_ffmpeg(folder, FAKE_GONE)
+		defer delete(program)
+		set_ffmpeg(program)
+		defer set_ffmpeg("")
+		set_frame_source(solid_frames)
+		defer set_frame_source(nil)
+		start_headless(1)
+		defer shutdown()
+		circle(10, 10, 5)
+		out := strings.concatenate({folder, "/clip.mp4"})
+		defer delete(out)
+		ok, _ := record(out)
+		testing.expect(t, ok)
+		// frames of about 2 MB each: more than a pipe holds, so one of the writes finds the reader gone
+		// (without ignoring SIGPIPE this ends the test program, which is the point of the test)
+		for _ in 0 ..< 6 {
+			step()
+		}
+		testing.expect(t, !is_recording(), "the recording ended when ffmpeg stopped taking frames")
+		results := take_record_results()
+		if testing.expect_value(t, len(results), 1) {
+			testing.expect(t, !results[0].ok)
+			testing.expect(t, strings.contains(results[0].why, "ffmpeg"), results[0].why)
+		}
+	}
+}
