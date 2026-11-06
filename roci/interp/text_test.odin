@@ -290,7 +290,9 @@ test_an_installed_collection_is_copied_under_the_name_of_the_face_asked_for :: p
 	folder.system_font_dirs = {"output/tests/installed_pair"}
 	defer folder.system_font_dirs = nil
 	path := "output/tests/font_face_copy_sketch/sketch.roci"
-	text := "font \"Inter Regular\"\ntext \"a\" at 1 1\n"
+	// The face by its PostScript name, which no other test asks for: a thread keeps the fonts it has
+	// added for as long as it lives, so a name another test added would be found, and not copied.
+	text := "font \"Inter-Regular\"\ntext \"a\" at 1 1\n"
 	testing.expect(t, os.write_entire_file(path, transmute([]byte)text) == nil)
 	roci.start_headless(1)
 	p, ok := load(path, text)
@@ -298,15 +300,15 @@ test_an_installed_collection_is_copied_under_the_name_of_the_face_asked_for :: p
 	watch(p, path)
 	start(p)
 	defer finish_all()
-	testing.expect(t, roci.has_font("Inter Regular"))
+	testing.expect(t, roci.has_font("Inter-Regular"))
 	testing.expect_value(t, len(p.errors), 0)
 	testing.expect_value(t, len(p.notices), 1)
 	// the whole collection is copied (its other faces may be wanted next), under the name asked
-	copied, err := os.read_entire_file("output/tests/font_face_copy_sketch/assets/fonts/Inter Regular.ttc", context.temp_allocator)
+	copied, err := os.read_entire_file("output/tests/font_face_copy_sketch/assets/fonts/Inter-Regular.ttc", context.temp_allocator)
 	testing.expect(t, err == nil)
 	testing.expect_value(t, len(copied), len(folder.join_fonts({gfx.INTER_BOLD, gfx.INTER_REGULAR}, context.temp_allocator)))
 	// the copy is found by that name next time, by the face the name goes by
-	face, _ := gfx.find_face("Inter Regular")
+	face, _ := gfx.find_face("Inter-Regular")
 	width, _ := gfx.measure_typeset(face, 40, .Left, "Hamburgefonstiv")
 	regular, _ := gfx.measure_typeset(gfx.FACE_DEFAULT, 40, .Left, "Hamburgefonstiv")
 	testing.expect_value(t, width, regular)
