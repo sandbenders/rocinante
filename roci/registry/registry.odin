@@ -71,7 +71,7 @@ CONNECTING_WORDS := [?]string{
 // Words the language itself uses, which no verb or name may take.
 KEYWORDS := [?]string{
 	"and", "check", "draw", "each", "else", "every", "expect", "for", "give", "hidden", "if", "is", "it", "learn",
-	"not", "on", "or", "receive", "repeat", "result", "stop", "use", "while", "with",
+	"not", "on", "or", "receive", "repeat", "result", "stop", "ui", "use", "while", "with",
 }
 
 // Built-in values: names that stand for a value and take no arguments.

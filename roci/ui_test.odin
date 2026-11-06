@@ -162,3 +162,52 @@ test_events_for_windows_with_no_interface_are_ignored :: proc(t: ^testing.T) {
 	})
 	testing.expect(t, win_for(w).ui == nil)
 }
+
+@(thread_local) ui_order: [dynamic]string
+@(thread_local) ui_kept_toggle: bool
+@(thread_local) ui_kept_slider: f64
+
+@(test)
+test_a_ui_block_runs_after_the_draw_block_of_its_window :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	ui_order = make([dynamic]string)
+	defer delete(ui_order)
+	w := window(300, 200)
+	draw(w, proc() {append(&ui_order, "draw")})
+	ui_window(w, proc() {append(&ui_order, "ui")})
+	step_frames(2)
+	testing.expect_value(t, len(ui_order), 4)
+	testing.expect_value(t, ui_order[0], "draw")
+	testing.expect_value(t, ui_order[1], "ui")
+	// a window with only a ui block still has its widgets drawn, and one that stops having one does not
+	ui_window(w, proc() {ui_label("alone")})
+	draw(w, nil)
+	step_frames(4)
+	testing.expect_value(t, len(ui_records(w)), 1)
+	ui_window(w, nil)
+	step_frames(2)
+	testing.expect_value(t, len(ui_records(w)), 0)
+}
+
+@(test)
+test_widgets_that_keep_a_value_start_as_asked_and_keep_it :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(300, 200)
+	ui_window(w, proc() {
+		ui_kept_toggle = ui_toggle_value("lit", true)
+		ui_kept_slider = ui_slider_value("amount", 0, 10, 99)
+	})
+	step_frames(3)
+	testing.expect(t, ui_kept_toggle, "starts as asked")
+	testing.expect_value(t, ui_kept_slider, 10) // kept inside its range
+	// the same widgets made by another block find what they kept
+	ui_window(w, proc() {
+		ui_kept_toggle = ui_toggle_value("lit", false)
+		ui_kept_slider = ui_slider_value("amount", 0, 10, 0)
+	})
+	step_frames(2)
+	testing.expect(t, ui_kept_toggle, "`start` counts only the first time")
+	testing.expect_value(t, ui_kept_slider, 10)
+}

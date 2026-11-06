@@ -10,6 +10,7 @@ import "core:slice"
 import "core:strings"
 import "gfx"
 import "platform"
+import "ui"
 
 // Opens a window of the given logical size, optionally at a position, and gives
 // it back; until the next `window` call, verbs outside any block act on it. The
@@ -145,6 +146,17 @@ draw_default :: proc(block: proc()) {
 
 draw :: proc{draw_default, draw_window}
 
+// The code that makes a window's widgets every frame (`ui [ ... ]`), run after its `draw`. The
+// widget verbs add to the window it runs for.
+ui_window :: proc(w: Window, block: proc()) {
+	if win := win_for(w); win != nil {
+		win.ui_draw = block
+		if block == nil && win.ui != nil {
+			ui.skip(win.ui) // the widgets it made are gone with it
+		}
+	}
+}
+
 // Width of the current window in logical pixels (`width`).
 width :: proc() -> f64 {
 	return surface_size().x
@@ -234,7 +246,7 @@ begin_restart :: proc() {
 			continue
 		}
 		gfx.begin_frame(&w.list)
-		w.draw, w.on_receive = nil, nil
+		w.draw, w.ui_draw, w.on_receive = nil, nil, nil
 		for m in w.inbox {
 			value_destroy(m)
 		}

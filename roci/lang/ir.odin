@@ -224,6 +224,7 @@ IR_On :: struct {
 IR_Draw :: struct {
 	window: ^IR, // nil for the default window
 	body:   IR_Block,
+	ui:     bool, // `ui [ ... ]`: makes the window's widgets instead of drawing
 }
 
 // A `learn` or `use`: nothing runs where it stands. A taught verb runs through its

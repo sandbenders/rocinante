@@ -337,6 +337,18 @@ test_for_each_gives_its_name_the_type_of_the_items :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_ui_blocks_and_their_widgets_are_checked :: proc(t: ^testing.T) {
+	expect_errors(t, "ui [ label \"hi\" ]", {})
+	expect_errors(t, "w = window size 400 300\nui w [ ]", {})
+	expect_errors(t, "ui 3 [ ]", {.Wrong_Kind_Here})
+	expect_errors(t, "ui [ if button \"go\" [ x = 1 ] ]\nx = 0", {})
+	expect_types(t, "ui [ n = slider \"n\" 1 5 start 2\n  on_off = toggle \"t\" start true\n  hit = button \"b\" ]", "n: a number\non_off: true or false\nhit: true or false")
+	expect_errors(t, "ui [ n = slider \"n\" 1 ]", {.Wrong_Argument_Count})
+	expect_errors(t, "ui [ n = toggle \"t\" start 3 ]", {.Wrong_Argument_Kind})
+	expect_errors(t, "label = 3", {.Reserved_Name})
+}
+
+@(test)
 test_draw_every_and_on_blocks_are_checked :: proc(t: ^testing.T) {
 	expect_errors(t, "draw [ background 0\n  circle at mouse radius 20 ]", {})
 	expect_errors(t, "draw 3 [ ]", {.Wrong_Kind_Here})

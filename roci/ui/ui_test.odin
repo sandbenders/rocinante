@@ -194,6 +194,31 @@ test_two_widgets_with_one_label_are_a_problem_said_once :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_two_lines_of_text_may_say_the_same_thing :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	for _ in 0 ..< 3 {
+		ensure_frame(s, SIZE, 2, 1.0 / 60)
+		label(s, "-")
+		_ = button(s, "go")
+		label(s, "-")
+		end_frame(s)
+	}
+	testing.expect_value(t, len(s.problems), 0)
+}
+
+@(test)
+test_a_kept_value_starts_as_asked_once_and_is_then_the_widgets_own :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	testing.expect_value(t, kept(s, "size", 7)^, 7)
+	kept(s, "size", 99)^ = 12
+	testing.expect_value(t, kept(s, "size", 99)^, 12) // `start` counts only the first time
+	testing.expect_value(t, kept(s, "other", 1)^, 1)
+	testing.expect_value(t, len(s.kept), 2)
+}
+
+@(test)
 test_a_frame_with_no_widgets_has_nothing_to_draw_and_skip_forgets_the_last :: proc(t: ^testing.T) {
 	s := create(gfx.INTER_REGULAR)
 	defer destroy(s)

@@ -42,6 +42,10 @@ FILTER_OPTIONS := []Option{
 	{"by", {.Number}, false},
 }
 
+// What the widgets that keep a value take: the value they start with, the first time they are seen.
+UI_START_NUMBER := []Option{{"start", {.Number}, false}}
+UI_START_BOOLEAN := []Option{{"start", {.Boolean}, false}}
+
 LANGUAGE_VERBS := []Verb{
 	{"add", {{LIST_ITEM, {{"to", {.List}, true}}, .None}}, "Puts an item at the end of a list: `add p to particles`."},
 	{"remove", {{LIST_ITEM, {{"from", {.Any}, true}}, .None}}, "Takes an item out of a list, or a name out of a table: `remove p from particles`, `remove \"cat\" from counts`."},
@@ -63,6 +67,10 @@ LANGUAGE_VERBS := []Verb{
 	{"resize", {{{{"picture", .Image}}, RESIZE_OPTIONS, .Image}}, "A new picture of another size: `resize photo size 100 80`. A side given as 0 follows the picture's shape, so `size 100 0` keeps it. `as nearest` keeps hard edges, which pixel art wants; the start is smooth."},
 	{"filter", {{{{"picture", .Image}}, FILTER_OPTIONS, .Image}}, "A new picture with a filter applied: gray, invert, threshold, posterize, blur, edges or pixelate: `filter photo as blur by 4`. `by` is a brightness for threshold (0 to 255, the start 128), a number of steps for posterize (4), a radius in pixels for blur (2) and a block size in pixels for pixelate (8)."},
 	{"mask", {{{{"picture", .Image}}, {{"by", {.Image}, true}}, .Image}}, "A new picture that shows only where a stencil picture is white and solid: `mask photo by shape`. The stencil is stretched over the picture."},
+	{"label", {{{{"text", .Text}}, nil, .None}}, "Shows a line of text in a `ui` block: `label (\"fps: \" + fps)`."},
+	{"button", {{{{"text", .Text}}, nil, .Boolean}}, "A button in a `ui` block, true on the frame it is clicked and false otherwise: `if button \"clear\" [ particles = [] ]`. The text is its name, so two buttons with one text are an error."},
+	{"toggle", {{{{"text", .Text}}, UI_START_BOOLEAN, .Boolean}}, "A check box in a `ui` block that is true while it is ticked: `trails = toggle \"trails\"`. It starts off, or as `start` says, and keeps its value as the sketch reloads."},
+	{"slider", {{{{"text", .Text}, {"low", .Number}, {"high", .Number}}, UI_START_NUMBER, .Number}}, "A slider in a `ui` block that gives its number, between a low and a high: `size = slider \"size\" 10 200`. It starts at the low end, or at `start`, and keeps its value as the sketch reloads."},
 	{"set", {{{{"window", .Window}}, SET_OPTIONS, .None}}, "Changes a window that is open, with the words of `window`: `set w size 400 300 resizable false`."},
 	{"send", {{{{"window", .Window}, {"value", .Any}}, nil, .None}}, "Sends a value to a window; it arrives on that window's next frame: `send w 5`."},
 	{"print", {{{{"value", .Any}}, nil, .None}}, "Writes a value to the console."},

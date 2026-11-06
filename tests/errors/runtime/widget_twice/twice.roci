@@ -1,0 +1,4 @@
+ui [
+  if button "go" [ print 1 ]
+  if button "go" [ print 2 ]
+]

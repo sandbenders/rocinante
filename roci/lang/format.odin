@@ -341,7 +341,7 @@ stmt_text :: proc(p: ^Printer, s: ^Stmt, level: int) -> string {
 		strings.write_string(&b, " ")
 		strings.write_string(&b, block_text(p, k.body, level, level * 2 + 24))
 	case Draw:
-		strings.write_string(&b, "draw")
+		strings.write_string(&b, "ui" if k.ui else "draw")
 		if k.window != nil {
 			strings.write_string(&b, " ")
 			strings.write_string(&b, expr_text(p, k.window, level, level * 2 + 5))

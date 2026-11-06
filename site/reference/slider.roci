@@ -1,0 +1,3 @@
+radius_now = 40
+ui [ radius_now = slider "radius" 10 120 start 40 ]
+draw [ circle at 200 150 radius radius_now ]

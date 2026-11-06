@@ -495,6 +495,8 @@ test_every_on_draw_and_use :: proc(t: ^testing.T) {
 	expect_tree(t, "on w receive msg [ x = msg ]", "(on-receive (name w) msg\n  (body\n    (assign x (name msg))\n  )\n)")
 	expect_tree(t, "draw [ background 0 ]", "(draw\n  (body\n    (call background (num 0))\n  )\n)")
 	expect_tree(t, "draw w [ ]", "(draw (name w)\n  (body\n  )\n)")
+	expect_tree(t, "ui [ label \"a\" ]", "(ui\n  (body\n    (call label (text \"a\"))\n  )\n)")
+	expect_tree(t, "ui w [ ]", "(ui (name w)\n  (body\n  )\n)")
 	expect_tree(t, `use "flocking"`, `(use "flocking")`)
 }
 

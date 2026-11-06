@@ -540,9 +540,9 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 	case Draw:
 		window: ^IR
 		if k.window != nil {
-			window = check_kind(c, k.window, T_WINDOW, "draw")
+			window = check_kind(c, k.window, T_WINDOW, "ui" if k.ui else "draw")
 		}
-		out.kind = IR_Draw{window = window, body = check_block(c, k.body, true)}
+		out.kind = IR_Draw{window = window, body = check_block(c, k.body, true), ui = k.ui}
 	case Learn:
 		out.kind = IR_Unchecked{}
 	case Use:

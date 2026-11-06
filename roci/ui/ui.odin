@@ -55,6 +55,8 @@ State :: struct {
 	records:        [dynamic]Record, // the frame being built
 	finished:       [dynamic]Record, // the last frame built
 	seen:           map[u32]bool,    // identities used this frame
+	target_scale:   f32,             // when above 0: device pixels to a logical pixel of the picture being made, whatever the density was
+	kept:           map[string]f32,  // what the widgets that keep a value hold, by their text (a check box is 0 or 1)
 	panel_open:     bool,
 	panel_visible:  bool,
 	panel_count:    int,
@@ -114,6 +116,10 @@ destroy :: proc(s: ^State) {
 	}
 	delete(s.problems)
 	delete(s.seen)
+	for key in s.kept {
+		delete(key)
+	}
+	delete(s.kept)
 	free(s)
 }
 

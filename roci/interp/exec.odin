@@ -83,9 +83,17 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 			}
 		}
 		if draw, is_draw := &s.kind.(lang.IR_Draw); is_draw {
-			it.draws[window] = &draw.body
+			if k.ui {
+				it.uis[window] = &draw.body
+			} else {
+				it.draws[window] = &draw.body
+			}
 		}
-		roci.draw_window(window, draw_trampoline)
+		if k.ui {
+			roci.ui_window(window, ui_trampoline)
+		} else {
+			roci.draw_window(window, draw_trampoline)
+		}
 	case lang.IR_On:
 		if on, is_on := &s.kind.(lang.IR_On); is_on {
 			register_on(it, on)

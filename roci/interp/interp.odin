@@ -69,6 +69,7 @@ Interp :: struct {
 	items:     [dynamic]Value, // `it`, innermost last
 	results:   [dynamic]Value, // `result`, innermost last
 	draws:     map[roci.Window]^lang.IR_Block,
+	uis:       map[roci.Window]^lang.IR_Block, // the `ui` blocks, by window
 	handlers:  [dynamic]Handler,
 	inbox:     [2][dynamic]Message, // [msg_now] is what arrives this frame, the other what is sent now
 	msg_arenas: [2]virtual.Arena, // the memory of each inbox
@@ -165,6 +166,7 @@ load_files :: proc(files: []lang.File_Text) -> (p: ^Interp, ok: bool) {
 	}
 	p.globals = make([]Global, len(p.checked.program.symbols), p.program_memory)
 	p.draws = make(map[roci.Window]^lang.IR_Block, 4, p.program_memory)
+	p.uis = make(map[roci.Window]^lang.IR_Block, 4, p.program_memory)
 	p.seen = make(map[int]bool, 8, p.program_memory)
 	p.budget = BLOCK_SECONDS
 	p.has_errors = lang.has_errors(p.checked.diagnostics)
@@ -230,6 +232,19 @@ draw_trampoline :: proc() {
 		return
 	}
 	block, found := p.draws[roci.current_window()]
+	if !found {
+		return
+	}
+	run_block(p, block)
+}
+
+// The frame's hook for a window that has a `ui` block.
+ui_trampoline :: proc() {
+	p := current
+	if p == nil {
+		return
+	}
+	block, found := p.uis[roci.current_window()]
 	if !found {
 		return
 	}

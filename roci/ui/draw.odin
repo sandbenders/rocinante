@@ -42,6 +42,11 @@ draw :: proc(s: ^State, device: ^sdl.GPUDevice, commands: ^sdl.GPUCommandBuffer,
 	}
 	imgui.gpu3_new_frame()
 	data := imgui.get_draw_data()
+	if s.target_scale > 0 {
+		// A picture of another size than the frame was laid out for (`picture` at scale 1 of a window
+		// laid out at density 2): the same layout, drawn across the target.
+		data.framebuffer_scale = {s.target_scale, s.target_scale}
+	}
 	imgui.gpu3_prepare_draw_data(data, commands)
 	keep := sdl.GPUColorTargetInfo {
 		texture  = target,

@@ -1,0 +1,152 @@
+// SPDX-License-Identifier: 0BSD
+package interp
+
+import "../"
+import "../platform"
+import "core:testing"
+
+// The middle of the widget of a window with this text, as the last frame laid it out.
+widget_middle :: proc(w: roci.Window, text: string) -> (x, y: f32, ok: bool) {
+	for r in roci.ui_records(w) {
+		if r.label == text {
+			return (r.rect.min.x + r.rect.max.x) / 2, (r.rect.min.y + r.rect.max.y) / 2, true
+		}
+	}
+	return 0, 0, false
+}
+
+mouse_at :: proc(w: roci.Window, x, y: f32, down: bool, pressed := false) -> platform.Event {
+	return platform.Mouse_Button_Changed{window = platform.Window_Id(w), button = .Left, down = down, x = x, y = y}
+}
+
+steps :: proc(n: int, events: []platform.Event = nil) {
+	roci.step(events)
+	for _ in 1 ..< n {
+		roci.step()
+	}
+}
+
+// ImGui sees input over a few frames, so each stage gets three.
+click_widget :: proc(t: ^testing.T, w: roci.Window, text: string) {
+	x, y, ok := widget_middle(w, text)
+	if !testing.expectf(t, ok, "no widget `%s`", text) {
+		return
+	}
+	steps(3, {platform.Mouse_Moved{window = platform.Window_Id(w), x = x, y = y}})
+	steps(3, {mouse_at(w, x, y, true)})
+	steps(3, {mouse_at(w, x, y, false)})
+}
+
+WIDGETS :: `clicks = 0
+lit = false
+amount = 0
+ui [
+  if button "go" [ clicks = clicks + 1 ]
+  lit = toggle "ring"
+  amount = slider "amount" 0 100 start 25
+]
+`
+
+@(test)
+test_a_button_a_toggle_and_a_slider_give_what_the_person_did :: proc(t: ^testing.T) {
+	p := run_text(t, WIDGETS, 4)
+	defer finish(p)
+	w := first_window()
+	testing.expect_value(t, len(roci.ui_records(w)), 3)
+	testing.expect_value(t, as_number(global_named(p, "amount")), 25)
+	testing.expect_value(t, as_bool(global_named(p, "lit")), false)
+	click_widget(t, w, "go")
+	testing.expect_value(t, as_number(global_named(p, "clicks")), 1)
+	steps(3)
+	testing.expect_value(t, as_number(global_named(p, "clicks")), 1) // true on the one frame only
+	click_widget(t, w, "ring")
+	testing.expect_value(t, as_bool(global_named(p, "lit")), true)
+	steps(3)
+	testing.expect_value(t, as_bool(global_named(p, "lit")), true) // and stays ticked
+	// drag the slider's handle far past its end
+	x, y, _ := widget_middle(w, "amount")
+	id := platform.Window_Id(w)
+	steps(3, {platform.Mouse_Moved{window = id, x = x, y = y}})
+	steps(3, {mouse_at(w, x, y, true)})
+	steps(3, {platform.Mouse_Moved{window = id, x = x + 400, y = y}})
+	steps(3, {mouse_at(w, x + 400, y, false)})
+	testing.expect_value(t, as_number(global_named(p, "amount")), 100)
+}
+
+@(test)
+test_a_widget_that_keeps_a_value_starts_where_it_is_told :: proc(t: ^testing.T) {
+	p := run_text(t, "a = false\nb = 0\nc = 0\nui [\n  a = toggle \"a\" start true\n  b = slider \"b\" 10 20\n  c = slider \"c\" 10 20 start 500\n]\n", 4)
+	defer finish(p)
+	testing.expect_value(t, as_bool(global_named(p, "a")), true)
+	testing.expect_value(t, as_number(global_named(p, "b")), 10) // the low end when nothing is said
+	testing.expect_value(t, as_number(global_named(p, "c")), 20) // kept inside the range
+}
+
+@(test)
+test_a_value_the_person_set_survives_a_reload_of_the_sketch :: proc(t: ^testing.T) {
+	p := run_text(t, WIDGETS, 4)
+	w := first_window()
+	click_widget(t, w, "ring")
+	testing.expect_value(t, as_bool(global_named(p, "lit")), true)
+	// a changed sketch with the same widgets: the tick stays, though `start` is not written
+	after, _ := reload(p, "clicks = 0\nlit = false\namount = 0\nui [\n  if button \"go\" [ clicks = clicks + 2 ]\n  lit = toggle \"ring\"\n  amount = slider \"amount\" 0 100 start 25\n]\n")
+	defer finish(after)
+	steps(4)
+	testing.expect_value(t, as_bool(global_named(after, "lit")), true)
+	click_widget(t, first_window(), "go")
+	testing.expect_value(t, as_number(global_named(after, "clicks")), 2) // the new code runs
+}
+
+@(test)
+test_a_ui_block_of_a_named_window_makes_widgets_in_that_window_only :: proc(t: ^testing.T) {
+	p := run_text(t, "main = window size 300 200\nsecond = window size 300 200\nui second [ label \"over here\" ]\n", 4)
+	defer finish(p)
+	windows := roci.open_windows()
+	testing.expect_value(t, len(windows), 2)
+	testing.expect_value(t, len(roci.ui_records(windows[0])), 0)
+	if testing.expect_value(t, len(roci.ui_records(windows[1])), 1) {
+		testing.expect_value(t, roci.ui_records(windows[1])[0].label, "over here")
+	}
+}
+
+@(test)
+test_a_ui_block_and_a_draw_block_work_in_one_window :: proc(t: ^testing.T) {
+	p := run_text(t, "r = 5\nui [ r = slider \"r\" 5 50 start 30 ]\ndraw [ circle at 100 100 radius r ]\n", 4)
+	defer finish(p)
+	w := first_window()
+	testing.expect_value(t, len(roci.ui_records(w)), 1)
+	commands := roci.recorded(w)
+	if testing.expect_value(t, len(commands), 1) {
+		testing.expect_value(t, commands[0].args[2], f32(30))
+	}
+}
+
+@(test)
+test_two_widgets_with_one_text_are_said_once_and_both_still_work :: proc(t: ^testing.T) {
+	p := run_text(t, "n = 0\nui [\n  if button \"go\" [ n = n + 1 ]\n  if button \"go\" [ n = n + 1 ]\n]\n", 6)
+	defer finish(p)
+	count := 0
+	for e in p.errors {
+		if e.id == .Widget_Twice {
+			count += 1
+		}
+	}
+	testing.expect_value(t, count, 1)
+}
+
+@(test)
+test_the_ui_example_counts_pulses_and_its_ring_follows_the_toggle :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("ui"), 4)
+	defer finish(p)
+	w := first_window()
+	testing.expect_value(t, as_number(global_named(p, "dot")), 60)
+	testing.expect_value(t, as_bool(global_named(p, "ring")), true)
+	testing.expect_value(t, len(roci.recorded(w)), 2) // the dot and its ring
+	click_widget(t, w, "pulse")
+	click_widget(t, w, "pulse")
+	testing.expect_value(t, as_number(global_named(p, "pulses")), 2)
+	click_widget(t, w, "ring")
+	steps(2)
+	testing.expect_value(t, as_bool(global_named(p, "ring")), false)
+	testing.expect_value(t, len(roci.recorded(w)), 1) // the dot alone
+}

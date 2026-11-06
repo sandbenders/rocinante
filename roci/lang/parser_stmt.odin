@@ -55,6 +55,7 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 				}
 			}
 			return parse_draw(p)
+		case "ui":     return parse_draw(p)
 		case "use":    return parse_use(p)
 		case "check":  return parse_check(p)
 		case "expect": return parse_expect(p)
@@ -634,16 +635,17 @@ parse_every :: proc(p: ^Parser) -> Stmt_Kind {
 
 @(private)
 parse_draw :: proc(p: ^Parser) -> Stmt_Kind {
+	is_ui := text_of(p, cur(p)) == "ui"
 	advance(p)
 	window: ^Expr
 	if cur(p).kind != .Open_Square {
 		window = parse_argument(p, plain = true)
 	}
-	body, ok := parse_block_after(p, "draw")
+	body, ok := parse_block_after(p, "ui" if is_ui else "draw")
 	if !ok {
 		return Error_Stmt{}
 	}
-	return Draw{window = window, body = body}
+	return Draw{window = window, body = body, ui = is_ui}
 }
 
 @(private)

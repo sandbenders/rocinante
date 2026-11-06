@@ -1,0 +1,26 @@
+// Widgets in a ui block: a slider, a check box and a button. Each one gives back what the
+// person did with it, so the sketch reads it like any other value.
+window size 480 320 title "ui"
+dot = 60
+ring = true
+pulses = 0
+
+ui [
+  label "settings"
+  dot = slider "dot" 10 120 start 60
+  ring = toggle "ring" start true
+  if button "pulse" [ pulses = pulses + 1 ]
+  label ("pulses: " + pulses)
+]
+
+draw [
+  background 30
+  fill orange
+  circle at 390 190 radius dot
+  if ring [
+    no fill
+    stroke white
+    thickness 4
+    circle at 390 190 radius (dot + 16 + (pulses % 5) * 6)
+  ]
+]

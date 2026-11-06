@@ -1,0 +1,9 @@
+dot = 60
+
+ui [
+  dot = slider "dot" 10 120
+]
+
+draw [
+  circle at 300 160 radius dot
+]

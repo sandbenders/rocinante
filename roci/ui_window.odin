@@ -50,6 +50,29 @@ ui_slider :: proc(text: string, value: ^f32, low, high: f32) -> bool {
 	return ui.slider(ui_frame(), text, value, low, high)
 }
 
+// A check box that keeps its own value, which is `start` the first time its text is seen:
+// gives whether it is ticked now.
+ui_toggle_value :: proc(text: string, start: bool) -> bool {
+	s := ui_frame()
+	slot := ui.kept(s, text, 1 if start else 0)
+	on := slot^ != 0
+	ui.toggle(s, text, &on)
+	slot = ui.kept(s, text, 0)
+	slot^ = 1 if on else 0
+	return on
+}
+
+// A slider that keeps its own value, which is `start` the first time its text is seen (kept
+// inside the range): gives its number now.
+ui_slider_value :: proc(text: string, low, high, start: f64) -> f64 {
+	s := ui_frame()
+	first := clamp(f32(start), min(f32(low), f32(high)), max(f32(low), f32(high)))
+	value := ui.kept(s, text, first)^
+	ui.slider(s, text, &value, f32(low), f32(high))
+	ui.kept(s, text, 0)^ = value
+	return f64(value)
+}
+
 // The widgets the last finished frame of a window made, for screen readers and tests.
 ui_records :: proc(w: Window) -> []ui.Record {
 	if win := win_for(w); win != nil && win.ui != nil {
@@ -75,7 +98,7 @@ ui_finish :: proc(w: ^Win) {
 	}
 	if w.ui.in_frame {
 		ui.end_frame(w.ui)
-	} else if w.draw != nil {
+	} else if w.draw != nil || w.ui_draw != nil {
 		ui.skip(w.ui)
 	}
 }

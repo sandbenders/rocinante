@@ -1,2 +1,2 @@
-label = "start"
-tween label to "end" over 1
+caption = "start"
+tween caption to "end" over 1

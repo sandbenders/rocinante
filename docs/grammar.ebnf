@@ -58,7 +58,7 @@ style_words     = option { option } ;
 
 (* Section 5.5 and 5.8; the unit is one of the registry's EVERY_UNITS. *)
 every_statement = "every" argument 'unit' block ;
-draw_statement  = "draw" [ argument ] block ;
+draw_statement  = ( "draw" | "ui" ) [ argument ] block ;
 (* At the top of a file, outside every block. The name is a folder of libs/, or a git URL that ends in one. *)
 use_statement   = "use" TEXT ;
 (* A test for the verbs written above it. `roci run` skips it; `roci test` runs it. Outside every block, like `use`. The name is TEXT. *)

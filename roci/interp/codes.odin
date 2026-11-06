@@ -122,6 +122,10 @@ Verb_Code :: enum u8 {
 	Resize,
 	Filter,
 	Mask,
+	Label,
+	Button,
+	Toggle,
+	Slider,
 }
 
 // The registry's name of each code. A test fails when the registry gains a verb
@@ -238,6 +242,10 @@ VERB_CODE_NAMES := [Verb_Code]string{
 	.Resize = "resize",
 	.Filter = "filter",
 	.Mask = "mask",
+	.Label = "label",
+	.Button = "button",
+	.Toggle = "toggle",
+	.Slider = "slider",
 }
 
 // The code of each verb of `registry.ALL_VERBS`, by its place there.

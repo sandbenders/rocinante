@@ -84,6 +84,9 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 			w.draw()
 			gfx.end_frame(&w.list)
 		}
+		if w.ui_draw != nil {
+			w.ui_draw()
+		}
 		ui_finish(w)
 		the.current = nil
 		show_frame(w)

@@ -58,6 +58,12 @@ picture :: proc(w: Window, scale := 1) -> (image: gfx.Image, ok: bool) {
 	flush_canvases(renderer)
 	canvas := [2]f32{f32(win.width), f32(win.height)}
 	with_ui(renderer, win)
+	if win.ui != nil {
+		win.ui.target_scale = f32(scale)
+	}
+	defer if win.ui != nil {
+		win.ui.target_scale = 0
+	}
 	defer with_ui(renderer, nil)
 	return gfx.render_offscreen(renderer, win.width * scale, win.height * scale, canvas, &win.list, &win.batcher)
 }

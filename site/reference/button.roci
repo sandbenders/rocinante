@@ -1,0 +1,6 @@
+clicks = 0
+
+ui [
+  if button "count" [ clicks = clicks + 1 ]
+  label ("clicks: " + clicks)
+]

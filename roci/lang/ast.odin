@@ -229,6 +229,7 @@ On :: struct {
 Draw :: struct {
 	window: ^Expr, // nil for the default window
 	body:   Block,
+	ui:     bool, // `ui [ ... ]`: the same shape, a block that makes the window's widgets
 }
 
 // `check "name" [ expect ... ]`: a test of the verbs above it. It never runs in a sketch.

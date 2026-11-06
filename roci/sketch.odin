@@ -36,6 +36,7 @@ Win :: struct {
 	list:         gfx.Command_List,
 	batcher:      gfx.Batcher,
 	draw:         proc(),           // runs every frame, when set; otherwise the list drawn at set-up is shown as it is
+	ui_draw:      proc(),           // runs after `draw`, when set, and makes the window's widgets
 	on_receive:   proc(value: Value),
 	inbox:        [dynamic]Value,   // messages sent to this window, delivered on the next frame
 	saves:        [dynamic]string,  // picture files asked for this frame, written once it is drawn (save.odin)

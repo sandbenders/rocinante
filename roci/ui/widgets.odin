@@ -42,10 +42,13 @@ panel_end :: proc(s: ^State) {
 @(private)
 note :: proc(s: ^State, role: Role, label: string, value: f32 = 0, text := "") -> ^Record {
 	id := imgui.get_item_id()
-	if s.seen[id] {
-		problem(s, fmt.tprintf("two widgets are both called \"%s\": give one of them another label", label))
+	// A line of text has no identity of its own, and any number of them may say the same thing.
+	if role != .Label {
+		if s.seen[id] {
+			problem(s, fmt.tprintf("two widgets are both called \"%s\": give one of them another label", label))
+		}
+		s.seen[id] = true
 	}
-	s.seen[id] = true
 	lo, hi := imgui.get_item_rect_min(), imgui.get_item_rect_max()
 	append(
 		&s.records,
@@ -101,4 +104,13 @@ slider :: proc(s: ^State, text: string, value: ^f32, low, high: f32) -> bool {
 	changed := imgui.slider_float_ex(cstr(text), value, low, high, "%.2f")
 	note(s, .Slider, text, value^, fmt.tprintf("%.2f", value^)).changed = changed
 	return changed
+}
+
+// The value a widget keeps between frames, made with `start` the first time its text is seen. It
+// lasts as long as the window's interface does, so it survives a reload and a restart.
+kept :: proc(s: ^State, text: string, start: f32) -> ^f32 {
+	if text not_in s.kept {
+		s.kept[strings.clone(text)] = start
+	}
+	return &s.kept[text]
 }

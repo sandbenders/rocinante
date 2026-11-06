@@ -1,0 +1,8 @@
+── Two widgets are both called `go` ──────────────────── sketch.roci:3:6
+
+3 │   if button "go" [ print 2 ]
+  │      ^^^^^^^^^^^
+
+A widget is known by its text, so two with the same text would share one value and one place on the screen. Give one of them another text, and the sketch carries on with both.
+
+Give each its own text:  ui [ a = slider "width" 10 200  b = slider "depth" 10 200 ]

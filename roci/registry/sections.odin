@@ -35,6 +35,9 @@ REFERENCE_SECTIONS := []Reference_Section{
 	{"The turtle", "A pen that walks and turns, as in Logo. Each window has one.", {
 		"forward", "back", "left", "right", "pen up", "pen down", "home", "show turtle", "turtle",
 	}},
+	{"Interface", "Buttons, sliders and check boxes in a `ui` block, drawn over the window with the keyboard, the mouse and touch all working.", {
+		"ui", "label", "button", "toggle", "slider",
+	}},
 	{"Running", "When the lines of a sketch run: once, every frame, again and again, or when something happens.", {
 		"draw", "every", "on", "if", "repeat", "while", "for", "for each",
 	}},

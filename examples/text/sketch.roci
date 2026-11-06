@@ -1,9 +1,9 @@
 // Words in Inter, in two weights and many sizes. A line is aligned against its x, a long
-// one wraps at a width with the lines as far apart as leading says, and measure says how big a text is, so a label can have a
+// one wraps at a width with the lines as far apart as leading says, and measure says how big a text is, so a caption can have a
 // box that fits it exactly.
 window size 640 420 title "text"
 
-learn label words spot with hue 160 [
+learn caption words spot with hue 160 [
   size = measure words
   fill (hsb hue 60 240)
   rect at (spot.x - 10) (spot.y - 6) size (size.x + 20) (size.y + 12)
@@ -38,8 +38,8 @@ draw [
   text "A longer paragraph wraps inside the width it is given, and keeps going onto as many lines as it needs. Line breaks in the text work too." at 36 140 width 380 leading 1.5
 
   font "Inter Bold" size 18
-  label "boxes that fit" { 36, 320 } hue 20
-  label "any text" { 220, 320 } hue 120
+  caption "boxes that fit" { 36, 320 } hue 20
+  caption "any text" { 220, 320 } hue 120
   font "Inter Bold" size 26
-  label "at any size" { 330, 316 } hue 210
+  caption "at any size" { 330, 316 } hue 210
 ]

@@ -127,6 +127,7 @@ Message_Id :: enum u8 {
 	Save_Failed,
 	Save_Approximate,
 	Record_Failed,
+	Widget_Twice,
 	Picture_Size,
 	Picture_Too_Big,
 	Pixels_Unavailable,
@@ -437,6 +438,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Record_Failed = {.Error, "I could not record `{a}`",
 		"{b} The sketch carries on.",
 		"Record an animation like this:", "{d}"},
+	.Widget_Twice = {.Error, "Two widgets are both called `{a}`",
+		"A widget is known by its text, so two with the same text would share one value and one place on the screen. Give one of them another text, and the sketch carries on with both.",
+		"Give each its own text:", "{d}"},
 	.Picture_Size = {.Error, "I cannot make a picture of that size",
 		"{b} The picture is empty and draws nothing, and the sketch carries on.",
 		"For example:", "{d}"},
@@ -517,7 +521,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Save_Failed, .Save_Approximate, .Record_Failed, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

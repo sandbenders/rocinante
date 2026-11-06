@@ -547,6 +547,14 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 				roci.step()
 				roci.step()
 			}
+			if id == .Widget_Twice {
+				// widgets are made in the frames of a window; the folder is the sketch's own, so
+				// the file that stands in for it must not be read again as a change
+				p.path = ""
+				for _ in 0 ..< 3 {
+					roci.step()
+				}
+			}
 			triggered := false
 			for e in p.errors {
 				triggered ||= e.id == id
@@ -1804,7 +1812,7 @@ test_every_registry_verb_has_its_own_code :: proc(t: ^testing.T) {
 
 @(test)
 test_replacing_a_list_every_frame_keeps_memory_bounded :: proc(t: ^testing.T) {
-	p := run_text(t, "dots = []\nrepeat 1000 [ add { pos: { random 800, random 600 }, life: 1 } to dots ]\nlabel = \"\"\ndraw [\n  dots = keep dots [ it.life > 0 ]\n  label = \"frame \" + frame\n]")
+	p := run_text(t, "dots = []\nrepeat 1000 [ add { pos: { random 800, random 600 }, life: 1 } to dots ]\ncaption = \"\"\ndraw [\n  dots = keep dots [ it.life > 0 ]\n  caption = \"frame \" + frame\n]")
 	defer finish(p)
 	for _ in 0 ..< 10 {
 		roci.step()
@@ -1816,7 +1824,7 @@ test_replacing_a_list_every_frame_keeps_memory_bounded :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, p.collections > 0, "the arena was copied")
 	testing.expect_value(t, len(as_list(global_named(p, "dots")).items), 1000)
-	testing.expect_value(t, as_text(global_named(p, "label")), "frame 999") // `frame` counts from 0
+	testing.expect_value(t, as_text(global_named(p, "caption")), "frame 999") // `frame` counts from 0
 }
 
 @(test)

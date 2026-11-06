@@ -1,0 +1,6 @@
+big = false
+ui [ big = toggle "big" ]
+
+draw [
+  if big [ circle at 200 150 radius 80 ] else [ circle at 200 150 radius 40 ]
+]

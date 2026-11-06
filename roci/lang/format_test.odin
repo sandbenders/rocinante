@@ -147,6 +147,8 @@ on mouse down [ x = 1 ]
 on w receive m [ x = m ]
 draw [ circle at 1 1 radius 1 ]
 draw w [ circle at 1 1 radius 1 ]
+ui [ label "a" ]
+ui w [ n = slider "n" 1 5 start 2 ]
 use "flocking"
 `
 	expect_formatted(t, text, text)

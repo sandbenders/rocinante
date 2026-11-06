@@ -142,7 +142,7 @@ dump_stmt :: proc(b: ^strings.Builder, src: Source, s: ^Stmt, depth: int) {
 		indent(b, depth)
 		strings.write_string(b, ")\n")
 	case Draw:
-		line(b, src, depth, "(draw", k.window)
+		line(b, src, depth, "(ui" if k.ui else "(draw", k.window)
 		dump_block(b, src, "body", k.body, depth + 1)
 		indent(b, depth)
 		strings.write_string(b, ")\n")
