@@ -1939,7 +1939,13 @@ trace_example :: proc(t: ^testing.T, name: string, frames: int, chosen: lang.Pas
 		append(&trace.frames, h)
 	}
 	trace.printed = strings.join(p.printed[:], "\n", context.temp_allocator)
-	trace.errors = len(p.errors)
+	// (a warning about an installed font is said once for a run and not again for the same font in
+	// the same process, so it says nothing about the passes)
+	for e in p.errors {
+		if e.id != .Font_Licence {
+			trace.errors += 1
+		}
+	}
 	return trace, true
 }
 

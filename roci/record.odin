@@ -59,6 +59,15 @@ Recording :: struct {
 @(private)
 VIDEO_EXTENSIONS := [?]string{".mp4", ".mov", ".webm", ".mkv", ".gif"}
 
+// Where a test gets the frames of a recording from, instead of drawing the window: it is given
+// the size a frame would have in pixels. A test that drew the window would start SDL's video
+// system on a test thread, beside other tests doing the same, which crashed ORION.
+@(thread_local) frame_source: proc(width, height: int) -> (gfx.Image, bool)
+
+set_frame_source :: proc(source: proc(width, height: int) -> (gfx.Image, bool)) {
+	frame_source = source
+}
+
 // Where ffmpeg is: a test can name a stand-in, otherwise it is found on the PATH.
 @(thread_local) ffmpeg_override: string
 
@@ -199,7 +208,13 @@ record_frame :: proc(w: ^Win) {
 	if w.handle != nil {
 		scale = max(1, int(math.round(platform.window_metrics(w.handle).density)))
 	}
-	image, ok := picture(w.id, scale)
+	image: gfx.Image
+	ok: bool
+	if frame_source != nil {
+		image, ok = frame_source(w.width * scale, w.height * scale)
+	} else {
+		image, ok = picture(w.id, scale)
+	}
 	if !ok {
 		rec.failed = the.error if the.error != "" else "the picture could not be drawn"
 		end_recording(w)

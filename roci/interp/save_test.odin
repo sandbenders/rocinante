@@ -2,6 +2,7 @@
 package interp
 
 import "../"
+import "../gfx"
 import "../lang"
 import "core:os"
 import "core:testing"
@@ -50,6 +51,16 @@ test_a_save_in_a_sketch_asks_for_the_file_where_the_path_says :: proc(t: ^testin
 
 @(test)
 test_the_export_example_saves_on_s_and_records_on_r :: proc(t: ^testing.T) {
+	// No real graphics: drawing a frame would start SDL's video system on a test thread, beside
+	// other tests doing the same (which crashed ORION). The picture a `s` asks for then cannot be
+	// drawn, which is said; the frames of a recording come from a stand-in.
+	roci.set_graphics_refused(true)
+	defer roci.set_graphics_refused(false)
+	roci.set_frame_source(solid_frames)
+	defer roci.set_frame_source(nil)
+	// and no ffmpeg, so the video key says how to get one on every computer alike
+	roci.set_ffmpeg("output/tests/there-is-no-ffmpeg")
+	defer roci.set_ffmpeg("")
 	text, read := os.read_entire_file("examples/export/sketch.roci", context.temp_allocator)
 	testing.expect(t, read == nil)
 	p := run_text(t, string(text), 2)
@@ -117,4 +128,13 @@ test_a_recording_that_ends_with_the_sketch_is_told_as_a_notice_and_no_record_end
 	if testing.expect_value(t, len(p.errors), 1) {
 		testing.expect_value(t, p.errors[0].id, lang.Message_Id.Record_Failed)
 	}
+}
+
+// A picture of the size asked for, every pixel the same: the frames a recording test is given.
+solid_frames :: proc(width, height: int) -> (gfx.Image, bool) {
+	pixels := make([]u8, width * height * 4)
+	for &p in pixels {
+		p = 128
+	}
+	return gfx.Image{width, height, pixels}, true
 }

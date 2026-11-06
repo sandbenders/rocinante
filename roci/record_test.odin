@@ -4,6 +4,25 @@ package roci
 import "core:os"
 import "core:strings"
 import "core:testing"
+import "gfx"
+
+// A frame source for tests: a picture of the size asked for, every pixel one byte value, so a
+// movie of them has known contents. It never draws, so it never starts SDL on a test thread.
+solid_frames :: proc(width, height: int) -> (gfx.Image, bool) {
+	pixels := make([]u8, width * height * 4)
+	for &p in pixels {
+		p = 200
+	}
+	return gfx.Image{width, height, pixels}, true
+}
+
+// Frames that get a pixel wider each time one is asked for, as a window being resized would.
+@(thread_local) growing_width: int
+
+growing_frames :: proc(width, height: int) -> (gfx.Image, bool) {
+	growing_width += 1
+	return solid_frames(width + (growing_width - 1) % 2, height)
+}
 
 @(test)
 test_which_names_are_movies :: proc(t: ^testing.T) {
@@ -61,10 +80,10 @@ test_a_recording_that_is_ended_with_no_frame_says_so :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_an_animation_is_written_from_the_frames_or_said_to_have_failed :: proc(t: ^testing.T) {
-	// A computer with no graphics cannot draw the frames, which is said as a failure; where it
-	// can, the file is there and holds one frame for each step.
+test_an_animation_is_written_from_the_frames_one_for_each_step :: proc(t: ^testing.T) {
 	_ = os.remove_all("output/tests/record_apng")
+	set_frame_source(solid_frames)
+	defer set_frame_source(nil)
 	start_headless(1)
 	defer shutdown()
 	circle(10, 10, 5)
@@ -78,14 +97,57 @@ test_an_animation_is_written_from_the_frames_or_said_to_have_failed :: proc(t: ^
 	if !testing.expect_value(t, len(results), 1) {
 		return
 	}
-	written := os.exists("output/tests/record_apng/a.apng")
-	testing.expectf(t, written == results[0].ok, "written: %v, result: %v", written, results[0])
-	if results[0].ok {
-		testing.expect_value(t, results[0].frames, 3)
-		data, err := os.read_entire_file("output/tests/record_apng/a.apng", context.temp_allocator)
-		testing.expect(t, err == nil)
-		testing.expect(t, strings.contains(string(data), "acTL"))
+	testing.expect(t, results[0].ok, results[0].why)
+	testing.expect_value(t, results[0].frames, 3)
+	testing.expect_value(t, results[0].why, "")
+	data, err := os.read_entire_file("output/tests/record_apng/a.apng", context.temp_allocator)
+	testing.expect(t, err == nil)
+	testing.expect(t, strings.has_prefix(string(data), "\x89PNG"))
+	testing.expect(t, strings.contains(string(data), "acTL"))
+}
+
+@(test)
+test_a_frame_of_another_size_is_left_out_and_said :: proc(t: ^testing.T) {
+	_ = os.remove_all("output/tests/record_sizes")
+	growing_width = 0
+	set_frame_source(growing_frames)
+	defer set_frame_source(nil)
+	start_headless(1)
+	defer shutdown()
+	ok, _ := record("output/tests/record_sizes/a.apng")
+	testing.expect(t, ok)
+	for _ in 0 ..< 4 {
+		step()
 	}
+	no_record()
+	results := take_record_results()
+	if testing.expect_value(t, len(results), 1) {
+		// the sizes go 800, 801, 800, 801: two frames are of the first size
+		testing.expect(t, results[0].ok, results[0].why)
+		testing.expect_value(t, results[0].frames, 2)
+		testing.expect(t, strings.contains(results[0].why, "2 frames of another size"), results[0].why)
+	}
+}
+
+@(test)
+test_a_picture_that_cannot_be_drawn_ends_the_recording_and_says_why :: proc(t: ^testing.T) {
+	// No real graphics, as on a computer with no display: the first frame fails.
+	set_graphics_refused(true)
+	defer set_graphics_refused(false)
+	start_headless(1)
+	defer shutdown()
+	circle(10, 10, 5)
+	ok, _ := record("output/tests/record_refused/a.apng")
+	testing.expect(t, ok)
+	step()
+	testing.expect(t, !is_recording())
+	results := take_record_results()
+	if testing.expect_value(t, len(results), 1) {
+		testing.expect(t, !results[0].ok)
+		testing.expect(t, results[0].why != "")
+		testing.expect_value(t, results[0].frames, 0)
+	}
+	testing.expect(t, !os.exists("output/tests/record_refused/a.apng"))
 }
 
 @(test)
@@ -101,6 +163,8 @@ test_starting_a_second_recording_ends_the_first :: proc(t: ^testing.T) {
 		testing.expect_value(t, results[0].path, "output/tests/record_two/a.apng")
 	}
 	testing.expect(t, is_recording())
+	no_record()
+	_ = take_record_results()
 }
 
 @(test)
@@ -137,6 +201,8 @@ when ODIN_OS != .Windows {
 		defer delete(program)
 		set_ffmpeg(program)
 		defer set_ffmpeg("")
+		set_frame_source(solid_frames)
+		defer set_frame_source(nil)
 		start_headless(1)
 		defer shutdown()
 		circle(10, 10, 5)
@@ -151,22 +217,32 @@ when ODIN_OS != .Windows {
 		if !testing.expect_value(t, len(results), 1) {
 			return
 		}
-		if !results[0].ok {
-			// no graphics to draw the frames with
-			testing.expect(t, results[0].why != "")
-			return
-		}
+		testing.expect(t, results[0].ok, results[0].why)
 		testing.expect_value(t, results[0].frames, 2)
 		data, err := os.read_entire_file(out, context.temp_allocator)
 		testing.expect(t, err == nil)
-		// two frames of 800 by 600 pixels, four bytes each
+		// two frames of 800 by 600 pixels, four bytes each, as the program was sent them
 		testing.expect_value(t, len(data), 2 * 800 * 600 * 4)
+		testing.expect_value(t, data[0], u8(200))
 		args, _ := os.read_entire_file(strings.concatenate({out, ".args"}, context.temp_allocator), context.temp_allocator)
 		text := string(args)
 		for part in ([]string{"-f rawvideo", "-pixel_format rgba", "-video_size 800x600", "-framerate 60", "-i -", "-pix_fmt yuv420p", "clip.mp4"}) {
 			testing.expectf(t, strings.contains(text, part), "%s is not in %s", part, text)
 		}
 		testing.expect(t, !os.exists(strings.concatenate({out, ".ffmpeg.log"}, context.temp_allocator)), "a good run leaves no log")
+	}
+
+	@(test)
+	test_each_kind_of_video_asks_ffmpeg_for_its_own_settings :: proc(t: ^testing.T) {
+		for kind in ([?]struct {
+			ext, part: string,
+		}{{".webm", "libvpx-vp9"}, {".mov", "+faststart"}, {".mkv", "yuv420p"}, {".gif", "palettegen"}}) {
+			rec := Recording{path = strings.concatenate({"x", kind.ext}, context.temp_allocator), ffmpeg = "ffmpeg", width = 320, height = 200}
+			joined := strings.join(ffmpeg_arguments(&rec), " ", context.temp_allocator)
+			testing.expectf(t, strings.contains(joined, kind.part), "%s: %s", kind.ext, joined)
+			testing.expect(t, strings.has_suffix(joined, rec.path))
+			testing.expect(t, strings.contains(joined, "-video_size 320x200"))
+		}
 	}
 
 	@(test)
@@ -177,6 +253,8 @@ when ODIN_OS != .Windows {
 		defer delete(program)
 		set_ffmpeg(program)
 		defer set_ffmpeg("")
+		set_frame_source(solid_frames)
+		defer set_frame_source(nil)
 		start_headless(1)
 		defer shutdown()
 		circle(10, 10, 5)
@@ -191,9 +269,7 @@ when ODIN_OS != .Windows {
 			return
 		}
 		testing.expect(t, !results[0].ok)
-		if strings.contains(results[0].why, "ffmpeg said") {
-			testing.expect(t, strings.contains(results[0].why, "no such codec"), results[0].why)
-			testing.expect(t, os.exists(strings.concatenate({out, ".ffmpeg.log"}, context.temp_allocator)))
-		}
+		testing.expect(t, strings.contains(results[0].why, "ffmpeg said: no such codec"), results[0].why)
+		testing.expect(t, os.exists(strings.concatenate({out, ".ffmpeg.log"}, context.temp_allocator)))
 	}
 }
