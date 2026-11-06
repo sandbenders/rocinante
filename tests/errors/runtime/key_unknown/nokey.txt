@@ -1,0 +1,8 @@
+── I do not know a key called `nothing` ──────────────── sketch.roci:1:1
+
+1 │ ui key "nothing"
+  │ ^^^^^^^^^^^^^^^^
+
+Keys are named as `on key` names them: a letter or digit, `space`, `backtick`, `enter`, `escape`, `tab`, `backspace`, `left`, `right`, `up`, `down`, `shift`, `ctrl`, `alt`, or `f1` to `f12`. The key stays as it was, and the sketch carries on.
+
+Use one of those:  ui key "f1"

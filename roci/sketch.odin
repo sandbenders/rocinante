@@ -67,6 +67,8 @@ Win :: struct {
 	cursor:       Cursor,           // the mouse cursor while the mouse is over it
 	fingers:      [dynamic]Finger,  // the fingers down that went down in this window, in that order
 	ui_renderer:  ^gfx.Renderer,    // the renderer drawing this window's interface now, for the textures of its pictures
+	tap_since:    f64,              // when a third finger went down, for a three-finger tap
+	tap_armed:    bool,             // three fingers are down and have not moved far: a tap if they all lift soon
 	text_input:   bool,             // the system has been asked for typed text for this window
 	text_area:    ui.Rect,          // where the input method's window was put
 	ui:           ^ui.State,        // its widgets, made by the first one (ui_window.odin)

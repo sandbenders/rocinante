@@ -349,6 +349,8 @@ test_ui_blocks_and_their_widgets_are_checked :: proc(t: ^testing.T) {
 	expect_types(t, "ui [ c = colorpicker \"c\" start orange\n  k = knob \"k\" 0 1 start 0.5\n  r = range \"r\" 0 10 start 2 8\n  p = xypad \"p\" start 0.2 0.8\n  q = xypad \"q\" start { 0.1, 0.9 } ]", "c: a color\nk: a number\nr: a vector of 2 numbers\np: a vector of 2 numbers\nq: a vector of 2 numbers")
 	expect_errors(t, "ui [ n = dropdown \"d\" 3 ]", {.Wrong_Argument_Kind})
 	expect_errors(t, "ui [ x = separator ]", {.Value_Of_Nothing})
+	expect_errors(t, "ui hide\nui show\nui key \"f1\"\nui [ if button \"x\" [ ui hide ] ]", {})
+	expect_errors(t, "ui key 3", {.Wrong_Argument_Kind})
 	expect_errors(t, "label = 3", {.Reserved_Name})
 }
 

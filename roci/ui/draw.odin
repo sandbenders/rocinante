@@ -11,7 +11,7 @@ import sdl "vendor:sdl3"
 
 // Whether there is anything to draw for the last finished frame.
 has_drawing :: proc(s: ^State) -> bool {
-	return s != nil && s.drawn && !s.in_frame
+	return s != nil && s.drawn && !s.in_frame && !s.hidden
 }
 
 // Draws the last finished frame into `target` (`pixels` across, in `format`). False when the

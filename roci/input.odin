@@ -54,7 +54,7 @@ wheel :: proc() -> [2]f64 {
 }
 
 // Whether the key with this name is held down: "a" to "z", "0" to "9", "space",
-// "enter", "escape", "tab", "backspace", "left", "right", "up", "down", "shift",
+// "backtick", "enter", "escape", "tab", "backspace", "left", "right", "up", "down", "shift",
 // "ctrl", "alt", and "f1" to "f12". Names are lowercase, like every word in
 // rocinante. An unknown name is never down.
 key_down :: proc(name: string) -> bool {
@@ -80,6 +80,7 @@ scancode_for_name :: proc(name: string) -> (code: sdl.Scancode, ok: bool) {
 	}
 	switch name {
 	case "space":     return .SPACE, true
+	case "backtick":  return .GRAVE, true
 	case "enter":     return .RETURN, true
 	case "escape":    return .ESCAPE, true
 	case "tab":       return .TAB, true

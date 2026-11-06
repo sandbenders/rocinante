@@ -20,10 +20,7 @@ HEADLESS_UI_DENSITY :: HEADLESS_CANVAS_DENSITY
 @(private)
 ui_frame :: proc() -> ^ui.State {
 	w := current_win()
-	if w.ui == nil {
-		w.ui = ui.create(gfx.INTER_REGULAR)
-		ui_remembered(w)
-	}
+	ensure_ui(w)
 	density := HEADLESS_UI_DENSITY
 	if w.handle != nil {
 		density = platform.window_metrics(w.handle).density
@@ -31,6 +28,49 @@ ui_frame :: proc() -> ^ui.State {
 	}
 	ui.ensure_frame(w.ui, {f32(w.width), f32(w.height)}, density, f32(max(the.delta, 1.0 / 1000)))
 	return w.ui
+}
+
+// The interface of a window, made if it has none yet.
+@(private)
+ensure_ui :: proc(w: ^Win) {
+	if w.ui == nil {
+		w.ui = ui.create(gfx.INTER_REGULAR)
+		ui_remembered(w)
+	}
+}
+
+// Hides the current window's interface: its widgets are still made, so the sketch keeps reading
+// them, but nothing is drawn and no input reaches them (`ui hide`).
+ui_hide :: proc() {
+	w := current_win()
+	ensure_ui(w)
+	ui.hide(w.ui)
+}
+
+// Shows it again, with keyboard focus on its first widget (`ui show`).
+ui_show :: proc() {
+	w := current_win()
+	ensure_ui(w)
+	ui.show(w.ui)
+}
+
+// Changes the key that hides and shows the current window's interface, by the name keys have
+// (`ui key "f1"`). False for a name no key has.
+ui_key :: proc(name: string) -> bool {
+	code, ok := scancode_for_name(name)
+	if !ok {
+		return false
+	}
+	w := current_win()
+	ensure_ui(w)
+	ui.set_toggle_key(w.ui, code)
+	return true
+}
+
+// Whether a window's interface is hidden.
+ui_hidden :: proc(w: Window) -> bool {
+	win := win_for(w)
+	return win != nil && win.ui != nil && win.ui.hidden
 }
 
 ui_label :: proc(text: string) {
@@ -298,24 +338,34 @@ ui_event :: proc(event: platform.Event) {
 			ui.mouse_moved(w.ui, f32(w.mouse.x), f32(w.mouse.y))
 		}
 	case platform.Mouse_Button_Changed:
-		if w := win_for_platform(e.window); w != nil && w.ui != nil {
+		if w := win_for_platform(e.window); w != nil && w.ui != nil && !w.ui.hidden {
 			ui.mouse_moved(w.ui, f32(w.mouse.x), f32(w.mouse.y))
 			ui.mouse_button(w.ui, e.button, e.down)
 		}
 	case platform.Wheel:
-		if w := win_for_platform(e.window); w != nil && w.ui != nil {
+		if w := win_for_platform(e.window); w != nil && w.ui != nil && !w.ui.hidden {
 			ui.wheel(w.ui, e.dx, e.dy)
 		}
 	case platform.Key_Changed:
 		if w := win_for_platform(e.window); w != nil && w.ui != nil {
-			ui.key(w.ui, e.scancode, e.down, e.mods)
+			// The key that hides and shows the interface does only that, and is left alone while a text
+			// box is waiting for typing, so it never eats a character.
+			if wants, _ := ui.text_focus(w.ui); e.scancode == w.ui.toggle_key && !wants {
+				if e.down && !e.repeat {
+					ui.flip(w.ui)
+				}
+				return
+			}
+			if !w.ui.hidden {
+				ui.key(w.ui, e.scancode, e.down, e.mods)
+			}
 		}
 	case platform.Focus_Changed:
 		if w := win_for_platform(e.window); w != nil && w.ui != nil {
 			ui.focus(w.ui, e.gained)
 		}
 	case platform.Text_Input:
-		if w := win_for_platform(e.window); w != nil && w.ui != nil {
+		if w := win_for_platform(e.window); w != nil && w.ui != nil && !w.ui.hidden {
 			typed := e
 			ui.text(w.ui, platform.text_of_input(&typed))
 		}

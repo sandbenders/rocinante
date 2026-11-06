@@ -149,6 +149,9 @@ draw [ circle at 1 1 radius 1 ]
 draw w [ circle at 1 1 radius 1 ]
 ui [ label "a" ]
 ui w [ n = slider "n" 1 5 start 2 ]
+ui hide
+ui show
+ui key "f1"
 use "flocking"
 `
 	expect_formatted(t, text, text)

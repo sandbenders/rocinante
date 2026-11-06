@@ -425,3 +425,33 @@ test_image_buttons_count_clicks_and_the_example_stamps_badges :: proc(t: ^testin
 	steps(2)
 	testing.expect_value(t, len(roci.recorded(w)), 11) // a badge for each
 }
+
+@(test)
+test_ui_hide_and_ui_show_and_ui_key_work_from_a_sketch :: proc(t: ^testing.T) {
+	p := run_text(t, "n = 0\nui key \"f1\"\nui [\n  n = slider \"n\" 0 10 start 4\n  if button \"hide\" [ ui hide ]\n]\non key \"s\" [ ui show ]\n", 5)
+	defer finish(p)
+	w := first_window()
+	testing.expect(t, !roci.ui_hidden(w))
+	click_widget(t, w, "hide")
+	testing.expect(t, roci.ui_hidden(w))
+	testing.expect_value(t, as_number(global_named(p, "n")), 4) // the widgets are still made, so the value is still read
+	roci.step({platform.Key_Changed{window = platform.Window_Id(w), scancode = .S, down = true}})
+	steps(2)
+	testing.expect(t, !roci.ui_hidden(w))
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_a_key_that_has_no_name_in_ui_key_is_said_and_the_key_stays :: proc(t: ^testing.T) {
+	p := run_text(t, "ui key \"nothing\"\nui [ label \"x\" ]\n", 3)
+	defer finish(p)
+	found := false
+	for e in p.errors {
+		found ||= e.id == .Key_Unknown
+	}
+	testing.expect(t, found)
+	// the backtick still hides it
+	w := first_window()
+	roci.step({platform.Key_Changed{window = platform.Window_Id(w), scancode = .GRAVE, down = true}})
+	testing.expect(t, roci.ui_hidden(w))
+}

@@ -84,6 +84,9 @@ State :: struct {
 	row_first:      bool,            // the next widget is the first of its row
 	bar_depth:      int,             // tab bars open
 	bar_count:      int,             // tab bars made this frame
+	hidden:         bool,            // the widgets are made but not drawn, and take no input
+	toggle_key:     sdl.Scancode,    // the key that hides and shows them
+	focus_first:    bool,            // the first widget made next takes keyboard focus (after showing)
 	fallbacks_added: bool,           // the system's fonts for other scripts have been added to the atlas
 	target_scale:   f32,             // when above 0: device pixels to a logical pixel of the picture being made, whatever the density was
 	kept:           map[string]f64,  // what the widgets that keep a value hold, by their text (a check box is 0 or 1)
@@ -150,6 +153,7 @@ see_text :: proc(s: ^State, text: string) {
 // A window's interface. `font` is a TrueType font that outlives the state (it is not copied).
 create :: proc(font: []u8, theme := Theme.Dark) -> ^State {
 	s := new(State)
+	s.toggle_key = .GRAVE
 	s.ctx = imgui.create_context()
 	use(s)
 	io := imgui.get_io()

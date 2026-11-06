@@ -146,6 +146,9 @@ Verb_Code :: enum u8 {
 	Range,
 	Xypad,
 	Image_Button,
+	Ui_Hide,
+	Ui_Show,
+	Ui_Key,
 }
 
 // The registry's name of each code. A test fails when the registry gains a verb
@@ -286,6 +289,9 @@ VERB_CODE_NAMES := [Verb_Code]string{
 	.Range = "range",
 	.Xypad = "xypad",
 	.Image_Button = "image button",
+	.Ui_Hide = "ui hide",
+	.Ui_Show = "ui show",
+	.Ui_Key = "ui key",
 }
 
 // The code of each verb of `registry.ALL_VERBS`, by its place there.

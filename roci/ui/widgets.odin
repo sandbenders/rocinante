@@ -290,6 +290,11 @@ scoped :: proc(s: ^State, text: string) -> string {
 // Called before every widget: in a row, every one after the first goes beside the one before.
 @(private)
 place :: proc(s: ^State) {
+	if s.focus_first {
+		// the interface was just shown: keyboard focus starts at its first widget
+		s.focus_first = false
+		imgui.set_keyboard_focus_here()
+	}
 	if s.in_row {
 		if !s.row_first {
 			imgui.same_line()

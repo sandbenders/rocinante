@@ -1,0 +1,2 @@
+ui key "f1"
+ui [ label "press f1 to hide me" ]

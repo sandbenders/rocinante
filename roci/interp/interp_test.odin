@@ -547,7 +547,7 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 				roci.step()
 				roci.step()
 			}
-			if id == .Widget_Twice || id == .Tab_Outside_Tabs {
+			if id == .Widget_Twice || id == .Tab_Outside_Tabs || id == .Key_Unknown {
 				// widgets are made in the frames of a window; the folder is the sketch's own, so
 				// the file that stands in for it must not be read again as a change
 				p.path = ""

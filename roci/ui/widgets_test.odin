@@ -552,3 +552,35 @@ test_an_image_button_leaves_a_place_for_its_picture_that_drawing_swaps_for_a_tex
 	}
 	testing.expect_value(t, swapped, 1)
 }
+
+// ---- hiding ----
+
+@(test)
+test_a_hidden_interface_is_not_drawn_and_showing_it_puts_focus_on_its_first_widget :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	r := Result{}
+	settle(s, &r)
+	testing.expect(t, has_drawing(s))
+	hide(s)
+	testing.expect(t, !has_drawing(s), "nothing is drawn while it is hidden")
+	frame(s, &r)
+	testing.expect_value(t, len(records(s)), 4) // but the widgets are still made, so their values are read
+	show(s)
+	testing.expect(t, has_drawing(s))
+	frame(s, &r)
+	frame(s, &r)
+	first, _ := record_named(s, "go") // the first widget that can be focused: `controls` above it is a label
+	testing.expect(t, first.focused, "the first widget has focus after showing")
+	// flipping goes back and forth, and showing what is shown changes nothing
+	flip(s)
+	testing.expect(t, s.hidden)
+	flip(s)
+	testing.expect(t, !s.hidden)
+	s.focus_first = false
+	show(s)
+	testing.expect(t, !s.focus_first)
+	testing.expect_value(t, s.toggle_key, platform_scancode.GRAVE)
+	set_toggle_key(s, .F1)
+	testing.expect_value(t, s.toggle_key, platform_scancode.F1)
+}

@@ -4,6 +4,7 @@ package roci
 import "core:testing"
 
 import "platform"
+import sdl "vendor:sdl3"
 
 @(thread_local) ui_clicks: int
 @(thread_local) ui_on: bool
@@ -255,4 +256,123 @@ test_a_number_a_text_box_and_a_list_keep_their_values_and_typed_text_reaches_the
 	// the text stays while nothing is typed
 	step_frames(3)
 	testing.expect_value(t, ui_text_now, "abé中")
+}
+
+@(thread_local) hide_clicks: int
+
+hide_sketch :: proc() {
+	if ui_button("go") {
+		hide_clicks += 1
+	}
+	_ = ui_textbox_value("words", "")
+}
+
+click_at :: proc(w: Window, x, y: f32) {
+	id := platform.Window_Id(w)
+	step_frames(3, {platform.Mouse_Moved{window = id, x = x, y = y}})
+	step_frames(3, {platform.Mouse_Button_Changed{window = id, button = .Left, down = true, x = x, y = y}})
+	step_frames(3, {platform.Mouse_Button_Changed{window = id, button = .Left, down = false, x = x, y = y}})
+}
+
+key_press :: proc(w: Window, code: sdl.Scancode) {
+	id := platform.Window_Id(w)
+	step_frames(2, {platform.Key_Changed{window = id, scancode = code, down = true}})
+	step_frames(2, {platform.Key_Changed{window = id, scancode = code, down = false}})
+}
+
+@(test)
+test_the_backtick_hides_and_shows_the_interface_and_a_hidden_one_takes_no_clicks :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	hide_clicks = 0
+	w := window(400, 300)
+	ui_window(w, hide_sketch)
+	step_frames(5)
+	go, _ := record_for(w, "go")
+	x, y := (go[0] + go[2]) / 2, (go[1] + go[3]) / 2
+	click_at(w, x, y)
+	testing.expect_value(t, hide_clicks, 1)
+	key_press(w, .GRAVE)
+	testing.expect(t, ui_hidden(w))
+	click_at(w, x, y)
+	testing.expect_value(t, hide_clicks, 1) // the button was hidden, so it was not pressed
+	testing.expect_value(t, len(ui_records(w)), 2) // and is still made
+	key_press(w, .GRAVE)
+	testing.expect(t, !ui_hidden(w))
+	click_at(w, x, y)
+	testing.expect_value(t, hide_clicks, 2)
+}
+
+@(test)
+test_the_hiding_key_can_be_changed_and_is_left_alone_while_a_text_box_waits_for_typing :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(400, 300)
+	ui_window(w, hide_sketch)
+	step_frames(5)
+	testing.expect(t, !ui_key("not a key"))
+	testing.expect(t, ui_key("f1"))
+	key_press(w, .GRAVE)
+	testing.expect(t, !ui_hidden(w), "the backtick no longer does it")
+	key_press(w, .F1)
+	testing.expect(t, ui_hidden(w))
+	key_press(w, .F1)
+	testing.expect(t, !ui_hidden(w))
+	// click into the text box: now the key is a character, not the hiding key
+	box, _ := record_for(w, "words")
+	click_at(w, (box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+	step_frames(3)
+	key_press(w, .F1)
+	testing.expect(t, !ui_hidden(w), "a text box is waiting for typing")
+}
+
+@(test)
+test_three_fingers_tapping_together_hide_and_show_and_a_swipe_or_a_slow_press_do_not :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(400, 300)
+	ui_window(w, hide_sketch)
+	step_frames(4)
+	id := platform.Window_Id(w)
+	down :: proc(id: platform.Window_Id, n: int, x: f32 = 0.5) -> []platform.Event {
+		events := make([]platform.Event, n, context.temp_allocator)
+		for i in 0 ..< n {
+			events[i] = platform.Finger_Changed{window = id, finger = {1, u64(i + 1)}, phase = .Down, x = x + f32(i) * 0.05, y = 0.5, pressure = 1}
+		}
+		return events
+	}
+	up :: proc(id: platform.Window_Id, n: int, x: f32 = 0.5) -> []platform.Event {
+		events := make([]platform.Event, n, context.temp_allocator)
+		for i in 0 ..< n {
+			events[i] = platform.Finger_Changed{window = id, finger = {1, u64(i + 1)}, phase = .Up, x = x + f32(i) * 0.05, y = 0.5, pressure = 1}
+		}
+		return events
+	}
+	step(down(id, 3))
+	step()
+	step(up(id, 3))
+	testing.expect(t, ui_hidden(w), "a tap of three fingers hides it")
+	step(down(id, 3))
+	step(up(id, 3))
+	testing.expect(t, !ui_hidden(w), "and shows it")
+	// two fingers are not enough
+	step(down(id, 2))
+	step(up(id, 2))
+	testing.expect(t, !ui_hidden(w))
+	// three that move far are a swipe
+	step(down(id, 3))
+	swipe := make([]platform.Event, 3, context.temp_allocator)
+	for i in 0 ..< 3 {
+		swipe[i] = platform.Finger_Changed{window = id, finger = {1, u64(i + 1)}, phase = .Moved, x = 0.9, y = 0.5, pressure = 1}
+	}
+	step(swipe)
+	step(up(id, 3, 0.9))
+	testing.expect(t, !ui_hidden(w), "a swipe is not a tap")
+	// three that stay down a while are a press
+	step(down(id, 3))
+	for _ in 0 ..< 40 {
+		step()
+	}
+	step(up(id, 3))
+	testing.expect(t, !ui_hidden(w), "a long press is not a tap")
 }

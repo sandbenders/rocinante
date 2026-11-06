@@ -83,6 +83,15 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return widget_verb(it, e, call, code)
 	case .Forget_Ui:
 		roci.ui_forget()
+	case .Ui_Hide:
+		roci.ui_hide()
+	case .Ui_Show:
+		roci.ui_show()
+	case .Ui_Key:
+		name := as_text(eval(it, call.args[0]))
+		if !roci.ui_key(name) {
+			fail(it, .Key_Unknown, e.span, name, "", "", "ui key \"f1\"")
+		}
 	case .Panel, .Row, .Column, .Tabs, .Tab, .Menu:
 		return container_verb(it, e, call, code)
 	case .Add:
