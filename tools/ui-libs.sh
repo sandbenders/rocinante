@@ -32,7 +32,13 @@ clone() { # url tag dir
 clone https://github.com/ocornut/imgui "$IMGUI_TAG" imgui
 
 if [ -z "${SDL_INCLUDE:-}" ]; then
-	SDL_INCLUDE=$(pkg-config --variable=includedir sdl3 2>/dev/null || echo /opt/homebrew/include)
+	# pkg-config when it is there, else the usual places (Arch's image has no pkg-config)
+	SDL_INCLUDE=$(pkg-config --variable=includedir sdl3 2>/dev/null || true)
+	for dir in /usr/include /usr/local/include /opt/homebrew/include; do
+		if [ -z "$SDL_INCLUDE" ] || [ ! -f "$SDL_INCLUDE/SDL3/SDL.h" ]; then
+			SDL_INCLUDE=$dir
+		fi
+	done
 fi
 [ -f "$SDL_INCLUDE/SDL3/SDL.h" ] || { echo "ui-libs: SDL3/SDL.h not found in $SDL_INCLUDE; set SDL_INCLUDE" >&2; exit 1; }
 
