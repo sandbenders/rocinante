@@ -1,27 +1,43 @@
-// Widgets in a ui block. Each one gives back what the person did with it, so the sketch reads
-// it like any other value: a slider's number, a check box, a number box, a drop-down list, radio
-// buttons, a box of text, a button's click and a bar for how far things have got.
-window size 640 480 title "ui"
+// Widgets in a ui block. Each one gives back what the person did with it, so the sketch reads it
+// like any other value: a slider's number, a check box, a number box, a drop-down list, radio
+// buttons, a box of text, a list, a button's click, a menu's entry and a bar for how far things
+// have got. Panels, tabs, rows and columns lay them out, and the same text in two of them is two
+// widgets.
+window size 720 520 title "ui"
 dot = 60
 ring = true
 rings = 2
 tone = "orange"
 look = "solid"
-words = ""
+words = "rocinante"
+shape = "dot"
 pulses = 0
 
 ui [
-  label "settings"
-  dot = slider "dot" 10 120 start 60
-  tip "how big the dot is"
-  ring = toggle "ring" start true
-  rings = number "rings" 1 5 start 2
+  menu "file" [
+    if item "reset" [ pulses = 0 ]
+  ]
+  panel "dot" [
+    dot = slider "size" 10 120 start 60
+    tip "how big the dot is"
+    ring = toggle "ring" start true
+    rings = number "rings" 1 5 start 2
+  ]
+  tabs [
+    tab "color" [
+      tone = dropdown "tone" [ "orange" "teal" "tomato" ]
+      look = choice "look" [ "solid" "outline" ]
+    ]
+    tab "words" [
+      words = textbox "words" start "rocinante"
+      shape = list "shape" [ "dot" "square" "both" ]
+    ]
+  ]
   separator
-  tone = dropdown "tone" [ "orange" "teal" "tomato" ]
-  look = choice "look" [ "solid" "outline" ]
-  words = textbox "words" start "rocinante"
-  separator
-  if button "pulse" [ pulses = pulses + 1 ]
+  row [
+    if button "pulse" [ pulses = pulses + 1 ]
+    if button "reset" [ pulses = 0 ]
+  ]
   progress ((pulses % 10) / 10)
   label ("pulses: " + pulses)
 ]
@@ -35,15 +51,15 @@ draw [
     thickness 6
     if tone is "orange" [ stroke orange ] else [ if tone is "teal" [ stroke teal ] else [ stroke tomato ] ]
   ]
-  circle at 470 200 radius dot
+  if shape is "square" [ square at 450 130 size (dot * 2) ] else [ circle at 560 260 radius dot ]
   if ring [
     no fill
     stroke white
     thickness 3
     for i from 1 to rings [
-      circle at 470 200 radius (dot + 14 * i)
+      circle at 560 260 radius (dot + 14 * i)
     ]
   ]
   fill white
-  text words at 340 400 size 28
+  text words at 400 460 size 28
 ]

@@ -1,0 +1,6 @@
+ui [
+  row [
+    if button "play" [ print "play" ]
+    if button "stop" [ print "stop" ]
+  ]
+]

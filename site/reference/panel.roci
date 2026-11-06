@@ -1,0 +1,9 @@
+dot = 50
+
+ui [
+  panel "dot" [
+    dot = slider "size" 10 120 start 50
+  ]
+]
+
+draw [ circle at 300 160 radius dot ]

@@ -1,0 +1,10 @@
+size = 40
+
+ui [
+  tabs [
+    tab "size" [ size = slider "size" 10 100 start 40 ]
+    tab "about" [ label "tabs keep their own values" ]
+  ]
+]
+
+draw [ circle at 300 160 radius size ]

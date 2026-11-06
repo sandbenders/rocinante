@@ -1679,6 +1679,8 @@ foreign lib {
 	@(link_name = "ImGui_NewLine") new_line :: proc() ---
 	@(link_name = "ImGui_Spacing") spacing :: proc() ---
 	@(link_name = "ImGui_Dummy") dummy :: proc(size: [2]f32) ---
+	@(link_name = "ImGui_Indent") indent :: proc() ---
+	@(link_name = "ImGui_Unindent") unindent :: proc() ---
 	@(link_name = "ImGui_BeginGroup") begin_group :: proc() ---
 	@(link_name = "ImGui_EndGroup") end_group :: proc() ---
 	@(link_name = "ImGui_GetTextLineHeight") get_text_line_height :: proc() -> f32 ---
@@ -1716,6 +1718,7 @@ foreign lib {
 	@(link_name = "ImGui_InputDoubleEx") input_double_ex :: proc(label: cstring, v: ^f64, step: f64 = 0.0, step_fast: f64 = 0.0, format: cstring, flags: InputTextFlags = 0) -> bool ---
 	@(link_name = "ImGui_ColorEdit4") color_edit4 :: proc(label: cstring, col: ^[4][4]f32, flags: ColorEditFlags = 0) -> bool ---
 	@(link_name = "ImGui_ColorPicker4") color_picker4 :: proc(label: cstring, col: ^[4][4]f32, flags: ColorEditFlags = 0, ref_col: ^f32 = nil) -> bool ---
+	@(link_name = "ImGui_CollapsingHeader") collapsing_header :: proc(label: cstring, flags: TreeNodeFlags = 0) -> bool ---
 	@(link_name = "ImGui_Selectable") selectable :: proc(label: cstring) -> bool ---
 	@(link_name = "ImGui_SelectableBoolPtr") selectable_bool_ptr :: proc(label: cstring, p_selected: ^bool, flags: SelectableFlags = 0) -> bool ---
 	@(link_name = "ImGui_BeginListBox") begin_list_box :: proc(label: cstring, size: [2]f32 = {0, 0}) -> bool ---

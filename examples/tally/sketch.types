@@ -3,4 +3,4 @@ colors: a table of colors
 tiles: a list of records with pos and name
 counts: a table of numbers
 picked: text
-row: a number
+place: a number

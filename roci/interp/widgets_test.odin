@@ -199,3 +199,76 @@ test_a_list_that_is_not_text_or_is_empty_gives_empty_text_and_does_not_stop_the_
 	testing.expect_value(t, as_text(global_named(p, "b")), "")
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+LAYOUT :: `size = 0
+other = 0
+page = ""
+n = 0
+saved = 0
+file = ""
+ui [
+  menu "file" [
+    if item "save" [ saved = saved + 1 ]
+  ]
+  panel "first" [ size = slider "size" 0 100 start 10 ]
+  panel "second" [ other = slider "size" 0 100 start 20 ]
+  tabs [
+    tab "one" [ page = "one"  label "page one" ]
+    tab "two" [ page = "two"  label "page two" ]
+  ]
+  row [
+    if button "left" [ n = n + 1 ]
+    if button "right" [ n = n + 10 ]
+  ]
+  for i from 1 to 3 [
+    if button "again" [ n = n + 100 ]
+  ]
+  file = list "files" [ "a" "b" "c" ]
+]
+`
+
+@(test)
+test_panels_tabs_rows_a_menu_a_list_and_a_loop_lay_widgets_out_and_keep_them_apart :: proc(t: ^testing.T) {
+	p := run_text(t, LAYOUT, 5)
+	defer finish(p)
+	w := first_window()
+	// the same text in two panels is two widgets, each with its own value
+	testing.expect_value(t, as_number(global_named(p, "size")), 10)
+	testing.expect_value(t, as_number(global_named(p, "other")), 20)
+	// only the first tab is made
+	testing.expect_value(t, as_text(global_named(p, "page")), "one")
+	for e in p.errors {
+		testing.expectf(t, false, "unexpected message %v", e.id)
+	}
+	// a row goes across and a loop of one call makes three buttons
+	left, _, _ := widget_middle(w, "left")
+	right, _, _ := widget_middle(w, "right")
+	testing.expect(t, right > left)
+	again := 0
+	for r in roci.ui_records(w) {
+		if r.label == "again" {
+			again += 1
+		}
+	}
+	testing.expect_value(t, again, 3)
+	click_widget(t, w, "right")
+	testing.expect_value(t, as_number(global_named(p, "n")), 10)
+	// the second tab, then back
+	click_widget(t, w, "two")
+	steps(3)
+	testing.expect_value(t, as_text(global_named(p, "page")), "two")
+}
+
+@(test)
+test_a_menu_entry_is_chosen_from_an_open_menu :: proc(t: ^testing.T) {
+	p := run_text(t, LAYOUT, 5)
+	defer finish(p)
+	w := first_window()
+	click_widget(t, w, "file")
+	steps(3)
+	_, _, shown := widget_middle(w, "save")
+	if testing.expect(t, shown, "the menu opened") {
+		click_widget(t, w, "save")
+		testing.expect_value(t, as_number(global_named(p, "saved")), 1)
+	}
+}

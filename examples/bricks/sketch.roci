@@ -6,9 +6,9 @@ window size 480 360 title "bricks" resizable false cursor none
 
 COLORS = [ tomato orange gold yellowgreen mediumturquoise ]
 bricks = []
-for row from 0 to 4 [
+for tier from 0 to 4 [
   for col from 0 to 7 [
-    add { pos: { col * 56 + 16, row * 22 + 30 }, size: { 50, 16 }, tint: item (row + 1) of COLORS } to bricks
+    add { pos: { col * 56 + 16, tier * 22 + 30 }, size: { 50, 16 }, tint: item (tier + 1) of COLORS } to bricks
   ]
 ]
 walls = [

@@ -79,8 +79,10 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return outline_verb(it, call)
 	case .Pixel, .Pixels, .Picture, .Crop, .Resize, .Filter, .Mask:
 		return picture_verb(it, e, call, code)
-	case .Label, .Button, .Toggle, .Slider, .Number, .Textbox, .Dropdown, .Choice, .Progress, .Separator, .Tip:
+	case .Label, .Button, .Toggle, .Slider, .Number, .Textbox, .Dropdown, .Choice, .Progress, .Separator, .Tip, .List:
 		return widget_verb(it, e, call, code)
+	case .Panel, .Row, .Column, .Tabs, .Tab, .Menu:
+		return container_verb(it, e, call, code)
 	case .Add:
 		item := eval(it, call.args[0])
 		list := as_list(option_or_nil(it, call.options, "to"))
@@ -128,6 +130,9 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 		return 0.0
 	case .Item:
+		if call.shape == 1 {
+			return widget_verb(it, e, call, code)
+		}
 		return item_of(it, e, call)
 	case .Print:
 		// On the console the line is written and forgotten; kept only for tests and

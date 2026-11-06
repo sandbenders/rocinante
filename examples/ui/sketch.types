@@ -4,4 +4,5 @@ rings: a number
 tone: text
 look: text
 words: text
+shape: text
 pulses: a number

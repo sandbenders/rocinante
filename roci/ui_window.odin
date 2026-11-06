@@ -93,18 +93,46 @@ ui_textbox_value :: proc(text, start: string, lines := 1) -> string {
 	return strings.clone(ui.text_in(buffer), context.temp_allocator)
 }
 
-// A drop-down list or, with `radio`, a group of radio buttons, that keeps which item is chosen: the
-// place of `start` in `items` the first time its text is seen. Gives the place now, from 0.
-ui_pick_value :: proc(text: string, items: []string, start: int, radio: bool) -> int {
+// How a list of items is shown for one to be chosen.
+Ui_Pick :: enum {
+	Dropdown,
+	Choice,
+	List,
+}
+
+// A drop-down list, a group of radio buttons or a list, that keeps which item is chosen: the place of
+// `start` in `items` the first time its text is seen. Gives the place now, from 0.
+ui_pick_value :: proc(text: string, items: []string, start: int, how: Ui_Pick) -> int {
 	s := ui_frame()
 	index := int(ui.kept(s, text, f64(max(start, 0)))^)
-	if radio {
-		ui.choice(s, text, items, &index)
-	} else {
-		ui.dropdown(s, text, items, &index)
+	switch how {
+	case .Dropdown: ui.dropdown(s, text, items, &index)
+	case .Choice:   ui.choice(s, text, items, &index)
+	case .List:     ui.list(s, text, items, &index)
 	}
 	ui.kept(s, text, 0)^ = f64(index)
 	return index
+}
+
+// Opens a panel, row, column, group of tabs, tab or menu in the window's interface; the widgets
+// inside are made when it says `open`, and `ui_end` follows either way. See `ui.begin_container`.
+ui_begin :: proc(kind: ui.Container, text := "") -> ui.Open {
+	return ui.begin_container(ui_frame(), kind, text)
+}
+
+ui_end :: proc(kind: ui.Container, o: ui.Open) {
+	ui.end_container(ui_frame(), kind, o)
+}
+
+// An entry of a menu: true on the frame it is chosen.
+ui_item :: proc(text: string) -> bool {
+	return ui.item(ui_frame(), text)
+}
+
+// Which time this call of the sketch has made a widget this frame, from 0 (a loop makes several),
+// so that widgets of a loop with one text keep apart.
+ui_salt :: proc(n: int) {
+	ui.set_salt(ui_frame(), n)
 }
 
 // How far something has got, from 0 to 1.

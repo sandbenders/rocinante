@@ -102,10 +102,10 @@ draw [
   if time > next_change [ swap ]
   font "Helvetica Neue Condensed Black" size big
   for i from 1 to 5 [
-    row = item i of poem
+    current = item i of poem
     x = -0.03 * big
     y = -0.24 * big + (i - 1) * LINE * big
-    if row.mix < 1 [ text row.previous at x y fill row.previous_color alpha ((1 - row.mix) * 100) ]
-    text row.word at x y fill row.color alpha (row.mix * 100)
+    if current.mix < 1 [ text current.previous at x y fill current.previous_color alpha ((1 - current.mix) * 100) ]
+    text current.word at x y fill current.color alpha (current.mix * 100)
   ]
 ]

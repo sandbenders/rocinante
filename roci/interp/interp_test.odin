@@ -218,7 +218,7 @@ test_a_taught_verb_gives_a_value :: proc(t: ^testing.T) {
 
 @(test)
 test_stop_ends_a_verb_early_and_give_ends_it_from_inside_a_loop :: proc(t: ^testing.T) {
-	text := "learn first_big list [\n  for each x in list [\n    if x > 10 [ give x ]\n  ]\n  give 0\n]\nlearn greet name [\n  if name is \"\" [ stop ]\n  print (\"hi \" + name)\n]\nprint (first_big [ 1 20 30 ])\nprint (first_big [ 1 2 ])\ngreet \"\"\ngreet \"ada\""
+	text := "learn first_big numbers [\n  for each x in numbers [\n    if x > 10 [ give x ]\n  ]\n  give 0\n]\nlearn greet name [\n  if name is \"\" [ stop ]\n  print (\"hi \" + name)\n]\nprint (first_big [ 1 20 30 ])\nprint (first_big [ 1 2 ])\ngreet \"\"\ngreet \"ada\""
 	expect_printed(t, text, "20\n0\nhi ada")
 }
 
@@ -547,7 +547,7 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 				roci.step()
 				roci.step()
 			}
-			if id == .Widget_Twice {
+			if id == .Widget_Twice || id == .Tab_Outside_Tabs {
 				// widgets are made in the frames of a window; the folder is the sketch's own, so
 				// the file that stands in for it must not be read again as a change
 				p.path = ""

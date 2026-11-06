@@ -32,6 +32,10 @@ Role :: enum {
 	Dropdown,
 	Choice,
 	Progress,
+	Tab,
+	Menu,
+	Item,
+	List,
 }
 
 Rect :: struct {
@@ -65,6 +69,12 @@ State :: struct {
 	finished:       [dynamic]Record, // the last frame built
 	seen:           map[u32]bool,    // identities used this frame
 	kept_text:      map[string][]u8, // the text boxes' text, by their text: a zero-ended buffer of TEXT_BYTES
+	path:           [dynamic]string, // the panels, tabs and menus the widgets being made are inside
+	salt:           int,             // which time this call in the sketch has been made this frame (a loop), 0 for the first
+	in_row:         bool,            // widgets go side by side
+	row_first:      bool,            // the next widget is the first of its row
+	bar_depth:      int,             // tab bars open
+	bar_count:      int,             // tab bars made this frame
 	fallbacks_added: bool,           // the system's fonts for other scripts have been added to the atlas
 	target_scale:   f32,             // when above 0: device pixels to a logical pixel of the picture being made, whatever the density was
 	kept:           map[string]f64,  // what the widgets that keep a value hold, by their text (a check box is 0 or 1)
@@ -182,6 +192,10 @@ destroy :: proc(s: ^State) {
 		delete(key)
 	}
 	delete(s.kept)
+	for part in s.path {
+		delete(part)
+	}
+	delete(s.path)
 	for key, buffer in s.kept_text {
 		delete(key)
 		delete(buffer)
@@ -261,6 +275,12 @@ begin_frame :: proc(s: ^State, size: [2]f32, density, dt: f32) {
 	s.in_frame = true
 	s.panel_open = false
 	s.panel_count = 0
+	s.bar_count = 0
+	s.in_row, s.row_first = false, false
+	for part in s.path {
+		delete(part)
+	}
+	clear(&s.path)
 	clear(&s.seen)
 	for r in s.records {
 		free_record(r)

@@ -160,3 +160,197 @@ test_fonts_for_other_scripts_are_added_only_when_such_text_is_typed_or_shown :: 
 	}
 	testing.expect(t, other.fallbacks_added)
 }
+
+// ---- layout and identity ----
+
+Layout :: struct {
+	folded:   bool, // a panel the person closed stays closed, so this is just what the sketch read
+	a, b:     f64,
+	tab_pick: int,
+	chosen:   bool,
+	file:     int,
+	misplaced: bool,
+}
+
+layout_frame :: proc(s: ^State, l: ^Layout, loops := 0) {
+	ensure_frame(s, SIZE, 2, 1.0 / 60)
+	o := begin_container(s, .Panel, "first")
+	if o.open {
+		value := f32(l.a)
+		_ = slider(s, "size", &value, 0, 100)
+		l.a = f64(value)
+	}
+	end_container(s, .Panel, o)
+	o = begin_container(s, .Panel, "second")
+	if o.open {
+		// the same text as in the first panel, a widget of its own
+		value := f32(l.b)
+		_ = slider(s, "size", &value, 0, 100)
+		l.b = f64(value)
+	}
+	end_container(s, .Panel, o)
+	bar := begin_container(s, .Tabs)
+	if bar.open {
+		one := begin_container(s, .Tab, "one")
+		if one.open {
+			label(s, "page one")
+		}
+		end_container(s, .Tab, one)
+		two := begin_container(s, .Tab, "two")
+		if two.open {
+			label(s, "page two")
+		}
+		end_container(s, .Tab, two)
+	}
+	end_container(s, .Tabs, bar)
+	stray := begin_container(s, .Tab, "stray")
+	l.misplaced = stray.misplaced
+	end_container(s, .Tab, stray)
+	row := begin_container(s, .Row)
+	_ = button(s, "left")
+	_ = button(s, "right")
+	end_container(s, .Row, row)
+	for i in 0 ..< loops {
+		set_salt(s, i)
+		_ = button(s, "again")
+	}
+	set_salt(s, 0)
+	end_frame(s)
+}
+
+@(test)
+test_the_same_text_in_two_panels_and_tabs_is_two_widgets_and_a_row_goes_across :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	l := Layout{}
+	for _ in 0 ..< 4 {
+		layout_frame(s, &l, 3)
+	}
+	testing.expect_value(t, len(s.problems), 0) // `size` twice, and `again` three times in a loop, clash with nothing
+	testing.expect(t, l.misplaced, "a tab outside tabs is left out")
+	// the first tab shows, the second does not
+	_, first := record_named(s, "page one")
+	_, second := record_named(s, "page two")
+	testing.expect(t, first && !second)
+	left, _ := record_named(s, "left")
+	right, _ := record_named(s, "right")
+	testing.expect_value(t, left.rect.min.y, right.rect.min.y)
+	testing.expect(t, right.rect.min.x > left.rect.max.x, "side by side")
+	// records of the two `size` sliders are told apart by where they are
+	sizes := 0
+	for r in records(s) {
+		if r.label == "size" {
+			sizes += 1
+		}
+	}
+	testing.expect_value(t, sizes, 2)
+	// and what they hold is each its own
+	l.a = 30
+	for _ in 0 ..< 2 {
+		layout_frame(s, &l)
+	}
+	testing.expect_value(t, l.b, 0)
+}
+
+@(test)
+test_a_panel_that_is_folded_up_makes_none_of_its_widgets_and_a_click_on_its_title_does_it :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	l := Layout{}
+	for _ in 0 ..< 4 {
+		layout_frame(s, &l)
+	}
+	header, _ := record_named(s, "first")
+	at := centre(header.rect)
+	mouse_moved(s, at.x, at.y)
+	layout_frame(s, &l)
+	mouse_button(s, .Left, true)
+	layout_frame(s, &l)
+	mouse_button(s, .Left, false)
+	layout_frame(s, &l)
+	layout_frame(s, &l)
+	closed, _ := record_named(s, "first")
+	testing.expect_value(t, closed.value, f32(0))
+	count := 0
+	for r in records(s) {
+		if r.label == "size" {
+			count += 1
+		}
+	}
+	testing.expect_value(t, count, 1) // only the second panel's
+}
+
+@(test)
+test_the_value_a_widget_keeps_is_found_by_its_path_and_its_number_in_a_loop :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	begin_frame(s, SIZE, 2, 1.0 / 60)
+	kept(s, "size", 1)^ = 11
+	o := begin_container(s, .Panel, "first")
+	testing.expect_value(t, kept(s, "size", 2)^, 2) // the same text one panel down is another widget
+	kept(s, "size", 0)^ = 22
+	set_salt(s, 1)
+	testing.expect_value(t, kept(s, "size", 3)^, 3) // and so is its second time round a loop
+	set_salt(s, 0)
+	end_container(s, .Panel, o)
+	testing.expect_value(t, kept(s, "size", 0)^, 11)
+	end_frame(s)
+}
+
+MenuForm :: struct {
+	chosen: bool,
+	file:   int,
+}
+
+menu_frame :: proc(s: ^State, m: ^MenuForm) {
+	ensure_frame(s, SIZE, 2, 1.0 / 60)
+	open := begin_container(s, .Menu, "file")
+	if open.open {
+		m.chosen = item(s, "save") || m.chosen
+	}
+	end_container(s, .Menu, open)
+	items := ITEMS
+	_ = list(s, "files", items[:], &m.file)
+	end_frame(s)
+}
+
+press :: proc(s: ^State, m: ^MenuForm, at: [2]f32) {
+	mouse_moved(s, at.x, at.y)
+	menu_frame(s, m)
+	mouse_button(s, .Left, true)
+	menu_frame(s, m)
+	menu_frame(s, m)
+	mouse_button(s, .Left, false)
+	menu_frame(s, m)
+	menu_frame(s, m)
+}
+
+@(test)
+test_a_menu_opens_and_its_item_can_be_chosen_and_a_list_can_be_clicked :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	m := MenuForm{}
+	for _ in 0 ..< 4 {
+		menu_frame(s, &m)
+	}
+	_, shown := record_named(s, "save")
+	testing.expect(t, !shown, "the items of a menu that is not open are not made")
+	menu, _ := record_named(s, "file")
+	press(s, &m, centre(menu.rect))
+	save, found := record_named(s, "save")
+	if !testing.expect(t, found, "the menu opened") {
+		return
+	}
+	press(s, &m, centre(save.rect))
+	testing.expect(t, m.chosen)
+	// the list: the second entry is a row below the first
+	files, _ := record_named(s, "files")
+	step := imgui_row_step(s)
+	press(s, &m, {files.rect.min.x + 20, files.rect.min.y + 8 + step * 1.5})
+	testing.expect_value(t, m.file, 1)
+}
+
+imgui_row_step :: proc(s: ^State) -> f32 {
+	imgui.set_current_context(s.ctx)
+	return imgui.get_text_line_height() + imgui.get_style().item_spacing.y
+}

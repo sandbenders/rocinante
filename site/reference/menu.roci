@@ -1,0 +1,6 @@
+ui [
+  menu "file" [
+    if item "save" [ save "shot.png" ]
+    if item "quit" [ quit ]
+  ]
+]

@@ -219,7 +219,7 @@ test_widgets_that_keep_a_value_start_as_asked_and_keep_it :: proc(t: ^testing.T)
 ui_form_sketch :: proc() {
 	ui_number_now = ui_number_value("count", 1, 10, 50)
 	ui_text_now = ui_textbox_value("title", "ab")
-	ui_pick_now = ui_pick_value("shape", {"circle", "square", "star"}, 2, false)
+	ui_pick_now = ui_pick_value("shape", {"circle", "square", "star"}, 2, .Dropdown)
 	ui_progress(0.25)
 	ui_tip("how far")
 	ui_separator()

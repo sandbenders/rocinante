@@ -1,0 +1,12 @@
+ui [
+  row [
+    column [
+      label "left"
+      label "side"
+    ]
+    column [
+      label "right"
+      label "side"
+    ]
+  ]
+]

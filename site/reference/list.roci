@@ -1,0 +1,3 @@
+word = "one"
+ui [ word = list "words" [ "one" "two" "three" ] ]
+draw [ text word at 40 200 size 40 ]

@@ -42,13 +42,13 @@ on mouse down left [
 ]
 
 on mouse down right [
-  row = 0
+  place = 0
   for each kind in (keys counts) [
-    if mouse.x > 360 and mouse.y > 20 + row * 40 and mouse.y < 52 + row * 40 [
+    if mouse.x > 360 and mouse.y > 20 + place * 40 and mouse.y < 52 + place * 40 [
       remove kind from counts
       for each t in tiles [ if t.name is kind [ t.name = "" ] ]
     ]
-    row = row + 1
+    place = place + 1
   ]
 ]
 
@@ -64,9 +64,9 @@ draw [
       square at t.pos size 48 fill (get colors t.name)
     ]
   ]
-  row = 0
+  place = 0
   for each kind in (keys counts) [
-    rect at 360 (20 + row * 40) size ((get counts kind) * 18 + 4) 32 fill (get colors kind)
-    row = row + 1
+    rect at 360 (20 + place * 40) size ((get counts kind) * 18 + 4) 32 fill (get colors kind)
+    place = place + 1
   ]
 ]

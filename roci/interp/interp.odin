@@ -70,6 +70,7 @@ Interp :: struct {
 	results:   [dynamic]Value, // `result`, innermost last
 	draws:     map[roci.Window]^lang.IR_Block,
 	uis:       map[roci.Window]^lang.IR_Block, // the `ui` blocks, by window
+	widget_sites: map[int]int,                // how many widgets each call has made this frame, by its place in the source
 	handlers:  [dynamic]Handler,
 	inbox:     [2][dynamic]Message, // [msg_now] is what arrives this frame, the other what is sent now
 	msg_arenas: [2]virtual.Arena, // the memory of each inbox
@@ -167,6 +168,7 @@ load_files :: proc(files: []lang.File_Text) -> (p: ^Interp, ok: bool) {
 	p.globals = make([]Global, len(p.checked.program.symbols), p.program_memory)
 	p.draws = make(map[roci.Window]^lang.IR_Block, 4, p.program_memory)
 	p.uis = make(map[roci.Window]^lang.IR_Block, 4, p.program_memory)
+	p.widget_sites = make(map[int]int, 16, p.program_memory)
 	p.seen = make(map[int]bool, 8, p.program_memory)
 	p.budget = BLOCK_SECONDS
 	p.has_errors = lang.has_errors(p.checked.diagnostics)
@@ -235,6 +237,7 @@ draw_trampoline :: proc() {
 	if !found {
 		return
 	}
+	clear(&p.widget_sites)
 	run_block(p, block)
 }
 
@@ -248,6 +251,7 @@ ui_trampoline :: proc() {
 	if !found {
 		return
 	}
+	clear(&p.widget_sites)
 	run_block(p, block)
 }
 

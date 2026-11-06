@@ -1,0 +1,3 @@
+ui [
+  tab "one" [ label "first" ]
+]

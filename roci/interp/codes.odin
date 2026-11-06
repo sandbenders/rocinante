@@ -133,6 +133,13 @@ Verb_Code :: enum u8 {
 	Progress,
 	Separator,
 	Tip,
+	Panel,
+	Row,
+	Column,
+	Tabs,
+	Tab,
+	Menu,
+	List,
 }
 
 // The registry's name of each code. A test fails when the registry gains a verb
@@ -260,6 +267,13 @@ VERB_CODE_NAMES := [Verb_Code]string{
 	.Progress = "progress",
 	.Separator = "separator",
 	.Tip = "tip",
+	.Panel = "panel",
+	.Row = "row",
+	.Column = "column",
+	.Tabs = "tabs",
+	.Tab = "tab",
+	.Menu = "menu",
+	.List = "list",
 }
 
 // The code of each verb of `registry.ALL_VERBS`, by its place there.

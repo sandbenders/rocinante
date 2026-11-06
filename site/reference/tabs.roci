@@ -1,0 +1,6 @@
+ui [
+  tabs [
+    tab "shape" [ label "a circle or a square" ]
+    tab "color" [ label "orange or teal" ]
+  ]
+]
