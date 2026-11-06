@@ -77,6 +77,8 @@ jobs:
           export VK_DRIVER_FILES="$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | tr '\n' ':')"
           export SDL_VIDEODRIVER=offscreen
           export HUGO_BASEURL="https://rocinante-lang.org/"
+          # Every program that opens a window links Dear ImGui, which is built here, as in ci.yml.
+          sh tools/ui-libs.sh
           odin run build -- docs
       - name: Send the site to rocinante-lang.org
         env:
