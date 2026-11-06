@@ -139,9 +139,16 @@ Renderer :: struct {
 	uploaded_mesh_vertex_count: int,
 	uploaded_mesh_index_count: int,
 
+	// Drawn on top of a finished frame, in a pass of its own, when set: the user interface.
+	// `overlay_user` is handed back to it. It gives false when it could not draw.
+	overlay:      Overlay_Proc,
+	overlay_user: rawptr,
+
 	// What the last frame did, for tests and benchmarks.
 	stats: Render_Stats,
 }
+
+Overlay_Proc :: proc(user: rawptr, device: ^sdl.GPUDevice, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTexture, format: sdl.GPUTextureFormat) -> bool
 
 Render_Stats :: struct {
 	draws:              int,
@@ -766,10 +773,20 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 // pixels). Gives false when something failed; `r.error` says what, and the frame
 // is left as far as it got but is safe to submit.
 render :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTexture, format: sdl.GPUTextureFormat, pixels: [2]u32, canvas: [2]f32, list: ^Command_List, b: ^Batcher) -> bool {
+	ok: bool
 	if len(list.effects) > 0 && can_run_effects(r) {
-		return render_with_effects(r, commands, target, format, pixels, canvas, list, b)
+		ok = render_with_effects(r, commands, target, format, pixels, canvas, list, b)
+	} else {
+		ok = render_scene(r, commands, target, format, pixels, canvas, list, b)
 	}
-	return render_scene(r, commands, target, format, pixels, canvas, list, b)
+	// the interface goes over everything, effects included
+	if r.overlay != nil && !r.overlay(r.overlay_user, r.device, commands, target, format) {
+		// said, but not `failed`: that would stop every pipeline from being made
+		delete(r.error)
+		r.error = strings.clone("drawing the user interface failed")
+		ok = false
+	}
+	return ok
 }
 
 // The frame the list describes, drawn into `target`.

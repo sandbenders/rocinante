@@ -431,3 +431,8 @@ state :: proc(window: ^Window) -> Window_State {
 		borderless = .BORDERLESS in flags, topmost = .ALWAYS_ON_TOP in flags, hidden = .HIDDEN in flags,
 	}
 }
+
+// Whether the system is set to dark colors (a system that does not say counts as dark).
+system_is_dark :: proc() -> bool {
+	return sdl.GetSystemTheme() != .LIGHT
+}

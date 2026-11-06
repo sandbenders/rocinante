@@ -62,6 +62,7 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 	for event in events {
 		note_event(event)
 		handle_event(event)
+		ui_event(event)
 	}
 	apply_cursor()
 	// The windows may close while a frame runs, so go by a copy of the list.
@@ -83,6 +84,7 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 			w.draw()
 			gfx.end_frame(&w.list)
 		}
+		ui_finish(w)
 		the.current = nil
 		show_frame(w)
 	}
@@ -122,6 +124,8 @@ show_frame :: proc(w: ^Win) {
 	if w.handle == nil {
 		return
 	}
+	with_ui(&the.renderer, w)
+	defer with_ui(&the.renderer, nil)
 	if !gfx.render_window(&the.renderer, w.handle.handle, canvas, &w.list, &w.batcher) && the.renderer.failed && !the.render_reported {
 		// Say so once; the sketch keeps running with the last good frame on screen.
 		the.render_reported = true

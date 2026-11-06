@@ -26,8 +26,11 @@ import "core:image/png"
 import "core:os"
 import "core:slice"
 
+import sdl "vendor:sdl3"
+
 import "../../roci/gfx"
 import "../../roci/platform"
+import "../../roci/ui"
 import "../../tools/term"
 
 SCALE :: 2
@@ -116,12 +119,19 @@ run :: proc() -> bool {
 		gfx.begin_frame(&list)
 		scene.draw(&list)
 		gfx.build(&batcher, &list, CANVAS)
+		interface: ^ui.State
+		if widgets := interface_of(scene.name); widgets != nil {
+			interface = make_interface(widgets)
+			renderer.overlay, renderer.overlay_user = draw_interface, interface
+		}
 		picture, ok := gfx.render_offscreen(&renderer, int(CANVAS.x) * SCALE, int(CANVAS.y) * SCALE, CANVAS, &list, &batcher)
 		if !ok {
 			failures += 1
 			report(scene.name, false, fmt.tprintf("could not draw: %s", renderer.error))
 			continue
 		}
+		renderer.overlay, renderer.overlay_user = nil, nil
+		ui.destroy(interface)
 		defer gfx.image_destroy(&picture)
 		write_png(actual_path(scene.name), picture)
 
@@ -162,6 +172,22 @@ run :: proc() -> bool {
 	}
 	fmt.printfln("golden: %d pictures, %d failed", ran, failures)
 	return failures == 0
+}
+
+// The widgets of a scene, built for a few frames (a panel that sizes itself shows its widgets from
+// the third) and left finished, ready to be drawn over the picture.
+make_interface :: proc(widgets: proc(s: ^ui.State)) -> ^ui.State {
+	s := ui.create(gfx.INTER_REGULAR)
+	for _ in 0 ..< 4 {
+		ui.ensure_frame(s, CANVAS, f32(SCALE), 1.0 / 60)
+		widgets(s)
+		ui.end_frame(s)
+	}
+	return s
+}
+
+draw_interface :: proc(user: rawptr, device: ^sdl.GPUDevice, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTexture, format: sdl.GPUTextureFormat) -> bool {
+	return ui.draw((^ui.State)(user), device, commands, target, format)
 }
 
 report :: proc(name: string, ok: bool, detail: string) {

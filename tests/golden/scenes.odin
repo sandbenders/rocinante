@@ -9,12 +9,21 @@ package golden
 import "../../roci/geom"
 import "../../roci/gfx"
 import "../../roci/maths"
+import "../../roci/ui"
 
 CANVAS :: [2]f32{200, 150}
 
 Scene :: struct {
 	name: string,
 	draw: proc(list: ^gfx.Command_List),
+}
+
+// The scenes that also have widgets drawn over them, by name.
+interface_of :: proc(name: string) -> proc(s: ^ui.State) {
+	switch name {
+	case "ui_widgets": return ui_widgets
+	}
+	return nil
 }
 
 SCENES := [?]Scene{
@@ -41,6 +50,7 @@ SCENES := [?]Scene{
 	{"images", images},
 	{"effects", effects},
 	{"shader_fills", shader_fills},
+	{"ui_widgets", ui_backdrop},
 }
 
 named :: proc(name: string) -> maths.Colour {
@@ -505,4 +515,23 @@ shader_fills :: proc(list: ^gfx.Command_List) {
 	gfx.rect(list, 10, 90, 100, 50)       // an outline over the fill
 	gfx.set_fill(list, named("tomato"))   // a plain color puts the fill back
 	gfx.circle(list, 160, 115, 20)
+}
+
+// Something behind the widgets, so the picture shows that they sit on top.
+ui_backdrop :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(235))
+	gfx.set_fill(list, named("steelblue"))
+	gfx.circle(list, 120, 90, 50)
+	gfx.set_fill(list, named("gold"))
+	gfx.circle(list, 160, 40, 24)
+}
+
+// A label, a button, a switched-on toggle and a slider a quarter of the way along.
+ui_widgets :: proc(s: ^ui.State) {
+	on := true
+	amount: f32 = 25
+	ui.label(s, "controls")
+	_ = ui.button(s, "go")
+	_ = ui.toggle(s, "trails", &on)
+	_ = ui.slider(s, "size", &amount, 0, 100)
 }

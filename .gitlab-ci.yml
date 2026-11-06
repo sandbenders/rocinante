@@ -16,7 +16,6 @@ variables:
   ODIN_DIR: $CI_PROJECT_DIR/.cache/odin
   ROCI_REQUIRE_SDL3: "1" # the C ABI check must run here, not skip
   ROCI_REQUIRE_LAVAPIPE: "1" # and so must the golden images
-  ROCI_REQUIRE_UI: "1" # and the tests that call Dear ImGui
 
 .setup: &setup
   # The image's Odin when it is the release named in ODIN_VERSION; otherwise that

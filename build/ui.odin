@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
 // The user interface libraries: Dear ImGui with its SDL3 and SDL_GPU backends, built by
-// tools/ui-libs.sh into .cache/ui. A contributor who has not built them skips the
-// steps that need them; the pipelines set ROCI_REQUIRE_UI, so there it is a failure.
+// tools/ui-libs.sh into .cache/ui.
 package build
 
 import "core:fmt"
@@ -11,16 +10,6 @@ import "core:os"
 import "../tools/term"
 
 UI_LIBRARY :: ".cache/ui/libroci_ui.a" when ODIN_OS != .Windows else ".cache/ui/roci_ui.lib"
-
-// What the user interface checks do: run when the library is built, skip quietly
-// for a contributor who has not built it, fail where it is required.
-ui_outcome :: proc(library_built, required: bool) -> Check_Outcome {
-	switch {
-	case library_built:  return .Passed
-	case !required:      return .Skipped
-	}
-	return .Failed
-}
 
 // Builds the libraries (`ui-libs`) or builds them and writes the bindings again
 // (`ui-libs regenerate`).
@@ -40,22 +29,19 @@ ui_libs :: proc(regenerate: bool) -> bool {
 	return true
 }
 
-// The bindings and their generator are type-checked everywhere; the tests that call
-// Dear ImGui need the built library.
+// Every program that opens a window links Dear ImGui, so the library has to be built before
+// anything else is: `ci` builds it when it is missing (the pipelines build it as a step of their
+// own first, which makes this a no-op there). The bindings and their generator are
+// type-checked, and the tests that call Dear ImGui run in `check_packages`.
 check_ui :: proc() -> bool {
+	if !os.exists(UI_LIBRARY) {
+		fmt.printfln("%s", term.out("== building the user interface libraries (tools/ui-libs.sh)", .Bold_Cyan))
+		if !ui_libs(false) {
+			return false
+		}
+	}
 	ok := step("check imgui bindings", {"odin", "check", "vendor/imgui", "-no-entry-point", "-vet", "-strict-style"})
 	ok = step("check imgui bindings tool", {"odin", "check", "tools/imgui", "-vet", "-strict-style"}) && ok
-	name := "unit tests: vendor/imgui"
-	fmt.printfln("%s", term.out(fmt.tprintf("== %s", name), .Bold_Cyan))
-	required := os.get_env("ROCI_REQUIRE_UI", context.temp_allocator) != ""
-	switch ui_outcome(os.exists(UI_LIBRARY), required) {
-	case .Passed:
-		ok = step("unit tests: vendor/imgui (run)", {"odin", "test", "vendor/imgui", "-vet", "-strict-style", fmt.tprintf("-out:%s", test_binary("vendor/imgui"))}) && ok
-	case .Skipped:
-		fmt.printfln("   %s", term.out("skipped, the UI libraries are not built (tools/ui-libs.sh; the pipelines require them)", .Dim))
-	case .Failed:
-		fmt.eprintfln("%s", term.err("the UI libraries are not built and ROCI_REQUIRE_UI is set (run tools/ui-libs.sh)", .Bold_Red))
-		ok = false
-	}
+	ok = step("unit tests: vendor/imgui", {"odin", "test", "vendor/imgui", "-vet", "-strict-style", fmt.tprintf("-out:%s", test_binary("vendor/imgui"))}) && ok
 	return ok
 }

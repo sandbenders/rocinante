@@ -20,6 +20,7 @@ import "core:time"
 import "gfx"
 import "maths"
 import "platform"
+import "ui"
 
 // The size a sketch gets when it never calls `window`.
 DEFAULT_WIDTH :: 800
@@ -63,6 +64,7 @@ Win :: struct {
 	position:     [2]int,           // where it was asked to be (a headless window has no screen)
 	cursor:       Cursor,           // the mouse cursor while the mouse is over it
 	fingers:      [dynamic]Finger,  // the fingers down that went down in this window, in that order
+	ui:           ^ui.State,        // its widgets, made by the first one (ui_window.odin)
 }
 
 Sketch :: struct {
@@ -207,6 +209,7 @@ shutdown :: proc() {
 
 @(private)
 destroy_win :: proc(w: ^Win) {
+	ui.destroy(w.ui)
 	gfx.destroy(&w.list)
 	gfx.batcher_destroy(&w.batcher)
 	delete(w.inbox)

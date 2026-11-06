@@ -89,11 +89,3 @@ test_hugo_versions_are_matched_exactly :: proc(t: ^testing.T) {
 	testing.expect(t, !hugo_version_matches("hugo v0.169.10-abc linux/amd64", "0.169.1"))
 	testing.expect(t, !hugo_version_matches("hugo v0.168.0-abc linux/amd64", "0.169.0"))
 }
-
-@(test)
-test_the_ui_checks_run_skip_or_fail_by_whether_the_library_is_built_and_required :: proc(t: ^testing.T) {
-	testing.expect_value(t, ui_outcome(true, false), Check_Outcome.Passed)
-	testing.expect_value(t, ui_outcome(true, true), Check_Outcome.Passed)
-	testing.expect_value(t, ui_outcome(false, false), Check_Outcome.Skipped)
-	testing.expect_value(t, ui_outcome(false, true), Check_Outcome.Failed)
-}

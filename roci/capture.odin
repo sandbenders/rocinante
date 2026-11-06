@@ -57,5 +57,7 @@ picture :: proc(w: Window, scale := 1) -> (image: gfx.Image, ok: bool) {
 	// A headless sketch's canvases have been waiting for a device to be drawn on.
 	flush_canvases(renderer)
 	canvas := [2]f32{f32(win.width), f32(win.height)}
+	with_ui(renderer, win)
+	defer with_ui(renderer, nil)
 	return gfx.render_offscreen(renderer, win.width * scale, win.height * scale, canvas, &win.list, &win.batcher)
 }

@@ -66,10 +66,10 @@ fi
 
 obj="$cache/obj"
 mkdir -p "$obj"
-flags="-std=c++17 -O2 -fPIC -I$cache/imgui -I$cache/imgui/backends -I$c_api -I$c_api/backends -I$SDL_INCLUDE"
+flags="-std=c++17 -O2 -fPIC -DIMGUI_USER_CONFIG=\"imconfig_roci.h\" -I$cache/imgui -I$cache/imgui/backends -I$c_api -I$c_api/backends -I$SDL_INCLUDE"
 for src in "$cache/imgui/imgui" "$cache/imgui/imgui_demo" "$cache/imgui/imgui_draw" "$cache/imgui/imgui_tables" \
 	"$cache/imgui/imgui_widgets" "$cache/imgui/backends/imgui_impl_sdl3" "$cache/imgui/backends/imgui_impl_sdlgpu3" \
-	"$c_api/dcimgui" "$c_api/backends/dcimgui_impl_sdl3" "$c_api/backends/dcimgui_impl_sdlgpu3"; do
+	"$c_api/dcimgui" "$c_api/roci_context" "$c_api/backends/dcimgui_impl_sdl3" "$c_api/backends/dcimgui_impl_sdlgpu3"; do
 	# shellcheck disable=SC2086
 	c++ $flags -c "$src.cpp" -o "$obj/$(basename "$src").o"
 done

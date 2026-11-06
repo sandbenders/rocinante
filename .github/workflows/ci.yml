@@ -53,7 +53,6 @@ jobs:
           export PKG_CONFIG_PATH="$HOME/sdl3/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
           export ROCI_REQUIRE_SDL3=1 # the C ABI check must run here, not skip
           export ROCI_REQUIRE_LAVAPIPE=1 # and so must the golden images
-          export ROCI_REQUIRE_UI=1 # and the tests that call Dear ImGui
           echo "SDL3 $(pkg-config --modversion sdl3)"
           sh tools/ui-libs.sh
           odin run build -- ci

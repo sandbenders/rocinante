@@ -58,6 +58,11 @@ WANTED := [?]string {
 	"ImDrawList_AddCircle", "ImDrawList_AddCircleFilled", "ImDrawList_AddCircleEx",
 	"ImDrawList_AddTriangleFilled",
 	"ImDrawList_AddText", "ImDrawList_PathArcTo", "ImDrawList_PathStroke", "ImDrawList_PathClear",
+	// input, given as events so a window needs no backend to be driven
+	"ImGui_SetCurrentContext", "ImGui_GetCurrentContext", "ImGuiIO_AddMousePosEvent",
+	"ImGuiIO_AddMouseButtonEvent", "ImGuiIO_AddMouseWheelEvent", "ImGuiIO_AddKeyEvent",
+	"ImGuiIO_AddInputCharactersUTF8", "ImGuiIO_AddFocusEvent", "ImGui_IsAnyItemHovered",
+	"ImGuiStyle_ScaleAllSizes",
 	// fonts
 	"ImFontAtlas_AddFontFromMemoryTTF", "ImFontAtlas_AddFontFromFileTTF", "ImFontAtlas_AddFontDefault",
 	"ImFontAtlas_Clear",
@@ -235,6 +240,8 @@ procedure_name :: proc(c_name: string) -> string {
 	for pair in ([?][2]string {
 			{"cImGui_ImplSDLGPU3_", "gpu3_"},
 			{"cImGui_ImplSDL3_", "sdl3_"},
+			{"ImGuiIO_", "io_"},
+			{"ImGuiStyle_", "style_"},
 			{"ImDrawList_", "draw_list_"},
 			{"ImFontAtlas_", "font_atlas_"},
 			{"ImGui_", ""},
@@ -566,9 +573,9 @@ generate :: proc(g: ^Generator) {
 	strings.write_string(w, "// JSON that dear_bindings v0.26 writes; do not edit it by hand.\n")
 	strings.write_string(w, "package imgui\n\nimport sdl \"vendor:sdl3\"\n\n")
 	strings.write_string(w, "when ODIN_OS == .Darwin || ODIN_OS == .FreeBSD {\n")
-	strings.write_string(w, "\tforeign import lib {\"../../.cache/ui/libroci_ui.a\", \"system:c++\"}\n")
+	strings.write_string(w, "\tforeign import lib {\"../../.cache/ui/libroci_ui.a\", \"system:c++\", \"system:SDL3\"}\n")
 	strings.write_string(w, "} else when ODIN_OS == .Linux || ODIN_OS == .OpenBSD {\n")
-	strings.write_string(w, "\tforeign import lib {\"../../.cache/ui/libroci_ui.a\", \"system:stdc++\"}\n")
+	strings.write_string(w, "\tforeign import lib {\"../../.cache/ui/libroci_ui.a\", \"system:stdc++\", \"system:SDL3\"}\n")
 	strings.write_string(w, "} else {\n\tforeign import lib \"../../.cache/ui/roci_ui.lib\"\n}\n\n")
 
 	emit_typedefs(g)

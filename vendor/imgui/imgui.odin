@@ -7,9 +7,9 @@ package imgui
 import sdl "vendor:sdl3"
 
 when ODIN_OS == .Darwin || ODIN_OS == .FreeBSD {
-	foreign import lib {"../../.cache/ui/libroci_ui.a", "system:c++"}
+	foreign import lib {"../../.cache/ui/libroci_ui.a", "system:c++", "system:SDL3"}
 } else when ODIN_OS == .Linux || ODIN_OS == .OpenBSD {
-	foreign import lib {"../../.cache/ui/libroci_ui.a", "system:stdc++"}
+	foreign import lib {"../../.cache/ui/libroci_ui.a", "system:stdc++", "system:SDL3"}
 } else {
 	foreign import lib "../../.cache/ui/roci_ui.lib"
 }
@@ -1640,6 +1640,8 @@ ImplSDLGPU3_RenderState :: struct {
 foreign lib {
 	@(link_name = "ImGui_CreateContext") create_context :: proc(shared_font_atlas: ^FontAtlas = nil) -> ^Context ---
 	@(link_name = "ImGui_DestroyContext") destroy_context :: proc(ctx: ^Context = nil) ---
+	@(link_name = "ImGui_GetCurrentContext") get_current_context :: proc() -> ^Context ---
+	@(link_name = "ImGui_SetCurrentContext") set_current_context :: proc(ctx: ^Context) ---
 	@(link_name = "ImGui_GetIO") get_io :: proc() -> ^IO ---
 	@(link_name = "ImGui_GetStyle") get_style :: proc() -> ^Style ---
 	@(link_name = "ImGui_NewFrame") new_frame :: proc() ---
@@ -1741,6 +1743,7 @@ foreign lib {
 	@(link_name = "ImGui_IsItemClicked") is_item_clicked :: proc() -> bool ---
 	@(link_name = "ImGui_IsItemActivated") is_item_activated :: proc() -> bool ---
 	@(link_name = "ImGui_IsItemDeactivatedAfterEdit") is_item_deactivated_after_edit :: proc() -> bool ---
+	@(link_name = "ImGui_IsAnyItemHovered") is_any_item_hovered :: proc() -> bool ---
 	@(link_name = "ImGui_IsAnyItemActive") is_any_item_active :: proc() -> bool ---
 	@(link_name = "ImGui_IsAnyItemFocused") is_any_item_focused :: proc() -> bool ---
 	@(link_name = "ImGui_GetItemID") get_item_id :: proc() -> ID ---
@@ -1748,6 +1751,13 @@ foreign lib {
 	@(link_name = "ImGui_GetItemRectMax") get_item_rect_max :: proc() -> [2]f32 ---
 	@(link_name = "ImGui_GetItemRectSize") get_item_rect_size :: proc() -> [2]f32 ---
 	@(link_name = "ImGui_CalcTextSize") calc_text_size :: proc(text: cstring) -> [2]f32 ---
+	@(link_name = "ImGuiStyle_ScaleAllSizes") style_scale_all_sizes :: proc(self: ^Style, scale_factor: f32) ---
+	@(link_name = "ImGuiIO_AddKeyEvent") io_add_key_event :: proc(self: ^IO, key: Key, down: bool) ---
+	@(link_name = "ImGuiIO_AddMousePosEvent") io_add_mouse_pos_event :: proc(self: ^IO, x: f32, y: f32) ---
+	@(link_name = "ImGuiIO_AddMouseButtonEvent") io_add_mouse_button_event :: proc(self: ^IO, button: i32, down: bool) ---
+	@(link_name = "ImGuiIO_AddMouseWheelEvent") io_add_mouse_wheel_event :: proc(self: ^IO, wheel_x: f32, wheel_y: f32) ---
+	@(link_name = "ImGuiIO_AddFocusEvent") io_add_focus_event :: proc(self: ^IO, focused: bool) ---
+	@(link_name = "ImGuiIO_AddInputCharactersUTF8") io_add_input_characters_utf8 :: proc(self: ^IO, str: cstring) ---
 	@(link_name = "ImDrawList_AddLine") draw_list_add_line :: proc(self: ^DrawList, p1: [2]f32, p2: [2]f32, col: U32) ---
 	@(link_name = "ImDrawList_AddLineEx") draw_list_add_line_ex :: proc(self: ^DrawList, p1: [2]f32, p2: [2]f32, col: U32, thickness: f32 = 1.0, flags: DrawFlags = 0) ---
 	@(link_name = "ImDrawList_AddRect") draw_list_add_rect :: proc(self: ^DrawList, p_min: [2]f32, p_max: [2]f32, col: U32) ---

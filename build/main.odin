@@ -98,7 +98,7 @@ check_odin :: proc() -> bool {
 
 // Packages whose @(test) procedures `ci` runs, from the repository root (some
 // tests make fixtures under output/). Add each package here as it gets tests.
-TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/folder", "roci/gfx", "roci/interp", "roci/movies", "roci/lang", "roci/maths", "roci/platform", "roci/registry", "cli", "spikes/codegen", "tools/term", "tools/site", "tools/imgui", "vendor/sancho/deflate", "vendor/sancho/png_writer"}
+TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/folder", "roci/gfx", "roci/interp", "roci/movies", "roci/lang", "roci/maths", "roci/platform", "roci/registry", "roci/ui", "cli", "spikes/codegen", "tools/term", "tools/site", "tools/imgui", "vendor/sancho/deflate", "vendor/sancho/png_writer"}
 
 // Where `odin test` writes each package's test program. Left to itself it writes
 // build.exe to the repository root, the very file `odin run build` is running
@@ -119,8 +119,8 @@ ci :: proc(fast: bool) -> bool {
 	ok = check_licences(".") && ok
 	ok = check_tracked_fonts(".") && ok
 	// Compile-check every Odin package that exists so far.
+	ok = check_ui() && ok // first: every program that opens a window links Dear ImGui
 	ok = check_packages() && ok
-	ok = check_ui() && ok
 	if !fast {
 		ok = check_optimised_tests() && ok
 		ok = check_abi() && ok
