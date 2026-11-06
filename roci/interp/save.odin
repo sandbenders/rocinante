@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: 0BSD
 //
-// `save "name.png"`: a picture of the window, written once the frame is drawn
-// (roci/save.odin). A plain name goes into the sketch's `output` folder, so renders
-// never clutter the sketch, and an absolute path is used as it is. A file that could
-// not be written is said on the next frame, because it is written after the frame.
+// `save "name.png"` and `save "name.svg"`: a picture of the window, or its shapes as a
+// vector file, written once the frame is drawn (roci/save.odin). A plain name goes into
+// the sketch's `output` folder, so renders never clutter the sketch, and an absolute path
+// is used as it is. A file that could not be written is said on the next frame, because
+// it is written after the frame.
 package interp
 
 import "../"
@@ -14,8 +15,8 @@ import "core:strings"
 save_picture :: proc(it: ^Interp, e: ^lang.IR, name: string) {
 	it.save_span = e.span
 	example := "save \"shot.png\""
-	if !roci.is_png_name(name) {
-		fail(it, .Save_Failed, e.span, name, "I save PNG pictures, so the name has to end in `.png`.", "", example)
+	if !roci.is_save_name(name) {
+		fail(it, .Save_Failed, e.span, name, "I save PNG pictures and SVG drawings, so the name has to end in `.png` or `.svg`.", "", example)
 		return
 	}
 	if !roci.save(save_path(it, name)) {
@@ -49,6 +50,10 @@ is_absolute_path :: proc(name: string) -> bool {
 @(private)
 say_save_problems :: proc(it: ^Interp) {
 	for problem in roci.take_save_problems() {
+		if problem.approximate {
+			fail(it, .Save_Approximate, it.save_span, problem.path, problem.why, "", "save \"shot.png\"")
+			continue
+		}
 		fail(it, .Save_Failed, it.save_span, problem.path, strings.concatenate({"The picture could not be saved: ", problem.why, "."}, context.temp_allocator), "", "save \"shot.png\"")
 	}
 }

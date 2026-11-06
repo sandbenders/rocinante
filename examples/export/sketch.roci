@@ -1,5 +1,6 @@
-// Saving pictures: press s to save the window as output/shot.png, and press r to start or
-// stop recording a frame sequence into output/frames, one numbered file for each frame.
+// Saving pictures: press s to save the window as output/shot.png, press v to save its shapes
+// as a vector drawing, output/shot.svg, and press r to start or stop recording a frame
+// sequence into output/frames, one numbered file for each frame.
 window size 480 320 title "export"
 recording = false
 saved = 0
@@ -8,6 +9,8 @@ on key "s" [
   save "shot.png"
   saved = saved + 1
 ]
+
+on key "v" [ save "shot.svg" ]
 
 on key "r" [ recording = not recording ]
 
@@ -21,7 +24,7 @@ draw [
   if recording [ save "frames/frame-####.png" ]
   fill white
   font "Inter" size 15
-  text "s saves a picture, r records frames" at 20 20
+  text "s saves a picture, v a drawing, r records frames" at 20 20
   text ("saved " + saved + " pictures") at 20 44
   if recording [ text "recording" at 20 68 fill tomato ]
 ]

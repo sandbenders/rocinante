@@ -59,6 +59,10 @@ test_the_export_example_saves_on_s_and_records_on_r :: proc(t: ^testing.T) {
 	roci.step({key_event(w, .S)})
 	roci.step({key_event(w, .S, false)})
 	testing.expect_value(t, as_number(global_named(p, "saved")), 1)
+	// v saves the shapes as a vector file, which needs no graphics
+	roci.step({key_event(w, .V)})
+	roci.step({key_event(w, .V, false)})
+	roci.step()
 	roci.step({key_event(w, .R)})
 	roci.step({key_event(w, .R, false)})
 	testing.expect_value(t, as_bool(global_named(p, "recording")), true)

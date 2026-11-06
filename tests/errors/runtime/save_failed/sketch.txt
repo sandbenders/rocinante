@@ -3,6 +3,6 @@
 2 │ save "shot.jpg"
   │ ^^^^^^^^^^^^^^^
 
-I save PNG pictures, so the name has to end in `.png`. The sketch carries on.
+I save PNG pictures and SVG drawings, so the name has to end in `.png` or `.svg`. The sketch carries on.
 
 Save a PNG like this:  save "shot.png"

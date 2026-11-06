@@ -540,6 +540,13 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 			p.budget = 0.05 // the same check as a real run, with a smaller budget
 			start(p)
 			run_checks(p)
+			if id == .Save_Approximate {
+				// said by the frame after the one it was asked in is written; the folder is the
+				// sketch's own, so the file that stands in for it must not be read again as a change
+				p.path = ""
+				roci.step()
+				roci.step()
+			}
 			triggered := false
 			for e in p.errors {
 				triggered ||= e.id == id

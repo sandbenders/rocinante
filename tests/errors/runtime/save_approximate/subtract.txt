@@ -1,0 +1,8 @@
+── Warning: `output/tests/runtime_messages/output/shot.svg` is saved, but not everything in it is drawn as it is on the screen ─── sketch.roci:3:1
+
+3 │ save "shot.svg"
+  │ ^^^^^^^^^^^^^^^
+
+A vector file cannot hold the subtract blend as it is on the screen. It is drawn as the nearest thing or left out, and the sketch carries on.
+
+A PNG keeps every pixel as it is:  save "shot.png"

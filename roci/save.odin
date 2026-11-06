@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: 0BSD
 //
-// `save`: a picture of a window, written as a PNG file. The picture is the finished
-// frame the call was made in (it is taken once the frame is drawn, before the error
-// overlay goes on), at the window's pixel density, so a sharp screen saves a sharp
-// picture. A name with a run of `#` (`frame-####.png`) has it replaced by the frame's
-// number, so a `save` in `draw` makes a frame sequence. Where the file goes is the
-// caller's business: the path is used as it is and its folders are made; the language
-// puts a plain name in the sketch's `output` folder.
+// `save`: a picture of a window, written as a PNG file, or, for a name ending in `.svg`,
+// the shapes of its frame written as an SVG file (gfx/svg.odin; what a vector file cannot
+// say is drawn as the nearest thing and told to the caller as an approximate save). The
+// picture is the finished frame the call was made in (it is taken once the frame is
+// drawn, before the error overlay goes on), at the window's pixel density, so a sharp
+// screen saves a sharp picture. A name with a run of `#` (`frame-####.png`) has it
+// replaced by the frame's number, so a `save` in `draw` makes a frame sequence. Where the
+// file goes is the caller's business: the path is used as it is and its folders are
+// made; the language puts a plain name in the sketch's `output` folder.
 package roci
 
 import "core:math"
@@ -15,23 +17,26 @@ import "core:strings"
 import "gfx"
 import "platform"
 
-// A file that could not be written, and why, kept for the language to say.
+// A file that could not be written, or was written with parts left out, and why, kept for
+// the language to say.
 Save_Problem :: struct {
-	path: string,
-	why:  string,
+	path:        string,
+	why:         string,
+	approximate: bool, // the file is there, but something in it is not what the window shows
 }
 
-// Asks for a picture of the current window, saved as `path` once the frame is drawn.
-// A run of `#` in the name is the frame number. Gives false, with `last_error` saying
-// why, for a path that is not a PNG name or when there is no window.
+// Asks for a picture of the current window, saved as `path` once the frame is drawn: a
+// PNG, or, for a name ending in `.svg`, the shapes of the frame as a vector file
+// (gfx/svg.odin). A run of `#` in the name is the frame number. Gives false, with
+// `last_error` saying why, for a path that is neither or when there is no window.
 save :: proc(path: string) -> bool {
 	w := current_win()
 	if w == nil {
 		return false
 	}
-	if !is_png_name(path) {
+	if !is_save_name(path) {
 		delete(the.error)
-		the.error = strings.clone("only PNG files can be saved, so the name must end in .png")
+		the.error = strings.clone("only PNG and SVG files can be saved, so the name must end in .png or .svg")
 		return false
 	}
 	append(&w.saves, expand_frame_pattern(path, the.frame, context.allocator))
@@ -43,7 +48,7 @@ save :: proc(path: string) -> bool {
 take_save_problems :: proc() -> []Save_Problem {
 	out := make([]Save_Problem, len(the.save_problems), context.temp_allocator)
 	for p, i in the.save_problems {
-		out[i] = Save_Problem{strings.clone(p.path, context.temp_allocator), strings.clone(p.why, context.temp_allocator)}
+		out[i] = Save_Problem{strings.clone(p.path, context.temp_allocator), strings.clone(p.why, context.temp_allocator), p.approximate}
 		delete(p.path)
 		delete(p.why)
 	}
@@ -54,6 +59,16 @@ take_save_problems :: proc() -> []Save_Problem {
 // Does the name end in `.png`, in any case?
 is_png_name :: proc(path: string) -> bool {
 	return len(path) > 4 && strings.equal_fold(path[len(path) - 4:], ".png")
+}
+
+// Does the name end in `.svg`, in any case?
+is_svg_name :: proc(path: string) -> bool {
+	return len(path) > 4 && strings.equal_fold(path[len(path) - 4:], ".svg")
+}
+
+// A name `save` takes: a PNG or an SVG.
+is_save_name :: proc(path: string) -> bool {
+	return is_png_name(path) || is_svg_name(path)
 }
 
 // The name with its first run of `#` replaced by the frame's number, written with at
@@ -103,6 +118,15 @@ write_saves :: proc(w: ^Win) {
 	picture_taken := false
 	image: gfx.Image
 	for path in w.saves {
+		if is_svg_name(path) {
+			svg, left_out := gfx.svg_write(&w.list, w.width, w.height, context.temp_allocator)
+			if why := write_file(path, transmute([]u8)svg); why != "" {
+				note_save_problem(path, why)
+			} else if len(left_out) > 0 {
+				note_save_problem(path, left_out_text(left_out), approximate = true)
+			}
+			continue
+		}
 		if !picture_taken {
 			ok: bool
 			image, ok = picture(w.id, scale)
@@ -117,14 +141,8 @@ write_saves :: proc(w: ^Win) {
 			note_save_problem(path, "the picture could not be turned into a PNG")
 			continue
 		}
-		if slash := strings.last_index_byte(path, '/'); slash > 0 {
-			if err := os.make_directory_all(path[:slash]); err != nil && err != .Exist {
-				note_save_problem(path, "its folder could not be made")
-				continue
-			}
-		}
-		if os.write_entire_file(path, png) != nil {
-			note_save_problem(path, "the file could not be written")
+		if why := write_file(path, png); why != "" {
+			note_save_problem(path, why)
 		}
 	}
 	if picture_taken {
@@ -136,7 +154,33 @@ write_saves :: proc(w: ^Win) {
 	clear(&w.saves)
 }
 
+// Writes a file, making its folders. Gives why it could not, or "" when it did.
 @(private = "file")
-note_save_problem :: proc(path, why: string) {
-	append(&the.save_problems, Save_Problem{strings.clone(path), strings.clone(why)})
+write_file :: proc(path: string, bytes: []u8) -> string {
+	if slash := strings.last_index_byte(path, '/'); slash > 0 {
+		if err := os.make_directory_all(path[:slash]); err != nil && err != .Exist {
+			return "its folder could not be made"
+		}
+	}
+	if os.write_entire_file(path, bytes) != nil {
+		return "the file could not be written"
+	}
+	return ""
+}
+
+// What an SVG file leaves out, as one sentence's worth: "a, b and c".
+@(private)
+left_out_text :: proc(parts: []string) -> string {
+	switch len(parts) {
+	case 1:
+		return parts[0]
+	case 2:
+		return strings.concatenate({parts[0], " and ", parts[1]}, context.temp_allocator)
+	}
+	return strings.concatenate({strings.join(parts[:len(parts) - 1], ", ", context.temp_allocator), " and ", parts[len(parts) - 1]}, context.temp_allocator)
+}
+
+@(private = "file")
+note_save_problem :: proc(path, why: string, approximate := false) {
+	append(&the.save_problems, Save_Problem{strings.clone(path), strings.clone(why), approximate})
 }
