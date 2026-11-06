@@ -71,14 +71,21 @@ test_the_export_example_saves_on_s_and_records_on_r :: proc(t: ^testing.T) {
 	roci.step()
 	roci.step({key_event(w, .R)})
 	testing.expect_value(t, as_bool(global_named(p, "recording")), false)
-	// m records a movie: an animation, which needs no program, until it is pressed again
+	// m records a video (which needs ffmpeg) and a an animation (which needs nothing), each
+	// until it is pressed again, and starting one ends the other
 	roci.step({key_event(w, .M)})
 	roci.step({key_event(w, .M, false)})
 	testing.expect_value(t, as_bool(global_named(p, "filming")), true)
 	testing.expect(t, roci.is_recording() || len(p.errors) > 0)
-	roci.step()
-	roci.step({key_event(w, .M)})
+	roci.step({key_event(w, .A)})
+	roci.step({key_event(w, .A, false)})
 	testing.expect_value(t, as_bool(global_named(p, "filming")), false)
+	testing.expect_value(t, as_bool(global_named(p, "animating")), true)
+	// (with no graphics the first frame cannot be drawn, which ends the recording and is said)
+	roci.step()
+	roci.step({key_event(w, .A)})
+	testing.expect_value(t, as_bool(global_named(p, "animating")), false)
+	testing.expect(t, !roci.is_recording())
 	// Where there are no graphics the pictures are said to have failed, once for each frame
 	// that asked for one; where there are, the files are in the sketch's folder.
 	say_save_problems(p)

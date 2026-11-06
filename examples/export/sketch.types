@@ -1,4 +1,5 @@
 recording: true or false
 filming: true or false
+animating: true or false
 saved: a number
 spin: a number

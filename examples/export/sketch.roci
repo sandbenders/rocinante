@@ -1,10 +1,13 @@
 // Saving pictures: press s to save the window as output/shot.png, press v to save its shapes
-// as a vector drawing, output/shot.svg, press p to save them as a PDF page, output/shot.pdf,
-// press r to start or stop recording a frame sequence into output/frames, one numbered file for
-// each frame, and press m to start or stop recording a movie, output/movie.apng.
+// as a vector drawing, output/shot.svg, and press p to save them as a PDF page, output/shot.pdf.
+// Press r to start or stop recording a frame sequence into output/frames, one numbered file
+// for each frame; m to start or stop recording a video, output/movie.mp4, which ffmpeg makes
+// (it has to be installed); and a to start or stop an animated PNG, output/movie.apng, which
+// needs nothing else.
 window size 480 320 title "export"
 recording = false
 filming = false
+animating = false
 saved = 0
 
 on key "s" [
@@ -20,7 +23,14 @@ on key "r" [ recording = not recording ]
 
 on key "m" [
   filming = not filming
-  if filming [ record "movie.apng" ] else [ no record ]
+  animating = false
+  if filming [ record "movie.mp4" ] else [ no record ]
+]
+
+on key "a" [
+  animating = not animating
+  filming = false
+  if animating [ record "movie.apng" ] else [ no record ]
 ]
 
 draw [
@@ -33,7 +43,7 @@ draw [
   if recording [ save "frames/frame-####.png" ]
   fill white
   font "Inter" size 15
-  text "s saves a picture, v and p a drawing, r and m record" at 20 20
+  text "s png, v svg, p pdf, r frames, m mp4, a apng" at 20 20
   text ("saved " + saved + " pictures") at 20 44
-  if recording or filming [ text "recording" at 20 68 fill tomato ]
+  if recording or filming or animating [ text "recording" at 20 68 fill tomato ]
 ]
