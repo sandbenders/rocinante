@@ -60,6 +60,7 @@ EXAMPLES := [?]Example{
 	{"neon", 20, {1}}, // the built-in effects: glow, split, grain and vignette over bright rings
 	{"smoke", 90, {1}}, // an effect on a canvas: embers whose trails are blurred on the canvas each frame, under a window vignette
 	{"glass", 20, {1}}, // a corridor of glowing glass made by one shader as a fill, with motes of light added over it
+	{"imagebuttons", 6, {1}}, // two buttons that show a picture, and the badges they stamp
 	{"dials", 6, {1}}, // a color box, a knob, a range with two handles and a pad, steering a line of circles
 	{"ui", 6, {1}}, // a slider, a check box and a button in a ui block, drawn over a dot and its ring
 	{"tunnel", 20, {1}}, // a raymarched tunnel made by one shader, the sketch's own dots and word laid over it, and a lens effect on top

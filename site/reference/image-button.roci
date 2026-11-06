@@ -1,0 +1,14 @@
+badge = load "sprite.png"
+stamps = 0
+
+ui [
+  if image button badge "stamp" [ stamps = stamps + 1 ]
+  label ("stamps: " + stamps)
+]
+
+draw [
+  background 245
+  repeat (stamps % 12) [
+    image badge at (60 + stamps * 8) 200 size 32 32
+  ]
+]

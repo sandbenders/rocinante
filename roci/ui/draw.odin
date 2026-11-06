@@ -16,7 +16,19 @@ has_drawing :: proc(s: ^State) -> bool {
 
 // Draws the last finished frame into `target` (`pixels` across, in `format`). False when the
 // backend could not be made; the frame is then left as it was.
-draw :: proc(s: ^State, device: ^sdl.GPUDevice, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTexture, format: sdl.GPUTextureFormat) -> bool {
+// Gives the texture of a picture the interface shows (`image_button`), made now if it was not, with
+// `commands` open to upload it. Nil when there is none; the picture is then left out.
+Texture_Of :: proc(user: rawptr, image: u32) -> ^sdl.GPUTexture
+
+draw :: proc(
+	s: ^State,
+	device: ^sdl.GPUDevice,
+	commands: ^sdl.GPUCommandBuffer,
+	target: ^sdl.GPUTexture,
+	format: sdl.GPUTextureFormat,
+	textures: Texture_Of = nil,
+	textures_user: rawptr = nil,
+) -> bool {
 	if !has_drawing(s) {
 		return true
 	}
@@ -48,6 +60,7 @@ draw :: proc(s: ^State, device: ^sdl.GPUDevice, commands: ^sdl.GPUCommandBuffer,
 		data.framebuffer_scale = {s.target_scale, s.target_scale}
 	}
 	imgui.gpu3_prepare_draw_data(data, commands)
+	patch_pictures(data, textures, textures_user)
 	keep := sdl.GPUColorTargetInfo {
 		texture  = target,
 		load_op  = .LOAD,
@@ -60,4 +73,36 @@ draw :: proc(s: ^State, device: ^sdl.GPUDevice, commands: ^sdl.GPUCommandBuffer,
 	imgui.gpu3_render_draw_data(data, commands, pass)
 	sdl.EndGPURenderPass(pass)
 	return true
+}
+
+// Swaps the place a picture was given in the draw commands (`IMAGE_TEXTURE_FLAG` and its number) for
+// its texture; a picture that has none is not drawn.
+patch_pictures :: proc(data: ^imgui.DrawData, textures: Texture_Of, user: rawptr) {
+	if data == nil || data.cmd_lists.data == nil {
+		return
+	}
+	lists := ([^]^imgui.DrawList)(data.cmd_lists.data)
+	for i in 0 ..< int(data.cmd_lists.size) {
+		list := lists[i]
+		if list == nil || list.cmd_buffer.data == nil {
+			continue
+		}
+		cmds := ([^]imgui.DrawCmd)(list.cmd_buffer.data)
+		for j in 0 ..< int(list.cmd_buffer.size) {
+			cmd := &cmds[j]
+			id := cmd.tex_ref._tex_id
+			if cmd.tex_ref._tex_data != nil || id & IMAGE_TEXTURE_FLAG == 0 {
+				continue
+			}
+			texture: ^sdl.GPUTexture
+			if textures != nil {
+				texture = textures(user, u32(id &~ IMAGE_TEXTURE_FLAG))
+			}
+			if texture == nil {
+				cmd.elem_count = 0
+			} else {
+				cmd.tex_ref._tex_id = u64(uintptr(texture))
+			}
+		}
+	}
 }

@@ -4,6 +4,7 @@ package ui
 import "core:testing"
 
 import imgui "../../vendor/imgui"
+import sdl "vendor:sdl3"
 import "../gfx"
 
 ITEMS :: [3]string{"circle", "square", "star"}
@@ -495,4 +496,59 @@ test_dials_keep_their_vectors_by_path_and_forget_them :: proc(t: ^testing.T) {
 	forget(s)
 	testing.expect_value(t, kept_vector(s, "tint", {1, 2, 3, 4})^, [4]f32{1, 2, 3, 4})
 	end_frame(s)
+}
+
+@(test)
+test_an_image_button_leaves_a_place_for_its_picture_that_drawing_swaps_for_a_texture :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	for _ in 0 ..< 4 {
+		ensure_frame(s, SIZE, 2, 1.0 / 60)
+		_ = image_button(s, "stamp", 7, {32, 32})
+		_ = image_button(s, "other", 9, {32, 32})
+		end_frame(s)
+	}
+	got := records(s)
+	if !testing.expect_value(t, len(got), 2) {
+		return
+	}
+	testing.expect_value(t, got[0].role, Role.Image_Button)
+	testing.expect(t, got[0].rect.max.x - got[0].rect.min.x >= 32, "it has the size asked for")
+	imgui.set_current_context(s.ctx)
+	data := imgui.get_draw_data()
+	picture_commands :: proc(data: ^imgui.DrawData) -> (placed, drawn: int) {
+		lists := ([^]^imgui.DrawList)(data.cmd_lists.data)
+		for i in 0 ..< int(data.cmd_lists.size) {
+			cmds := ([^]imgui.DrawCmd)(lists[i].cmd_buffer.data)
+			for j in 0 ..< int(lists[i].cmd_buffer.size) {
+				if cmds[j].tex_ref._tex_id & IMAGE_TEXTURE_FLAG != 0 {
+					placed += 1
+					if cmds[j].elem_count > 0 {
+						drawn += 1
+					}
+				}
+			}
+		}
+		return
+	}
+	placed, _ := picture_commands(data)
+	testing.expect(t, placed >= 1, "the draw commands carry the pictures' places")
+	// picture 7 has a texture, picture 9 has none and is left out
+	fake: u8
+	patch_pictures(data, proc(user: rawptr, image: u32) -> ^sdl.GPUTexture {
+		return (^sdl.GPUTexture)(user) if image == 7 else nil
+	}, &fake)
+	_, drawn := picture_commands(data)
+	testing.expect_value(t, drawn, 0) // the ones swapped are no longer places
+	swapped := 0
+	lists := ([^]^imgui.DrawList)(data.cmd_lists.data)
+	for i in 0 ..< int(data.cmd_lists.size) {
+		cmds := ([^]imgui.DrawCmd)(lists[i].cmd_buffer.data)
+		for j in 0 ..< int(lists[i].cmd_buffer.size) {
+			if cmds[j].tex_ref._tex_id == u64(uintptr(&fake)) {
+				swapped += 1
+			}
+		}
+	}
+	testing.expect_value(t, swapped, 1)
 }

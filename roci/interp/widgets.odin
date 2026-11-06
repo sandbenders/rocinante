@@ -16,7 +16,8 @@ WIDGET_EXAMPLE :: "ui [ a = slider \"width\" 10 200  b = slider \"depth\" 10 200
 
 @(private)
 widget_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Code) -> Value {
-	text := as_text(eval(it, call.args[0])) if len(call.args) > 0 else ""
+	text_at := 1 if code == .Image_Button else 0
+	text := as_text(eval(it, call.args[text_at])) if len(call.args) > text_at else ""
 	roci.ui_salt(site_count(it, e))
 	window := roci.current_window()
 	before := len(roci.ui_problems(window))
@@ -99,6 +100,17 @@ widget_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Cod
 			start = {0.5, 0.5}
 		}
 		return vec2(roci.ui_xypad_value(text, start))
+	case .Image_Button:
+		picture := as_image(eval(it, call.args[0]))
+		size, given := option_pair(it, call.options, "size")
+		if !given {
+			// its own size, down to 64 pixels on the longer side
+			own := roci.image_size(picture)
+			longest := max(own.x, own.y)
+			scale := min(1.0, 64.0 / longest) if longest > 0 else 1.0
+			size = {max(own.x * scale, 16), max(own.y * scale, 16)}
+		}
+		return roci.ui_image_button(text, picture, size)
 	case .Progress:
 		roci.ui_progress(as_number(eval(it, call.args[0])))
 	case .Separator:

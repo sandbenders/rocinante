@@ -1,0 +1,22 @@
+// Buttons that show a picture. The text after the picture is the button's name: it tells it from
+// the others and is what a screen reader says. Each click of the first stamps a badge, and the
+// second, which is bigger, stamps ten.
+window size 480 320 title "image buttons"
+badge = load "sprite.png"
+stamps = 0
+
+ui [
+  if image button badge "stamp" [ stamps = stamps + 1 ]
+  if image button badge "stamp ten" size 96 96 [ stamps = stamps + 10 ]
+  label ("stamps: " + stamps)
+]
+
+draw [
+  background 30
+  shown = stamps % 24
+  if shown > 0 [
+    for i from 1 to shown [
+      image badge at (230 + (i % 6) * 40) (60 + floor (i / 6) * 40) size 32 32
+    ]
+  ]
+]

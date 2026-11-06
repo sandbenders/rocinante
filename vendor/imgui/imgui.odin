@@ -1699,6 +1699,7 @@ foreign lib {
 	@(link_name = "ImGui_Checkbox") checkbox :: proc(label: cstring, v: ^bool) -> bool ---
 	@(link_name = "ImGui_RadioButton") radio_button :: proc(label: cstring, active: bool) -> bool ---
 	@(link_name = "ImGui_ProgressBar") progress_bar :: proc(fraction: f32, size_arg: [2]f32, overlay: cstring = nil) ---
+	@(link_name = "ImGui_ImageButton") image_button :: proc(str_id: cstring, tex_ref: TextureRef, image_size: [2]f32) -> bool ---
 	@(link_name = "ImGui_BeginCombo") begin_combo :: proc(label: cstring, preview_value: cstring, flags: ComboFlags = 0) -> bool ---
 	@(link_name = "ImGui_EndCombo") end_combo :: proc() ---
 	@(link_name = "ImGui_DragFloat") drag_float :: proc(label: cstring, v: ^f32) -> bool ---

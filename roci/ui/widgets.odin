@@ -677,3 +677,19 @@ xypad :: proc(s: ^State, text: string, x, y: ^f32) -> bool {
 	record.focused, record.hovered, record.active = focused, hovered, active
 	return changed
 }
+
+// ---- pictures ----
+
+// A picture's place in a draw command, before the renderer's texture for it is known: this bit and
+// the picture's number. `draw` swaps it for the texture.
+IMAGE_TEXTURE_FLAG :: u64(1) << 62
+
+// A button that shows a picture, `size` logical pixels across and down: true on the frame it is
+// clicked. `image` is the picture's number in the renderer's store.
+image_button :: proc(s: ^State, text: string, image: u32, size: [2]f32) -> bool {
+	use(s)
+	place(s)
+	clicked := imgui.image_button(label_id(s, text), imgui.TextureRef{_tex_id = IMAGE_TEXTURE_FLAG | u64(image)}, size)
+	note(s, .Image_Button, text).changed = clicked
+	return clicked
+}

@@ -40,6 +40,7 @@ Role :: enum {
 	Knob,
 	Range,
 	Xypad,
+	Image_Button,
 }
 
 Rect :: struct {

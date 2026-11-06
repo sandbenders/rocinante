@@ -395,3 +395,33 @@ test_the_dials_example_starts_as_told_and_a_knob_a_range_and_a_pad_give_what_the
 	testing.expect_value(t, span.y, span.x) // the handles meet and do not cross
 	testing.expect(t, span.x <= 20, "the low handle stayed")
 }
+
+@(test)
+test_image_buttons_count_clicks_and_the_example_stamps_badges :: proc(t: ^testing.T) {
+	// the sketch's own folder, where its picture is
+	roci.start_headless(1)
+	p, ok := load("sketch.roci", example_text("imagebuttons"))
+	testing.expect(t, ok)
+	p.path = "examples/imagebuttons/sketch.roci"
+	start(p)
+	for _ in 0 ..< 5 {
+		roci.step()
+	}
+	defer finish(p)
+	w := first_window()
+	testing.expect_value(t, as_number(global_named(p, "stamps")), 0)
+	testing.expect_value(t, len(roci.recorded(w)), 0) // no badge yet
+	records := roci.ui_records(w)
+	if testing.expect_value(t, len(records), 3) {
+		testing.expect_value(t, records[0].role, ui.Role.Image_Button)
+		testing.expect_value(t, records[0].label, "stamp")
+		big := records[1].rect.max - records[1].rect.min
+		small := records[0].rect.max - records[0].rect.min
+		testing.expect(t, big.x > small.x, "the second is the bigger, as it was told")
+	}
+	click_widget(t, w, "stamp")
+	click_widget(t, w, "stamp ten")
+	testing.expect_value(t, as_number(global_named(p, "stamps")), 11)
+	steps(2)
+	testing.expect_value(t, len(roci.recorded(w)), 11) // a badge for each
+}

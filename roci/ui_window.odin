@@ -230,6 +230,12 @@ ui_xypad_value :: proc(text: string, start: [2]f64) -> [2]f64 {
 	return {f64(place[0]), f64(place[1])}
 }
 
+// A button that shows a picture, `size` logical pixels across and down: true on the frame it is clicked.
+ui_image_button :: proc(text: string, picture: Image, size: [2]f64) -> bool {
+	clicked := ui.image_button(ui_frame(), text, u32(picture), {f32(size.x), f32(size.y)})
+	return clicked
+}
+
 // How far something has got, from 0 to 1.
 ui_progress :: proc(fraction: f64) {
 	ui.progress(ui_frame(), f32(fraction))
@@ -321,13 +327,31 @@ ui_event :: proc(event: platform.Event) {
 @(private)
 ui_overlay :: proc(user: rawptr, device: ^sdl.GPUDevice, commands: ^sdl.GPUCommandBuffer, target: ^sdl.GPUTexture, format: sdl.GPUTextureFormat) -> bool {
 	w := (^Win)(user)
-	return ui.draw(w.ui, device, commands, target, format)
+	// the pictures of image buttons are the renderer's own textures
+	source := Picture_Source{renderer = w.ui_renderer, commands = commands}
+	return ui.draw(w.ui, device, commands, target, format, picture_texture, &source)
+}
+
+@(private)
+Picture_Source :: struct {
+	renderer: ^gfx.Renderer,
+	commands: ^sdl.GPUCommandBuffer,
+}
+
+@(private)
+picture_texture :: proc(user: rawptr, image: u32) -> ^sdl.GPUTexture {
+	source := (^Picture_Source)(user)
+	if source.renderer == nil {
+		return nil
+	}
+	return gfx.image_texture(source.renderer, source.commands, gfx.Image_Id(image))
 }
 
 // Makes the renderer draw `w`'s interface with the next picture it makes, if it has one.
 @(private)
 with_ui :: proc(r: ^gfx.Renderer, w: ^Win) {
 	if w != nil && ui.has_drawing(w.ui) {
+		w.ui_renderer = r
 		r.overlay = ui_overlay
 		r.overlay_user = w
 	} else {
