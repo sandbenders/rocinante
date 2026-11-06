@@ -2,7 +2,9 @@
 package interp
 
 import "../"
+import "../maths"
 import "../platform"
+import "../ui"
 import "core:strings"
 import "core:testing"
 
@@ -341,4 +343,55 @@ test_the_ui_example_draws_the_square_where_it_draws_the_rings :: proc(t: ^testin
 	testing.expect(t, found, "a square is drawn")
 	testing.expect_value(t, square, ring) // the same middle, whichever shape and origin
 	testing.expect_value(t, ring, [2]f32{560, 260})
+}
+
+// Drags with the left button from one place to another, a stage at a time.
+drag_between :: proc(w: roci.Window, from, to: [2]f32) {
+	id := platform.Window_Id(w)
+	steps(3, {platform.Mouse_Moved{window = id, x = from.x, y = from.y}})
+	steps(3, {mouse_at(w, from.x, from.y, true)})
+	steps(3, {platform.Mouse_Moved{window = id, x = to.x, y = to.y}})
+	steps(3, {mouse_at(w, to.x, to.y, false)})
+}
+
+widget_rect :: proc(w: roci.Window, text: string) -> (rect: ui.Rect, ok: bool) {
+	for r in roci.ui_records(w) {
+		if r.label == text {
+			return r.rect, true
+		}
+	}
+	return {}, false
+}
+
+@(test)
+test_the_dials_example_starts_as_told_and_a_knob_a_range_and_a_pad_give_what_they_were_dragged_to :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("dials"), 5)
+	defer finish(p)
+	w := first_window()
+	testing.expect_value(t, as_number(global_named(p, "turns")), 6)
+	span := as_pair(global_named(p, "span"))
+	testing.expect_value(t, span, [2]f64{20, 80})
+	spot := as_pair(global_named(p, "spot"))
+	testing.expect_value(t, spot, [2]f64{0.5, 0.5})
+	mood, is_color := global_named(p, "mood").(maths.Colour)
+	testing.expect(t, is_color && mood == maths.Colour{255, 165, 0, 255}, "orange to start")
+	// the knob: up by a quarter of its travel is a quarter of its range (1 to 12) more
+	knob_rect, _ := widget_rect(w, "circles")
+	middle := (knob_rect.min + knob_rect.max) / 2
+	drag_between(w, middle, middle + {0, -50})
+	testing.expect(t, abs(as_number(global_named(p, "turns")) - (6 + 11.0 / 4)) < 0.01, "the knob turned up a quarter")
+	// the pad: dragged to its top left corner
+	pad, _ := widget_rect(w, "end")
+	drag_between(w, (pad.min + pad.max) / 2, pad.min - {30, 30})
+	spot = as_pair(global_named(p, "spot"))
+	testing.expect_value(t, spot, [2]f64{0, 0})
+	// the range: its high handle dragged past the left
+	bar, _ := widget_rect(w, "size")
+	y := (bar.min.y + bar.max.y) / 2
+	travel := f32(roci.UI_RANGE_WIDTH - roci.UI_RANGE_HANDLE)
+	high := bar.min.x + roci.UI_RANGE_HANDLE / 2 + 0.8 * travel
+	drag_between(w, {high, y}, {bar.min.x - 40, y})
+	span = as_pair(global_named(p, "span"))
+	testing.expect_value(t, span.y, span.x) // the handles meet and do not cross
+	testing.expect(t, span.x <= 20, "the low handle stayed")
 }

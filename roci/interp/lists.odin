@@ -79,7 +79,7 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return outline_verb(it, call)
 	case .Pixel, .Pixels, .Picture, .Crop, .Resize, .Filter, .Mask:
 		return picture_verb(it, e, call, code)
-	case .Label, .Button, .Toggle, .Slider, .Number, .Textbox, .Dropdown, .Choice, .Progress, .Separator, .Tip, .List:
+	case .Label, .Button, .Toggle, .Slider, .Number, .Textbox, .Dropdown, .Choice, .Progress, .Separator, .Tip, .List, .Colorpicker, .Knob, .Range, .Xypad:
 		return widget_verb(it, e, call, code)
 	case .Forget_Ui:
 		roci.ui_forget()

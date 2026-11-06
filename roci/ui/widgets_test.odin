@@ -366,3 +366,133 @@ test_forgetting_makes_every_kept_value_start_again :: proc(t: ^testing.T) {
 	testing.expect_value(t, kept(s, "size", 5)^, 5)
 	testing.expect_value(t, text_in(kept_text(s, "words", "hi")), "hi")
 }
+
+// ---- the colour box, the knob, the range and the pad ----
+
+Dials :: struct {
+	color: [4]f32,
+	knob:  f32,
+	low:   f32,
+	high:  f32,
+	x, y:  f32,
+}
+
+dials_frame :: proc(s: ^State, d: ^Dials) {
+	ensure_frame(s, SIZE, 2, 1.0 / 60)
+	_ = colorpicker(s, "tint", &d.color)
+	_ = knob(s, "speed", &d.knob, 0, 100)
+	_ = range(s, "span", &d.low, &d.high, 0, 100)
+	_ = xypad(s, "place", &d.x, &d.y)
+	end_frame(s)
+}
+
+dials_settle :: proc(s: ^State, d: ^Dials) {
+	for _ in 0 ..< 4 {
+		dials_frame(s, d)
+	}
+}
+
+drag :: proc(s: ^State, d: ^Dials, from, to: [2]f32) {
+	mouse_moved(s, from.x, from.y)
+	dials_frame(s, d)
+	mouse_button(s, .Left, true)
+	dials_frame(s, d)
+	dials_frame(s, d)
+	mouse_moved(s, to.x, to.y)
+	dials_frame(s, d)
+	dials_frame(s, d)
+	mouse_button(s, .Left, false)
+	dials_frame(s, d)
+	dials_frame(s, d)
+}
+
+@(test)
+test_the_dials_leave_records_and_a_colour_says_its_hex :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	d := Dials{color = {1, 0.5, 0, 1}, knob = 25, low = 10, high = 60, x = 0.25, y = 0.75}
+	dials_settle(s, &d)
+	got := records(s)
+	if !testing.expect_value(t, len(got), 4) {
+		return
+	}
+	roles := [4]Role{.Colorpicker, .Knob, .Range, .Xypad}
+	for rec, i in got {
+		testing.expect_value(t, rec.role, roles[i])
+		testing.expect(t, rec.rect.max.x > rec.rect.min.x && rec.rect.max.y > rec.rect.min.y, "a dial has a size")
+	}
+	testing.expect_value(t, got[0].text, "#ff8000ff")
+	testing.expect_value(t, got[1].text, "25.00")
+	testing.expect_value(t, got[2].text, "10.00 to 60.00")
+	testing.expect_value(t, got[3].text, "0.25, 0.75")
+	testing.expect_value(t, len(s.problems), 0)
+}
+
+@(test)
+test_dragging_a_knob_up_turns_it_up_and_down_turns_it_down :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	d := Dials{knob = 50, high = 100}
+	dials_settle(s, &d)
+	knob_record, _ := record_named(s, "speed")
+	middle := centre(knob_record.rect)
+	drag(s, &d, middle, middle + {0, -50})
+	testing.expect_value(t, d.knob, f32(75)) // 50 pixels up of 200 is a quarter of the range
+	drag(s, &d, middle, middle + {0, 400})
+	testing.expect_value(t, d.knob, f32(0)) // and it stops at the end
+}
+
+@(test)
+test_the_two_handles_of_a_range_move_apart_and_never_cross :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	d := Dials{low = 20, high = 80}
+	dials_settle(s, &d)
+	bar, _ := record_named(s, "span")
+	y := (bar.rect.min.y + bar.rect.max.y) / 2
+	travel := f32(RANGE_WIDTH - RANGE_HANDLE)
+	low_x := bar.rect.min.x + RANGE_HANDLE / 2 + 0.2 * travel
+	// the low handle dragged to the middle
+	drag(s, &d, {low_x, y}, {bar.rect.min.x + RANGE_HANDLE / 2 + 0.5 * travel, y})
+	testing.expect(t, abs(d.low - 50) < 1, "the low handle is at the middle")
+	testing.expect_value(t, d.high, f32(80))
+	// and past the high one: it stops there
+	low_x = bar.rect.min.x + RANGE_HANDLE / 2 + 0.5 * travel
+	drag(s, &d, {low_x, y}, {bar.rect.max.x + 100, y})
+	testing.expect_value(t, d.low, f32(80))
+	testing.expect_value(t, d.high, f32(80))
+}
+
+@(test)
+test_a_pad_gives_where_it_was_pressed_and_the_arrow_keys_nudge_it :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	d := Dials{high = 100}
+	dials_settle(s, &d)
+	pad, _ := record_named(s, "place")
+	size := pad.rect.max - pad.rect.min
+	drag(s, &d, pad.rect.min + size * 0.5, pad.rect.min + {size.x * 0.25, size.y * 0.75})
+	testing.expect(t, abs(d.x - 0.25) < 0.02 && abs(d.y - 0.75) < 0.02, "the pad gave the place it was left at")
+	// outside the pad it stops at the edge
+	drag(s, &d, pad.rect.min + size * 0.5, pad.rect.min - {50, 50})
+	testing.expect_value(t, d.x, f32(0))
+	testing.expect_value(t, d.y, f32(0))
+	// the pad still has focus: an arrow key moves it one hundredth
+	key(s, .RIGHT, true, {})
+	dials_frame(s, &d)
+	key(s, .RIGHT, false, {})
+	dials_frame(s, &d)
+	testing.expect(t, abs(d.x - 0.01) < 0.001, "an arrow key nudges the pad")
+}
+
+@(test)
+test_dials_keep_their_vectors_by_path_and_forget_them :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	begin_frame(s, SIZE, 2, 1.0 / 60)
+	kept_vector(s, "tint", {1, 2, 3, 4})^ = {9, 9, 9, 9}
+	testing.expect_value(t, kept_vector(s, "tint", {0, 0, 0, 0})^, [4]f32{9, 9, 9, 9})
+	forget(s)
+	testing.expect_value(t, kept_vector(s, "tint", {1, 2, 3, 4})^, [4]f32{1, 2, 3, 4})
+	end_frame(s)
+}

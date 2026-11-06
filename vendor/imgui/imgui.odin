@@ -1758,6 +1758,7 @@ foreign lib {
 	@(link_name = "ImGui_GetItemRectMax") get_item_rect_max :: proc() -> [2]f32 ---
 	@(link_name = "ImGui_GetItemRectSize") get_item_rect_size :: proc() -> [2]f32 ---
 	@(link_name = "ImGui_CalcTextSize") calc_text_size :: proc(text: cstring) -> [2]f32 ---
+	@(link_name = "ImGui_IsKeyPressed") is_key_pressed :: proc(key: Key) -> bool ---
 	@(link_name = "ImGuiStyle_ScaleAllSizes") style_scale_all_sizes :: proc(self: ^Style, scale_factor: f32) ---
 	@(link_name = "ImGuiIO_AddKeyEvent") io_add_key_event :: proc(self: ^IO, key: Key, down: bool) ---
 	@(link_name = "ImGuiIO_AddMousePosEvent") io_add_mouse_pos_event :: proc(self: ^IO, x: f32, y: f32) ---

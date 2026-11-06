@@ -5,6 +5,7 @@
 package ui
 
 import "core:fmt"
+import "core:math"
 import "core:strings"
 
 import imgui "../../vendor/imgui"
@@ -452,6 +453,10 @@ list :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 
 // Lets go of every value the widgets keep, so each starts again from its start.
 forget :: proc(s: ^State) {
+	for key in s.kept_vec {
+		delete(key)
+	}
+	clear(&s.kept_vec)
 	for key in s.kept {
 		delete(key)
 	}
@@ -461,4 +466,193 @@ forget :: proc(s: ^State) {
 		delete(buffer)
 	}
 	clear(&s.kept_text)
+}
+
+// ---- widgets Dear ImGui lacks, and the colour box ----
+
+// Up to four numbers a widget keeps between frames (a colour, a range's two ends, a pad's place),
+// made with `start` the first time its text is seen.
+kept_vector :: proc(s: ^State, text: string, start: [4]f32) -> ^[4]f32 {
+	key := scoped(s, text)
+	if key not_in s.kept_vec {
+		s.kept_vec[strings.clone(key)] = start
+	}
+	return &s.kept_vec[key]
+}
+
+// What the keyboard does to a widget that has focus: -1 for left or down, 1 for right or up, else 0.
+@(private)
+arrow_step :: proc() -> f32 {
+	step: f32
+	if imgui.is_key_pressed(imgui.Key_LeftArrow) || imgui.is_key_pressed(imgui.Key_DownArrow) {
+		step -= 1
+	}
+	if imgui.is_key_pressed(imgui.Key_RightArrow) || imgui.is_key_pressed(imgui.Key_UpArrow) {
+		step += 1
+	}
+	return step
+}
+
+// A swatch that opens a color picker: `color` is red, green, blue and alpha from 0 to 1.
+colorpicker :: proc(s: ^State, text: string, color: ^[4]f32) -> bool {
+	use(s)
+	place(s)
+	changed := imgui.color_edit4(label_id(s, text), cast(^[4][4]f32)color, imgui.ColorEditFlags_NoInputs | imgui.ColorEditFlags_AlphaBar)
+	hex := fmt.tprintf("#%02x%02x%02x%02x", int(color[0] * 255 + 0.5), int(color[1] * 255 + 0.5), int(color[2] * 255 + 0.5), int(color[3] * 255 + 0.5))
+	note(s, .Colorpicker, text, 0, hex).changed = changed
+	return changed
+}
+
+KNOB_PIXELS_PER_RANGE :: 200 // how far the mouse goes to turn the knob from one end to the other
+
+// A round dial: dragged up or to the right it turns up, and with the arrow keys when it has focus.
+knob :: proc(s: ^State, text: string, value: ^f32, low, high: f32) -> bool {
+	use(s)
+	place(s)
+	size := imgui.get_frame_height() * 2
+	at := imgui.get_cursor_screen_pos()
+	imgui.invisible_button(label_id(s, text), {size, size})
+	span := high - low
+	changed := false
+	before := value^
+	if imgui.is_item_active() {
+		io := imgui.get_io()
+		value^ += (io.mouse_delta.x - io.mouse_delta.y) / KNOB_PIXELS_PER_RANGE * span
+	}
+	if imgui.is_item_focused() {
+		value^ += arrow_step() * span / 100
+	}
+	value^ = clamp(value^, min(low, high), max(low, high))
+	changed = value^ != before
+	rect_min, rect_max := imgui.get_item_rect_min(), imgui.get_item_rect_max()
+	id := imgui.get_item_id()
+	focused, hovered, active := imgui.is_item_focused(), imgui.is_item_hovered(), imgui.is_item_active()
+	list := imgui.get_window_draw_list()
+	centre := at + {size, size} / 2
+	radius := size / 2 - 2
+	t := (value^ - low) / span if span != 0 else 0
+	start_angle: f32 = 0.75 * 3.14159265
+	end_angle := start_angle + t * 1.5 * 3.14159265
+	imgui.draw_list_add_circle_filled(list, centre, radius, imgui.get_color_u32(imgui.Col_FrameBg))
+	imgui.draw_list_path_arc_to(list, centre, radius - 3, start_angle, start_angle + 1.5 * 3.14159265)
+	imgui.draw_list_path_stroke(list, imgui.get_color_u32(imgui.Col_Button), 3)
+	imgui.draw_list_path_arc_to(list, centre, radius - 3, start_angle, end_angle)
+	imgui.draw_list_path_stroke(list, imgui.get_color_u32(imgui.Col_SliderGrab), 3)
+	pointer := [2]f32{math.cos(end_angle), math.sin(end_angle)}
+	imgui.draw_list_add_line_ex(list, centre + pointer * radius * 0.3, centre + pointer * (radius - 3), imgui.get_color_u32(imgui.Col_Text), 2)
+	if focused {
+		imgui.draw_list_add_circle_ex(list, centre, radius + 1, imgui.get_color_u32(imgui.Col_CheckMark), 0, 1.5)
+	}
+	imgui.same_line()
+	imgui.text_unformatted(cstr(text))
+	record := note(s, .Knob, text, value^, fmt.tprintf("%.2f", value^), id)
+	record.changed = changed
+	record.rect = {rect_min, rect_max}
+	record.focused, record.hovered, record.active = focused, hovered, active
+	return changed
+}
+
+RANGE_WIDTH :: 200
+RANGE_HANDLE :: 14
+
+// A bar with two handles, for a low and a high end: `low_value` and `high_value` are kept apart by
+// the handles never crossing. Each handle is dragged, or moved by the arrow keys when it has focus.
+range :: proc(s: ^State, text: string, low_value, high_value: ^f32, low, high: f32) -> bool {
+	use(s)
+	place(s)
+	height := imgui.get_frame_height()
+	at := imgui.get_cursor_screen_pos()
+	imgui.dummy({RANGE_WIDTH, height})
+	imgui.same_line()
+	imgui.text_unformatted(cstr(text))
+	after := imgui.get_cursor_screen_pos()
+	span := high - low
+	travel := f32(RANGE_WIDTH - RANGE_HANDLE)
+	changed := false
+	focused, hovered, active := false, false, false
+	// the two handles, each a button of its own so each can be reached and moved
+	for end in 0 ..< 2 {
+		value := low_value if end == 0 else high_value
+		t := (value^ - low) / span if span != 0 else 0
+		imgui.set_cursor_screen_pos({at.x + t * travel, at.y})
+		imgui.invisible_button(fmt.ctprintf("##%s%d%d", text, s.salt, end), {RANGE_HANDLE, height})
+		before := value^
+		if imgui.is_item_active() {
+			x := imgui.get_io().mouse_pos.x - at.x - RANGE_HANDLE / 2
+			value^ = low + clamp(x / travel, 0, 1) * span
+		}
+		if imgui.is_item_focused() {
+			value^ += arrow_step() * span / 100
+		}
+		value^ = clamp(value^, min(low, high), max(low, high))
+		if end == 0 {
+			value^ = min(value^, high_value^)
+		} else {
+			value^ = max(value^, low_value^)
+		}
+		changed = changed || value^ != before
+		focused = focused || imgui.is_item_focused()
+		hovered = hovered || imgui.is_item_hovered()
+		active = active || imgui.is_item_active()
+	}
+	imgui.set_cursor_screen_pos(after)
+	list := imgui.get_window_draw_list()
+	mid := at.y + height / 2
+	left := at.x + RANGE_HANDLE / 2
+	t_low := (low_value^ - low) / span if span != 0 else 0
+	t_high := (high_value^ - low) / span if span != 0 else 0
+	x_low, x_high := left + t_low * travel, left + t_high * travel
+	imgui.draw_list_add_rect_filled(list, {left, mid - 2}, {left + travel, mid + 2}, imgui.get_color_u32(imgui.Col_FrameBg))
+	imgui.draw_list_add_rect_filled(list, {x_low, mid - 2}, {x_high, mid + 2}, imgui.get_color_u32(imgui.Col_SliderGrab))
+	imgui.draw_list_add_circle_filled(list, {x_low, mid}, RANGE_HANDLE / 2, imgui.get_color_u32(imgui.Col_SliderGrab))
+	imgui.draw_list_add_circle_filled(list, {x_high, mid}, RANGE_HANDLE / 2, imgui.get_color_u32(imgui.Col_SliderGrab))
+	record := note(s, .Range, text, low_value^, fmt.tprintf("%.2f to %.2f", low_value^, high_value^), imgui.get_id(label_id(s, text)))
+	record.changed = changed
+	record.rect = {at, at + {RANGE_WIDTH, height}}
+	record.focused, record.hovered, record.active = focused, hovered, active
+	return changed
+}
+
+// A square pad: the place the pointer is on it, from 0 to 1 across (`x`) and 0 to 1 down (`y`).
+xypad :: proc(s: ^State, text: string, x, y: ^f32) -> bool {
+	use(s)
+	place(s)
+	size := imgui.get_frame_height() * 5
+	at := imgui.get_cursor_screen_pos()
+	imgui.invisible_button(label_id(s, text), {size, size})
+	before := [2]f32{x^, y^}
+	if imgui.is_item_active() {
+		mouse := imgui.get_io().mouse_pos
+		x^ = clamp((mouse.x - at.x) / size, 0, 1)
+		y^ = clamp((mouse.y - at.y) / size, 0, 1)
+	}
+	if imgui.is_item_focused() {
+		if imgui.is_key_pressed(imgui.Key_LeftArrow) { x^ -= 0.01 }
+		if imgui.is_key_pressed(imgui.Key_RightArrow) { x^ += 0.01 }
+		if imgui.is_key_pressed(imgui.Key_UpArrow) { y^ -= 0.01 }
+		if imgui.is_key_pressed(imgui.Key_DownArrow) { y^ += 0.01 }
+		x^, y^ = clamp(x^, 0, 1), clamp(y^, 0, 1)
+	}
+	changed := [2]f32{x^, y^} != before
+	rect_min, rect_max := imgui.get_item_rect_min(), imgui.get_item_rect_max()
+	id := imgui.get_item_id()
+	focused, hovered, active := imgui.is_item_focused(), imgui.is_item_hovered(), imgui.is_item_active()
+	list := imgui.get_window_draw_list()
+	imgui.draw_list_add_rect_filled(list, at, at + {size, size}, imgui.get_color_u32(imgui.Col_FrameBg))
+	middle := at + {size, size} / 2
+	faint := imgui.get_color_u32(imgui.Col_Button)
+	imgui.draw_list_add_line(list, {at.x, middle.y}, {at.x + size, middle.y}, faint)
+	imgui.draw_list_add_line(list, {middle.x, at.y}, {middle.x, at.y + size}, faint)
+	dot := at + {x^, y^} * size
+	imgui.draw_list_add_circle_filled(list, dot, 6, imgui.get_color_u32(imgui.Col_SliderGrab))
+	if focused {
+		imgui.draw_list_add_rect(list, at, at + {size, size}, imgui.get_color_u32(imgui.Col_CheckMark))
+	}
+	imgui.same_line()
+	imgui.text_unformatted(cstr(text))
+	record := note(s, .Xypad, text, x^, fmt.tprintf("%.2f, %.2f", x^, y^), id)
+	record.changed = changed
+	record.rect = {rect_min, rect_max}
+	record.focused, record.hovered, record.active = focused, hovered, active
+	return changed
 }

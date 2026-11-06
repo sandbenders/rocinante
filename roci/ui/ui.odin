@@ -36,6 +36,10 @@ Role :: enum {
 	Menu,
 	Item,
 	List,
+	Colorpicker,
+	Knob,
+	Range,
+	Xypad,
 }
 
 Rect :: struct {
@@ -68,6 +72,7 @@ State :: struct {
 	records:        [dynamic]Record, // the frame being built
 	finished:       [dynamic]Record, // the last frame built
 	seen:           map[u32]bool,    // identities used this frame
+	kept_vec:       map[string][4]f32, // what the colour, range and pad widgets hold, by their text
 	kept_text:      map[string][]u8, // the text boxes' text, by their text: a zero-ended buffer of TEXT_BYTES
 	path:           [dynamic]string, // the panels, tabs and menus the widgets being made are inside
 	salt:           int,             // which time this call in the sketch has been made this frame (a loop), 0 for the first
@@ -192,6 +197,10 @@ destroy :: proc(s: ^State) {
 		delete(key)
 	}
 	delete(s.kept)
+	for key in s.kept_vec {
+		delete(key)
+	}
+	delete(s.kept_vec)
 	for part in s.path {
 		delete(part)
 	}

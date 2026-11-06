@@ -8,6 +8,7 @@ package interp
 
 import "../"
 import "../lang"
+import "../maths"
 import "../ui"
 import "core:strings"
 
@@ -72,6 +73,32 @@ widget_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Cod
 		}
 		index := roci.ui_pick_value(text, items, start, how)
 		return strings.clone(items[index], it.alloc) if index < len(items) else ""
+	case .Colorpicker:
+		start := maths.Colour{255, 255, 255, 255}
+		if given, ok := option_or_nil(it, call.options, "start").(maths.Colour); ok {
+			start = given
+		}
+		return maths.Colour(roci.ui_colorpicker_value(text, start))
+	case .Knob:
+		low, high := as_number(eval(it, call.args[1])), as_number(eval(it, call.args[2]))
+		start := low
+		if given := option_or_nil(it, call.options, "start"); given != nil {
+			start = as_number(given)
+		}
+		return roci.ui_knob_value(text, low, high, start)
+	case .Range:
+		low, high := as_number(eval(it, call.args[1])), as_number(eval(it, call.args[2]))
+		start, given := option_pair(it, call.options, "start")
+		if !given {
+			start = {low, high}
+		}
+		return vec2(roci.ui_range_value(text, low, high, start.x, start.y))
+	case .Xypad:
+		start, given := option_pair(it, call.options, "start")
+		if !given {
+			start = {0.5, 0.5}
+		}
+		return vec2(roci.ui_xypad_value(text, start))
 	case .Progress:
 		roci.ui_progress(as_number(eval(it, call.args[0])))
 	case .Separator:

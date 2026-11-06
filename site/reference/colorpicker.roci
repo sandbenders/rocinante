@@ -1,0 +1,7 @@
+mood = orange
+ui [ mood = colorpicker "mood" start orange ]
+
+draw [
+  fill mood
+  circle at 300 160 radius 80
+]

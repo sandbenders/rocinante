@@ -142,6 +142,54 @@ ui_salt :: proc(n: int) {
 	ui.set_salt(ui_frame(), n)
 }
 
+// How wide a range is and how wide its handles are, in logical pixels (for tests that drag them).
+UI_RANGE_WIDTH :: ui.RANGE_WIDTH
+UI_RANGE_HANDLE :: ui.RANGE_HANDLE
+
+// A color box that keeps its own color, which is `start` the first time its text is seen: gives it
+// now, as red, green, blue and alpha from 0 to 255.
+ui_colorpicker_value :: proc(text: string, start: [4]f32) -> [4]f32 {
+	s := ui_frame()
+	slot := ui.kept_vector(s, text, start / 255)^
+	ui.colorpicker(s, text, &slot)
+	ui.kept_vector(s, text, 0)^ = slot
+	return slot * 255
+}
+
+// A knob that keeps its own value, which is `start` the first time its text is seen (kept inside the
+// range): gives its number now.
+ui_knob_value :: proc(text: string, low, high, start: f64) -> f64 {
+	s := ui_frame()
+	first := clamp(start, min(low, high), max(low, high))
+	value := f32(ui.kept(s, text, first)^)
+	ui.knob(s, text, &value, f32(low), f32(high))
+	ui.kept(s, text, 0)^ = f64(value)
+	return f64(value)
+}
+
+// A two-handled range that keeps its own ends, which are `start_low` and `start_high` the first time
+// its text is seen: gives them now, the low one first.
+ui_range_value :: proc(text: string, low, high, start_low, start_high: f64) -> [2]f64 {
+	s := ui_frame()
+	inside :: proc(v, a, b: f64) -> f32 {
+		return f32(clamp(v, min(a, b), max(a, b)))
+	}
+	ends := ui.kept_vector(s, text, {inside(start_low, low, high), inside(start_high, low, high), 0, 0})^
+	ui.range(s, text, &ends[0], &ends[1], f32(low), f32(high))
+	ui.kept_vector(s, text, 0)^ = ends
+	return {f64(ends[0]), f64(ends[1])}
+}
+
+// A pad that keeps the place on it, which is `start` (from 0 to 1 across and down) the first time its
+// text is seen: gives the place now.
+ui_xypad_value :: proc(text: string, start: [2]f64) -> [2]f64 {
+	s := ui_frame()
+	place := ui.kept_vector(s, text, {clamp(f32(start.x), 0, 1), clamp(f32(start.y), 0, 1), 0, 0})^
+	ui.xypad(s, text, &place[0], &place[1])
+	ui.kept_vector(s, text, 0)^ = place
+	return {f64(place[0]), f64(place[1])}
+}
+
 // How far something has got, from 0 to 1.
 ui_progress :: proc(fraction: f64) {
 	ui.progress(ui_frame(), f32(fraction))

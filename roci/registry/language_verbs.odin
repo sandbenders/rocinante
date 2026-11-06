@@ -46,6 +46,8 @@ FILTER_OPTIONS := []Option{
 UI_START_NUMBER := []Option{{"start", {.Number}, false}}
 UI_START_BOOLEAN := []Option{{"start", {.Boolean}, false}}
 UI_START_TEXT := []Option{{"start", {.Text}, false}}
+UI_START_COLOR := []Option{{"start", {.Colour}, false}}
+UI_START_PAIR := []Option{{"start", {.Number, .Number}, false}}
 UI_TEXTBOX_OPTIONS := []Option{{"start", {.Text}, false}, {"lines", {.Number}, false}}
 UI_ITEMS := []Param{{"text", .Text}, {"items", .List}}
 
@@ -84,6 +86,10 @@ LANGUAGE_VERBS := []Verb{
 	{"progress", {{{{"amount", .Number}}, nil, .None}}, "A bar in a `ui` block that shows how far something has got, from 0 to 1: `progress loaded`."},
 	{"separator", {{{}, nil, .None}}, "A thin line in a `ui` block between one group of widgets and the next."},
 	{"tip", {{{{"text", .Text}}, nil, .None}}, "Words in a `ui` block that show beside the widget just before it when the mouse rests on it: `tip \"how big the dot is\"`."},
+	{"colorpicker", {{{{"text", .Text}}, UI_START_COLOR, .Colour}}, "A swatch in a `ui` block that opens a color picker, with an alpha bar, and gives the color: `tint = colorpicker \"tint\"`. It starts white, or as `start` says (`start orange`), and keeps its color as the sketch reloads."},
+	{"knob", {{{{"text", .Text}, {"low", .Number}, {"high", .Number}}, UI_START_NUMBER, .Number}}, "A round dial in a `ui` block that gives its number between a low and a high: `speed = knob \"speed\" 0 1`. Drag it up or to the right to turn it up, or use the arrow keys when it has focus. It starts at the low end, or at `start`, and keeps its value as the sketch reloads."},
+	{"range", {{{{"text", .Text}, {"low", .Number}, {"high", .Number}}, UI_START_PAIR, .Vector}}, "A bar with two handles in a `ui` block that gives a vector of its low and high ends, `r.x` and `r.y`, between a low and a high: `span = range \"span\" 0 100`. The handles never cross. It starts across the whole range, or as `start` says (`start 20 80`), and keeps its ends as the sketch reloads."},
+	{"xypad", {{{{"text", .Text}}, UI_START_PAIR, .Vector}}, "A square pad in a `ui` block that gives the place pressed on it as a vector, `p.x` across and `p.y` down, each from 0 to 1: `place = xypad \"place\"`. It starts in the middle, or as `start` says (`start 0.2 0.8`), and keeps the place as the sketch reloads."},
 	{"forget ui", {{{}, nil, .None}}, "Puts every widget of the window back to its start: sliders, check boxes, number and text boxes and lists go back to the value they start with (`start`, or the low end, off, empty or the first item), as if the sketch had just begun. A widget keeps its value while the sketch runs and reloads, so this is how a button resets them: `if button \"reset\" [ forget ui ]`."},
 	{"panel", {{{{"text", .Text}, {"body", .Block}}, nil, .None}}, "A titled group in a `ui` block that folds up when its title is clicked, and starts open: `panel \"shape\" [ ... ]`. The widgets inside are made only while it is open, and a widget inside keeps its own value apart from one with the same text in another panel."},
 	{"row", {{{{"body", .Block}}, nil, .None}}, "Puts the widgets of its block side by side in a `ui` block: `row [ if button \"play\" [ ... ]  if button \"stop\" [ ... ] ]`."},

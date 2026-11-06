@@ -1,0 +1,8 @@
+turns = 0
+ui [ turns = knob "turns" 0 10 start 3 ]
+
+draw [
+  for i from 1 to turns [
+    circle at (i * 30) 160 radius 10
+  ]
+]

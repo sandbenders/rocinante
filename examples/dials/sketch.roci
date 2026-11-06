@@ -1,0 +1,26 @@
+// The widgets that need drawing of their own: a color box, a knob, a range with two handles and a
+// pad. The knob says how many circles there are, the range how big the smallest and the biggest are,
+// the pad where the line of them ends, and the color box what they are filled with.
+window size 640 420 title "dials"
+mood = orange
+turns = 6
+span = { 20, 80 }
+spot = { 0.5, 0.5 }
+
+ui [
+  mood = colorpicker "mood" start orange
+  turns = knob "circles" 1 12 start 6
+  span = range "size" 0 100 start 20 80
+  spot = xypad "end"
+]
+
+draw [
+  background 30
+  fill mood
+  stroke white
+  thickness 2
+  for i from 1 to turns [
+    t = i / turns
+    circle at (330 + spot.x * 280 * t) (60 + spot.y * 300 * t) radius (span.x / 4 + (span.y - span.x) / 4 * t)
+  ]
+]
