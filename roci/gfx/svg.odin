@@ -86,11 +86,11 @@ note :: proc(s: ^Svg, what: string) {
 	append(&s.left_out, what)
 }
 
-// A number with at most three decimals and no trailing zeros.
+// A number with at most `decimals` decimals (three) and no trailing zeros.
 @(private)
-number :: proc(b: ^strings.Builder, v: f32) {
-	buf: [32]u8
-	text := strconv.write_float(buf[:], f64(v), 'f', 3, 32)
+number :: proc(b: ^strings.Builder, v: f32, decimals := 3) {
+	buf: [48]u8
+	text := strconv.write_float(buf[:], f64(v), 'f', decimals, 32)
 	text = strings.trim_left(text, "+")
 	if strings.contains_rune(text, '.') {
 		text = strings.trim_right(text, "0")
@@ -517,12 +517,32 @@ svg_arc :: proc(s: ^Svg, c: Command, box: [4]f32) {
 
 // ---- text ----
 
+// How far a text's first baseline is below its top, and the distance between baselines, in
+// logical pixels, as the renderer lays the text out.
+@(private)
+font_vertical :: proc(st: Style) -> (ascent, line_height: f32) {
+	ascent = st.font_size * 0.96875 // Inter's own, until the font says
+	line_height = st.font_size * 1.21
+	if font := font_for(st.font, st.font_size, st.align, st.leading); font != nil {
+		ascent = f32(ttf.GetFontAscent(font))
+		line_height = f32(ttf.GetFontLineSkip(font))
+	}
+	return
+}
+
 // The lines of a text: broken where it has line breaks, and, when `wrap` is above 0, where
-// a line would be wider than `wrap` pixels, at spaces.
-@(private = "file")
+// the renderer breaks a line wider than `wrap` pixels (SDL_ttf says where, so a file breaks
+// its lines exactly as the window does; a text with emoji, which the renderer sets with
+// spaces in their place, is broken at spaces by measure instead).
+@(private)
 text_lines :: proc(c: Command, text: string, wrap: f32) -> []string {
 	lines := make([dynamic]string, context.temp_allocator)
 	st := c.style
+	if wrap > 0 {
+		if broken, ok := sdl_lines(c, text, wrap); ok {
+			return broken
+		}
+	}
 	for paragraph in strings.split(text, "\n", context.temp_allocator) {
 		if wrap <= 0 {
 			append(&lines, paragraph)
@@ -542,6 +562,45 @@ text_lines :: proc(c: Command, text: string, wrap: f32) -> []string {
 		append(&lines, line)
 	}
 	return lines[:]
+}
+
+// The lines SDL_ttf breaks a text into at a wrap width, or false when it cannot say (no font,
+// or emoji in the text).
+@(private = "file")
+sdl_lines :: proc(c: Command, text: string, wrap: f32) -> ([]string, bool) {
+	st := c.style
+	if swapped, _ := split_emoji(text, context.temp_allocator); swapped != text {
+		return nil, false
+	}
+	font := font_for(st.font, st.font_size, st.align, st.leading)
+	if font == nil || len(text) == 0 {
+		return nil, false
+	}
+	laid := ttf.CreateText(nil, font, raw_data(text), uint(len(text)))
+	if laid == nil {
+		return nil, false
+	}
+	defer ttf.DestroyText(laid)
+	ttf.SetTextWrapWidth(laid, i32(wrap))
+	lines := make([dynamic]string, context.temp_allocator)
+	for i in 0 ..< 1000 {
+		piece: ttf.SubString
+		if !ttf.GetTextSubStringForLine(laid, i32(i), &piece) {
+			break
+		}
+		start, end := int(piece.offset), int(piece.offset) + int(piece.length)
+		if start < 0 || end > len(text) {
+			return nil, false
+		}
+		append(&lines, strings.trim_right(text[start:end], " \n"))
+		if end >= len(text) {
+			break // the last line: asked past it, SDL_ttf gives the last one again
+		}
+	}
+	if len(lines) == 0 {
+		return nil, false
+	}
+	return lines[:], true
 }
 
 @(private = "file")
@@ -566,23 +625,15 @@ typeset_element :: proc(s: ^Svg, c: Command, box: [4]f32) {
 			family = name
 		}
 	}
-	ascent := st.font_size * 0.96875 // Inter's own; a font the sketch brought is read below
-	line_height := st.font_size * 1.21
-	if font := font_for(st.font, st.font_size, st.align, st.leading); font != nil {
-		ascent = f32(ttf.GetFontAscent(font))
-		line_height = f32(ttf.GetFontLineSkip(font))
-	}
-	width := wrap if wrap > 0 else a[3]
+	ascent, line_height := font_vertical(st)
+	// the text's point is where its lines are aligned to: its left edge, its middle or its right
+	// edge, as the renderer places it
 	x := a[0]
 	anchor := "start"
 	switch st.align {
 	case .Left:
-	case .Center:
-		x += width / 2
-		anchor = "middle"
-	case .Right:
-		x += width
-		anchor = "end"
+	case .Center: anchor = "middle"
+	case .Right: anchor = "end"
 	}
 
 	strings.write_string(b, "<text")

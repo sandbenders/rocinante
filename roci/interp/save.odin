@@ -16,7 +16,7 @@ save_picture :: proc(it: ^Interp, e: ^lang.IR, name: string) {
 	it.save_span = e.span
 	example := "save \"shot.png\""
 	if !roci.is_save_name(name) {
-		fail(it, .Save_Failed, e.span, name, "I save PNG pictures and SVG drawings, so the name has to end in `.png` or `.svg`.", "", example)
+		fail(it, .Save_Failed, e.span, name, "I save PNG pictures, and SVG and PDF drawings, so the name has to end in `.png`, `.svg` or `.pdf`.", "", example)
 		return
 	}
 	if !roci.save(save_path(it, name)) {

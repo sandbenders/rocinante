@@ -62,6 +62,8 @@ test_the_export_example_saves_on_s_and_records_on_r :: proc(t: ^testing.T) {
 	// v saves the shapes as a vector file, which needs no graphics
 	roci.step({key_event(w, .V)})
 	roci.step({key_event(w, .V, false)})
+	roci.step({key_event(w, .P)})
+	roci.step({key_event(w, .P, false)})
 	roci.step()
 	roci.step({key_event(w, .R)})
 	roci.step({key_event(w, .R, false)})

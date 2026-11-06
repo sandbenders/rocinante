@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: 0BSD
 //
-// `save`: a picture of a window, written as a PNG file, or, for a name ending in `.svg`,
-// the shapes of its frame written as an SVG file (gfx/svg.odin; what a vector file cannot
-// say is drawn as the nearest thing and told to the caller as an approximate save). The
+// `save`: a picture of a window, written as a PNG file, or, for a name ending in `.svg` or
+// `.pdf`, the shapes of its frame written as a vector file (gfx/svg.odin, gfx/pdf.odin; what
+// a vector file cannot say is drawn as the nearest thing and told to the caller as an
+// approximate save). The
 // picture is the finished frame the call was made in (it is taken once the frame is
 // drawn, before the error overlay goes on), at the window's pixel density, so a sharp
 // screen saves a sharp picture. A name with a run of `#` (`frame-####.png`) has it
@@ -36,7 +37,7 @@ save :: proc(path: string) -> bool {
 	}
 	if !is_save_name(path) {
 		delete(the.error)
-		the.error = strings.clone("only PNG and SVG files can be saved, so the name must end in .png or .svg")
+		the.error = strings.clone("only PNG, SVG and PDF files can be saved, so the name must end in .png, .svg or .pdf")
 		return false
 	}
 	append(&w.saves, expand_frame_pattern(path, the.frame, context.allocator))
@@ -61,14 +62,19 @@ is_png_name :: proc(path: string) -> bool {
 	return len(path) > 4 && strings.equal_fold(path[len(path) - 4:], ".png")
 }
 
+// Does the name end in `.pdf`, in any case?
+is_pdf_name :: proc(path: string) -> bool {
+	return len(path) > 4 && strings.equal_fold(path[len(path) - 4:], ".pdf")
+}
+
 // Does the name end in `.svg`, in any case?
 is_svg_name :: proc(path: string) -> bool {
 	return len(path) > 4 && strings.equal_fold(path[len(path) - 4:], ".svg")
 }
 
-// A name `save` takes: a PNG or an SVG.
+// A name `save` takes: a PNG, an SVG or a PDF.
 is_save_name :: proc(path: string) -> bool {
-	return is_png_name(path) || is_svg_name(path)
+	return is_png_name(path) || is_svg_name(path) || is_pdf_name(path)
 }
 
 // The name with its first run of `#` replaced by the frame's number, written with at
@@ -118,9 +124,17 @@ write_saves :: proc(w: ^Win) {
 	picture_taken := false
 	image: gfx.Image
 	for path in w.saves {
-		if is_svg_name(path) {
-			svg, left_out := gfx.svg_write(&w.list, w.width, w.height, context.temp_allocator)
-			if why := write_file(path, transmute([]u8)svg); why != "" {
+		if is_svg_name(path) || is_pdf_name(path) {
+			bytes: []u8
+			left_out: []string
+			if is_pdf_name(path) {
+				bytes, left_out = gfx.pdf_write(&w.list, w.width, w.height, context.temp_allocator)
+			} else {
+				svg: string
+				svg, left_out = gfx.svg_write(&w.list, w.width, w.height, context.temp_allocator)
+				bytes = transmute([]u8)svg
+			}
+			if why := write_file(path, bytes); why != "" {
 				note_save_problem(path, why)
 			} else if len(left_out) > 0 {
 				note_save_problem(path, left_out_text(left_out), approximate = true)

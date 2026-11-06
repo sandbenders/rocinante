@@ -272,14 +272,14 @@ text_is_anchored_by_its_alignment_and_a_bold_face_is_bold :: proc(t: ^testing.T)
 	defer destroy(&list)
 	set_font(&list, FACE_BOLD)
 	set_align(&list, .Center)
-	typeset(&list, "hi", 0, 0, 100)
+	typeset(&list, "hi", 100, 0, 100)
 	set_align(&list, .Right)
-	typeset(&list, "hi", 0, 30, 100)
+	typeset(&list, "hi", 100, 30, 100)
 	svg, _ := svg_of(&list)
 	testing.expect(t, has(svg, `font-weight="700" text-anchor="middle"`), svg)
-	testing.expect(t, has(svg, `<tspan x="50"`), svg)
-	testing.expect(t, has(svg, `text-anchor="end"`), svg)
 	testing.expect(t, has(svg, `<tspan x="100"`), svg)
+	testing.expect(t, has(svg, `text-anchor="end"`), svg)
+	testing.expect_value(t, strings.count(svg, `<tspan x="100"`), 2)
 }
 
 @(test)
@@ -381,4 +381,24 @@ numbers_are_short_and_never_negative_zero :: proc(t: ^testing.T) {
 		strings.write_byte(&b, ' ')
 	}
 	testing.expect_value(t, strings.to_string(b), "0 0 1 -1 0.5 1.235 100 0 2.5 ")
+}
+
+@(test)
+the_lines_of_a_wrapped_text_are_all_of_its_words_in_order_and_a_short_text_is_one_line :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	typeset(&list, "x", 0, 0) // a command to take the style from
+	c := command_at(&list, 0)
+	one := text_lines(c, "short text", 500)
+	testing.expect_value(t, len(one), 1)
+	testing.expect_value(t, one[0], "short text")
+	text := "the quick brown fox jumps over the lazy dog"
+	lines := text_lines(c, text, 120)
+	testing.expect(t, len(lines) > 2 && len(lines) < 10)
+	testing.expect_value(t, strings.join(lines, " ", context.temp_allocator), text)
+	// a line break is kept and an emoji, which the renderer sets another way, still gives lines
+	testing.expect_value(t, len(text_lines(c, "a\nb", 100)), 2)
+	testing.expect(t, len(text_lines(c, "one two three four five six seven 😀 eight nine ten", 80)) > 1)
+	// without a wrap width only the line breaks count
+	testing.expect_value(t, len(text_lines(c, text, 0)), 1)
 }
