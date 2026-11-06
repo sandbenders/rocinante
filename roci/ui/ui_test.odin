@@ -264,3 +264,93 @@ test_keys_have_dear_imgui_names_for_the_ones_the_interface_uses :: proc(t: ^test
 	b, _ := imgui_key(.B)
 	testing.expect_value(t, int(b) - int(a), 1)
 }
+
+// A frame of widgets placed and sized by the sketch, three times so the windows have settled.
+placed_frames :: proc(s: ^State, body: proc(s: ^State)) {
+	for _ in 0 ..< 3 {
+		ensure_frame(s, SIZE, 2, 1.0 / 60)
+		body(s)
+		end_frame(s)
+	}
+}
+
+@(test)
+test_a_widget_placed_with_at_sits_at_that_place_and_one_after_it_goes_back_to_the_panel :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	placed_frames(s, proc(s: ^State) {
+		place_next(s, "far", true, {250, 200}, 0)
+		_ = button(s, "far")
+		_ = button(s, "near")
+	})
+	far, _ := record_named(s, "far")
+	near, _ := record_named(s, "near")
+	testing.expect_value(t, far.rect.min, [2]f32{250, 200})
+	testing.expect(t, near.rect.min.x < 40 && near.rect.min.y < 40, "the panel is at the top left")
+	testing.expect(t, has_drawing(s))
+}
+
+@(test)
+test_only_placed_widgets_leave_no_panel_to_draw_over_the_canvas :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	placed_frames(s, proc(s: ^State) {
+		place_next(s, "a", true, {100, 100}, 0)
+		label(s, "a")
+	})
+	testing.expect_value(t, len(records(s)), 1)
+	testing.expect_value(t, s.panel_count, 0)
+}
+
+@(test)
+test_width_sizes_the_widgets_that_have_a_width :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	placed_frames(s, proc(s: ^State) {
+		place_next(s, "go", false, {}, 90)
+		_ = button(s, "go")
+		place_next(s, "pad", false, {}, 60)
+		x, y: f32 = 0.5, 0.5
+		_ = xypad(s, "pad", &x, &y)
+		place_next(s, "dial", false, {}, 50)
+		v: f32 = 0.5
+		_ = knob(s, "dial", &v, 0, 1)
+		place_next(s, "span", false, {}, 150)
+		a, b: f32 = 0.2, 0.8
+		_ = range(s, "span", &a, &b, 0, 1)
+		place_next(s, "bar", false, {}, 120)
+		progress(s, 0.5)
+	})
+	width :: proc(s: ^State, name: string) -> f32 {
+		r, _ := record_named(s, name)
+		return r.rect.max.x - r.rect.min.x
+	}
+	testing.expect_value(t, width(s, "go"), 90)
+	testing.expect_value(t, width(s, "pad"), 60)
+	testing.expect_value(t, width(s, "dial"), 50)
+	testing.expect_value(t, width(s, "span"), 150)
+	for r in records(s) {
+		if r.role == .Progress {
+			testing.expect_value(t, r.rect.max.x - r.rect.min.x, 120)
+		}
+	}
+}
+
+@(test)
+test_a_group_placed_with_at_is_a_window_of_its_own_with_its_width :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	placed_frames(s, proc(s: ^State) {
+		place_next(s, "box", true, {200, 120}, 140)
+		opened := begin_container(s, .Panel, "box")
+		if opened.open {
+			_ = button(s, "in")
+		}
+		end_container(s, .Panel, opened)
+		_ = button(s, "out")
+	})
+	in_box, _ := record_named(s, "in")
+	out, _ := record_named(s, "out")
+	testing.expect(t, in_box.rect.min.x > 200 && in_box.rect.min.y > 120, "inside the group's window")
+	testing.expect(t, out.rect.min.x < 40, "the next widget is back in the panel")
+}

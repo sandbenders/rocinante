@@ -204,6 +204,19 @@ ui_item :: proc(text: string) -> bool {
 	return ui.item(ui_frame(), text)
 }
 
+// Says where the next widget or group goes and how wide it is: `at` where `has_at`, in the window's
+// pixels, or, in a `ui` block inside `draw`, in the canvas's, so it follows what is drawn there
+// (the transform of the moment is applied); `width` where it is above 0. `text` is the widget's
+// text, empty for a group with none. Call it just before the widget.
+ui_place :: proc(text: string, has_at: bool, at: [2]f64, width: f64) {
+	w := current_win()
+	where_ := [2]f32{f32(at.x), f32(at.y)}
+	if has_at && w != nil && w.in_draw && current_list() == &w.list {
+		where_.x, where_.y = gfx.transform_apply(w.list.transform, where_.x, where_.y)
+	}
+	ui.place_next(ui_frame(), text, has_at, where_, f32(width))
+}
+
 // Which time this call of the sketch has made a widget this frame, from 0 (a loop makes several),
 // so that widgets of a loop with one text keep apart.
 ui_salt :: proc(n: int) {

@@ -81,7 +81,9 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 			the.hook(w.id)
 		}
 		if w.draw != nil {
+			w.in_draw = true
 			w.draw()
+			w.in_draw = false
 			gfx.end_frame(&w.list)
 		}
 		if w.ui_draw != nil {

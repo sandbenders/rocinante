@@ -1694,6 +1694,7 @@ foreign lib {
 	@(link_name = "ImGui_TextDisabled") text_disabled :: proc(fmt: cstring, #c_vararg args: ..any) ---
 	@(link_name = "ImGui_TextWrapped") text_wrapped :: proc(fmt: cstring, #c_vararg args: ..any) ---
 	@(link_name = "ImGui_Button") button :: proc(label: cstring) -> bool ---
+	@(link_name = "ImGui_ButtonEx") button_ex :: proc(label: cstring, size: [2]f32 = {0, 0}) -> bool ---
 	@(link_name = "ImGui_SmallButton") small_button :: proc(label: cstring) -> bool ---
 	@(link_name = "ImGui_InvisibleButton") invisible_button :: proc(str_id: cstring, size: [2]f32, flags: ButtonFlags = 0) -> bool ---
 	@(link_name = "ImGui_Checkbox") checkbox :: proc(label: cstring, v: ^bool) -> bool ---

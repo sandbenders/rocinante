@@ -1,0 +1,28 @@
+// Widgets that sit on the canvas. A ui block inside draw places its widgets with at, in the canvas's
+// coordinates, so each slider follows its dot as the dot drifts; width says how wide a widget is.
+// A panel with at is a window of its own: here it holds the one switch that stops the drifting.
+window size 480 320 title "follow"
+dots = [
+  { pos: { 120, 100 }, size: 20, tone: 15 }
+  { pos: { 300, 190 }, size: 20, tone: 150 }
+  { pos: { 150, 50 }, size: 20, tone: 210 }
+]
+drifting = true
+
+draw [
+  background 30
+  for each d in dots [
+    if drifting [ d.pos = d.pos + { sin (frame * 3 + d.tone), cos (frame * 2 + d.tone) } * 0.6 ]
+    fill (hsb d.tone 180 255)
+    circle at d.pos radius d.size
+    ui [
+      d.size = slider "size" 10 40 at (d.pos + { 28, 22 }) width 90 start 20
+    ]
+  ]
+  ui [
+    panel "world" [
+      drifting = toggle "drift" start true
+      label "drag a slider"
+    ] at 330 12 width 140
+  ]
+]

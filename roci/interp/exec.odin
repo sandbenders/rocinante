@@ -76,6 +76,10 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 	case lang.IR_With:
 		return exec_with(it, k)
 	case lang.IR_Draw:
+		if k.ui && it.block_depth > 0 {
+			// a `ui` block inside `draw` (or an event) makes its widgets now, where the sketch is
+			return exec_block(it, k.body)
+		}
 		window := roci.current_window()
 		if k.window != nil {
 			if w, ok := eval(it, k.window).(roci.Window); ok {

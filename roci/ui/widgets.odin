@@ -76,7 +76,6 @@ ensure_frame :: proc(s: ^State, size: [2]f32, density, dt: f32) {
 		begin_frame(s, size, density, dt)
 	}
 	use(s)
-	ensure_panel(s)
 }
 
 label :: proc(s: ^State, text: string) {
@@ -90,7 +89,7 @@ label :: proc(s: ^State, text: string) {
 button :: proc(s: ^State, text: string) -> bool {
 	use(s)
 	place(s)
-	clicked := imgui.button(label_id(s, text))
+	clicked := imgui.button_ex(label_id(s, text), {s.width, 0})
 	note(s, .Button, text).changed = clicked
 	return clicked
 }
@@ -179,7 +178,7 @@ textbox :: proc(s: ^State, text: string, buffer: []u8, lines := 1) -> bool {
 	if lines > 1 {
 		style := imgui.get_style()
 		height := f32(lines) * imgui.get_text_line_height() + style.frame_padding.y * 2
-		changed = imgui.input_text_multiline_ex(label_id(s, text), cstring(raw_data(buffer)), uint(len(buffer)), {0, height}, 0, nil, nil)
+		changed = imgui.input_text_multiline_ex(label_id(s, text), cstring(raw_data(buffer)), uint(len(buffer)), {s.width, height}, 0, nil, nil)
 	} else {
 		changed = imgui.input_text(label_id(s, text), cstring(raw_data(buffer)), uint(len(buffer)))
 	}
@@ -238,7 +237,7 @@ progress :: proc(s: ^State, fraction: f32) {
 	use(s)
 	place(s)
 	shown := clamp(fraction, 0, 1)
-	imgui.progress_bar(shown, {200, 0}, nil)
+	imgui.progress_bar(shown, {s.width if s.width > 0 else 200, 0}, nil)
 	note(s, .Progress, "progress", shown, fmt.tprintf("%d%%", int(shown * 100 + 0.5)))
 }
 
@@ -287,19 +286,84 @@ scoped :: proc(s: ^State, text: string) -> string {
 	return strings.to_string(b)
 }
 
-// Called before every widget: in a row, every one after the first goes beside the one before.
+// Called before every widget. A widget placed with `at` goes in a floating window of its own at
+// that place; any other goes in the panel (or the floating group it is inside), and in a row every
+// one after the first goes beside the one before.
 @(private)
 place :: proc(s: ^State) {
+	close_lone_floats(s)
+	if s.has_at {
+		open_floating(s, true)
+	} else {
+		if len(s.floats) == 0 {
+			ensure_panel(s)
+		}
+		if s.in_row {
+			if !s.row_first {
+				imgui.same_line()
+			}
+			s.row_first = false
+		}
+	}
 	if s.focus_first {
 		// the interface was just shown: keyboard focus starts at its first widget
 		s.focus_first = false
 		imgui.set_keyboard_focus_here()
 	}
-	if s.in_row {
-		if !s.row_first {
-			imgui.same_line()
-		}
-		s.row_first = false
+	s.width, s.next_width = s.next_width, 0
+	if s.width > 0 {
+		imgui.set_next_item_width(s.width)
+	}
+}
+
+LONE_PADDING :: 4
+
+// What a floating window is: no title, sized by what it holds, placed by the sketch.
+FLOAT_FLAGS :: imgui.WindowFlags_AlwaysAutoResize | imgui.WindowFlags_NoTitleBar | imgui.WindowFlags_NoSavedSettings | imgui.WindowFlags_NoMove | imgui.WindowFlags_NoFocusOnAppearing
+
+// Says where the next widget or group goes (`at`, in the window's logical pixels, where `has_at`) and
+// how wide it is (`width`, 0 for its own); `text` is its text, which names its floating window.
+place_next :: proc(s: ^State, text: string, has_at: bool, at: [2]f32, width: f32) {
+	use(s)
+	s.has_at, s.next_at, s.next_width = has_at, at, max(width, 0)
+	if text != "" {
+		s.next_name = scoped(s, text)
+	} else {
+		s.next_name = fmt.tprintf("group %d", s.float_count)
+		s.float_count += 1
+	}
+}
+
+// Opens the floating window a placed widget (`lone`) or group sits in. A lone widget has a thin
+// padding and is moved up and left by it, so the widget itself sits exactly at its place.
+@(private)
+open_floating :: proc(s: ^State, lone: bool) {
+	style := imgui.get_style()
+	saved := style.window_padding
+	flags: i32 = FLOAT_FLAGS
+	if lone {
+		style.window_padding = {LONE_PADDING, LONE_PADDING}
+	} else if s.next_width > 0 {
+		flags &= ~i32(imgui.WindowFlags_AlwaysAutoResize)
+		imgui.set_next_window_size({s.next_width, 0})
+	}
+	imgui.set_next_window_pos(s.next_at - ({LONE_PADDING, LONE_PADDING} if lone else {0, 0}))
+	imgui.begin(fmt.ctprintf("##at %s", s.next_name), nil, flags)
+	style.window_padding = saved
+	append(&s.floats, lone)
+	s.has_at = false
+	if !lone {
+		s.next_width = 0
+	}
+}
+
+// Closes the floating windows of lone widgets: one stays open until the next widget is made, so that
+// a `tip` after it still finds it.
+@(private)
+close_lone_floats :: proc(s: ^State) {
+	for n := len(s.floats); n > 0 && s.floats[n - 1]; n = len(s.floats) {
+		imgui.end()
+		pop(&s.floats)
 	}
 }
 
@@ -323,6 +387,7 @@ Open :: struct {
 	misplaced: bool, // a tab outside tabs, left out
 	was_row:   bool,
 	was_first: bool,
+	floated:   bool, // it is in a floating window of its own (`at`), closed with it
 }
 
 // Opens a panel, a row, a column, a group of tabs, a tab or a menu. The widgets inside are made only
@@ -331,6 +396,14 @@ Open :: struct {
 begin_container :: proc(s: ^State, kind: Container, text := "") -> (o: Open) {
 	use(s)
 	o.was_row, o.was_first = s.in_row, s.row_first
+	close_lone_floats(s)
+	if s.has_at && kind != .Tab && kind != .Menu {
+		// a group placed with `at`: its own floating window, with the group's widgets in it
+		open_floating(s, false)
+		o.floated = true
+		s.in_row = false
+	}
+	s.has_at, s.next_width = false, 0
 	switch kind {
 	case .Panel:
 		place(s)
@@ -384,6 +457,7 @@ begin_container :: proc(s: ^State, kind: Container, text := "") -> (o: Open) {
 
 end_container :: proc(s: ^State, kind: Container, o: Open) {
 	use(s)
+	close_lone_floats(s)
 	switch kind {
 	case .Panel:
 		if o.open {
@@ -407,6 +481,10 @@ end_container :: proc(s: ^State, kind: Container, o: Open) {
 			pop_scope(s)
 			imgui.end_menu()
 		}
+	}
+	if o.floated {
+		imgui.end()
+		pop(&s.floats)
 	}
 	s.in_row, s.row_first = o.was_row, o.was_first
 }
@@ -447,7 +525,7 @@ list :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 	style := imgui.get_style()
 	rows := f32(clamp(len(items), 1, 6))
 	height := rows * (imgui.get_text_line_height() + style.item_spacing.y) + style.frame_padding.y * 2
-	if imgui.begin_list_box(label, {0, height}) {
+	if imgui.begin_list_box(label, {s.width, height}) {
 		for entry, i in items {
 			imgui.push_id_int(i32(i))
 			selected := index^ == i
@@ -535,7 +613,7 @@ KNOB_PIXELS_PER_RANGE :: 200 // how far the mouse goes to turn the knob from one
 knob :: proc(s: ^State, text: string, value: ^f32, low, high: f32) -> bool {
 	use(s)
 	place(s)
-	size := imgui.get_frame_height() * 2
+	size := s.width if s.width > 0 else imgui.get_frame_height() * 2
 	at := imgui.get_cursor_screen_pos()
 	imgui.invisible_button(label_id(s, text), {size, size})
 	span := high - low
@@ -587,13 +665,14 @@ range :: proc(s: ^State, text: string, low_value, high_value: ^f32, low, high: f
 	use(s)
 	place(s)
 	height := imgui.get_frame_height()
+	bar := s.width if s.width > RANGE_HANDLE * 2 else f32(RANGE_WIDTH)
 	at := imgui.get_cursor_screen_pos()
-	imgui.dummy({RANGE_WIDTH, height})
+	imgui.dummy({bar, height})
 	imgui.same_line()
 	imgui.text_unformatted(cstr(text))
 	after := imgui.get_cursor_screen_pos()
 	span := high - low
-	travel := f32(RANGE_WIDTH - RANGE_HANDLE)
+	travel := bar - RANGE_HANDLE
 	changed := false
 	focused, hovered, active := false, false, false
 	// the two handles, each a button of its own so each can be reached and moved
@@ -634,7 +713,7 @@ range :: proc(s: ^State, text: string, low_value, high_value: ^f32, low, high: f
 	imgui.draw_list_add_circle_filled(list, {x_high, mid}, RANGE_HANDLE / 2, imgui.get_color_u32(imgui.Col_SliderGrab))
 	record := note(s, .Range, text, low_value^, fmt.tprintf("%.2f to %.2f", low_value^, high_value^), imgui.get_id(label_id(s, text)))
 	record.changed = changed
-	record.rect = {at, at + {RANGE_WIDTH, height}}
+	record.rect = {at, at + {bar, height}}
 	record.focused, record.hovered, record.active = focused, hovered, active
 	return changed
 }
@@ -643,7 +722,7 @@ range :: proc(s: ^State, text: string, low_value, high_value: ^f32, low, high: f
 xypad :: proc(s: ^State, text: string, x, y: ^f32) -> bool {
 	use(s)
 	place(s)
-	size := imgui.get_frame_height() * 5
+	size := s.width if s.width > 0 else imgui.get_frame_height() * 5
 	at := imgui.get_cursor_screen_pos()
 	imgui.invisible_button(label_id(s, text), {size, size})
 	before := [2]f32{x^, y^}

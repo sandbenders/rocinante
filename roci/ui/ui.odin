@@ -93,6 +93,14 @@ State :: struct {
 	panel_open:     bool,
 	panel_visible:  bool,
 	panel_count:    int,
+	// where the next widget goes and how wide it is, when the sketch said (`at`, `width`)
+	has_at:         bool,
+	next_at:        [2]f32,
+	next_name:      string,          // what names the floating window of a widget placed with `at`
+	next_width:     f32,
+	width:          f32,             // the width asked for the widget being made, 0 for its own
+	floats:         [dynamic]bool,   // the floating windows open, innermost last: true for a lone widget's
+	float_count:    int,             // floating windows made this frame for something with no text
 	// the SDL_GPU renderer backend, made when something is first drawn
 	device:         ^sdl.GPUDevice,
 	format:         sdl.GPUTextureFormat,
@@ -217,6 +225,7 @@ destroy :: proc(s: ^State) {
 		delete(part)
 	}
 	delete(s.path)
+	delete(s.floats)
 	for key, buffer in s.kept_text {
 		delete(key)
 		delete(buffer)
@@ -298,6 +307,9 @@ begin_frame :: proc(s: ^State, size: [2]f32, density, dt: f32) {
 	s.panel_count = 0
 	s.bar_count = 0
 	s.in_row, s.row_first = false, false
+	s.has_at, s.next_width, s.width = false, 0, 0
+	s.float_count = 0
+	clear(&s.floats)
 	for part in s.path {
 		delete(part)
 	}
@@ -315,6 +327,10 @@ end_frame :: proc(s: ^State) {
 		return
 	}
 	use(s)
+	for len(s.floats) > 0 {
+		imgui.end()
+		pop(&s.floats)
+	}
 	if s.panel_open {
 		panel_end(s)
 	}

@@ -30,7 +30,7 @@ WANTED := [?]string {
 	"ImGui_GetCursorScreenPos", "ImGui_SetCursorScreenPos", "ImGui_GetContentRegionAvail",
 	"ImGui_BeginGroup", "ImGui_EndGroup", "ImGui_GetWindowDrawList", "ImGui_Dummy",
 	// widgets
-	"ImGui_TextUnformatted", "ImGui_Text", "ImGui_TextWrapped", "ImGui_Button", "ImGui_SmallButton",
+	"ImGui_TextUnformatted", "ImGui_Text", "ImGui_TextWrapped", "ImGui_Button", "ImGui_ButtonEx", "ImGui_SmallButton",
 	"ImGui_InvisibleButton", "ImGui_Checkbox", "ImGui_RadioButton",
 	"ImGui_SliderFloat", "ImGui_SliderFloatEx", "ImGui_SliderInt", "ImGui_SliderIntEx",
 	"ImGui_DragFloat", "ImGui_DragFloat2", "ImGui_DragFloatRange2Ex",

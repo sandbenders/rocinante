@@ -70,6 +70,7 @@ Interp :: struct {
 	results:   [dynamic]Value, // `result`, innermost last
 	draws:     map[roci.Window]^lang.IR_Block,
 	uis:       map[roci.Window]^lang.IR_Block, // the `ui` blocks, by window
+	block_depth:  int,                        // blocks the app loop asked for that are running (a `draw`, `ui` or event), 0 while setting up
 	widget_sites: map[int]int,                // how many widgets each call has made this frame, by its place in the source
 	handlers:  [dynamic]Handler,
 	inbox:     [2][dynamic]Message, // [msg_now] is what arrives this frame, the other what is sent now
@@ -268,7 +269,9 @@ run_block :: proc(p: ^Interp, block: ^lang.IR_Block, bind: ^lang.Symbol = nil, v
 		append(&frame.slots, Slot{bind, value})
 	}
 	begin_block(p)
+	p.block_depth += 1
 	exec_stmts(p, block.stmts)
+	p.block_depth -= 1
 	p.alloc, p.frame = saved_alloc, saved_frame
 }
 

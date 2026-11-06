@@ -455,3 +455,106 @@ test_a_key_that_has_no_name_in_ui_key_is_said_and_the_key_stays :: proc(t: ^test
 	roci.step({platform.Key_Changed{window = platform.Window_Id(w), scancode = .GRAVE, down = true}})
 	testing.expect(t, roci.ui_hidden(w))
 }
+
+PLACED :: `spot = { 100, 80 }
+amount = 0
+n = 0
+draw [
+  move 20 10
+  ui [
+    amount = slider "amount" 0 10 at spot width 120
+    if button "go" at 10 200 width 70 [ n = n + 1 ]
+    row [ label "left"  label "right" ] at 250 100
+    panel "box" [ label "inside" ] at 250 150 width 100
+  ]
+]
+ui [ label "plain" ]
+`
+
+record_of :: proc(w: roci.Window, text: string) -> (ui.Record, bool) {
+	for r in roci.ui_records(w) {
+		if r.label == text {
+			return r, true
+		}
+	}
+	return {}, false
+}
+
+@(test)
+test_a_ui_block_in_draw_puts_widgets_where_at_says_in_canvas_coordinates_and_width_sizes_them :: proc(t: ^testing.T) {
+	p := run_text(t, PLACED, 6)
+	defer finish(p)
+	w := first_window()
+	for e in p.errors {
+		testing.expectf(t, false, "unexpected message %v", e.id)
+	}
+	// `at spot` after `move 20 10`: the canvas point moved to the window's
+	amount, ok := record_of(w, "amount")
+	if testing.expect(t, ok) {
+		testing.expect_value(t, amount.rect.min, [2]f32{120, 90})
+		testing.expect(t, amount.rect.max.x - amount.rect.min.x >= 120, "as wide as asked, and its text beside it")
+	}
+	// at a place of the window, since the move was in the canvas and that one is its own
+	go, _ := record_of(w, "go")
+	testing.expect_value(t, go.rect.min, [2]f32{30, 210})
+	testing.expect_value(t, go.rect.max.x - go.rect.min.x, 70)
+	// a group placed with `at` holds its widgets there
+	left, _ := record_of(w, "left")
+	right, _ := record_of(w, "right")
+	testing.expect(t, left.rect.min.x > 270 && left.rect.min.x < 290 && left.rect.min.y > 110 && left.rect.min.y < 130)
+	testing.expect(t, right.rect.min.x > left.rect.max.x && right.rect.min.y == left.rect.min.y, "side by side")
+	inside, shown := record_of(w, "inside")
+	testing.expect(t, shown && inside.rect.min.x > 270 && inside.rect.min.y > 160)
+	// a widget with no `at` stays in the panel at the top left, and a ui block of its own still works
+	plain, _ := record_of(w, "plain")
+	testing.expect(t, plain.rect.min.x < 40 && plain.rect.min.y < 40)
+	// a click on a placed button reaches it
+	click_widget(t, w, "go")
+	testing.expect_value(t, as_number(global_named(p, "n")), 1)
+}
+
+sizes_at :: proc(w: roci.Window) -> (places: [dynamic][2]f32) {
+	places = make([dynamic][2]f32, 0, 3, context.temp_allocator)
+	for r in roci.ui_records(w) {
+		if r.label == "size" {
+			append(&places, r.rect.min)
+		}
+	}
+	return
+}
+
+@(test)
+test_the_sliders_of_the_follow_example_move_with_their_dots_until_the_switch_stops_them :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("follow"), 5)
+	defer finish(p)
+	w := first_window()
+	before := sizes_at(w)
+	if !testing.expect_value(t, len(before), 3) {
+		return
+	}
+	steps(10)
+	moved := sizes_at(w)
+	testing.expect(t, moved[0] != before[0] && moved[1] != before[1], "they follow the dots as they drift")
+	click_widget(t, w, "drift")
+	steps(3)
+	testing.expect_value(t, as_bool(global_named(p, "drifting")), false)
+	still := sizes_at(w)
+	steps(10)
+	testing.expect_value(t, len(sizes_at(w)), 3)
+	testing.expect(t, sizes_at(w)[0] == still[0] && sizes_at(w)[2] == still[2], "and stay once drifting is off")
+	// dragging the first one to the right makes its dot bigger
+	x, y, _ := widget_middle(w, "size")
+	id := platform.Window_Id(w)
+	steps(3, {platform.Mouse_Moved{window = id, x = x, y = y}})
+	steps(3, {mouse_at(w, x, y, true)})
+	steps(3, {platform.Mouse_Moved{window = id, x = x + 300, y = y}})
+	steps(3, {mouse_at(w, x + 300, y, false)})
+	records := roci.ui_records(w)
+	found := false
+	for r in records {
+		if r.label == "size" && r.value == 40 {
+			found = true
+		}
+	}
+	testing.expect(t, found, "the slider reached its end")
+}

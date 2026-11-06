@@ -10,6 +10,7 @@ import "../"
 import "../lang"
 import "../maths"
 import "../ui"
+import "core:fmt"
 import "core:strings"
 
 WIDGET_EXAMPLE :: "ui [ a = slider \"width\" 10 200  b = slider \"depth\" 10 200 ]"
@@ -19,6 +20,7 @@ widget_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Cod
 	text_at := 1 if code == .Image_Button else 0
 	text := as_text(eval(it, call.args[text_at])) if len(call.args) > text_at else ""
 	roci.ui_salt(site_count(it, e))
+	place_widget(it, e, call, text)
 	window := roci.current_window()
 	before := len(roci.ui_problems(window))
 	defer if len(roci.ui_problems(window)) > before {
@@ -123,6 +125,20 @@ widget_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Cod
 	return nil
 }
 
+// Tells the interface where the widget about to be made goes (`at`) and how wide it is (`width`). A
+// widget placed with `at` sits in a window of its own, named by its text and the place of its call in
+// the sketch, so two labels that say the same keep apart.
+@(private)
+place_widget :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, text: string) {
+	at, has_at := option_pair(it, call.options, "at")
+	width := as_number(option_or_nil(it, call.options, "width"))
+	if !has_at && width <= 0 {
+		return
+	}
+	name := fmt.tprintf("%s@%d", text, e.span.start)
+	roci.ui_place(name, has_at, at, width)
+}
+
 // How many times this call of the sketch has made a widget since the frame began: 0 the first time
 // and more in a loop, so widgets of a loop that say the same keep apart.
 @(private)
@@ -140,6 +156,7 @@ TABS_EXAMPLE :: "ui [ tabs [ tab \"one\" [ label \"first\" ] tab \"two\" [ label
 container_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Code) -> Value {
 	text := as_text(eval(it, call.args[0])) if len(call.args) > 1 else ""
 	roci.ui_salt(site_count(it, e))
+	place_widget(it, e, call, text)
 	kind: ui.Container
 	#partial switch code {
 	case .Panel:  kind = .Panel

@@ -42,14 +42,20 @@ FILTER_OPTIONS := []Option{
 	{"by", {.Number}, false},
 }
 
+// Where a widget goes and how wide it is, which every widget takes: `at` puts it at a place of its own
+// (in a `ui` block inside `draw`, a place on the canvas) and `width` says how wide.
+UI_AT := Option{"at", {.Number, .Number}, false}
+UI_WIDTH := Option{"width", {.Number}, false}
+
 // What the widgets that keep a value take: the value they start with, the first time they are seen.
-UI_START_NUMBER := []Option{{"start", {.Number}, false}}
-UI_START_BOOLEAN := []Option{{"start", {.Boolean}, false}}
-UI_START_TEXT := []Option{{"start", {.Text}, false}}
-UI_START_COLOR := []Option{{"start", {.Colour}, false}}
-UI_START_PAIR := []Option{{"start", {.Number, .Number}, false}}
-UI_IMAGE_BUTTON_OPTIONS := []Option{{"size", {.Number, .Number}, false}}
-UI_TEXTBOX_OPTIONS := []Option{{"start", {.Text}, false}, {"lines", {.Number}, false}}
+UI_PLACE := []Option{UI_AT, UI_WIDTH}
+UI_START_NUMBER := []Option{{"start", {.Number}, false}, UI_AT, UI_WIDTH}
+UI_START_BOOLEAN := []Option{{"start", {.Boolean}, false}, UI_AT, UI_WIDTH}
+UI_START_TEXT := []Option{{"start", {.Text}, false}, UI_AT, UI_WIDTH}
+UI_START_COLOR := []Option{{"start", {.Colour}, false}, UI_AT, UI_WIDTH}
+UI_START_PAIR := []Option{{"start", {.Number, .Number}, false}, UI_AT, UI_WIDTH}
+UI_IMAGE_BUTTON_OPTIONS := []Option{{"size", {.Number, .Number}, false}, UI_AT}
+UI_TEXTBOX_OPTIONS := []Option{{"start", {.Text}, false}, {"lines", {.Number}, false}, UI_AT, UI_WIDTH}
 UI_ITEMS := []Param{{"text", .Text}, {"items", .List}}
 
 LANGUAGE_VERBS := []Verb{
@@ -76,15 +82,15 @@ LANGUAGE_VERBS := []Verb{
 	{"resize", {{{{"picture", .Image}}, RESIZE_OPTIONS, .Image}}, "A new picture of another size: `resize photo size 100 80`. A side given as 0 follows the picture's shape, so `size 100 0` keeps it. `as nearest` keeps hard edges, which pixel art wants; the start is smooth."},
 	{"filter", {{{{"picture", .Image}}, FILTER_OPTIONS, .Image}}, "A new picture with a filter applied: gray, invert, threshold, posterize, blur, edges or pixelate: `filter photo as blur by 4`. `by` is a brightness for threshold (0 to 255, the start 128), a number of steps for posterize (4), a radius in pixels for blur (2) and a block size in pixels for pixelate (8)."},
 	{"mask", {{{{"picture", .Image}}, {{"by", {.Image}, true}}, .Image}}, "A new picture that shows only where a stencil picture is white and solid: `mask photo by shape`. The stencil is stretched over the picture."},
-	{"label", {{{{"text", .Text}}, nil, .None}}, "Shows a line of text in a `ui` block: `label (\"fps: \" + fps)`."},
-	{"button", {{{{"text", .Text}}, nil, .Boolean}}, "A button in a `ui` block, true on the frame it is clicked and false otherwise: `if button \"clear\" [ particles = [] ]`. The text is its name, so two buttons with one text are an error."},
+	{"label", {{{{"text", .Text}}, UI_PLACE, .None}}, "Shows a line of text in a `ui` block: `label (\"fps: \" + fps)`."},
+	{"button", {{{{"text", .Text}}, UI_PLACE, .Boolean}}, "A button in a `ui` block, true on the frame it is clicked and false otherwise: `if button \"clear\" [ particles = [] ]`. The text is its name, so two buttons with one text are an error."},
 	{"toggle", {{{{"text", .Text}}, UI_START_BOOLEAN, .Boolean}}, "A check box in a `ui` block that is true while it is ticked: `trails = toggle \"trails\"`. It starts off, or as `start` says, and keeps its value as the sketch reloads."},
 	{"slider", {{{{"text", .Text}, {"low", .Number}, {"high", .Number}}, UI_START_NUMBER, .Number}}, "A slider in a `ui` block that gives its number, between a low and a high: `size = slider \"size\" 10 200`. It starts at the low end, or at `start`, and keeps its value as the sketch reloads."},
 	{"number", {{{{"text", .Text}, {"low", .Number}, {"high", .Number}}, UI_START_NUMBER, .Number}}, "A box in a `ui` block for typing a number, with steppers to add and take away one, that gives its number kept between a low and a high: `dots = number \"dots\" 1 1000`. It starts at the low end, or at `start`, and keeps its value as the sketch reloads. A number typed outside the range is put inside it when the box lets go."},
 	{"textbox", {{{{"text", .Text}}, UI_TEXTBOX_OPTIONS, .Text}}, "A box in a `ui` block for typing a line of text, or `lines` of it, that gives the text in it: `title = textbox \"title\"`. It starts empty, or with `start`, and keeps its text as the sketch reloads. Any writing the computer can type works, with an input method too, and the clipboard copies and pastes."},
 	{"dropdown", {{UI_ITEMS, UI_START_TEXT, .Text}}, "A drop-down list in a `ui` block that gives the item chosen, from a list of text: `shape = dropdown \"shape\" [ \"circle\" \"square\" \"star\" ]`. It starts on the first item, or on the one `start` names, and keeps the choice as the sketch reloads."},
 	{"choice", {{UI_ITEMS, UI_START_TEXT, .Text}}, "Radio buttons in a `ui` block, one for each item of a list of text, that give the item chosen: `mode = choice \"mode\" [ \"draw\" \"erase\" ]`. It starts on the first item, or on the one `start` names, and keeps the choice as the sketch reloads."},
-	{"progress", {{{{"amount", .Number}}, nil, .None}}, "A bar in a `ui` block that shows how far something has got, from 0 to 1: `progress loaded`."},
+	{"progress", {{{{"amount", .Number}}, UI_PLACE, .None}}, "A bar in a `ui` block that shows how far something has got, from 0 to 1: `progress loaded`."},
 	{"separator", {{{}, nil, .None}}, "A thin line in a `ui` block between one group of widgets and the next."},
 	{"tip", {{{{"text", .Text}}, nil, .None}}, "Words in a `ui` block that show beside the widget just before it when the mouse rests on it: `tip \"how big the dot is\"`."},
 	{"colorpicker", {{{{"text", .Text}}, UI_START_COLOR, .Colour}}, "A swatch in a `ui` block that opens a color picker, with an alpha bar, and gives the color: `tint = colorpicker \"tint\"`. It starts white, or as `start` says (`start orange`), and keeps its color as the sketch reloads."},
@@ -96,10 +102,10 @@ LANGUAGE_VERBS := []Verb{
 	{"ui show", {{{}, nil, .None}}, "Shows the window's widgets again after `ui hide`, with keyboard focus on the first one, so someone using only the keyboard or a screen reader reaches them in one press."},
 	{"ui key", {{{{"name", .Text}}, nil, .None}}, "Changes the key that hides and shows the window's widgets, which is the backtick to start with: `ui key \"f1\"`. The key is read by where it is on the keyboard, with the names of `on key`, and is left alone while a text box is waiting for typing. On a touch screen, three fingers tapping together do the same."},
 	{"forget ui", {{{}, nil, .None}}, "Puts every widget of the window back to its start: sliders, check boxes, number and text boxes and lists go back to the value they start with (`start`, or the low end, off, empty or the first item), as if the sketch had just begun. A widget keeps its value while the sketch runs and reloads, so this is how a button resets them: `if button \"reset\" [ forget ui ]`."},
-	{"panel", {{{{"text", .Text}, {"body", .Block}}, nil, .None}}, "A titled group in a `ui` block that folds up when its title is clicked, and starts open: `panel \"shape\" [ ... ]`. The widgets inside are made only while it is open, and a widget inside keeps its own value apart from one with the same text in another panel."},
-	{"row", {{{{"body", .Block}}, nil, .None}}, "Puts the widgets of its block side by side in a `ui` block: `row [ if button \"play\" [ ... ]  if button \"stop\" [ ... ] ]`."},
-	{"column", {{{{"body", .Block}}, nil, .None}}, "Stacks the widgets of its block one above the other in a `ui` block, which is how a `row` holds several lines: `row [ column [ ... ] column [ ... ] ]`."},
-	{"tabs", {{{{"body", .Block}}, nil, .None}}, "A row of tabs in a `ui` block, one page showing at a time. Its block holds the `tab`s: `tabs [ tab \"shape\" [ ... ] tab \"color\" [ ... ] ]`."},
+	{"panel", {{{{"text", .Text}, {"body", .Block}}, UI_PLACE, .None}}, "A titled group in a `ui` block that folds up when its title is clicked, and starts open: `panel \"shape\" [ ... ]`. The widgets inside are made only while it is open, and a widget inside keeps its own value apart from one with the same text in another panel."},
+	{"row", {{{{"body", .Block}}, UI_PLACE, .None}}, "Puts the widgets of its block side by side in a `ui` block: `row [ if button \"play\" [ ... ]  if button \"stop\" [ ... ] ]`."},
+	{"column", {{{{"body", .Block}}, UI_PLACE, .None}}, "Stacks the widgets of its block one above the other in a `ui` block, which is how a `row` holds several lines: `row [ column [ ... ] column [ ... ] ]`."},
+	{"tabs", {{{{"body", .Block}}, UI_PLACE, .None}}, "A row of tabs in a `ui` block, one page showing at a time. Its block holds the `tab`s: `tabs [ tab \"shape\" [ ... ] tab \"color\" [ ... ] ]`."},
 	{"tab", {{{{"text", .Text}, {"body", .Block}}, nil, .None}}, "One page of `tabs`, with its name on the tab. The widgets inside are made only while it is the page showing, and keep their values apart from the other pages."},
 	{"menu", {{{{"text", .Text}, {"body", .Block}}, nil, .None}}, "A menu in a `ui` block that opens when it is clicked. Its block holds the entries, made with `item`, and is run only while the menu is open: `menu \"file\" [ if item \"save\" [ ... ] ]`."},
 	{"list", {{UI_ITEMS, UI_START_TEXT, .Text}}, "A list in a `ui` block with all its items showing (six rows, then it scrolls) that gives the item chosen, from a list of text: `file = list \"file\" [ \"a.png\" \"b.png\" ]`. It starts on the first item, or on the one `start` names."},
