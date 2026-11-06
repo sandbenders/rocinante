@@ -1,4 +1,8 @@
 LINE: a number
-sentence: a list of text
-colors: a list of colors
+FADE: a number
+poem: a list of records with word, color, previous, previous_color and mix
 big: a number
+next_change: a number
+row: a record with word, color, previous, previous_color and mix
+x: a number
+y: a number

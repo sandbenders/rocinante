@@ -1,8 +1,10 @@
 // sengen is a classic early Logo program that plays with words and sentences.
 // Here the five words are set as a poem, as large as the window allows, one color
-// each. Space writes a new one; s saves it as sengen.svg and p as sengen.pdf. The font is
-// Helvetica Neue Condensed Black, a face of the Helvetica Neue collection that comes with a Mac;
-// a computer without it says so and sets the words in Inter.
+// each. Every 30 to 60 seconds one word is replaced by another of its kind, the old
+// one fading out as the new one fades in. Space writes a whole new poem; s saves it as
+// sengen.svg and p as sengen.pdf. The font is Helvetica Neue Condensed Black, a face of
+// the Helvetica Neue collection that comes with a Mac; a computer without it says so
+// and sets the words in Inter.
 
 learn noun [
   give pick [ "BIRDS" "DOGS" "WORMS" "DONKEYS" "GEESE" "CATS" "GUINEA PIGS" ]
@@ -21,34 +23,72 @@ window size 800 600 title "sengen"
 // The lines touch: they are one capital's height apart, 0.71 of the size.
 LINE = 0.71
 
-sentence = []
-colors = []
+// How long a word takes to fade, in seconds.
+FADE = 2
+
+// Each line is a record: its word and color, and the ones it had before, which fade out
+// while `mix` goes from 0 to 1 and the new ones fade in.
+poem = []
 big = 100
+next_change = 0
 
-// Chooses five words, a color for each, and the size that fits them in the window.
-learn roll [
-  a1 = adjective
-  n1 = noun
-  v1 = verb
-  a2 = adjective
-  n2 = noun
-  sentence = [ a1 n1 v1 a2 n2 ]
+// The kind of word the line k is: adjective, noun, verb, adjective, noun.
+learn word_for k [
+  if k is 3 [ give verb ]
+  if k is 2 or k is 5 [ give noun ]
+  give adjective
+]
 
-  // dark or bright, but always deep
-  colors = []
-  repeat 5 [ add (hsb (random 255) 255 (random from 40 to 255)) to colors ]
+// dark or bright, but always deep
+learn deep_color [
+  give hsb (random 255) 255 (random from 40 to 255)
+]
 
-  // as large as fits across (the widest word) and down (five lines)
+// When the next word is to change: 30 to 60 seconds from now.
+learn schedule [
+  next_change = time + random from 30 to 60
+]
+
+// As large as fits across (the widest word) and down (five lines).
+learn fit_size [
   font "Helvetica Neue Condensed Black" size 100
   widest = 0
-  for each word in sentence [
-    m = measure word
+  for each entry in poem [
+    m = measure entry.word
     if m.x > widest [ widest = m.x ]
   ]
   across = 100 * width / widest
   down = height / (5 * LINE)
-  big = across
-  if down < big [ big = down ]
+  if down < across [ give down ]
+  give across
+]
+
+// Chooses five words, a color for each, and the size that fits them in the window.
+learn roll [
+  poem = []
+  for k from 1 to 5 [
+    add { word: word_for k, color: deep_color, previous: "", previous_color: black, mix: 1 } to poem
+  ]
+  big = fit_size
+  tween big to big over 0.01  // ends a slow change of the size that was on its way
+  schedule
+]
+
+// Replaces one word, chosen by chance, by another of its kind: the old one fades out as
+// the new one fades in, and the size moves to what fits the new words.
+learn swap [
+  k = floor (random 5) + 1
+  chosen = item k of poem
+  fresh = word_for k
+  while fresh is chosen.word [ fresh = word_for k ]
+  chosen.previous = chosen.word
+  chosen.previous_color = chosen.color
+  chosen.word = fresh
+  chosen.color = deep_color
+  chosen.mix = 0
+  tween chosen.mix to 1 over FADE as smooth
+  tween big to fit_size over FADE as smooth
+  schedule
 ]
 
 roll
@@ -59,8 +99,13 @@ on key "p" [ save "sengen.pdf" ]
 
 draw [
   background white
+  if time > next_change [ swap ]
   font "Helvetica Neue Condensed Black" size big
   for i from 1 to 5 [
-    text (item i of sentence) at (-0.03 * big) (-0.24 * big + (i - 1) * LINE * big) fill (item i of colors)
+    row = item i of poem
+    x = -0.03 * big
+    y = -0.24 * big + (i - 1) * LINE * big
+    if row.mix < 1 [ text row.previous at x y fill row.previous_color alpha ((1 - row.mix) * 100) ]
+    text row.word at x y fill row.color alpha (row.mix * 100)
   ]
 ]
