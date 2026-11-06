@@ -2,7 +2,8 @@
 // like any other value: a slider's number, a check box, a number box, a drop-down list, radio
 // buttons, a box of text, a list, a button's click, a menu's entry and a bar for how far things
 // have got. Panels, tabs, rows and columns lay them out, and the same text in two of them is two
-// widgets.
+// widgets. `pulse` swells the rings and fills the bar, and `reset` (the button and the menu's
+// entry) puts every widget back to where it started with `forget ui`.
 window size 720 520 title "ui"
 dot = 60
 ring = true
@@ -15,7 +16,10 @@ pulses = 0
 
 ui [
   menu "file" [
-    if item "reset" [ pulses = 0 ]
+    if item "reset" [
+      forget ui
+      pulses = 0
+    ]
   ]
   panel "dot" [
     dot = slider "size" 10 120 start 60
@@ -28,15 +32,20 @@ ui [
       tone = dropdown "tone" [ "orange" "teal" "tomato" ]
       look = choice "look" [ "solid" "outline" ]
     ]
+    tab "shape" [
+      shape = list "shape" [ "dot" "square" "both" ]
+    ]
     tab "words" [
       words = textbox "words" start "rocinante"
-      shape = list "shape" [ "dot" "square" "both" ]
     ]
   ]
   separator
   row [
     if button "pulse" [ pulses = pulses + 1 ]
-    if button "reset" [ pulses = 0 ]
+    if button "reset" [
+      forget ui
+      pulses = 0
+    ]
   ]
   progress ((pulses % 10) / 10)
   label ("pulses: " + pulses)
@@ -51,13 +60,14 @@ draw [
     thickness 6
     if tone is "orange" [ stroke orange ] else [ if tone is "teal" [ stroke teal ] else [ stroke tomato ] ]
   ]
-  if shape is "square" [ square at 450 130 size (dot * 2) ] else [ circle at 560 260 radius dot ]
+  if shape is "square" or shape is "both" [ square at 560 260 size (dot * 2) as center ]
+  if shape is not "square" [ circle at 560 260 radius dot ]
   if ring [
     no fill
     stroke white
     thickness 3
     for i from 1 to rings [
-      circle at 560 260 radius (dot + 14 * i)
+      circle at 560 260 radius (dot * 1.2 + 14 * i + (pulses % 10) * 3)
     ]
   ]
   fill white

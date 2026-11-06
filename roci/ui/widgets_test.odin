@@ -354,3 +354,15 @@ imgui_row_step :: proc(s: ^State) -> f32 {
 	imgui.set_current_context(s.ctx)
 	return imgui.get_text_line_height() + imgui.get_style().item_spacing.y
 }
+
+@(test)
+test_forgetting_makes_every_kept_value_start_again :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	kept(s, "size", 5)^ = 50
+	text_buffer := kept_text(s, "words", "hi")
+	text_buffer[0] = 'x'
+	forget(s)
+	testing.expect_value(t, kept(s, "size", 5)^, 5)
+	testing.expect_value(t, text_in(kept_text(s, "words", "hi")), "hi")
+}

@@ -84,6 +84,7 @@ LANGUAGE_VERBS := []Verb{
 	{"progress", {{{{"amount", .Number}}, nil, .None}}, "A bar in a `ui` block that shows how far something has got, from 0 to 1: `progress loaded`."},
 	{"separator", {{{}, nil, .None}}, "A thin line in a `ui` block between one group of widgets and the next."},
 	{"tip", {{{{"text", .Text}}, nil, .None}}, "Words in a `ui` block that show beside the widget just before it when the mouse rests on it: `tip \"how big the dot is\"`."},
+	{"forget ui", {{{}, nil, .None}}, "Puts every widget of the window back to its start: sliders, check boxes, number and text boxes and lists go back to the value they start with (`start`, or the low end, off, empty or the first item), as if the sketch had just begun. A widget keeps its value while the sketch runs and reloads, so this is how a button resets them: `if button \"reset\" [ forget ui ]`."},
 	{"panel", {{{{"text", .Text}, {"body", .Block}}, nil, .None}}, "A titled group in a `ui` block that folds up when its title is clicked, and starts open: `panel \"shape\" [ ... ]`. The widgets inside are made only while it is open, and a widget inside keeps its own value apart from one with the same text in another panel."},
 	{"row", {{{{"body", .Block}}, nil, .None}}, "Puts the widgets of its block side by side in a `ui` block: `row [ if button \"play\" [ ... ]  if button \"stop\" [ ... ] ]`."},
 	{"column", {{{{"body", .Block}}, nil, .None}}, "Stacks the widgets of its block one above the other in a `ui` block, which is how a `row` holds several lines: `row [ column [ ... ] column [ ... ] ]`."},

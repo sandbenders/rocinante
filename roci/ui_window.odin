@@ -114,6 +114,13 @@ ui_pick_value :: proc(text: string, items: []string, start: int, how: Ui_Pick) -
 	return index
 }
 
+// Puts every widget of the window back to the value it starts with (`forget ui`).
+ui_forget :: proc() {
+	if w := current_win(); w != nil && w.ui != nil {
+		ui.forget(w.ui)
+	}
+}
+
 // Opens a panel, row, column, group of tabs, tab or menu in the window's interface; the widgets
 // inside are made when it says `open`, and `ui_end` follows either way. See `ui.begin_container`.
 ui_begin :: proc(kind: ui.Container, text := "") -> ui.Open {

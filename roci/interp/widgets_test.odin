@@ -3,6 +3,7 @@ package interp
 
 import "../"
 import "../platform"
+import "core:strings"
 import "core:testing"
 
 // The middle of the widget of a window with this text, as the last frame laid it out.
@@ -271,4 +272,73 @@ test_a_menu_entry_is_chosen_from_an_open_menu :: proc(t: ^testing.T) {
 		click_widget(t, w, "save")
 		testing.expect_value(t, as_number(global_named(p, "saved")), 1)
 	}
+}
+
+@(test)
+test_the_reset_button_of_the_ui_example_puts_every_widget_back_to_its_start :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("ui"), 5)
+	defer finish(p)
+	w := first_window()
+	click_widget(t, w, "pulse")
+	click_widget(t, w, "pulse")
+	click_widget(t, w, "ring")
+	testing.expect_value(t, as_number(global_named(p, "pulses")), 2)
+	testing.expect_value(t, as_bool(global_named(p, "ring")), false)
+	// the slider is dragged away from where it started
+	x, y, _ := widget_middle(w, "size")
+	id := platform.Window_Id(w)
+	steps(3, {platform.Mouse_Moved{window = id, x = x, y = y}})
+	steps(3, {mouse_at(w, x, y, true)})
+	steps(3, {platform.Mouse_Moved{window = id, x = x + 300, y = y}})
+	steps(3, {mouse_at(w, x + 300, y, false)})
+	testing.expect_value(t, as_number(global_named(p, "dot")), 120)
+	click_widget(t, w, "reset")
+	steps(3)
+	testing.expect_value(t, as_number(global_named(p, "pulses")), 0)
+	testing.expect_value(t, as_number(global_named(p, "dot")), 60)
+	testing.expect_value(t, as_bool(global_named(p, "ring")), true)
+}
+
+
+// A quick click, as a hand makes it: the mouse is already there, and it is down for a frame or two.
+quick_click :: proc(w: roci.Window, text: string) {
+	x, y, _ := widget_middle(w, text)
+	id := platform.Window_Id(w)
+	steps(1, {platform.Mouse_Moved{window = id, x = x, y = y}})
+	steps(1, {mouse_at(w, x, y, true)})
+	steps(1, {mouse_at(w, x, y, false)})
+	steps(2)
+}
+
+@(test)
+test_quick_clicks_on_the_pulse_and_reset_buttons_work_one_after_the_other :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("ui"), 5)
+	defer finish(p)
+	w := first_window()
+	for _ in 0 ..< 3 {
+		quick_click(w, "pulse")
+	}
+	testing.expect_value(t, as_number(global_named(p, "pulses")), 3)
+	quick_click(w, "reset")
+	testing.expect_value(t, as_number(global_named(p, "pulses")), 0)
+	quick_click(w, "pulse")
+	testing.expect_value(t, as_number(global_named(p, "pulses")), 1)
+}
+
+@(test)
+test_the_ui_example_draws_the_square_where_it_draws_the_rings :: proc(t: ^testing.T) {
+	text, _ := strings.replace(example_text("ui"), "shape = \"dot\"\n", "shape = \"square\"\n", 1, context.temp_allocator)
+	p := run_text(t, text, 5)
+	defer finish(p)
+	square, ring: [2]f32
+	found := false
+	for c in roci.recorded(first_window()) {
+		#partial switch c.kind {
+		case .Rect:   square, found = {c.args[0], c.args[1]}, true
+		case .Circle: ring = {c.args[0], c.args[1]}
+		}
+	}
+	testing.expect(t, found, "a square is drawn")
+	testing.expect_value(t, square, ring) // the same middle, whichever shape and origin
+	testing.expect_value(t, ring, [2]f32{560, 260})
 }

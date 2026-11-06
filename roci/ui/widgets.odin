@@ -449,3 +449,16 @@ list :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 	note(s, .List, text, f32(index^), shown, group).changed = changed
 	return changed
 }
+
+// Lets go of every value the widgets keep, so each starts again from its start.
+forget :: proc(s: ^State) {
+	for key in s.kept {
+		delete(key)
+	}
+	clear(&s.kept)
+	for key, buffer in s.kept_text {
+		delete(key)
+		delete(buffer)
+	}
+	clear(&s.kept_text)
+}

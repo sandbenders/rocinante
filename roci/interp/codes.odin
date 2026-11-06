@@ -140,6 +140,7 @@ Verb_Code :: enum u8 {
 	Tab,
 	Menu,
 	List,
+	Forget_Ui,
 }
 
 // The registry's name of each code. A test fails when the registry gains a verb
@@ -274,6 +275,7 @@ VERB_CODE_NAMES := [Verb_Code]string{
 	.Tab = "tab",
 	.Menu = "menu",
 	.List = "list",
+	.Forget_Ui = "forget ui",
 }
 
 // The code of each verb of `registry.ALL_VERBS`, by its place there.

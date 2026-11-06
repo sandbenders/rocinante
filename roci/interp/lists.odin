@@ -81,6 +81,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return picture_verb(it, e, call, code)
 	case .Label, .Button, .Toggle, .Slider, .Number, .Textbox, .Dropdown, .Choice, .Progress, .Separator, .Tip, .List:
 		return widget_verb(it, e, call, code)
+	case .Forget_Ui:
+		roci.ui_forget()
 	case .Panel, .Row, .Column, .Tabs, .Tab, .Menu:
 		return container_verb(it, e, call, code)
 	case .Add:

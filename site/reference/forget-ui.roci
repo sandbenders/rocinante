@@ -1,0 +1,6 @@
+ui [
+  dot = slider "dot" 10 120 start 40
+  if button "reset" [ forget ui ]
+]
+
+draw [ circle at 300 160 radius dot ]
