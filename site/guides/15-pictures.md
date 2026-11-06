@@ -1,6 +1,6 @@
 ---
 title: "Pictures"
-summary: "Loading pictures, drawing them, painting with them, reading and changing their pixels, and saving the window as a PNG, SVG or PDF."
+summary: "Loading pictures, drawing them, painting with them, reading and changing their pixels, and saving the window as a PNG, SVG or PDF, and recording movies."
 weight: 15
 ---
 
@@ -219,3 +219,20 @@ That writes `output/frames/frame-0000.png`, `frame-0001.png` and so on. `roci ru
 A name ending in `.svg` or `.pdf` saves the shapes instead of the pixels: `save "shot.svg"` writes an SVG file and `save "page.pdf"` a one-page PDF as big as the window (a pixel is a point), both sharp at any size. They open in a browser, Inkscape or Illustrator, and go to a printer, a plotter or a laser cutter. Every circle, rectangle, line, arc, triangle, quad and text is an element of its own, drawn in the same colors, outline widths, caps, joins and transform, with gradients, clips and blends kept, and pictures put in the file. In an SVG, text is written as text in the font by name, so the viewer needs that font (Inter is the one that comes with rocinante; install it, or turn the text into outlines in your drawing program). In a PDF, text is the outlines of its letters, so it looks the same on any computer and cannot be selected or searched; fonts with outlines of the CFF kind (some `.otf` files) cannot be read, and kerning is left out.
 
 A vector file cannot hold everything a window shows, so some things are drawn as the nearest thing or left out, and the sketch says which, once, as a warning: a conic gradient (drawn in its middle color), a shader or picture fill (drawn in the fill's color), the picture of a canvas, a picture behind everything, a tint on a picture, the `subtract` blend (and the `add` blend in a PDF), characters a font does not have (a PDF) and the effects over the window. For those, save a PNG.
+
+## Recording a movie
+
+`record "clip.apng"` starts recording the window: every frame the sketch draws from then on is a frame of the movie, until `no record` (or until the window closes). It writes an animated PNG, which needs nothing installed and plays in browsers and most picture viewers.
+
+```roci
+on key "r" [ record "clip.apng" ]
+on key "e" [ no record ]
+```
+
+For a video, give the name a video ending (`.mp4`, `.mov`, `.webm`, `.mkv` or `.gif`) and rocinante hands the frames to `ffmpeg`, the free program most people who make videos already have. It is not part of rocinante, so when it is not installed `record` says so and how to get it, and the sketch carries on:
+
+```roci
+record "clip.mp4"
+```
+
+The movie plays at 60 frames a second, one frame of the sketch to each frame of the movie, so a sketch that keeps up with 60 frames a second records in real time, and `roci run sketch --frames 600` draws ten seconds with no window, as fast as the computer can. A plain name goes in the sketch's `output` folder, folders in the name are made, and a window that changes size while it is recorded leaves out the frames of the other size. An animation is kept in memory until it is written, so it stops by itself after about half a gigabyte and writes what it has; a video made with `ffmpeg` has no such limit. If `ffmpeg` fails, the message says what it said, and its log is kept beside the file. `examples/export` records an animation with `m`.

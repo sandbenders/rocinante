@@ -38,6 +38,7 @@ Win :: struct {
 	on_receive:   proc(value: Value),
 	inbox:        [dynamic]Value,   // messages sent to this window, delivered on the next frame
 	saves:        [dynamic]string,  // picture files asked for this frame, written once it is drawn (save.odin)
+	rec:          ^Recording,       // the movie being recorded of this window, if any (record.odin)
 	width:        int,              // logical size, as sketches see it
 	height:       int,
 	title:        string,
@@ -98,6 +99,7 @@ Sketch :: struct {
 	last_key:     string,
 	hook:         proc(w: Window), // run for each window in each frame
 	save_problems: [dynamic]Save_Problem, // files that could not be written, for the language to say (save.odin)
+	record_results: [dynamic]Record_Result, // recordings that ended, for the language to say (record.odin)
 	overlay_title: string, // what the error overlay says, or "" for none
 	overlay_lines: [dynamic]string,
 	reuse:        [dynamic]^Win, // windows of the last run a restart gives to the first `window` calls
@@ -157,6 +159,8 @@ last_error :: proc() -> string {
 
 // Closes every window and gives everything back. The sketch can be started again.
 shutdown :: proc() {
+	finish_recordings()
+	print_record_results()
 	for w in the.windows {
 		destroy_win(w)
 	}
@@ -179,6 +183,11 @@ shutdown :: proc() {
 		delete(problem.why)
 	}
 	delete(the.save_problems)
+	for result in the.record_results {
+		delete(result.path)
+		delete(result.why)
+	}
+	delete(the.record_results)
 	set_overlay("", nil)
 	delete(the.overlay_lines)
 	delete(the.reuse)

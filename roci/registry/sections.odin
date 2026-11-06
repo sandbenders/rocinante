@@ -20,7 +20,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"text", "font", "align", "leading", "measure",
 	}},
 	{"Pictures", "Pictures loaded from the sketch's assets folder or drawn on a canvas, shown anywhere and through a color.", {
-		"load", "image", "tint", "canvas", "draw into", "save", "pixel", "pixels", "picture", "crop", "resize", "filter", "mask",
+		"load", "image", "tint", "canvas", "draw into", "save", "record", "no record", "pixel", "pixels", "picture", "crop", "resize", "filter", "mask",
 	}},
 	{"Effects", "Shaders of your own that run over the finished picture.", {
 		"effect", "shade",

@@ -104,9 +104,14 @@ show_frame :: proc(w: ^Win) {
 		canvas = {f32(m.width), f32(m.height)}
 	}
 	// Pictures asked for with `save` are the finished frame, before the error overlay.
-	if len(w.saves) > 0 {
+	if len(w.saves) > 0 || w.rec != nil {
 		gfx.build(&w.batcher, &w.list, canvas)
-		write_saves(w)
+		if len(w.saves) > 0 {
+			write_saves(w)
+		}
+		if w.rec != nil {
+			record_frame(w)
+		}
 	}
 	marked := gfx.mark(&w.list)
 	defer gfx.rewind(&w.list, marked)
@@ -191,6 +196,9 @@ handle_event :: proc(event: platform.Event) {
 // Closes a window; when the last one goes the sketch ends.
 @(private)
 close_window :: proc(w: ^Win) {
+	if w.rec != nil {
+		end_recording(w)
+	}
 	w.alive = false
 	for other, i in the.windows {
 		if other == w {

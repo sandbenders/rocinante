@@ -67,6 +67,10 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return collision_verb(it, e, call, code)
 	case .Save:
 		save_picture(it, e, as_text(eval(it, call.args[0])))
+	case .Record:
+		record_start(it, e, as_text(eval(it, call.args[0])))
+	case .No_Record:
+		roci.no_record()
 	case .Effect:
 		effect_verb(it, e, call)
 	case .Shade:

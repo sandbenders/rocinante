@@ -1,9 +1,10 @@
 // Saving pictures: press s to save the window as output/shot.png, press v to save its shapes
 // as a vector drawing, output/shot.svg, press p to save them as a PDF page, output/shot.pdf,
-// and press r to start or stop recording a frame sequence into output/frames, one numbered
-// file for each frame.
+// press r to start or stop recording a frame sequence into output/frames, one numbered file for
+// each frame, and press m to start or stop recording a movie, output/movie.apng.
 window size 480 320 title "export"
 recording = false
+filming = false
 saved = 0
 
 on key "s" [
@@ -17,6 +18,11 @@ on key "p" [ save "shot.pdf" ]
 
 on key "r" [ recording = not recording ]
 
+on key "m" [
+  filming = not filming
+  if filming [ record "movie.apng" ] else [ no record ]
+]
+
 draw [
   background (hsb 150 120 60)
   for i from 0 to 11 [
@@ -27,7 +33,7 @@ draw [
   if recording [ save "frames/frame-####.png" ]
   fill white
   font "Inter" size 15
-  text "s saves a picture, v and p a drawing, r records frames" at 20 20
+  text "s saves a picture, v and p a drawing, r and m record" at 20 20
   text ("saved " + saved + " pictures") at 20 44
-  if recording [ text "recording" at 20 68 fill tomato ]
+  if recording or filming [ text "recording" at 20 68 fill tomato ]
 ]

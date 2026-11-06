@@ -107,6 +107,7 @@ frame_hook :: proc(w: roci.Window) {
 			return
 		}
 		say_save_problems(p)
+		say_record_results(p)
 		maybe_collect(p)
 		step_tweens(p)
 		if p.reported < len(p.errors) {

@@ -1,0 +1,5 @@
+fill gold
+circle at 200 150 radius 80
+text "press r to start and stop recording" at 60 270
+on key "r" [ record "clip.apng" ]
+on key "e" [ no record ]

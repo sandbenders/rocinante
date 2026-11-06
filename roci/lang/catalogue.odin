@@ -126,6 +126,7 @@ Message_Id :: enum u8 {
 	Image_Unreadable,
 	Save_Failed,
 	Save_Approximate,
+	Record_Failed,
 	Picture_Size,
 	Picture_Too_Big,
 	Pixels_Unavailable,
@@ -433,6 +434,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Save_Approximate = {.Warning, "`{a}` is saved, but not everything in it is drawn as it is on the screen",
 		"A vector file cannot hold {b} as it is on the screen. It is drawn as the nearest thing or left out, and the sketch carries on.",
 		"A PNG keeps every pixel as it is:", "{d}"},
+	.Record_Failed = {.Error, "I could not record `{a}`",
+		"{b} The sketch carries on.",
+		"Record an animation like this:", "{d}"},
 	.Picture_Size = {.Error, "I cannot make a picture of that size",
 		"{b} The picture is empty and draws nothing, and the sketch carries on.",
 		"For example:", "{d}"},
@@ -513,7 +517,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Save_Failed, .Save_Approximate, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Save_Failed, .Save_Approximate, .Record_Failed, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

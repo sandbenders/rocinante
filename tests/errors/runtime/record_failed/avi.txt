@@ -1,0 +1,8 @@
+── I could not record `clip.avi` ─────────────────────── sketch.roci:2:1
+
+2 │ record "clip.avi"
+  │ ^^^^^^^^^^^^^^^^^
+
+I make `.apng` animations myself and `.mp4`, `.mov`, `.webm`, `.mkv` and `.gif` videos with ffmpeg, so the name has to end in one of those. The sketch carries on.
+
+Record an animation like this:  record "clip.apng"
