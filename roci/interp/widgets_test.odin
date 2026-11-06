@@ -141,12 +141,61 @@ test_the_ui_example_counts_pulses_and_its_ring_follows_the_toggle :: proc(t: ^te
 	w := first_window()
 	testing.expect_value(t, as_number(global_named(p, "dot")), 60)
 	testing.expect_value(t, as_bool(global_named(p, "ring")), true)
-	testing.expect_value(t, len(roci.recorded(w)), 2) // the dot and its ring
+	testing.expect_value(t, len(roci.recorded(w)), 4) // the dot, two rings and the words
 	click_widget(t, w, "pulse")
 	click_widget(t, w, "pulse")
 	testing.expect_value(t, as_number(global_named(p, "pulses")), 2)
 	click_widget(t, w, "ring")
 	steps(2)
 	testing.expect_value(t, as_bool(global_named(p, "ring")), false)
-	testing.expect_value(t, len(roci.recorded(w)), 1) // the dot alone
+	testing.expect_value(t, len(roci.recorded(w)), 2) // the dot and the words
+}
+
+FORM :: `n = 0
+words = ""
+shape = ""
+mode = ""
+ui [
+  n = number "n" 1 10 start 99
+  words = textbox "words" start "ab"
+  shape = dropdown "shape" [ "circle" "square" "star" ] start "star"
+  mode = choice "mode" [ "draw" "erase" ]
+  progress 0.5
+  separator
+  tip "half way"
+]
+`
+
+@(test)
+test_a_number_a_text_box_a_list_and_radio_buttons_start_as_told_and_keep_what_is_typed :: proc(t: ^testing.T) {
+	p := run_text(t, FORM, 5)
+	defer finish(p)
+	w := first_window()
+	testing.expect_value(t, as_number(global_named(p, "n")), 10) // a start above the range is kept inside it
+	testing.expect_value(t, as_text(global_named(p, "words")), "ab")
+	testing.expect_value(t, as_text(global_named(p, "shape")), "star")
+	testing.expect_value(t, as_text(global_named(p, "mode")), "draw") // the first item when nothing is said
+	records := roci.ui_records(w)
+	if testing.expect_value(t, len(records), 5) {
+		testing.expect_value(t, records[4].tip, "half way")
+	}
+	// click into the box and type
+	x, y, _ := widget_middle(w, "words")
+	id := platform.Window_Id(w)
+	steps(3, {platform.Mouse_Moved{window = id, x = x, y = y}})
+	steps(3, {mouse_at(w, x, y, true)})
+	steps(3, {mouse_at(w, x, y, false)})
+	typed := platform.Text_Input{window = id, count = len("é中")}
+	copy(typed.bytes[:], "é中")
+	steps(3, {typed})
+	testing.expect_value(t, as_text(global_named(p, "words")), "abé中")
+}
+
+@(test)
+test_a_list_that_is_not_text_or_is_empty_gives_empty_text_and_does_not_stop_the_sketch :: proc(t: ^testing.T) {
+	p := run_text(t, "a = \"x\"\nb = \"x\"\nui [\n  a = dropdown \"a\" []\n  b = choice \"b\" [ 1 2 ]\n]\n", 5)
+	defer finish(p)
+	testing.expect_value(t, as_text(global_named(p, "a")), "")
+	testing.expect_value(t, as_text(global_named(p, "b")), "")
+	testing.expect_value(t, len(p.errors), 0)
 }

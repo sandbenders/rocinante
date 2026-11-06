@@ -6,6 +6,8 @@
 // window can be clicked by a test.
 package ui
 
+import "base:runtime"
+
 import imgui "../../vendor/imgui"
 import sdl "vendor:sdl3"
 
@@ -50,6 +52,7 @@ key :: proc(s: ^State, scancode: sdl.Scancode, down: bool, mods: platform.Modifi
 // Typed text, as UTF-8.
 text :: proc(s: ^State, typed: string) {
 	use(s)
+	see_text(s, typed)
 	imgui.io_add_input_characters_utf8(imgui.get_io(), cstr(typed))
 }
 
@@ -88,4 +91,36 @@ imgui_key :: proc(code: sdl.Scancode) -> (imgui.Key, bool) {
 		return imgui.Key_0, true
 	}
 	return 0, false
+}
+
+// The system's clipboard, for copy and paste in a text box. Dear ImGui wants the text it is given
+// to stay until the next call, so the last one is kept and let go then.
+@(thread_local)
+clipboard_last: cstring
+
+clipboard_get :: proc "c" (_: ^imgui.Context) -> cstring {
+	context = runtime.default_context()
+	if clipboard_last != nil {
+		sdl.free(rawptr(clipboard_last))
+	}
+	clipboard_last = cstring(sdl.GetClipboardText())
+	return clipboard_last
+}
+
+clipboard_set :: proc "c" (_: ^imgui.Context, text: cstring) {
+	context = runtime.default_context()
+	sdl.SetClipboardText(text)
+}
+
+// Whether a text box is waiting for typed text, and where it is, so the window can ask the system
+// for text (and an input method's window beside it).
+text_focus :: proc(s: ^State) -> (wants: bool, area: Rect) {
+	use(s)
+	wants = imgui.get_io().want_text_input
+	for r in s.finished {
+		if (r.role == .Textbox || r.role == .Number) && (r.active || r.focused) {
+			area = r.rect
+		}
+	}
+	return
 }

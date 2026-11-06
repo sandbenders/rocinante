@@ -1,3 +1,7 @@
 dot: a number
 ring: true or false
+rings: a number
+tone: text
+look: text
+words: text
 pulses: a number

@@ -264,6 +264,20 @@ window_metrics :: proc(window: ^Window) -> Metrics {
 	return metrics_from(int(w), int(h), int(pw), int(ph), sdl.GetWindowDisplayScale(window.handle), WINDOW_IS_IN_PIXELS)
 }
 
+// Asks the system for typed text (and an input method's), which then arrives as `Text_Input`
+// events, with the input method's window beside the box at `x`, `y`, `width` and `height` in logical
+// pixels; or stops asking. SDL says a window gets typed text only after this.
+text_input :: proc(window: ^Window, on: bool, x, y, width, height: f32) {
+	if !on {
+		_ = sdl.StopTextInput(window.handle)
+		return
+	}
+	scale := f32(input_scale(window))
+	area := sdl.Rect{i32(x * scale), i32(y * scale), i32(width * scale), i32(height * scale)}
+	_ = sdl.StartTextInput(window.handle)
+	_ = sdl.SetTextInputArea(window.handle, &area, 0)
+}
+
 // How many of SDL's window units make one logical pixel: 1 everywhere except on
 // Android (WINDOW_IS_IN_PIXELS). Mouse and touch positions are divided by it.
 input_scale :: proc(window: ^Window) -> f64 {

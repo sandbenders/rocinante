@@ -1,0 +1,3 @@
+mode = "draw"
+ui [ mode = choice "mode" [ "draw" "erase" ] ]
+draw [ text mode at 40 200 size 32 ]

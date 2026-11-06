@@ -1,0 +1,4 @@
+ui [
+  if button "go" [ print "going" ]
+  tip "starts the show"
+]

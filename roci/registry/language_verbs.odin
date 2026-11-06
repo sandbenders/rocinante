@@ -45,6 +45,9 @@ FILTER_OPTIONS := []Option{
 // What the widgets that keep a value take: the value they start with, the first time they are seen.
 UI_START_NUMBER := []Option{{"start", {.Number}, false}}
 UI_START_BOOLEAN := []Option{{"start", {.Boolean}, false}}
+UI_START_TEXT := []Option{{"start", {.Text}, false}}
+UI_TEXTBOX_OPTIONS := []Option{{"start", {.Text}, false}, {"lines", {.Number}, false}}
+UI_ITEMS := []Param{{"text", .Text}, {"items", .List}}
 
 LANGUAGE_VERBS := []Verb{
 	{"add", {{LIST_ITEM, {{"to", {.List}, true}}, .None}}, "Puts an item at the end of a list: `add p to particles`."},
@@ -71,6 +74,13 @@ LANGUAGE_VERBS := []Verb{
 	{"button", {{{{"text", .Text}}, nil, .Boolean}}, "A button in a `ui` block, true on the frame it is clicked and false otherwise: `if button \"clear\" [ particles = [] ]`. The text is its name, so two buttons with one text are an error."},
 	{"toggle", {{{{"text", .Text}}, UI_START_BOOLEAN, .Boolean}}, "A check box in a `ui` block that is true while it is ticked: `trails = toggle \"trails\"`. It starts off, or as `start` says, and keeps its value as the sketch reloads."},
 	{"slider", {{{{"text", .Text}, {"low", .Number}, {"high", .Number}}, UI_START_NUMBER, .Number}}, "A slider in a `ui` block that gives its number, between a low and a high: `size = slider \"size\" 10 200`. It starts at the low end, or at `start`, and keeps its value as the sketch reloads."},
+	{"number", {{{{"text", .Text}, {"low", .Number}, {"high", .Number}}, UI_START_NUMBER, .Number}}, "A box in a `ui` block for typing a number, with steppers to add and take away one, that gives its number kept between a low and a high: `dots = number \"dots\" 1 1000`. It starts at the low end, or at `start`, and keeps its value as the sketch reloads. A number typed outside the range is put inside it when the box lets go."},
+	{"textbox", {{{{"text", .Text}}, UI_TEXTBOX_OPTIONS, .Text}}, "A box in a `ui` block for typing a line of text, or `lines` of it, that gives the text in it: `title = textbox \"title\"`. It starts empty, or with `start`, and keeps its text as the sketch reloads. Any writing the computer can type works, with an input method too, and the clipboard copies and pastes."},
+	{"dropdown", {{UI_ITEMS, UI_START_TEXT, .Text}}, "A drop-down list in a `ui` block that gives the item chosen, from a list of text: `shape = dropdown \"shape\" [ \"circle\" \"square\" \"star\" ]`. It starts on the first item, or on the one `start` names, and keeps the choice as the sketch reloads."},
+	{"choice", {{UI_ITEMS, UI_START_TEXT, .Text}}, "Radio buttons in a `ui` block, one for each item of a list of text, that give the item chosen: `mode = choice \"mode\" [ \"draw\" \"erase\" ]`. It starts on the first item, or on the one `start` names, and keeps the choice as the sketch reloads."},
+	{"progress", {{{{"amount", .Number}}, nil, .None}}, "A bar in a `ui` block that shows how far something has got, from 0 to 1: `progress loaded`."},
+	{"separator", {{{}, nil, .None}}, "A thin line in a `ui` block between one group of widgets and the next."},
+	{"tip", {{{{"text", .Text}}, nil, .None}}, "Words in a `ui` block that show beside the widget just before it when the mouse rests on it: `tip \"how big the dot is\"`."},
 	{"set", {{{{"window", .Window}}, SET_OPTIONS, .None}}, "Changes a window that is open, with the words of `window`: `set w size 400 300 resizable false`."},
 	{"send", {{{{"window", .Window}, {"value", .Any}}, nil, .None}}, "Sends a value to a window; it arrives on that window's next frame: `send w 5`."},
 	{"print", {{{{"value", .Any}}, nil, .None}}, "Writes a value to the console."},

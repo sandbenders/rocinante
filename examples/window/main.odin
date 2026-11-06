@@ -107,6 +107,9 @@ handle :: proc(app: ^platform.App, event: platform.Event) -> bool {
 		fmt.printfln("window %d: wheel %v, %v", e.window, e.dx, e.dy)
 	case platform.Finger_Changed:
 		fmt.printfln("window %d: finger %v %v at %v, %v", e.window, e.finger[1], e.phase, e.x, e.y)
+	case platform.Text_Input:
+		typed := e
+		fmt.printfln("window %d: typed %q", e.window, platform.text_of_input(&typed))
 	case platform.Key_Changed:
 		if !e.down || e.repeat {
 			return true

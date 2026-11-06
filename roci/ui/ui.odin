@@ -8,10 +8,13 @@
 // current context of its own, so every procedure here makes its own current first.
 package ui
 
+import "core:os"
 import "core:strings"
 
 import imgui "../../vendor/imgui"
 import sdl "vendor:sdl3"
+
+import "../gfx"
 
 Theme :: enum {
 	Dark,
@@ -24,6 +27,11 @@ Role :: enum {
 	Toggle,
 	Slider,
 	Panel,
+	Number,
+	Textbox,
+	Dropdown,
+	Choice,
+	Progress,
 }
 
 Rect :: struct {
@@ -35,7 +43,8 @@ Record :: struct {
 	role:     Role,
 	label:    string, // owned by the state
 	value:    f32,    // a slider's number, a toggle's 0 or 1
-	text:     string, // a slider's number as shown; owned by the state
+	text:     string, // a slider's number as shown, a text box's text, the item a dropdown shows; owned by the state
+	tip:      string, // what `tip` says about it; owned by the state
 	rect:     Rect,
 	id:       u32,
 	focused:  bool,
@@ -55,8 +64,10 @@ State :: struct {
 	records:        [dynamic]Record, // the frame being built
 	finished:       [dynamic]Record, // the last frame built
 	seen:           map[u32]bool,    // identities used this frame
+	kept_text:      map[string][]u8, // the text boxes' text, by their text: a zero-ended buffer of TEXT_BYTES
+	fallbacks_added: bool,           // the system's fonts for other scripts have been added to the atlas
 	target_scale:   f32,             // when above 0: device pixels to a logical pixel of the picture being made, whatever the density was
-	kept:           map[string]f32,  // what the widgets that keep a value hold, by their text (a check box is 0 or 1)
+	kept:           map[string]f64,  // what the widgets that keep a value hold, by their text (a check box is 0 or 1)
 	panel_open:     bool,
 	panel_visible:  bool,
 	panel_count:    int,
@@ -68,6 +79,54 @@ State :: struct {
 }
 
 BASE_FONT_SIZE :: 15
+
+// Whether a text has anything outside ASCII, which Inter may not draw.
+@(private)
+beyond_ascii :: proc(text: string) -> bool {
+	for b in transmute([]u8)text {
+		if b >= 0x80 {
+			return true
+		}
+	}
+	return false
+}
+
+// Adds the system's fonts for other scripts (Chinese, Japanese, Korean, Arabic, Devanagari) to the
+// font the interface draws with, once, the first time a text with anything but ASCII in it is typed
+// or shown: they are big files, and most sketches never need them. Colour emoji fonts are left out,
+// because Dear ImGui draws one colour only. The glyphs come from a font as they are first drawn.
+@(private)
+add_fallback_fonts :: proc(s: ^State) {
+	if s.fallbacks_added {
+		return
+	}
+	s.fallbacks_added = true
+	use(s)
+	atlas := imgui.get_io().fonts
+	for file in gfx.FALLBACK_FONT_FILES {
+		if strings.contains(file, "Emoji") || !os.exists(file) {
+			continue
+		}
+		config := imgui.FontConfig {
+			font_data_owned_by_atlas = true,
+			extra_size_scale         = 1,
+			glyph_max_advance_x      = 3.4028235e38,
+			rasterizer_multiply      = 1,
+			rasterizer_density       = 1,
+			ellipsis_char            = 0xFFFF,
+			merge_mode               = true,
+		}
+		imgui.font_atlas_add_font_from_file_ttf(atlas, cstr(file), BASE_FONT_SIZE, &config, nil)
+	}
+}
+
+// Called with the text of every widget and everything typed.
+@(private)
+see_text :: proc(s: ^State, text: string) {
+	if !s.fallbacks_added && beyond_ascii(text) {
+		add_fallback_fonts(s)
+	}
+}
 
 // A window's interface. `font` is a TrueType font that outlives the state (it is not copied).
 create :: proc(font: []u8, theme := Theme.Dark) -> ^State {
@@ -89,6 +148,9 @@ create :: proc(font: []u8, theme := Theme.Dark) -> ^State {
 	}
 	copy(config.name[:], "Inter")
 	imgui.font_atlas_add_font_from_memory_ttf(io.fonts, raw_data(font), i32(len(font)), BASE_FONT_SIZE, &config)
+	platform_io := imgui.get_platform_io()
+	platform_io.platform_get_clipboard_text_fn = clipboard_get
+	platform_io.platform_set_clipboard_text_fn = clipboard_set
 	s.theme = theme
 	apply_theme(s)
 	return s
@@ -120,6 +182,11 @@ destroy :: proc(s: ^State) {
 		delete(key)
 	}
 	delete(s.kept)
+	for key, buffer in s.kept_text {
+		delete(key)
+		delete(buffer)
+	}
+	delete(s.kept_text)
 	free(s)
 }
 
@@ -127,6 +194,7 @@ destroy :: proc(s: ^State) {
 free_record :: proc(r: Record) {
 	delete(r.label)
 	delete(r.text)
+	delete(r.tip)
 }
 
 // Makes this window's context the one Dear ImGui's calls act on.

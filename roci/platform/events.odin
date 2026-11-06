@@ -108,6 +108,22 @@ Finger_Changed :: struct {
 	pressure: f32, // 0 to 1
 }
 
+// Text the person typed or an input method finished composing (SDL's `TEXT_INPUT`), once a text
+// box has asked for it with `start_text_input`. Held in the event itself so it needs no memory: a
+// longer text is cut at a whole character.
+TEXT_INPUT_BYTES :: 63
+
+Text_Input :: struct {
+	window: Window_Id,
+	bytes:  [TEXT_INPUT_BYTES + 1]u8,
+	count:  int,
+}
+
+// The text of an event.
+text_of_input :: proc(e: ^Text_Input) -> string {
+	return string(e.bytes[:e.count])
+}
+
 // A key by where it is on the keyboard, not by the letter on it, so AZERTY
 // works for `keys w a s d`.
 Key_Changed :: struct {
@@ -131,6 +147,7 @@ Event :: union {
 	Wheel,
 	Key_Changed,
 	Finger_Changed,
+	Text_Input,
 }
 
 mods_from_sdl :: proc "contextless" (m: sdl.Keymod) -> (mods: Modifiers) {
@@ -187,6 +204,23 @@ translate :: proc "contextless" (e: sdl.Event) -> (event: Event, ok: bool) {
 	case .KEY_DOWN, .KEY_UP:
 		k := e.key
 		return Key_Changed{Window_Id(k.windowID), k.scancode, k.down, k.repeat, mods_from_sdl(k.mod)}, true
+	case .TEXT_INPUT:
+		t := e.text
+		if t.text == nil {
+			return {}, false
+		}
+		event := Text_Input{window = Window_Id(t.windowID)}
+		source := ([^]u8)(t.text)
+		for i := 0; i < TEXT_INPUT_BYTES && source[i] != 0; i += 1 {
+			event.bytes[i] = source[i]
+			event.count = i + 1
+		}
+		// A text cut short must not end in the middle of a character: back up to before the one
+		// that was cut (the next byte of the original is then a lead byte, not a continuation).
+		for event.count == TEXT_INPUT_BYTES && source[event.count] & 0xC0 == 0x80 {
+			event.count -= 1
+		}
+		return event, true
 	case .FINGER_DOWN, .FINGER_MOTION, .FINGER_UP, .FINGER_CANCELED:
 		f := e.tfinger
 		if f.windowID == 0 {

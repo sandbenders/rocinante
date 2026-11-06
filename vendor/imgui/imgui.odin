@@ -1643,6 +1643,7 @@ foreign lib {
 	@(link_name = "ImGui_GetCurrentContext") get_current_context :: proc() -> ^Context ---
 	@(link_name = "ImGui_SetCurrentContext") set_current_context :: proc(ctx: ^Context) ---
 	@(link_name = "ImGui_GetIO") get_io :: proc() -> ^IO ---
+	@(link_name = "ImGui_GetPlatformIO") get_platform_io :: proc() -> ^PlatformIO ---
 	@(link_name = "ImGui_GetStyle") get_style :: proc() -> ^Style ---
 	@(link_name = "ImGui_NewFrame") new_frame :: proc() ---
 	@(link_name = "ImGui_EndFrame") end_frame :: proc() ---
@@ -1688,6 +1689,7 @@ foreign lib {
 	@(link_name = "ImGui_GetID") get_id :: proc(str_id: cstring) -> ID ---
 	@(link_name = "ImGui_TextUnformatted") text_unformatted :: proc(text: cstring) ---
 	@(link_name = "ImGui_Text") text :: proc(fmt: cstring, #c_vararg args: ..any) ---
+	@(link_name = "ImGui_TextDisabled") text_disabled :: proc(fmt: cstring, #c_vararg args: ..any) ---
 	@(link_name = "ImGui_TextWrapped") text_wrapped :: proc(fmt: cstring, #c_vararg args: ..any) ---
 	@(link_name = "ImGui_Button") button :: proc(label: cstring) -> bool ---
 	@(link_name = "ImGui_SmallButton") small_button :: proc(label: cstring) -> bool ---
@@ -1706,10 +1708,12 @@ foreign lib {
 	@(link_name = "ImGui_SliderIntEx") slider_int_ex :: proc(label: cstring, v: ^i32, v_min: i32, v_max: i32, format: cstring, flags: SliderFlags = 0) -> bool ---
 	@(link_name = "ImGui_InputText") input_text :: proc(label: cstring, buf: cstring, buf_size: uint, flags: InputTextFlags = 0) -> bool ---
 	@(link_name = "ImGui_InputTextMultiline") input_text_multiline :: proc(label: cstring, buf: cstring, buf_size: uint) -> bool ---
+	@(link_name = "ImGui_InputTextMultilineEx") input_text_multiline_ex :: proc(label: cstring, buf: cstring, buf_size: uint, size: [2]f32 = {0, 0}, flags: InputTextFlags = 0, callback: InputTextCallback, user_data: rawptr = nil) -> bool ---
 	@(link_name = "ImGui_InputTextWithHint") input_text_with_hint :: proc(label: cstring, hint: cstring, buf: cstring, buf_size: uint, flags: InputTextFlags = 0) -> bool ---
 	@(link_name = "ImGui_InputFloat") input_float :: proc(label: cstring, v: ^f32) -> bool ---
 	@(link_name = "ImGui_InputInt") input_int :: proc(label: cstring, v: ^i32) -> bool ---
 	@(link_name = "ImGui_InputDouble") input_double :: proc(label: cstring, v: ^f64) -> bool ---
+	@(link_name = "ImGui_InputDoubleEx") input_double_ex :: proc(label: cstring, v: ^f64, step: f64 = 0.0, step_fast: f64 = 0.0, format: cstring, flags: InputTextFlags = 0) -> bool ---
 	@(link_name = "ImGui_ColorEdit4") color_edit4 :: proc(label: cstring, col: ^[4][4]f32, flags: ColorEditFlags = 0) -> bool ---
 	@(link_name = "ImGui_ColorPicker4") color_picker4 :: proc(label: cstring, col: ^[4][4]f32, flags: ColorEditFlags = 0, ref_col: ^f32 = nil) -> bool ---
 	@(link_name = "ImGui_Selectable") selectable :: proc(label: cstring) -> bool ---

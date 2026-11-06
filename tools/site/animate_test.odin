@@ -40,7 +40,7 @@ the_visitors_events_move_press_release_and_scroll :: proc(t: ^testing.T) {
 			case platform.Mouse_Button_Changed: buttons += 1; down = v.down
 			case platform.Finger_Changed:       fingers += 1
 			case platform.Wheel:                wheels += 1
-			case platform.Quit, platform.Close_Requested, platform.Resized, platform.Pixel_Size_Changed, platform.Scale_Changed, platform.Moved, platform.Focus_Changed, platform.Key_Changed:
+			case platform.Quit, platform.Close_Requested, platform.Resized, platform.Pixel_Size_Changed, platform.Scale_Changed, platform.Moved, platform.Focus_Changed, platform.Key_Changed, platform.Text_Input:
 			}
 		}
 		return

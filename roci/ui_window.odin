@@ -5,6 +5,7 @@
 // and finished after the window's `draw`, and the finished frame is drawn over the picture.
 package roci
 
+import "core:strings"
 import sdl "vendor:sdl3"
 
 import "gfx"
@@ -54,7 +55,7 @@ ui_slider :: proc(text: string, value: ^f32, low, high: f32) -> bool {
 // gives whether it is ticked now.
 ui_toggle_value :: proc(text: string, start: bool) -> bool {
 	s := ui_frame()
-	slot := ui.kept(s, text, 1 if start else 0)
+	slot := ui.kept(s, text, 1.0 if start else 0.0)
 	on := slot^ != 0
 	ui.toggle(s, text, &on)
 	slot = ui.kept(s, text, 0)
@@ -66,11 +67,58 @@ ui_toggle_value :: proc(text: string, start: bool) -> bool {
 // inside the range): gives its number now.
 ui_slider_value :: proc(text: string, low, high, start: f64) -> f64 {
 	s := ui_frame()
-	first := clamp(f32(start), min(f32(low), f32(high)), max(f32(low), f32(high)))
-	value := ui.kept(s, text, first)^
+	first := clamp(start, min(low, high), max(low, high))
+	value := f32(ui.kept(s, text, first)^)
 	ui.slider(s, text, &value, f32(low), f32(high))
-	ui.kept(s, text, 0)^ = value
+	ui.kept(s, text, 0)^ = f64(value)
 	return f64(value)
+}
+
+// A number box that keeps its own value, which is `start` the first time its text is seen: gives it
+// now, inside `low` and `high`.
+ui_number_value :: proc(text: string, low, high, start: f64) -> f64 {
+	s := ui_frame()
+	value := ui.kept(s, text, clamp(start, min(low, high), max(low, high)))^
+	ui.number(s, text, &value, low, high)
+	ui.kept(s, text, 0)^ = value
+	return value
+}
+
+// A text box that keeps its own text, which is `start` the first time its text is seen: gives the
+// text now (in the temporary memory), for a box of one line or of `lines`.
+ui_textbox_value :: proc(text, start: string, lines := 1) -> string {
+	s := ui_frame()
+	buffer := ui.kept_text(s, text, start)
+	ui.textbox(s, text, buffer, lines)
+	return strings.clone(ui.text_in(buffer), context.temp_allocator)
+}
+
+// A drop-down list or, with `radio`, a group of radio buttons, that keeps which item is chosen: the
+// place of `start` in `items` the first time its text is seen. Gives the place now, from 0.
+ui_pick_value :: proc(text: string, items: []string, start: int, radio: bool) -> int {
+	s := ui_frame()
+	index := int(ui.kept(s, text, f64(max(start, 0)))^)
+	if radio {
+		ui.choice(s, text, items, &index)
+	} else {
+		ui.dropdown(s, text, items, &index)
+	}
+	ui.kept(s, text, 0)^ = f64(index)
+	return index
+}
+
+// How far something has got, from 0 to 1.
+ui_progress :: proc(fraction: f64) {
+	ui.progress(ui_frame(), f32(fraction))
+}
+
+ui_separator :: proc() {
+	ui.separator(ui_frame())
+}
+
+// Words that show beside the widget made just before, when the mouse rests on it.
+ui_tip :: proc(text: string) {
+	ui.tip(ui_frame(), text)
 }
 
 // The widgets the last finished frame of a window made, for screen readers and tests.
@@ -101,6 +149,15 @@ ui_finish :: proc(w: ^Win) {
 	} else if w.draw != nil || w.ui_draw != nil {
 		ui.skip(w.ui)
 	}
+	// A text box in use asks the system for typed text, and the input method's window goes beside it.
+	if w.handle != nil {
+		wants, area := ui.text_focus(w.ui)
+		if wants != w.text_input || (wants && area != w.text_area) {
+			size := area.max - area.min
+			platform.text_input(w.handle, wants, area.min.x, area.min.y, size.x, size.y)
+			w.text_input, w.text_area = wants, area
+		}
+	}
 }
 
 // Gives the interface of a window what the window reported.
@@ -127,6 +184,11 @@ ui_event :: proc(event: platform.Event) {
 	case platform.Focus_Changed:
 		if w := win_for_platform(e.window); w != nil && w.ui != nil {
 			ui.focus(w.ui, e.gained)
+		}
+	case platform.Text_Input:
+		if w := win_for_platform(e.window); w != nil && w.ui != nil {
+			typed := e
+			ui.text(w.ui, platform.text_of_input(&typed))
 		}
 	case platform.Quit, platform.Close_Requested, platform.Resized, platform.Pixel_Size_Changed, platform.Scale_Changed, platform.Moved, platform.Finger_Changed:
 	}

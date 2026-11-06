@@ -1,0 +1,6 @@
+shape = "circle"
+ui [ shape = dropdown "shape" [ "circle" "square" ] ]
+
+draw [
+  if shape is "circle" [ circle at 200 150 radius 60 ] else [ square at 140 90 size 120 ]
+]

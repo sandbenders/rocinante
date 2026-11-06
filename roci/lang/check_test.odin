@@ -345,6 +345,9 @@ test_ui_blocks_and_their_widgets_are_checked :: proc(t: ^testing.T) {
 	expect_types(t, "ui [ n = slider \"n\" 1 5 start 2\n  on_off = toggle \"t\" start true\n  hit = button \"b\" ]", "n: a number\non_off: true or false\nhit: true or false")
 	expect_errors(t, "ui [ n = slider \"n\" 1 ]", {.Wrong_Argument_Count})
 	expect_errors(t, "ui [ n = toggle \"t\" start 3 ]", {.Wrong_Argument_Kind})
+	expect_types(t, "ui [ a = number \"n\" 1 5 start 2\n  b = textbox \"t\" start \"x\" lines 3\n  c = dropdown \"d\" [ \"a\" \"b\" ] start \"b\"\n  d = choice \"e\" [ \"a\" ]\n  progress 0.5\n  separator\n  tip \"hi\" ]", "a: a number\nb: text\nc: text\nd: text")
+	expect_errors(t, "ui [ n = dropdown \"d\" 3 ]", {.Wrong_Argument_Kind})
+	expect_errors(t, "ui [ x = separator ]", {.Value_Of_Nothing})
 	expect_errors(t, "label = 3", {.Reserved_Name})
 }
 

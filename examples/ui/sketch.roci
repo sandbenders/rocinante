@@ -1,26 +1,49 @@
-// Widgets in a ui block: a slider, a check box and a button. Each one gives back what the
-// person did with it, so the sketch reads it like any other value.
-window size 480 320 title "ui"
+// Widgets in a ui block. Each one gives back what the person did with it, so the sketch reads
+// it like any other value: a slider's number, a check box, a number box, a drop-down list, radio
+// buttons, a box of text, a button's click and a bar for how far things have got.
+window size 640 480 title "ui"
 dot = 60
 ring = true
+rings = 2
+tone = "orange"
+look = "solid"
+words = ""
 pulses = 0
 
 ui [
   label "settings"
   dot = slider "dot" 10 120 start 60
+  tip "how big the dot is"
   ring = toggle "ring" start true
+  rings = number "rings" 1 5 start 2
+  separator
+  tone = dropdown "tone" [ "orange" "teal" "tomato" ]
+  look = choice "look" [ "solid" "outline" ]
+  words = textbox "words" start "rocinante"
+  separator
   if button "pulse" [ pulses = pulses + 1 ]
+  progress ((pulses % 10) / 10)
   label ("pulses: " + pulses)
 ]
 
 draw [
   background 30
-  fill orange
-  circle at 390 190 radius dot
+  if look is "solid" [
+    if tone is "orange" [ fill orange ] else [ if tone is "teal" [ fill teal ] else [ fill tomato ] ]
+  ] else [
+    no fill
+    thickness 6
+    if tone is "orange" [ stroke orange ] else [ if tone is "teal" [ stroke teal ] else [ stroke tomato ] ]
+  ]
+  circle at 470 200 radius dot
   if ring [
     no fill
     stroke white
-    thickness 4
-    circle at 390 190 radius (dot + 16 + (pulses % 5) * 6)
+    thickness 3
+    for i from 1 to rings [
+      circle at 470 200 radius (dot + 14 * i)
+    ]
   ]
+  fill white
+  text words at 340 400 size 28
 ]

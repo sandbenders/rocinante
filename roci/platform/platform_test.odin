@@ -145,7 +145,7 @@ test_modifiers_either_side_and_none :: proc(t: ^testing.T) {
 
 @(test)
 test_events_the_core_does_not_use_are_dropped :: proc(t: ^testing.T) {
-	for type in ([?]sdl.EventType{.LOW_MEMORY, .WINDOW_SHOWN, .WINDOW_EXPOSED, .TEXT_INPUT, .FINGER_DOWN, .KEYMAP_CHANGED}) {
+	for type in ([?]sdl.EventType{.LOW_MEMORY, .WINDOW_SHOWN, .WINDOW_EXPOSED, .FINGER_DOWN, .KEYMAP_CHANGED}) {
 		e: sdl.Event
 		e.type = type
 		_, ok := translate(e)
@@ -337,4 +337,31 @@ test_fingers_go_down_move_and_come_up_and_a_cancel_is_an_up :: proc(t: ^testing.
 test_only_a_failed_wayland_start_is_tried_again_on_x11 :: proc(t: ^testing.T) {
 	testing.expect(t, should_retry_on_x11(true))
 	testing.expect(t, !should_retry_on_x11(false))
+}
+
+@(test)
+test_typed_text_becomes_an_event_cut_at_a_whole_character :: proc(t: ^testing.T) {
+	short := "héllo"
+	e: sdl.Event
+	e.type = .TEXT_INPUT
+	e.text.windowID = 7
+	e.text.text = cstring(raw_data(short))
+	event, ok := translate(e)
+	testing.expect(t, ok)
+	typed, is_text := event.(Text_Input)
+	testing.expect(t, is_text)
+	testing.expect_value(t, typed.window, Window_Id(7))
+	testing.expect_value(t, text_of_input(&typed), "héllo")
+	// 62 letters, then a two-byte character that does not fit: it is left out whole
+	long := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaé"
+	testing.expect_value(t, len(long), 64)
+	e.text.text = cstring(raw_data(long))
+	event, ok = translate(e)
+	typed, _ = event.(Text_Input)
+	testing.expect(t, ok)
+	testing.expect_value(t, typed.count, 62)
+	// no text at all gives no event
+	e.text.text = nil
+	_, ok = translate(e)
+	testing.expect(t, !ok)
 }

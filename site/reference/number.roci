@@ -1,0 +1,8 @@
+dots = 5
+ui [ dots = number "dots" 1 20 start 5 ]
+
+draw [
+  for i from 1 to dots [
+    circle at (i * 18) 150 radius 8
+  ]
+]

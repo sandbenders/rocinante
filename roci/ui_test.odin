@@ -211,3 +211,48 @@ test_widgets_that_keep_a_value_start_as_asked_and_keep_it :: proc(t: ^testing.T)
 	testing.expect(t, ui_kept_toggle, "`start` counts only the first time")
 	testing.expect_value(t, ui_kept_slider, 10)
 }
+
+@(thread_local) ui_text_now: string
+@(thread_local) ui_pick_now: int
+@(thread_local) ui_number_now: f64
+
+ui_form_sketch :: proc() {
+	ui_number_now = ui_number_value("count", 1, 10, 50)
+	ui_text_now = ui_textbox_value("title", "ab")
+	ui_pick_now = ui_pick_value("shape", {"circle", "square", "star"}, 2, false)
+	ui_progress(0.25)
+	ui_tip("how far")
+	ui_separator()
+}
+
+typed :: proc(w: Window, text: string) -> platform.Event {
+	event := platform.Text_Input{window = platform.Window_Id(w), count = len(text)}
+	copy(event.bytes[:], text)
+	return event
+}
+
+@(test)
+test_a_number_a_text_box_and_a_list_keep_their_values_and_typed_text_reaches_the_box :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(400, 300)
+	ui_window(w, ui_form_sketch)
+	step_frames(5)
+	testing.expect_value(t, ui_number_now, 10) // a start above the range is kept inside it
+	testing.expect_value(t, ui_text_now, "ab")
+	testing.expect_value(t, ui_pick_now, 2)
+	records := ui_records(w)
+	testing.expect_value(t, len(records), 4)
+	// click into the box and type, an accented letter and a Chinese one
+	box, _ := record_for(w, "title")
+	id := platform.Window_Id(w)
+	x, y := (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+	step_frames(3, {platform.Mouse_Moved{window = id, x = x, y = y}})
+	step_frames(3, {platform.Mouse_Button_Changed{window = id, button = .Left, down = true, x = x, y = y}})
+	step_frames(3, {platform.Mouse_Button_Changed{window = id, button = .Left, down = false, x = x, y = y}})
+	step_frames(2, {typed(w, "é中")})
+	testing.expect_value(t, ui_text_now, "abé中")
+	// the text stays while nothing is typed
+	step_frames(3)
+	testing.expect_value(t, ui_text_now, "abé中")
+}

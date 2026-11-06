@@ -1,0 +1,3 @@
+words = ""
+ui [ words = textbox "words" start "hello" ]
+draw [ text words at 40 150 size 32 ]

@@ -65,6 +65,8 @@ Win :: struct {
 	position:     [2]int,           // where it was asked to be (a headless window has no screen)
 	cursor:       Cursor,           // the mouse cursor while the mouse is over it
 	fingers:      [dynamic]Finger,  // the fingers down that went down in this window, in that order
+	text_input:   bool,             // the system has been asked for typed text for this window
+	text_area:    ui.Rect,          // where the input method's window was put
 	ui:           ^ui.State,        // its widgets, made by the first one (ui_window.odin)
 }
 

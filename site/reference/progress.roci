@@ -1,0 +1,1 @@
+ui [ progress (frame % 120 / 120) ]

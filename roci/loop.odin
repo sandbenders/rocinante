@@ -188,6 +188,8 @@ handle_event :: proc(event: platform.Event) {
 		the.wheel += {f64(e.dx), f64(e.dy)}
 	case platform.Finger_Changed:
 		handle_finger(e)
+	case platform.Text_Input:
+		// typed text belongs to the interface (ui_event); a sketch reads keys, not text
 	case platform.Key_Changed:
 		code := int(e.scancode)
 		if code > 0 && code < len(the.keys) {

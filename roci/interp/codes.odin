@@ -126,6 +126,13 @@ Verb_Code :: enum u8 {
 	Button,
 	Toggle,
 	Slider,
+	Number,
+	Textbox,
+	Dropdown,
+	Choice,
+	Progress,
+	Separator,
+	Tip,
 }
 
 // The registry's name of each code. A test fails when the registry gains a verb
@@ -246,6 +253,13 @@ VERB_CODE_NAMES := [Verb_Code]string{
 	.Button = "button",
 	.Toggle = "toggle",
 	.Slider = "slider",
+	.Number = "number",
+	.Textbox = "textbox",
+	.Dropdown = "dropdown",
+	.Choice = "choice",
+	.Progress = "progress",
+	.Separator = "separator",
+	.Tip = "tip",
 }
 
 // The code of each verb of `registry.ALL_VERBS`, by its place there.

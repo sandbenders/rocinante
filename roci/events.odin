@@ -105,7 +105,7 @@ note_event :: proc(event: platform.Event) {
 		if w := win_for_platform(e.window); w != nil {
 			log_event(.Focus, w)
 		}
-	case platform.Quit, platform.Close_Requested, platform.Pixel_Size_Changed, platform.Scale_Changed, platform.Mouse_Moved, platform.Wheel:
+	case platform.Quit, platform.Close_Requested, platform.Pixel_Size_Changed, platform.Scale_Changed, platform.Mouse_Moved, platform.Wheel, platform.Text_Input:
 	case platform.Finger_Changed:
 		// Logged by `handle_finger`, which gives the finger its number.
 	}
