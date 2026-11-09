@@ -145,6 +145,13 @@ ACTIONS := [ui.Node_Action]ak.Action {
 	.Set_Value = .Set_Value,
 }
 
+// AccessKit reads the words of a line of text from its value, not its label: a `Label` node with only
+// a label has no name for a screen reader (found with Orca on FreeBSD, 2026-11-09).
+@(private)
+text_is_value :: proc(role: ui.Node_Role) -> bool {
+	return role == .Label
+}
+
 // A string as a C string for the length of one call: AccessKit copies it.
 @(private)
 with_text :: proc(text: string, set: proc "c" (node: ^ak.Node, value: cstring), node: ^ak.Node) {
@@ -162,7 +169,7 @@ tree_update :: proc(t: ui.Tree) -> ^ak.Tree_Update {
 	for n in t.nodes {
 		node := ak.node_new(ROLES[n.role])
 		if n.label != "" {
-			with_text(n.label, ak.node_set_label, node)
+			with_text(n.label, ak.node_set_value if text_is_value(n.role) else ak.node_set_label, node)
 		}
 		if n.description != "" {
 			with_text(n.description, ak.node_set_description, node)

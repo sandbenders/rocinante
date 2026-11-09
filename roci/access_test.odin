@@ -40,6 +40,16 @@ test_what_a_screen_reader_asks_means_the_actions_widgets_take :: proc(t: ^testin
 }
 
 @(test)
+test_only_a_line_of_text_has_its_words_in_the_value :: proc(t: ^testing.T) {
+	testing.expect(t, text_is_value(.Label))
+	for role in ui.Node_Role {
+		if role != .Label {
+			testing.expectf(t, !text_is_value(role), "%v names itself by its label", role)
+		}
+	}
+}
+
+@(test)
 test_every_role_of_a_tree_becomes_an_update_the_library_takes :: proc(t: ^testing.T) {
 	if !ak.LIBRARY_PRESENT {
 		return
