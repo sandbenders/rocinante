@@ -184,7 +184,7 @@ test_a_hidden_interface_keeps_its_nodes_and_says_how_to_show_it :: proc(t: ^test
 	defer destroy_tree(&tree)
 	dump := dump_tree(tree)
 	defer delete(dump)
-	testing.expect(t, has_line(dump, "  Label \"controls hidden, press ` to show\" [Focus]\n  Button \"go\" [Focus Click]\n"), dump)
+	testing.expect(t, has_line(dump, "  Label \"controls hidden, press backtick to show\" [Focus]\n  Button \"go\" [Focus Click]\n"), dump)
 	testing.expect_value(t, tree.focus, HIDDEN_ID)
 	set_toggle_key(s, .F1)
 	testing.expect_value(t, hidden_message(s), "controls hidden, press F1 to show")

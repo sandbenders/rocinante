@@ -110,7 +110,7 @@ group_id :: proc(key: string) -> u64 {
 // The name of the key that hides and shows the interface, as it is said aloud.
 key_name :: proc(key: sdl.Scancode) -> string {
 	if key == .GRAVE {
-		return "`"
+		return "backtick" // a screen reader does not pronounce the mark itself
 	}
 	return string(sdl.GetScancodeName(key))
 }
