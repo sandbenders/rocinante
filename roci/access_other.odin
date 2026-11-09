@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: 0BSD
 #+build !darwin
+#+build !linux
+#+build !freebsd
+#+build !openbsd
 package roci
 
 // No adapter is written for this system yet (Windows and the Unix systems follow macOS), so a window
@@ -17,3 +20,6 @@ platform_access_focus :: proc(a: ^Access, gained: bool) {}
 
 @(private)
 platform_access_detach :: proc(a: ^Access) {}
+
+@(private)
+platform_access_bounds :: proc(a: ^Access) {}

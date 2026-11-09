@@ -54,3 +54,6 @@ platform_access_detach :: proc(a: ^Access) {
 		a.adapter = nil
 	}
 }
+
+@(private)
+platform_access_bounds :: proc(a: ^Access) {}

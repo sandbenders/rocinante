@@ -402,7 +402,15 @@ ui_event :: proc(event: platform.Event) {
 			typed := e
 			ui.text(w.ui, platform.text_of_input(&typed))
 		}
-	case platform.Quit, platform.Close_Requested, platform.Resized, platform.Pixel_Size_Changed, platform.Scale_Changed, platform.Moved, platform.Finger_Changed:
+	case platform.Moved:
+		if w := win_for_platform(e.window); w != nil {
+			access_moved(w)
+		}
+	case platform.Resized:
+		if w := win_for_platform(e.window); w != nil {
+			access_moved(w)
+		}
+	case platform.Quit, platform.Close_Requested, platform.Pixel_Size_Changed, platform.Scale_Changed, platform.Finger_Changed:
 	}
 }
 

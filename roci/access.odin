@@ -13,6 +13,8 @@ import "base:runtime"
 import "core:strings"
 import "core:sync"
 
+import "platform"
+
 import ak "../vendor/accesskit"
 import "ui"
 
@@ -27,6 +29,7 @@ Access :: struct {
 	hash:    u64,       // of that tree, to send only what changed
 	state:   ^ui.State, // where actions go; nil once the window is gone
 	title:   string,    // the window's name, the tree's root
+	window:  ^platform.Window, // the operating system's window, for where it is on the screen
 }
 
 // Makes the bridge of a window that has just got an interface. Where there is no adapter, it leaves
@@ -39,6 +42,7 @@ access_attach :: proc(w: ^Win) {
 	a := new(Access)
 	a.state = w.ui
 	a.title = strings.clone(w.title)
+	a.window = w.handle
 	if !platform_access_attach(w, a) {
 		access_free(a)
 		return
@@ -73,6 +77,14 @@ access_refresh :: proc(w: ^Win) {
 access_focus :: proc(w: ^Win, gained: bool) {
 	if w.access != nil {
 		platform_access_focus(w.access, gained)
+	}
+}
+
+// The window moved or was resized (the systems whose adapters need to know where it is).
+@(private)
+access_moved :: proc(w: ^Win) {
+	if w.access != nil {
+		platform_access_bounds(w.access)
 	}
 }
 
