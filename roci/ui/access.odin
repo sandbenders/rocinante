@@ -80,6 +80,7 @@ WIDGET_ID_BASE :: u64(1) << 32
 GROUP_ID_BASE :: u64(1) << 48
 SUB_ID_BASE :: u64(1) << 56
 PLACE_ID_BASE :: u64(1) << 60
+HIDDEN_ID :: PLACE_ID_BASE - 1 // the line that says the interface is hidden
 
 @(private)
 path_key :: proc(path: []string, extra := "") -> string {
@@ -130,8 +131,9 @@ build_tree :: proc(s: ^State, title: string) -> Tree {
 	containers := make(map[string]int, 8, context.temp_allocator) // path key to the node whose children it holds
 	containers[""] = 0
 	if s.hidden {
-		message := Node{id = PLACE_ID_BASE - 1, role = .Label, label = strings.clone(hidden_message(s))}
+		message := Node{id = HIDDEN_ID, role = .Label, label = strings.clone(hidden_message(s))}
 		message.bounds = {{0, 0}, s.size}
+		message.actions = {.Focus} // so it can be the node with focus, which is what makes a screen reader say it
 		add_child(&t, 0, message)
 	}
 	for r, place in s.finished {
@@ -174,6 +176,10 @@ build_tree :: proc(s: ^State, title: string) -> Tree {
 				add_child(&t, index, entry)
 			}
 		}
+	}
+	if s.hidden {
+		// a screen reader says what takes focus, so focus goes to the line that says how to show it
+		t.focus = HIDDEN_ID
 	}
 	// a group is where the widgets inside it are
 	for i := len(t.nodes) - 1; i > 0; i -= 1 {
