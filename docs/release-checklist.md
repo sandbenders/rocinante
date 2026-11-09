@@ -17,6 +17,51 @@ Where someone has a mid-range laptop, run `examples/benchmark` on it and note th
 
 On the iPhone, also play `examples/touch` with several fingers: they should be in the right places, numbered in order and never reused, and gone when they lift (checked on the Pixel 9 in Phase 2; the iPhone was moved here when Phase 2 closed).
 
+## Linux and the BSDs: everything to try (CachyOS, FreeBSD, OpenBSD)
+
+These systems were last tried in full before text, shaders, canvases, export and the whole user interface. Go through all of it on each, and write down what differs in the results table's notes. Everything in the first list must pass before anything else is worth trying.
+
+**1. Setting up and building**
+- [ ] The pinned Odin (`odin version` is the `ODIN_VERSION` file; OpenBSD builds it from the source tag, FreeBSD uses the `odin-lang` package when it is that version).
+- [ ] SDL3 and SDL3_ttf found by the linker (OpenBSD: the two-number symlink and `ldconfig -m` in the README; `tools/ci/install-sdl3.sh` if a package is old).
+- [ ] shaderc and SPIRV-Cross found (`-lshaderc_shared`, the SPIRV-Cross C library). Note the package names on FreeBSD and OpenBSD; the README says they are unconfirmed.
+- [ ] `sh tools/ui-libs.sh` builds Dear ImGui with the system's C++ compiler (finds `SDL3/SDL.h` in `/usr/local/include`; the programs link `c++` on FreeBSD and `stdc++` on OpenBSD) and every program that opens a window then links.
+- [ ] `sh tools/ui-libs.sh accesskit`: Linux x86-64 downloads the release library; CachyOS arm64 and the BSDs build it from source (`git`, `cmake`, `cargo`, network for Corrosion and crates). Note any system library the link asks for (the generated bindings list `pthread`, `dl`, `m`, and that is a guess beyond Linux x86-64).
+- [ ] `odin build cli -out:output/roci -o:speed` links and `output/roci` starts.
+- [ ] `odin run build -- ci` passes in full: every package's tests twice (`-o:minimal` and `-o:speed`), the licence check, the generated bindings equal the committed ones (needs `cc`), the ABI check (`tools/abi-check.sh`), and the golden images on lavapipe (`odin run tests/golden`, last line `N pictures, 0 failed`; FreeBSD's manifest path is `/usr/local/share/vulkan/icd.d/lvp_icd.x86_64.json`). Run a failing test with `-keep-executable` several times to see whether it is flaky.
+- [ ] `odin run build -- docs` builds the site (Hugo of the pinned version, drawn on lavapipe).
+- [ ] `roci new`, `init`, `get`, `update` with git (and Git LFS if installed), a sketch inside a git repository, and `roci test --accept` then `roci test` on `examples/checks`.
+
+**2. Windows, drawing and text (every example)**
+- [ ] Run **every folder in `examples/`** (`roci run examples/<name>`) and compare each with its picture in `tests/golden/`: shapes, style, gradients, transforms, text, pictures, canvases, blend, clip, fills (picture, stroke, text), pixels and filters, `outline`, tweens, tables, the turtle, collision, touch.
+- [ ] Wayland and X11 both (CachyOS and FreeBSD: a Wayland session and an X11 one; OpenBSD: X11, and the XWayland fallback on a Wayland session). Window size, `resizable false`, position, borderless, topmost, fullscreen, `ratio`, `cursor none`, several windows, a window `parent` and `modal`, closing one of two windows, Ctrl+Q, the window's close button, Escape not quitting.
+- [ ] Display scaling: a scaled display (Wayland fractional scale, X11 `Xft.dpi`) draws sharp at the right size, and `width`, `height`, the mouse and the interface agree.
+- [ ] Live reload: save a sketch (and another file of the folder) and it reloads keeping its values; a mistake shows the overlay and the last good frame stays; Ctrl+R restarts.
+- [ ] Fonts: Inter is used with no font installed; `font "Name"` finds an installed font (the folders on each system, `.ttc` collections, copying into `assets/fonts` and the `Font_Licence` notice); other scripts through the system's fallback fonts (CJK, Arabic, Devanagari: note which fonts each system has) and emoji.
+- [ ] Shaders: the built-in `effect`s, a sketch's own `.hlsl` effect and `shade`, effects on a canvas, hot reload when the shader file is saved, the message when a shader is broken (`examples/neon`, `smoke`, `glass`, `tunnel`).
+- [ ] Export: `save` to PNG, SVG and PDF (open the SVG and PDF in a viewer), a `#` frame sequence, `record` to `.apng` and, with `ffmpeg` installed, to `.mp4` and `.gif`; the message that teaches how to install ffmpeg when it is missing.
+- [ ] `examples/benchmark -o:speed` (100,000 circles) frame rate, with and without vsync; and which Vulkan driver was used (`VK_LOADER_DEBUG=driver`). On OpenBSD say whether Vulkan works at all on that GPU or only lavapipe.
+
+**3. The user interface** (`examples/ui`, `dials`, `imagebuttons`, `follow`, and the two-window examples `windows` and `two_windows`)
+- [ ] Every widget with the mouse and with the keyboard alone: Tab and Shift+Tab, Enter and Space, arrows (knob, range, pad, drop-down, list), tabs, the menu, the panel folding, tooltips, the colour picker. A placed widget (`at`) is reached with Ctrl+Tab; a widget that follows a dot in `follow` stays on it when the window is resized or moved.
+- [ ] Text boxes: typing, selection, the clipboard (copy and paste between the sketch and another program, on X11 and on Wayland), a multi-line box, a number typed outside its range; typing in another script, and an input method (ibus or fcitx on Linux and FreeBSD, whatever OpenBSD has) composing Japanese or Chinese, with the candidate window beside the box.
+- [ ] The backtick hides and shows the interface on a US layout and on one where the key sits elsewhere (it is read by position); `ui key "f1"`; the key leaves a text box alone while typing; on a touch screen, three fingers tapping.
+- [ ] `ui.toml`: created beside a `sketch.roci` after the first change, written again after a second of stillness and at quit, read back on the next run, not made for a lone file; a read-only folder says nothing and does not crash; `forget ui` resets.
+- [ ] `examples/imagebuttons`: the picture shows on the button on the GPU drivers you have.
+- [ ] A canvas, an effect and the interface together in one window; the interface drawn over the picture also in `save` and `record`.
+
+**4. The screen reader** (new: the Linux, FreeBSD and OpenBSD adapter, never run with a reader)
+- [ ] The session has a D-Bus session bus and the AT-SPI service (`at-spi2-core`); on GNOME `gsettings set org.gnome.desktop.interface toolkit-accessibility true`; on FreeBSD and OpenBSD note which packages and which desktop made it work, or that it did not. Say whether Orca exists as a package on each.
+- [ ] `accerciser` (or `busctl --user tree`) shows the program with its window and widgets; compare with `tests/ui-tree/ui.txt`. If a program never appears, say so first: that is whether the adapter registers at all.
+- [ ] Orca reads the panel, each widget's name and value, the tabs and the progress bar; presses the button, increments the slider, sets a number, types in a text box, chooses in the drop-down, radio buttons and list, selects a tab, folds the panel.
+- [ ] The backtick says "controls hidden, press backtick to show", then the first widget when shown again.
+- [ ] Where the window is on screen (X11): Orca's mouse review and a click-through land on the right widget; on a scaled display they may be off (node bounds are logical pixels); under Wayland the position is unknown.
+- [ ] Orca keeps working while the sketch reloads and restarts, and when a second window opens or closes.
+
+**5. Tests that need a real system**
+- [ ] IME composition (above), clipboard, a real touch screen (`examples/touch` with several fingers, numbered in order, never reused), a stylus if there is one.
+- [ ] `roci/folder`'s tests in a real git clone (they need a repository), and the `roci/movies` tests (they start a process).
+
 ## Results
 
 | Version | FreeBSD | macOS | OpenBSD | Windows | iOS | Android | Notes |
