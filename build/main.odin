@@ -120,6 +120,7 @@ ci :: proc(fast: bool) -> bool {
 	ok = check_tracked_fonts(".") && ok
 	// Compile-check every Odin package that exists so far.
 	ok = check_ui() && ok // first: every program that opens a window links Dear ImGui
+	ok = check_accesskit() && ok
 	ok = check_packages() && ok
 	if !fast {
 		ok = check_optimised_tests() && ok

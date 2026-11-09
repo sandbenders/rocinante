@@ -32,3 +32,5 @@ vendor/spirvcross   Apache-2.0
 # Dear ImGui (MIT, ocornut/imgui LICENSE.txt, v1.93.0) with its SDL3 and SDL_GPU backends, and dear_bindings (MIT, v0.26), whose
 # generated C wrappers and Odin bindings are in vendor/imgui (checked 2026-11-06).
 vendor/imgui    MIT
+# accesskit-c is Apache-2.0 OR MIT, used here under MIT; its Chromium-derived parts (LICENSE.chromium) are BSD-style (read 2026-11-09).
+vendor/accesskit MIT

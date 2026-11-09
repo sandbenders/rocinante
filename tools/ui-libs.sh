@@ -7,6 +7,10 @@
 #                                   libroci_ui.a: Dear ImGui, its SDL3 and SDL_GPU
 #                                   backends and the C wrappers committed in
 #                                   vendor/imgui/c. Needs git and a C++ compiler.
+#     tools/ui-libs.sh accesskit    fetch accesskit-c (the screen-reader bridge's library) into
+#                                   .cache/ui/accesskit: its own release libraries where it
+#                                   publishes one for this computer (checked by sha256), a build
+#                                   from source with cargo and cmake where it does not.
 #     tools/ui-libs.sh regenerate   make those wrappers and vendor/imgui/imgui.odin
 #                                   again after a new Dear ImGui or dear_bindings
 #                                   tag (needs python3, which only dear_bindings
@@ -17,12 +21,68 @@ set -eu
 
 IMGUI_TAG=v1.93.0
 DEAR_BINDINGS_TAG=v0.26
+ACCESSKIT_TAG=0.23.1
+# the release archive of that tag (accesskit-c's own: the header, the licences and a static
+# and shared library for macOS, Windows, Linux x86 and x86_64, iOS and Android)
+ACCESSKIT_ZIP_SHA256=35b7ca8a6f1e038b5da35e1e9e5a0adaed9bfcf21e1496d29598fbbadcc7043f
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 cache="$root/.cache/ui"
 c_api="$root/vendor/imgui/c"
 mkdir -p "$cache"
 cd "$cache"
+
+if [ "${1:-}" = accesskit ]; then
+	dir="$cache/accesskit"
+	marker="$dir/.accesskit-$ACCESSKIT_TAG"
+	if [ -f "$marker" ]; then
+		echo "ui-libs: accesskit-c $ACCESSKIT_TAG is there ($dir)"
+		exit 0
+	fi
+	rm -rf "$dir"
+	mkdir -p "$dir"
+	# the folder of the release's libraries for this computer, if it has one
+	case "$(uname -s)-$(uname -m)" in
+	Darwin-arm64) prebuilt=lib/macos/arm64/static/libaccesskit.a ;;
+	Darwin-x86_64) prebuilt=lib/macos/x86_64/static/libaccesskit.a ;;
+	Linux-x86_64) prebuilt=lib/linux/x86_64/static/libaccesskit.a ;;
+	*) prebuilt= ;;
+	esac
+	if [ -n "$prebuilt" ]; then
+		zip="$cache/accesskit-c-$ACCESSKIT_TAG.zip"
+		if [ ! -f "$zip" ]; then
+			curl -fsSL -o "$zip.part" "https://github.com/AccessKit/accesskit-c/releases/download/$ACCESSKIT_TAG/accesskit-c-$ACCESSKIT_TAG.zip"
+			mv "$zip.part" "$zip"
+		fi
+		if command -v sha256sum >/dev/null 2>&1; then
+			got=$(sha256sum "$zip" | cut -d' ' -f1)
+		else
+			got=$(shasum -a 256 "$zip" | cut -d' ' -f1)
+		fi
+		if [ "$got" != "$ACCESSKIT_ZIP_SHA256" ]; then
+			rm -f "$zip"
+			echo "ui-libs: the accesskit-c archive's checksum is $got, not $ACCESSKIT_ZIP_SHA256" >&2
+			exit 1
+		fi
+		unzip -q -o "$zip" "accesskit-c-$ACCESSKIT_TAG/$prebuilt" "accesskit-c-$ACCESSKIT_TAG/include/accesskit.h" \
+			"accesskit-c-$ACCESSKIT_TAG/LICENSE-MIT" "accesskit-c-$ACCESSKIT_TAG/LICENSE-APACHE" "accesskit-c-$ACCESSKIT_TAG/LICENSE.chromium" -d "$dir.tmp"
+		mv "$dir.tmp/accesskit-c-$ACCESSKIT_TAG/$prebuilt" "$dir/libaccesskit.a"
+		mv "$dir.tmp/accesskit-c-$ACCESSKIT_TAG/include/accesskit.h" "$dir/accesskit.h"
+		mv "$dir.tmp/accesskit-c-$ACCESSKIT_TAG"/LICENSE* "$dir/"
+		rm -rf "$dir.tmp"
+	else
+		# FreeBSD, OpenBSD, arm64 Linux: no library is published, so it is built (cargo and cmake)
+		[ -d "$cache/accesskit-c-src" ] || git clone -q --depth 1 --branch "$ACCESSKIT_TAG" https://github.com/AccessKit/accesskit-c "$cache/accesskit-c-src"
+		cmake -S "$cache/accesskit-c-src" -B "$cache/accesskit-c-src/build" -DCMAKE_BUILD_TYPE=Release >/dev/null
+		cmake --build "$cache/accesskit-c-src/build" >/dev/null
+		cp "$cache/accesskit-c-src/build/libaccesskit.a" "$dir/libaccesskit.a"
+		cp "$cache/accesskit-c-src/include/accesskit.h" "$dir/accesskit.h"
+		cp "$cache/accesskit-c-src"/LICENSE* "$dir/"
+	fi
+	touch "$marker"
+	echo "ui-libs: accesskit-c $ACCESSKIT_TAG is in $dir"
+	exit 0
+fi
 
 clone() { # url tag dir
 	if [ ! -d "$3" ]; then
