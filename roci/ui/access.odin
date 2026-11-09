@@ -360,3 +360,50 @@ dump_node :: proc(b: ^strings.Builder, t: Tree, index, depth: int) {
 		}
 	}
 }
+
+// A number that changes when anything a screen reader could notice changes: what is in the tree, its
+// names, values, states, actions, places (to a pixel) and which node has focus. The bridge sends
+// the platform an update only when it differs from the last one.
+tree_hash :: proc(t: Tree) -> u64 {
+	h := u64(14695981039346656037)
+	mix :: proc(h: ^u64, bytes: []u8) {
+		for b in bytes {
+			h^ = (h^ ~ u64(b)) * 1099511628211
+		}
+	}
+	mix_u64 :: proc(h: ^u64, v: u64) {
+		v := v
+		mix(h, (^[8]u8)(&v)[:])
+	}
+	mix_u64(&h, t.focus)
+	for n in t.nodes {
+		mix_u64(&h, n.id)
+		mix_u64(&h, u64(n.role))
+		mix(&h, transmute([]u8)n.label)
+		mix(&h, {0})
+		mix(&h, transmute([]u8)n.description)
+		mix(&h, {0})
+		mix(&h, transmute([]u8)n.value)
+		mix(&h, {0})
+		mix_u64(&h, transmute(u64)n.number)
+		mix_u64(&h, transmute(u64)n.min)
+		mix_u64(&h, transmute(u64)n.max)
+		mix_u64(&h, transmute(u64)n.step)
+		flags := u64(0)
+		for flag, i in ([?]bool{n.checked, n.selected, n.expanded, n.has_check, n.has_select, n.has_expand, n.has_number}) {
+			if flag {
+				flags |= 1 << uint(i)
+			}
+		}
+		mix_u64(&h, flags)
+		mix_u64(&h, u64(transmute(u8)n.actions))
+		for v in ([?]f32{n.bounds.min.x, n.bounds.min.y, n.bounds.max.x, n.bounds.max.y}) {
+			mix_u64(&h, u64(i64(v + 0.5)))
+		}
+		for child in n.children {
+			mix_u64(&h, child)
+		}
+		mix(&h, {1})
+	}
+	return h
+}

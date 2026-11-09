@@ -36,6 +36,7 @@ ensure_ui :: proc(w: ^Win) {
 	if w.ui == nil {
 		w.ui = ui.create(gfx.INTER_REGULAR)
 		ui_remembered(w)
+		access_attach(w)
 	}
 }
 
@@ -357,6 +358,7 @@ ui_finish :: proc(w: ^Win) {
 			w.text_input, w.text_area = wants, area
 		}
 	}
+	access_refresh(w)
 }
 
 // Gives the interface of a window what the window reported.
@@ -393,6 +395,7 @@ ui_event :: proc(event: platform.Event) {
 	case platform.Focus_Changed:
 		if w := win_for_platform(e.window); w != nil && w.ui != nil {
 			ui.focus(w.ui, e.gained)
+			access_focus(w, e.gained)
 		}
 	case platform.Text_Input:
 		if w := win_for_platform(e.window); w != nil && w.ui != nil && !w.ui.hidden {

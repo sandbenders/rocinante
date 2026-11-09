@@ -22,7 +22,22 @@ test_the_action_request_has_the_layout_the_header_says :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_a_build_without_the_library_gets_procedures_that_do_nothing :: proc(t: ^testing.T) {
+	node := node_new(.Button)
+	if LIBRARY_PRESENT {
+		testing.expect(t, node != nil)
+		node_free(node)
+	} else {
+		testing.expect(t, node == nil)
+		node_free(node) // does nothing
+	}
+}
+
+@(test)
 test_the_library_makes_a_tree_of_nodes_and_lets_go_of_it :: proc(t: ^testing.T) {
+	if !LIBRARY_PRESENT {
+		return
+	}
 	update := tree_update_with_capacity_and_focus(3, 2)
 	testing.expect(t, update != nil)
 
@@ -59,6 +74,9 @@ test_the_library_makes_a_tree_of_nodes_and_lets_go_of_it :: proc(t: ^testing.T) 
 
 @(test)
 test_a_node_that_is_never_pushed_can_be_freed :: proc(t: ^testing.T) {
+	if !LIBRARY_PRESENT {
+		return
+	}
 	node := node_new(.Button)
 	node_set_label(node, "go")
 	node_free(node)

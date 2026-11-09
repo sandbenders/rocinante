@@ -396,3 +396,34 @@ test_an_action_for_a_node_that_is_not_there_is_let_go_and_does_nothing :: proc(t
 	testing.expect(t, !asked.clicked && !asked.on)
 	testing.expect_value(t, len(s.actions), 0)
 }
+
+@(test)
+test_the_hash_of_a_tree_changes_with_anything_a_screen_reader_could_notice :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	body :: proc(s: ^State) {
+		amount := asked.amount
+		_ = slider(s, "size", &amount, 0, 100)
+		_ = button(s, "go")
+	}
+	asked = {amount = 10}
+	same_a := tree_of(s, body)
+	defer destroy_tree(&same_a)
+	same_b := tree_of(s, body)
+	defer destroy_tree(&same_b)
+	testing.expect_value(t, tree_hash(same_a), tree_hash(same_b))
+	asked.amount = 11
+	moved := tree_of(s, body)
+	defer destroy_tree(&moved)
+	testing.expect(t, tree_hash(moved) != tree_hash(same_a), "a value changed")
+	// focus moves the hash too (a copy of the tree is enough to hash)
+	refocused := moved
+	refocused.focus = moved.focus + 1
+	testing.expect(t, tree_hash(refocused) != tree_hash(moved), "focus moved")
+	focused := moved
+	renamed := build_tree(s, "test")
+	defer destroy_tree(&renamed)
+	delete(renamed.nodes[1].label)
+	renamed.nodes[1].label = strings.clone("other")
+	testing.expect(t, tree_hash(renamed) != tree_hash(focused), "a name changed")
+}

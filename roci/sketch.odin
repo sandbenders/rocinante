@@ -38,6 +38,7 @@ Win :: struct {
 	batcher:      gfx.Batcher,
 	draw:         proc(),           // runs every frame, when set; otherwise the list drawn at set-up is shown as it is
 	ui_draw:      proc(),           // runs after `draw`, when set, and makes the window's widgets
+	access:       ^Access,          // the screen-reader bridge of this window's interface (access.odin)
 	in_draw:      bool,             // the window's `draw` is running, so a widget's `at` is in canvas coordinates
 	on_receive:   proc(value: Value),
 	inbox:        [dynamic]Value,   // messages sent to this window, delivered on the next frame
@@ -223,6 +224,7 @@ shutdown :: proc() {
 
 @(private)
 destroy_win :: proc(w: ^Win) {
+	access_detach(w)
 	ui.destroy(w.ui)
 	gfx.destroy(&w.list)
 	gfx.batcher_destroy(&w.batcher)
