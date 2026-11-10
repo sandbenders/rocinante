@@ -746,6 +746,7 @@ main :: proc() {
 	fmt.sbprintf(&file, "when ODIN_OS == .Windows {{\n\tLIBRARY_PRESENT :: #exists(\"../../.cache/ui/accesskit/accesskit.lib\")\n}} else {{\n\tLIBRARY_PRESENT :: #exists(\"../../.cache/ui/accesskit/libaccesskit.a\")\n}}\n\n")
 	fmt.sbprintf(&file, "when LIBRARY_PRESENT {{\n\twhen ODIN_OS == .Darwin {{\n\t\tforeign import lib {{\n\t\t\t\"../../.cache/ui/accesskit/libaccesskit.a\",\n\t\t\t\"system:AppKit.framework\", \"system:Foundation.framework\", \"system:CoreFoundation.framework\", \"system:objc\",\n\t\t}}\n")
 	fmt.sbprintf(&file, "\t}} else when ODIN_OS == .Windows {{\n\t\t// not checked yet: the system libraries Rust's standard library needs\n\t\tforeign import lib {{\n\t\t\t\"../../.cache/ui/accesskit/accesskit.lib\",\n\t\t\t\"system:ws2_32.lib\", \"system:userenv.lib\", \"system:ntdll.lib\", \"system:bcrypt.lib\", \"system:advapi32.lib\",\n\t\t}}\n")
+	fmt.sbprintf(&file, "\t}} else when ODIN_OS == .OpenBSD {{\n\t\t// OpenBSD has no libdl: dlopen is in its C library\n\t\tforeign import lib {{\n\t\t\t\"../../.cache/ui/accesskit/libaccesskit.a\",\n\t\t\t\"system:pthread\", \"system:m\",\n\t\t}}\n")
 	fmt.sbprintf(&file, "\t}} else {{\n\t\t// not checked yet beyond macOS: what Rust's standard library needs from the C library\n\t\tforeign import lib {{\n\t\t\t\"../../.cache/ui/accesskit/libaccesskit.a\",\n\t\t\t\"system:pthread\", \"system:dl\", \"system:m\",\n\t\t}}\n\t}}\n}}\n\n")
 	strings.write_string(&file, types)
 	strings.write_string(&file, procedures)

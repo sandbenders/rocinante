@@ -25,6 +25,12 @@ when LIBRARY_PRESENT {
 			"../../.cache/ui/accesskit/accesskit.lib",
 			"system:ws2_32.lib", "system:userenv.lib", "system:ntdll.lib", "system:bcrypt.lib", "system:advapi32.lib",
 		}
+	} else when ODIN_OS == .OpenBSD {
+		// OpenBSD has no libdl: dlopen is in its C library
+		foreign import lib {
+			"../../.cache/ui/accesskit/libaccesskit.a",
+			"system:pthread", "system:m",
+		}
 	} else {
 		// not checked yet beyond macOS: what Rust's standard library needs from the C library
 		foreign import lib {
