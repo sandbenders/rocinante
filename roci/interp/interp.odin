@@ -199,6 +199,9 @@ destroy :: proc(p: ^Interp) {
 	}
 	delete(p.tweens)
 	delete(p.checks)
+	for name in p.fonts_missed {
+		delete(name)
+	}
 	delete(p.fonts_missed)
 	drop_pictures(p)
 	drop_shaders(p)

@@ -14,7 +14,6 @@ import "../"
 import "../folder"
 import "../lang"
 import "../maths"
-import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -144,7 +143,6 @@ shader_values :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, id: roci.Sha
 // changed, or 0 (after saying why) when it cannot be had.
 @(private)
 load_shader :: proc(it: ^Interp, name: string, span: lang.Span, fill := false) -> roci.Shader {
-	context.allocator = runtime.heap_allocator()
 	// A shader used to fill and one used as an effect are written for different preludes, so a
 	// file used both ways is two shaders.
 	key := strings.concatenate({name, "\x00fill"}, context.temp_allocator) if fill else name
@@ -191,7 +189,7 @@ read_shader :: proc(it: ^Interp, name: string, before: Shader_Entry, fill: bool)
 			}
 			if message != "" {
 				entry.state = .Broken
-				entry.message = strings.clone(message, runtime.heap_allocator())
+				entry.message = strings.clone(message)
 			}
 			return
 		}
@@ -208,11 +206,11 @@ read_shader :: proc(it: ^Interp, name: string, before: Shader_Entry, fill: bool)
 		return
 	case .Ambiguous:
 		entry.state = .Ambiguous
-		entry.others = strings.join(candidates, " and ", runtime.heap_allocator())
-		entry.suggest = strings.clone(strings.trim_prefix(candidates[0], "assets/"), runtime.heap_allocator())
+		entry.others = strings.join(candidates, " and ")
+		entry.suggest = strings.clone(strings.trim_prefix(candidates[0], "assets/"))
 		return
 	}
-	entry.path = strings.concatenate({root, "/", path}, runtime.heap_allocator())
+	entry.path = strings.concatenate({root, "/", path})
 	if info, err := os.stat(entry.path, context.temp_allocator); err == nil {
 		entry.mtime = info.modification_time
 	}
@@ -230,14 +228,13 @@ read_shader :: proc(it: ^Interp, name: string, before: Shader_Entry, fill: bool)
 	}
 	if message != "" {
 		entry.state = .Broken
-		entry.message = strings.clone(message, runtime.heap_allocator())
+		entry.message = strings.clone(message)
 	}
 	return
 }
 
 @(private)
 store_shader :: proc(it: ^Interp, name: string, entry: Shader_Entry) {
-	context.allocator = runtime.heap_allocator()
 	if it.shaders == nil {
 		it.shaders = make(map[string]Shader_Entry)
 	}
@@ -260,7 +257,6 @@ release_shader_entry :: proc(entry: Shader_Entry) {
 // Lets go of what `effect` remembered.
 @(private)
 drop_shaders :: proc(it: ^Interp) {
-	context.allocator = runtime.heap_allocator()
 	for name, entry in it.shaders {
 		release_shader_entry(entry)
 		delete(name)

@@ -12,7 +12,6 @@ package interp
 import "../"
 import "../lang"
 import "../maths"
-import "base:runtime"
 import "core:strings"
 
 Tween :: struct {
@@ -65,11 +64,11 @@ start_tween :: proc(it: ^Interp, call: lang.IR_Call) {
 		}
 		tw.record = r
 	}
-	// A tween outlives the frame that starts it, and the frame's memory, so it is on the heap.
-	heap := runtime.heap_allocator()
-	tw.path = make([]string, len(path), heap)
+	// A tween outlives the frame that starts it, and the frame's memory, so its path is kept
+	// in ordinary memory (`drop_tween` frees it).
+	tw.path = make([]string, len(path))
 	for p, i in path {
-		tw.path[i] = strings.clone(p, heap)
+		tw.path[i] = strings.clone(p)
 	}
 	tw.from = read_place(it, tw)
 	tw.to, _ = option_value(it, call.options, "to")
@@ -85,9 +84,6 @@ start_tween :: proc(it: ^Interp, call: lang.IR_Call) {
 			unordered_remove(&it.tweens, i)
 			break
 		}
-	}
-	if it.tweens.allocator.procedure == nil {
-		it.tweens = make([dynamic]Tween, heap)
 	}
 	append(&it.tweens, tw)
 }
@@ -107,11 +103,10 @@ same_place :: proc(a, b: Tween) -> bool {
 
 @(private)
 drop_tween :: proc(t: ^Tween) {
-	heap := runtime.heap_allocator()
 	for p in t.path {
-		delete(p, heap)
+		delete(p)
 	}
-	delete(t.path, heap)
+	delete(t.path)
 	t^ = {}
 }
 

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 package gfx
 
-import "base:runtime"
 import "core:testing"
 
 // A pattern that changes at every pixel and channel.
@@ -31,7 +30,7 @@ a_png_decodes_to_the_pixels_it_was_made_from :: proc(t: ^testing.T) {
 	defer delete(png)
 	data, decoded := image_decode(png)
 	testing.expect(t, decoded)
-	defer delete(data.pixels, runtime.heap_allocator())
+	defer delete(data.pixels)
 	testing.expect_value(t, data.width, 7)
 	testing.expect_value(t, data.height, 5)
 	testing.expect_value(t, len(data.pixels), 7 * 5 * 4)
@@ -43,22 +42,23 @@ three_channel_and_gray_pictures_become_opaque_rgba :: proc(t: ^testing.T) {
 	// two pixels, blue green red order in the file: (10, 20, 30) and (40, 50, 60) as red green blue
 	rgb, ok := image_decode(tga_bytes(2, 1, 24, {30, 20, 10, 60, 50, 40}))
 	testing.expect(t, ok)
-	defer delete(rgb.pixels, runtime.heap_allocator())
+	defer delete(rgb.pixels)
 	testing.expect_value(t, [8]u8{rgb.pixels[0], rgb.pixels[1], rgb.pixels[2], rgb.pixels[3], rgb.pixels[4], rgb.pixels[5], rgb.pixels[6], rgb.pixels[7]}, [8]u8{10, 20, 30, 255, 40, 50, 60, 255})
 
 	gray, gray_ok := image_decode(tga_bytes(2, 1, 8, {7, 200}))
 	testing.expect(t, gray_ok)
-	defer delete(gray.pixels, runtime.heap_allocator())
+	defer delete(gray.pixels)
 	testing.expect_value(t, [8]u8{gray.pixels[0], gray.pixels[1], gray.pixels[2], gray.pixels[3], gray.pixels[4], gray.pixels[5], gray.pixels[6], gray.pixels[7]}, [8]u8{7, 7, 7, 255, 200, 200, 200, 255})
 
 	alpha, alpha_ok := image_decode(tga_bytes(1, 1, 32, {30, 20, 10, 99}))
 	testing.expect(t, alpha_ok)
-	defer delete(alpha.pixels, runtime.heap_allocator())
+	defer delete(alpha.pixels)
 	testing.expect_value(t, [4]u8{alpha.pixels[0], alpha.pixels[1], alpha.pixels[2], alpha.pixels[3]}, [4]u8{10, 20, 30, 99})
 }
 
 @(test)
 bytes_that_are_not_a_picture_are_not_kept :: proc(t: ^testing.T) {
+	defer images_stop()
 	_, ok := image_decode(transmute([]u8)string("this is not a picture"))
 	testing.expect(t, !ok)
 	_, ok = image_decode({})

@@ -17,7 +17,6 @@
 // order first.
 package gfx
 
-import "base:runtime"
 import "core:math"
 
 // One frame's drawing into a canvas, waiting to be drawn onto its texture.
@@ -42,7 +41,6 @@ canvas_pixels :: proc(logical: int, density: f32) -> u32 {
 // Makes a canvas of this logical size, drawn at `density` device pixels for each logical one.
 // False for a size that is zero or too big.
 image_add_canvas :: proc(width, height: int, density: f32) -> (Image_Id, bool) {
-	context.allocator = runtime.heap_allocator()
 	if width <= 0 || height <= 0 || width > MAX_IMAGE_SIDE || height > MAX_IMAGE_SIDE || density <= 0 || density > 8 {
 		return 0, false
 	}
@@ -86,7 +84,6 @@ canvas_touch :: proc(c: ^Canvas) {
 // round before it that has not been drawn yet useless, so those are let go (a headless
 // sketch that clears its canvas every frame never piles rounds up).
 canvas_close_round :: proc(c: ^Canvas) {
-	context.allocator = runtime.heap_allocator()
 	if !c.pending {
 		return
 	}
@@ -122,7 +119,6 @@ canvas_prepend_previous :: proc(list: ^Command_List, previous: Image_Id, width, 
 }
 
 canvas_destroy :: proc(c: ^Canvas) {
-	context.allocator = runtime.heap_allocator()
 	for &round in c.rounds {
 		destroy(&round.list)
 	}

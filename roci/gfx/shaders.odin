@@ -10,7 +10,6 @@
 // are values a sketch can give it by name.
 package gfx
 
-import "base:runtime"
 import "core:strings"
 
 // A shader's number from 1; 0 is none. Like a picture's it is only good for the set of
@@ -119,7 +118,6 @@ VSOutput vs_main(uint id : SV_VertexID)
 // said when the source is not good (the shader is kept all the same, so `shader_update`
 // can mend it and a sketch that draws with it draws nothing from it meanwhile).
 shader_add :: proc(source: string, file := "shader", use := Shader_Use.Effect) -> (id: Shader_Id, message: string) {
-	context.allocator = runtime.heap_allocator()
 	append(&shader_store, Shader_Data{kind = use})
 	id = Shader_Id(len(shader_store))
 	message = shader_update(id, source, file)
@@ -129,7 +127,6 @@ shader_add :: proc(source: string, file := "shader", use := Shader_Use.Effect) -
 // Translates the new `source` into shader `id`. Gives what the translator said, "" when
 // the source is good. The version rises either way.
 shader_update :: proc(id: Shader_Id, source: string, file := "shader") -> (message: string) {
-	context.allocator = runtime.heap_allocator()
 	data := shader_data(id)
 	if data == nil {
 		return ""
@@ -168,7 +165,6 @@ shader_ok :: proc(id: Shader_Id) -> bool {
 
 // Lets go of every shader; numbers kept from before are told by `shaders_epoch`.
 shaders_stop :: proc() {
-	context.allocator = runtime.heap_allocator()
 	for &data in shader_store {
 		delete(data.error)
 		delete(data.spirv)

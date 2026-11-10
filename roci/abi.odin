@@ -69,53 +69,65 @@ text_from_abi :: proc(text: cstring) -> string {
 	return string(text) if text != nil else ""
 }
 
+// The context a C function runs in: the default one, with the allocator the sketch was
+// started with, so what a C call makes (a window, its title) is freed by the same allocator
+// whoever frees it, and a test that starts the sketch under a checking allocator sees it.
+@(private)
+abi_context :: proc "contextless" () -> runtime.Context {
+	c := runtime.default_context()
+	if the.allocator.procedure != nil {
+		c.allocator = the.allocator
+	}
+	return c
+}
+
 // ---- windows and the loop ----
 
 @(export, link_name = "roci_window")
 abi_window :: proc "c" (width, height: f64) -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	return c.int(window(int(width), int(height)))
 }
 
 @(export, link_name = "roci_window_at")
 abi_window_at :: proc "c" (width, height, x, y: f64) -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	return c.int(window(int(width), int(height), [2]int{int(x), int(y)}))
 }
 
 @(export, link_name = "roci_title")
 abi_title :: proc "c" (text: cstring) {
-	context = runtime.default_context()
+	context = abi_context()
 	title(text_from_abi(text))
 }
 
 @(export, link_name = "roci_fullscreen")
 abi_fullscreen :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	fullscreen()
 }
 
 @(export, link_name = "roci_quit")
 abi_quit :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	quit()
 }
 
 @(export, link_name = "roci_current_window")
 abi_current_window :: proc "c" () -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	return c.int(current_window())
 }
 
 @(export, link_name = "roci_width")
 abi_width :: proc "c" () -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return width()
 }
 
 @(export, link_name = "roci_height")
 abi_height :: proc "c" () -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return height()
 }
 
@@ -161,7 +173,7 @@ abi_receive_trampoline :: proc(value: Value) {
 // Runs `block` every frame for the window (0 for the default window).
 @(export, link_name = "roci_draw")
 abi_draw :: proc "c" (window_number: c.int, block: Abi_Draw_Fn) {
-	context = runtime.default_context()
+	context = abi_context()
 	target := Window(window_number) if window_number != 0 else current_window()
 	abi_draws[target] = block
 	draw_window(target, abi_draw_trampoline)
@@ -169,26 +181,26 @@ abi_draw :: proc "c" (window_number: c.int, block: Abi_Draw_Fn) {
 
 @(export, link_name = "roci_on_receive")
 abi_on_receive :: proc "c" (window_number: c.int, handler: Abi_Receive_Fn) {
-	context = runtime.default_context()
+	context = abi_context()
 	abi_receivers[Window(window_number)] = handler
 	on_receive(Window(window_number), abi_receive_trampoline)
 }
 
 @(export, link_name = "roci_send_number")
 abi_send_number :: proc "c" (to: c.int, number: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	send(Window(to), number)
 }
 
 @(export, link_name = "roci_send_text")
 abi_send_text :: proc "c" (to: c.int, text: cstring) {
-	context = runtime.default_context()
+	context = abi_context()
 	send(Window(to), text_from_abi(text))
 }
 
 @(export, link_name = "roci_send_vec2")
 abi_send_vec2 :: proc "c" (to: c.int, v: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	send(Window(to), [2]f64{v.x, v.y})
 }
 
@@ -196,7 +208,7 @@ abi_send_vec2 :: proc "c" (to: c.int, v: Abi_Vec2) {
 // is more than 0. Returns 1 when it ran and 0 when the graphics could not start.
 @(export, link_name = "roci_run")
 abi_run :: proc "c" (frames: c.int) -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	return 1 if run(frames = int(frames)) else 0
 }
 
@@ -204,139 +216,139 @@ abi_run :: proc "c" (frames: c.int) -> c.int {
 
 @(export, link_name = "roci_background")
 abi_background :: proc "c" (colour: Abi_Color) {
-	context = runtime.default_context()
+	context = abi_context()
 	background(color_from_abi(colour))
 }
 
 @(export, link_name = "roci_background_image")
 abi_background_image :: proc "c" (picture: c.int) {
-	context = runtime.default_context()
+	context = abi_context()
 	background_image(Image(picture))
 }
 
 @(export, link_name = "roci_background_image_as")
 abi_background_image_as :: proc "c" (picture: c.int, fit: c.int, tile, at_x, at_y: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	background_image(Image(picture), Image_Fit(clamp(fit, 0, 4)), tile, at_x, at_y)
 }
 
 @(export, link_name = "roci_background_gray")
 abi_background_gray :: proc "c" (value: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	background_grey(value)
 }
 
 @(export, link_name = "roci_clear")
 abi_clear :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	clear_window()
 }
 
 @(export, link_name = "roci_circle")
 abi_circle :: proc "c" (x, y, radius: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	circle(x, y, radius)
 }
 
 @(export, link_name = "roci_circle_v")
 abi_circle_v :: proc "c" (position: Abi_Vec2, radius: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	circle(vec_from_abi(position), radius)
 }
 
 @(export, link_name = "roci_ellipse")
 abi_ellipse :: proc "c" (x, y, width, height: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	ellipse(x, y, width, height)
 }
 
 @(export, link_name = "roci_ellipse_v")
 abi_ellipse_v :: proc "c" (position, size: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	ellipse(vec_from_abi(position), vec_from_abi(size))
 }
 
 @(export, link_name = "roci_rect")
 abi_rect :: proc "c" (x, y, width, height: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	rect(x, y, width, height)
 }
 
 @(export, link_name = "roci_rect_v")
 abi_rect_v :: proc "c" (position, size: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	rect(vec_from_abi(position), vec_from_abi(size))
 }
 
 @(export, link_name = "roci_square")
 abi_square :: proc "c" (x, y, side: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	square(x, y, side)
 }
 
 @(export, link_name = "roci_square_v")
 abi_square_v :: proc "c" (position: Abi_Vec2, side: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	square(vec_from_abi(position), side)
 }
 
 @(export, link_name = "roci_line")
 abi_line :: proc "c" (x1, y1, x2, y2: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	line(x1, y1, x2, y2)
 }
 
 @(export, link_name = "roci_line_v")
 abi_line_v :: proc "c" (from, to: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	line(vec_from_abi(from), vec_from_abi(to))
 }
 
 @(export, link_name = "roci_point")
 abi_point :: proc "c" (x, y: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	point(x, y)
 }
 
 @(export, link_name = "roci_point_v")
 abi_point_v :: proc "c" (position: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	point(vec_from_abi(position))
 }
 
 @(export, link_name = "roci_triangle")
 abi_triangle :: proc "c" (x1, y1, x2, y2, x3, y3: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	triangle(x1, y1, x2, y2, x3, y3)
 }
 
 @(export, link_name = "roci_triangle_v")
 abi_triangle_v :: proc "c" (a, b, c: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	triangle(vec_from_abi(a), vec_from_abi(b), vec_from_abi(c))
 }
 
 @(export, link_name = "roci_quad")
 abi_quad :: proc "c" (x1, y1, x2, y2, x3, y3, x4, y4: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	quad(x1, y1, x2, y2, x3, y3, x4, y4)
 }
 
 @(export, link_name = "roci_quad_v")
 abi_quad_v :: proc "c" (a, b, c, d: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	quad(vec_from_abi(a), vec_from_abi(b), vec_from_abi(c), vec_from_abi(d))
 }
 
 @(export, link_name = "roci_arc")
 abi_arc :: proc "c" (x, y, width, height, start, stop: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	arc(x, y, width, height, start, stop)
 }
 
 @(export, link_name = "roci_debug_text")
 abi_debug_text :: proc "c" (text: cstring, x, y, scale: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	debug_text(text_from_abi(text), x, y, scale)
 }
 
@@ -344,80 +356,80 @@ abi_debug_text :: proc "c" (text: cstring, x, y, scale: f64) {
 
 @(export, link_name = "roci_fill")
 abi_fill :: proc "c" (colour: Abi_Color) {
-	context = runtime.default_context()
+	context = abi_context()
 	fill(color_from_abi(colour))
 }
 
 @(export, link_name = "roci_fill_image")
 abi_fill_image :: proc "c" (picture: c.int) {
-	context = runtime.default_context()
+	context = abi_context()
 	fill_image(Image(picture))
 }
 
 @(export, link_name = "roci_fill_image_as")
 abi_fill_image_as :: proc "c" (picture: c.int, fit: c.int, tile, at_x, at_y: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	fill_image(Image(picture), Image_Fit(clamp(fit, 0, 4)), tile, at_x, at_y)
 }
 
 @(export, link_name = "roci_fill_gray")
 abi_fill_gray :: proc "c" (value: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	fill(value)
 }
 
 @(export, link_name = "roci_no_fill")
 abi_no_fill :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	no_fill()
 }
 
 @(export, link_name = "roci_stroke")
 abi_stroke :: proc "c" (colour: Abi_Color) {
-	context = runtime.default_context()
+	context = abi_context()
 	stroke(color_from_abi(colour))
 }
 
 @(export, link_name = "roci_stroke_image")
 abi_stroke_image :: proc "c" (picture: c.int) {
-	context = runtime.default_context()
+	context = abi_context()
 	stroke_image(Image(picture))
 }
 
 @(export, link_name = "roci_stroke_image_as")
 abi_stroke_image_as :: proc "c" (picture: c.int, fit: c.int, tile, at_x, at_y: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	stroke_image(Image(picture), Image_Fit(clamp(fit, 0, 4)), tile, at_x, at_y)
 }
 
 @(export, link_name = "roci_stroke_gray")
 abi_stroke_gray :: proc "c" (value: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	stroke(value)
 }
 
 @(export, link_name = "roci_no_stroke")
 abi_no_stroke :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	no_stroke()
 }
 
 @(export, link_name = "roci_thickness")
 abi_thickness :: proc "c" (pixels: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	thickness(pixels)
 }
 
 @(export, link_name = "roci_alpha")
 abi_alpha :: proc "c" (amount: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	alpha(amount)
 }
 
 // "butt", "round" or "square"; any other word leaves the caps as they are.
 @(export, link_name = "roci_caps")
 abi_caps :: proc "c" (style: cstring) {
-	context = runtime.default_context()
+	context = abi_context()
 	switch text_from_abi(style) {
 	case "butt":   caps(.Butt)
 	case "round":  caps(.Round)
@@ -428,7 +440,7 @@ abi_caps :: proc "c" (style: cstring) {
 // "miter", "round" or "bevel"; any other word leaves the joins as they are.
 @(export, link_name = "roci_joins")
 abi_joins :: proc "c" (style: cstring) {
-	context = runtime.default_context()
+	context = abi_context()
 	switch text_from_abi(style) {
 	case "miter": joins(.Miter)
 	case "round": joins(.Round)
@@ -440,7 +452,7 @@ abi_joins :: proc "c" (style: cstring) {
 // leaves the blend as it is.
 @(export, link_name = "roci_blend")
 abi_blend :: proc "c" (mode: cstring) {
-	context = runtime.default_context()
+	context = abi_context()
 	if named, ok := blend_named(text_from_abi(mode)); ok {
 		blend(named)
 	}
@@ -448,19 +460,19 @@ abi_blend :: proc "c" (mode: cstring) {
 
 @(export, link_name = "roci_clip")
 abi_clip :: proc "c" (x, y, width, height: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	clip(x, y, width, height)
 }
 
 @(export, link_name = "roci_clip_v")
 abi_clip_v :: proc "c" (position, size: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	clip(vec_from_abi(position), vec_from_abi(size))
 }
 
 @(export, link_name = "roci_no_clip")
 abi_no_clip :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	no_clip()
 }
 
@@ -468,37 +480,37 @@ abi_no_clip :: proc "c" () {
 
 @(export, link_name = "roci_rgb")
 abi_rgb :: proc "c" (red, green, blue: f64) -> Abi_Color {
-	context = runtime.default_context()
+	context = abi_context()
 	return color_to_abi(rgb(red, green, blue))
 }
 
 @(export, link_name = "roci_rgba")
 abi_rgba :: proc "c" (red, green, blue, alpha_value: f64) -> Abi_Color {
-	context = runtime.default_context()
+	context = abi_context()
 	return color_to_abi(rgb(red, green, blue, alpha_value))
 }
 
 @(export, link_name = "roci_hsb")
 abi_hsb :: proc "c" (hue, saturation, brightness: f64) -> Abi_Color {
-	context = runtime.default_context()
+	context = abi_context()
 	return color_to_abi(hsb(hue, saturation, brightness))
 }
 
 @(export, link_name = "roci_oklch")
 abi_oklch :: proc "c" (lightness, chroma, hue: f64) -> Abi_Color {
-	context = runtime.default_context()
+	context = abi_context()
 	return color_to_abi(oklch(lightness, chroma, hue))
 }
 
 @(export, link_name = "roci_mix")
 abi_mix :: proc "c" (first, second: Abi_Color, amount: f64) -> Abi_Color {
-	context = runtime.default_context()
+	context = abi_context()
 	return color_to_abi(mix_colours(color_from_abi(first), color_from_abi(second), amount))
 }
 
 @(export, link_name = "roci_mix_numbers")
 abi_mix_numbers :: proc "c" (first, second, amount: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return mix_numbers(first, second, amount)
 }
 
@@ -506,51 +518,51 @@ abi_mix_numbers :: proc "c" (first, second, amount: f64) -> f64 {
 
 @(export, link_name = "roci_move")
 abi_move :: proc "c" (x, y: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	move(x, y)
 }
 
 @(export, link_name = "roci_move_v")
 abi_move_v :: proc "c" (offset: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	move(vec_from_abi(offset))
 }
 
 @(export, link_name = "roci_turn")
 abi_turn :: proc "c" (degrees: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	turn(degrees)
 }
 
 @(export, link_name = "roci_grow")
 abi_grow :: proc "c" (factor: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	grow(factor)
 }
 
 @(export, link_name = "roci_grow_xy")
 abi_grow_xy :: proc "c" (x, y: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	grow(x, y)
 }
 
 @(export, link_name = "roci_shear")
 abi_shear :: proc "c" (x, y: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	shear(x, y)
 }
 
 // Saves the style, the transform and the turtle until the matching `roci_pop`.
 @(export, link_name = "roci_push")
 abi_push :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	push()
 }
 
 // Gives 0 for a `roci_pop` without a `roci_push`.
 @(export, link_name = "roci_pop")
 abi_pop :: proc "c" () -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	return 1 if pop() else 0
 }
 
@@ -558,49 +570,49 @@ abi_pop :: proc "c" () -> c.int {
 
 @(export, link_name = "roci_forward")
 abi_forward :: proc "c" (distance: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	forward(distance)
 }
 
 @(export, link_name = "roci_back")
 abi_back :: proc "c" (distance: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	back(distance)
 }
 
 @(export, link_name = "roci_left")
 abi_left :: proc "c" (degrees: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	left(degrees)
 }
 
 @(export, link_name = "roci_right")
 abi_right :: proc "c" (degrees: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	right(degrees)
 }
 
 @(export, link_name = "roci_pen_up")
 abi_pen_up :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	pen_up()
 }
 
 @(export, link_name = "roci_pen_down")
 abi_pen_down :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	pen_down()
 }
 
 @(export, link_name = "roci_home")
 abi_home :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	home()
 }
 
 @(export, link_name = "roci_show_turtle")
 abi_show_turtle :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	show_turtle()
 }
 
@@ -608,73 +620,73 @@ abi_show_turtle :: proc "c" () {
 
 @(export, link_name = "roci_map")
 abi_map :: proc "c" (value, from_low, from_high, to_low, to_high: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return map_range(value, from_low, from_high, to_low, to_high)
 }
 
 @(export, link_name = "roci_clamp")
 abi_clamp :: proc "c" (value, low, high: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return clamp_between(value, low, high)
 }
 
 @(export, link_name = "roci_dist")
 abi_dist :: proc "c" (x1, y1, x2, y2: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return dist(x1, y1, x2, y2)
 }
 
 @(export, link_name = "roci_dist_v")
 abi_dist_v :: proc "c" (a, b: Abi_Vec2) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return dist(vec_from_abi(a), vec_from_abi(b))
 }
 
 @(export, link_name = "roci_abs")
 abi_abs :: proc "c" (value: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return absolute(value)
 }
 
 @(export, link_name = "roci_sqrt")
 abi_sqrt :: proc "c" (value: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return square_root(value)
 }
 
 @(export, link_name = "roci_floor")
 abi_floor :: proc "c" (value: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return floor(value)
 }
 
 @(export, link_name = "roci_round")
 abi_round :: proc "c" (value: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return round(value)
 }
 
 @(export, link_name = "roci_ceil")
 abi_ceil :: proc "c" (value: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return ceil(value)
 }
 
 @(export, link_name = "roci_sin")
 abi_sin :: proc "c" (degrees: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return sin_deg(degrees)
 }
 
 @(export, link_name = "roci_cos")
 abi_cos :: proc "c" (degrees: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return cos_deg(degrees)
 }
 
 @(export, link_name = "roci_ease")
 abi_ease :: proc "c" (amount: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return ease(amount)
 }
 
@@ -682,62 +694,62 @@ abi_ease :: proc "c" (amount: f64) -> f64 {
 // any other name is smooth.
 @(export, link_name = "roci_ease_as")
 abi_ease_as :: proc "c" (amount: f64, curve: cstring) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	c, _ := maths.ease_by_name(text_from_abi(curve))
 	return ease(amount, c)
 }
 
 @(export, link_name = "roci_random")
 abi_random :: proc "c" (limit: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return random(limit)
 }
 
 @(export, link_name = "roci_random_between")
 abi_random_between :: proc "c" (low, high: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return random_between(low, high)
 }
 
 @(export, link_name = "roci_gaussian")
 abi_gaussian :: proc "c" (mean, spread: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return gaussian(mean, spread)
 }
 
 @(export, link_name = "roci_seed")
 abi_seed :: proc "c" (value: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	seed(value)
 }
 
 @(export, link_name = "roci_noise")
 abi_noise :: proc "c" (x: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return noise(x)
 }
 
 @(export, link_name = "roci_noise2")
 abi_noise2 :: proc "c" (x, y: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return noise(x, y)
 }
 
 @(export, link_name = "roci_noise3")
 abi_noise3 :: proc "c" (x, y, z: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return noise(x, y, z)
 }
 
 @(export, link_name = "roci_noise4")
 abi_noise4 :: proc "c" (x, y, z, w: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return noise(x, y, z, w)
 }
 
 @(export, link_name = "roci_fbm")
 abi_fbm :: proc "c" (x, y, z: f64) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return fbm(x, y, z)
 }
 
@@ -745,39 +757,39 @@ abi_fbm :: proc "c" (x, y, z: f64) -> f64 {
 
 @(export, link_name = "roci_mouse")
 abi_mouse :: proc "c" () -> Abi_Vec2 {
-	context = runtime.default_context()
+	context = abi_context()
 	m := mouse()
 	return {m.x, m.y}
 }
 
 @(export, link_name = "roci_pmouse")
 abi_pmouse :: proc "c" () -> Abi_Vec2 {
-	context = runtime.default_context()
+	context = abi_context()
 	m := pmouse()
 	return {m.x, m.y}
 }
 
 @(export, link_name = "roci_mouse_down")
 abi_mouse_down :: proc "c" () -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	return 1 if mouse_down() else 0
 }
 
 @(export, link_name = "roci_key_down")
 abi_key_down :: proc "c" (name: cstring) -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	return 1 if key_down(text_from_abi(name)) else 0
 }
 
 @(export, link_name = "roci_time")
 abi_time :: proc "c" () -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return time_now()
 }
 
 @(export, link_name = "roci_frame_count")
 abi_frame_count :: proc "c" () -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	return c.int(frame_count())
 }
 
@@ -785,31 +797,31 @@ abi_frame_count :: proc "c" () -> c.int {
 
 @(export, link_name = "roci_text")
 abi_text :: proc "c" (content: cstring, x, y: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	text(text_from_abi(content), x, y)
 }
 
 @(export, link_name = "roci_text_v")
 abi_text_v :: proc "c" (content: cstring, position: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	text(text_from_abi(content), vec_from_abi(position))
 }
 
 @(export, link_name = "roci_font")
 abi_font :: proc "c" (name: cstring) {
-	context = runtime.default_context()
+	context = abi_context()
 	font(text_from_abi(name))
 }
 
 @(export, link_name = "roci_font_size")
 abi_font_size :: proc "c" (pixels: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	font_size(pixels)
 }
 
 @(export, link_name = "roci_align")
 abi_align :: proc "c" (side: cstring) {
-	context = runtime.default_context()
+	context = abi_context()
 	switch text_from_abi(side) {
 	case "left":   align(.Left)
 	case "center": align(.Center)
@@ -819,7 +831,7 @@ abi_align :: proc "c" (side: cstring) {
 
 @(export, link_name = "roci_leading")
 abi_leading :: proc "c" (multiple: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	leading(multiple)
 }
 
@@ -827,7 +839,7 @@ abi_leading :: proc "c" (multiple: f64) {
 
 @(export, link_name = "roci_load_image")
 abi_load_image :: proc "c" (bytes: [^]u8, length: c.int) -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	if bytes == nil || length <= 0 {
 		return 0
 	}
@@ -837,68 +849,68 @@ abi_load_image :: proc "c" (bytes: [^]u8, length: c.int) -> c.int {
 
 @(export, link_name = "roci_image_width")
 abi_image_width :: proc "c" (picture: c.int) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return image_size(Image(picture)).x
 }
 
 @(export, link_name = "roci_image_height")
 abi_image_height :: proc "c" (picture: c.int) -> f64 {
-	context = runtime.default_context()
+	context = abi_context()
 	return image_size(Image(picture)).y
 }
 
 @(export, link_name = "roci_image")
 abi_image :: proc "c" (picture: c.int, x, y: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	image_xy(Image(picture), x, y)
 }
 
 @(export, link_name = "roci_image_v")
 abi_image_v :: proc "c" (picture: c.int, position: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	image_v(Image(picture), vec_from_abi(position))
 }
 
 @(export, link_name = "roci_image_sized")
 abi_image_sized :: proc "c" (picture: c.int, x, y, width, height: f64) {
-	context = runtime.default_context()
+	context = abi_context()
 	image_sized_xy(Image(picture), x, y, width, height)
 }
 
 @(export, link_name = "roci_image_sized_v")
 abi_image_sized_v :: proc "c" (picture: c.int, position, size: Abi_Vec2) {
-	context = runtime.default_context()
+	context = abi_context()
 	image_sized_v(Image(picture), vec_from_abi(position), vec_from_abi(size))
 }
 
 @(export, link_name = "roci_canvas")
 abi_canvas :: proc "c" (width, height: f64) -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	made, ok := canvas(width, height)
 	return c.int(made) if ok else 0
 }
 
 @(export, link_name = "roci_begin_into")
 abi_begin_into :: proc "c" (picture: c.int) -> c.int {
-	context = runtime.default_context()
+	context = abi_context()
 	return 1 if begin_into(Image(picture)) else 0
 }
 
 @(export, link_name = "roci_end_into")
 abi_end_into :: proc "c" () {
-	context = runtime.default_context()
+	context = abi_context()
 	end_into()
 }
 
 @(export, link_name = "roci_tint")
 abi_tint :: proc "c" (colour: Abi_Color) {
-	context = runtime.default_context()
+	context = abi_context()
 	tint(color_from_abi(colour))
 }
 
 @(export, link_name = "roci_measure")
 abi_measure :: proc "c" (content: cstring) -> Abi_Vec2 {
-	context = runtime.default_context()
+	context = abi_context()
 	size := measure(text_from_abi(content))
 	return {size.x, size.y}
 }

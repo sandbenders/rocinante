@@ -143,11 +143,15 @@ ci :: proc(fast: bool) -> bool {
 // about a minute.
 OPTIMISED_TEST_FLAG :: "-o:speed"
 
+// Odin's test runner only fails a test for a leak or a bad free when told to: without this
+// flag it prints the warning and still ends with "All tests were successful".
+FAIL_ON_BAD_MEMORY_FLAG :: "-define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true"
+
 check_optimised_tests :: proc() -> bool {
 	ok := true
 	for package_dir in TEST_PACKAGES {
 		out := fmt.tprintf("-out:%s", test_binary(package_dir, "_speed"))
-		ok = step(fmt.tprintf("unit tests, optimised: %s", package_dir), {"odin", "test", package_dir, OPTIMISED_TEST_FLAG, "-vet", "-strict-style", out}) && ok
+		ok = step(fmt.tprintf("unit tests, optimised: %s", package_dir), {"odin", "test", package_dir, OPTIMISED_TEST_FLAG, FAIL_ON_BAD_MEMORY_FLAG, "-vet", "-strict-style", out}) && ok
 	}
 	return ok
 }
@@ -162,7 +166,7 @@ check_packages :: proc() -> bool {
 	}
 	for package_dir in TEST_PACKAGES {
 		out := fmt.tprintf("-out:%s", test_binary(package_dir))
-		ok = step(fmt.tprintf("unit tests: %s", package_dir), {"odin", "test", package_dir, "-vet", "-strict-style", out}) && ok
+		ok = step(fmt.tprintf("unit tests: %s", package_dir), {"odin", "test", package_dir, FAIL_ON_BAD_MEMORY_FLAG, "-vet", "-strict-style", out}) && ok
 	}
 	// The spikes that build on any machine are type-checked; the Android and iOS
 	// ones need their SDKs and are built by hand.

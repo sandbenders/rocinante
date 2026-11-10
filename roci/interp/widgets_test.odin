@@ -95,7 +95,7 @@ test_a_value_the_person_set_survives_a_reload_of_the_sketch :: proc(t: ^testing.
 	testing.expect_value(t, as_bool(global_named(p, "lit")), true)
 	// a changed sketch with the same widgets: the tick stays, though `start` is not written
 	after, _ := reload(p, "clicks = 0\nlit = false\namount = 0\nui [\n  if button \"go\" [ clicks = clicks + 2 ]\n  lit = toggle \"ring\"\n  amount = slider \"amount\" 0 100 start 25\n]\n")
-	defer finish(after)
+	defer finish_all() // frees the interpreter the reload replaced as well
 	steps(4)
 	testing.expect_value(t, as_bool(global_named(after, "lit")), true)
 	click_widget(t, first_window(), "go")

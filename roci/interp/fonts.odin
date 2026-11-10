@@ -13,7 +13,6 @@ package interp
 import "../"
 import "../folder"
 import "../lang"
-import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -38,9 +37,9 @@ ensure_font :: proc(it: ^Interp, name: string, span: lang.Span) -> bool {
 		return true
 	}
 	if it.fonts_missed == nil {
-		it.fonts_missed = make(map[string]bool, runtime.heap_allocator())
+		it.fonts_missed = make(map[string]bool)
 	}
-	it.fonts_missed[strings.clone(name, runtime.heap_allocator())] = true
+	it.fonts_missed[strings.clone(name)] = true
 	return false
 }
 

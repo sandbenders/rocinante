@@ -5,6 +5,7 @@ import "core:testing"
 
 @(test)
 test_names_are_made_snake_case_with_acronyms_kept_together :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator // the generator never frees its names: it is a program that ends
 	testing.expect_value(t, snake("SliderFloat"), "slider_float")
 	testing.expect_value(t, snake("GetItemRectMin"), "get_item_rect_min")
 	testing.expect_value(t, snake("DragFloat2"), "drag_float2")
@@ -15,6 +16,7 @@ test_names_are_made_snake_case_with_acronyms_kept_together :: proc(t: ^testing.T
 
 @(test)
 test_procedure_names_lose_their_c_prefix :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator // the generator never frees its names: it is a program that ends
 	testing.expect_value(t, procedure_name("ImGui_Button"), "button")
 	testing.expect_value(t, procedure_name("ImDrawList_AddLine"), "draw_list_add_line")
 	testing.expect_value(t, procedure_name("ImFontAtlas_AddFontDefault"), "font_atlas_add_font_default")
@@ -34,6 +36,7 @@ test_type_names_lose_the_prefix_and_the_trailing_underscore :: proc(t: ^testing.
 
 @(test)
 test_a_keyword_is_given_an_underscore :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator // the generator never frees its names: it is a program that ends
 	testing.expect_value(t, odin_ident("context"), "context_")
 	testing.expect_value(t, odin_ident("Size"), "size")
 	testing.expect_value(t, odin_ident(""), "_")

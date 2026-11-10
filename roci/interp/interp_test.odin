@@ -40,6 +40,7 @@ run_text :: proc(t: ^testing.T, text: string, frames := 0, loc := #caller_locati
 
 finish :: proc(p: ^Interp) {
 	destroy(p)
+	forget_decoded_pictures() // a thread's table of decoded files lives on into the next test
 	roci.shutdown()
 }
 
@@ -1930,6 +1931,7 @@ trace_example :: proc(t: ^testing.T, name: string, frames: int, chosen: lang.Pas
 	defer set_passes(lang.ALL_PASSES)
 	roci.start_headless(3)
 	defer roci.shutdown()
+	defer forget_decoded_pictures()
 	p, loaded := load_files(program.files)
 	defer destroy(p)
 	if !testing.expectf(t, loaded, "%s does not load", name) {

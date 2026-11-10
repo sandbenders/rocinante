@@ -13,7 +13,6 @@ package interp
 import "../"
 import "../folder"
 import "../lang"
-import "base:runtime"
 import "core:os"
 import "core:strings"
 import "core:time"
@@ -51,7 +50,6 @@ Decoded :: struct {
 
 // Forgets every decoded file (the pictures themselves are let go by `roci.shutdown`).
 forget_decoded_pictures :: proc() {
-	context.allocator = runtime.heap_allocator()
 	for path in decoded_files {
 		delete(path)
 	}
@@ -65,7 +63,6 @@ PICTURE_RETRY_SECONDS :: 1.0
 // The picture the file `name` is, or the empty value. `span` is where to say what went wrong.
 @(private)
 load_picture :: proc(it: ^Interp, name: string, span: lang.Span) -> Value {
-	context.allocator = runtime.heap_allocator()
 	entry, known := it.pictures[name]
 	if known && entry.epoch == roci.image_epoch() {
 		if entry.state == .Loaded {
@@ -115,11 +112,11 @@ read_picture :: proc(it: ^Interp, name: string) -> (entry: Picture_Entry) {
 		return
 	case .Ambiguous:
 		entry.state = .Ambiguous
-		entry.others = strings.join(candidates, " and ", runtime.heap_allocator())
-		entry.suggest = strings.clone(strings.trim_prefix(candidates[0], "assets/"), runtime.heap_allocator())
+		entry.others = strings.join(candidates, " and ")
+		entry.suggest = strings.clone(strings.trim_prefix(candidates[0], "assets/"))
 		return
 	}
-	entry.path = strings.concatenate({root, "/", path}, runtime.heap_allocator())
+	entry.path = strings.concatenate({root, "/", path})
 	if info, err := os.stat(entry.path, context.temp_allocator); err == nil {
 		entry.mtime = info.modification_time
 	}
@@ -152,7 +149,6 @@ read_picture :: proc(it: ^Interp, name: string) -> (entry: Picture_Entry) {
 // Remembers an entry for a name, letting go of the one it replaces.
 @(private)
 store_picture :: proc(it: ^Interp, name: string, entry: Picture_Entry) {
-	context.allocator = runtime.heap_allocator()
 	if it.pictures == nil {
 		it.pictures = make(map[string]Picture_Entry)
 	}
@@ -169,7 +165,6 @@ store_picture :: proc(it: ^Interp, name: string, entry: Picture_Entry) {
 // Lets go of what `load` remembered.
 @(private)
 drop_pictures :: proc(it: ^Interp) {
-	context.allocator = runtime.heap_allocator()
 	for name, entry in it.pictures {
 		delete(entry.path)
 		delete(entry.others)

@@ -10,7 +10,6 @@
 // ends, like the fonts, because a sketch may draw an image on any later frame.
 package gfx
 
-import "base:runtime"
 import "core:image"
 import _ "core:image/bmp"
 import _ "core:image/jpeg"
@@ -76,12 +75,14 @@ images_epoch :: proc() -> int {
 // headers) into RGBA. False when the bytes are not a picture this can read, or it
 // is empty or too big.
 image_decode :: proc(bytes_in: []u8) -> (data: Image_Data, ok: bool) {
-	context.allocator = runtime.heap_allocator()
 	loaded, err := image.load_from_bytes(bytes_in, {.alpha_add_if_missing})
+	// A picture that could not be read to the end can still come back half made.
+	defer if loaded != nil {
+		image.destroy(loaded)
+	}
 	if err != nil || loaded == nil {
 		return {}, false
 	}
-	defer image.destroy(loaded)
 	if loaded.width <= 0 || loaded.height <= 0 || loaded.width > MAX_IMAGE_SIDE || loaded.height > MAX_IMAGE_SIDE {
 		return {}, false
 	}
@@ -111,7 +112,6 @@ image_decode :: proc(bytes_in: []u8) -> (data: Image_Data, ok: bool) {
 // Gives a picture a slot of the store: one let go earlier when plenty are waiting, a new one
 // otherwise, and one let go earlier at last when the store is full. False when it is full.
 image_put :: proc(data: Image_Data) -> (Image_Id, bool) {
-	context.allocator = runtime.heap_allocator()
 	data := data
 	waiting := len(image_free) - image_free_head
 	slot: int
@@ -150,7 +150,6 @@ image_slot :: proc "contextless" (id: Image_Id) -> int {
 // Keeps RGBA pixels (copied) and gives their number. False for a size that is
 // zero, too big or does not match the pixels, or when the store is full.
 image_add_pixels :: proc(width, height: int, pixels: []u8) -> (Image_Id, bool) {
-	context.allocator = runtime.heap_allocator()
 	if width <= 0 || height <= 0 || width > MAX_IMAGE_SIDE || height > MAX_IMAGE_SIDE || len(pixels) != width * height * 4 {
 		return 0, false
 	}
@@ -166,7 +165,6 @@ image_add_pixels :: proc(width, height: int, pixels: []u8) -> (Image_Id, bool) {
 // Decodes a file's bytes and keeps the picture. False when it cannot be read, or when the
 // store is full.
 image_add :: proc(bytes_in: []u8) -> (Image_Id, bool) {
-	context.allocator = runtime.heap_allocator()
 	data, ok := image_decode(bytes_in)
 	if !ok {
 		return 0, false
@@ -224,6 +222,10 @@ image_reader_remove :: proc(seen: ^int) {
 	for reader, i in image_readers {
 		if reader == seen {
 			unordered_remove(&image_readers, i)
+			if len(image_readers) == 0 {
+				delete(image_readers)
+				image_readers = nil
+			}
 			return
 		}
 	}
@@ -240,7 +242,6 @@ image_touch :: proc "contextless" (id: Image_Id) {
 // more. The number then names nothing: it draws and fills nothing, as a picture that is not
 // there. A canvas is never let go.
 image_release :: proc(id: Image_Id) -> bool {
-	context.allocator = runtime.heap_allocator()
 	data := image_data(id)
 	if data == nil || data.canvas != nil {
 		return false
@@ -272,7 +273,6 @@ image_size :: proc(id: Image_Id) -> (width, height: int) {
 
 // Lets go of every picture. The renderer's textures must be released first.
 images_stop :: proc() {
-	context.allocator = runtime.heap_allocator()
 	for data in image_store {
 		delete(data.pixels)
 		if data.canvas != nil {

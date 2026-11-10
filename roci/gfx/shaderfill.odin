@@ -8,7 +8,6 @@
 package gfx
 
 import "../geom"
-import "base:runtime"
 import "core:fmt"
 import "core:math"
 import sdl "vendor:sdl3"
@@ -58,7 +57,6 @@ Fill_Key :: struct {
 @(thread_local) fill_vertex_msl: []u8
 
 fill_vertex_stop :: proc() {
-	context.allocator = runtime.heap_allocator()
 	delete(fill_vertex_spirv)
 	delete(fill_vertex_msl)
 	fill_vertex_spirv, fill_vertex_msl = nil, nil
@@ -76,7 +74,6 @@ fill_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureFormat,
 	if existing, found := r.effects.fills[key]; found {
 		return existing
 	}
-	context.allocator = runtime.heap_allocator()
 	for old, pipeline in r.effects.fills {
 		if old.shader == id && old.version != data.version {
 			sdl.ReleaseGPUGraphicsPipeline(r.device, pipeline)

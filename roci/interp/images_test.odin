@@ -11,7 +11,7 @@ import "core:testing"
 import "core:time"
 
 image_commands :: proc() -> [dynamic]gfx.Command {
-	found: [dynamic]gfx.Command
+	found := make([dynamic]gfx.Command, context.temp_allocator)
 	for c in roci.recorded(first_window()) {
 		if c.kind == .Image {
 			append(&found, c)
@@ -218,10 +218,12 @@ test_a_lone_file_has_no_assets_to_load_from_and_a_picture_field_that_is_misspelt
 	testing.expect_value(t, len(p.errors), 1)
 	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Image_Missing)
 	roci.start_headless(1)
-	_, ok := load("test.roci", "photo = load \"cat.png\"\nprint photo.depth")
+	bad, ok := load("test.roci", "photo = load \"cat.png\"\nprint photo.depth")
 	testing.expect(t, !ok, "a picture has a width and a height and nothing else")
-	_, ok = load("test.roci", "photo = load \"cat.png\"\nphoto.width = 5")
+	destroy(bad)
+	bad, ok = load("test.roci", "photo = load \"cat.png\"\nphoto.width = 5")
 	testing.expect(t, !ok, "a picture's size can be read but not changed")
+	destroy(bad)
 }
 
 @(test)

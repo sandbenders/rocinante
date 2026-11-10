@@ -14,6 +14,7 @@
 // benchmark step it.
 package roci
 
+import "base:runtime"
 import "core:fmt"
 import "core:strings"
 import "core:time"
@@ -124,6 +125,7 @@ Sketch :: struct {
 	cursor_shown: Cursor, // what the one cursor of the program is now
 	canvases:     [dynamic]Image, // every canvas made, for drawing their rounds before the windows
 	derived:      map[u64]Derived_Picture, // the pictures `crop`, `resize`, `filter`, `mask` and `picture` made, by what made them (pixels.odin)
+	allocator:    runtime.Allocator, // the allocator the sketch started with, for the C functions (abi_context)
 	derived_budget: int, // bytes the made pictures may hold before the longest unused go; 0 for the usual (tests lower it)
 	derived_most:  int,  // how many made pictures there may be before the longest unused go; 0 for the usual
 	derived_bytes: int,  // what the made pictures that are kept hold now, as `Derived_Picture.bytes` counts it
@@ -141,6 +143,7 @@ the: Sketch
 start_headless :: proc(seed: u64 = 0) {
 	shutdown()
 	the.started, the.headless, the.stepped = true, true, true
+	the.allocator = context.allocator
 	set_seed(seed)
 }
 
@@ -153,6 +156,7 @@ start :: proc() -> bool {
 		return !the.failed
 	}
 	the.started = true
+	the.allocator = context.allocator
 	the.started_at = time.tick_now()
 	if !the.seed_chosen {
 		set_seed(u64(time.to_unix_nanoseconds(time.now())))

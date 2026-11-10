@@ -7,7 +7,6 @@
 // takes neither SPIR-V nor Metal) is left out and the frame shows without it.
 package gfx
 
-import "base:runtime"
 import "core:fmt"
 import "core:mem"
 import "core:strings"
@@ -66,7 +65,6 @@ effect_gpu_destroy :: proc(r: ^Renderer) {
 
 // Lets go of the vertex shader's translations (with the other shaders, at the end).
 effect_vertex_stop :: proc() {
-	context.allocator = runtime.heap_allocator()
 	delete(effect_vertex_spirv)
 	delete(effect_vertex_msl)
 	effect_vertex_spirv, effect_vertex_msl = nil, nil
@@ -96,7 +94,6 @@ effect_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureForma
 	if existing, found := r.effects.pipelines[key]; found {
 		return existing
 	}
-	context.allocator = runtime.heap_allocator()
 	// An older version of the same shader is no longer wanted.
 	for old, pipeline in r.effects.pipelines {
 		if old.shader == id && old.version != data.version {

@@ -75,6 +75,7 @@ tile_repeats_at_the_pictures_size_or_the_width_asked_for :: proc(t: ^testing.T) 
 
 @(test)
 a_picture_fill_is_set_by_a_kept_picture_and_cleared_by_any_other_paint :: proc(t: ^testing.T) {
+	defer images_stop()
 	list: Command_List
 	defer destroy(&list)
 	begin_frame(&list)
@@ -120,6 +121,7 @@ the_picture_fill_changes_the_look_hash :: proc(t: ^testing.T) {
 
 @(test)
 a_shape_with_a_picture_fill_is_a_typeset_item_and_its_outline_comes_after :: proc(t: ^testing.T) {
+	defer images_stop()
 	list: Command_List
 	defer destroy(&list)
 	batcher: Batcher
@@ -148,6 +150,7 @@ a_shape_with_a_picture_fill_is_a_typeset_item_and_its_outline_comes_after :: pro
 
 @(test)
 a_picture_fill_with_nothing_to_fill_or_a_shape_with_no_inside_draws_no_picture :: proc(t: ^testing.T) {
+	defer images_stop()
 	list: Command_List
 	defer destroy(&list)
 	batcher: Batcher
@@ -168,6 +171,7 @@ a_picture_fill_with_nothing_to_fill_or_a_shape_with_no_inside_draws_no_picture :
 
 @(test)
 a_picture_fill_shows_through_the_alpha_of_the_style_and_the_tint :: proc(t: ^testing.T) {
+	defer images_stop()
 	list: Command_List
 	defer destroy(&list)
 	batcher: Batcher
