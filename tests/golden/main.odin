@@ -16,7 +16,10 @@
 // depend on a graphics card. The pictures are drawn at 2x (400 x 300 for the
 // 200 x 150 canvas), which also covers a high-density display. Edges can differ a
 // little between drivers, so a pixel counts as different only when a channel is
-// off by more than TOLERANCE, and a few such pixels are allowed.
+// off by more than the tolerance, and a few such pixels are allowed; whatever the
+// count, no pixel may be off by more than the worst allowed. The limits are strict
+// on lavapipe (the pipelines, where only the version of the driver varies) and loose
+// on any other graphics card (see `Limits`).
 //
 // The actual pictures are always written to output/golden/, to look at.
 package golden
@@ -25,6 +28,7 @@ import "core:fmt"
 import "core:image/png"
 import "core:os"
 import "core:slice"
+import "core:strings"
 
 import sdl "vendor:sdl3"
 
@@ -34,8 +38,43 @@ import "../../roci/ui"
 import "../../tools/term"
 
 SCALE :: 2
-TOLERANCE :: 12      // channel difference, 0 to 255
-ALLOWED_PIXELS :: 40 // pixels beyond the tolerance, out of 120,000
+
+// What counts as the same picture.
+Limits :: struct {
+	tolerance: int, // channel difference, 0 to 255, past which a pixel is different
+	allowed:   int, // pixels beyond the tolerance, out of 120,000
+	worst:     int, // no channel of any pixel may be off by more than this
+}
+
+// Lavapipe, measured 2026-11-10 against references drawn on another computer: the
+// worst channel was 6 on x86-64 Ubuntu 24.04 (LLVM 20), 5 on Arch (LLVM 23) and 3
+// on an Apple silicon Mac (LLVM 23), and no pixel was beyond 6. A shift of the whole
+// picture by 9 or more, or one pixel far off, now fails.
+STRICT :: Limits{tolerance = 8, allowed = 8, worst = 16}
+
+// A real graphics card, run by hand: the drivers differ more, and nothing was measured.
+LOOSE :: Limits{tolerance = 12, allowed = 40, worst = 64}
+
+// The limits of this run, chosen once the device is known (`golden_limits`).
+limits := LOOSE
+
+golden_limits :: proc(gpu: string) -> Limits {
+	return STRICT if strings.contains(gpu, "llvmpipe") else LOOSE
+}
+
+// Whether a picture is the reference, and if not why, in words. `area` is the
+// picture's pixels: the allowance is for 120,000 of them, so a bigger picture may
+// differ in more.
+judge :: proc(diff: gfx.Diff, area: int) -> (same: bool, why: string) {
+	allowed := max(limits.allowed, limits.allowed * area / 120000)
+	switch {
+	case diff.worst_channel > limits.worst:
+		return false, fmt.tprintf("a pixel is off by %d, and none may be off by more than %d", diff.worst_channel, limits.worst)
+	case diff.differing_pixels > allowed:
+		return false, fmt.tprintf("%d pixels differ by more than %d, and %d are allowed (worst channel %d)", diff.differing_pixels, limits.tolerance, allowed, diff.worst_channel)
+	}
+	return true, ""
+}
 
 reference_path :: proc(name: string) -> string {
 	return fmt.tprintf("tests/golden/%s.png", name)
@@ -99,6 +138,7 @@ run :: proc() -> bool {
 	defer platform.shutdown(&app)
 	// `ci` reads this line to make sure lavapipe drew the pictures.
 	fmt.printfln("golden: GPU driver %s, device %s", app.driver, app.gpu)
+	limits = golden_limits(app.gpu)
 	_ = os.make_directory_all("output/golden")
 
 	renderer: gfx.Renderer
@@ -151,16 +191,18 @@ run :: proc() -> bool {
 			continue
 		}
 		defer gfx.image_destroy(&reference)
-		diff := gfx.image_diff(picture, reference, TOLERANCE)
+		diff := gfx.image_diff(picture, reference, limits.tolerance)
 		switch {
 		case !diff.same_size:
 			failures += 1
 			report(scene.name, false, fmt.tprintf("picture is %d x %d, reference %d x %d", picture.width, picture.height, reference.width, reference.height))
-		case diff.differing_pixels > ALLOWED_PIXELS:
-			failures += 1
-			report(scene.name, false, fmt.tprintf("%d pixels differ by more than %d (worst channel %d); look at %s", diff.differing_pixels, TOLERANCE, diff.worst_channel, actual_path(scene.name)))
 		case:
-			report(scene.name, true, fmt.tprintf("%d pixels off, worst channel %d", diff.differing_pixels, diff.worst_channel))
+			if same, why := judge(diff, picture.width * picture.height); !same {
+				failures += 1
+				report(scene.name, false, fmt.tprintf("%s; look at %s", why, actual_path(scene.name)))
+			} else {
+				report(scene.name, true, fmt.tprintf("%d pixels off, worst channel %d", diff.differing_pixels, diff.worst_channel))
+			}
 		}
 	}
 	example_ran, example_failures := run_examples(update, only[:])

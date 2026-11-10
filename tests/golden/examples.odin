@@ -73,12 +73,6 @@ NO_PICTURE := [?]string{
 	"benchmark", // 100,000 small circles hardly compress, and an interpreter test checks its work
 }
 
-// How many pixels may differ for a picture of this many: the scenes allow
-// ALLOWED_PIXELS in 120,000.
-allowed_pixels :: proc(img: gfx.Image) -> int {
-	return max(ALLOWED_PIXELS, ALLOWED_PIXELS * img.width * img.height / 120000)
-}
-
 run_examples :: proc(update: bool, only: []string) -> (ran, failures: int) {
 	// An example with a sketch has to be in the list (or say why not), so a new one is never left out.
 	if entries, err := os.read_all_directory_by_path("examples", context.temp_allocator); err == nil {
@@ -164,13 +158,14 @@ run_example :: proc(example: Example, number: int, name: string, update: bool) -
 		return true
 	}
 	defer gfx.image_destroy(&reference)
-	diff := gfx.image_diff(picture, reference, TOLERANCE)
+	diff := gfx.image_diff(picture, reference, limits.tolerance)
 	switch {
 	case !diff.same_size:
 		report(name, false, fmt.tprintf("picture is %d x %d, reference %d x %d", picture.width, picture.height, reference.width, reference.height))
 		return false
-	case diff.differing_pixels > allowed_pixels(picture):
-		report(name, false, fmt.tprintf("%d pixels differ by more than %d (worst channel %d); look at %s", diff.differing_pixels, TOLERANCE, diff.worst_channel, actual_path(name)))
+	}
+	if same, why := judge(diff, picture.width * picture.height); !same {
+		report(name, false, fmt.tprintf("%s; look at %s", why, actual_path(name)))
 		return false
 	}
 	report(name, true, fmt.tprintf("%d pixels off, worst channel %d", diff.differing_pixels, diff.worst_channel))
