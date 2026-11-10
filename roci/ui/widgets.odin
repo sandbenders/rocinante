@@ -4,8 +4,10 @@
 // between `begin_frame` and `end_frame`, and leaves a `Record` of itself.
 package ui
 
+import "base:runtime"
 import "core:fmt"
 import "core:math"
+import "core:strconv"
 import "core:strings"
 
 import imgui "../../vendor/imgui"
@@ -141,9 +143,15 @@ slider :: proc(s: ^State, text: string, value: ^f32, low, high: f32) -> bool {
 	use(s)
 	place(s)
 	id := imgui.get_id(label_id(s, text))
-	changed := imgui.slider_float_ex(label_id(s, text), value, low, high, "%.2f")
+	// No typing into it (Dear ImGui turns a slider reached by Tab into a box of text): the arrow keys
+	// move it, as a screen reader expects, and `number` is the widget for typing a number.
+	changed := imgui.slider_float_ex(label_id(s, text), value, low, high, "%.2f", imgui.SliderFlags_NoInput)
 	if moved := f64(value^); nudge(s, id, &moved, f64(low), f64(high), f64(high - low) / 100) {
 		value^ = f32(moved)
+		changed = true
+	}
+	if step := arrow_step(s); step != 0 && imgui.is_item_focused() {
+		value^ = clamp(value^ + step * (high - low) / 100, min(low, high), max(low, high))
 		changed = true
 	}
 	record := note(s, .Slider, text, value^, fmt.tprintf("%.2f", value^))
@@ -201,17 +209,102 @@ number :: proc(s: ^State, text: string, value: ^f64, low, high: f64) -> bool {
 	use(s)
 	place(s)
 	id := imgui.get_id(label_id(s, text))
-	changed := imgui.input_double_ex(label_id(s, text), value, 1, 10, "%.6g", 0)
+	// Laid out as Dear ImGui lays out a number with steps (the box, a minus and a plus, the text),
+	// but the steps are made here so that they are no stops for Tab or the arrow keys: the box is the
+	// one place the keyboard reaches, and its arrows step it, so its focus is the widget's.
+	style := imgui.get_style()
+	button := imgui.get_frame_height()
+	gap := style.item_inner_spacing.x
+	imgui.set_next_item_width(max(1, imgui.calc_item_width() - (button + gap) * 2))
+	imgui.begin_group()
+	imgui.push_id(label_id(s, text))
+	// The box is text of our own, so that while it is being typed in (Tab starts that) the up and
+	// down arrows can step the text itself; Dear ImGui keeps what is typed until Return, and would
+	// put back its old text over a value changed beside it.
+	shown: [NUMBER_BYTES]u8
+	fmt.bprintf(shown[:NUMBER_BYTES - 1], "%.6g", value^)
+	bounds := Number_Bounds{low, high}
+	flags := imgui.InputTextFlags(imgui.InputTextFlags_CharsScientific | imgui.InputTextFlags_AutoSelectAll | imgui.InputTextFlags_CallbackHistory)
+	changed := false
+	if imgui.input_text_ex("", cstring(&shown[0]), len(shown), flags, number_history, &bounds) {
+		if typed, ok := strconv.parse_f64(text_in(shown[:])); ok {
+			value^ = typed
+			changed = true
+		}
+	}
+	focused, active := imgui.is_item_focused(), imgui.is_item_active()
+	imgui.push_item_flag(imgui.ItemFlags_ButtonRepeat | imgui.ItemFlags_NoTabStop | imgui.ItemFlags_NoNav, true)
+	imgui.push_style_var_im_vec2(imgui.StyleVar_FramePadding, {style.frame_padding.y, style.frame_padding.y})
+	imgui.same_line_ex(0, gap)
+	stepped := false
+	if imgui.button_ex("-", {button, button}) {
+		value^ -= 1
+		changed = true
+	}
+	stepped = stepped || imgui.is_item_active()
+	imgui.same_line_ex(0, gap)
+	if imgui.button_ex("+", {button, button}) {
+		value^ += 1
+		changed = true
+	}
+	stepped = stepped || imgui.is_item_active()
+	imgui.pop_style_var()
+	imgui.pop_item_flag()
+	imgui.pop_id()
+	imgui.same_line_ex(0, gap)
+	imgui.text_unformatted(cstr(text))
+	imgui.end_group()
+	// A click on a step leaves Dear ImGui with no focus (the steps are no stops), and a screen reader
+	// speaks a change only from what has focus: the box holds it, as a spin button does when its
+	// arrows are clicked, until the keyboard puts the focus anywhere else.
+	if stepped {
+		s.claimed = id
+	} else if s.claimed == id && (focused || imgui.is_any_item_focused()) {
+		s.claimed = 0
+	}
+	focused = focused || s.claimed == id
 	changed = nudge(s, id, value, low, high, 1) || changed
-	if !imgui.is_item_active() {
+	if step := arrow_step(s); step != 0 && focused {
+		value^ += f64(step)
+		changed = true
+	}
+	if !active {
 		clamped := clamp(value^, min(low, high), max(low, high))
 		changed = changed || clamped != value^
 		value^ = clamped
 	}
 	record := note(s, .Number, text, f32(value^), fmt.tprintf("%.6g", value^), id)
+	record.focused, record.active = focused, active
 	record.changed = changed
 	record.low, record.high, record.step = f32(low), f32(high), 1
 	return changed
+}
+
+// The longest a number box's text may be.
+NUMBER_BYTES :: 64
+
+Number_Bounds :: struct {
+	low, high: f64,
+}
+
+// Up and down in a number box being typed in: the number written so far, one more or one less,
+// inside the box's range, all of it chosen so typing replaces it.
+@(private)
+number_history :: proc "c" (data: ^imgui.InputTextCallbackData) -> i32 {
+	context = runtime.default_context()
+	if data.event_flag != imgui.InputTextFlags_CallbackHistory {
+		return 0
+	}
+	bounds := (^Number_Bounds)(data.user_data)
+	n, _ := strconv.parse_f64(string(data.buf)[:data.buf_text_len])
+	n += 1 if data.event_key == imgui.Key_UpArrow else -1
+	n = clamp(n, min(bounds.low, bounds.high), max(bounds.low, bounds.high))
+	written: [NUMBER_BYTES]u8
+	fmt.bprintf(written[:NUMBER_BYTES - 1], "%.6g", n)
+	imgui.im_gui_input_text_callback_data_delete_chars(data, 0, data.buf_text_len)
+	imgui.im_gui_input_text_callback_data_insert_chars(data, 0, cstring(&written[0]))
+	imgui.im_gui_input_text_callback_data_select_all(data)
+	return 0
 }
 
 // A box of text, one line or `lines` of them. `buffer` is what `kept_text` made.
@@ -255,7 +348,10 @@ dropdown :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool 
 		}
 	}
 	shown := items[index^] if len(items) > 0 else ""
+	open := false
+	focus_item := 0
 	if imgui.begin_combo(label_id(s, text), cstr(shown), 0) {
+		open = true
 		for item, i in items {
 			imgui.push_id_int(i32(i))
 			selected := index^ == i
@@ -263,12 +359,21 @@ dropdown :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool 
 				index^ = i
 				changed = true
 			}
+			if imgui.is_item_focused() {
+				focus_item = i + 1
+			}
 			imgui.pop_id()
 		}
 		imgui.end_combo()
 	}
 	record := note(s, .Dropdown, text, f32(index^), shown)
 	record.changed = changed
+	record.open = open
+	if open {
+		// the list that opens is where the keyboard is: the box keeps the focus until an item has it
+		record.focus_item = focus_item
+		record.focused = true
+	}
 	record.items = copy_items(items)
 	return changed
 }
@@ -283,8 +388,12 @@ choice :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 	imgui.text_unformatted(label_id(s, text))
 	group := imgui.get_id(label_id(s, text)) // a group has no item of its own, so its identity is its text's
 	imgui.push_id(label_id(s, text))
+	focus_item := 0
 	for item, i in items {
 		picked := imgui.radio_button(cstr(item), index^ == i)
+		if imgui.is_item_focused() {
+			focus_item = i + 1
+		}
 		if _, asked := take_node(s, SUB_ID_BASE + u64(group) * 1024 + u64(min(i, 1023)), .Click); asked {
 			picked = true
 		}
@@ -298,6 +407,8 @@ choice :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 	shown := items[index^] if len(items) > 0 else ""
 	record := note(s, .Choice, text, f32(index^), shown, group)
 	record.changed = changed
+	record.focus_item = focus_item
+	record.focused = focus_item > 0 // the group has no focus of its own, only its buttons
 	record.items = copy_items(items)
 	return changed
 }
@@ -607,11 +718,16 @@ list :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 	style := imgui.get_style()
 	rows := f32(clamp(len(items), 1, 6))
 	height := rows * (imgui.get_text_line_height() + style.item_spacing.y) + style.frame_padding.y * 2
+	focus_item := 0
+	box_focused := false
 	if imgui.begin_list_box(label, {s.width, height}) {
 		for entry, i in items {
 			imgui.push_id_int(i32(i))
 			selected := index^ == i
 			picked := imgui.selectable_bool_ptr(cstr(entry), &selected, 0)
+			if imgui.is_item_focused() {
+				focus_item = i + 1
+			}
 			if _, asked := take_node(s, SUB_ID_BASE + u64(group) * 1024 + u64(min(i, 1023)), .Click); asked {
 				picked = true
 			}
@@ -621,11 +737,17 @@ list :: proc(s: ^State, text: string, items: []string, index: ^int) -> bool {
 			}
 			imgui.pop_id()
 		}
-		imgui.end_list_box()
+		// what end_list_box does, with the box's own focus read between the two: the group it closes
+		// adds an item of no identity, after which nothing can tell the box had focus
+		imgui.end_child()
+		box_focused = imgui.is_item_focused()
+		imgui.end_group()
 	}
 	shown := items[index^] if len(items) > 0 else ""
 	record := note(s, .List, text, f32(index^), shown, group)
 	record.changed = changed
+	record.focus_item = focus_item
+	record.focused = box_focused || focus_item > 0 // Tab reaches the box, Space or Return goes in to its entries
 	record.items = copy_items(items)
 	return changed
 }
@@ -672,26 +794,51 @@ kept_vector :: proc(s: ^State, text: string, start: [4]f32) -> ^[4]f32 {
 	return &s.kept_vec[key]
 }
 
-// What the keyboard does to a widget that has focus: -1 for left or down, 1 for right or up, else 0.
+// How far the arrow keys pressed since the last frame move the value of the widget with focus: one
+// step for each, right and up adding, left and down taking away. They reach no other widget, because
+// the input kept them from Dear ImGui's navigation (`takes_arrow`).
 @(private)
-arrow_step :: proc() -> f32 {
-	step: f32
-	if imgui.is_key_pressed(imgui.Key_LeftArrow) || imgui.is_key_pressed(imgui.Key_DownArrow) {
-		step -= 1
-	}
-	if imgui.is_key_pressed(imgui.Key_RightArrow) || imgui.is_key_pressed(imgui.Key_UpArrow) {
-		step += 1
-	}
-	return step
+arrow_step :: proc(s: ^State) -> f32 {
+	return f32(s.arrows.x + s.arrows.y)
 }
 
 // A swatch that opens a color picker: `color` is red, green, blue and alpha from 0 to 1.
 colorpicker :: proc(s: ^State, text: string, color: ^[4]f32) -> bool {
 	use(s)
 	place(s)
-	changed := imgui.color_edit4(label_id(s, text), cast(^[4][4]f32)color, imgui.ColorEditFlags_NoInputs | imgui.ColorEditFlags_AlphaBar)
+	// What Dear ImGui's color_edit4 does without inputs (a swatch that opens a picker, then the text),
+	// made from its parts so that the swatch's focus can be read: color_edit4 wraps it in a group,
+	// after which nothing can tell it had focus.
+	id := imgui.get_id(label_id(s, text))
+	flags := imgui.ColorEditFlags(imgui.ColorEditFlags_NoInputs | imgui.ColorEditFlags_AlphaBar)
+	style := imgui.get_style()
+	changed := false
+	imgui.begin_group()
+	imgui.push_id(label_id(s, text))
+	opened := imgui.color_button("##ColorButton", color^, flags)
+	focused, hovered, active := imgui.is_item_focused(), imgui.is_item_hovered(), imgui.is_item_active()
+	swatch_min, swatch_max := imgui.get_item_rect_min(), imgui.get_item_rect_max()
+	if opened {
+		imgui.open_popup("picker")
+		imgui.set_next_window_pos({swatch_min.x, swatch_max.y + style.item_spacing.y})
+	}
+	if imgui.begin_popup("picker") {
+		imgui.text_unformatted(cstr(text))
+		imgui.spacing()
+		imgui.set_next_item_width(imgui.get_frame_height() * 12)
+		picker := imgui.ColorEditFlags(imgui.ColorEditFlags_AlphaBar | imgui.ColorEditFlags_NoLabel | imgui.ColorEditFlags_AlphaPreviewHalf)
+		changed = imgui.color_picker4("##picker", cast(^[4][4]f32)color, picker)
+		imgui.end_popup()
+	}
+	imgui.pop_id()
+	imgui.same_line_ex(0, style.item_inner_spacing.x)
+	imgui.text_unformatted(cstr(text))
+	imgui.end_group()
 	hex := fmt.tprintf("#%02x%02x%02x%02x", int(color[0] * 255 + 0.5), int(color[1] * 255 + 0.5), int(color[2] * 255 + 0.5), int(color[3] * 255 + 0.5))
-	note(s, .Colorpicker, text, 0, hex).changed = changed
+	record := note(s, .Colorpicker, text, 0, hex, id)
+	record.changed = changed
+	record.rect = {swatch_min, swatch_max}
+	record.focused, record.hovered, record.active = focused, hovered, active
 	return changed
 }
 
@@ -704,7 +851,7 @@ knob :: proc(s: ^State, text: string, value: ^f32, low, high: f32) -> bool {
 	size := s.width if s.width > 0 else imgui.get_frame_height() * 2
 	at := imgui.get_cursor_screen_pos()
 	id_ := imgui.get_id(label_id(s, text))
-	imgui.invisible_button(label_id(s, text), {size, size})
+	imgui.invisible_button(label_id(s, text), {size, size}, imgui.ButtonFlags_EnableNav)
 	span := high - low
 	changed := false
 	before := value^
@@ -716,7 +863,7 @@ knob :: proc(s: ^State, text: string, value: ^f32, low, high: f32) -> bool {
 		value^ += (io.mouse_delta.x - io.mouse_delta.y) / KNOB_PIXELS_PER_RANGE * span
 	}
 	if imgui.is_item_focused() {
-		value^ += arrow_step() * span / 100
+		value^ += arrow_step(s) * span / 100
 	}
 	value^ = clamp(value^, min(low, high), max(low, high))
 	changed = value^ != before
@@ -764,19 +911,32 @@ range :: proc(s: ^State, text: string, low_value, high_value: ^f32, low, high: f
 	travel := bar - RANGE_HANDLE
 	changed := false
 	focused, hovered, active := false, false, false
+	group := imgui.get_id(label_id(s, text))
+	focus_item := 0
 	// the two handles, each a button of its own so each can be reached and moved
 	for end in 0 ..< 2 {
 		value := low_value if end == 0 else high_value
 		t := (value^ - low) / span if span != 0 else 0
 		imgui.set_cursor_screen_pos({at.x + t * travel, at.y})
-		imgui.invisible_button(fmt.ctprintf("##%s%d%d", text, s.salt, end), {RANGE_HANDLE, height})
+		imgui.invisible_button(fmt.ctprintf("##%s%d%d", text, s.salt, end), {RANGE_HANDLE, height}, imgui.ButtonFlags_EnableNav)
 		before := value^
+		// what a screen reader asks of this handle's slider
+		node := SUB_ID_BASE + u64(group) * 1024 + u64(end)
+		if _, asked := take_node(s, node, .Focus); asked {
+			imgui.set_keyboard_focus_here_ex(-1)
+		}
+		if moved := f64(value^); nudge_node(s, node, &moved, f64(low), f64(high), f64(span) / 100) {
+			value^ = f32(moved)
+		}
+		if imgui.is_item_focused() {
+			focus_item = end + 1
+		}
 		if imgui.is_item_active() {
 			x := imgui.get_io().mouse_pos.x - at.x - RANGE_HANDLE / 2
 			value^ = low + clamp(x / travel, 0, 1) * span
 		}
 		if imgui.is_item_focused() {
-			value^ += arrow_step() * span / 100
+			value^ += arrow_step(s) * span / 100
 		}
 		value^ = clamp(value^, min(low, high), max(low, high))
 		if end == 0 {
@@ -805,8 +965,10 @@ range :: proc(s: ^State, text: string, low_value, high_value: ^f32, low, high: f
 	imgui.draw_list_add_rect_filled(list, {x_low, mid - 2}, {x_high, mid + 2}, imgui.get_color_u32(imgui.Col_SliderGrab))
 	imgui.draw_list_add_circle_filled(list, {x_low, mid}, RANGE_HANDLE / 2, imgui.get_color_u32(imgui.Col_SliderGrab))
 	imgui.draw_list_add_circle_filled(list, {x_high, mid}, RANGE_HANDLE / 2, imgui.get_color_u32(imgui.Col_SliderGrab))
-	record := note(s, .Range, text, low_value^, fmt.tprintf("%.2f to %.2f", low_value^, high_value^), imgui.get_id(label_id(s, text)))
+	record := note(s, .Range, text, low_value^, fmt.tprintf("%.2f to %.2f", low_value^, high_value^), group)
 	record.changed = changed
+	record.second = high_value^
+	record.focus_item = focus_item
 	record.rect = {at, at + {bar, height}}
 	record.focused, record.hovered, record.active = focused, hovered, active
 	record.low, record.high, record.step = low, high, span / 100
@@ -819,18 +981,38 @@ xypad :: proc(s: ^State, text: string, x, y: ^f32) -> bool {
 	place(s)
 	size := s.width if s.width > 0 else imgui.get_frame_height() * 5
 	at := imgui.get_cursor_screen_pos()
-	imgui.invisible_button(label_id(s, text), {size, size})
+	imgui.invisible_button(label_id(s, text), {size, size}, imgui.ButtonFlags_EnableNav)
+	pad := imgui.get_item_id()
 	before := [2]f32{x^, y^}
+	// what a screen reader asks of the two sliders it is shown as, across and down
+	for axis, i in ([2]^f32{x, y}) {
+		node := SUB_ID_BASE + u64(pad) * 1024 + u64(i)
+		if _, asked := take_node(s, node, .Focus); asked {
+			imgui.set_keyboard_focus_here_ex(-1)
+			s.pad_id, s.pad_axis = pad, i + 1
+		}
+		if moved := f64(axis^); nudge_node(s, node, &moved, 0, 1, 0.01) {
+			axis^ = f32(moved)
+		}
+	}
 	if imgui.is_item_active() {
 		mouse := imgui.get_io().mouse_pos
 		x^ = clamp((mouse.x - at.x) / size, 0, 1)
 		y^ = clamp((mouse.y - at.y) / size, 0, 1)
 	}
 	if imgui.is_item_focused() {
-		if imgui.is_key_pressed(imgui.Key_LeftArrow) { x^ -= 0.01 }
-		if imgui.is_key_pressed(imgui.Key_RightArrow) { x^ += 0.01 }
-		if imgui.is_key_pressed(imgui.Key_UpArrow) { y^ -= 0.01 }
-		if imgui.is_key_pressed(imgui.Key_DownArrow) { y^ += 0.01 }
+		// y counts down the pad, and the up arrow moves up
+		x^ += f32(s.arrows.x) * 0.01
+		y^ -= f32(s.arrows.y) * 0.01
+		// the axis a screen reader is on: across when the pad gets focus, then the one last moved
+		if s.pad_id != pad {
+			s.pad_id, s.pad_axis = pad, 1
+		}
+		if s.arrows.x != 0 {
+			s.pad_axis = 1
+		} else if s.arrows.y != 0 {
+			s.pad_axis = 2
+		}
 		x^, y^ = clamp(x^, 0, 1), clamp(y^, 0, 1)
 	}
 	changed := [2]f32{x^, y^} != before
@@ -852,6 +1034,10 @@ xypad :: proc(s: ^State, text: string, x, y: ^f32) -> bool {
 	imgui.text_unformatted(cstr(text))
 	record := note(s, .Xypad, text, x^, fmt.tprintf("%.2f, %.2f", x^, y^), id)
 	record.changed = changed
+	record.second = y^
+	if focused {
+		record.focus_item = s.pad_axis if s.pad_id == pad else 1
+	}
 	record.rect = {rect_min, rect_max}
 	record.focused, record.hovered, record.active = focused, hovered, active
 	return changed

@@ -78,19 +78,25 @@ take :: proc(s: ^State, id: u32, action: Node_Action) -> (Pending, bool) {
 // True when it did.
 @(private)
 nudge :: proc(s: ^State, id: u32, value: ^f64, low, high, step: f64) -> bool {
+	return nudge_node(s, WIDGET_ID_BASE + u64(id), value, low, high, step)
+}
+
+// The same for a node of a widget's own: a range's handle, a pad's axis.
+@(private)
+nudge_node :: proc(s: ^State, node: u64, value: ^f64, low, high, step: f64) -> bool {
 	if len(s.actions) == 0 {
 		return false
 	}
 	changed := false
-	if _, ok := take(s, id, .Increment); ok {
+	if _, ok := take_node(s, node, .Increment); ok {
 		value^ += step
 		changed = true
 	}
-	if _, ok := take(s, id, .Decrement); ok {
+	if _, ok := take_node(s, node, .Decrement); ok {
 		value^ -= step
 		changed = true
 	}
-	if p, ok := take(s, id, .Set_Value); ok {
+	if p, ok := take_node(s, node, .Set_Value); ok {
 		value^ = p.number
 		changed = true
 	}

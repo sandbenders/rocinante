@@ -45,7 +45,7 @@ test_each_widget_is_a_node_with_its_role_name_value_and_actions :: proc(t: ^test
 	testing.expect(t, has_line(dump, "  Button \"go\" description=\"starts it\" [Focus Click]\n"), dump)
 	testing.expect(t, has_line(dump, "  Check_Box \"trails\" checked=true [Focus Click]\n"), dump)
 	testing.expect(t, has_line(dump, "  Slider \"size\" value=\"25.00\" number=25 range=0..100 step=1 [Focus Increment Decrement Set_Value]\n"), dump)
-	testing.expect(t, has_line(dump, "  Combo_Box \"shape\" value=\"square\" [Focus Set_Value]\n"), dump)
+	testing.expect(t, has_line(dump, "  Combo_Box \"shape\" value=\"square\" expanded=false [Focus Set_Value]\n"), dump)
 	testing.expect(t, has_line(dump, "  Radio_Group \"mode\" value=\"circle\" [Focus]\n    Radio_Button \"circle\" selected=true [Focus Click]\n    Radio_Button \"square\" selected=false [Focus Click]\n"), dump)
 	testing.expect(t, has_line(dump, "  List_Box \"file\" value=\"square\" [Focus]\n    List_Item \"circle\" selected=false [Focus Click]\n    List_Item \"square\" selected=true [Focus Click]\n"), dump)
 	testing.expect(t, has_line(dump, "  Progress \"progress\" value=\"50%\" number=0.5 range=0..1\n"), dump)
@@ -78,8 +78,8 @@ test_a_text_box_a_number_and_the_dials_are_nodes_too :: proc(t: ^testing.T) {
 	testing.expect(t, has_line(dump, "  Multiline_Text_Input \"notes\" [Focus Set_Value]\n"), dump)
 	testing.expect(t, has_line(dump, "  Spin_Button \"dots\" value=\"7\" number=7 range=1..10 step=1 [Focus Increment Decrement Set_Value]\n"), dump)
 	testing.expect(t, has_line(dump, "  Slider \"speed\" value=\"0.50\" number=0.5 range=0..1 step=0.01 [Focus Increment Decrement Set_Value]\n"), dump)
-	testing.expect(t, has_line(dump, "  Generic \"span\" value=\"0.20 to 0.80\" [Focus]\n"), dump)
-	testing.expect(t, has_line(dump, "  Generic \"place\" value=\"0.50, 0.25\" [Focus]\n"), dump)
+	testing.expect(t, has_line(dump, "  Group \"span\" value=\"0.20 to 0.80\"\n    Slider \"span, low end\" value=\"0.20\" number=0.2 range=0..1 step=0.01 [Focus Increment Decrement Set_Value]\n    Slider \"span, high end\" value=\"0.80\" number=0.8 range=0..1 step=0.01 [Focus Increment Decrement Set_Value]\n"), dump)
+	testing.expect(t, has_line(dump, "  Group \"place\" value=\"0.50, 0.25\"\n    Slider \"place, across\" value=\"0.50\" number=0.5 range=0..1 step=0.01 [Focus Increment Decrement Set_Value]\n    Slider \"place, down\" value=\"0.25\" number=0.25 range=0..1 step=0.01 [Focus Increment Decrement Set_Value]\n"), dump)
 	testing.expect(t, has_line(dump, "  Generic \"tint\" value=\"#ff0000ff\" [Focus]\n"), dump)
 }
 

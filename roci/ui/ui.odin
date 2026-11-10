@@ -68,6 +68,9 @@ Record :: struct {
 	step:     f32,    // how far one increment moves it
 	lines:    int,    // a text box's lines
 	items:    []string, // a drop-down's, radio group's or list's items (owned); `value` is the chosen one's place
+	focus_item: int,    // which of those items has keyboard focus, counting from 1; 0 when none (a range's handle, a pad's axis)
+	second:   f32,      // a range's high end, a pad's place down
+	open:     bool,     // a drop-down's list is open
 	path:     []string, // the panels, tabs and menus it is inside, outermost first (owned)
 }
 
@@ -111,6 +114,14 @@ State :: struct {
 	queue_lock:     sync.Mutex,      // guards `queue`, which a screen reader's thread may add to
 	queue:          [dynamic]Pending, // actions waiting for the next frame
 	actions:        [dynamic]Pending, // the frame's actions, taken by the widgets they name
+	// arrow keys pressed while a widget with a value has focus move the value, not the focus:
+	// counted here as they come (x to the right, y up), and handed to the frame as it begins
+	arrows_pending: [2]int,
+	arrows:         [2]int,          // the frame's, read by the focused widget
+	arrows_kept:    [4]bool,         // arrow keys whose press was kept from navigation, so their release is too
+	claimed:        u32,             // the number box whose step was clicked, which holds the focus until something else has it
+	pad_id:         u32,             // the pad that last had focus, and which of its axes the arrows last moved (1 across, 2 down)
+	pad_axis:       int,
 	floats:         [dynamic]bool,   // the floating windows open, innermost last: true for a lone widget's
 	float_count:    int,             // floating windows made this frame for something with no text
 	// the SDL_GPU renderer backend, made when something is first drawn
@@ -324,6 +335,7 @@ begin_frame :: proc(s: ^State, size: [2]f32, density, dt: f32) {
 	io.delta_time = max(dt, 1.0 / 1000)
 	imgui.new_frame()
 	take_queue(s)
+	s.arrows, s.arrows_pending = s.arrows_pending, {}
 	s.in_frame = true
 	s.panel_open = false
 	s.panel_count = 0

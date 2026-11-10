@@ -44,9 +44,66 @@ key :: proc(s: ^State, scancode: sdl.Scancode, down: bool, mods: platform.Modifi
 	imgui.io_add_key_event(io, imgui.Mod_Shift, .Shift in mods)
 	imgui.io_add_key_event(io, imgui.Mod_Alt, .Alt in mods)
 	imgui.io_add_key_event(io, imgui.Mod_Super, .Super in mods)
+	if arrow, is_arrow := arrow_of(scancode); is_arrow {
+		if down && takes_arrow(s, arrow) {
+			s.arrows_kept[arrow] = true
+			s.arrows_pending += ARROW_STEPS[arrow]
+			return
+		}
+		if !down && s.arrows_kept[arrow] {
+			s.arrows_kept[arrow] = false
+			return
+		}
+	}
 	if k, ok := imgui_key(scancode); ok {
 		imgui.io_add_key_event(io, k, down)
 	}
+}
+
+Arrow :: enum u8 {
+	Left,
+	Right,
+	Up,
+	Down,
+}
+
+// What each arrow does to a value: x to the right, y up.
+ARROW_STEPS := [Arrow][2]int {
+	.Left  = {-1, 0},
+	.Right = {1, 0},
+	.Up    = {0, 1},
+	.Down  = {0, -1},
+}
+
+@(private)
+arrow_of :: proc(code: sdl.Scancode) -> (Arrow, bool) {
+	#partial switch code {
+	case .LEFT:  return .Left, true
+	case .RIGHT: return .Right, true
+	case .UP:    return .Up, true
+	case .DOWN:  return .Down, true
+	}
+	return {}, false
+}
+
+// Whether the widget with keyboard focus moves its value with this arrow, as a slider does in
+// every other program and as a screen reader expects, instead of Dear ImGui moving the focus to
+// the widget beside it. A number box being typed in keeps left and right for its caret.
+@(private)
+takes_arrow :: proc(s: ^State, arrow: Arrow) -> bool {
+	for r in s.finished {
+		if !r.focused {
+			continue
+		}
+		#partial switch r.role {
+		case .Slider, .Knob, .Range, .Xypad:
+			return true
+		case .Number:
+			return !r.active // while it is typed in, the box steps its text itself (`number_history`)
+		}
+		return false
+	}
+	return false
 }
 
 // Typed text, as UTF-8.

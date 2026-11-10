@@ -151,6 +151,11 @@ build_tree :: proc(s: ^State, title: string) -> Tree {
 		if r.focused {
 			t.focus = id
 		}
+		// an item of a radio group, list or open drop-down, a range's handle or a pad's axis with focus
+		// is the node a screen reader is on
+		if r.focus_item > 0 {
+			t.focus = sub_id(r, r.focus_item - 1)
+		}
 		#partial switch r.role {
 		case .Panel, .Menu:
 			containers[inside_key(r)] = index
@@ -166,6 +171,23 @@ build_tree :: proc(s: ^State, title: string) -> Tree {
 				radio.bounds = r.rect
 				radio.actions = {.Focus, .Click}
 				add_child(&t, index, radio)
+			}
+		case .Range:
+			add_child(&t, index, part_slider(r, 0, fmt.tprintf("%s, low end", r.label), r.value, r.low, r.high, r.step))
+			add_child(&t, index, part_slider(r, 1, fmt.tprintf("%s, high end", r.label), r.second, r.low, r.high, r.step))
+		case .Xypad:
+			add_child(&t, index, part_slider(r, 0, fmt.tprintf("%s, across", r.label), r.value, 0, 1, 0.01))
+			add_child(&t, index, part_slider(r, 1, fmt.tprintf("%s, down", r.label), r.second, 0, 1, 0.01))
+		case .Dropdown:
+			// while it is open, its items are a list a screen reader can walk
+			if r.open {
+				for item, i in r.items {
+					entry := Node{id = SUB_ID_BASE + u64(r.id) * 1024 + u64(min(i, 1023)), role = .List_Item, label = strings.clone(item)}
+					entry.has_select, entry.selected = true, i == int(r.value)
+					entry.bounds = r.rect
+					entry.actions = {.Focus}
+					add_child(&t, index, entry)
+				}
 			}
 		case .List:
 			for item, i in r.items {
@@ -214,6 +236,23 @@ add_child :: proc(t: ^Tree, parent: int, node: Node) -> int {
 	return len(t.nodes) - 1
 }
 
+// The node of a widget's part (a range's handle, a pad's axis), counted from 0.
+sub_id :: proc(r: Record, part: int) -> u64 {
+	return SUB_ID_BASE + u64(r.id) * 1024 + u64(min(part, 1023))
+}
+
+// One of a range's or a pad's values, as a slider of its own: a screen reader has a role for a value
+// in a range, and none for two values, or a place on a plane.
+@(private)
+part_slider :: proc(r: Record, part: int, name: string, value, low, high, step: f32) -> Node {
+	n := Node{id = sub_id(r, part), role = .Slider, label = strings.clone(name), bounds = r.rect}
+	n.has_number = true
+	n.number, n.min, n.max, n.step = f64(value), f64(low), f64(high), f64(step)
+	n.value = fmt.aprintf("%.2f", value)
+	n.actions = {.Focus, .Increment, .Decrement, .Set_Value}
+	return n
+}
+
 // The node for one record: its role, name, value and what can be done to it.
 @(private)
 node_of :: proc(r: Record, id: u64) -> Node {
@@ -257,6 +296,7 @@ node_of :: proc(r: Record, id: u64) -> Node {
 	case .Dropdown:
 		n.role = .Combo_Box
 		n.value = strings.clone(r.text)
+		n.has_expand, n.expanded = true, r.open
 		n.actions = {.Focus, .Set_Value}
 	case .Choice:
 		n.role = .Radio_Group
@@ -286,10 +326,14 @@ node_of :: proc(r: Record, id: u64) -> Node {
 	case .Item:
 		n.role = .Menu_Item
 		n.actions = {.Focus, .Click}
-	case .Colorpicker, .Range, .Xypad:
+	case .Colorpicker:
 		n.role = .Generic
 		n.value = strings.clone(r.text)
 		n.actions = {.Focus}
+	case .Range, .Xypad:
+		// a group of two sliders (`part_slider`), which take what a screen reader asks
+		n.role = .Group
+		n.value = strings.clone(r.text)
 	}
 	return n
 }

@@ -6,7 +6,7 @@ Window "ui"
     Spin_Button "rings" value="2" number=2 range=1..5 step=1 [Focus Increment Decrement Set_Value]
   Tab "color" selected=true [Focus Click]
   Tab_Panel "color"
-    Combo_Box "tone" value="orange" [Focus Set_Value]
+    Combo_Box "tone" value="orange" expanded=false [Focus Set_Value]
     Radio_Group "look" value="solid" [Focus]
       Radio_Button "solid" selected=true [Focus Click]
       Radio_Button "outline" selected=false [Focus Click]
