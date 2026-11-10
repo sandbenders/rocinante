@@ -2260,3 +2260,22 @@ test_for_each_in_a_taught_verb_writes_vectors_and_records_back_into_a_long_lived
 	testing.expect_value(t, p.printed[0], "[ { 11, 2 } { 13, 4 } ]")
 	testing.expect_value(t, p.printed[1], "[ { 21, 2 } { 23, 4 } ]")
 }
+
+// ---- a record held in two places stays one record when it is kept ----
+
+@(test)
+test_a_record_made_in_a_frame_and_held_twice_is_still_one_record_when_kept :: proc(t: ^testing.T) {
+	// the same sketch at set-up (where nothing is copied) and in a frame (where it is kept past the frame)
+	text := "learn twins [\n  a = { x: 1 }\n  give [ a a ]\n]\nearly = twins\nfirst = item 1 of early\nfirst.x = 5\nsecond = item 2 of early\nprint second.x\ndraw [\n  if frame is 1 [ late = twins ]\n  if frame is 2 [\n    one = item 1 of late\n    one.x = 5\n    two = item 2 of late\n    print two.x\n  ]\n]"
+	expect_printed(t, text, "5\n5", 3)
+}
+
+@(test)
+test_a_copy_keeps_what_the_value_shared_and_a_table_or_a_record_that_holds_itself_ends :: proc(t: ^testing.T) {
+	// `copy` is a new value, but inside it a record held twice is still one record
+	expect_printed(t, "a = { x: 1 }\nxs = [ a a ]\nys = copy xs\nfirst = item 1 of ys\nfirst.x = 7\nsecond = item 2 of ys\nprint second.x\nprint a.x", "7\n1")
+	// in a frame, a table holding one record under two names
+	expect_printed(t, "draw [\n  if frame is 1 [\n    r = { x: 1 }\n    t = table\n    put t \"a\" r\n    put t \"b\" r\n    kept = t\n  ]\n  if frame is 2 [\n    p = get kept \"a\"\n    p.x = 9\n    q = get kept \"b\"\n    print q.x\n  ]\n]", "9", 3)
+	// a record that holds itself, made in a frame and kept, stays one record that holds itself
+	expect_printed(t, "draw [\n  if frame is 1 [\n    a = { x: 1 }\n    a.next = a\n    kept = a\n  ]\n  if frame is 2 [\n    kept.x = 4\n    print kept.next.x\n  ]\n]", "4", 3)
+}

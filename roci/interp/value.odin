@@ -183,10 +183,25 @@ field_index :: proc(it: ^Interp, shape: int, name: string) -> int {
 
 // ---- keeping values past the frame ----
 
+// What has been copied so far in one `promote` or `deep_copy`, by the address of the
+// original, so a list, record or table held in two places is copied once and the two
+// places still hold the one copy (they are shared, and a copy keeps that), and a value
+// that holds itself ends where it began.
+@(private)
+Copies :: map[rawptr]rawptr
+
 // A value that can be stored in something that lives as long as the sketch: a
 // frame's list or record is copied into long-lived memory first; one that already
-// lives there is shared as it is.
+// lives there is shared as it is. Each frame's list, record or table is copied once
+// however many places in `v` hold it.
 promote :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
+	copies: Copies
+	defer delete(copies)
+	return promote_in(it, v, &copies, depth)
+}
+
+@(private)
+promote_in :: proc(it: ^Interp, v: Value, copies: ^Copies, depth: int) -> Value {
 	if depth > 64 {
 		return nil
 	}
@@ -197,32 +212,43 @@ promote :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
 		if x == nil || x.long {
 			return v
 		}
+		if to, found := copies[x]; found {
+			return (^List)(to)
+		}
 		l := new(List, it.long)
 		l.id = next_write(it)
 		l.items = make([dynamic]Value, 0, len(x.items), it.long)
 		l.long = true
+		copies[x] = l
 		for item in x.items {
-			append(&l.items, promote(it, item, depth + 1))
+			append(&l.items, promote_in(it, item, copies, depth + 1))
 		}
 		return l
 	case ^Record:
 		if x == nil || x.long {
 			return v
 		}
+		if to, found := copies[x]; found {
+			return (^Record)(to)
+		}
 		r := new(Record, it.long)
 		r.shape = x.shape
 		r.class = x.class
 		r.long = true
 		r.fields = make([]Value, len(x.fields), it.long)
+		copies[x] = r
 		for f, i in x.fields {
-			r.fields[i] = promote(it, f, depth + 1)
+			r.fields[i] = promote_in(it, f, copies, depth + 1)
 		}
 		return r
 	case ^Table:
 		if x == nil || x.long {
 			return v
 		}
-		return table_copy(it, x, true, proc(it: ^Interp, v: Value, _: rawptr, depth: int) -> Value {return promote(it, v, depth)}, nil, depth)
+		if to, found := copies[x]; found {
+			return (^Table)(to)
+		}
+		return table_copy(it, x, true, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {return promote_in(it, v, (^Copies)(data), depth)}, copies, depth, copies)
 	case ^roci.Gradient:
 		if x == nil {
 			return v
@@ -235,8 +261,16 @@ promote :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
 	return v
 }
 
-// An independent copy, lists and records inside included.
+// An independent copy, lists and records inside included. A list, record or table that
+// `v` holds in two places is one copy held in two places, as it was.
 deep_copy :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
+	copies: Copies
+	defer delete(copies)
+	return deep_copy_in(it, v, &copies, depth)
+}
+
+@(private)
+deep_copy_in :: proc(it: ^Interp, v: Value, copies: ^Copies, depth: int) -> Value {
 	if depth > 64 {
 		return nil
 	}
@@ -247,29 +281,40 @@ deep_copy :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
 		if x == nil {
 			return v
 		}
+		if to, found := copies[x]; found {
+			return (^List)(to)
+		}
 		l := new_list(it)
+		copies[x] = l
 		for item in x.items {
-			append(&l.items, deep_copy(it, item, depth + 1))
+			append(&l.items, deep_copy_in(it, item, copies, depth + 1))
 		}
 		return l
 	case ^Record:
 		if x == nil {
 			return v
 		}
+		if to, found := copies[x]; found {
+			return (^Record)(to)
+		}
 		r := new(Record, it.alloc)
 		r.shape = x.shape
 		r.class = x.class
 		r.long = it.alloc == it.long
 		r.fields = make([]Value, len(x.fields), it.alloc)
+		copies[x] = r
 		for f, i in x.fields {
-			r.fields[i] = deep_copy(it, f, depth + 1)
+			r.fields[i] = deep_copy_in(it, f, copies, depth + 1)
 		}
 		return r
 	case ^Table:
 		if x == nil {
 			return v
 		}
-		return table_copy(it, x, it.alloc == it.long, proc(it: ^Interp, v: Value, _: rawptr, depth: int) -> Value {return deep_copy(it, v, depth)}, nil, depth)
+		if to, found := copies[x]; found {
+			return (^Table)(to)
+		}
+		return table_copy(it, x, it.alloc == it.long, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {return deep_copy_in(it, v, (^Copies)(data), depth)}, copies, depth, copies)
 	case ^roci.Gradient:
 		if x == nil {
 			return v
