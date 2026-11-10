@@ -120,6 +120,10 @@ if [ "${1:-}" = regenerate ]; then
 	)
 	mkdir -p "$c_api/backends"
 	cp "$gen/dcimgui.h" "$gen/dcimgui.cpp" "$c_api/"
+	# dear_bindings writes a null default as reinterpret_cast<T>(NULL), which C++ refuses where
+	# NULL is nullptr (OpenBSD); static_cast of nullptr means the same everywhere.
+	sed 's/reinterpret_cast<\([^>]*\)>(NULL)/static_cast<\1>(nullptr)/g' "$c_api/dcimgui.cpp" > "$c_api/dcimgui.cpp.part"
+	mv "$c_api/dcimgui.cpp.part" "$c_api/dcimgui.cpp"
 	cp "$gen"/backends/dcimgui_impl_*.h "$gen"/backends/dcimgui_impl_*.cpp "$c_api/backends/"
 	(cd "$root" && odin run tools/imgui -- "$gen")
 fi

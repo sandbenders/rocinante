@@ -1481,7 +1481,7 @@ CIMGUI_API bool cimgui::ImGui_VSliderScalarEx(const char* label, cimgui::ImVec2 
 
 CIMGUI_API bool cimgui::ImGui_InputText(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags)
 {
-    return ::ImGui::InputText(label, buf, buf_size, flags, reinterpret_cast<::ImGuiInputTextCallback>(NULL), NULL);
+    return ::ImGui::InputText(label, buf, buf_size, flags, static_cast<::ImGuiInputTextCallback>(nullptr), NULL);
 }
 
 CIMGUI_API bool cimgui::ImGui_InputTextEx(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags, cimgui::ImGuiInputTextCallback callback, void* user_data)
@@ -1491,7 +1491,7 @@ CIMGUI_API bool cimgui::ImGui_InputTextEx(const char* label, char* buf, size_t b
 
 CIMGUI_API bool cimgui::ImGui_InputTextMultiline(const char* label, char* buf, size_t buf_size)
 {
-    return ::ImGui::InputTextMultiline(label, buf, buf_size, ::ImVec2(0, 0), 0, reinterpret_cast<::ImGuiInputTextCallback>(NULL), NULL);
+    return ::ImGui::InputTextMultiline(label, buf, buf_size, ::ImVec2(0, 0), 0, static_cast<::ImGuiInputTextCallback>(nullptr), NULL);
 }
 
 CIMGUI_API bool cimgui::ImGui_InputTextMultilineEx(const char* label, char* buf, size_t buf_size, cimgui::ImVec2 size, ImGuiInputTextFlags flags, cimgui::ImGuiInputTextCallback callback, void* user_data)
@@ -1501,7 +1501,7 @@ CIMGUI_API bool cimgui::ImGui_InputTextMultilineEx(const char* label, char* buf,
 
 CIMGUI_API bool cimgui::ImGui_InputTextWithHint(const char* label, const char* hint, char* buf, size_t buf_size, ImGuiInputTextFlags flags)
 {
-    return ::ImGui::InputTextWithHint(label, hint, buf, buf_size, flags, reinterpret_cast<::ImGuiInputTextCallback>(NULL), NULL);
+    return ::ImGui::InputTextWithHint(label, hint, buf, buf_size, flags, static_cast<::ImGuiInputTextCallback>(nullptr), NULL);
 }
 
 CIMGUI_API bool cimgui::ImGui_InputTextWithHintEx(const char* label, const char* hint, char* buf, size_t buf_size, ImGuiInputTextFlags flags, cimgui::ImGuiInputTextCallback callback, void* user_data)
@@ -3370,7 +3370,7 @@ CIMGUI_API void        cimgui::ImDrawList_AddTextEx(cimgui::ImDrawList* self, ci
 
 CIMGUI_API void        cimgui::ImDrawList_AddTextImFontPtr(cimgui::ImDrawList* self, cimgui::ImFont* font, float font_size, cimgui::ImVec2 pos, ImU32 col, const char* text_begin)
 {
-    reinterpret_cast<::ImDrawList*>(self)->AddText(reinterpret_cast<::ImFont*>(font), font_size, ConvertToCPP_ImVec2(pos), col, text_begin, NULL, 0.0f, reinterpret_cast<const ::ImVec4*>(NULL));
+    reinterpret_cast<::ImDrawList*>(self)->AddText(reinterpret_cast<::ImFont*>(font), font_size, ConvertToCPP_ImVec2(pos), col, text_begin, NULL, 0.0f, static_cast<const ::ImVec4*>(nullptr));
 }
 
 CIMGUI_API void        cimgui::ImDrawList_AddTextImFontPtrEx(cimgui::ImDrawList* self, cimgui::ImFont* font, float font_size, cimgui::ImVec2 pos, ImU32 col, const char* text_begin, const char* text_end, float wrap_width, const cimgui::ImVec4* cpu_fine_clip_rect)
@@ -4071,7 +4071,7 @@ CIMGUI_API const char*  cimgui::ImFont_CalcWordWrapPosition(cimgui::ImFont* self
 
 CIMGUI_API void         cimgui::ImFont_RenderChar(cimgui::ImFont* self, cimgui::ImDrawList* draw_list, float size, cimgui::ImVec2 pos, ImU32 col, ImWchar c)
 {
-    reinterpret_cast<::ImFont*>(self)->RenderChar(reinterpret_cast<::ImDrawList*>(draw_list), size, ConvertToCPP_ImVec2(pos), col, c, reinterpret_cast<const ::ImVec4*>(NULL));
+    reinterpret_cast<::ImFont*>(self)->RenderChar(reinterpret_cast<::ImDrawList*>(draw_list), size, ConvertToCPP_ImVec2(pos), col, c, static_cast<const ::ImVec4*>(nullptr));
 }
 
 CIMGUI_API void         cimgui::ImFont_RenderCharEx(cimgui::ImFont* self, cimgui::ImDrawList* draw_list, float size, cimgui::ImVec2 pos, ImU32 col, ImWchar c, const cimgui::ImVec4* cpu_fine_clip)
