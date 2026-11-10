@@ -58,7 +58,7 @@ ROCI_GPU_DEBUG=1 odin run examples/shapes     # any program with GPU validation 
 ROCI_PASSES=off output/roci run <sketch>      # the interpreter with no optimisation pass: the reference the passes are compared with
 odin run tests/golden [-- update | scene]     # golden images: scenes drawn offscreen, compared with tests/golden/*.png
 odin run tools/header -- include/roci.h       # regenerate the C header from the registry (a test fails when it is stale)
-odin run tools/site -- --logo                 # write the README's wordmark pictures again from docs/logo/rocinante-logo.svg (a test fails when they are stale)
+odin run tools/site -- --logo                 # write the README's wordmark pictures and the logo's 192-pixel PNGs again from docs/logo/rocinante-logo.svg (a test fails when they are stale)
 tools/abi-check.sh [--run]                    # build roci as a shared library, check its exports match the header, build examples/c/circle.c
 shaders/compile.sh                            # HLSL to SPIR-V and Metal (glslang, spirv-cross); shaders/compile-dxil.sh makes DXIL on Windows
 odin run spikes/codegen -- check              # Spike 3: interpret, generate Odin, build it, compare output

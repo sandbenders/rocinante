@@ -45,7 +45,11 @@ main :: proc() {
 			if !ok || !write(WORDMARK, wordmark(svg, false)) || !write(WORDMARK_ON_DARK, wordmark(svg, true)) {
 				os.exit(1)
 			}
-			fmt.printfln("site: wrote %s and %s from %s", WORDMARK, WORDMARK_ON_DARK, LOGO)
+			clear, white, drew := logo_pngs(svg)
+			if !drew || !write(LOGO_PNG, string(clear)) || !write(LOGO_PNG_WHITE, string(white)) {
+				os.exit(1)
+			}
+			fmt.printfln("site: wrote %s, %s, %s and %s from %s", WORDMARK, WORDMARK_ON_DARK, LOGO_PNG, LOGO_PNG_WHITE, LOGO)
 			os.exit(0)
 		} else {
 			out = arg
