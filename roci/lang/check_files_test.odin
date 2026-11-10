@@ -226,16 +226,22 @@ test_every_example_on_the_newcomer_handout_checks_cleanly :: proc(t: ^testing.T)
 @(test)
 test_every_example_in_the_guides_checks_cleanly :: proc(t: ^testing.T) {
 	dir, err := os.open("site/guides")
-	if err != nil {
-		return // no guides yet
+	if !testing.expectf(t, err == nil, "cannot open site/guides: tests run from the repository root, and the guides have not moved") {
+		return
 	}
 	defer os.close(dir)
 	entries, _ := os.read_dir(dir, -1, context.temp_allocator)
+	guides := 0
+	blocks := 0
 	for entry in entries {
 		if strings.has_suffix(entry.name, ".md") {
-			check_code_blocks(t, fmt.tprintf("site/guides/%s", entry.name))
+			guides += 1
+			blocks += check_code_blocks(t, fmt.tprintf("site/guides/%s", entry.name))
 		}
 	}
+	// a test that finds nothing to check must fail, not pass (there were 17 guides and 105 blocks)
+	testing.expectf(t, guides >= 10, "only %d guides were found in site/guides", guides)
+	testing.expectf(t, blocks >= 50, "only %d code blocks were found in the guides", blocks)
 }
 
 @(test)
