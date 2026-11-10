@@ -796,6 +796,27 @@ test_a_record_that_gains_a_field_keeps_its_values :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_a_record_held_in_two_places_is_still_one_record_after_a_reload :: proc(t: ^testing.T) {
+	// two names and a list that hold one record: it is carried across once
+	lines := "a = { x: 1 }\nb = a\nxs = [ a a ]\n"
+	n, outcome := reloaded(t, strings.concatenate({lines, "draw [ a.x = a.x + 1 ]"}, context.temp_allocator), strings.concatenate({lines, "draw [\n  a.x = a.x + 1\n  print b.x\n  second = item 2 of xs\n  print second.x\n]"}, context.temp_allocator), 3)
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	roci.step()
+	testing.expect_value(t, printed(n), "5\n5")
+}
+
+@(test)
+test_a_record_held_by_a_table_and_a_name_is_still_one_record_after_a_reload :: proc(t: ^testing.T) {
+	lines := "r = { x: 1 }\nt = table\nput t \"a\" r\nput t \"b\" r\n"
+	n, outcome := reloaded(t, strings.concatenate({lines, "draw [ r.x = r.x + 1 ]"}, context.temp_allocator), strings.concatenate({lines, "draw [\n  r.x = r.x + 1\n  q = get t \"b\"\n  print q.x\n]"}, context.temp_allocator), 3)
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	roci.step()
+	testing.expect_value(t, printed(n), "5")
+}
+
+@(test)
 test_a_record_that_loses_a_field_starts_again_from_its_line :: proc(t: ^testing.T) {
 	before := "ball = { a: 7, b: 1 }\ndraw [ ball.a = ball.a + 1 ]"
 	after := "ball = { a: 7 }\ndraw [\n  print ball.a\n]"

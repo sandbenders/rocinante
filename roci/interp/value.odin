@@ -190,6 +190,11 @@ field_index :: proc(it: ^Interp, shape: int, name: string) -> int {
 @(private)
 Copies :: map[rawptr]rawptr
 
+@(private)
+note_copied_table :: proc(data: rawptr, from, to: ^Table) {
+	(^Copies)(data)[from] = to
+}
+
 // A value that can be stored in something that lives as long as the sketch: a
 // frame's list or record is copied into long-lived memory first; one that already
 // lives there is shared as it is. Each frame's list, record or table is copied once
@@ -248,7 +253,7 @@ promote_in :: proc(it: ^Interp, v: Value, copies: ^Copies, depth: int) -> Value 
 		if to, found := copies[x]; found {
 			return (^Table)(to)
 		}
-		return table_copy(it, x, true, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {return promote_in(it, v, (^Copies)(data), depth)}, copies, depth, copies)
+		return table_copy(it, x, true, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {return promote_in(it, v, (^Copies)(data), depth)}, copies, depth, note_copied_table)
 	case ^roci.Gradient:
 		if x == nil {
 			return v
@@ -314,7 +319,7 @@ deep_copy_in :: proc(it: ^Interp, v: Value, copies: ^Copies, depth: int) -> Valu
 		if to, found := copies[x]; found {
 			return (^Table)(to)
 		}
-		return table_copy(it, x, it.alloc == it.long, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {return deep_copy_in(it, v, (^Copies)(data), depth)}, copies, depth, copies)
+		return table_copy(it, x, it.alloc == it.long, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {return deep_copy_in(it, v, (^Copies)(data), depth)}, copies, depth, note_copied_table)
 	case ^roci.Gradient:
 		if x == nil {
 			return v

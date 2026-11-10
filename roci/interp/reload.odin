@@ -182,7 +182,7 @@ compatible :: proc(old: ^Interp, ot: lang.Type_Id, fresh: ^Interp, nt: lang.Type
 
 // A copy of an old value in the new sketch's memory, shaped as the new type.
 @(private)
-convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> Value {
+convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, carried: ^Carried, depth := 0) -> Value {
 	if depth > 16 {
 		return nil
 	}
@@ -202,26 +202,34 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> 
 		if x == nil {
 			return v
 		}
+		if to, found := carried[{x, n}]; found {
+			return (^List)(to)
+		}
 		l := new(List, fresh.long)
 		l.id = next_write(fresh)
 		l.long = true
 		l.items = make([dynamic]Value, 0, len(x.items), fresh.long)
+		carried[{x, n}] = l
 		element := lang.T_BOXED
 		if item.kind == .List {
 			element = lang.Type_Id(item.a)
 		}
 		for e in x.items {
-			append(&l.items, convert(old, fresh, e, element, depth + 1))
+			append(&l.items, convert(old, fresh, e, element, carried, depth + 1))
 		}
 		return l
 	case ^Record:
 		if x == nil || item.kind != .Record {
 			return nil
 		}
+		if to, found := carried[{x, n}]; found {
+			return (^Record)(to)
+		}
 		r := new(Record, fresh.long)
 		r.long = true
 		r.shape = item.a
 		r.class = x.class
+		carried[{x, n}] = r
 		fields := fresh.types.shapes[item.a].fields
 		r.fields = make([]Value, len(fields), fresh.long)
 		old_fields := old.types.shapes[x.shape].fields
@@ -229,7 +237,7 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> 
 			r.fields[i] = zero_value(fresh, f.type, 0)
 			for g, j in old_fields {
 				if g.name == f.name && j < len(x.fields) {
-					r.fields[i] = convert(old, fresh, x.fields[j], f.type, depth + 1)
+					r.fields[i] = convert(old, fresh, x.fields[j], f.type, carried, depth + 1)
 				}
 			}
 		}
@@ -238,11 +246,17 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> 
 		if x == nil || item.kind != .Table {
 			return nil
 		}
-		carry := Carry{old = old, type = lang.Type_Id(item.a)}
+		if to, found := carried[{x, n}]; found {
+			return (^Table)(to)
+		}
+		carry := Carry{old = old, type = lang.Type_Id(item.a), own = n, carried = carried}
 		return table_copy(fresh, x, true, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {
 			c := (^Carry)(data)
-			return convert(c.old, it, v, c.type, depth)
-		}, &carry, depth)
+			return convert(c.old, it, v, c.type, c.carried, depth)
+		}, &carry, depth, proc(data: rawptr, from, to: ^Table) {
+			c := (^Carry)(data)
+			c.carried[{from, c.own}] = to
+		})
 	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
 	}
 	return v
@@ -251,7 +265,22 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, depth := 0) -> 
 // What a table's values are carried across with.
 @(private = "file")
 Carry :: struct {
-	old:  ^Interp,
+	old:     ^Interp,
+	type:    lang.Type_Id,
+	own:     lang.Type_Id, // the table's own type, the key it is carried under
+	carried: ^Carried,
+}
+
+// What a reload has carried across so far: an old list, record or table held in two
+// places (two names, two items) is carried once, so the two places still hold one
+// value, as they did; a type is part of the key because one old value could be carried
+// to two names that now hold different shapes.
+@(private = "file")
+Carried :: map[Carried_Key]rawptr
+
+@(private = "file")
+Carried_Key :: struct {
+	from: rawptr,
 	type: lang.Type_Id,
 }
 
@@ -324,13 +353,15 @@ reload_files :: proc(p: ^Interp, files: []lang.File_Text, restart := false) -> (
 	n.frame = &frame
 	begin_block(n)
 	kept, again, lost := 0, make([dynamic]string, context.temp_allocator), make([dynamic]string, context.temp_allocator)
+	carried: Carried
+	defer delete(carried)
 	for s, i in new_stmts {
 		j := carry[i]
 		assign, is_assign := s.kind.(lang.IR_Assign)
 		if is_assign && j >= 0 && len(assign.fields) == 0 {
 			if old_assign, was_assign := old_stmts[j].kind.(lang.IR_Assign); was_assign && assign.target.kind != .Constant {
 				if v, has := global_value(p, old_assign.target); has && compatible(p, old_assign.target.type, n, assign.target.type) {
-					set_global(n, assign.target, convert(p, n, v, assign.target.type))
+					set_global(n, assign.target, convert(p, n, v, assign.target.type, &carried))
 					kept += 1
 					continue
 				}
@@ -357,7 +388,7 @@ reload_files :: proc(p: ^Interp, files: []lang.File_Text, restart := false) -> (
 				break
 			}
 			if compatible(p, old_symbol.type, n, new_symbol.type) {
-				set_global(n, new_symbol, convert(p, n, v, new_symbol.type))
+				set_global(n, new_symbol, convert(p, n, v, new_symbol.type, &carried))
 				kept += 1
 			} else {
 				append(&lost, old_symbol.name)

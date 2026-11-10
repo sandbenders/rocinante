@@ -84,10 +84,10 @@ table_remove :: proc(it: ^Interp, t: ^Table, key: string) {
 // A copy of a table in the sketch's memory (`long`) or the frame's, each value
 // made by `each` (promote, deep_copy or convert).
 @(private)
-table_copy :: proc(it: ^Interp, x: ^Table, long: bool, each: proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value, data: rawptr, depth: int, copies: ^map[rawptr]rawptr = nil) -> ^Table {
+table_copy :: proc(it: ^Interp, x: ^Table, long: bool, each: proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value, data: rawptr, depth: int, made: proc(data: rawptr, from, to: ^Table) = nil) -> ^Table {
 	t := make_table(it, long, len(x.keys))
-	if copies != nil {
-		copies[x] = t // before its values, so a table that holds itself ends where it began
+	if made != nil {
+		made(data, x, t) // before its values, so a table that holds itself ends where it began
 	}
 	alloc := it.long if long else it.alloc
 	for name, i in x.keys {
