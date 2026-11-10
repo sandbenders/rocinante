@@ -141,12 +141,17 @@ makes_window :: proc(e: ^lang.IR) -> bool {
 // ---- carrying values across ----
 
 // Could a value that has the old type be kept as the new type? A record may have
-// gained fields but not lost one or changed what one holds.
+// gained fields but not lost one or changed what one holds. A record that holds its own
+// kind (a node with a `next`) is compared with the new one once: meeting the same two
+// shapes again on the way down is not a difference.
 @(private)
-compatible :: proc(old: ^Interp, ot: lang.Type_Id, fresh: ^Interp, nt: lang.Type_Id, depth := 0) -> bool {
-	if depth > 8 {
-		return false
-	}
+compatible :: proc(old: ^Interp, ot: lang.Type_Id, fresh: ^Interp, nt: lang.Type_Id) -> bool {
+	met := make([dynamic][2]int, context.temp_allocator)
+	return compatible_in(old, ot, fresh, nt, &met)
+}
+
+@(private = "file")
+compatible_in :: proc(old: ^Interp, ot: lang.Type_Id, fresh: ^Interp, nt: lang.Type_Id, met: ^[dynamic][2]int) -> bool {
 	o, n := lang.resolve(old.types, ot), lang.resolve(fresh.types, nt)
 	a, b := old.types.items[o], fresh.types.items[n]
 	loose := proc(k: lang.Type_Kind) -> bool {
@@ -162,13 +167,20 @@ compatible :: proc(old: ^Interp, ot: lang.Type_Id, fresh: ^Interp, nt: lang.Type
 	case .Vector:
 		return a.a == b.a
 	case .List, .Table:
-		return compatible(old, lang.Type_Id(a.a), fresh, lang.Type_Id(b.a), depth + 1)
+		return compatible_in(old, lang.Type_Id(a.a), fresh, lang.Type_Id(b.a), met)
 	case .Record:
-		for f in old.types.shapes[a.a].fields {
+		pair := [2]int{lang.shape_root(old.types, a.a), lang.shape_root(fresh.types, b.a)}
+		for m in met {
+			if m == pair {
+				return true
+			}
+		}
+		append(met, pair)
+		for f in old.types.shapes[pair[0]].fields {
 			found := false
-			for g in fresh.types.shapes[b.a].fields {
+			for g in fresh.types.shapes[pair[1]].fields {
 				if g.name == f.name {
-					found = compatible(old, f.type, fresh, g.type, depth + 1)
+					found = compatible_in(old, f.type, fresh, g.type, met)
 					break
 				}
 			}
@@ -180,12 +192,79 @@ compatible :: proc(old: ^Interp, ot: lang.Type_Id, fresh: ^Interp, nt: lang.Type
 	return true
 }
 
-// A copy of an old value in the new sketch's memory, shaped as the new type.
+// What a reload has carried across so far: an old list, record or table held in two
+// places (two names, two items) is carried once, so the two places still hold one
+// value, as they did; a type is part of the key because one old value could be carried
+// to two names that now hold different shapes.
+@(private = "file")
+Carried :: map[Carried_Key]rawptr
+
+@(private = "file")
+Carried_Key :: struct {
+	from: rawptr,
+	type: lang.Type_Id,
+}
+
+// An old list, record or table made in the new sketch's memory and waiting to have what
+// it holds carried across, as the type `type` says it is now.
+@(private = "file")
+Carrying :: struct {
+	from: Value,
+	to:   Value,
+	type: lang.Type_Id,
+}
+
+// A copy of an old value in the new sketch's memory, shaped as the new type. Made
+// without recursion, so a list or a chain of records of any depth is carried whole: a
+// container is made empty and filled afterwards from `work`.
 @(private)
-convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, carried: ^Carried, depth := 0) -> Value {
-	if depth > 16 {
-		return nil
+convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, carried: ^Carried) -> Value {
+	work := make([dynamic]Carrying, context.temp_allocator)
+	out := convert_shell(fresh, v, nt, carried, &work)
+	for len(work) > 0 {
+		next := pop(&work)
+		item := fresh.types.items[next.type]
+		switch from in next.from {
+		case ^List:
+			to := next.to.(^List)
+			element := lang.T_BOXED
+			if item.kind == .List {
+				element = lang.Type_Id(item.a)
+			}
+			for e in from.items {
+				append(&to.items, convert_shell(fresh, e, element, carried, &work))
+			}
+		case ^Record:
+			to := next.to.(^Record)
+			fields := fresh.types.shapes[item.a].fields
+			old_fields := old.types.shapes[from.shape].fields
+			for f, i in fields {
+				to.fields[i] = zero_value(fresh, f.type, 0)
+				for g, j in old_fields {
+					if g.name == f.name && j < len(from.fields) {
+						to.fields[i] = convert_shell(fresh, from.fields[j], f.type, carried, &work)
+					}
+				}
+			}
+		case ^Table:
+			to := next.to.(^Table)
+			for name, i in from.keys {
+				key := strings.clone(name, fresh.long)
+				to.index[key] = i
+				append(&to.keys, key)
+				append(&to.values, convert_shell(fresh, from.values[i], lang.Type_Id(item.a), carried, &work))
+			}
+		case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, ^roci.Gradient:
+		}
 	}
+	return out
+}
+
+// The new copy of one old value: a container as an empty copy waiting in `work`, text
+// and gradients copied, numbers and the like as they are, and nothing for a value that
+// is not the kind the new type says.
+@(private = "file")
+convert_shell :: proc(fresh: ^Interp, v: Value, nt: lang.Type_Id, carried: ^Carried, work: ^[dynamic]Carrying) -> Value {
 	n := lang.resolve(fresh.types, nt)
 	item := fresh.types.items[n]
 	switch x in v {
@@ -210,13 +289,7 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, carried: ^Carri
 		l.long = true
 		l.items = make([dynamic]Value, 0, len(x.items), fresh.long)
 		carried[{x, n}] = l
-		element := lang.T_BOXED
-		if item.kind == .List {
-			element = lang.Type_Id(item.a)
-		}
-		for e in x.items {
-			append(&l.items, convert(old, fresh, e, element, carried, depth + 1))
-		}
+		append(work, Carrying{from = x, to = l, type = n})
 		return l
 	case ^Record:
 		if x == nil || item.kind != .Record {
@@ -230,17 +303,8 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, carried: ^Carri
 		r.shape = item.a
 		r.class = x.class
 		carried[{x, n}] = r
-		fields := fresh.types.shapes[item.a].fields
-		r.fields = make([]Value, len(fields), fresh.long)
-		old_fields := old.types.shapes[x.shape].fields
-		for f, i in fields {
-			r.fields[i] = zero_value(fresh, f.type, 0)
-			for g, j in old_fields {
-				if g.name == f.name && j < len(x.fields) {
-					r.fields[i] = convert(old, fresh, x.fields[j], f.type, carried, depth + 1)
-				}
-			}
-		}
+		r.fields = make([]Value, len(fresh.types.shapes[item.a].fields), fresh.long)
+		append(work, Carrying{from = x, to = r, type = n})
 		return r
 	case ^Table:
 		if x == nil || item.kind != .Table {
@@ -249,39 +313,13 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, carried: ^Carri
 		if to, found := carried[{x, n}]; found {
 			return (^Table)(to)
 		}
-		carry := Carry{old = old, type = lang.Type_Id(item.a), own = n, carried = carried}
-		return table_copy(fresh, x, true, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {
-			c := (^Carry)(data)
-			return convert(c.old, it, v, c.type, c.carried, depth)
-		}, &carry, depth, proc(data: rawptr, from, to: ^Table) {
-			c := (^Carry)(data)
-			c.carried[{from, c.own}] = to
-		})
+		t := make_table(fresh, true, len(x.keys))
+		carried[{x, n}] = t
+		append(work, Carrying{from = x, to = t, type = n})
+		return t
 	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
 	}
 	return v
-}
-
-// What a table's values are carried across with.
-@(private = "file")
-Carry :: struct {
-	old:     ^Interp,
-	type:    lang.Type_Id,
-	own:     lang.Type_Id, // the table's own type, the key it is carried under
-	carried: ^Carried,
-}
-
-// What a reload has carried across so far: an old list, record or table held in two
-// places (two names, two items) is carried once, so the two places still hold one
-// value, as they did; a type is part of the key because one old value could be carried
-// to two names that now hold different shapes.
-@(private = "file")
-Carried :: map[Carried_Key]rawptr
-
-@(private = "file")
-Carried_Key :: struct {
-	from: rawptr,
-	type: lang.Type_Id,
 }
 
 // ---- reloading ----

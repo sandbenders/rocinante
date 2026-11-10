@@ -183,233 +183,280 @@ field_index :: proc(it: ^Interp, shape: int, name: string) -> int {
 
 // ---- keeping values past the frame ----
 
-// What has been copied so far in one `promote` or `deep_copy`, by the address of the
-// original, so a list, record or table held in two places is copied once and the two
-// places still hold the one copy (they are shared, and a copy keeps that), and a value
-// that holds itself ends where it began.
+// One copy of a value, made without recursion so a list a hundred thousand records
+// long is as safe to keep as one of three. Each list, record or table is copied once
+// however many places hold it, so a record held twice by the value is one copy held
+// twice (they are shared, and a copy keeps that) and a value that holds itself ends
+// where it began. A container is made empty first and filled later from `work`, so the
+// walk never goes deeper than a loop.
 @(private)
-Copies :: map[rawptr]rawptr
+Copier :: struct {
+	it:      ^Interp,
+	keep:    bool, // `promote`: what already lives as long as the sketch is shared as it is; otherwise `deep_copy`
+	copies:  map[rawptr]rawptr,
+	work:    [dynamic]Container,
+}
+
+// A container made and waiting to have its items filled in from the one it copies.
+@(private)
+Container :: struct {
+	from: Value,
+	to:   Value,
+}
 
 @(private)
-note_copied_table :: proc(data: rawptr, from, to: ^Table) {
-	(^Copies)(data)[from] = to
+copier_make :: proc(it: ^Interp, keep: bool) -> Copier {
+	return Copier{it = it, keep = keep}
+}
+
+@(private)
+copier_destroy :: proc(c: ^Copier) {
+	delete(c.copies)
+	delete(c.work)
+}
+
+// The copy of one value: a number, colour or picture as it is, text cloned, and a
+// container as an empty copy that `copier_fill` fills in.
+@(private)
+copier_shell :: proc(c: ^Copier, v: Value) -> Value {
+	it := c.it
+	alloc := it.long if c.keep else it.alloc
+	switch x in v {
+	case string:
+		return strings.clone(x, alloc)
+	case ^List:
+		if x == nil || (c.keep && x.long) {
+			return v
+		}
+		if to, found := c.copies[x]; found {
+			return (^List)(to)
+		}
+		l := new(List, alloc)
+		l.id = next_write(it)
+		l.items = make([dynamic]Value, 0, len(x.items), alloc)
+		l.long = alloc == it.long
+		c.copies[x] = l
+		append(&c.work, Container{from = x, to = l})
+		return l
+	case ^Record:
+		if x == nil || (c.keep && x.long) {
+			return v
+		}
+		if to, found := c.copies[x]; found {
+			return (^Record)(to)
+		}
+		r := new(Record, alloc)
+		r.shape = x.shape
+		r.class = x.class
+		r.long = alloc == it.long
+		r.fields = make([]Value, len(x.fields), alloc)
+		c.copies[x] = r
+		append(&c.work, Container{from = x, to = r})
+		return r
+	case ^Table:
+		if x == nil || (c.keep && x.long) {
+			return v
+		}
+		if to, found := c.copies[x]; found {
+			return (^Table)(to)
+		}
+		t := make_table(it, alloc == it.long, len(x.keys))
+		c.copies[x] = t
+		append(&c.work, Container{from = x, to = t})
+		return t
+	case ^roci.Gradient:
+		if x == nil {
+			return v
+		}
+		g := new(roci.Gradient, alloc)
+		g^ = x^
+		return g
+	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
+	}
+	return v
+}
+
+// Fills in the containers made so far, and the ones their items make, until none wait.
+@(private)
+copier_fill :: proc(c: ^Copier) {
+	alloc := c.it.long if c.keep else c.it.alloc
+	for len(c.work) > 0 {
+		next := pop(&c.work)
+		switch from in next.from {
+		case ^List:
+			to := next.to.(^List)
+			for item in from.items {
+				append(&to.items, copier_shell(c, item))
+			}
+		case ^Record:
+			to := next.to.(^Record)
+			for f, i in from.fields {
+				to.fields[i] = copier_shell(c, f)
+			}
+		case ^Table:
+			to := next.to.(^Table)
+			for name, i in from.keys {
+				key := strings.clone(name, alloc)
+				to.index[key] = i
+				append(&to.keys, key)
+				append(&to.values, copier_shell(c, from.values[i]))
+			}
+		case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, ^roci.Gradient:
+		}
+	}
 }
 
 // A value that can be stored in something that lives as long as the sketch: a
 // frame's list or record is copied into long-lived memory first; one that already
 // lives there is shared as it is. Each frame's list, record or table is copied once
-// however many places in `v` hold it.
-promote :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
-	copies: Copies
-	defer delete(copies)
-	return promote_in(it, v, &copies, depth)
-}
-
-@(private)
-promote_in :: proc(it: ^Interp, v: Value, copies: ^Copies, depth: int) -> Value {
-	if depth > 64 {
-		return nil
-	}
-	switch x in v {
-	case string:
-		return strings.clone(x, it.long)
-	case ^List:
-		if x == nil || x.long {
-			return v
-		}
-		if to, found := copies[x]; found {
-			return (^List)(to)
-		}
-		l := new(List, it.long)
-		l.id = next_write(it)
-		l.items = make([dynamic]Value, 0, len(x.items), it.long)
-		l.long = true
-		copies[x] = l
-		for item in x.items {
-			append(&l.items, promote_in(it, item, copies, depth + 1))
-		}
-		return l
-	case ^Record:
-		if x == nil || x.long {
-			return v
-		}
-		if to, found := copies[x]; found {
-			return (^Record)(to)
-		}
-		r := new(Record, it.long)
-		r.shape = x.shape
-		r.class = x.class
-		r.long = true
-		r.fields = make([]Value, len(x.fields), it.long)
-		copies[x] = r
-		for f, i in x.fields {
-			r.fields[i] = promote_in(it, f, copies, depth + 1)
-		}
-		return r
-	case ^Table:
-		if x == nil || x.long {
-			return v
-		}
-		if to, found := copies[x]; found {
-			return (^Table)(to)
-		}
-		return table_copy(it, x, true, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {return promote_in(it, v, (^Copies)(data), depth)}, copies, depth, note_copied_table)
-	case ^roci.Gradient:
-		if x == nil {
-			return v
-		}
-		g := new(roci.Gradient, it.long)
-		g^ = x^
-		return g
-	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
-	}
-	return v
+// however many places in `v` hold it, and however deep it is.
+promote :: proc(it: ^Interp, v: Value) -> Value {
+	c := copier_make(it, true)
+	defer copier_destroy(&c)
+	out := copier_shell(&c, v)
+	copier_fill(&c)
+	return out
 }
 
 // An independent copy, lists and records inside included. A list, record or table that
 // `v` holds in two places is one copy held in two places, as it was.
-deep_copy :: proc(it: ^Interp, v: Value, depth := 0) -> Value {
-	copies: Copies
-	defer delete(copies)
-	return deep_copy_in(it, v, &copies, depth)
-}
-
-@(private)
-deep_copy_in :: proc(it: ^Interp, v: Value, copies: ^Copies, depth: int) -> Value {
-	if depth > 64 {
-		return nil
-	}
-	switch x in v {
-	case string:
-		return strings.clone(x, it.alloc)
-	case ^List:
-		if x == nil {
-			return v
-		}
-		if to, found := copies[x]; found {
-			return (^List)(to)
-		}
-		l := new_list(it)
-		copies[x] = l
-		for item in x.items {
-			append(&l.items, deep_copy_in(it, item, copies, depth + 1))
-		}
-		return l
-	case ^Record:
-		if x == nil {
-			return v
-		}
-		if to, found := copies[x]; found {
-			return (^Record)(to)
-		}
-		r := new(Record, it.alloc)
-		r.shape = x.shape
-		r.class = x.class
-		r.long = it.alloc == it.long
-		r.fields = make([]Value, len(x.fields), it.alloc)
-		copies[x] = r
-		for f, i in x.fields {
-			r.fields[i] = deep_copy_in(it, f, copies, depth + 1)
-		}
-		return r
-	case ^Table:
-		if x == nil {
-			return v
-		}
-		if to, found := copies[x]; found {
-			return (^Table)(to)
-		}
-		return table_copy(it, x, it.alloc == it.long, proc(it: ^Interp, v: Value, data: rawptr, depth: int) -> Value {return deep_copy_in(it, v, (^Copies)(data), depth)}, copies, depth, note_copied_table)
-	case ^roci.Gradient:
-		if x == nil {
-			return v
-		}
-		g := new(roci.Gradient, it.alloc)
-		g^ = x^
-		return g
-	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
-	}
-	return v
+deep_copy :: proc(it: ^Interp, v: Value) -> Value {
+	c := copier_make(it, false)
+	defer copier_destroy(&c)
+	out := copier_shell(&c, v)
+	copier_fill(&c)
+	return out
 }
 
 // ---- comparing and showing ----
 
 // `is`: same kind and same contents; lists and records by what they hold.
-equal :: proc(a, b: Value, depth := 0) -> bool {
-	if depth > 64 {
-		return false
+equal :: proc(a, b: Value) -> bool {
+	if answer, decided := equal_plain(a, b); decided {
+		return answer
 	}
+	// Lists, records and tables are walked with a list of pairs still to compare and not by
+	// recursion, so two chains a hundred thousand records long compare as safely as short
+	// ones. A pair met a second time (a value that holds itself) is taken as equal there:
+	// it is not the pair that makes them differ.
+	pairs := make([dynamic][2]Value, context.temp_allocator)
+	met := make(map[[2]rawptr]struct{}, context.temp_allocator)
+	append(&pairs, [2]Value{a, b})
+	for len(pairs) > 0 {
+		pair := pop(&pairs)
+		if answer, decided := equal_plain(pair[0], pair[1]); decided {
+			if !answer {
+				return false
+			}
+			continue
+		}
+		if !equal_parts(pair[0], pair[1], &pairs, &met) {
+			return false
+		}
+	}
+	return true
+}
+
+// Whether two values that are not lists, records or tables are equal; `decided` is false
+// for those, which are compared part by part.
+@(private)
+equal_plain :: proc(a, b: Value) -> (answer: bool, decided: bool) {
 	switch x in a {
 	case f64:
 		y, ok := b.(f64)
-		return ok && x == y
+		return ok && x == y, true
 	case bool:
 		y, ok := b.(bool)
-		return ok && x == y
+		return ok && x == y, true
 	case string:
 		y, ok := b.(string)
-		return ok && x == y
+		return ok && x == y, true
 	case Vec:
 		y, ok := b.(Vec)
-		return ok && x == y
+		return ok && x == y, true
 	case maths.Colour:
 		y, ok := b.(maths.Colour)
-		return ok && x == y
+		return ok && x == y, true
 	case roci.Window:
 		y, ok := b.(roci.Window)
-		return ok && x == y
+		return ok && x == y, true
 	case roci.Image:
 		y, ok := b.(roci.Image)
-		return ok && x == y
+		return ok && x == y, true
 	case ^roci.Gradient:
 		y, ok := b.(^roci.Gradient)
-		return ok && (x == y || (x != nil && y != nil && mem.compare_ptrs(x, y, size_of(roci.Gradient)) == 0))
+		return ok && (x == y || (x != nil && y != nil && mem.compare_ptrs(x, y, size_of(roci.Gradient)) == 0)), true
 	case ^List:
-		y, ok := b.(^List)
-		if !ok || x == nil || y == nil {
-			return ok && x == y
+		if y, ok := b.(^List); !ok || x == nil || y == nil {
+			return ok && x == y, true
 		}
+		return false, false
+	case ^Record:
+		if y, ok := b.(^Record); !ok || x == nil || y == nil {
+			return ok && x == y, true
+		}
+		return false, false
+	case ^Table:
+		if y, ok := b.(^Table); !ok || x == nil || y == nil {
+			return ok && x == y, true
+		}
+		return false, false
+	}
+	return b == nil, true
+}
+
+// Compares what two lists, two records or two tables hold: false when they differ in
+// size or shape, otherwise the pairs of parts to compare are added to `pairs`.
+@(private)
+equal_parts :: proc(a, b: Value, pairs: ^[dynamic][2]Value, met: ^map[[2]rawptr]struct{}) -> bool {
+	switch x in a {
+	case ^List:
+		y := b.(^List)
 		if len(x.items) != len(y.items) {
 			return false
 		}
+		key := [2]rawptr{x, y}
+		if key in met {
+			return true
+		}
+		met[key] = {}
 		for item, i in x.items {
-			if !equal(item, y.items[i], depth + 1) {
-				return false
-			}
+			append(pairs, [2]Value{item, y.items[i]})
 		}
-		return true
 	case ^Record:
-		y, ok := b.(^Record)
-		if !ok || x == nil || y == nil {
-			return ok && x == y
-		}
+		y := b.(^Record)
 		if x.shape != y.shape || len(x.fields) != len(y.fields) {
 			return false
 		}
+		key := [2]rawptr{x, y}
+		if key in met {
+			return true
+		}
+		met[key] = {}
 		for f, i in x.fields {
-			if !equal(f, y.fields[i], depth + 1) {
-				return false
-			}
+			append(pairs, [2]Value{f, y.fields[i]})
 		}
-		return true
 	case ^Table:
-		y, ok := b.(^Table)
-		if !ok || x == nil || y == nil {
-			return ok && x == y
-		}
+		y := b.(^Table)
 		if len(x.keys) != len(y.keys) {
 			return false
 		}
+		key := [2]rawptr{x, y}
+		if key in met {
+			return true
+		}
+		met[key] = {}
 		// The same names with the same values, in any order.
 		for name, i in x.keys {
 			other, found := table_get(y, name)
-			if !found || !equal(x.values[i], other, depth + 1) {
+			if !found {
 				return false
 			}
+			append(pairs, [2]Value{x.values[i], other})
 		}
-		return true
+	case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, ^roci.Gradient:
 	}
-	return b == nil
+	return true
 }
 
 // A number as people write it: 3, not 3.000000; 0.5, not 0.500000.

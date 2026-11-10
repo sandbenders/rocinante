@@ -2300,3 +2300,33 @@ test_a_copy_keeps_what_the_value_shared_and_a_table_or_a_record_that_holds_itsel
 	// a record that holds itself, made in a frame and kept, stays one record that holds itself
 	expect_printed(t, "draw [\n  if frame is 1 [\n    a = { x: 1 }\n    a.next = a\n    kept = a\n  ]\n  if frame is 2 [\n    kept.x = 4\n    print kept.next.x\n  ]\n]", "4", 3)
 }
+
+// ---- values that nest very deep ----
+
+@(test)
+test_a_chain_made_in_a_frame_is_kept_copied_and_compared_whole_however_long :: proc(t: ^testing.T) {
+	text := "kept = { value: 0 }\ndraw [\n  if frame is 1 [\n    head = { value: 0 }\n    repeat 100000 [ head = { value: head.value + 1, next: head } ]\n    kept = head\n  ]\n  if frame is 2 [\n    print kept.value\n    twin = copy kept\n    print twin.value\n    print (twin is kept)\n    twin.value = 7\n    print (twin is kept)\n  ]\n]"
+	expect_printed(t, text, "100000\n100000\ntrue\nfalse", 3)
+}
+
+@(test)
+test_the_collector_copies_a_long_chain_and_keeps_it_one_chain :: proc(t: ^testing.T) {
+	p := run_text(t, "head = { value: 0 }\nrepeat 100000 [ head = { value: head.value + 1, next: head } ]\nother = head\ndraw [ print head.value ]", 1)
+	defer finish(p)
+	collect(p)
+	roci.step()
+	collect(p)
+	roci.step()
+	testing.expect_value(t, printed(p), "100000\n100000\n100000")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_a_reload_carries_a_long_chain_whole :: proc(t: ^testing.T) {
+	lines := "head = { value: 0 }\nrepeat 100000 [ head = { value: head.value + 1, next: head } ]\n"
+	n, outcome := reloaded(t, strings.concatenate({lines, "draw [ ]"}, context.temp_allocator), strings.concatenate({lines, "draw [ print head.value ]"}, context.temp_allocator), 1)
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	roci.step()
+	testing.expect_value(t, printed(n), "100000")
+}

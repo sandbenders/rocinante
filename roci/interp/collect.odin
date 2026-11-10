@@ -72,8 +72,42 @@ collect :: proc(p: ^Interp) {
 
 // A copy of `v` in the new arena (`p.long`), each list, record and table copied once
 // however many places hold it. Text has no identity, so each place gets its own copy.
+// Made without recursion, like `promote`, so a chain of a hundred thousand records is
+// copied as safely as a short one: a container is made empty and filled afterwards.
 @(private = "file")
 move_value :: proc(p: ^Interp, v: Value, moved: ^map[rawptr]rawptr) -> Value {
+	work := make([dynamic]Container, context.temp_allocator)
+	out := move_shell(p, v, moved, &work)
+	for len(work) > 0 {
+		next := pop(&work)
+		switch from in next.from {
+		case ^List:
+			to := next.to.(^List)
+			for item in from.items {
+				append(&to.items, move_shell(p, item, moved, &work))
+			}
+		case ^Record:
+			to := next.to.(^Record)
+			for f, i in from.fields {
+				to.fields[i] = move_shell(p, f, moved, &work)
+			}
+		case ^Table:
+			to := next.to.(^Table)
+			for name, i in from.keys {
+				key := strings.clone(name, p.long)
+				to.index[key] = i
+				append(&to.keys, key)
+				append(&to.values, move_shell(p, from.values[i], moved, &work))
+			}
+		case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, ^roci.Gradient:
+		}
+	}
+	return out
+}
+
+// The copy of one value, a container as an empty copy waiting in `work`.
+@(private = "file")
+move_shell :: proc(p: ^Interp, v: Value, moved: ^map[rawptr]rawptr, work: ^[dynamic]Container) -> Value {
 	switch x in v {
 	case string:
 		return strings.clone(x, p.long)
@@ -88,9 +122,7 @@ move_value :: proc(p: ^Interp, v: Value, moved: ^map[rawptr]rawptr) -> Value {
 		l^ = {long = x.long, id = x.id, stamp = x.stamp}
 		moved[x] = l
 		l.items = make([dynamic]Value, 0, len(x.items), p.long)
-		for item in x.items {
-			append(&l.items, move_value(p, item, moved))
-		}
+		append(work, Container{from = x, to = l})
 		return l
 	case ^Record:
 		if x == nil {
@@ -103,9 +135,7 @@ move_value :: proc(p: ^Interp, v: Value, moved: ^map[rawptr]rawptr) -> Value {
 		r^ = {shape = x.shape, long = x.long, class = x.class, stamp = x.stamp}
 		moved[x] = r
 		r.fields = make([]Value, len(x.fields), p.long)
-		for f, i in x.fields {
-			r.fields[i] = move_value(p, f, moved)
-		}
+		append(work, Container{from = x, to = r})
 		return r
 	case ^Table:
 		if x == nil {
@@ -120,12 +150,7 @@ move_value :: proc(p: ^Interp, v: Value, moved: ^map[rawptr]rawptr) -> Value {
 		t.keys = make([dynamic]string, 0, len(x.keys), p.long)
 		t.values = make([dynamic]Value, 0, len(x.keys), p.long)
 		t.index = make(map[string]int, len(x.keys), p.long)
-		for name, i in x.keys {
-			key := strings.clone(name, p.long)
-			t.index[key] = i
-			append(&t.keys, key)
-			append(&t.values, move_value(p, x.values[i], moved))
-		}
+		append(work, Container{from = x, to = t})
 		return t
 	case ^roci.Gradient:
 		if x == nil {
