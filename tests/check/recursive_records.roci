@@ -1,0 +1,9 @@
+// Records that hold their own kind: a record that holds itself, and a linked list.
+a = { value: 1 }
+a.next = a
+
+first = { value: 1 }
+second = { value: 2, next: first }
+first = second
+
+print second.next.value

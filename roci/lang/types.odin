@@ -195,22 +195,38 @@ kind_of :: proc(ts: ^Types, id: Type_Id) -> Type_Kind {
 }
 
 // Whether the variable `variable` occurs inside `id`, which would make a type
-// that contains itself.
+// that contains itself. A record can hold its own kind (a list of nodes that each
+// hold the next), so the shapes already walked on the way down are kept and not
+// walked again.
 @(private)
 occurs :: proc(ts: ^Types, variable: Type_Id, id: Type_Id) -> bool {
+	seen := make([dynamic]int, context.temp_allocator)
+	return occurs_in(ts, variable, id, &seen)
+}
+
+@(private)
+occurs_in :: proc(ts: ^Types, variable: Type_Id, id: Type_Id, seen: ^[dynamic]int) -> bool {
 	now := resolve(ts, id)
 	if now == variable {
 		return true
 	}
 	item := ts.items[now]
 	if item.kind == .Record {
-		for f in ts.shapes[item.a].fields {
-			if occurs(ts, variable, f.type) {
+		root := shape_root(ts, item.a)
+		for s in seen {
+			if s == root {
+				return false
+			}
+		}
+		append(seen, root)
+		for f in ts.shapes[root].fields {
+			if occurs_in(ts, variable, f.type, seen) {
 				return true
 			}
 		}
+		return false
 	}
-	return (item.kind == .List || item.kind == .Table) && occurs(ts, variable, Type_Id(item.a))
+	return (item.kind == .List || item.kind == .Table) && occurs_in(ts, variable, Type_Id(item.a), seen)
 }
 
 // Makes the two types one, binding variables as needed. False when they cannot

@@ -2225,3 +2225,12 @@ make_message_sketch :: proc(t: ^testing.T) -> string {
 	testing.expect(t, os.write_entire_file(root + "/assets/images/b/twin.png", transmute([]byte)string("x")) == nil)
 	return root + "/sketch.roci"
 }
+
+// ---- records that hold their own kind ----
+
+@(test)
+test_a_record_can_hold_itself_and_a_chain_of_them_can_be_long :: proc(t: ^testing.T) {
+	expect_printed(t, "a = { value: 1 }\na.next = a\nprint a.next.next.value", "1")
+	expect_printed(t, "a = { value: 1 }\nb = { value: 2, next: a }\na = b\nprint a.next.value", "1")
+	expect_printed(t, "head = { value: 0 }\nrepeat 100000 [ head = { value: head.value + 1, next: head } ]\nprint head.value", "100000")
+}

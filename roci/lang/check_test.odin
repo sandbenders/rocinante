@@ -51,6 +51,38 @@ test_unify_binds_variables_and_rejects_different_kinds :: proc(t: ^testing.T) {
 	testing.expect_value(t, resolve(&ts, a), T_TEXT)
 }
 
+// A variable meeting a record that holds its own kind must end, and answer false only
+// when the variable really is inside it.
+@(test)
+test_a_record_that_holds_its_own_kind_does_not_loop_forever :: proc(t: ^testing.T) {
+	ts := types_init(context.temp_allocator)
+	shape := new_shape(&ts, context.temp_allocator)
+	node := record_of(&ts, shape)
+	add_field(&ts, shape, "next", node)
+	add_field(&ts, shape, "value", T_NUMBER)
+	v := fresh(&ts)
+	testing.expect(t, unify(&ts, v, node))
+	testing.expect_value(t, resolve(&ts, v), node)
+	// two shapes that hold each other
+	other := new_shape(&ts, context.temp_allocator)
+	second := record_of(&ts, other)
+	add_field(&ts, other, "next", node)
+	add_field(&ts, shape, "friend", second)
+	w := fresh(&ts)
+	testing.expect(t, unify(&ts, w, second))
+	// a variable inside a record that holds itself is still found
+	inner := fresh(&ts)
+	holder := new_shape(&ts, context.temp_allocator)
+	holding := record_of(&ts, holder)
+	add_field(&ts, holder, "self", holding)
+	add_field(&ts, holder, "part", inner)
+	testing.expect(t, !unify(&ts, inner, holding))
+	// and two such shapes made one stay finite
+	third := new_shape(&ts, context.temp_allocator)
+	add_field(&ts, third, "next", record_of(&ts, third))
+	testing.expect(t, merge_shapes(&ts, shape, third))
+}
+
 @(test)
 test_unify_treats_errors_and_boxed_values_as_fitting_everything :: proc(t: ^testing.T) {
 	ts := types_init(context.temp_allocator)
