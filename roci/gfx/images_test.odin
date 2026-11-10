@@ -218,3 +218,84 @@ a_picture_is_described_as_an_image_with_its_box :: proc(t: ^testing.T) {
 	testing.expect_value(t, [4]f32{d.x, d.y, d.width, d.height}, [4]f32{0, 5, 30, 40}) // 10 - 15 + 5, 20 - 20 + 5
 	testing.expect(t, d.visible)
 }
+
+@(test)
+test_a_slot_let_go_is_reused_and_the_old_number_still_names_nothing :: proc(t: ^testing.T) {
+	defer images_stop()
+	pixel := []u8{1, 2, 3, 4}
+	first, _ := image_add_pixels(1, 1, pixel)
+	testing.expect(t, image_release(first))
+	// the slot waits until plenty of others do too, so a number is not reused at once
+	for _ in 0 ..< REUSE_AFTER_FREE_SLOTS {
+		id, ok := image_add_pixels(1, 1, pixel)
+		testing.expect(t, ok)
+		testing.expect(t, image_release(id))
+	}
+	slots_before := len(image_store)
+	again, ok := image_add_pixels(1, 1, pixel)
+	testing.expect(t, ok)
+	testing.expect_value(t, len(image_store), slots_before) // the oldest slot let go was given again
+	testing.expect(t, again != first, "the number says it is a new picture in the old slot")
+	testing.expect(t, image_data(again) != nil)
+	testing.expect(t, image_data(first) == nil, "a number from before the slot was let go names nothing")
+	testing.expect(t, !image_release(first), "and cannot let go of the picture that has the slot now")
+	testing.expect(t, image_data(again) != nil)
+	// a number is below 2^24, which a 32-bit float holds exactly, as the drawing commands carry it
+	testing.expect(t, u32(again) < 1 << 24)
+	testing.expect_value(t, Image_Id(f32(again)), again)
+}
+
+@(test)
+test_pictures_made_and_let_go_for_ever_keep_the_store_small :: proc(t: ^testing.T) {
+	defer images_stop()
+	pixel := []u8{1, 2, 3, 4}
+	for _ in 0 ..< 5000 {
+		id, ok := image_add_pixels(1, 1, pixel)
+		testing.expect(t, ok)
+		testing.expect(t, image_release(id))
+	}
+	testing.expect(t, len(image_store) <= REUSE_AFTER_FREE_SLOTS + 2, "slots are reused, not added for ever")
+	testing.expect(t, len(image_free) < 5000, "the list of free slots does not keep every slot let go")
+}
+
+@(test)
+test_the_list_of_pictures_let_go_is_cut_to_what_a_renderer_has_not_seen :: proc(t: ^testing.T) {
+	defer images_stop()
+	pixel := []u8{1, 2, 3, 4}
+	slow, fast := 0, 0
+	image_reader_add(&slow)
+	image_reader_add(&fast)
+	defer image_reader_remove(&slow)
+	defer image_reader_remove(&fast)
+	for _ in 0 ..< 10 {
+		id, _ := image_add_pixels(1, 1, pixel)
+		image_release(id)
+	}
+	testing.expect_value(t, len(released_images), 10)
+	fast = released_base + len(released_images)
+	images_tick()
+	testing.expect_value(t, len(released_images), 10) // the slow one has not seen them
+	slow = 4
+	images_tick()
+	testing.expect_value(t, len(released_images), 6)
+	testing.expect_value(t, released_base, 4)
+	slow = released_base + len(released_images)
+	images_tick()
+	testing.expect_value(t, len(released_images), 0)
+	// a renderer made now has no texture of the ones let go before it
+	late := 0
+	image_reader_add(&late)
+	defer image_reader_remove(&late)
+	testing.expect_value(t, late, released_base + len(released_images))
+	// and with no renderer at all the list is cut at once
+	image_reader_remove(&slow)
+	image_reader_remove(&fast)
+	image_reader_remove(&late)
+	id, _ := image_add_pixels(1, 1, pixel)
+	image_release(id)
+	images_tick()
+	testing.expect_value(t, len(released_images), 0)
+	image_reader_add(&slow)
+	image_reader_add(&fast)
+	image_reader_add(&late)
+}

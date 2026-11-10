@@ -51,8 +51,11 @@ image_add_canvas :: proc(width, height: int, density: f32) -> (Image_Id, bool) {
 	canvas.list.background = {0, 0, 0, 0}
 	canvas.list.style = DEFAULT_STYLE
 	canvas.list.transform = IDENTITY
-	append(&image_store, Image_Data{width = width, height = height, canvas = canvas})
-	return Image_Id(len(image_store)), true
+	id, kept := image_put(Image_Data{width = width, height = height, canvas = canvas})
+	if !kept {
+		canvas_destroy(canvas)
+	}
+	return id, kept
 }
 
 // The canvas a picture number is, or nil for a loaded picture or a number that is not one.

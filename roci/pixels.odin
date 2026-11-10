@@ -24,7 +24,8 @@ import "gfx"
 
 Filter :: gfx.Filter_Kind
 
-// A picture one of the operations made, and how big it is, for keeping the total in check.
+// A picture one of the operations made, and how much memory it takes, for keeping the total
+// in check: its pixels, and again the texture the graphics make of it when it is drawn.
 Derived_Picture :: struct {
 	id:    Image,
 	bytes: int,
@@ -39,7 +40,19 @@ Canvas_Read :: struct {
 }
 
 // How many bytes of pictures the sketch's own operations may hold before the longest unused go.
+// Each counts twice, as its pixels and as its texture, which is as big again where the
+// pictures are drawn (and on a computer whose graphics are the processor's, the same memory).
 DERIVED_BUDGET_BYTES :: 256 * 1024 * 1024
+
+// How many pictures the sketch's own operations may hold before the longest unused go. Every
+// picture costs something besides its pixels (a texture the graphics must keep apart, a slot),
+// which the bytes do not show when the pictures are small, as a crop made every frame is.
+MAX_DERIVED_PICTURES :: 2048
+
+// Letting go starts when either limit is passed and goes on until the pictures are down to
+// this part of it, so a sketch that makes a picture every frame sorts them now and then and
+// not every frame.
+EVICT_DOWN_TO :: 0.9
 
 // The most pixels a new picture may have, so a size typed wrongly cannot ask for a gigabyte.
 MAX_PICTURE_PIXELS :: 32 * 1024 * 1024
@@ -198,7 +211,11 @@ derived_picture :: proc(key: u64, pixels: []u8, width, height: int) -> Image {
 	if the.derived == nil {
 		the.derived = make(map[u64]Derived_Picture)
 	}
-	the.derived[key] = Derived_Picture{id = id, bytes = len(pixels)}
+	if old, stale := the.derived[key]; stale {
+		the.derived_bytes -= old.bytes // its picture was let go with the renderer's, and this replaces it
+	}
+	the.derived[key] = Derived_Picture{id = id, bytes = 2 * len(pixels)}
+	the.derived_bytes += 2 * len(pixels)
 	return id
 }
 
@@ -325,21 +342,13 @@ mask_picture :: proc(picture, stencil: Image) -> (result: Image, ok: bool) {
 // ---- keeping the total in check ----
 
 // Lets go of pictures the sketch's operations made, longest unused first, while they hold more
-// than `DERIVED_BUDGET_BYTES`; one used in the last two frames is never let go. Called each frame.
+// than `DERIVED_BUDGET_BYTES` or are more than `MAX_DERIVED_PICTURES`, down to `EVICT_DOWN_TO`
+// of it; one used in the last two frames is never let go. Called each frame, and does nothing
+// but compare two numbers while the pictures are within the limits.
 evict_derived :: proc() {
 	budget := the.derived_budget if the.derived_budget > 0 else DERIVED_BUDGET_BYTES
-	total := 0
-	for _, d in the.derived {
-		if gfx.image_data(d.id) != nil {
-			total += d.bytes
-		}
-	}
-	if total <= budget {
-		for key, d in the.derived {
-			if gfx.image_data(d.id) == nil {
-				delete_key(&the.derived, key)
-			}
-		}
+	most := the.derived_most if the.derived_most > 0 else MAX_DERIVED_PICTURES
+	if the.derived_bytes <= budget && len(the.derived) <= most {
 		return
 	}
 	Entry :: struct {
@@ -350,20 +359,27 @@ evict_derived :: proc() {
 	for key, d in the.derived {
 		if data := gfx.image_data(d.id); data != nil {
 			append(&entries, Entry{key, data.used})
+		} else {
+			the.derived_bytes -= d.bytes // let go by something else, as `images_stop` does
+			delete_key(&the.derived, key)
 		}
 	}
 	slice.sort_by(entries[:], proc(a, b: Entry) -> bool {
 		return a.used < b.used || (a.used == b.used && a.key < b.key)
 	})
+	down_to_bytes, down_to_count := int(f64(budget) * EVICT_DOWN_TO), int(f64(most) * EVICT_DOWN_TO)
+	if the.derived_bytes <= budget && len(the.derived) <= most {
+		return
+	}
 	for e in entries {
-		if total <= budget {
+		if the.derived_bytes <= down_to_bytes && len(the.derived) <= down_to_count {
 			break
 		}
 		d := the.derived[e.key]
 		if data := gfx.image_data(d.id); data != nil && gfx.images_clock - data.used <= 2 {
 			continue
 		}
-		total -= d.bytes
+		the.derived_bytes -= d.bytes
 		gfx.image_release(d.id)
 		delete_key(&the.derived, e.key)
 	}

@@ -193,14 +193,14 @@ test_a_mask_hides_the_picture_where_its_stencil_is_black :: proc(t: ^testing.T) 
 test_the_longest_unused_pictures_are_let_go_when_the_sketch_made_too_many :: proc(t: ^testing.T) {
 	defer shutdown()
 	p := gradient_picture(10, 10)
-	the.derived_budget = 1000 // a made 10 by 10 picture is 400 bytes
+	the.derived_budget = 2400 // a made 10 by 10 picture is 400 bytes of pixels and 400 of texture
 	made: [4]Image
 	for i in 0 ..< 4 {
 		gfx.images_tick()
 		made[i], _ = resize_picture(p, 10, 10 - f64(i)) // 400, 360, 320, 280 bytes: each its own picture
 	}
-	// Four pictures hold 1360 bytes, over the budget: the one used longest ago goes, and that
-	// is enough. The others were used in the last frames or are not needed to get under it.
+	// Four pictures hold 2720 bytes, over the budget: the one used longest ago goes, which gets
+	// them under nine tenths of it. The others were used in the last frames or are not needed.
 	evict_derived()
 	testing.expect(t, gfx.image_data(made[0]) == nil, "the longest unused goes first")
 	for id in made[1:] {
@@ -210,7 +210,7 @@ test_the_longest_unused_pictures_are_let_go_when_the_sketch_made_too_many :: pro
 		gfx.images_tick()
 	}
 	gfx.image_touch(made[3]) // this one is used again, so it stays however little room there is
-	the.derived_budget = 500
+	the.derived_budget = 1000
 	evict_derived()
 	testing.expect(t, gfx.image_data(made[1]) == nil && gfx.image_data(made[2]) == nil)
 	testing.expect(t, gfx.image_data(made[3]) != nil, "a picture used in the last two frames is never let go")
@@ -218,7 +218,7 @@ test_the_longest_unused_pictures_are_let_go_when_the_sketch_made_too_many :: pro
 	for _, d in the.derived {
 		total += d.bytes
 	}
-	testing.expect(t, total <= 500)
+	testing.expect(t, total <= 1000)
 	// A picture that was let go is made again by the same call.
 	again, _ := resize_picture(p, 10, 10)
 	testing.expect(t, again != 0 && gfx.image_data(again) != nil)
@@ -236,4 +236,32 @@ test_a_picture_let_go_is_made_again_when_asked_for_again :: proc(t: ^testing.T) 
 	testing.expect(t, second != 0 && second != first, "a fresh picture, since the old number names nothing")
 	c, _ := pixel_of(second, 0, 0)
 	testing.expect_value(t, c, Colour{255, 255, 155, 255})
+}
+
+@(test)
+test_a_picture_made_every_frame_does_not_pile_up_without_end :: proc(t: ^testing.T) {
+	defer shutdown()
+	p := gradient_picture(40, 30)
+	reader := 0
+	gfx.image_reader_add(&reader)
+	defer gfx.image_reader_remove(&reader)
+	for i in 0 ..< 6000 {
+		gfx.images_tick()
+		made, _ := crop_picture(p, f64(i % 97), f64(i % 89), f64(1 + i % 31), f64(1 + i % 23))
+		_ = made
+		// a picture drawn each frame is a texture too: say it has been seen
+		reader = gfx.released_base + len(gfx.released_images)
+		evict_derived()
+		testing.expect(t, len(the.derived) <= MAX_DERIVED_PICTURES, "the made pictures are capped")
+	}
+	testing.expect(t, len(gfx.image_store) <= MAX_DERIVED_PICTURES + gfx.REUSE_AFTER_FREE_SLOTS + 8, "slots are reused")
+	testing.expect(t, len(gfx.released_images) <= 2 * MAX_DERIVED_PICTURES, "what every renderer has seen is cut off")
+	testing.expect(t, the.derived_bytes >= 0)
+	live := 0
+	for _, d in the.derived {
+		if gfx.image_data(d.id) != nil {
+			live += d.bytes
+		}
+	}
+	testing.expect_value(t, live, the.derived_bytes)
 }

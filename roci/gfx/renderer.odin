@@ -164,9 +164,11 @@ renderer_init :: proc(r: ^Renderer, device: ^sdl.GPUDevice) {
 	r.samples = MSAA_SAMPLES
 	r.pipelines = make(map[Pipeline_Key]^sdl.GPUGraphicsPipeline)
 	r.msaa = make(map[Msaa_Key]^sdl.GPUTexture)
+	image_reader_add(&r.released_seen)
 }
 
 renderer_destroy :: proc(r: ^Renderer) {
+	image_reader_remove(&r.released_seen)
 	for _, pipeline in r.pipelines {
 		sdl.ReleaseGPUGraphicsPipeline(r.device, pipeline)
 	}
@@ -938,8 +940,8 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 // Lets go of the textures of the pictures the sketch has let go of since the last frame.
 @(private)
 release_stale_textures :: proc(r: ^Renderer) {
-	for r.released_seen < len(released_images) {
-		id := released_images[r.released_seen]
+	for r.released_seen < released_base + len(released_images) {
+		id := released_images[r.released_seen - released_base]
 		r.released_seen += 1
 		if texture, found := r.images[id]; found {
 			if texture != nil {
