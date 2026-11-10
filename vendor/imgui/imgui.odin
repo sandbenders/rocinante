@@ -1666,9 +1666,12 @@ foreign lib {
 	@(link_name = "ImGui_PushStyleVar") push_style_var :: proc(idx: StyleVar, val: f32) ---
 	@(link_name = "ImGui_PushStyleVarImVec2") push_style_var_im_vec2 :: proc(idx: StyleVar, val: [2]f32) ---
 	@(link_name = "ImGui_PopStyleVar") pop_style_var :: proc() ---
+	@(link_name = "ImGui_PushItemFlag") push_item_flag :: proc(option: ItemFlags, enabled: bool) ---
+	@(link_name = "ImGui_PopItemFlag") pop_item_flag :: proc() ---
 	@(link_name = "ImGui_PushItemWidth") push_item_width :: proc(item_width: f32) ---
 	@(link_name = "ImGui_PopItemWidth") pop_item_width :: proc() ---
 	@(link_name = "ImGui_SetNextItemWidth") set_next_item_width :: proc(item_width: f32) ---
+	@(link_name = "ImGui_CalcItemWidth") calc_item_width :: proc() -> f32 ---
 	@(link_name = "ImGui_GetColorU32") get_color_u32 :: proc(idx: Col) -> U32 ---
 	@(link_name = "ImGui_GetColorU32ImU32") get_color_u32_im_u32 :: proc(col: U32) -> U32 ---
 	@(link_name = "ImGui_GetCursorScreenPos") get_cursor_screen_pos :: proc() -> [2]f32 ---
@@ -1676,6 +1679,7 @@ foreign lib {
 	@(link_name = "ImGui_GetContentRegionAvail") get_content_region_avail :: proc() -> [2]f32 ---
 	@(link_name = "ImGui_Separator") separator :: proc() ---
 	@(link_name = "ImGui_SameLine") same_line :: proc() ---
+	@(link_name = "ImGui_SameLineEx") same_line_ex :: proc(offset_from_start_x: f32 = 0.0, spacing: f32 = -1.0) ---
 	@(link_name = "ImGui_NewLine") new_line :: proc() ---
 	@(link_name = "ImGui_Spacing") spacing :: proc() ---
 	@(link_name = "ImGui_Dummy") dummy :: proc(size: [2]f32) ---
@@ -1711,6 +1715,7 @@ foreign lib {
 	@(link_name = "ImGui_SliderInt") slider_int :: proc(label: cstring, v: ^i32, v_min: i32, v_max: i32) -> bool ---
 	@(link_name = "ImGui_SliderIntEx") slider_int_ex :: proc(label: cstring, v: ^i32, v_min: i32, v_max: i32, format: cstring, flags: SliderFlags = 0) -> bool ---
 	@(link_name = "ImGui_InputText") input_text :: proc(label: cstring, buf: cstring, buf_size: uint, flags: InputTextFlags = 0) -> bool ---
+	@(link_name = "ImGui_InputTextEx") input_text_ex :: proc(label: cstring, buf: cstring, buf_size: uint, flags: InputTextFlags = 0, callback: InputTextCallback, user_data: rawptr = nil) -> bool ---
 	@(link_name = "ImGui_InputTextMultiline") input_text_multiline :: proc(label: cstring, buf: cstring, buf_size: uint) -> bool ---
 	@(link_name = "ImGui_InputTextMultilineEx") input_text_multiline_ex :: proc(label: cstring, buf: cstring, buf_size: uint, size: [2]f32 = {0, 0}, flags: InputTextFlags = 0, callback: InputTextCallback, user_data: rawptr = nil) -> bool ---
 	@(link_name = "ImGui_InputTextWithHint") input_text_with_hint :: proc(label: cstring, hint: cstring, buf: cstring, buf_size: uint, flags: InputTextFlags = 0) -> bool ---
@@ -1720,6 +1725,7 @@ foreign lib {
 	@(link_name = "ImGui_InputDoubleEx") input_double_ex :: proc(label: cstring, v: ^f64, step: f64 = 0.0, step_fast: f64 = 0.0, format: cstring, flags: InputTextFlags = 0) -> bool ---
 	@(link_name = "ImGui_ColorEdit4") color_edit4 :: proc(label: cstring, col: ^[4][4]f32, flags: ColorEditFlags = 0) -> bool ---
 	@(link_name = "ImGui_ColorPicker4") color_picker4 :: proc(label: cstring, col: ^[4][4]f32, flags: ColorEditFlags = 0, ref_col: ^f32 = nil) -> bool ---
+	@(link_name = "ImGui_ColorButton") color_button :: proc(desc_id: cstring, col: [4]f32, flags: ColorEditFlags = 0) -> bool ---
 	@(link_name = "ImGui_CollapsingHeader") collapsing_header :: proc(label: cstring, flags: TreeNodeFlags = 0) -> bool ---
 	@(link_name = "ImGui_SetNextItemOpen") set_next_item_open :: proc(is_open: bool, cond: Cond = 0) ---
 	@(link_name = "ImGui_Selectable") selectable :: proc(label: cstring) -> bool ---
@@ -1738,6 +1744,9 @@ foreign lib {
 	@(link_name = "ImGui_EndTooltip") end_tooltip :: proc() ---
 	@(link_name = "ImGui_SetTooltip") set_tooltip :: proc(fmt: cstring, #c_vararg args: ..any) ---
 	@(link_name = "ImGui_SetItemTooltip") set_item_tooltip :: proc(fmt: cstring, #c_vararg args: ..any) ---
+	@(link_name = "ImGui_BeginPopup") begin_popup :: proc(str_id: cstring, flags: WindowFlags = 0) -> bool ---
+	@(link_name = "ImGui_EndPopup") end_popup :: proc() ---
+	@(link_name = "ImGui_OpenPopup") open_popup :: proc(str_id: cstring, popup_flags: PopupFlags = 0) -> bool ---
 	@(link_name = "ImGui_BeginTabBar") begin_tab_bar :: proc(str_id: cstring, flags: TabBarFlags = 0) -> bool ---
 	@(link_name = "ImGui_EndTabBar") end_tab_bar :: proc() ---
 	@(link_name = "ImGui_BeginTabItem") begin_tab_item :: proc(label: cstring, p_open: ^bool = nil, flags: TabItemFlags = 0) -> bool ---
@@ -1769,6 +1778,9 @@ foreign lib {
 	@(link_name = "ImGuiIO_AddMouseWheelEvent") io_add_mouse_wheel_event :: proc(self: ^IO, wheel_x: f32, wheel_y: f32) ---
 	@(link_name = "ImGuiIO_AddFocusEvent") io_add_focus_event :: proc(self: ^IO, focused: bool) ---
 	@(link_name = "ImGuiIO_AddInputCharactersUTF8") io_add_input_characters_utf8 :: proc(self: ^IO, str: cstring) ---
+	@(link_name = "ImGuiInputTextCallbackData_DeleteChars") im_gui_input_text_callback_data_delete_chars :: proc(self: ^InputTextCallbackData, pos: i32, bytes_count: i32) ---
+	@(link_name = "ImGuiInputTextCallbackData_InsertChars") im_gui_input_text_callback_data_insert_chars :: proc(self: ^InputTextCallbackData, pos: i32, text: cstring, text_end: cstring = nil) ---
+	@(link_name = "ImGuiInputTextCallbackData_SelectAll") im_gui_input_text_callback_data_select_all :: proc(self: ^InputTextCallbackData) ---
 	@(link_name = "ImDrawList_AddLine") draw_list_add_line :: proc(self: ^DrawList, p1: [2]f32, p2: [2]f32, col: U32) ---
 	@(link_name = "ImDrawList_AddLineEx") draw_list_add_line_ex :: proc(self: ^DrawList, p1: [2]f32, p2: [2]f32, col: U32, thickness: f32 = 1.0, flags: DrawFlags = 0) ---
 	@(link_name = "ImDrawList_AddRect") draw_list_add_rect :: proc(self: ^DrawList, p_min: [2]f32, p_max: [2]f32, col: U32) ---
