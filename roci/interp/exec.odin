@@ -162,8 +162,10 @@ exec_for_each :: proc(it: ^Interp, k: lang.IR_For_Each) -> Flow {
 			after := load_symbol(it, k.var)
 			if !same(list.items[i], after) && !equal(list.items[i], after) {
 				list.stamp = next_write(it)
+				// A list that lives as long as the sketch must not point into the
+				// frame's memory, which is freed when the frame ends.
+				list.items[i] = promote(it, after) if list.long && it.alloc != it.long else after
 			}
-			list.items[i] = after
 		}
 		if flow != .Normal {
 			return flow
