@@ -341,7 +341,7 @@ reload_files :: proc(p: ^Interp, files: []lang.File_Text, restart := false) -> (
 		update_overlay(p)
 		return p, .Failed
 	}
-	n.echo, n.budget, n.hook_frame = p.echo, p.budget, p.hook_frame
+	n.echo, n.print_json, n.budget, n.hook_frame = p.echo, p.print_json, p.budget, p.hook_frame
 	n.path, n.mtime = strings.clone(p.path, n.program_memory), p.mtime
 	n.program, n.scanned = p.program, p.scanned
 	n.watched, n.mtimes = make([]string, len(p.watched), n.program_memory), make([]time.Time, len(p.mtimes), n.program_memory)

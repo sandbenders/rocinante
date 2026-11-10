@@ -146,9 +146,12 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 		return item_of(it, e, call)
 	case .Print:
-		// On the console the line is written and forgotten; kept only for tests and
-		// tools that read it back, since a sketch printing every frame would fill memory.
-		if it.echo {
+		// On the console the line is written and forgotten (as text, or as a line of JSON
+		// for a tool); kept only for tests and headless runs that read it back, since a
+		// sketch printing every frame would fill memory.
+		if it.print_json {
+			fmt.println(print_json_line(format(it, eval(it, call.args[0]), context.temp_allocator)))
+		} else if it.echo {
 			fmt.println(format(it, eval(it, call.args[0]), context.temp_allocator))
 		} else {
 			append(&it.printed, format(it, eval(it, call.args[0]), it.program_memory))
@@ -305,4 +308,9 @@ sort_list :: proc(it: ^Interp, call: lang.IR_Call) -> Value {
 		append(&out.items, entry.item)
 	}
 	return out
+}
+
+// A printed line as a line of JSON, which a tool tells from a message by its "event".
+print_json_line :: proc(text: string) -> string {
+	return fmt.tprintf(`{{"event":"print","text":"%s"}}`, lang.json_escape(text))
 }

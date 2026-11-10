@@ -2332,3 +2332,38 @@ test_a_reload_carries_a_long_chain_whole :: proc(t: ^testing.T) {
 	roci.step()
 	testing.expect_value(t, printed(n), "100000")
 }
+
+@(test)
+test_a_printed_line_is_one_line_of_json_with_its_characters_escaped :: proc(t: ^testing.T) {
+	testing.expect_value(t, print_json_line("hello"), `{"event":"print","text":"hello"}`)
+	testing.expect_value(t, print_json_line("say \"hi\"\tand\\go\nnow"), `{"event":"print","text":"say \"hi\"\tand\\go\nnow"}`)
+	testing.expect_value(t, print_json_line(""), `{"event":"print","text":""}`)
+}
+
+// A sketch that prints every frame under `--errors json` must not keep what it prints.
+@(test)
+test_in_json_mode_a_printed_line_is_written_and_not_kept :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	p, ok := load("test.roci", "draw [\n  print \"tick\"\n]\n")
+	if !testing.expect(t, ok, "the sketch checks") {
+		return
+	}
+	p.print_json = true
+	start(p)
+	for _ in 0 ..< 3 {
+		roci.step()
+	}
+	testing.expect_value(t, len(p.printed), 0)
+	finish(p)
+}
+
+// The setting goes on to the interpreter a reload makes.
+@(test)
+test_a_reload_keeps_printing_as_json :: proc(t: ^testing.T) {
+	p := run_text(t, "draw [\n  print \"a\"\n]", 1)
+	p.print_json = true
+	n, outcome := reload(p, "draw [\n  print \"b\"\n]")
+	defer finish_all()
+	testing.expect_value(t, outcome, Outcome.Reloaded)
+	testing.expect(t, n.print_json, "the new interpreter prints as JSON too")
+}

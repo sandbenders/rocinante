@@ -82,6 +82,7 @@ Interp :: struct {
 	seen:      map[int]bool, // the errors said once: id and place
 	printed:   [dynamic]string,
 	echo:      bool, // `print` also writes to the console
+	print_json: bool, // `print` is written to the console as a line of JSON, and kept nowhere
 	depth:     int,
 	path:      string, // the file being watched, or ""
 	mtime:     time.Time,

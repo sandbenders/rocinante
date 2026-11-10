@@ -26,8 +26,9 @@ RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [
   --window N  which window the picture is of, counting from 1 (the first by default)
   --seed N    the seed of the random numbers when the sketch gives none (1 by default)
   --errors json
-              print every message as one line of JSON on standard output (and what the
-              sketch prints on standard error), for tools`
+              print every message as one line of JSON on standard output, for tools; with
+              --frames what the sketch prints goes to standard error, and in a window each
+              print is a line of JSON too, {"event":"print","text":"..."}, on standard output`
 
 Run_Args :: struct {
 	file:       string,
@@ -280,6 +281,7 @@ run_windows :: proc(name: string, files: []lang.File_Text, json: bool, out, err:
 	// The sketch is watched: saving the file reloads it, and Ctrl+R or Cmd+R runs it again.
 	// Messages go to the console as they happen, so there is nothing to print at the end.
 	p.echo = !json
+	p.print_json = json // each `print` is a line of JSON on stdout, not a line kept for ever
 	if !json {
 		fmt.eprintfln(
 			"%s %s",
