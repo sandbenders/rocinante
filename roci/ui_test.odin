@@ -214,12 +214,20 @@ test_widgets_that_keep_a_value_start_as_asked_and_keep_it :: proc(t: ^testing.T)
 }
 
 @(thread_local) ui_text_now: string
+@(thread_local) ui_text_buffer: [64]byte
+
+// A copy of text a widget gave this frame that is still there after the frame's
+// memory is freed, as a sketch's own name keeps it.
+steady :: proc(buffer: ^[64]byte, text: string) -> string {
+	n := copy(buffer[:], text)
+	return string(buffer[:n])
+}
 @(thread_local) ui_pick_now: int
 @(thread_local) ui_number_now: f64
 
 ui_form_sketch :: proc() {
 	ui_number_now = ui_number_value("count", 1, 10, 50)
-	ui_text_now = ui_textbox_value("title", "ab")
+	ui_text_now = steady(&ui_text_buffer, ui_textbox_value("title", "ab"))
 	ui_pick_now = ui_pick_value("shape", {"circle", "square", "star"}, 2, .Dropdown)
 	ui_progress(0.25)
 	ui_tip("how far")

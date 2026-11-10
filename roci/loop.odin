@@ -7,6 +7,7 @@
 // time step given by the caller, so the same code runs in both.
 package roci
 
+import "base:runtime"
 import "core:fmt"
 import "core:strings"
 import "core:time"
@@ -34,14 +35,23 @@ run :: proc(block: proc() = nil, frames := 0) -> bool {
 		clear(&events)
 		platform.poll_events(&events)
 		step(events[:])
-		free_all(context.temp_allocator)
 	}
 	return true
 }
 
 // One frame. `events` are what the windows reported since the last one. A headless
 // sketch advances its clock by `dt` seconds; one with graphics follows the wall.
+// Whatever the frame makes with `context.temp_allocator` is freed when it ends,
+// headless or not, so a pointer from longer-lived data into the frame's memory fails
+// in a test as it would for a person. It is the frame's own memory: what the caller
+// made with its temporary allocator is left alone.
 step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
+	if !frame_memory_ready {
+		runtime.default_temp_allocator_init(&frame_memory, int(runtime.DEFAULT_ARENA_GROWING_MINIMUM_BLOCK_SIZE), runtime.default_allocator())
+		frame_memory_ready = true
+	}
+	context.temp_allocator = runtime.Allocator{procedure = runtime.default_temp_allocator_proc, data = &frame_memory}
+	defer end_frame_memory()
 	if !the.started {
 		start()
 	}
@@ -233,3 +243,29 @@ close_window :: proc(w: ^Win) {
 	// a message in flight to it is dropped by `send` because it is no longer alive.
 	append(&the.closed, w)
 }
+
+// The memory of a frame, one for each thread that steps.
+@(private, thread_local)
+frame_memory: runtime.Default_Temp_Allocator
+@(private, thread_local)
+frame_memory_ready: bool
+
+// Frees the frame's memory. Where `poison_frames` is on (tests) it first writes a
+// pattern over what was in use, so a pointer left into it reads rubbish and not what
+// it used to hold (`free_all` zeroes only the first block and hands the others back
+// to the heap, where they would keep their bytes until something else used them).
+@(private)
+end_frame_memory :: proc() {
+	if poison_frames {
+		for block := frame_memory.arena.curr_block; block != nil; block = block.prev {
+			runtime.memset(block.base, FREED_BYTE, int(block.used))
+		}
+	}
+	free_all(context.temp_allocator)
+}
+
+// Whether a finished frame's memory is overwritten before it is freed: on in tests.
+poison_frames := ODIN_TEST
+
+@(private)
+FREED_BYTE :: 0xDD

@@ -2237,22 +2237,11 @@ test_a_record_can_hold_itself_and_a_chain_of_them_can_be_long :: proc(t: ^testin
 
 // ---- writing an item back into a list that lives as long as the sketch ----
 
-// Ends a frame the way the real loop does, then writes over the freed memory, so a
-// value that still points into it reads as zeros.
-end_frame_and_scribble :: proc() {
-	free_all(context.temp_allocator)
-	junk := make([]byte, 64 * 1024, context.temp_allocator)
-	for &b in junk {
-		b = 0
-	}
-}
-
 @(test)
 test_for_each_in_a_taught_verb_writes_text_back_into_a_long_lived_list :: proc(t: ^testing.T) {
 	p := run_text(t, "words = [ \"apple\" \"pear\" ]\nlearn shout things [\n  for each w in things [ w = w + \"!\" ]\n]\ndraw [\n  shout words\n  print words\n]")
 	defer finish(p)
 	for _ in 0 ..< 3 {
-		end_frame_and_scribble()
 		roci.step()
 	}
 	lines := p.printed[:]
@@ -2266,7 +2255,6 @@ test_for_each_in_a_taught_verb_writes_vectors_and_records_back_into_a_long_lived
 	p := run_text(t, "points = [ { 1, 2 } { 3, 4 } ]\nlearn lift things [\n  for each q in things [ q.x = q.x + 10 ]\n]\ndraw [\n  lift points\n  print points\n]")
 	defer finish(p)
 	for _ in 0 ..< 2 {
-		end_frame_and_scribble()
 		roci.step()
 	}
 	testing.expect_value(t, p.printed[0], "[ { 11, 2 } { 13, 4 } ]")

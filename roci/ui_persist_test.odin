@@ -12,6 +12,7 @@ import "ui"
 @(thread_local) kept_amount: f64
 @(thread_local) kept_pick: int
 @(thread_local) kept_words: string
+@(thread_local) kept_words_buffer: [64]byte
 @(thread_local) kept_color: [4]f32
 @(thread_local) kept_ends: [2]f64
 @(thread_local) kept_spot: [2]f64
@@ -20,7 +21,7 @@ remembering_sketch :: proc() {
 	kept_on = ui_toggle_value("lit", false)
 	kept_amount = ui_slider_value("amount", 0, 100, 10)
 	kept_pick = ui_pick_value("shape", {"circle", "square", "star"}, 0, .Dropdown)
-	kept_words = ui_textbox_value("words", "hello")
+	kept_words = steady(&kept_words_buffer, ui_textbox_value("words", "hello"))
 	kept_color = ui_colorpicker_value("mood", {255, 165, 0, 255})
 	kept_ends = ui_range_value("span", 0, 100, 20, 80)
 	kept_spot = ui_xypad_value("spot", {0.5, 0.5})

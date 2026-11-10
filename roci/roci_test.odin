@@ -6,6 +6,7 @@
 package roci
 
 import "core:math"
+import "core:strings"
 import "core:testing"
 import "gfx"
 import "maths"
@@ -1294,4 +1295,33 @@ test_frame_hash_follows_what_the_frame_shows :: proc(t: ^testing.T) {
 	background(rgb(10, 20, 30))
 	testing.expect(t, frame_hash(w) != two, "a background is part of the frame")
 	testing.expect_value(t, frame_hash(Window(9999)), u64(0))
+}
+
+// ---- the memory of a frame ----
+
+@(thread_local) made_in_the_frame: string
+@(thread_local) made_in_the_frame_at: ^byte
+
+@(test)
+test_a_step_frees_what_the_frame_made_and_leaves_what_the_caller_made :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	mine := strings.clone("the caller's own", context.temp_allocator)
+	set_frame_hook(proc(w: Window) {
+		made_in_the_frame = strings.clone("made by the frame", context.temp_allocator)
+		made_in_the_frame_at = raw_data(made_in_the_frame)
+	})
+	draw_default(proc() {})
+	step()
+	testing.expect_value(t, mine, "the caller's own")
+	testing.expect(t, made_in_the_frame_at != nil, "the hook ran")
+	// The frame's memory is given back when the step ends, and written over where tests run.
+	freed := strings.string_from_ptr(made_in_the_frame_at, len(made_in_the_frame))
+	testing.expect(t, freed != "made by the frame", "a frame's memory is freed when the step ends")
+	set_frame_hook(nil)
+}
+
+@(test)
+test_poisoning_is_on_in_tests_and_can_be_switched_off :: proc(t: ^testing.T) {
+	testing.expect(t, poison_frames, "tests poison the memory a frame frees")
 }
