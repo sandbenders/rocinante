@@ -72,6 +72,30 @@ These systems were last tried in full before text, shaders, canvases, export and
 - [ ] On a display scaled to 150% or 200%: the screen reader's highlight and Narrator's touch exploration land on the right widget (node bounds are the window's device pixels); drag the window to a display of another scale and check again.
 - [ ] The reader keeps working while the sketch reloads and restarts, and when a second window opens or closes.
 - [ ] Windows: whether Inspect (from the Windows SDK) or Accessibility Insights shows the program with its window and widgets, compared with `tests/ui-tree/ui.txt`.
+- [ ] Before listening, with `output\roci.exe run examples/ui` open, the tree and the actions through UI Automation, pasted into PowerShell (it prints each node's role, name, value and bounds, then presses `pulse`, sets the slider, chooses `outline` and reads them back; compare the tree with `tests/ui-tree/ui.txt`, and expect `size 40` and `outline True` at the end, and the window's `pulses` count going up). This is how the radio buttons' missing selection was found on 2026-11-11:
+
+  ```
+  Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+  $A = [System.Windows.Automation.AutomationElement]
+  $id = (Get-Process roci | Select-Object -First 1).Id
+  $win = $A::RootElement.FindFirst('Children', (New-Object System.Windows.Automation.PropertyCondition($A::ProcessIdProperty, $id)))
+  $walk = [System.Windows.Automation.TreeWalker]::RawViewWalker
+  function Show($e, $d) {
+    $c = $e.Current; $v = ''
+    try { $v = ' value=' + $e.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value } catch {}
+    try { $v += ' range=' + $e.GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).Current.Value } catch {}
+    ('  ' * $d) + $c.ControlType.ProgrammaticName + ' "' + $c.Name + '"' + $v + ' ' + $c.BoundingRectangle
+    $k = $walk.GetFirstChild($e); while ($k) { Show $k ($d + 1); $k = $walk.GetNextSibling($k) }
+  }
+  Show $win 0
+  function Find($n) { $win.FindFirst('Descendants', (New-Object System.Windows.Automation.PropertyCondition($A::NameProperty, $n))) }
+  (Find 'pulse').GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+  (Find 'size').GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).SetValue(40)
+  (Find 'outline').GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+  Start-Sleep -Milliseconds 800
+  'size ' + (Find 'size').GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).Current.Value
+  'outline ' + (Find 'outline').GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected
+  ```
 
 **5. Tests that need a real system**
 - [ ] IME composition (above), clipboard, a real touch screen (`examples/touch` with several fingers, numbered in order, never reused), a stylus if there is one.
