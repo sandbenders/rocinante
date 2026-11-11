@@ -148,6 +148,25 @@ gradient_hash :: proc "contextless" (g: Gradient) -> u64 {
 	return h
 }
 
+// Whether two gradients look the same: what `gradient_hash` takes into account (the colours
+// and stops past `count`, and the stops of one that spreads its colours evenly, are not
+// part of it), compared exactly.
+gradient_same :: proc "contextless" (a, b: Gradient) -> bool {
+	if a.kind != b.kind || a.space != b.space || a.count != b.count || a.has_stops != b.has_stops {
+		return false
+	}
+	if a.angle != b.angle || a.centre != b.centre {
+		return false
+	}
+	pa, pb := gradient_positions(a), gradient_positions(b)
+	for i in 0 ..< a.count {
+		if a.colours[i] != b.colours[i] || pa[i] != pb[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // ---- the atlas ----
 
 // One baked gradient, as the texture holds it: a row of colours and a row of

@@ -115,6 +115,7 @@ Command_List :: struct {
 	saved:      [dynamic]Saved,
 	span:       Span, // stamped on each new command
 	gradients:  [dynamic]Gradient, // the gradients this frame's commands use; ids index it from 1
+	gradient_hashes: [dynamic]u64, // the hash of each of them, in step with `gradients`
 	text:       [dynamic]u8,       // the characters of this frame's text commands, end to end
 	background_paint: Gradient_Ref, // a gradient behind everything, when set
 	background_image: Image_Fill,   // a picture behind everything, when its id is not 0
@@ -139,6 +140,7 @@ begin_frame :: proc(list: ^Command_List) {
 	clear(&list.looks)
 	clear(&list.saved)
 	clear(&list.gradients)
+	clear(&list.gradient_hashes)
 	clear(&list.text)
 	clear(&list.effects)
 	clear(&list.effect_values)
@@ -165,6 +167,7 @@ destroy :: proc(list: ^Command_List) {
 	delete(list.looks)
 	delete(list.saved)
 	delete(list.gradients)
+	delete(list.gradient_hashes)
 	delete(list.text)
 	delete(list.effects)
 	delete(list.effect_values)
@@ -336,14 +339,20 @@ clear_window :: proc(list: ^Command_List) {
 
 // Gives the frame's list a gradient to point at, reusing an equal one that is
 // already there. The id is its place in `list.gradients`, counted from 1.
+//
+// Each gradient's hash is kept beside it, so finding an equal one costs one hash (the new
+// gradient's) and a comparison of numbers for each gradient already there, and not a hash
+// of each of them again, which was quadratic in the gradients of a frame. A hash that
+// matches is confirmed by comparing what the two gradients mean (`gradient_same`).
 register_gradient :: proc(list: ^Command_List, g: Gradient) -> Gradient_Ref {
 	h := gradient_hash(g)
-	for existing, i in list.gradients {
-		if gradient_hash(existing) == h {
+	for existing_hash, i in list.gradient_hashes {
+		if existing_hash == h && gradient_same(list.gradients[i], g) {
 			return Gradient_Ref{u32(i + 1), h}
 		}
 	}
 	append(&list.gradients, g)
+	append(&list.gradient_hashes, h)
 	return Gradient_Ref{u32(len(list.gradients)), h}
 }
 
@@ -578,6 +587,7 @@ rewind :: proc(list: ^Command_List, m: List_Mark) {
 	resize(&list.looks, m.looks)
 	resize(&list.text, m.text)
 	resize(&list.gradients, m.gradients)
+	resize(&list.gradient_hashes, m.gradients)
 	resize(&list.saved, m.saved)
 	list.style, list.transform, list.look_changed, list.span = m.style, m.transform, m.look_changed, m.span
 	list.background, list.background_paint, list.background_image = m.background, m.background_paint, m.background_image

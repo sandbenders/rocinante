@@ -505,3 +505,70 @@ test_a_mesh_with_a_gradient_gets_local_positions_and_the_box :: proc(t: ^testing
 		testing.expect_value(t, v.colour[3], f32(1))
 	}
 }
+
+@(test)
+test_two_gradients_are_the_same_when_they_look_the_same :: proc(t: ^testing.T) {
+	a, _ := gradient_make({RED, BLUE})
+	b, _ := gradient_make({RED, BLUE})
+	testing.expect(t, gradient_same(a, b))
+	// what is past the colours in use, and the stops of an even gradient, change nothing
+	b.colours[5] = WHITE
+	b.stops[0], b.stops[1] = 30, 70
+	testing.expect(t, gradient_same(a, b))
+	testing.expect_value(t, gradient_hash(a), gradient_hash(b))
+	// what is in use does
+	c, _ := gradient_make({RED, WHITE})
+	testing.expect(t, !gradient_same(a, c))
+	d, _ := gradient_make({RED, BLUE}, angle = 45)
+	testing.expect(t, !gradient_same(a, d))
+	e, _ := gradient_make({RED, BLUE, BLUE})
+	testing.expect(t, !gradient_same(a, e))
+	f, _ := gradient_make({RED, BLUE}, kind = .Radial)
+	testing.expect(t, !gradient_same(a, f))
+}
+
+@(test)
+test_the_hashes_of_a_lists_gradients_stay_in_step_with_the_gradients :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	first, _ := gradient_make({RED, BLUE})
+	second, _ := gradient_make({WHITE, BLACK})
+	third, _ := gradient_make({RED, BLACK})
+	one := register_gradient(&list, first)
+	two := register_gradient(&list, second)
+	testing.expect_value(t, len(list.gradient_hashes), 2)
+	testing.expect_value(t, register_gradient(&list, first), one)
+	testing.expect_value(t, register_gradient(&list, second), two)
+	testing.expect_value(t, len(list.gradients), 2)
+	// taking back what was recorded after a mark takes back those hashes as well
+	m := mark(&list)
+	added := register_gradient(&list, third)
+	testing.expect_value(t, added.id, u32(3))
+	rewind(&list, m)
+	testing.expect_value(t, len(list.gradients), 2)
+	testing.expect_value(t, len(list.gradient_hashes), 2)
+	again := register_gradient(&list, third)
+	testing.expect_value(t, again.id, u32(3)) // a place that is free again, not a stale hash
+	testing.expect_value(t, len(list.gradients), 3)
+	// a new frame starts both lists again
+	begin_frame(&list)
+	testing.expect_value(t, len(list.gradient_hashes), 0)
+	testing.expect_value(t, register_gradient(&list, second).id, u32(1))
+}
+
+@(test)
+test_many_distinct_gradients_in_one_frame_each_get_one_place :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	refs := make([dynamic]Gradient_Ref, context.temp_allocator)
+	for i in 0 ..< 300 {
+		g, _ := gradient_make({RED, maths.Colour{f32(i % 256), f32(i / 256), 0, 255}}, angle = f32(i))
+		append(&refs, register_gradient(&list, g))
+	}
+	testing.expect_value(t, len(list.gradients), 300)
+	for i in 0 ..< 300 {
+		g, _ := gradient_make({RED, maths.Colour{f32(i % 256), f32(i / 256), 0, 255}}, angle = f32(i))
+		testing.expect_value(t, register_gradient(&list, g), refs[i])
+	}
+	testing.expect_value(t, len(list.gradients), 300)
+}
