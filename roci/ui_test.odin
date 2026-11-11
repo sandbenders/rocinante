@@ -384,3 +384,31 @@ test_three_fingers_tapping_together_hide_and_show_and_a_swipe_or_a_slow_press_do
 	step(up(id, 3))
 	testing.expect(t, !ui_hidden(w), "a long press is not a tap")
 }
+
+@(test)
+test_what_the_interface_draws_is_part_of_the_frame_and_nothing_while_hidden :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	ui_reset()
+	w := window(400, 300)
+	testing.expect(t, !ui_drawn(w), "no interface yet")
+	plain := frame_hash(w)
+	draw(ui_sketch)
+	step_frames(4)
+	testing.expect(t, ui_drawn(w))
+	testing.expect_value(t, len(recorded(w)), 0) // the widgets are no shapes of the canvas
+	shown := frame_hash(w)
+	testing.expect(t, shown != plain, "the widgets change how the frame looks")
+	step_frames(2)
+	testing.expect_value(t, frame_hash(w), shown) // nothing moved
+	ui_amount = 80 // the slider's bar is drawn further along
+	step_frames(3)
+	moved := frame_hash(w)
+	testing.expect(t, moved != shown)
+	ui_hide()
+	step_frames(3)
+	testing.expect(t, !ui_drawn(w), "a hidden interface draws nothing")
+	testing.expect(t, frame_hash(w) != moved)
+	testing.expect_value(t, frame_hash(Window(9999)), u64(0))
+	testing.expect(t, !ui_drawn(Window(9999)))
+}

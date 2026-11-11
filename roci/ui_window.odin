@@ -304,6 +304,15 @@ ui_tip :: proc(text: string) {
 	ui.tip(ui_frame(), text)
 }
 
+// Whether the interface of a window drew anything in its last finished frame (nothing while it
+// is hidden), for tools that keep a picture only of a window with something in it.
+ui_drawn :: proc(w: Window) -> bool {
+	if win := win_for(w); win != nil && win.ui != nil {
+		return win.ui.drawn && !win.ui.hidden
+	}
+	return false
+}
+
 // The widgets the last finished frame of a window made, for screen readers and tests.
 ui_records :: proc(w: Window) -> []ui.Record {
 	if win := win_for(w); win != nil && win.ui != nil {

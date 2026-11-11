@@ -217,6 +217,10 @@ frame_hash :: proc(w: Window) -> u64 {
 	for e in win.list.effects {
 		append(&parts, u64(e.shader) | u64(e.version) << 32, hash.fnv64a(win.list.effect_values[e.first:e.first + e.count]))
 	}
+	// What the interface drew over it, when the window has one.
+	if win.ui != nil {
+		append(&parts, ui.look_hash(win.ui))
+	}
 	return hash.fnv64a(slice.to_bytes(parts[:]))
 }
 

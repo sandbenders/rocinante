@@ -289,7 +289,8 @@ Drawn :: struct {
 SAMPLE_SKETCH :: "site/sample/sketch.roci"
 
 // Runs an example headless, in a 400 by 300 window unless told otherwise, with the
-// mouse in the window, and writes the picture of its first window when it drew anything.
+// mouse in the window, and writes the picture of its first window when it drew anything,
+// shapes or widgets.
 draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := EXAMPLE_HEIGHT, scale := 2, always := false, frames := EXAMPLE_FRAMES) -> (drawn: Drawn, ok: bool) {
 	roci.start_headless(1)
 	defer roci.shutdown()
@@ -321,7 +322,7 @@ draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := E
 	}
 	drawn.printed = printed
 	windows := roci.open_windows()
-	if len(windows) == 0 || (len(roci.recorded(windows[0])) == 0 && !always) {
+	if len(windows) == 0 || (len(roci.recorded(windows[0])) == 0 && !roci.ui_drawn(windows[0]) && !always) {
 		return drawn, true
 	}
 	picture, rendered := roci.picture(windows[0], scale)

@@ -10,6 +10,7 @@ package ui
 
 import "core:os"
 import "core:strings"
+import "core:slice"
 
 import imgui "../../vendor/imgui"
 import sdl "vendor:sdl3"
@@ -396,4 +397,32 @@ skip :: proc(s: ^State) {
 // The widgets of the last finished frame, in the order they were made.
 records :: proc(s: ^State) -> []Record {
 	return s.finished[:]
+}
+
+// A number that changes when what the last finished frame draws changes: every corner, place
+// in the font's picture and colour of its triangles, in order. 0 when it draws nothing. For
+// tools that want to know whether a frame looks different without drawing it.
+look_hash :: proc(s: ^State) -> u64 {
+	if s == nil || !s.drawn || s.hidden {
+		return 0
+	}
+	use(s)
+	data := imgui.get_draw_data()
+	if data == nil || !data.valid {
+		return 0
+	}
+	h := u64(14695981039346656037)
+	mix :: proc(h: ^u64, bytes: []u8) {
+		for b in bytes {
+			h^ = (h^ ~ u64(b)) * 1099511628211
+		}
+	}
+	lists := ([^]^imgui.DrawList)(data.cmd_lists.data)[:data.cmd_lists.size]
+	for list in lists {
+		verts := ([^]imgui.DrawVert)(list.vtx_buffer.data)[:list.vtx_buffer.size]
+		indices := ([^]imgui.DrawIdx)(list.idx_buffer.data)[:list.idx_buffer.size]
+		mix(&h, slice.to_bytes(verts))
+		mix(&h, slice.to_bytes(indices))
+	}
+	return h
 }
