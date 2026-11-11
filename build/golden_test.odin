@@ -3,6 +3,7 @@ package build
 
 import "core:fmt"
 import "core:os"
+import "core:strings"
 import "core:testing"
 
 @(test)
@@ -130,4 +131,23 @@ test_a_golden_run_on_another_gpu_fails :: proc(t: ^testing.T) {
 	testing.expect(t, reason != "")
 	outcome, _ = golden_outcome(true, false, 0, "")
 	testing.expect_value(t, outcome, Check_Outcome.Failed)
+}
+
+@(test)
+test_roci_test_on_lavapipe_passes_only_when_the_picture_was_drawn_and_matched :: proc(t: ^testing.T) {
+	MATCHED :: "  window 1 matches examples/checks/tests/snapshot-1.png\n\n3 checks held, 1 picture matched\n"
+	outcome, reason := stored_picture_outcome(true, true, 0, MATCHED)
+	testing.expect_value(t, outcome, Check_Outcome.Passed)
+	testing.expect_value(t, reason, "")
+	// Said to be impossible to draw: the run passed, but nothing was compared.
+	outcome, reason = stored_picture_outcome(true, true, 0, "  window 1: the picture could not be drawn here (no GPU)\n\n3 checks held\n")
+	testing.expect_value(t, outcome, Check_Outcome.Failed)
+	testing.expect(t, strings.contains(reason, "was not drawn and matched"))
+	outcome, _ = stored_picture_outcome(true, false, 1, MATCHED)
+	testing.expect_value(t, outcome, Check_Outcome.Failed)
+	outcome, reason = stored_picture_outcome(false, false, -1, "")
+	testing.expect_value(t, outcome, Check_Outcome.Skipped)
+	outcome, reason = stored_picture_outcome(false, true, -1, "")
+	testing.expect_value(t, outcome, Check_Outcome.Failed)
+	testing.expect(t, strings.contains(reason, "not installed"))
 }

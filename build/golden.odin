@@ -90,8 +90,32 @@ golden_outcome :: proc(available, required: bool, exit_code: int, output: string
 	return .Passed, ""
 }
 
+// What one run of `roci test` on the checks example means: its stored picture has to have been
+// drawn and matched, not said to be impossible to draw.
+stored_picture_outcome :: proc(available, required: bool, exit_code: int, output: string) -> (Check_Outcome, string) {
+	switch {
+	case !available && required: return .Failed, "lavapipe (Mesa's software Vulkan) is not installed"
+	case !available:             return .Skipped, ""
+	case exit_code != 0:         return .Failed, ""
+	case !strings.contains(output, "1 picture matched"):
+		return .Failed, "the stored picture of examples/checks was not drawn and matched"
+	}
+	return .Passed, ""
+}
+
+// The golden images: tests/golden draws every scene and example and compares them with the references.
 check_golden :: proc() -> bool {
-	name := "golden images on lavapipe"
+	return check_on_lavapipe("golden images on lavapipe", {"odin", "run", "tests/golden", fmt.tprintf("-out:%s/golden%s", TEST_OUT_DIR, EXE)}, golden_outcome)
+}
+
+// `roci test` drawing a sketch and matching its stored picture, in a program of its own: the cli's
+// unit tests cannot draw, because starting the graphics device among their threads is not safe.
+check_stored_pictures :: proc() -> bool {
+	return check_on_lavapipe("roci test on lavapipe", {"odin", "run", "cli", fmt.tprintf("-out:%s/roci%s", TEST_OUT_DIR, EXE), "--", "test", "examples/checks"}, stored_picture_outcome)
+}
+
+// Runs a program on lavapipe, with no screen, and says how it went; `outcome` reads what it printed.
+check_on_lavapipe :: proc(name: string, command: []string, outcome: proc(available, required: bool, exit_code: int, output: string) -> (Check_Outcome, string)) -> bool {
 	fmt.printfln("%s", term.out(fmt.tprintf("== %s", name), .Bold_Cyan))
 	required := os.get_env("ROCI_REQUIRE_LAVAPIPE", context.temp_allocator) != ""
 	manifests: []string
@@ -112,7 +136,6 @@ check_golden :: proc() -> bool {
 				env = with_env(env, "SDL_VULKAN_LIBRARY", library, context.temp_allocator)
 			}
 		}
-		command := []string{"odin", "run", "tests/golden", fmt.tprintf("-out:%s/golden%s", TEST_OUT_DIR, EXE)}
 		state: os.Process_State
 		err: os.Error
 		state, stdout, stderr, err = os.process_exec({command = command, env = env}, context.allocator)
@@ -121,8 +144,8 @@ check_golden :: proc() -> bool {
 		}
 	}
 
-	outcome, reason := golden_outcome(available, required, exit_code, string(stdout))
-	switch outcome {
+	result, reason := outcome(available, required, exit_code, string(stdout))
+	switch result {
 	case .Passed:
 		fmt.printfln("   %s%s", term.out_icon(.Ok), term.out(fmt.tprintf("ok, %.1f s", time.duration_seconds(time.since(started))), .Green))
 		return true

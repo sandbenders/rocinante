@@ -126,6 +126,7 @@ ci :: proc(fast: bool) -> bool {
 		ok = check_optimised_tests() && ok
 		ok = check_abi() && ok
 		ok = check_golden() && ok
+		ok = check_stored_pictures() && ok
 		fmt.printfln("%s %s", term.out("== back-end equivalence, benchmarks:", .Bold_Cyan), term.out("not built yet", .Dim))
 	}
 	if ok {
