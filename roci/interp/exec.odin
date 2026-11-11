@@ -38,7 +38,7 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 			store_symbol(it, k.target, value)
 		} else {
 			base := load_symbol(it, k.target)
-			store_symbol(it, k.target, assign_path(it, base, k.fields, value))
+			store_symbol(it, k.target, assign_path(it, base, k.fields, value, k.first))
 		}
 	case lang.IR_Expr_Stmt:
 		eval(it, k.expr)

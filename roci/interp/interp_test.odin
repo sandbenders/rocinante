@@ -2447,3 +2447,46 @@ test_errors_in_a_loop_are_said_once_and_every_one_is_counted :: proc(t: ^testing
 		finish(p)
 	}
 }
+
+// Records of different shapes go through the same verb, and fields are read and set by place when
+// the shape is known: the answers are the same with the pass on and off, and the guard that
+// checks the shape sends a record of another shape through the names.
+@(test)
+test_field_places_give_the_same_answers_as_looking_fields_up_by_name :: proc(t: ^testing.T) {
+	text := `a = { x: 1, y: 2 }
+b = { y: 5, x: 7, z: 9 }
+learn sum v [ give v.x + v.y ]
+print (sum a)
+print (sum b)
+a.x = 10
+b.x = 20
+b.z = b.z + 1
+print (sum a)
+print (sum b)
+print b.z
+c = { pos: { 1, 2 }, size: { 3, 4 } }
+c.pos.x = 8
+print c.pos
+pairs = [ { n: 1, m: 2 } { n: 3, m: 4 } ]
+for each pair in pairs [ pair.m = pair.n * 10 ]
+print pairs
+mixed = [ a b ]
+for each one in mixed [ one.x = one.x + 1 ]
+print (sum a)
+print (sum b)`
+	defer set_passes(lang.ALL_PASSES)
+	answers: [2]string
+	for chosen, i in ([]lang.Passes{{}, lang.ALL_PASSES}) {
+		set_passes(chosen)
+		p := run_text(t, text)
+		testing.expectf(t, len(p.errors) == 0, "%s", report(p, context.temp_allocator))
+		answers[i] = strings.clone(printed(p), context.temp_allocator)
+		finish(p)
+	}
+	testing.expect_value(t, answers[1], answers[0])
+	testing.expect_value(t, strings.split_lines(answers[1], context.temp_allocator)[0], "3")
+	testing.expect_value(t, strings.split_lines(answers[1], context.temp_allocator)[1], "12")
+	testing.expect_value(t, strings.split_lines(answers[1], context.temp_allocator)[2], "12")
+	testing.expect_value(t, strings.split_lines(answers[1], context.temp_allocator)[3], "25")
+	testing.expect_value(t, strings.split_lines(answers[1], context.temp_allocator)[4], "10")
+}

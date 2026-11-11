@@ -1538,3 +1538,57 @@ test_changing_the_item_of_a_constant_list_is_the_constant_being_changed :: proc(
 	expect_errors(t, "COLOURS = [ 1 2 3 ]\nfor each c in (copy COLOURS) [ c = c + 1 ]", {})
 	expect_errors(t, "dots = [ { x: 1 } { x: 2 } ]\nfor each d in dots [ d.x = d.x + 1 ]", {})
 }
+
+@(test)
+test_the_field_pass_finds_where_each_field_is_in_a_record_of_a_known_shape :: proc(t: ^testing.T) {
+	got := check_text("p = { x: 1, y: 2 }\nq = p.y\np.x = 5\nlearn double r [ give r.y * 2 ]\nz = double p")
+	program := got.checked.program
+	for s in program.stmts {
+		if assign, is_assign := s.kind.(IR_Assign); is_assign {
+			testing.expect_value(t, assign.first.slot, 0) // nothing is found before the passes run
+		}
+	}
+	optimise(&program, ALL_PASSES, context.temp_allocator)
+	made := program.stmts[0].kind.(IR_Assign).value.kind.(IR_Record)
+	if testing.expect_value(t, len(made.slots), 2) {
+		testing.expect_value(t, made.slots[0], 1) // x
+		testing.expect_value(t, made.slots[1], 2) // y
+	}
+	read := program.stmts[1].kind.(IR_Assign).value.kind.(IR_Field)
+	testing.expect_value(t, read.at.slot, 2)
+	testing.expect_value(t, read.at.shape, shape_root(program.types, made.shape))
+	set := program.stmts[2].kind.(IR_Assign)
+	testing.expect_value(t, set.first.slot, 1)
+	testing.expect_value(t, set.first.shape, read.at.shape)
+	// a taught verb is optimised too: its parameter is a record of the shape it was used with
+	found := false
+	for inst in program.instances {
+		for s in inst.body.stmts {
+			if give, is_give := s.kind.(IR_Give); is_give {
+				if field, is_field := give.value.kind.(IR_Binary); is_field {
+					inner := field.lhs.kind.(IR_Field)
+					testing.expect_value(t, inner.at.slot, 2)
+					found = true
+				}
+			}
+		}
+	}
+	testing.expect(t, found, "the verb's field was found too")
+}
+
+@(test)
+test_the_field_pass_leaves_what_is_not_a_record_of_a_known_shape_alone :: proc(t: ^testing.T) {
+	got := check_text("w = window size 100 100\nn = w.width\nv = { 1, 2 }\nm = v.x\nc = red\nr = c.r")
+	program := got.checked.program
+	optimise(&program, {.Field_Slots}, context.temp_allocator)
+	for s in program.stmts {
+		if assign, is_assign := s.kind.(IR_Assign); is_assign {
+			if field, is_field := assign.value.kind.(IR_Field); is_field {
+				testing.expectf(t, field.at.slot == 0, "`%s` is not a field of a record", field.name)
+			}
+		}
+	}
+	other := check_text("p = { x: 1 }\nq = p.x")
+	optimise(&other.checked.program, ALL_PASSES - {.Field_Slots}, context.temp_allocator)
+	testing.expect_value(t, other.checked.program.stmts[1].kind.(IR_Assign).value.kind.(IR_Field).at.slot, 0)
+}

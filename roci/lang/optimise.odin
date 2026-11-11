@@ -8,12 +8,15 @@
 // pass is tested on its own long before compiled code exists.
 package lang
 
+import "base:runtime"
+
 Pass :: enum u8 {
 	Typed_Values, // marks the nodes that give a number or true or false
+	Field_Slots,  // finds where a field is in a record of a known shape, so that it is not looked for by name
 }
 Passes :: bit_set[Pass]
 
-ALL_PASSES :: Passes{.Typed_Values}
+ALL_PASSES :: Passes{.Typed_Values, .Field_Slots}
 
 // What a node is known to give, so a back end can work it out without a general value.
 Fast :: enum u8 {
@@ -33,11 +36,13 @@ is_number :: proc "contextless" (f: Fast) -> bool {
 NUMBER_VERBS := [?]string{"abs", "floor", "round", "ceil", "sqrt", "sin", "cos"}
 
 // Runs the passes over the whole program: its statements and every version of every taught verb.
-optimise :: proc(program: ^IR_Program, passes: Passes) {
+// What a pass makes (the places of fields) is made with `allocator`, which should be the one the
+// program's IR was made with, so that it goes when the IR does.
+optimise :: proc(program: ^IR_Program, passes: Passes, allocator := context.allocator) {
 	if passes == {} {
 		return
 	}
-	o := Optimiser{types = program.types, passes = passes}
+	o := Optimiser{types = program.types, passes = passes, alloc = allocator}
 	for s in program.stmts {
 		walk_stmt(&o, s)
 	}
@@ -53,6 +58,7 @@ optimise :: proc(program: ^IR_Program, passes: Passes) {
 Optimiser :: struct {
 	types:  ^Types,
 	passes: Passes,
+	alloc:  runtime.Allocator,
 }
 
 @(private = "file")
@@ -70,6 +76,9 @@ walk_stmt :: proc(o: ^Optimiser, s: ^IR_Stmt) {
 	switch &k in s.kind {
 	case IR_Assign:
 		walk_expr(o, k.value)
+		if .Field_Slots in o.passes && len(k.fields) > 0 && k.target != nil {
+			k.first = slot_of(o.types, shape_of(o.types, k.target.type), k.fields[0])
+		}
 	case IR_Expr_Stmt:
 		walk_expr(o, k.expr)
 	case IR_If:
@@ -136,6 +145,9 @@ walk_expr :: proc(o: ^Optimiser, e: ^IR) {
 		walk_expr(o, k.base)
 	case IR_Field:
 		walk_expr(o, k.base)
+		if .Field_Slots in o.passes && k.base != nil {
+			k.at = slot_of(o.types, shape_of(o.types, k.base.type), k.name)
+		}
 	case IR_Vector:
 		for item in k.items {
 			walk_expr(o, item)
@@ -147,6 +159,20 @@ walk_expr :: proc(o: ^Optimiser, e: ^IR) {
 	case IR_Record:
 		for v in k.values {
 			walk_expr(o, v)
+		}
+		if .Field_Slots in o.passes {
+			root := shape_root(o.types, k.shape)
+			slots := make([]int, len(k.names), o.alloc)
+			found := true
+			for name, i in k.names {
+				slots[i] = slot_of(o.types, root, name).slot
+				found &&= slots[i] != 0
+			}
+			if found {
+				k.slots = slots
+			} else {
+				delete(slots, o.alloc)
+			}
 		}
 	case IR_Unary:
 		walk_expr(o, k.operand)
@@ -205,4 +231,20 @@ sure_number :: proc(e: ^IR) -> bool {
 		}
 	}
 	return false
+}
+
+// Where `name` is in the shape (its root), or nothing when `shape` is not one (-1) or has no
+// such field. The checker has settled every shape by now, so the place does not move.
+@(private = "file")
+slot_of :: proc(ts: ^Types, shape: int, name: string) -> Field_Slot {
+	if shape < 0 {
+		return {}
+	}
+	root := shape_root(ts, shape)
+	for f, i in ts.shapes[root].fields {
+		if f.name == name {
+			return Field_Slot{shape = root, slot = i + 1}
+		}
+	}
+	return {}
 }

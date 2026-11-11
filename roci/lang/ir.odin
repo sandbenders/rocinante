@@ -73,9 +73,18 @@ IR_Swizzle :: struct {
 }
 
 // `p.pos` on a record (step 3b); until then records are boxed and only get here.
+// Where a field is in a record of a known shape, found by a pass (`Field_Slots`) from the
+// types the checker settled: a back end that meets a record of that shape reads the place and
+// never compares names, and one that meets anything else asks by name as it always did.
+Field_Slot :: struct {
+	shape: int, // the shape (its root) the place is in
+	slot:  int, // the place counted from 1, so that 0 means the pass did not find one
+}
+
 IR_Field :: struct {
 	base: ^IR,
 	name: string,
+	at:   Field_Slot,
 }
 
 IR_Vector :: struct {
@@ -91,6 +100,7 @@ IR_Record :: struct {
 	names:  []string,
 	values: []^IR,
 	class:  Shape_Class, // the collision shape its fields make, decided here once
+	slots:  []int,       // the place of each name in the shape, counted from 1, when `Field_Slots` found them (otherwise empty)
 }
 
 IR_Unary :: struct {
@@ -164,6 +174,7 @@ IR :: struct {
 IR_Assign :: struct {
 	target: ^Symbol,
 	fields: []string, // `p.x = 1` sets a part of the vector `p`
+	first:  Field_Slot, // where `fields[0]` is in the record `target` holds, when `Field_Slots` found it
 	value:  ^IR,
 }
 

@@ -165,7 +165,7 @@ load_files :: proc(files: []lang.File_Text) -> (p: ^Interp, ok: bool) {
 	p.checked = lang.check(p.src, registry.ALL_VERBS, nil, p.program_memory)
 	p.types = p.checked.program.types
 	if !lang.has_errors(p.checked.diagnostics) {
-		lang.optimise(&p.checked.program, lang.ALL_PASSES - passes_off)
+		lang.optimise(&p.checked.program, lang.ALL_PASSES - passes_off, p.program_memory)
 	}
 	p.globals = make([]Global, len(p.checked.program.symbols), p.program_memory)
 	p.draws = make(map[roci.Window]^lang.IR_Block, 4, p.program_memory)

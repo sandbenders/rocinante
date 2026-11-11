@@ -38,7 +38,14 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 	case lang.IR_Swizzle:
 		return swizzle(eval(it, k.base), k.parts)
 	case lang.IR_Field:
-		return read_field(it, eval(it, k.base), k.name)
+		base := eval(it, k.base)
+		if k.at.slot != 0 {
+			// a record of the shape the pass found the place in: no names to compare
+			if r, is_record := base.(^Record); is_record && r != nil && r.shape == k.at.shape {
+				return r.fields[k.at.slot - 1]
+			}
+		}
+		return read_field(it, base, k.name)
 	case lang.IR_Vector:
 		v := Vec{n = len(k.items)}
 		for item, i in k.items {
@@ -57,6 +64,12 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 		shape := lang.shape_root(it.types, k.shape)
 		r := new_record(it, shape)
 		r.class = k.class
+		if len(k.slots) == len(k.names) {
+			for slot, i in k.slots {
+				r.fields[slot - 1] = eval(it, k.values[i])
+			}
+			return r
+		}
 		for name, i in k.names {
 			if at := field_index(it, shape, name); at >= 0 {
 				r.fields[at] = eval(it, k.values[i])
@@ -276,7 +289,7 @@ read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
 // The value after `path` of `base` has been set to `value`: a field of a record,
 // or parts of a vector or colour. A record changes where it is (it is shared); a
 // vector or colour comes back changed, for the caller to store.
-assign_path :: proc(it: ^Interp, base: Value, path: []string, value: Value) -> Value {
+assign_path :: proc(it: ^Interp, base: Value, path: []string, value: Value, first := lang.Field_Slot{}) -> Value {
 	if len(path) == 0 {
 		return value
 	}
@@ -295,7 +308,7 @@ assign_path :: proc(it: ^Interp, base: Value, path: []string, value: Value) -> V
 		if b == nil {
 			return base
 		}
-		at := field_index(it, b.shape, path[0])
+		at := first.slot - 1 if first.slot != 0 && b.shape == first.shape else field_index(it, b.shape, path[0])
 		if at < 0 {
 			return base
 		}
