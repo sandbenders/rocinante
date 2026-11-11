@@ -1510,3 +1510,31 @@ test_shade_takes_a_shader_name_and_a_record_of_values :: proc(t: ^testing.T) {
 	expect_errors(t, "shade", {.Wrong_Argument_Count})
 	expect_errors(t, "shade \"a.hlsl\" by 5", {.Wrong_Argument_Kind})
 }
+
+// Assigning the name of a `for each` changes the item the loop is on, and so the list: the
+// name is the loop's own, not a name of the sketch that the loop hides.
+@(test)
+test_assigning_a_loop_name_is_a_write_back_and_makes_no_name_of_the_sketch :: proc(t: ^testing.T) {
+	expect_errors(t, "words = [ \"a\" \"b\" ]\nfor each w in words [ w = w + \"!\" ]", {})
+	expect_errors(t, "nums = [ 1 2 3 ]\nfor each n in nums [ n = n * 10 ]", {})
+	expect_errors(t, "draw [\n  words = [ \"a\" ]\n  for each w in words [ w = w + \"!\" ]\n]", {})
+	expect_errors(t, "words = [ \"a\" ]\nif true [ for each w in words [ w = w + \"!\" ] ] else [ for each w in words [ w = w + \"?\" ] ]", {})
+	expect_errors(t, "for i from 1 to 3 [ i = i + 1 ]", {})
+	// the name is the loop's: after the loop it is not a name of the sketch
+	expect_errors(t, "nums = [ 1 2 ]\nfor each x in nums [ x = x * 2 ]\nprint x", {.Unknown_Name})
+	// but a name of the sketch the loop really hides is still said
+	expect_errors(t, "w = 5\nwords = [ \"a\" ]\nfor each w in words [ w = w + \"!\" ]", {.Name_Hides})
+	expect_errors(t, "w = 5\nfor each w in [ 1 2 ] [ print w ]", {.Name_Hides})
+}
+
+// The items of a constant list are shared, so changing one would change the constant.
+@(test)
+test_changing_the_item_of_a_constant_list_is_the_constant_being_changed :: proc(t: ^testing.T) {
+	expect_errors(t, "COLOURS = [ 1 2 3 ]\nfor each c in COLOURS [ c = c + 1 ]", {.Constant_Changed_By_Verb})
+	expect_errors(t, "DOTS = [ { x: 1 } { x: 2 } ]\nfor each d in DOTS [ d.x = d.x + 1 ]", {.Constant_Changed_By_Verb})
+	// reading one is fine, and so is changing a copy, and a list of the sketch's own
+	expect_errors(t, "COLOURS = [ 1 2 3 ]\nfor each c in COLOURS [ print c ]", {})
+	expect_errors(t, "DOTS = [ { x: 1 } { x: 2 } ]\nfor each d in DOTS [ print d.x ]", {})
+	expect_errors(t, "COLOURS = [ 1 2 3 ]\nfor each c in (copy COLOURS) [ c = c + 1 ]", {})
+	expect_errors(t, "dots = [ { x: 1 } { x: 2 } ]\nfor each d in dots [ d.x = d.x + 1 ]", {})
+}

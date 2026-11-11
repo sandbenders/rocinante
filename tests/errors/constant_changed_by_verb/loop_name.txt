@@ -1,0 +1,8 @@
+── `c` changes what `COLOURS` holds ─────────────────── sketch.roci:2:15
+
+2 │ for each c in COLOURS [ c = c + 1 ]
+  │               ^^^^^^^
+
+`COLOURS` is written in capitals, so it is a constant and can never change, but `c` changes the list or record it is given. Give it a copy instead.
+
+Write:  for each c in (copy COLOURS) [ c = c + 1 ]

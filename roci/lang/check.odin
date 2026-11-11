@@ -210,48 +210,58 @@ is_constant_name :: proc(name: string) -> bool {
 }
 
 // Every name assigned anywhere in the sketch (outside taught verbs) is a sketch-wide
-// name from the start, with a type to be found out (the scope rule).
+// name from the start, with a type to be found out (the scope rule). The name of a loop is
+// not one of them inside that loop: assigning it there changes the item the loop is on (so
+// the list changes), and makes no name of the sketch, which `bound` says.
 @(private)
-collect_assignments :: proc(c: ^Checker, stmts: []^Stmt) {
+collect_assignments :: proc(c: ^Checker, stmts: []^Stmt, bound: []string = nil) {
 	for s in stmts {
 		switch k in s.kind {
 		case Assign:
 			// Only `name = ...` makes a name; `p.x = ...` changes one that exists.
 			name := k.target.parts[0]
-			if _, found := c.globals[name]; !found && len(k.target.parts) == 1 {
+			if _, found := c.globals[name]; !found && len(k.target.parts) == 1 && !slice_contains(bound, name) {
 				declare_global(c, name, Span{s.span.file, s.span.start, s.span.start + len(name)})
 			}
 		case If:
-			collect_assignments(c, k.body.stmts)
-			collect_assignments(c, k.else_body.stmts)
+			collect_assignments(c, k.body.stmts, bound)
+			collect_assignments(c, k.else_body.stmts, bound)
 		case Repeat:
-			collect_assignments(c, k.body.stmts)
+			collect_assignments(c, k.body.stmts, bound)
 		case While:
-			collect_assignments(c, k.body.stmts)
+			collect_assignments(c, k.body.stmts, bound)
 		case For:
-			collect_assignments(c, k.body.stmts)
+			collect_assignments(c, k.body.stmts, bound_with(c, bound, k.var))
 		case For_Each:
-			collect_assignments(c, k.body.stmts)
+			collect_assignments(c, k.body.stmts, bound_with(c, bound, k.var))
 		case With:
-			collect_assignments(c, k.body.stmts)
+			collect_assignments(c, k.body.stmts, bound)
 		case Every:
-			collect_assignments(c, k.body.stmts)
+			collect_assignments(c, k.body.stmts, bound)
 		case On:
-			collect_assignments(c, k.body.stmts)
+			collect_assignments(c, k.body.stmts, bound)
 		case Draw:
-			collect_assignments(c, k.body.stmts)
+			collect_assignments(c, k.body.stmts, bound)
 		case Expr_Stmt:
 			// A verb that runs a block (`push [ ... ]`, `draw into c [ ... ]`) makes names like any other block.
 			if call, is_call := k.expr.kind.(Call); is_call {
 				for a in call.args {
 					if block, is_block := a.kind.(Block_Lit); is_block {
-						collect_assignments(c, block.block.stmts)
+						collect_assignments(c, block.block.stmts, bound)
 					}
 				}
 			}
 		case Learn, Give, Stop, Use, Check, Expect, Error_Stmt: // a check keeps its own names
 		}
 	}
+}
+
+@(private)
+bound_with :: proc(c: ^Checker, bound: []string, name: string) -> []string {
+	out := make([]string, len(bound) + 1, c.alloc)
+	copy(out, bound)
+	out[len(bound)] = name
+	return out
 }
 
 @(private)
@@ -521,6 +531,13 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 		body := check_block(c, k.body, false)
 		resize(&c.walking, len(c.walking) - walked)
 		resize(&c.locals, mark)
+		// Changing the item the loop is on changes the list (the items of a list are shared), and
+		// a constant list never changes.
+		if path, is_path := k.list.kind.(Path); is_path && len(path.parts) == 1 && var.mutated {
+			if walked_sym := lookup(c, path.parts[0]); walked_sym != nil && walked_sym.kind == .Constant {
+				note(c, .Constant_Changed_By_Verb, k.list.span, walked_sym.name, k.var, "", fix(c, k.list.span, fmt.tprintf("(copy %s)", walked_sym.name)))
+			}
+		}
 		out.kind = IR_For_Each{var = var, list = list, body = body}
 	case With:
 		styles := make([dynamic]IR_Option, c.alloc)
@@ -691,6 +708,9 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 		note(c, .Constant_Changed, span, name, "", "", fix(c, span, strings.to_lower(name, context.temp_allocator)))
 		return IR_Error_Stmt{}
 	}
+	if sym.kind == .Loop {
+		sym.mutated = true // the item the loop is on is changed, and so is the list it is in
+	}
 	if !unify(c.types, sym.type, value.type) {
 		prior := fmt.tprintf("%s, set on line %d", describe(c.types, sym.type), line_number(c, sym.first_write))
 		note(c, .Kind_Conflict, span, name, prior, describe(c.types, value.type), fix(c, span, fmt.tprintf("%s2", name)))
@@ -712,7 +732,7 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 		note(c, .Constant_Changed, span, name, "", "", fix(c, span, strings.to_lower(name, context.temp_allocator)))
 		return IR_Error_Stmt{}
 	}
-	if sym.kind == .Parameter {
+	if sym.kind == .Parameter || sym.kind == .Loop {
 		sym.mutated = true
 	}
 	note_mutation(c, sym, span)

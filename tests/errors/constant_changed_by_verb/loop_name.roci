@@ -1,0 +1,2 @@
+COLOURS = [ 1 2 3 ]
+for each c in COLOURS [ c = c + 1 ]
