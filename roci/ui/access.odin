@@ -54,8 +54,8 @@ Node :: struct {
 	number:      f64,
 	min, max:    f64,
 	step:        f64,
-	checked:     bool, // a check box that is ticked
-	selected:    bool, // the tab showing, the radio button or list item chosen
+	checked:     bool, // a check box that is ticked, the radio button chosen
+	selected:    bool, // the tab showing, the list or drop-down item chosen
 	expanded:    bool, // a panel or menu that is open
 	has_check:   bool, // `checked` is meant, even when false
 	has_select:  bool, // `selected` is meant, even when false
@@ -167,7 +167,10 @@ build_tree :: proc(s: ^State, title: string) -> Tree {
 		case .Choice:
 			for item, i in r.items {
 				radio := Node{id = SUB_ID_BASE + u64(r.id) * 1024 + u64(min(i, 1023)), role = .Radio_Button, label = strings.clone(item)}
-				radio.has_select, radio.selected = true, i == int(r.value)
+				// A radio button is checked, not selected, as ARIA has it (`aria-checked`): the
+				// adapters take its state from there (UI Automation's selection, the value VoiceOver
+				// reads, AT-SPI's checked state), where `selected` is meant for list items and tabs.
+				radio.has_check, radio.checked = true, i == int(r.value)
 				radio.bounds = r.rect
 				radio.actions = {.Focus, .Click}
 				add_child(&t, index, radio)

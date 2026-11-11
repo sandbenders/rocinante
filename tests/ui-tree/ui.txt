@@ -8,8 +8,8 @@ Window "ui"
   Tab_Panel "color"
     Combo_Box "tone" value="orange" expanded=false [Focus Set_Value]
     Radio_Group "look" value="solid" [Focus]
-      Radio_Button "solid" selected=true [Focus Click]
-      Radio_Button "outline" selected=false [Focus Click]
+      Radio_Button "solid" checked=true [Focus Click]
+      Radio_Button "outline" checked=false [Focus Click]
   Tab "shape" selected=false [Focus Click]
   Tab_Panel "shape"
   Tab "words" selected=false [Focus Click]

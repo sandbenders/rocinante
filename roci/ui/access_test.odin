@@ -46,7 +46,7 @@ test_each_widget_is_a_node_with_its_role_name_value_and_actions :: proc(t: ^test
 	testing.expect(t, has_line(dump, "  Check_Box \"trails\" checked=true [Focus Click]\n"), dump)
 	testing.expect(t, has_line(dump, "  Slider \"size\" value=\"25.00\" number=25 range=0..100 step=1 [Focus Increment Decrement Set_Value]\n"), dump)
 	testing.expect(t, has_line(dump, "  Combo_Box \"shape\" value=\"square\" expanded=false [Focus Set_Value]\n"), dump)
-	testing.expect(t, has_line(dump, "  Radio_Group \"mode\" value=\"circle\" [Focus]\n    Radio_Button \"circle\" selected=true [Focus Click]\n    Radio_Button \"square\" selected=false [Focus Click]\n"), dump)
+	testing.expect(t, has_line(dump, "  Radio_Group \"mode\" value=\"circle\" [Focus]\n    Radio_Button \"circle\" checked=true [Focus Click]\n    Radio_Button \"square\" checked=false [Focus Click]\n"), dump)
 	testing.expect(t, has_line(dump, "  List_Box \"file\" value=\"square\" [Focus]\n    List_Item \"circle\" selected=false [Focus Click]\n    List_Item \"square\" selected=true [Focus Click]\n"), dump)
 	testing.expect(t, has_line(dump, "  Progress \"progress\" value=\"50%\" number=0.5 range=0..1\n"), dump)
 }
