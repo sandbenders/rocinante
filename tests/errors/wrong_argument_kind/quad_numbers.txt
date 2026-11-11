@@ -1,0 +1,8 @@
+── `quad` needs 4 points, each written { x, y } ──────── sketch.roci:1:1
+
+1 │ quad 0 0 100 0 100 100 0 100
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Here it is given 8 values.
+
+Write:  quad { 0, 0 } { 100, 0 } { 100, 100 } { 0, 100 }

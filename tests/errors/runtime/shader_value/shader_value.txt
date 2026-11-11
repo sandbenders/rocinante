@@ -5,4 +5,4 @@
 
 It reads no values: write `float amount;` at the top of the shader to give it one. A value is a global at the top of the shader, such as `float amount;`. The effect is drawn without it, and the sketch carries on.
 
-Give it one it has:  effect "good.hlsl" by %!(MISSING ARGUMENT)%!(MISSING CLOSE BRACE)amount: 0.02 }
+Give it one it has:  effect "good.hlsl" by { amount: 0.02 }

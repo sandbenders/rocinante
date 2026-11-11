@@ -563,6 +563,9 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 			testing.expectf(t, triggered, "%s.roci does not set off %v", path, id)
 			got := report(p, context.temp_allocator)
 			finish(p)
+			// fmt's mark for a format it could not fill (a brace in the format string is the usual
+			// cause), which would otherwise be stored as the expected text and pass from then on
+			testing.expectf(t, !strings.contains(got, "%!("), "%s.roci: the message has a broken format in it:\n%s", path, got)
 			txt := fmt.tprintf("%s.txt", path)
 			if update {
 				testing.expectf(t, os.write_entire_file(txt, transmute([]byte)got) == nil, "cannot write %s", txt)

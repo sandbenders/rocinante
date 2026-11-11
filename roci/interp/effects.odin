@@ -291,9 +291,10 @@ say_shader_value :: proc(it: ^Interp, e: ^lang.IR, shader, value: string, known:
 	example := "effect \"wave.hlsl\" by { amount: 0.02 }"
 	if len(known) > 0 {
 		have = fmt.tprintf("The values it reads are: %s.", strings.join(known, ", ", context.temp_allocator))
-		example = fmt.tprintf("effect \"%s\" by { %s: 1 }", shader, known[0])
+		// the opening brace goes in as a value: in a format string it means something to fmt
+		example = fmt.tprintf("effect \"%s\" by %s %s: 1 }", shader, "{", known[0])
 	} else {
-		example = fmt.tprintf("effect \"%s\" by { amount: 0.02 }", shader)
+		example = fmt.tprintf("effect \"%s\" by %s amount: 0.02 }", shader, "{")
 	}
 	fail(it, .Shader_Value, e.span, shader, value, have, example)
 }

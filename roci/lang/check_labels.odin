@@ -291,7 +291,8 @@ report_vectors_needed :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Ve
 	for form in registry.label_forms(verb.name) {
 		if len(form.words) == 0 {
 			count := len(verb.shapes[form.shape].params)
-			note(c, .Wrong_Argument_Kind, e.span, verb.name, fmt.tprintf("%d points, each written { x, y }", count), count_words(len(k.args)), fix(c, e.span, strings.join(points[:], " ", context.temp_allocator)))
+			// the opening brace goes in as a value: in a format string it means something to fmt
+			note(c, .Wrong_Argument_Kind, e.span, verb.name, fmt.tprintf("%d points, each written %s x, y }", count, "{"), count_words(len(k.args)), fix(c, e.span, strings.join(points[:], " ", context.temp_allocator)))
 			return
 		}
 	}

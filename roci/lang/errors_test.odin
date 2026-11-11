@@ -117,6 +117,9 @@ test_every_message_has_a_sketch_that_triggers_it_and_the_text_matches :: proc(t:
 			}
 		}
 		got := render_all(parsed.src, parsed.checked.diagnostics, context.temp_allocator)
+		// fmt's mark for a format it could not fill (a brace in the format string is the usual
+		// cause), which would otherwise be stored as the expected text and pass from then on
+		testing.expectf(t, !strings.contains(got, "%!("), "%s.roci: the message has a broken format in it:\n%s", c.path, got)
 		txt := fmt.tprintf("%s.txt", c.path)
 		if update {
 			testing.expectf(t, os.write_entire_file(txt, transmute([]byte)got) == nil, "cannot write %s", txt)
