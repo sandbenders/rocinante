@@ -135,6 +135,11 @@ report_lexer_problems :: proc(p: ^Parser, lexed: Lexed) {
 			report(p, .Bad_Colour, problem.span, text, line_with(p, problem.span, fixed_colour(text)))
 		case .Hash_Comment:
 			report(p, .Hash_Comment, problem.span, text, line_with(p, problem.span, "//"))
+		case .Habit_Operator:
+			word, spoken := habit_word(text)
+			// `!x` becomes `not x`: the word needs its space, the others have theirs
+			replacement := "not " if text == "!" else word
+			report(p, .Habit_Operator, problem.span, text, word, line_with(p, problem.span, replacement), spoken)
 		}
 	}
 }
@@ -180,7 +185,28 @@ advance :: proc(p: ^Parser) -> Token {
 
 @(private)
 is_word :: proc(p: ^Parser, t: Token, word: string) -> bool {
-	return t.kind == .Name && text_of(p, t) == word
+	if t.kind == .Name {
+		return text_of(p, t) == word
+	}
+	// what other languages write for a word has been said already, and stands for it
+	switch word {
+	case "and": return t.kind == .Habit_And
+	case "or":  return t.kind == .Habit_Or
+	case "not": return t.kind == .Habit_Not
+	}
+	return false
+}
+
+// The word of the language for what another language writes, and what that is called aloud.
+@(private)
+habit_word :: proc(written: string) -> (word, spoken: string) {
+	switch written {
+	case "==": return "is", "two equals signs"
+	case "!=": return "is not", "an exclamation mark and an equals sign"
+	case "&&": return "and", "two ampersands"
+	case "||": return "or", "two vertical bars"
+	}
+	return "not", "an exclamation mark"
 }
 
 @(private)

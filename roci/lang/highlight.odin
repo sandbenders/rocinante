@@ -50,7 +50,8 @@ highlight :: proc(text: string, allocator := context.allocator) -> []Highlight_S
 			kind = .Colour
 		case .Open_Square, .Close_Square, .Open_Round, .Close_Round, .Open_Curly, .Close_Curly:
 			kind = .Bracket
-		case .Equals, .Plus, .Minus, .Minus_Prefix, .Star, .Slash, .Percent, .Less, .Less_Equal, .Greater, .Greater_Equal:
+		case .Equals, .Plus, .Minus, .Minus_Prefix, .Star, .Slash, .Percent, .Less, .Less_Equal, .Greater, .Greater_Equal,
+			.Habit_Is, .Habit_Is_Not, .Habit_And, .Habit_Or, .Habit_Not:
 			kind = .Operator
 		case .Name:
 			word := text[t.span.start:t.span.end]

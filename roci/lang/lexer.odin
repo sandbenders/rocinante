@@ -164,6 +164,12 @@ lex_one :: proc(l: ^Lexer) {
 	one :: proc(l: ^Lexer, kind: Token_Kind, i: int) {
 		emit(l, kind, i, i + 1)
 	}
+	// A word of the language written the way other languages write it: said once, and the token
+	// stands for the word, so what follows is read as it was meant.
+	habit :: proc(l: ^Lexer, kind: Token_Kind, i, length: int) {
+		problem(l, .Habit_Operator, i, i + length)
+		emit(l, kind, i, i + length)
+	}
 	two_if_equals :: proc(l: ^Lexer, plain, with_equals: Token_Kind, i: int) {
 		if i + 1 < len(l.text) && l.text[i + 1] == '=' {
 			emit(l, with_equals, i, i + 2)
@@ -180,7 +186,32 @@ lex_one :: proc(l: ^Lexer) {
 	case '}': one(l, .Close_Curly, i)
 	case ',': one(l, .Comma, i)
 	case ':': one(l, .Colon, i)
-	case '=': one(l, .Equals, i)
+	case '=':
+		if i + 1 < len(l.text) && l.text[i + 1] == '=' {
+			habit(l, .Habit_Is, i, 2)
+		} else {
+			one(l, .Equals, i)
+		}
+	case '!':
+		if i + 1 < len(l.text) && l.text[i + 1] == '=' {
+			habit(l, .Habit_Is_Not, i, 2)
+		} else {
+			habit(l, .Habit_Not, i, 1)
+		}
+	case '&':
+		if i + 1 < len(l.text) && l.text[i + 1] == '&' {
+			habit(l, .Habit_And, i, 2)
+		} else {
+			problem(l, .Unknown_Character, i, i + size)
+			emit(l, .Invalid, i, i + size)
+		}
+	case '|':
+		if i + 1 < len(l.text) && l.text[i + 1] == '|' {
+			habit(l, .Habit_Or, i, 2)
+		} else {
+			problem(l, .Unknown_Character, i, i + size)
+			emit(l, .Invalid, i, i + size)
+		}
 	case '+': one(l, .Plus, i)
 	case '*': one(l, .Star, i)
 	case '/': one(l, .Slash, i)

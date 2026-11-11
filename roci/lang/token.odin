@@ -29,6 +29,13 @@ Token_Kind :: enum u8 {
 	Greater,
 	Greater_Equal,
 	Invalid,       // a character the language has no use for, or a literal that is malformed
+	// What other languages write for a word of this one. Each is said once as a teaching error and
+	// then stands for the word, so the rest of the line is read as it was meant.
+	Habit_Is,      // ==, for `is`
+	Habit_Is_Not,  // !=, for `is not`
+	Habit_And,     // &&, for `and`
+	Habit_Or,      // ||, for `or`
+	Habit_Not,     // !, for `not`
 }
 
 Token :: struct {
@@ -49,6 +56,7 @@ Lex_Problem_Kind :: enum u8 {
 	Bad_Number,
 	Bad_Colour,
 	Hash_Comment, // a hash that is not a colour, where a comment was meant
+	Habit_Operator, // ==, !=, &&, || or !, where `is`, `is not`, `and`, `or` or `not` was meant
 }
 
 Lex_Problem :: struct {

@@ -1,0 +1,8 @@
+── Write `not`, not an exclamation mark ──────────────── sketch.roci:2:4
+
+2 │ if !x [ background 0 ]
+  │    ^
+
+Other languages write `!`, but rocinante asks and combines with words: `is` and `is not` ask whether two things are the same, and `and`, `or` and `not` combine conditions.
+
+Write:  if not x [ background 0 ]

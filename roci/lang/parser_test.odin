@@ -1062,3 +1062,52 @@ test_the_words_after_a_fill_or_stroke_value_belong_to_it :: proc(t: ^testing.T) 
 	expect_tree(t, "rect at 0 0 size 5 5 fill red as corner", "(call rect (opt at (num 0) (num 0)) (opt size (num 5) (num 5)) (opt fill (name red)) (opt as (name corner)))")
 	expect_tree(t, "with fill photo as fit [ ]", "(with (opt fill (name photo) (opt as (name fit)))\n  (body\n  )\n)")
 }
+
+// What other languages write for a word is said once and then read as the word, so the rest of
+// the line parses as it was meant and nothing else is said.
+@(test)
+test_a_habit_is_one_error_and_the_line_parses_as_the_word_would :: proc(t: ^testing.T) {
+	pairs := [?][2]string{
+		{"if frame == 1 [ background 0 ]", "if frame is 1 [ background 0 ]"},
+		{"x = 1\nif x != 1 [ background 0 ]", "x = 1\nif x is not 1 [ background 0 ]"},
+		{"x = true\nif x && false [ background 0 ]", "x = true\nif x and false [ background 0 ]"},
+		{"x = true\nif x || false [ background 0 ]", "x = true\nif x or false [ background 0 ]"},
+		{"x = true\nif !x [ background 0 ]", "x = true\nif not x [ background 0 ]"},
+		{"a = 1\nb = 2\nc = false\nwhile a == 1 && b != 2 || !c [ a = 2 ]", "a = 1\nb = 2\nc = false\nwhile a is 1 and b is not 2 or not c [ a = 2 ]"},
+		{"a = 1\nok = a == 2", "a = 1\nok = a is 2"},
+	}
+	for pair in pairs {
+		habit := parse_text(pair[0])
+		word := parse_text(pair[1])
+		testing.expectf(t, len(word.result.diagnostics) == 0, "`%s` should be clean", pair[1])
+		for d in habit.result.diagnostics {
+			testing.expectf(t, d.id == .Habit_Operator, "`%s`: %v", pair[0], d.id)
+		}
+		testing.expectf(t, len(habit.result.diagnostics) > 0, "`%s` should say what to write", pair[0])
+		testing.expect_value(t, habit.tree, word.tree)
+	}
+}
+
+@(test)
+test_a_habit_says_the_word_to_write_and_the_line_that_works :: proc(t: ^testing.T) {
+	cases := [?]struct {
+		text, word, fixed, spoken: string,
+	}{
+		{"if frame == 1 [ background 0 ]", "is", "if frame is 1 [ background 0 ]", "two equals signs"},
+		{"x = 1\nif x != 1 [ background 0 ]", "is not", "if x is not 1 [ background 0 ]", "an exclamation mark and an equals sign"},
+		{"x = true\nif x && true [ background 0 ]", "and", "if x and true [ background 0 ]", "two ampersands"},
+		{"x = true\nif x || true [ background 0 ]", "or", "if x or true [ background 0 ]", "two vertical bars"},
+		{"x = true\nif !x [ background 0 ]", "not", "if not x [ background 0 ]", "an exclamation mark"},
+	}
+	for c in cases {
+		got := parse_text(c.text)
+		if !testing.expectf(t, len(got.result.diagnostics) == 1, "`%s`", c.text) {
+			continue
+		}
+		d := got.result.diagnostics[0]
+		testing.expect_value(t, d.id, Message_Id.Habit_Operator)
+		testing.expect_value(t, d.args[1], c.word)
+		testing.expect_value(t, d.args[2], c.fixed)
+		testing.expect_value(t, d.args[3], c.spoken)
+	}
+}

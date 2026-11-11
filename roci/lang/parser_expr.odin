@@ -844,21 +844,25 @@ parse_comparison :: proc(p: ^Parser) -> ^Expr {
 	for {
 		t := cur(p)
 		op: Binary_Op
+		written_is := false // the word `is`, which `not` may follow, and not `==`
 		#partial switch t.kind {
 		case .Less:          op = .Less
 		case .Less_Equal:    op = .Less_Equal
 		case .Greater:       op = .Greater
 		case .Greater_Equal: op = .Greater_Equal
+		case .Habit_Is:      op = .Is
+		case .Habit_Is_Not:  op = .Is_Not
 		case .Name:
 			if !is_word(p, t, "is") {
 				return lhs
 			}
 			op = .Is
+			written_is = true
 		case:
 			return lhs
 		}
 		advance(p)
-		if op == .Is && is_word(p, cur(p), "not") {
+		if written_is && is_word(p, cur(p), "not") {
 			advance(p)
 			op = .Is_Not
 		}

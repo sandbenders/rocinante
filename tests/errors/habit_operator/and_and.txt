@@ -1,0 +1,8 @@
+── Write `and`, not two ampersands ───────────────────── sketch.roci:2:6
+
+2 │ if x && false [ background 0 ]
+  │      ^^
+
+Other languages write `&&`, but rocinante asks and combines with words: `is` and `is not` ask whether two things are the same, and `and`, `or` and `not` combine conditions.
+
+Write:  if x and false [ background 0 ]

@@ -437,3 +437,40 @@ test_lexing_a_whole_sketch_ends_with_the_end_token_and_no_problems :: proc(t: ^t
 	testing.expect_value(t, lexed.tokens[len(lexed.tokens) - 1].kind, Token_Kind.End_Of_File)
 	testing.expect_value(t, len(lexed.comments), 1)
 }
+
+@(test)
+test_what_other_languages_write_for_a_word_is_one_token_and_one_problem :: proc(t: ^testing.T) {
+	expect_kinds(t, "a == b", {.Name, .Habit_Is, .Name, .End_Of_File})
+	expect_kinds(t, "a != b", {.Name, .Habit_Is_Not, .Name, .End_Of_File})
+	expect_kinds(t, "a && b", {.Name, .Habit_And, .Name, .End_Of_File})
+	expect_kinds(t, "a || b", {.Name, .Habit_Or, .Name, .End_Of_File})
+	expect_kinds(t, "!a", {.Habit_Not, .Name, .End_Of_File})
+	expect_kinds(t, "a==b", {.Name, .Habit_Is, .Name, .End_Of_File}) // with no spaces too
+	expect_kinds(t, "x = a", {.Name, .Equals, .Name, .End_Of_File}) // one equals sign is still assignment
+	cases := [?]struct {
+		text, written: string,
+	}{{"a == b", "=="}, {"a != b", "!="}, {"a && b", "&&"}, {"a || b", "||"}, {"!a", "!"}}
+	for c in cases {
+		_, lexed, src := kinds_of(c.text)
+		if testing.expectf(t, len(lexed.problems) == 1, "`%s` should be one problem", c.text) {
+			testing.expect_value(t, lexed.problems[0].kind, Lex_Problem_Kind.Habit_Operator)
+			testing.expect_value(t, span_text(src, lexed.problems[0].span), c.written)
+		}
+	}
+}
+
+@(test)
+test_a_single_ampersand_or_bar_is_still_an_unknown_character_and_text_and_comments_are_left_alone :: proc(t: ^testing.T) {
+	expect_kinds(t, "a & b", {.Name, .Invalid, .Name, .End_Of_File})
+	expect_kinds(t, "a | b", {.Name, .Invalid, .Name, .End_Of_File})
+	for text in ([]string{"a & b", "a | b"}) {
+		_, lexed, _ := kinds_of(text)
+		if testing.expectf(t, len(lexed.problems) == 1, "`%s`", text) {
+			testing.expect_value(t, lexed.problems[0].kind, Lex_Problem_Kind.Unknown_Character)
+		}
+	}
+	for text in ([]string{"\"a == b && c != d || !e\"", "x = 1 // a == b && !c", "x = 1 <= 2", "x = 1 >= 2"}) {
+		_, lexed, _ := kinds_of(text)
+		testing.expectf(t, len(lexed.problems) == 0, "`%s` should be fine", text)
+	}
+}

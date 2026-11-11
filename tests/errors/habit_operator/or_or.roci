@@ -1,0 +1,2 @@
+x = true
+if x || false [ background 0 ]
