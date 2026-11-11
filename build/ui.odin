@@ -16,10 +16,7 @@ ACCESSKIT_HEADER :: ".cache/ui/accesskit/accesskit.h"
 // Builds the libraries (`ui-libs`) or builds them and writes the bindings again
 // (`ui-libs regenerate`).
 ui_libs :: proc(regenerate: bool) -> bool {
-	when ODIN_OS == .Windows {
-		fmt.eprintfln("%s", term.err("ui-libs: the Windows build is not written yet (it needs MSVC and -MT, see spikes/ui/setup-windows.sh)", .Bold_Red))
-		return false
-	}
+	// On Windows the script runs in Git Bash and builds with MSVC, whose cl and lib must be on the PATH.
 	command := []string{"sh", "tools/ui-libs.sh", "regenerate"} if regenerate else []string{"sh", "tools/ui-libs.sh"}
 	state, stdout, stderr, err := os.process_exec({command = command}, context.allocator)
 	fmt.print(string(stdout))

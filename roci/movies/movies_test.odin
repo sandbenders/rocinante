@@ -8,11 +8,11 @@
 // alone). Here nothing else is running while they do.
 package movies
 
-import "../"
+@(require) import "../"
 import "../gfx"
-import "core:os"
-import "core:strings"
-import "core:sync"
+@(require) import "core:os"
+@(require) import "core:strings"
+@(require) import "core:sync"
 import "core:testing"
 
 // A frame source for the tests: a picture of the size asked for, every byte 200, so a movie of
@@ -23,6 +23,21 @@ solid_frames :: proc(width, height: int) -> (gfx.Image, bool) {
 		p = 200
 	}
 	return gfx.Image{width, height, pixels}, true
+}
+
+// The one test that runs on Windows too, where the stand-ins (shell scripts) cannot: the
+// frames every other test records are what they say.
+@(test)
+the_frame_source_gives_solid_frames_of_the_size_asked :: proc(t: ^testing.T) {
+	image, ok := solid_frames(3, 2)
+	defer delete(image.pixels)
+	testing.expect(t, ok)
+	testing.expect_value(t, image.width, 3)
+	testing.expect_value(t, image.height, 2)
+	testing.expect_value(t, len(image.pixels), 24)
+	for p in image.pixels {
+		testing.expect_value(t, p, u8(200))
+	}
 }
 
 when ODIN_OS != .Windows {

@@ -53,13 +53,10 @@ Fill_Key :: struct {
 }
 
 // The vertex shader every fill shares, translated once for the program.
-@(thread_local) fill_vertex_spirv: []u8
-@(thread_local) fill_vertex_msl: []u8
+@(thread_local) fill_vertex: Vertex_Code
 
 fill_vertex_stop :: proc() {
-	delete(fill_vertex_spirv)
-	delete(fill_vertex_msl)
-	fill_vertex_spirv, fill_vertex_msl = nil, nil
+	vertex_code_destroy(&fill_vertex)
 }
 
 // The pipeline that draws shapes with a fill shader into a target of this format and sample
@@ -67,7 +64,7 @@ fill_vertex_stop :: proc() {
 @(private)
 fill_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount) -> ^sdl.GPUGraphicsPipeline {
 	data := shader_data(id)
-	if data == nil || len(data.spirv) == 0 || data.kind != .Fill {
+	if data == nil || len(data.code) == 0 || data.kind != .Fill {
 		return nil
 	}
 	key := Fill_Key{id, data.version, format, samples}
@@ -80,55 +77,13 @@ fill_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureFormat,
 			delete_key(&r.effects.fills, old)
 		}
 	}
-	formats := sdl.GetGPUShaderFormats(r.device)
-	vertex_code, fragment_code: []u8
-	entry: cstring
-	format_flag: sdl.GPUShaderFormat
-	if .SPIRV in formats {
-		if fill_vertex_spirv == nil {
-			code, message, ok := translate_to_spirv(FILL_VERTEX, .Vertex, "vs_main")
-			if !ok {
-				effect_say(r, message)
-				delete(message)
-				return nil
-			}
-			fill_vertex_spirv = code
-		}
-		vertex_code, fragment_code, entry, format_flag = fill_vertex_spirv, data.spirv, "main", {.SPIRV}
-	} else if .MSL in formats {
-		if fill_vertex_msl == nil {
-			spirv, message, ok := translate_to_spirv(FILL_VERTEX, .Vertex, "vs_main")
-			if !ok {
-				effect_say(r, message)
-				delete(message)
-				return nil
-			}
-			defer delete(spirv)
-			code, msl_message, msl_ok := spirv_to_msl(spirv)
-			if !msl_ok {
-				effect_say(r, msl_message)
-				delete(msl_message)
-				return nil
-			}
-			fill_vertex_msl = code
-		}
-		if data.msl == nil {
-			code, message, ok := spirv_to_msl(data.spirv, effect = true, textures = false)
-			if !ok {
-				effect_say(r, message)
-				delete(message)
-				return nil
-			}
-			data.msl = code
-		}
-		vertex_code, fragment_code, entry, format_flag = fill_vertex_msl, data.msl, "main0", {.MSL}
-	} else {
-		effect_say(r, "this computer's graphics system does not take the shaders a sketch writes yet")
+	code, code_ok := user_shader_code(r, data, FILL_VERTEX, &fill_vertex, textures = false)
+	if !code_ok {
 		return nil
 	}
-	vertex := create_shader(r, vertex_code, entry, format_flag, .VERTEX, 1, 0)
+	vertex := create_shader(r, code.vertex, code.vertex_entry, code.format, .VERTEX, 1, 0)
 	uniform_buffers := u32(2) if data.params.size > 0 else 1
-	fragment := create_shader(r, fragment_code, entry, format_flag, .FRAGMENT, uniform_buffers, 0)
+	fragment := create_shader(r, code.fragment, code.fragment_entry, code.format, .FRAGMENT, uniform_buffers, 0)
 	defer if vertex != nil {sdl.ReleaseGPUShader(r.device, vertex)}
 	defer if fragment != nil {sdl.ReleaseGPUShader(r.device, fragment)}
 	if vertex == nil || fragment == nil {

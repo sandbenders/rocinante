@@ -331,7 +331,8 @@ an_installed_collection_is_found_by_the_name_of_one_of_its_faces :: proc(t: ^tes
 	// Inter Regular is no file name, and no first face of anything: the second face of Pair.ttc
 	path, found := find_system_font("Inter Regular")
 	testing.expect(t, found)
-	testing.expect_value(t, path, concat_path(root, "Pair.ttc"))
+	// The search joins with a forward slash on every system, Windows too.
+	testing.expect_value(t, path, root + "/Pair.ttc")
 	_, found = find_system_font("Inter Black")
 	testing.expect(t, !found)
 	testing.expect(t, is_collection_name("a/b/Pair.TTC") && is_collection_name("x.otc"))

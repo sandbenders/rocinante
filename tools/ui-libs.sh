@@ -105,6 +105,47 @@ clone() { # url tag dir
 }
 clone https://github.com/ocornut/imgui "$IMGUI_TAG" imgui
 
+case "$(uname -s)" in
+MINGW* | MSYS* | CYGWIN*)
+	# Windows (Git Bash): MSVC's cl and lib build roci_ui.lib, with the static C runtime (-MT),
+	# because Odin links that one. SDL's headers are Odin's own (vendor/sdl3/include), which
+	# match the SDL3.dll Odin ships, copied afresh each time so a new Odin brings its own.
+	if [ "${1:-}" = regenerate ]; then
+		echo "ui-libs: regenerate the wrappers on another system (they are the same everywhere and committed)" >&2
+		exit 1
+	fi
+	for tool in cl lib odin; do
+		command -v "$tool" >/dev/null 2>&1 && continue
+		echo "ui-libs: $tool is not on the PATH; in a plain cmd window run the Build Tools' vcvars64.bat, then start Git Bash in it:" >&2
+		echo '    call "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat"' >&2
+		echo '    "C:\Program Files\Git\bin\bash.exe" --login -i' >&2
+		exit 1
+	done
+	# Git Bash would rewrite arguments that look like Unix paths; none are meant to be.
+	export MSYS2_ARG_CONV_EXCL='*'
+	odin_sdl="$(cygpath -u "$(odin root)")/vendor/sdl3/include"
+	[ -f "$odin_sdl/SDL.h" ] || { echo "ui-libs: Odin's vendor/sdl3/include has no SDL.h" >&2; exit 1; }
+	rm -rf sdl-include
+	mkdir -p sdl-include
+	cp -r "$odin_sdl" sdl-include/SDL3
+	m=$(cygpath -m "$cache")
+	c=$(cygpath -m "$c_api")
+	rm -rf obj
+	mkdir -p obj
+	for src in "$m/imgui/imgui" "$m/imgui/imgui_demo" "$m/imgui/imgui_draw" "$m/imgui/imgui_tables" \
+		"$m/imgui/imgui_widgets" "$m/imgui/backends/imgui_impl_sdl3" "$m/imgui/backends/imgui_impl_sdlgpu3" \
+		"$c/dcimgui" "$c/roci_context" "$c/backends/dcimgui_impl_sdl3" "$c/backends/dcimgui_impl_sdlgpu3"; do
+		cl -nologo -std:c++17 -O2 -MT -EHsc -DIMGUI_USER_CONFIG='"imconfig_roci.h"' \
+			-I"$m/imgui" -I"$m/imgui/backends" -I"$c" -I"$c/backends" -I"$m/sdl-include" \
+			-c -Fo"$m/obj/$(basename "$src").obj" "$src.cpp" >/dev/null || { echo "ui-libs: cl failed on $src.cpp" >&2; exit 1; }
+	done
+	rm -f roci_ui.lib
+	lib -nologo -OUT:"$m/roci_ui.lib" obj/*.obj
+	echo "ui-libs: built $cache/roci_ui.lib (Dear ImGui $IMGUI_TAG)"
+	exit 0
+	;;
+esac
+
 if [ -z "${SDL_INCLUDE:-}" ]; then
 	# pkg-config when it is there, else the usual places (Arch's image has no pkg-config)
 	SDL_INCLUDE=$(pkg-config --variable=includedir sdl3 2>/dev/null || true)

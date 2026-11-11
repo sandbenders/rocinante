@@ -117,13 +117,22 @@ init_once :: proc(app: ^App) -> (ok: bool, was_wayland: bool) {
 	}
 	intrinsics.atomic_add(&apps_running, 1)
 	app.video = strings.clone_from_cstring(sdl.GetCurrentVideoDriver())
-	// Every shader format rocinante compiles to, so SDL picks the backend of the
-	// system: Vulkan (SPIR-V), Metal (MSL) or Direct3D 12 (DXIL).
 	props := sdl.CreateProperties()
 	defer sdl.DestroyProperties(props)
-	sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, true)
-	sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN, true)
-	sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOLEAN, true)
+	when ODIN_OS == .Windows {
+		// Windows draws with Direct3D 12 and nothing else, even where a Vulkan driver is
+		// installed: the device is asked for by name, and only Direct3D's own formats are
+		// offered, DXIL for rocinante's shaders and DXBC for a sketch's (made by the shader
+		// compiler that is part of Windows), so SDL can never fall back to Vulkan.
+		sdl.SetStringProperty(props, sdl.PROP_GPU_DEVICE_CREATE_NAME_STRING, DIRECT3D_12)
+		sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN, true)
+		sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_SHADERS_DXBC_BOOLEAN, true)
+	} else {
+		// Vulkan (SPIR-V) on Linux, FreeBSD, OpenBSD and Android, Metal (MSL) on Apple's
+		// systems: SDL picks the one the system has.
+		sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, true)
+		sdl.SetBooleanProperty(props, sdl.PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOLEAN, true)
+	}
 	// SDL's Vulkan backend asks for shaderClipDistance unless told otherwise, and
 	// the Mali-G715 in the Pixel 9 does not have it (Spike 2). rocinante's shaders
 	// never use clip distances, so it is always off.
@@ -151,6 +160,9 @@ init_once :: proc(app: ^App) -> (ok: bool, was_wayland: bool) {
 
 // The environment variable that turns the GPU's debug mode on.
 GPU_DEBUG_VARIABLE :: "ROCI_GPU_DEBUG"
+
+// SDL's name for its Direct3D 12 back end, the only one a Windows device is made with.
+DIRECT3D_12 :: "direct3d12"
 
 // Whether the value of ROCI_GPU_DEBUG asks for debug mode: anything but unset,
 // empty or 0.

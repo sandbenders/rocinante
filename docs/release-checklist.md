@@ -59,6 +59,11 @@ These systems were last tried in full before text, shaders, canvases, export and
 - [ ] Where the window is on screen (X11): Orca's mouse review and a click-through land on the right widget; on a scaled display they may be off (node bounds are logical pixels); under Wayland the position is unknown.
 - [ ] Orca keeps working while the sketch reloads and restarts, and when a second window opens or closes.
 
+**4a. Direct3D 12 on Windows** (Windows draws with Direct3D 12 only, and nothing of Vulkan may be installed for it)
+- [ ] `odin run build -- ci` from Git Bash started inside `vcvars64.bat` (it builds `roci_ui.lib` with MSVC when missing) passes with no Vulkan SDK, shaderc or SPIRV-Cross on the computer.
+- [ ] `odin run tests/golden` says `GPU driver direct3d12` even on a computer with a Vulkan driver, and `effects`, `shader_fills` and `example_neon_1`, `example_tunnel_1`, `example_smoke_1` are within its limits (they are a sketch's own shaders, compiled by Windows' FXC).
+- [ ] `roci run examples/effects`: editing the shader file while it runs reloads it, and a mistake in it says the line (in FXC's words).
+
 **4b. The screen reader on Windows** (new: the adapter is written, not yet tried; `sh tools/ui-libs.sh accesskit` in Git Bash fetches the library, which needs `curl` and `unzip` or PowerShell)
 - [ ] The build links: `odin build cli -o:speed -out:output/roci.exe` with the library in `.cache/ui/accesskit/accesskit.lib`. If the link fails, send the messages first (the system libraries of the foreign import, or a clash between the static C runtime Odin links and the one the library was built with, are the things not checked).
 - [ ] A sketch with widgets (`examples/ui`) starts: the window blinks once at the start (it is hidden while the adapter is made) and then behaves as it always did. If the program stops with a Rust panic message, say so first.

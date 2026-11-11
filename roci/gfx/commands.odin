@@ -383,7 +383,7 @@ set_fill_image :: proc(list: ^Command_List, fill: Image_Fill) {
 // Fills with a shader from now on (see `fill_shader`'s doc in shaders.odin).
 set_fill_shader :: proc(list: ^Command_List, shader: Shader_Id, time, frame: f32, mouse: [2]f32, values: []u8) -> bool {
 	data := shader_data(shader)
-	if data == nil || len(data.spirv) == 0 || data.kind != .Fill || !finite(time, frame, mouse.x, mouse.y) {
+	if data == nil || len(data.code) == 0 || data.kind != .Fill || !finite(time, frame, mouse.x, mouse.y) {
 		return false
 	}
 	list.look_changed = true

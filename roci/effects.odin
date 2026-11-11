@@ -85,7 +85,7 @@ effect :: proc(shader: Shader, values: []Effect_Value = nil) -> bool {
 		return false
 	}
 	data := gfx.shader_data(shader)
-	if data == nil || len(data.spirv) == 0 || data.kind != .Effect {
+	if data == nil || len(data.code) == 0 || data.kind != .Effect {
 		return false
 	}
 	block := shader_block(data, values)
@@ -124,7 +124,7 @@ shader_block :: proc(data: ^gfx.Shader_Data, values: []Effect_Value) -> []u8 {
 fill_shader :: proc(shader: Shader, values: []Effect_Value = nil) -> bool {
 	w := current_win()
 	data := gfx.shader_data(shader)
-	if w == nil || data == nil || len(data.spirv) == 0 || data.kind != .Fill {
+	if w == nil || data == nil || len(data.code) == 0 || data.kind != .Fill {
 		return false
 	}
 	return gfx.set_fill_shader(current_list(), shader, f32(time_now()), f32(the.frame), {f32(w.mouse.x), f32(w.mouse.y)}, shader_block(data, values))

@@ -4,7 +4,7 @@
 // frame is drawn into a texture instead of the window, and each effect draws one triangle
 // that covers the target, reading the texture the one before it drew; the last draws into
 // the window. A shader that cannot be had (a mistake in its source, a graphics system that
-// takes neither SPIR-V nor Metal) is left out and the frame shows without it.
+// takes none of SPIR-V, Metal and DXBC) is left out and the frame shows without it.
 package gfx
 
 import "core:fmt"
@@ -30,8 +30,7 @@ Effect_Gpu :: struct {
 }
 
 // The vertex shader every effect shares, translated once for the program.
-@(thread_local) effect_vertex_spirv: []u8
-@(thread_local) effect_vertex_msl: []u8
+@(thread_local) effect_vertex: Vertex_Code
 
 // What an effect's uniform buffer 0 holds, the sketch's frame as the shader sees it.
 Effect_Uniforms :: struct {
@@ -65,16 +64,7 @@ effect_gpu_destroy :: proc(r: ^Renderer) {
 
 // Lets go of the vertex shader's translations (with the other shaders, at the end).
 effect_vertex_stop :: proc() {
-	delete(effect_vertex_spirv)
-	delete(effect_vertex_msl)
-	effect_vertex_spirv, effect_vertex_msl = nil, nil
-}
-
-// Whether this renderer can run effects at all.
-@(private)
-can_run_effects :: proc(r: ^Renderer) -> bool {
-	formats := sdl.GetGPUShaderFormats(r.device)
-	return .SPIRV in formats || .MSL in formats
+	vertex_code_destroy(&effect_vertex)
 }
 
 @(private)
@@ -87,7 +77,7 @@ effect_say :: proc(r: ^Renderer, what: string) {
 @(private)
 effect_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureFormat) -> ^sdl.GPUGraphicsPipeline {
 	data := shader_data(id)
-	if data == nil || len(data.spirv) == 0 {
+	if data == nil || len(data.code) == 0 {
 		return nil
 	}
 	key := Effect_Key{id, data.version, format}
@@ -101,55 +91,13 @@ effect_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureForma
 			delete_key(&r.effects.pipelines, old)
 		}
 	}
-	formats := sdl.GetGPUShaderFormats(r.device)
-	vertex_code, fragment_code: []u8
-	entry: cstring
-	format_flag: sdl.GPUShaderFormat
-	if .SPIRV in formats {
-		if effect_vertex_spirv == nil {
-			code, message, ok := translate_to_spirv(EFFECT_VERTEX, .Vertex, "vs_main")
-			if !ok {
-				effect_say(r, message)
-				delete(message)
-				return nil
-			}
-			effect_vertex_spirv = code
-		}
-		vertex_code, fragment_code, entry, format_flag = effect_vertex_spirv, data.spirv, "main", {.SPIRV}
-	} else if .MSL in formats {
-		if effect_vertex_msl == nil {
-			spirv, message, ok := translate_to_spirv(EFFECT_VERTEX, .Vertex, "vs_main")
-			if !ok {
-				effect_say(r, message)
-				delete(message)
-				return nil
-			}
-			defer delete(spirv)
-			code, msl_message, msl_ok := spirv_to_msl(spirv)
-			if !msl_ok {
-				effect_say(r, msl_message)
-				delete(msl_message)
-				return nil
-			}
-			effect_vertex_msl = code
-		}
-		if data.msl == nil {
-			code, message, ok := spirv_to_msl(data.spirv, effect = true)
-			if !ok {
-				effect_say(r, message)
-				delete(message)
-				return nil
-			}
-			data.msl = code
-		}
-		vertex_code, fragment_code, entry, format_flag = effect_vertex_msl, data.msl, "main0", {.MSL}
-	} else {
-		effect_say(r, "this computer's graphics system does not take the shaders a sketch writes yet")
+	code, code_ok := user_shader_code(r, data, EFFECT_VERTEX, &effect_vertex, textures = true)
+	if !code_ok {
 		return nil
 	}
-	vertex := create_shader(r, vertex_code, entry, format_flag, .VERTEX, 0, 0)
+	vertex := create_shader(r, code.vertex, code.vertex_entry, code.format, .VERTEX, 0, 0)
 	uniform_buffers := u32(2) if data.params.size > 0 else 1
-	fragment := create_shader(r, fragment_code, entry, format_flag, .FRAGMENT, uniform_buffers, 1)
+	fragment := create_shader(r, code.fragment, code.fragment_entry, code.format, .FRAGMENT, uniform_buffers, 1)
 	defer if vertex != nil {sdl.ReleaseGPUShader(r.device, vertex)}
 	defer if fragment != nil {sdl.ReleaseGPUShader(r.device, fragment)}
 	if vertex == nil || fragment == nil {
@@ -220,7 +168,7 @@ render_with_effects :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, targe
 	runnable := make([dynamic]Effect, context.temp_allocator)
 	for e in list.effects {
 		data := shader_data(e.shader)
-		if data == nil || data.version != e.version || len(data.spirv) == 0 {
+		if data == nil || data.version != e.version || len(data.code) == 0 {
 			continue
 		}
 		if effect_pipeline(r, e.shader, format) != nil {

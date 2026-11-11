@@ -14,6 +14,10 @@
 vendor:sdl3     Zlib
 # vendor:sdl3/ttf is part of vendor:sdl3 above. SDL_ttf is Zlib; the FreeType (FreeType Project Licence, BSD-style), HarfBuzz (Old MIT) and
 # PlutoSVG (MIT) it is built with have their LICENSE files beside Odin's binding (read 2026-11-02).
+# Odin's bindings to Direct3D's shader compiler and reflection (d3d_compiler, d3d12), used on Windows only to compile a sketch's own
+# shaders: Odin's own licence, zlib (its LICENSE, read 2026-11-11). The compiler itself, d3dcompiler_47.dll, is part of Windows and is
+# never shipped; vendor:directx/dxc, whose dxil.dll is a closed Microsoft binary, is not used.
+vendor:directx  Zlib
 vendor:box2d    MIT
 vendor:cgltf    MIT
 # miniaudio: README says public domain or MIT-0 (checked 2026-10-24).

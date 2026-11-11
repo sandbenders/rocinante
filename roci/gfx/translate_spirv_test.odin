@@ -1,3 +1,4 @@
+#+build !windows
 // SPDX-License-Identifier: 0BSD
 package gfx
 

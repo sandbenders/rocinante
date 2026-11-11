@@ -567,6 +567,13 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 			// cause), which would otherwise be stored as the expected text and pass from then on
 			testing.expectf(t, !strings.contains(got, "%!("), "%s.roci: the message has a broken format in it:\n%s", path, got)
 			txt := fmt.tprintf("%s.txt", path)
+			when ODIN_OS == .Windows {
+				// The middle of this message is the shader compiler's own words, and Windows has its
+				// own compiler (Direct3D's), so it keeps its own copy beside the other.
+				if id == .Shader_Broken {
+					txt = fmt.tprintf("%s.windows.txt", path)
+				}
+			}
 			if update {
 				testing.expectf(t, os.write_entire_file(txt, transmute([]byte)got) == nil, "cannot write %s", txt)
 				continue

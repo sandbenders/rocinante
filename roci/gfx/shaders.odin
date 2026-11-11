@@ -26,8 +26,8 @@ Shader_Data :: struct {
 	kind:     Shader_Use,
 	version:  int,    // changes whenever the source does, so a renderer knows to build again
 	error:    string,  // what the translator said, when the source is not good
-	spirv:    []u8,    // the fragment shader, for the Vulkan
-	msl:      []u8,    // and its Metal form, made the first time a Metal device asks
+	code:     []u8,    // the fragment shader: DXBC for Direct3D 12 on Windows, SPIR-V elsewhere
+	msl:      []u8,    // and its Metal form, made from the SPIR-V the first time a Metal device asks
 	params:   Shader_Params,
 }
 
@@ -132,20 +132,20 @@ shader_update :: proc(id: Shader_Id, source: string, file := "shader") -> (messa
 		return ""
 	}
 	delete(data.error)
-	delete(data.spirv)
+	delete(data.code)
 	delete(data.msl)
 	shader_params_destroy(&data.params)
-	data.error, data.spirv, data.msl = "", nil, nil
+	data.error, data.code, data.msl = "", nil, nil
 	data.version += 1
 	full := strings.concatenate({EFFECT_PRELUDE if data.kind == .Effect else FILL_PRELUDE, source})
 	defer delete(full)
-	code, said, ok := translate_to_spirv(full, .Fragment, "ps_main", &data.params, file)
+	code, said, ok := translate_fragment(full, &data.params, file)
 	if !ok {
 		data.error = said
 		shader_params_destroy(&data.params)
 		return data.error
 	}
-	data.spirv = code
+	data.code = code
 	return ""
 }
 
@@ -160,14 +160,14 @@ shader_data :: proc(id: Shader_Id) -> ^Shader_Data {
 // Whether a shader can be drawn with (its source translated).
 shader_ok :: proc(id: Shader_Id) -> bool {
 	data := shader_data(id)
-	return data != nil && len(data.spirv) > 0
+	return data != nil && len(data.code) > 0
 }
 
 // Lets go of every shader; numbers kept from before are told by `shaders_epoch`.
 shaders_stop :: proc() {
 	for &data in shader_store {
 		delete(data.error)
-		delete(data.spirv)
+		delete(data.code)
 		delete(data.msl)
 		shader_params_destroy(&data.params)
 	}
@@ -193,7 +193,7 @@ Effect :: struct {
 // the bytes of the shader's own block (`shader_params`). Effects run in the order asked.
 effect :: proc(list: ^Command_List, shader: Shader_Id, time, frame: f32, mouse: [2]f32, values: []u8) {
 	data := shader_data(shader)
-	if data == nil || len(data.spirv) == 0 || data.kind != .Effect {
+	if data == nil || len(data.code) == 0 || data.kind != .Effect {
 		return
 	}
 	append(&list.effects, Effect{shader = shader, version = data.version, time = time, frame = frame, mouse = mouse, first = len(list.effect_values), count = len(values)})
