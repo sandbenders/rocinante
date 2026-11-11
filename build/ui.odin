@@ -85,7 +85,7 @@ check_accesskit :: proc() -> bool {
 	// the bindings are made again and compared with the committed file
 	if os.exists(ACCESSKIT_HEADER) {
 		fresh := "output/accesskit/accesskit.odin"
-		ok = step("accesskit bindings are up to date", {"odin", "run", "tools/accesskit", "--", ACCESSKIT_HEADER, fresh}) && ok
+		ok = step("accesskit bindings are up to date", {"odin", "run", "tools/accesskit", fmt.tprintf("-out:%s", test_binary("tools/accesskit")), "--", ACCESSKIT_HEADER, fresh}) && ok
 		have, have_err := os.read_entire_file("vendor/accesskit/accesskit.odin", context.temp_allocator)
 		made, made_err := os.read_entire_file(fresh, context.temp_allocator)
 		if have_err != nil || made_err != nil || string(have) != string(made) {
