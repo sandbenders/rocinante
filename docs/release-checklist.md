@@ -59,6 +59,15 @@ These systems were last tried in full before text, shaders, canvases, export and
 - [ ] Where the window is on screen (X11): Orca's mouse review and a click-through land on the right widget; on a scaled display they may be off (node bounds are logical pixels); under Wayland the position is unknown.
 - [ ] Orca keeps working while the sketch reloads and restarts, and when a second window opens or closes.
 
+**4b. The screen reader on Windows** (new: the adapter is written, not yet tried; `sh tools/ui-libs.sh accesskit` in Git Bash fetches the library, which needs `curl` and `unzip` or PowerShell)
+- [ ] The build links: `odin build cli -o:speed -out:output/roci.exe` with the library in `.cache/ui/accesskit/accesskit.lib`. If the link fails, send the messages first (the system libraries of the foreign import, or a clash between the static C runtime Odin links and the one the library was built with, are the things not checked).
+- [ ] A sketch with widgets (`examples/ui`) starts: the window blinks once at the start (it is hidden while the adapter is made) and then behaves as it always did. If the program stops with a Rust panic message, say so first.
+- [ ] Narrator (Win+Ctrl+Enter) and NVDA each: read the panel, each widget's name and value, the tabs and the progress bar; press the button, increment the slider, set a number, type in a text box, choose in the drop-down, radio buttons and list, select a tab, fold the panel (UI Automation roles are the part most likely to need a change).
+- [ ] The backtick says "controls hidden, press backtick to show", then the first widget when shown again.
+- [ ] On a display scaled to 150% or 200%: the screen reader's highlight and Narrator's touch exploration land on the right widget (node bounds are the window's device pixels); drag the window to a display of another scale and check again.
+- [ ] The reader keeps working while the sketch reloads and restarts, and when a second window opens or closes.
+- [ ] Windows: whether Inspect (from the Windows SDK) or Accessibility Insights shows the program with its window and widgets, compared with `tests/ui-tree/ui.txt`.
+
 **5. Tests that need a real system**
 - [ ] IME composition (above), clipboard, a real touch screen (`examples/touch` with several fingers, numbered in order, never reused), a stylus if there is one.
 - [ ] `roci/folder`'s tests in a real git clone (they need a repository), and the `roci/movies` tests (they start a process).

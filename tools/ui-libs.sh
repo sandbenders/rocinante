@@ -35,6 +35,7 @@ cd "$cache"
 if [ "${1:-}" = accesskit ]; then
 	dir="$cache/accesskit"
 	marker="$dir/.accesskit-$ACCESSKIT_TAG"
+	libfile=libaccesskit.a # what the library is called in .cache/ui/accesskit
 	if [ -f "$marker" ]; then
 		echo "ui-libs: accesskit-c $ACCESSKIT_TAG is there ($dir)"
 		exit 0
@@ -46,6 +47,11 @@ if [ "${1:-}" = accesskit ]; then
 	Darwin-arm64) prebuilt=lib/macos/arm64/static/libaccesskit.a ;;
 	Darwin-x86_64) prebuilt=lib/macos/x86_64/static/libaccesskit.a ;;
 	Linux-x86_64) prebuilt=lib/linux/x86_64/static/libaccesskit.a ;;
+	# Git Bash (MINGW64), MSYS2 and Cygwin on Windows: the library for MSVC, which Odin links with there
+	MINGW64_NT-*-x86_64 | MSYS_NT-*-x86_64 | CYGWIN_NT-*-x86_64)
+		prebuilt=lib/windows/x86_64/msvc/static/accesskit.lib
+		libfile=accesskit.lib
+		;;
 	*) prebuilt= ;;
 	esac
 	if [ -n "$prebuilt" ]; then
@@ -64,9 +70,17 @@ if [ "${1:-}" = accesskit ]; then
 			echo "ui-libs: the accesskit-c archive's checksum is $got, not $ACCESSKIT_ZIP_SHA256" >&2
 			exit 1
 		fi
-		unzip -q -o "$zip" "accesskit-c-$ACCESSKIT_TAG/$prebuilt" "accesskit-c-$ACCESSKIT_TAG/include/accesskit.h" \
-			"accesskit-c-$ACCESSKIT_TAG/LICENSE-MIT" "accesskit-c-$ACCESSKIT_TAG/LICENSE-APACHE" "accesskit-c-$ACCESSKIT_TAG/LICENSE.chromium" -d "$dir.tmp"
-		mv "$dir.tmp/accesskit-c-$ACCESSKIT_TAG/$prebuilt" "$dir/libaccesskit.a"
+		if command -v unzip >/dev/null 2>&1; then
+			unzip -q -o "$zip" "accesskit-c-$ACCESSKIT_TAG/$prebuilt" "accesskit-c-$ACCESSKIT_TAG/include/accesskit.h" \
+				"accesskit-c-$ACCESSKIT_TAG/LICENSE-MIT" "accesskit-c-$ACCESSKIT_TAG/LICENSE-APACHE" "accesskit-c-$ACCESSKIT_TAG/LICENSE.chromium" -d "$dir.tmp"
+		elif command -v powershell.exe >/dev/null 2>&1; then
+			# Git for Windows has no unzip: PowerShell opens the whole archive (every system's library, 70 MB)
+			powershell.exe -NoProfile -Command "Expand-Archive -LiteralPath '$(cygpath -w "$zip")' -DestinationPath '$(cygpath -w "$dir.tmp")' -Force"
+		else
+			echo "ui-libs: unzip (or PowerShell) is needed to open the accesskit-c archive" >&2
+			exit 1
+		fi
+		mv "$dir.tmp/accesskit-c-$ACCESSKIT_TAG/$prebuilt" "$dir/$libfile"
 		mv "$dir.tmp/accesskit-c-$ACCESSKIT_TAG/include/accesskit.h" "$dir/accesskit.h"
 		mv "$dir.tmp/accesskit-c-$ACCESSKIT_TAG"/LICENSE* "$dir/"
 		rm -rf "$dir.tmp"

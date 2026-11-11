@@ -93,3 +93,15 @@ test_the_tree_of_a_window_with_no_frame_yet_is_just_the_window :: proc(t: ^testi
 	testing.expect(t, update != nil)
 	ak.tree_update_free(update)
 }
+
+@(test)
+test_node_bounds_are_logical_pixels_times_the_scale_where_the_platform_counts_device_pixels :: proc(t: ^testing.T) {
+	b := ui.Rect{{10, 20}, {110, 70}}
+	testing.expect_value(t, node_bounds(b, 1), ak.Rect{10, 20, 110, 70})
+	testing.expect_value(t, node_bounds(b, 2), ak.Rect{20, 40, 220, 140})
+	testing.expect_value(t, node_bounds(b, 1.5), ak.Rect{15, 30, 165, 105})
+	// a scale that was never set (0), or is nonsense, is no scale
+	testing.expect_value(t, node_bounds(b, 0), ak.Rect{10, 20, 110, 70})
+	testing.expect_value(t, node_bounds(b, -2), ak.Rect{10, 20, 110, 70})
+	testing.expect_value(t, node_bounds(ui.Rect{}, 3), ak.Rect{})
+}

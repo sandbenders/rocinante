@@ -30,6 +30,7 @@ Access :: struct {
 	state:   ^ui.State, // where actions go; nil once the window is gone
 	title:   string,    // the window's name, the tree's root
 	window:  ^platform.Window, // the operating system's window, for where it is on the screen
+	scale:   f64,       // device pixels for each logical pixel the node bounds are in: 1, or the window's density on Windows (0 is taken as 1)
 }
 
 // Makes the bridge of a window that has just got an interface. Where there is no adapter, it leaves
@@ -160,9 +161,17 @@ with_text :: proc(text: string, set: proc "c" (node: ^ak.Node, value: cstring), 
 	set(node, c)
 }
 
+// A node's bounds as the platform wants them: the logical pixels the interface works in, times
+// `scale` where the platform counts device pixels from the top left of the window (Windows).
+@(private)
+node_bounds :: proc(b: ui.Rect, scale: f64) -> ak.Rect {
+	s := scale if scale > 0 else 1
+	return ak.Rect{f64(b.min.x) * s, f64(b.min.y) * s, f64(b.max.x) * s, f64(b.max.y) * s}
+}
+
 // The update that tells the platform the whole tree. AccessKit takes ownership of it.
 @(private)
-tree_update :: proc(t: ui.Tree) -> ^ak.Tree_Update {
+tree_update :: proc(t: ui.Tree, scale := 1.0) -> ^ak.Tree_Update {
 	update := ak.tree_update_with_capacity_and_focus(uint(len(t.nodes)), t.focus)
 	info := ak.tree_info_new(ui.ROOT_ID)
 	ak.tree_update_set_tree_info(update, info)
@@ -194,7 +203,7 @@ tree_update :: proc(t: ui.Tree) -> ^ak.Tree_Update {
 		if n.has_expand {
 			ak.node_set_expanded(node, n.expanded)
 		}
-		ak.node_set_bounds(node, ak.Rect{f64(n.bounds.min.x), f64(n.bounds.min.y), f64(n.bounds.max.x), f64(n.bounds.max.y)})
+		ak.node_set_bounds(node, node_bounds(n.bounds, scale))
 		for action in n.actions {
 			ak.node_add_action(node, ACTIONS[action])
 		}
@@ -215,7 +224,7 @@ access_factory :: proc "c" (userdata: rawptr) -> ^ak.Tree_Update {
 	sync.mutex_lock(&a.lock)
 	defer sync.mutex_unlock(&a.lock)
 	if a.has_tree {
-		return tree_update(a.tree)
+		return tree_update(a.tree, a.scale)
 	}
 	empty := ui.Tree{}
 	append(&empty.nodes, ui.Node{id = ui.ROOT_ID, role = .Window, label = a.title})
@@ -224,7 +233,7 @@ access_factory :: proc "c" (userdata: rawptr) -> ^ak.Tree_Update {
 	defer for n in empty.nodes {
 		delete(n.children)
 	}
-	return tree_update(empty)
+	return tree_update(empty, a.scale)
 }
 
 // What a screen reader asked of a node, as the interface knows it.

@@ -60,17 +60,13 @@ check_ui :: proc() -> bool {
 // header or generator change that was not committed fails here.
 check_accesskit :: proc() -> bool {
 	required := os.get_env("ROCI_REQUIRE_ACCESSKIT", context.temp_allocator) != ""
-	when ODIN_OS == .Windows {
-		fmt.printfln("%s", term.out("== accesskit: skipped, the Windows library is not fetched by a script yet", .Bold_Cyan))
-		return !required
-	}
 	if !os.exists(ACCESSKIT_LIBRARY) {
 		fmt.printfln("%s", term.out("== fetching accesskit-c (tools/ui-libs.sh accesskit)", .Bold_Cyan))
 		state, stdout, stderr, err := os.process_exec({command = {"sh", "tools/ui-libs.sh", "accesskit"}}, context.allocator)
 		fmt.print(string(stdout))
 		if err != nil || state.exit_code != 0 {
 			fmt.eprint(string(stderr))
-			message := "accesskit-c could not be fetched or built (needs curl and unzip, or git, cmake and cargo)"
+			message := "accesskit-c could not be fetched or built (needs curl and unzip, or git, cmake and cargo; on Windows curl, and unzip or PowerShell)"
 			if required {
 				fmt.eprintfln("%s", term.err(message, .Bold_Red))
 				return false
@@ -82,8 +78,12 @@ check_accesskit :: proc() -> bool {
 	ok := step("check accesskit bindings", {"odin", "check", "vendor/accesskit", "-no-entry-point", "-vet", "-strict-style"})
 	ok = step("check accesskit bindings tool", {"odin", "check", "tools/accesskit", "-vet", "-strict-style"}) && ok
 	ok = step("unit tests: vendor/accesskit", {"odin", "test", "vendor/accesskit", "-vet", "-strict-style", fmt.tprintf("-out:%s", test_binary("vendor/accesskit"))}) && ok
-	// the bindings are made again and compared with the committed file
-	if os.exists(ACCESSKIT_HEADER) {
+	// the bindings are made again and compared with the committed file (which needs a C compiler to
+	// measure the structs with, and a Windows computer has none by default: that check is made on
+	// the others)
+	if ODIN_OS == .Windows {
+		fmt.printfln("%s", term.out("== accesskit bindings are up to date: skipped on Windows, they need a C compiler (the other systems check them)", .Bold_Cyan))
+	} else if os.exists(ACCESSKIT_HEADER) {
 		fresh := "output/accesskit/accesskit.odin"
 		ok = step("accesskit bindings are up to date", {"odin", "run", "tools/accesskit", fmt.tprintf("-out:%s", test_binary("tools/accesskit")), "--", ACCESSKIT_HEADER, fresh}) && ok
 		have, have_err := os.read_entire_file("vendor/accesskit/accesskit.odin", context.temp_allocator)
