@@ -444,6 +444,33 @@ test_ui_hide_and_ui_show_and_ui_key_work_from_a_sketch :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_ui_theme_chooses_the_colors_from_a_sketch_and_follows_the_system_again :: proc(t: ^testing.T) {
+	p := run_text(t, "ui theme light\nui [\n  if button \"dark\" [ ui theme dark ]\n  if button \"system\" [ ui theme system ]\n]\n", 5)
+	defer finish(p)
+	w := first_window()
+	testing.expect_value(t, roci.ui_theme_of(w), ui.Theme.Light)
+	click_widget(t, w, "dark")
+	testing.expect_value(t, roci.ui_theme_of(w), ui.Theme.Dark)
+	click_widget(t, w, "system")
+	testing.expect_value(t, roci.ui_theme_of(w), ui.Theme.Dark) // a window with no screen counts as dark
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_the_ui_examples_menu_chooses_the_widgets_colors :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("ui"), 5)
+	defer finish(p)
+	w := first_window()
+	testing.expect_value(t, roci.ui_theme_of(w), ui.Theme.Dark)
+	for entry in ([?]struct{name: string, theme: ui.Theme}{{"light colors", .Light}, {"dark colors", .Dark}, {"light colors", .Light}, {"the computer's colors", .Dark}}) {
+		click_widget(t, w, "file") // the menu opens, and its entries are made
+		click_widget(t, w, entry.name)
+		testing.expectf(t, roci.ui_theme_of(w) == entry.theme, "after %s: %v", entry.name, roci.ui_theme_of(w))
+	}
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
 test_a_key_that_has_no_name_in_ui_key_is_said_and_the_key_stays :: proc(t: ^testing.T) {
 	p := run_text(t, "ui key \"nothing\"\nui [ label \"x\" ]\n", 3)
 	defer finish(p)

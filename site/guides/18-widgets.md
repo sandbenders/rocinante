@@ -198,11 +198,21 @@ ui hide
 ui [ label "press f1" ]
 ```
 
+## Light or dark
+
+The widgets follow the computer: dark when it is set to dark colors, light when it is set to light ones. `ui theme light` or `ui theme dark` keeps them one way whatever the computer says, which suits a sketch that is shown on someone else's computer or whose own colors call for one, and `ui theme system` follows the computer again. Each window keeps its own:
+
+```roci
+ui theme light
+ui [ dot = slider "dot" 10 120 start 40 ]
+draw [ circle at 300 160 radius dot ]
+```
+
 ## Keyboard and screen readers
 
 Every widget works without a mouse. Tab moves to the next widget and Shift+Tab back, Space presses a button or a check box, and the arrow keys move the value of a slider, knob, range, pad or number box while it has the focus (right and up add). A box of text takes typing, in any script the computer's input method can write.
 
-The widgets are also told to the computer's screen reader: VoiceOver on a Mac, and Orca on Linux, FreeBSD and OpenBSD. It reads each widget's text, its value and the `tip` for it, says a change as it happens, and can change a value itself, as a hand would.
+The widgets are also told to the computer's screen reader: VoiceOver on a Mac, Orca on Linux, FreeBSD and OpenBSD, and Narrator and NVDA on Windows. It reads each widget's text, its value and the `tip` for it, says a change as it happens, and can change a value itself, as a hand would.
 
 ## A window of controls
 

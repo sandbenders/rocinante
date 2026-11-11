@@ -1,0 +1,8 @@
+ui theme light
+
+ui [
+  dot = slider "dot" 10 120 start 40
+  if button "dark" [ ui theme dark ]
+]
+
+draw [ circle at 300 160 radius dot ]

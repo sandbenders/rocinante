@@ -4,6 +4,7 @@ package roci
 import "core:testing"
 
 import "platform"
+import "ui"
 import sdl "vendor:sdl3"
 
 @(thread_local) ui_clicks: int
@@ -309,6 +310,36 @@ test_the_backtick_hides_and_shows_the_interface_and_a_hidden_one_takes_no_clicks
 	testing.expect(t, !ui_hidden(w))
 	click_at(w, x, y)
 	testing.expect_value(t, hide_clicks, 2)
+}
+
+@(test)
+test_a_windows_theme_is_the_systems_until_the_sketch_chooses_one_and_each_window_keeps_its_own :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	a := window(400, 300)
+	// chosen before the window has any widget: taken when the first is made
+	ui_theme(.Light)
+	ui_window(a, hide_sketch)
+	b := window(400, 300)
+	ui_window(b, hide_sketch)
+	step_frames(3)
+	testing.expect_value(t, ui_theme_of(a), ui.Theme.Light)
+	testing.expect_value(t, win_for(a).ui.theme, ui.Theme.Light)
+	// a window with no screen that follows the system counts as dark
+	testing.expect_value(t, ui_theme_of(b), ui.Theme.Dark)
+	testing.expect_value(t, win_for(b).ui.theme, ui.Theme.Dark)
+	// chosen while the widgets are there: at once, and only for the window the verbs act on
+	plain := frame_hash(a)
+	the.newest = win_for(a) // as if `a` were made last: verbs outside any block act on it
+	ui_theme(.Dark)
+	step_frames(2)
+	testing.expect_value(t, win_for(a).ui.theme, ui.Theme.Dark)
+	testing.expect(t, frame_hash(a) != plain, "the widgets are drawn in the other colors")
+	testing.expect_value(t, win_for(b).ui.theme, ui.Theme.Dark)
+	ui_theme(.System)
+	step_frames(2)
+	testing.expect_value(t, win_for(a).ui.theme, ui.Theme.Dark)
+	testing.expect_value(t, ui_theme_of(Window(9999)), ui.Theme.Dark)
 }
 
 @(test)

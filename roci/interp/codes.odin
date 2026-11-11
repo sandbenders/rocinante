@@ -149,6 +149,7 @@ Verb_Code :: enum u8 {
 	Ui_Hide,
 	Ui_Show,
 	Ui_Key,
+	Ui_Theme,
 }
 
 // The registry's name of each code. A test fails when the registry gains a verb
@@ -292,6 +293,7 @@ VERB_CODE_NAMES := [Verb_Code]string{
 	.Ui_Hide = "ui hide",
 	.Ui_Show = "ui show",
 	.Ui_Key = "ui key",
+	.Ui_Theme = "ui theme",
 }
 
 // The code of each verb of `registry.ALL_VERBS`, by its place there.

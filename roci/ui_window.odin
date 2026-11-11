@@ -24,8 +24,8 @@ ui_frame :: proc() -> ^ui.State {
 	density := HEADLESS_UI_DENSITY
 	if w.handle != nil {
 		density = platform.window_metrics(w.handle).density
-		ui.set_theme(w.ui, .Dark if platform.system_is_dark() else .Light)
 	}
+	ui.set_theme(w.ui, theme_of(w))
 	ui.ensure_frame(w.ui, {f32(w.width), f32(w.height)}, density, f32(max(the.delta, 1.0 / 1000)))
 	return w.ui
 }
@@ -66,6 +66,47 @@ ui_key :: proc(name: string) -> bool {
 	ensure_ui(w)
 	ui.set_toggle_key(w.ui, code)
 	return true
+}
+
+// The colors a window's widgets can be asked for (`ui theme`): the system's light or dark setting,
+// which they follow to start with, or one of the two kept whatever the system says.
+Ui_Theme :: enum u8 {
+	System,
+	Dark,
+	Light,
+}
+
+// Chooses the colors of the current window's widgets (`ui theme dark`). Asked every frame, so
+// `System` follows the computer's setting as it changes.
+ui_theme :: proc(theme: Ui_Theme) {
+	w := current_win()
+	w.ui_theme = theme
+	if w.ui != nil {
+		ui.set_theme(w.ui, theme_of(w))
+	}
+}
+
+// The theme a window's widgets are drawn in now. A window with no screen counts as dark when it
+// follows the system, as a system that does not say does.
+@(private)
+theme_of :: proc(w: ^Win) -> ui.Theme {
+	switch w.ui_theme {
+	case .Dark:
+		return .Dark
+	case .Light:
+		return .Light
+	case .System:
+	}
+	if w.handle == nil {
+		return .Dark
+	}
+	return .Dark if platform.system_is_dark() else .Light
+}
+
+// The theme a window's widgets are drawn in now, for tests and tools.
+ui_theme_of :: proc(w: Window) -> ui.Theme {
+	win := win_for(w)
+	return theme_of(win) if win != nil else .Dark
 }
 
 // Whether a window's interface is hidden.

@@ -383,6 +383,9 @@ test_ui_blocks_and_their_widgets_are_checked :: proc(t: ^testing.T) {
 	expect_errors(t, "ui [ x = separator ]", {.Value_Of_Nothing})
 	expect_errors(t, "ui hide\nui show\nui key \"f1\"\nui [ if button \"x\" [ ui hide ] ]", {})
 	expect_errors(t, "ui key 3", {.Wrong_Argument_Kind})
+	expect_errors(t, "ui theme dark\nui theme light\nui theme system\nui [ if button \"x\" [ ui theme light ] ]", {})
+	expect_errors(t, "ui theme drak", {.Unknown_Choice})
+	expect_errors(t, "theme = 3\nprint theme", {}) // the word stays free as a name
 	expect_errors(t, "label = 3", {.Reserved_Name})
 }
 

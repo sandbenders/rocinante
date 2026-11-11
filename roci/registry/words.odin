@@ -26,6 +26,7 @@ RESIZE_WORDS := []string{"smooth", "nearest"}
 BLEND_WORDS := []string{"normal", "add", "multiply", "screen", "subtract", "lighten"}
 EASE_WORDS := []string{"smooth", "linear", "in", "out", "back", "elastic", "bounce"}
 MOUSE_BUTTON_WORDS := []string{"left", "middle", "right", "back", "forward"}
+UI_THEME_WORDS := []string{"dark", "light", "system"}
 
 WORD_CHOICES := []Word_Choices{
 	{"caps", "style", {"butt", "round", "square"}},
@@ -41,6 +42,7 @@ WORD_CHOICES := []Word_Choices{
 	{"mouse down", "button", MOUSE_BUTTON_WORDS}, // events: `on mouse down right`
 	{"mouse up", "button", MOUSE_BUTTON_WORDS},
 	{"tween", "as", EASE_WORDS},
+	{"ui theme", "look", UI_THEME_WORDS},
 	{"window", "cursor", CURSOR_WORDS},
 	{"set", "cursor", CURSOR_WORDS},
 	{"fill", "as", GRADIENT_KINDS},

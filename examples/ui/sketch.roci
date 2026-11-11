@@ -3,7 +3,8 @@
 // buttons, a box of text, a list, a button's click, a menu's entry and a bar for how far things
 // have got. Panels, tabs, rows and columns lay them out, and the same text in two of them is two
 // widgets. `pulse` swells the rings and fills the bar, and `reset` (the button and the menu's
-// entry) puts every widget back to where it started with `forget ui`.
+// entry) puts every widget back to where it started with `forget ui`. The menu also chooses the
+// widgets' colors with `ui theme`: light or dark whatever the computer says, or the computer's own.
 window size 720 520 title "ui"
 dot = 60
 ring = true
@@ -20,6 +21,10 @@ ui [
       forget ui
       pulses = 0
     ]
+    separator
+    if item "light colors" [ ui theme light ]
+    if item "dark colors" [ ui theme dark ]
+    if item "the computer's colors" [ ui theme system ]
   ]
   panel "dot" [
     dot = slider "size" 10 120 start 60

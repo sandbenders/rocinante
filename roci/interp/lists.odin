@@ -92,6 +92,13 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		if !roci.ui_key(name) {
 			fail(it, .Key_Unknown, e.span, name, "", "", "ui key \"f1\"")
 		}
+	case .Ui_Theme:
+		// the word was checked against its list when the sketch was read
+		switch as_text(eval(it, call.args[0])) {
+		case "dark":   roci.ui_theme(.Dark)
+		case "light":  roci.ui_theme(.Light)
+		case "system": roci.ui_theme(.System)
+		}
 	case .Panel, .Row, .Column, .Tabs, .Tab, .Menu:
 		return container_verb(it, e, call, code)
 	case .Add:

@@ -56,10 +56,10 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 			}
 			return parse_draw(p)
 		case "ui":
-			// `ui hide`, `ui show` and `ui key "f1"` are verbs; `ui [ ... ]` and `ui w [ ... ]` are blocks.
+			// `ui hide`, `ui show`, `ui key "f1"` and `ui theme dark` are verbs; `ui [ ... ]` and `ui w [ ... ]` are blocks.
 			if p.at + 1 < len(p.tokens) && p.tokens[p.at + 1].kind == .Name {
 				switch text_of(p, p.tokens[p.at + 1]) {
-				case "hide", "show", "key":
+				case "hide", "show", "key", "theme":
 					if info, used, ok := find_callee(p); ok {
 						return Expr_Stmt{expr = parse_call(p, info, used, false)}
 					}
