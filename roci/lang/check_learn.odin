@@ -159,6 +159,10 @@ terminates :: proc(stmts: []^Stmt) -> (ends, stops: bool) {
 	return false, stops
 }
 
+// How many versions of taught verbs may be checked inside one another before the arguments of
+// the calls in them are taken as mixed values.
+MAX_OPEN_INSTANCES :: 24
+
 // The version of the verb for these argument types, made and checked the first time.
 @(private)
 instantiate :: proc(c: ^Checker, decl: ^Learn_Decl, arg_types: []Type_Id, unused: bool) -> ^IR_Instance {
@@ -197,12 +201,14 @@ instantiate :: proc(c: ^Checker, decl: ^Learn_Decl, arg_types: []Type_Id, unused
 	ctx := Verb_Ctx{name = learn.name, result = inst.result, gives = gives}
 	c.verb = &ctx
 	c.deferred += 1
+	c.instances_open += 1
 
 	params := make([dynamic]^Symbol, c.alloc)
 	for name, i in learn.params {
 		check_hiding(c, name, decl.span)
 		s := new(Symbol, c.alloc)
-		s^ = Symbol{name = name, kind = .Parameter, type = arg_types[i], written = true, scope = c.depth + 1, first_write = decl.span}
+		given := arg_types[i] if i < len(arg_types) else T_ERROR
+		s^ = Symbol{name = name, kind = .Parameter, type = given, written = true, scope = c.depth + 1, first_write = decl.span}
 		append(&params, s)
 		append(&c.verb_locals, s)
 	}
@@ -235,6 +241,7 @@ instantiate :: proc(c: ^Checker, decl: ^Learn_Decl, arg_types: []Type_Id, unused
 	inst.mutated = mutated
 
 	c.deferred -= 1
+	c.instances_open -= 1
 	c.locals, c.verb_locals, c.verb, c.walking, c.in_touch = saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch
 	return inst
 }
@@ -306,6 +313,11 @@ check_taught_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR 
 			return error_ir(c, e.span)
 		}
 	}
+	if known && len(args) != len(decl.learn.params) {
+		// Two verbs of one name (said elsewhere as taught twice) that take different numbers of
+		// values: this call fits the one the parser met, and the one found here is another.
+		return error_ir(c, e.span)
+	}
 	if !known {
 		// Taught in another file: its body is not here to check.
 		return new_ir(c, e.span, T_BOXED, IR_Call{taught = k.taught, args = args[:], options = options[:]})
@@ -313,6 +325,12 @@ check_taught_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR 
 	arg_types := make([]Type_Id, len(args), context.temp_allocator)
 	for a, i in args {
 		arg_types[i] = a.type
+		if c.instances_open >= MAX_OPEN_INSTANCES {
+			// A verb that calls itself with a bigger value each time (`learn f x [ f [ x ] ]`) would
+			// have a version for every size, for ever: past this depth the values are mixed, as
+			// where inference cannot decide, and the one version that makes calls itself.
+			arg_types[i] = T_BOXED
+		}
 	}
 	inst := instantiate(c, decl, arg_types, false)
 	// A connecting word takes a value of the kind its default has.

@@ -6,6 +6,7 @@ import "../gfx"
 import "../maths"
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:testing"
 
@@ -101,6 +102,8 @@ test_mutated_examples_are_checked_and_run_without_a_crash :: proc(t: ^testing.T)
 		}
 	}
 	testing.expect(t, len(names) > 20, "the examples were found: tests run from the repository root")
+	// the order of a folder is the system's own: sorted, every computer makes the same changes
+	slice.sort(names[:])
 	rng := maths.rng_make(20261111)
 	ran, said := 0, 0
 	for name in names {

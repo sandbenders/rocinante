@@ -1592,3 +1592,33 @@ test_the_field_pass_leaves_what_is_not_a_record_of_a_known_shape_alone :: proc(t
 	optimise(&other.checked.program, ALL_PASSES - {.Field_Slots}, context.temp_allocator)
 	testing.expect_value(t, other.checked.program.stmts[1].kind.(IR_Assign).value.kind.(IR_Field).at.slot, 0)
 }
+
+// Two verbs of one name, one of them written wrong so that it takes other values than the call
+// gives, were found by changing the examples at random: the checker said something, and went on.
+@(test)
+test_two_verbs_of_one_name_that_take_different_values_are_an_error_and_not_a_crash :: proc(t: ^testing.T) {
+	for text in ([]string{
+		"learn wall 00 radius 30\n]\nlearn wall bright [ circle at 1 2 radius bright ]\nwall 110",
+		"learn wall a b [ circle at a b radius 3 ]\nlearn wall bright [ circle at 1 2 radius bright ]\nwall 110",
+		"learn wall bright [ circle at 1 2 radius bright ]\nlearn wall a b [ circle at a b radius 3 ]\nwall 110\nwall 1 2",
+		"learn wall a [ circle at a a radius 3 ]\nlearn wall [ circle at 1 2 radius 3 ]\nwall\nwall 4",
+	}) {
+		got := check_text(text)
+		testing.expectf(t, has_errors(got.checked.diagnostics), "`%s` should say what is wrong", text)
+	}
+}
+
+// A verb that calls itself with a bigger value each time has no end of versions to make: past
+// a depth its arguments are taken as mixed, and checking ends (it used to run out of stack).
+@(test)
+test_a_verb_that_calls_itself_with_a_bigger_value_each_time_is_still_checked :: proc(t: ^testing.T) {
+	for text in ([]string{
+		"learn f x [ f [ x ] ]\nf 1",
+		"learn a x [ b [ x ] ]\nlearn b x [ a x ]\na 1",
+		"learn spread n [ circle at 1 2 radius 3\n  spread [ n ] ]\nspread 1",
+	}) {
+		got := check_text(text)
+		testing.expectf(t, !has_errors(got.checked.diagnostics), "`%s` is fine to check", text)
+		testing.expectf(t, len(got.checked.program.instances) <= 2 * MAX_OPEN_INSTANCES + 4, "`%s` made %d versions", text, len(got.checked.program.instances))
+	}
+}

@@ -2490,3 +2490,16 @@ print (sum b)`
 	testing.expect_value(t, strings.split_lines(answers[1], context.temp_allocator)[3], "25")
 	testing.expect_value(t, strings.split_lines(answers[1], context.temp_allocator)[4], "10")
 }
+
+// ...and run, such a verb is stopped by the limit on how deep a verb may go, as any other that
+// never ends is.
+@(test)
+test_a_verb_that_calls_itself_with_a_bigger_value_each_time_is_stopped_when_run :: proc(t: ^testing.T) {
+	p := run_text(t, "learn f x [ f [ x ] ]\nf 1")
+	defer finish(p)
+	found := false
+	for e in p.errors {
+		found ||= e.id == .Recursion_Too_Deep
+	}
+	testing.expect(t, found, "the verb is said to call itself too many times")
+}

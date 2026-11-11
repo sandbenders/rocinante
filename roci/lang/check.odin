@@ -152,6 +152,7 @@ Checker :: struct {
 	diags:    [dynamic]Diagnostic,
 	depth:    int,              // how many blocks deep
 	deferred: int,              // how many blocks deep that run later (draw, on, every)
+	instances_open: int,        // how many versions of taught verbs are being checked inside one another
 	in_touch: int,              // how many `on touch down` or `on touch up` blocks deep, where `finger` means something
 	report:   bool,             // false in the first pass, which only settles record shapes
 	sites:    map[int]int,      // where a record is made (its offset) to its shape
