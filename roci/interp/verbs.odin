@@ -75,6 +75,9 @@ call_taught :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 	}
 	if it.depth >= MAX_DEPTH {
+		if said_already(it, .Recursion_Too_Deep, e.span) {
+			return zero_value(it, inst.result, 0) if inst.gives else nil
+		}
 		line := lang.line_text(it.src, lang.position_of(it.src, e.span.start).line)
 		fail(it, .Recursion_Too_Deep, e.span, inst.name, "100", "", fix_text(strings.concatenate({"if ", inst.params[0].name if len(inst.params) > 0 else "count", " < 20 [ "}, context.temp_allocator), line, " ]"))
 		return zero_value(it, inst.result, 0) if inst.gives else nil

@@ -309,6 +309,19 @@ error_key :: proc(id: lang.Message_Id, span: lang.Span) -> int {
 	return span.start * len(lang.Message_Id) + int(id)
 }
 
+// Whether this error was said at this place already: a place that fails every frame, or
+// in a loop, checks this before it builds the words of the message (a scan of the source for
+// the line, a join of the pieces), which `fail` would then throw away. A yes counts as the
+// call of `fail` it stands in for, because a check counts every one (`events`).
+@(private)
+said_already :: proc(p: ^Interp, id: lang.Message_Id, span: lang.Span) -> bool {
+	if p.seen[error_key(id, span)] {
+		p.events += 1
+		return true
+	}
+	return false
+}
+
 // Says a runtime error once for each place it happens.
 fail :: proc(p: ^Interp, id: lang.Message_Id, span: lang.Span, a, b, c, d: string) {
 	p.events += 1

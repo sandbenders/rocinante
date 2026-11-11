@@ -2405,3 +2405,45 @@ test_no_two_places_and_messages_share_an_error_key :: proc(t: ^testing.T) {
 		}
 	}
 }
+
+@(test)
+test_said_already_is_no_until_the_error_is_said_and_then_counts_each_call :: proc(t: ^testing.T) {
+	p := run_text(t, "circle at 10 10 radius 5")
+	defer finish(p)
+	span := lang.Span{start = 5, end = 9}
+	testing.expect(t, !said_already(p, .Division_By_Zero, span))
+	testing.expect_value(t, p.events, 0)
+	fail(p, .Division_By_Zero, span, "", "", "", "")
+	testing.expect_value(t, p.events, 1)
+	testing.expect(t, said_already(p, .Division_By_Zero, span))
+	testing.expect_value(t, p.events, 2) // a call that was left out still counts, as one of `fail` does
+	testing.expect(t, !said_already(p, .Index_Out_Of_Range, span), "another message at the place is another error")
+	testing.expect(t, !said_already(p, .Division_By_Zero, lang.Span{start = 6, end = 9}), "another place is another error")
+}
+
+// The places that build their words only when the error is new still say it once, and the
+// events they count are the same as when every call went through `fail`.
+@(test)
+test_errors_in_a_loop_are_said_once_and_every_one_is_counted :: proc(t: ^testing.T) {
+	cases := [?]struct {
+		text:  string,
+		id:    lang.Message_Id,
+		times: int,
+	}{
+		{"n = 0\nrepeat 5 [ x = 1 / n ]", .Division_By_Zero, 5},
+		{"scores = [ 1 2 ]\nrepeat 4 [ x = item 9 of scores ]", .Index_Out_Of_Range, 4},
+		{"learn deep n [ deep (n + 1) ]\ndeep 0", .Recursion_Too_Deep, 1},
+	}
+	for c in cases {
+		p := run_text(t, c.text)
+		said := 0
+		for e in p.errors {
+			if e.id == c.id {
+				said += 1
+			}
+		}
+		testing.expect_value(t, said, 1)
+		testing.expectf(t, p.events >= c.times, "%v: %d events for %d calls", c.id, p.events, c.times)
+		finish(p)
+	}
+}

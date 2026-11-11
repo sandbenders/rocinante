@@ -270,6 +270,9 @@ item_of :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	if list != nil && at >= 1 && at <= len(list.items) {
 		return list.items[at - 1]
 	}
+	if said_already(it, .Index_Out_Of_Range, e.span) {
+		return zero_value(it, e.type, 0)
+	}
 	count := 0 if list == nil else len(list.items)
 	has := "no items" if count == 0 else fmt.tprintf("%d item%s", count, "" if count == 1 else "s")
 	name := lang.span_text(it.src, list_ir.span) if list_ir != nil else "the list"

@@ -30,7 +30,7 @@ picture_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Co
 		out := new_list(it)
 		if !ok {
 			say_unreadable(it, e)
-		} else if too_big {
+		} else if too_big && !said_already(it, .Picture_Too_Big, e.span) {
 			size := roci.image_size(picture)
 			fail(it, .Picture_Too_Big, e.span, "", fmt.tprintf("%d", int(size.x * size.y)), "", "small = resize photo size 64 0\ncolors = pixels small")
 		}
@@ -117,6 +117,9 @@ is_finite :: proc(v: f64) -> bool {
 
 @(private)
 say_unreadable :: proc(it: ^Interp, e: ^lang.IR) {
+	if said_already(it, .Pixels_Unavailable, e.span) {
+		return
+	}
 	fail(it, .Pixels_Unavailable, e.span, "", fmt.tprintf("The graphics card would not give the canvas back (%s), so there are no pixels to read.", roci.last_error()), "", "")
 }
 
