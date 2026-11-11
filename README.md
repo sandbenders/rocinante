@@ -80,7 +80,7 @@ These are wanted, but not planned for the first stable release:
 
 Issues and pull requests are welcome here on GitHub. Everyone taking part is asked to follow the [code of conduct](CODE_OF_CONDUCT.md).
 
-Day-to-day development happens in a self-hosted GitLab, and this repository is a mirror updated about twice a week. When a pull request is accepted, it is merged there and arrives here with the next update, so it may show as closed rather than merged. Your commits keep your name as author.
+Day-to-day development happens in a self-hosted GitLab, and this repository is a mirror, updated each time a change there passes the full pipeline. When a pull request is accepted, it is merged there and arrives here with the next update, so it may show as closed rather than merged. Your commits keep your name as author.
 
 The history is linear: branches are rebased onto `main` and merged fast-forward. Keep commits small, one idea each, with a short imperative message prefixed by the area it touches, for example `gfx: batch circles with instancing`. The name is always written in lowercase, rocinante, including at the start of a sentence.
 
