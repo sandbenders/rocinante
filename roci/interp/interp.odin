@@ -301,10 +301,18 @@ tick :: proc(p: ^Interp, span: lang.Span) -> bool {
 
 // ---- runtime errors ----
 
+// The key a runtime error is remembered by: a place and a message, never the same for two
+// different pairs (the place is multiplied by the number of messages, so adding one cannot
+// make two collide).
+@(private)
+error_key :: proc(id: lang.Message_Id, span: lang.Span) -> int {
+	return span.start * len(lang.Message_Id) + int(id)
+}
+
 // Says a runtime error once for each place it happens.
 fail :: proc(p: ^Interp, id: lang.Message_Id, span: lang.Span, a, b, c, d: string) {
 	p.events += 1
-	key := span.start * 16 + int(id)
+	key := error_key(id, span)
 	if p.seen[key] {
 		return
 	}
@@ -316,7 +324,7 @@ fail :: proc(p: ^Interp, id: lang.Message_Id, span: lang.Span, a, b, c, d: strin
 // mended says nothing, and one that is broken another way says that).
 @(private)
 forget_error :: proc(p: ^Interp, id: lang.Message_Id, span: lang.Span) {
-	delete_key(&p.seen, span.start * 16 + int(id))
+	delete_key(&p.seen, error_key(id, span))
 	for i := len(p.errors) - 1; i >= 0; i -= 1 {
 		if p.errors[i].id == id && p.errors[i].span == span {
 			ordered_remove(&p.errors, i)

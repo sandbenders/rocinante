@@ -2367,3 +2367,41 @@ test_a_reload_keeps_printing_as_json :: proc(t: ^testing.T) {
 	testing.expect_value(t, outcome, Outcome.Reloaded)
 	testing.expect(t, n.print_json, "the new interpreter prints as JSON too")
 }
+
+// With the old key (a place times 16 plus the message), `Index_Out_Of_Range` at a place and
+// `Picture_Too_Big` one character earlier were the same error, and the second was never said.
+@(test)
+test_two_runtime_errors_at_nearby_places_are_two_errors :: proc(t: ^testing.T) {
+	p := run_text(t, "circle at 10 10 radius 5")
+	defer finish(p)
+	here := lang.Span{start = 40, end = 41}
+	before := lang.Span{start = 39, end = 40}
+	testing.expect(t, error_key(.Index_Out_Of_Range, here) != error_key(.Picture_Too_Big, before))
+	fail(p, .Index_Out_Of_Range, here, "", "", "", "")
+	fail(p, .Picture_Too_Big, before, "", "", "", "")
+	testing.expect_value(t, len(p.errors), 2)
+	// the same error at the same place is still said once
+	fail(p, .Index_Out_Of_Range, here, "", "", "", "")
+	testing.expect_value(t, len(p.errors), 2)
+	// taking one back leaves the other, and lets that one be said again
+	forget_error(p, .Index_Out_Of_Range, here)
+	testing.expect_value(t, len(p.errors), 1)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Picture_Too_Big)
+	fail(p, .Picture_Too_Big, before, "", "", "", "")
+	testing.expect_value(t, len(p.errors), 1)
+	fail(p, .Index_Out_Of_Range, here, "", "", "", "")
+	testing.expect_value(t, len(p.errors), 2)
+}
+
+// Every message at every place of a small range gets a key of its own.
+@(test)
+test_no_two_places_and_messages_share_an_error_key :: proc(t: ^testing.T) {
+	keys := make(map[int]bool, 0, context.temp_allocator)
+	for start in 0 ..< 64 {
+		for id in lang.Message_Id {
+			key := error_key(id, lang.Span{start = start, end = start + 1})
+			testing.expectf(t, !keys[key], "%v at %d shares a key", id, start)
+			keys[key] = true
+		}
+	}
+}
