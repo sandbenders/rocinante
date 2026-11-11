@@ -131,10 +131,36 @@ test_a_picture_is_read_once_and_again_when_its_file_changes :: proc(t: ^testing.
 	// a changed file, a later time: read again, a different picture
 	write_test_picture(t, entry.path, 5, 4)
 	testing.expect(t, os.change_times(entry.path, time.now(), time.time_add(entry.mtime, 10 * time.Second)) == nil)
+	roci.step() // the file is looked at once a frame
 	changed := load_picture(p, "cat.png", {})
 	testing.expect(t, as_image(changed) != entry.id)
 	testing.expect_value(t, roci.image_size(as_image(changed)), [2]f64{5, 4})
 	testing.expect_value(t, len(gfx.image_store), stored + 1)
+}
+
+@(test)
+test_a_picture_file_is_looked_at_once_a_frame_and_only_while_the_sketch_is_watched :: proc(t: ^testing.T) {
+	p := run_picture_sketch(t, "pictures_once_a_frame", "photo = load \"cat.png\"\nimage photo at 0 0")
+	defer finish(p)
+	entry := p.pictures["cat.png"]
+	testing.expect_value(t, entry.state, Picture_State.Loaded)
+	write_test_picture(t, entry.path, 5, 4)
+	testing.expect(t, os.change_times(entry.path, time.now(), time.time_add(entry.mtime, 10 * time.Second)) == nil)
+	// the same frame: the file is not asked about again, however many times the picture is asked for
+	for _ in 0 ..< 5 {
+		testing.expect_value(t, as_image(load_picture(p, "cat.png", {})), entry.id)
+	}
+	// the next frame it is, and the new picture is read
+	roci.step()
+	fresh := as_image(load_picture(p, "cat.png", {}))
+	testing.expect(t, fresh != entry.id)
+	testing.expect_value(t, roci.image_size(fresh), [2]f64{5, 4})
+	// a sketch that is not watched (a headless run, a test) never asks, so it keeps what it read
+	p.path = ""
+	write_test_picture(t, entry.path, 7, 7)
+	testing.expect(t, os.change_times(entry.path, time.now(), time.time_add(entry.mtime, 20 * time.Second)) == nil)
+	roci.step()
+	testing.expect_value(t, as_image(load_picture(p, "cat.png", {})), fresh)
 }
 
 @(test)

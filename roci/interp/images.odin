@@ -32,6 +32,7 @@ Picture_Entry :: struct {
 	epoch:  int,       // which set of pictures `id` belongs to (`roci.image_epoch`)
 	mtime:  time.Time, // the file's modification time when it was read
 	tried:  time.Tick, // when a name that was not there was last looked for
+	checked: int,      // the frame the file's modification time was last compared with `mtime`
 	others: string,    // for an ambiguous name, the files that share it, said in words
 	suggest: string,   // and the first of them, as a name that is not ambiguous
 }
@@ -66,8 +67,18 @@ load_picture :: proc(it: ^Interp, name: string, span: lang.Span) -> Value {
 	entry, known := it.pictures[name]
 	if known && entry.epoch == roci.image_epoch() {
 		if entry.state == .Loaded {
+			// A picture is looked for in the file once a frame, and only while the sketch is
+			// watched (`roci run`): asking the system about the file every time a loop asked
+			// for the picture was a system call for every tile of every frame, and a file
+			// that nobody is editing cannot change.
+			frame := roci.frame_count()
+			if it.path == "" || entry.checked == frame {
+				return entry.id
+			}
 			info, err := os.stat(entry.path, context.temp_allocator)
 			if err == nil && info.modification_time == entry.mtime {
+				entry.checked = frame
+				it.pictures[name] = entry
 				return entry.id
 			}
 		} else if time.duration_seconds(time.tick_since(entry.tried)) < PICTURE_RETRY_SECONDS {
@@ -78,6 +89,7 @@ load_picture :: proc(it: ^Interp, name: string, span: lang.Span) -> Value {
 	fresh := read_picture(it, name)
 	fresh.tried = time.tick_now()
 	fresh.epoch = roci.image_epoch()
+	fresh.checked = roci.frame_count()
 	store_picture(it, name, fresh)
 	if fresh.state != .Loaded {
 		say_picture_problem(it, name, fresh, span)
