@@ -7,8 +7,11 @@
 {{ $css := resources.Get "css/site.css" | minify | fingerprint }}
 <link rel="stylesheet" href="{{ $css.RelPermalink }}">
 <link rel="icon" href="{{ "favicon.svg" | relURL }}" type="image/svg+xml">
+{{ $js := resources.Get "js/site.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" defer></script>
 <script>
   // The theme chosen with the switch, before the page draws, so it never flashes the other one.
+  document.documentElement.classList.add("js");
   try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
 </script>
 </head>
@@ -18,13 +21,17 @@
   <div class="top-inner">
     <a class="mark" href="{{ "" | relURL }}">{{ partial "logo.html" . }}rocinante<span class="release">{{ site.Params.release }}</span></a>
     <div class="top-right">
-    <nav aria-label="Main">
+    <nav id="menu" aria-label="Main">
       <a href="{{ "guides/" | relURL }}"{{ if eq .Section "guides" }} aria-current="true"{{ end }}>guides</a>
+      <a href="{{ "examples/" | relURL }}"{{ if eq .Section "examples" }} aria-current="true"{{ end }}>examples</a>
       <a href="{{ "reference/" | relURL }}"{{ if eq .Section "reference" }} aria-current="true"{{ end }}>reference</a>
       <a href="{{ "messages/" | relURL }}"{{ if eq .Section "messages" }} aria-current="true"{{ end }}>messages</a>
       <a href="{{ "faq/" | relURL }}"{{ if eq .Type "faq" }} aria-current="true"{{ end }}>faq</a>
     </nav>
     <div class="tools">
+      <button class="search-open" type="button" id="search-open" aria-label="Search the site" aria-controls="search" aria-expanded="false" title="Search ( / )" hidden>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+      </button>
       <a class="github" href="{{ site.Params.repository }}" aria-label="rocinante on GitHub" title="rocinante on GitHub">
         <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
       </a>
@@ -32,7 +39,21 @@
         <svg class="moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
         <svg class="sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
       </button>
+      <button class="menu-button" type="button" id="menu-button" aria-label="Menu" aria-controls="menu" aria-expanded="false" hidden>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path class="bar1" d="M4 7h16"/><path class="bar2" d="M4 12h16"/><path class="bar3" d="M4 17h16"/></svg>
+      </button>
     </div>
+    </div>
+  </div>
+  <div class="search" id="search" role="dialog" aria-label="Search the site" data-index="{{ "index.json" | relURL }}" hidden>
+    <div class="search-inner">
+      <form class="search-form" role="search" action="#" onsubmit="return false">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+        <input id="search-input" type="search" placeholder="search the guides, examples, reference and messages" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="search-results" aria-autocomplete="list" aria-label="Search the site">
+        <button type="button" class="search-close" id="search-close" aria-label="Close the search">esc</button>
+      </form>
+      <p class="search-status" id="search-status" role="status" aria-live="polite"></p>
+      <ul class="search-results" id="search-results" role="listbox" aria-label="Results"></ul>
     </div>
   </div>
 </header>

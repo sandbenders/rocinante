@@ -46,6 +46,10 @@ watch :: proc(out: string) -> bool {
 		fmt.println(term.out("site: drawing the reference's pictures, once (about a minute)", .Dim))
 		ok = write_reference(out) && ok
 	}
+	if !os.exists(fmt.tprintf("%s/content/examples/_index.md", out)) {
+		fmt.println(term.out("site: drawing the examples' pictures, once (a few minutes)", .Dim))
+		ok = write_showcase(out) && ok
+	}
 	if !ok {
 		fmt.eprintln(term.err("site: some pages could not be made; see above. Watching anyway, so saving a fix makes them.", .Yellow))
 	}

@@ -1,0 +1,10 @@
+{{- /* The headings of a page, nested as Hugo gives them, as entries for the search: one each,
+        its address the page's with the heading's anchor. Given: page, label, items. */ -}}
+{{- $out := slice -}}
+{{- range .items -}}
+  {{- if .Title -}}
+    {{- $out = $out | append (dict "t" (printf "%s › %s" $.page.Title (.Title | plainify)) "u" (printf "%s#%s" $.page.RelPermalink .ID) "s" $.label "d" "" "c" "" "h" 1) -}}
+  {{- end -}}
+  {{- $out = $out | append (partial "search-headings.html" (dict "page" $.page "label" $.label "items" .Headings)) -}}
+{{- end -}}
+{{- return $out -}}

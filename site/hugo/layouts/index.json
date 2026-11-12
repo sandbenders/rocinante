@@ -1,0 +1,27 @@
+{{- /* What the search looks through: a list of {t: title, u: address, s: where it is, d: its
+        summary, c: the start of its text}, a page each, and one more for every heading of the
+        longer pages (and every message) so a result can go straight to the part it names. */ -}}
+{{- $names := dict "faq" "faq" "tool" "tools" "conduct" "about" -}}
+{{- $out := slice -}}
+{{- range where site.Pages "Kind" "in" (slice "page" "section") -}}
+  {{- $label := .Section -}}
+  {{- if not $label }}{{ $label = index $names .Type | default "pages" }}{{ end -}}
+  {{- $limit := 700 -}}
+  {{- if in (slice "guides" "faq" "tools" "about") $label }}{{ $limit = 4000 }}{{ end -}}
+  {{- $text := "" -}}
+  {{- if and .IsPage (not (in (slice "reference" "examples") $label)) -}}
+    {{- $text = .Plain | htmlUnescape | replaceRE `\s+` " " | strings.TrimSpace -}}
+    {{- if gt (len $text) $limit }}{{ $text = substr $text 0 $limit }}{{ end -}}
+  {{- end -}}
+  {{- $out = $out | append (dict "t" .Title "u" .RelPermalink "s" $label "d" (.Params.summary | default "") "c" ($text | default .Params.blurb | default "")) -}}
+  {{- if and .IsPage (in (slice "guides" "faq" "tools" "about") $label) -}}
+    {{- $out = $out | append (partial "search-headings.html" (dict "page" . "label" $label "items" .Fragments.Headings)) -}}
+  {{- end -}}
+  {{- if .Params.entries -}}
+    {{- $page := . -}}
+    {{- range .Params.entries -}}
+      {{- $out = $out | append (dict "t" .title "u" (printf "%s#%s" $page.RelPermalink .anchor) "s" $label "d" "" "c" "" "h" 1) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $out | jsonify -}}

@@ -5,8 +5,7 @@
 // through messages; both kinds are one record of fields the garden reads.
 //
 // The wind bar can be dragged (`pressed`) and the space bar calms the grass while it is
-// held (`held`). Next to the Odin version this one has no text labels (text comes with
-// the text verbs) and no scale to fit the window.
+// held (`held`).
 GROUND = 470
 SWATCH = 80
 

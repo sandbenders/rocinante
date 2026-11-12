@@ -22,13 +22,13 @@ STEPS_PER_FRAME :: 2   // the sketch runs at 60 steps a second
 // Runs an example for up to ten seconds in a window of the given size and, when what
 // it shows changes, writes the recording to `apng_path`. `halve` halves each frame,
 // for windows shown at half their size. Gives whether it moved.
-record_example :: proc(code, apng_path: string, width, height: int, halve: bool) -> (moved: bool, ok: bool) {
+record_example :: proc(code, apng_path: string, width, height: int, halve: bool, dir := "", window := 0, seconds := ANIMATION_SECONDS, rate := ANIMATION_RATE) -> (moved: bool, ok: bool) {
+	per_frame := 60 / rate // the sketch runs at 60 steps a second
 	roci.start_headless(1)
 	defer roci.shutdown()
 	roci.set_default_window_size(width, height)
-	p, loaded := interp.load("example.roci", code)
+	p, loaded := load_sketch(code, dir)
 	defer interp.destroy(p)
-	p.home = SAMPLE_SKETCH // the pictures the examples load
 	if !loaded {
 		return false, false
 	}
@@ -48,11 +48,11 @@ record_example :: proc(code, apng_path: string, width, height: int, halve: bool)
 	base: gfx.Image // the last frame the sketch drew, for the pointer to go over
 	defer gfx.image_destroy(&base)
 	last: u64
-	for step in 0 ..< ANIMATION_SECONDS * ANIMATION_RATE * STEPS_PER_FRAME {
+	for step in 0 ..< seconds * rate * per_frame {
 		windows := roci.open_windows()
 		events: []platform.Event
-		if visited && len(windows) > 0 {
-			events = visitor_events(step, platform.Window_Id(windows[0]), width, height)
+		if visited && len(windows) > window {
+			events = visitor_events(step, platform.Window_Id(windows[window]), width, height)
 		} else if step == 0 {
 			still := make([dynamic]platform.Event, context.temp_allocator)
 			for w in windows {
@@ -61,21 +61,21 @@ record_example :: proc(code, apng_path: string, width, height: int, halve: bool)
 			events = still[:]
 		}
 		roci.step(events)
-		if step % STEPS_PER_FRAME != STEPS_PER_FRAME - 1 {
+		if step % per_frame != per_frame - 1 {
 			continue
 		}
 		windows = roci.open_windows()
-		if len(windows) == 0 {
+		if len(windows) <= window {
 			return false, true
 		}
-		h := roci.frame_hash(windows[0])
+		h := roci.frame_hash(windows[window])
 		if len(frames) > 0 && h == last && !visited {
 			ticks[len(ticks) - 1] += 1
 			continue
 		}
 		if len(frames) == 0 || h != last {
 			last = h
-			picture, rendered := roci.picture(windows[0], 1)
+			picture, rendered := roci.picture(windows[window], 1)
 			if !rendered {
 				fmt.eprintfln("site: cannot draw %s: %s", apng_path, roci.last_error())
 				return false, false
@@ -91,7 +91,7 @@ record_example :: proc(code, apng_path: string, width, height: int, halve: bool)
 		frame := gfx.Image{width = base.width, height = base.height, pixels = make([]u8, len(base.pixels))}
 		copy(frame.pixels, base.pixels)
 		if visited {
-			draw_pointer(frame, visitor_at(f64(step) / f64(ANIMATION_RATE * STEPS_PER_FRAME), width, height), 0.5 if halve else 1)
+			draw_pointer(frame, visitor_at(f64(step) / 60, width, height), 0.5 if halve else 1)
 		}
 		append(&frames, frame)
 		append(&ticks, 1)
@@ -103,7 +103,7 @@ record_example :: proc(code, apng_path: string, width, height: int, halve: bool)
 	if len(frames) < 2 {
 		return false, true
 	}
-	data, encoded := gfx.apng_encode(frames[:], ticks[:], ANIMATION_RATE, context.temp_allocator)
+	data, encoded := gfx.apng_encode(frames[:], ticks[:], rate, context.temp_allocator)
 	if !encoded || !write(apng_path, string(data)) {
 		return false, false
 	}

@@ -6,6 +6,7 @@
 {{ if and (eq .Section "reference") .IsPage }}{{ $title = printf "%s · rocinante reference" .Title }}{{ end }}
 {{ $image := site.Params.image }}
 {{ with .File }}{{ $own := printf "reference/img/%s.png" .ContentBaseName }}{{ if fileExists (printf "static/%s" $own) }}{{ $image = $own }}{{ end }}{{ end }}
+{{ if and (eq .Section "examples") .IsPage }}{{ with .File }}{{ $shown := printf "examples/img/%s.png" .ContentBaseName }}{{ if fileExists (printf "static/%s" $shown) }}{{ $image = $shown }}{{ end }}{{ end }}{{ end }}
 <title>{{ $title }}</title>
 <meta name="description" content="{{ $description }}">
 <link rel="canonical" href="{{ .Permalink }}">

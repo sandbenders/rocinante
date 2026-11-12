@@ -26,3 +26,7 @@ image = "img/logo-sketch.png"
 release = "alpha"
 repository = "https://github.com/sandbenders/rocinante"
 contact = "fabrizio@fabriziopoltronieri.com"
+
+# The search reads one file listing every page: the home page, a second time, as JSON.
+[outputs]
+home = ["HTML", "JSON"]

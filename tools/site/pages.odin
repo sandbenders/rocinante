@@ -235,7 +235,6 @@ write_events :: proc(b: ^strings.Builder) {
 // gives it and the message exactly as `roci check` prints it (the catalogue's tests).
 write_messages :: proc(out: string) -> bool {
 	b := strings.builder_make(context.temp_allocator)
-	front_matter(&b, "Messages", "Every message rocinante can give, with a sketch that gives it.", 3)
 	strings.write_string(&b, `<p class="lead">When something in a sketch is wrong, rocinante says where, says what went wrong in plain words, and shows a line that would work. These are all of its messages, each with a sketch that gives it and the message as it appears.</p>`)
 	strings.write_string(&b, "\n\n")
 	Found :: struct {
@@ -272,7 +271,16 @@ write_messages :: proc(out: string) -> bool {
 		fmt.eprintfln("site: only %d messages found: run from the repository root", len(found))
 		return false
 	}
-	return write(fmt.tprintf("%s/content/messages/_index.md", out), strings.to_string(b))
+	// The search finds each message by its title, so the list is in the front matter, where the
+	// page has no headings of its own to read it from.
+	entries := strings.builder_make(context.temp_allocator)
+	strings.write_string(&entries, "entries:\n")
+	for f in found {
+		fmt.sbprintf(&entries, "  - title: %q\n    anchor: %q\n", f.title, f.slug)
+	}
+	head := strings.builder_make(context.temp_allocator)
+	front_matter(&head, "Messages", "Every message rocinante can give, with a sketch that gives it.", 3, strings.to_string(entries))
+	return write(fmt.tprintf("%s/content/messages/_index.md", out), strings.concatenate({strings.to_string(head), strings.to_string(b)}, context.temp_allocator))
 }
 
 // The first sketch of a message's folder that has its expected text beside it.

@@ -19,6 +19,7 @@ import "core:os"
 import "core:slice"
 import "core:strings"
 import "../../roci"
+import "../../roci/folder"
 import "../../roci/gfx"
 import "../../roci/interp"
 import "../../roci/lang"
@@ -61,6 +62,7 @@ main :: proc() {
 	ok := true
 	ok = copy_tree("site/hugo", out) && ok
 	ok = write_reference(out) && ok
+	ok = write_showcase(out) && ok
 	ok = write_messages(out) && ok
 	ok = write_guides(out) && ok
 	ok = write_pages(out) && ok
@@ -291,13 +293,12 @@ SAMPLE_SKETCH :: "site/sample/sketch.roci"
 // Runs an example headless, in a 400 by 300 window unless told otherwise, with the
 // mouse in the window, and writes the picture of its first window when it drew anything,
 // shapes or widgets.
-draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := EXAMPLE_HEIGHT, scale := 2, always := false, frames := EXAMPLE_FRAMES) -> (drawn: Drawn, ok: bool) {
+draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := EXAMPLE_HEIGHT, scale := 2, always := false, frames := EXAMPLE_FRAMES, dir := "", window := 0) -> (drawn: Drawn, ok: bool) {
 	roci.start_headless(1)
 	defer roci.shutdown()
 	roci.set_default_window_size(width, height)
-	p, loaded := interp.load("example.roci", code)
+	p, loaded := load_sketch(code, dir)
 	defer interp.destroy(p)
-	p.home = SAMPLE_SKETCH // the pictures the examples load
 	if !loaded {
 		return drawn, false
 	}
@@ -322,10 +323,10 @@ draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := E
 	}
 	drawn.printed = printed
 	windows := roci.open_windows()
-	if len(windows) == 0 || (len(roci.recorded(windows[0])) == 0 && !roci.ui_drawn(windows[0]) && !always) {
+	if len(windows) <= window || (len(roci.recorded(windows[window])) == 0 && !roci.ui_drawn(windows[window]) && !always) {
 		return drawn, true
 	}
-	picture, rendered := roci.picture(windows[0], scale)
+	picture, rendered := roci.picture(windows[window], scale)
 	if !rendered {
 		fmt.eprintfln("site: cannot draw %s: %s", png_path, roci.last_error())
 		return drawn, false
@@ -338,4 +339,22 @@ draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := E
 	drawn.picture = true
 	drawn.size = {picture.width / scale, picture.height / scale}
 	return drawn, true
+}
+
+// The sketch of an example: the code given, run with the pictures of site/sample; or, when
+// `dir` is a sketch folder, the whole program of that folder, run where its own `assets`
+// and `libs` are.
+load_sketch :: proc(code, dir: string) -> (p: ^interp.Interp, ok: bool) {
+	if dir == "" {
+		p, ok = interp.load("example.roci", code)
+		p.home = SAMPLE_SKETCH // the pictures the examples load
+		return
+	}
+	program, problem := folder.read_program(fmt.tprintf("%s/sketch.roci", dir))
+	if problem != "" || len(program.files) == 0 {
+		fmt.eprintfln("site: cannot read the sketch of %s: %s", dir, problem)
+		p, ok = interp.load("example.roci", "")
+		return p, false
+	}
+	return interp.load_files(program.files)
 }

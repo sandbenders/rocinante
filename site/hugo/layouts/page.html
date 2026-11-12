@@ -8,6 +8,17 @@
     {{ .Content }}
   </main>
 </div>
+{{ else if eq .Section "examples" }}
+<main id="content" class="content guide example-page">
+  <p class="crumb"><a href="../">examples</a> / {{ .Params.category | lower }}</p>
+  <h1>{{ .Title }}</h1>
+  {{ .Content }}
+  <nav class="next-prev" aria-label="Examples">
+    {{ with .NextInSection }}<a class="prev" href="{{ .RelPermalink }}">back: {{ .Title }}</a>{{ else }}<span></span>{{ end }}
+    {{ with .PrevInSection }}<a class="next" href="{{ .RelPermalink }}">next: {{ .Title }}</a>{{ end }}
+  </nav>
+  <p class="edit"><a href="{{ site.Params.repository }}/tree/main/examples/{{ .File.BaseFileName }}">the folder of this example on GitHub</a></p>
+</main>
 {{ else if eq .Type "faq" }}
 <div class="with-toc">
   <main id="content" class="content guide faq">

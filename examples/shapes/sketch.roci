@@ -1,7 +1,6 @@
-// Shapes: every basic shape, as main.odin draws them through the renderer by hand.
-// Filled shapes, outlines of five thicknesses, fill and outline together half see-
-// through, lines and a point, a square turning about its middle, and a shadow that
-// follows the mouse. (main.odin also writes its name; text comes with the text verbs.)
+// Shapes: every basic shape in one window. Filled shapes, outlines of five thicknesses,
+// fill and outline together half see-through, lines and a point, a square turning about
+// its middle, and a shadow that follows the mouse.
 window size 800 600 title "shapes"
 
 draw [
