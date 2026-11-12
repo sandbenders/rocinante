@@ -1,0 +1,38 @@
+// Koch snowflake, after Processing's Topics/Fractals and L-Systems/Koch: a line is replaced
+// by four lines a third as long, with a bump in the middle, and each of those by four
+// more, as deep as you like. The turtle draws it: `koch` calls itself for the four pieces
+// with a turn between them, and at depth 0 it just walks forward. Three of them, turned
+// by 120 degrees, make the snowflake.
+window size 480 320 title "koch snowflake" resizable false
+
+DEPTH = 4
+SIDE = 240
+
+learn koch length depth [
+  if depth is 0 [
+    forward length
+  ] else [
+    koch (length / 3) (depth - 1)
+    left 60
+    koch (length / 3) (depth - 1)
+    right 120
+    koch (length / 3) (depth - 1)
+    left 60
+    koch (length / 3) (depth - 1)
+  ]
+]
+
+draw [
+  background (rgb 14 22 48)
+  stroke (rgb 150 220 255)
+  thickness 1.5
+  push [
+    // Start at the bottom right corner, facing left; the turtle turns clockwise.
+    move 120 69
+    right 270
+    repeat 3 [
+      koch SIDE DEPTH
+      right 120
+    ]
+  ]
+]

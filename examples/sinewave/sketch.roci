@@ -1,0 +1,20 @@
+// Sine wave, after Processing's Basics/Math/Sine Wave: a row of dots follows a sine
+// that slides along. `sin` takes degrees, so a whole turn is 360 and the wave needs no
+// conversion; each dot is the same wave a little further along, and the tall ones are
+// drawn bigger and brighter.
+window size 480 270 title "sine wave" resizable false
+
+draw [
+  background (rgb 20 26 40)
+  no stroke
+  for i from 0 to 47 [
+    along = i * 10 + 5
+    phase = frame * 3 + i * 14
+    y = height / 2 + (sin phase) * 80
+    strength = (sin phase + 1) / 2
+    circle at along y radius (4 + strength * 8) fill (hsb (150 + strength * 60) 200 (140 + strength * 115))
+  ]
+  stroke white
+  alpha 25
+  line from 0 (height / 2) to width (height / 2)
+]

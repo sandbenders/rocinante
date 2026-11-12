@@ -1,0 +1,24 @@
+// Recursion, after Processing's Topics/Fractals and L-Systems/Recursion: a verb that draws a
+// circle and then calls itself for four smaller circles on its sides, one level less each
+// time, until the level reaches 1. Each call knows where it is and how deep, which is all
+// the verb needs; the picture is one circle, then four, then sixteen, then sixty-four and more.
+window size 480 360 title "recursion" resizable false
+
+LEVELS = 4
+
+learn rings x y span level [
+  tone = 20 + (LEVELS - level) * 52
+  circle at x y radius (span / 2) fill (rgb tone (tone * 0.8 + 40) (255 - tone * 0.5)) stroke 255 alpha 70
+  if level > 1 [
+    rings (x - span / 2) y (span / 2) (level - 1)
+    rings (x + span / 2) y (span / 2) (level - 1)
+    rings x (y - span / 2) (span / 2) (level - 1)
+    rings x (y + span / 2) (span / 2) (level - 1)
+  ]
+]
+
+draw [
+  background (rgb 16 18 32)
+  thickness 1
+  rings (width / 2) (height / 2) 180 LEVELS
+]

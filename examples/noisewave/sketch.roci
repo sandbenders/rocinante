@@ -1,0 +1,23 @@
+// Noise wave, after Processing's Basics/Math/Noise Wave: `noise` gives a smooth random
+// number from 0 to 1 for any point you ask about, so asking about a row of points that
+// slides along gives a wave that rolls without ever repeating. Three layers, each asked
+// at a different scale, and the finest one is the quickest.
+window size 480 270 title "noise wave" resizable false
+
+draw [
+  background (rgb 245 240 232)
+  no stroke
+  for layer from 1 to 3 [
+    scale = layer * 0.012
+    speed = layer * 0.01
+    for i from 0 to 59 [
+      height_of = noise (i * scale * 8) (frame * speed) layer
+      top = 60 + layer * 20 + height_of * 110
+      rect at (i * 8) top size 7 (height - top) fill (hsb (layer * 60 + 10) 170 (250 - layer * 40)) alpha 55
+    ]
+  ]
+  for i from 0 to 59 [
+    dot = noise (i * 0.1) (frame * 0.02) 9
+    circle at (i * 8 + 4) (30 + dot * 40) radius 3 fill 40
+  ]
+]

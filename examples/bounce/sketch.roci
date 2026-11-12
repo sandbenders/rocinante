@@ -1,0 +1,21 @@
+// Bounce, after Processing's Basics/Motion/Bounce: a ball crosses the window and turns
+// round when it reaches an edge. The speed is in pixels a frame and the position moves by
+// it every frame, so a sketch that draws nothing else still shows the whole idea of
+// animation: change a number, then draw it again.
+window size 480 320 title "bounce" resizable false
+
+RADIUS = 24
+ball = { pos: { 120, 90 }, vel: { 3.2, 2.2 } }
+
+draw [
+  background 235
+  ball.pos = ball.pos + ball.vel
+  // Reaching an edge flips the speed on that side, as Processing's version does.
+  if ball.pos.x < RADIUS or ball.pos.x > width - RADIUS [ ball.vel.x = -ball.vel.x ]
+  if ball.pos.y < RADIUS or ball.pos.y > height - RADIUS [ ball.vel.y = -ball.vel.y ]
+  ball.pos = { clamp ball.pos.x RADIUS (width - RADIUS), clamp ball.pos.y RADIUS (height - RADIUS) }
+  no stroke
+  circle at (ball.pos + { 6, 8 }) radius RADIUS fill 0 alpha 12
+  circle at ball.pos radius RADIUS fill (rgb 240 90 60)
+  circle at (ball.pos - { 8, 8 }) radius 6 fill white alpha 70
+]

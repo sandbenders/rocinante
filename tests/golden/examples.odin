@@ -65,6 +65,16 @@ EXAMPLES := [?]Example{
 	{"dials", 6, {1}}, // a color box, a knob, a range with two handles and a pad, steering a line of circles
 	{"ui", 6, {1}}, // a slider, a check box and a button in a ui block, drawn over a dot and its ring
 	{"tunnel", 20, {1}}, // a raymarched tunnel made by one shader, the sketch's own dots and word laid over it, and a lens effect on top
+	{"bounce", 90, {1}}, // Processing's Bounce: a ball turning round at the edges, a shadow and a highlight on it
+	{"sinewave", 20, {1}}, // Processing's Sine Wave: a row of dots on a sliding sine, bigger and brighter at the crests
+	{"rope", 30, {1}}, // Processing's Follow: a rope of segments pulled to the mouse, which a headless run leaves at the corner
+	{"life", 120, {1}}, // Processing's Game of Life: a random grid thirty generations on, wrapping at its edges
+	{"flocking", 100, {1}}, // Processing's Flocking: sixty birds with separation, alignment and cohesion, a hundred frames in
+	{"koch", 3, {1}}, // Processing's Koch snowflake, drawn by a verb that calls itself with the turtle
+	{"mandelbrot", 3, {1}}, // Processing's Mandelbrot: a picture made once from a list of colors and drawn big
+	{"noisewave", 60, {1}}, // Processing's Noise Wave: three layers of noise bars and a row of dots, sliding
+	{"recursion", 3, {1}}, // Processing's Recursion: circles that draw four smaller circles on their sides
+	{"colorwheel", 20, {1}}, // Processing's Hue: wedges filled by hue round the wheel and by saturation in towards the middle
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.

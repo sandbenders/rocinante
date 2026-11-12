@@ -1,0 +1,7 @@
+BIRDS: a number
+VISION: a number
+CROWD: a number
+TOP_SPEED: a number
+LOW_SPEED: a number
+flock: a list of records with pos and vel
+tail: a vector of 2 numbers

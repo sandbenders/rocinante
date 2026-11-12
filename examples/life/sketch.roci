@@ -1,0 +1,70 @@
+// Life, after Processing's Topics/Cellular Automata/Game of Life: a grid of cells that are
+// alive or dead, and one rule applied to every cell at once. A live cell with two or three
+// live neighbors stays alive, a dead cell with exactly three comes alive, and every other
+// cell is dead in the next step. The grid wraps round at its edges. Click to bring the cells
+// round the mouse to life, and press r to start again from a random grid.
+window size 480 320 title "life" resizable false
+
+COLUMNS = 48
+ROWS = 32
+CELL = 10
+
+// Every cell is a record, so a list of them can be changed in place.
+cells = []
+repeat COLUMNS * ROWS [ add { alive: random 100 < 30, near: 0 } to cells ]
+generation = 0
+
+// The cell at a column and row, wrapping round the edges.
+learn cell_at x y [
+  row_of = (y + ROWS) % ROWS
+  column_of = (x + COLUMNS) % COLUMNS
+  give item (row_of * COLUMNS + column_of + 1) of cells
+]
+
+learn step [
+  for y from 0 to ROWS - 1 [
+    for x from 0 to COLUMNS - 1 [
+      here = cell_at x y
+      here.near = 0
+      for dy from -1 to 1 [
+        for dx from -1 to 1 [
+          other = cell_at (x + dx) (y + dy)
+          if other.alive [ here.near = here.near + 1 ]
+        ]
+      ]
+      // The loop counted the cell itself, so a live cell has one more than its neighbors.
+      if here.alive [ here.near = here.near - 1 ]
+    ]
+  ]
+  for each one in cells [ one.alive = one.near is 3 or (one.alive and one.near is 2) ]
+  generation = generation + 1
+]
+
+on mouse down [
+  mx = floor (mouse.x / CELL)
+  my = floor (mouse.y / CELL)
+  for dy from -1 to 1 [
+    for dx from -1 to 1 [
+      target = cell_at (mx + dx) (my + dy)
+      target.alive = true
+    ]
+  ]
+]
+
+on key "r" [ for each one in cells [ one.alive = random 100 < 30 ] ]
+
+every 4 frames [ step ]
+
+draw [
+  background (rgb 18 20 30)
+  no stroke
+  for y from 0 to ROWS - 1 [
+    for x from 0 to COLUMNS - 1 [
+      here = cell_at x y
+      if here.alive [
+        tone = (x * 3 + y * 2 + generation) % 256
+        circle at (x * CELL + CELL / 2) (y * CELL + CELL / 2) radius 4 fill (hsb tone 150 240)
+      ]
+    ]
+  ]
+]

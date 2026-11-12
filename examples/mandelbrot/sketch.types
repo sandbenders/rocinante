@@ -1,0 +1,6 @@
+WIDE: a number
+HIGH: a number
+LIMIT: a number
+colors: a list of colors
+steps: a number
+fractal: a picture

@@ -1,0 +1,6 @@
+SEGMENTS: a number
+LENGTH: a number
+rope: a list of records with pos
+head: a record with pos
+seg: a record with pos
+before: a record with pos

@@ -1,0 +1,22 @@
+// Color wheel, after Processing's Basics/Color/Hue: the hue goes once round the circle
+// as the angle does, and each ring in towards the middle has less saturation, so the
+// middle is white. Each wedge is an `arc` filled with `hsb`, drawn from the biggest ring
+// to the smallest so every ring covers the middle of the one before. The wheel turns
+// slowly, which only moves the hues round it.
+window size 400 400 title "color wheel" resizable false
+
+WEDGES = 60
+RINGS = 6
+
+draw [
+  background 28
+  no stroke
+  for ring from 1 to RINGS [
+    size_of = 360 * (1 - (ring - 1) / RINGS)
+    paleness = 255 * ring / RINGS
+    for wedge from 0 to WEDGES - 1 [
+      begins = wedge * 360 / WEDGES + frame * 0.5
+      arc at 200 200 size size_of size_of from begins to (begins + 360 / WEDGES + 1) fill (hsb (wedge * 256 / WEDGES) paleness 255)
+    ]
+  ]
+]

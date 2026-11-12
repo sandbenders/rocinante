@@ -1,0 +1,61 @@
+// Flocking, after Processing's Topics/Simulate/Flocking (Craig Reynolds' boids): every bird
+// follows three small rules about the birds it can see. It keeps away from any that are
+// too close (separation), turns the way they are going (alignment), and drifts towards
+// where they are (cohesion). Nothing steers the flock as a whole, and it still moves as
+// one. The window wraps round, and a click scatters the birds.
+window size 480 320 title "flocking" resizable false
+
+BIRDS = 60
+VISION = 60
+CROWD = 18
+TOP_SPEED = 3
+LOW_SPEED = 1.5
+
+flock = []
+repeat BIRDS [ add { pos: anywhere, vel: { random from -2 to 2, random from -2 to 2 } } to flock ]
+
+// Changes a bird's velocity by the three rules, from the birds near it.
+learn steer bird [
+  away = { 0, 0 }
+  same = { 0, 0 }
+  middle = { 0, 0 }
+  seen = 0
+  for each other in flock [
+    gap = other.pos - bird.pos
+    d = dist 0 0 gap.x gap.y
+    if d > 0 and d < VISION [
+      seen = seen + 1
+      same = same + other.vel
+      middle = middle + gap
+      if d < CROWD [ away = away - gap / d * (CROWD - d) ]
+    ]
+  ]
+  if seen > 0 [
+    bird.vel = bird.vel + away * 0.05 + (same / seen - bird.vel) * 0.05 + middle / seen * 0.004
+  ]
+  speed = dist 0 0 bird.vel.x bird.vel.y
+  if speed > TOP_SPEED [ bird.vel = bird.vel * (TOP_SPEED / speed) ]
+  if speed < LOW_SPEED and speed > 0 [ bird.vel = bird.vel * (LOW_SPEED / speed) ]
+]
+
+on mouse down [
+  for each bird in flock [ bird.vel = { random from -3 to 3, random from -3 to 3 } ]
+]
+
+draw [
+  background (rgb 214 232 244)
+  for each bird in flock [
+    steer bird
+    bird.pos = bird.pos + bird.vel
+    if bird.pos.x < 0 [ bird.pos.x = bird.pos.x + width ]
+    if bird.pos.x > width [ bird.pos.x = bird.pos.x - width ]
+    if bird.pos.y < 0 [ bird.pos.y = bird.pos.y + height ]
+    if bird.pos.y > height [ bird.pos.y = bird.pos.y - height ]
+  ]
+  caps round
+  for each bird in flock [
+    tail = bird.pos - bird.vel * 4
+    line from tail to bird.pos stroke (rgb 40 70 110) thickness 3
+    circle at bird.pos radius 3 fill (rgb 20 40 80) stroke (rgb 20 40 80) thickness 1
+  ]
+]

@@ -1,0 +1,10 @@
+COLUMNS: a number
+ROWS: a number
+CELL: a number
+cells: a list of records with alive and near
+generation: a number
+mx: a number
+my: a number
+target: a record with alive and near
+here: a record with alive and near
+tone: a number
