@@ -67,7 +67,7 @@ EXAMPLES := [?]Example{
 	{"tunnel", 20, {1}}, // a raymarched tunnel made by one shader, the sketch's own dots and word laid over it, and a lens effect on top
 	{"bounce", 90, {1}}, // Processing's Bounce: a ball turning round at the edges, a shadow and a highlight on it
 	{"sinewave", 20, {1}}, // Processing's Sine Wave: a row of dots on a sliding sine, bigger and brighter at the crests
-	{"rope", 30, {1}}, // Processing's Follow: a rope of segments pulled to the mouse, which a headless run leaves at the corner
+	{"rope", 150, {1}}, // Processing's Follow: a rope of segments that leads itself round the window once the mouse has been still a second
 	{"life", 120, {1}}, // Processing's Game of Life: a random grid thirty generations on, wrapping at its edges
 	{"flocking", 100, {1}}, // Processing's Flocking: sixty birds with separation, alignment and cohesion, a hundred frames in
 	{"koch", 3, {1}}, // Processing's Koch snowflake, drawn by a verb that calls itself with the turtle

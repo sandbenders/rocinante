@@ -2,13 +2,16 @@
 // mouse and each of the others pulled to the one before it, so the whole thing trails
 // like a rope. `pull` moves a segment until it is one length from its target, on the line
 // towards it: `normalize` gives that line's direction, and `atan` the angle it points,
-// which is what each segment is turned by when it is drawn.
+// which is what each segment is turned by when it is drawn. Move the mouse to lead the
+// rope; when the mouse has been still for a second, the rope leads itself round the window.
 window size 480 320 title "rope" resizable false
 
-SEGMENTS = 14
-LENGTH = 20
+SEGMENTS = 22
+LENGTH = 17
+WAIT = 60
 rope = []
 repeat SEGMENTS [ add { pos: { 240, 160 }, angle: 0 } to rope ]
+still = 0
 
 // Moves a segment so it is one length from a target, on the line towards it, and turns it to face the target.
 learn pull p target [
@@ -19,8 +22,12 @@ learn pull p target [
 
 draw [
   background 245
+  // How long the mouse has not moved.
+  if mouse.x is not pmouse.x or mouse.y is not pmouse.y [ still = 0 ] else [ still = still + 1 ]
+  aim = mouse
+  if still > WAIT [ aim = { 240 + cos (frame * 1.5) * 170, 160 + sin (frame * 3) * 100 } ]
   head = item 1 of rope
-  pull head mouse
+  pull head aim
   for i from 2 to SEGMENTS [
     seg = item i of rope
     before = item (i - 1) of rope
@@ -36,7 +43,7 @@ draw [
       stroke (rgb 30 60 120)
       line from 0 0 to LENGTH 0
       no stroke
-      circle at 0 0 radius (14 - i * 0.6) fill (hsb (i * 14) 170 240)
+      circle at 0 0 radius (13 - i * 0.4) fill (hsb (i * 11) 170 240)
     ]
   ]
 ]

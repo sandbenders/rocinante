@@ -34,7 +34,8 @@ test_the_bounce_example_keeps_the_ball_inside_the_window :: proc(t: ^testing.T) 
 	testing.expect_value(t, len(p.errors), 0)
 }
 
-// Every segment stays one length from the one before it, the first from the mouse.
+// Every segment stays one length from the one before it, the first from the mouse, and a mouse left
+// still for a second stops leading.
 @(test)
 test_the_rope_example_drags_a_rope_behind_the_mouse :: proc(t: ^testing.T) {
 	p := run_text(t, example_text("rope"), 0)
@@ -45,17 +46,25 @@ test_the_rope_example_drags_a_rope_behind_the_mouse :: proc(t: ^testing.T) {
 		roci.step({platform.Mouse_Moved{window = id, x = 300, y = 200}})
 	}
 	rope := as_list(global_named(p, "rope"))
-	testing.expect_value(t, len(rope.items), 14)
+	testing.expect_value(t, len(rope.items), 22)
 	head := as_pair(as_record(rope.items[0]).fields[0])
 	reach := head - [2]f64{300, 200}
-	testing.expect(t, abs(reach.x * reach.x + reach.y * reach.y - 400) < 1e-6, "the first segment is one length from the mouse")
+	testing.expect(t, abs(reach.x * reach.x + reach.y * reach.y - 289) < 1e-6, "the first segment is one length from the mouse")
 	for i in 1 ..< len(rope.items) {
 		before := as_pair(as_record(rope.items[i - 1]).fields[0])
 		here := as_pair(as_record(rope.items[i]).fields[0])
 		gap := before - here
-		testing.expectf(t, abs(gap.x * gap.x + gap.y * gap.y - 400) < 1e-6, "segment %d is not one length from the one before it", i + 1)
+		testing.expectf(t, abs(gap.x * gap.x + gap.y * gap.y - 289) < 1e-6, "segment %d is not one length from the one before it", i + 1)
 	}
 	testing.expect_value(t, len(p.errors), 0)
+
+	// Left alone for a second the mouse stops leading: the rope goes round the window by itself.
+	for _ in 0 ..< 80 {
+		roci.step({})
+	}
+	led := as_pair(as_record(rope.items[0]).fields[0])
+	away := led - [2]f64{300, 200}
+	testing.expect(t, away.x * away.x + away.y * away.y > 40 * 40, "the rope leaves the still mouse")
 }
 
 // Life: three live cells in a row turn into three in a column after one step, a click brings
