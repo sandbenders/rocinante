@@ -590,7 +590,7 @@ test_the_sliders_of_the_follow_example_move_with_their_dots_until_the_switch_sto
 
 // The trees a screen reader is given for the examples that have a interface are kept in
 // tests/ui-tree as text, to be read like code: ROCI_UPDATE_TREES=1 writes them again.
-TREE_EXAMPLES :: [?]string{"ui", "dials", "follow", "imagebuttons"}
+TREE_EXAMPLES :: [?]string{"ui", "dials", "follow", "imagebuttons", "studio"}
 
 @(test)
 test_the_trees_of_the_examples_are_what_the_stored_files_say :: proc(t: ^testing.T) {

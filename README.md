@@ -31,7 +31,7 @@ Early, but you can write and run sketches today. The language exists and the `ro
 
 Under it is the engine, which also has an Odin API (and a C API). It draws on macOS (Metal), Linux, FreeBSD and OpenBSD (Vulkan), Windows (Direct3D 12), and on an iPhone and an Android phone, and 100,000 circles a frame hold about 60 frames a second on the computers tried so far. Packaging a sketch into an app (`roci package`) is not written yet.
 
-Phase 0 (2026-10-27) tested the riskiest parts with four spikes: a window and GPU device on every desktop system, a shader-drawn circle on a real iPhone and a real Android phone, generating Odin from a typed IR, and Dear ImGui with a screen reader. Phase 1, the window and the 2D core, is built and measured on all of them. Phase 2, the language itself, was closed on 2026-10-30, after a test with newcomers confirmed its design; Phase 3 has built text, pictures, pixels, canvases, blend and clip, shaders, export and the user interface widgets, with screen readers checked on every desktop system; what remains of it is its closing test (ten classic Processing examples are ported; left are a two-window sketch driven by mouse, touch, keyboard and screen reader, and typing through an input method). The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
+Phase 0 (2026-10-27) tested the riskiest parts with four spikes: a window and GPU device on every desktop system, a shader-drawn circle on a real iPhone and a real Android phone, generating Odin from a typed IR, and Dear ImGui with a screen reader. Phase 1, the window and the 2D core, is built and measured on all of them. Phase 2, the language itself, was closed on 2026-10-30, after a test with newcomers confirmed its design; Phase 3 has built text, pictures, pixels, canvases, blend and clip, shaders, export and the user interface widgets, with screen readers checked on every desktop system; what remains of it is its closing test (ten classic Processing examples are ported and the two-window sketch `examples/studio` is built; left are trying it by hand with mouse, touch, keyboard and screen reader, and typing through an input method). The design and the plan live in [CLAUDE.md](CLAUDE.md) and [docs/design.md](docs/design.md), which are kept up to date as decisions are made.
 
 ## What it looks like
 
@@ -157,6 +157,7 @@ odin run cli -- run examples/tunnel                       # a raymarched tunnel 
 odin run cli -- run examples/export                       # s, v, p save a PNG, SVG and PDF; m records an mp4 (needs ffmpeg), a an animated PNG
 odin run cli -- run examples/ui                           # widgets in panels and tabs, for a hand, a keyboard or a screen reader; its file menu picks light or dark colors
 odin run cli -- run examples/flocking                     # ports of Processing classics: also bounce, sinewave, rope, life, koch, mandelbrot, noisewave, recursion, colorwheel
+odin run cli -- run examples/studio                       # two windows: a control surface with every widget, and a stage of circling dots they steer
 odin run cli -- run sketch.roci --frames 60 --screenshot out.png   # headless, saves the last frame
 ```
 

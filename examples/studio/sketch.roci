@@ -1,0 +1,124 @@
+// Studio: two windows, a control surface and a stage. Every widget of the interface is in the
+// control window, and none of them sends anything: the stage reads their values as plain names,
+// the same way any other part of the sketch does. The knob sets how fast the dots circle, the
+// slider and the number box how many and in how many rings, the range how small and big they
+// get, the pad where the middle is, the color box and the list what color they are, the text
+// box a title, and the image button stamps a badge somewhere on the stage. The menu clears the
+// stage, starts the widgets over and chooses their colors. The stage keeps its drawing on a
+// canvas, so with `trails` ticked each dot leaves a fading line. Tab and the arrow keys reach
+// every widget, and a screen reader is given all of them in one tree.
+controls = window size 380 760 at 40 40 title "controls" resizable false
+stage = window size 560 560 at 450 60 title "stage" resizable false
+badge = load "sprite.png"
+paint = canvas 560 560
+draw into paint [ background 18 ]
+
+dots = 24
+rings = 2
+speed = 2
+sizes = { 5, 18 }
+middle = { 0.5, 0.5 }
+ink = tomato
+shape = "circle"
+palette = "solid"
+way = "clockwise"
+trails = true
+words = "studio"
+stamps = []
+wipe = false
+
+ui controls [
+  menu "file" [
+    if item "clear the stage" [ wipe = true ]
+    if item "start over" [
+      forget ui
+      stamps = []
+      wipe = true
+    ]
+    separator
+    if item "light colors" [ ui theme light ]
+    if item "dark colors" [ ui theme dark ]
+    if item "the computer's colors" [ ui theme system ]
+  ]
+  panel "motion" [
+    dots = slider "dots" 3 60 start 24
+    tip "how many dots circle in each ring"
+    rings = number "rings" 1 4 start 2
+    speed = knob "speed" 0 6 start 2
+    way = choice "direction" [ "clockwise" "anticlockwise" ]
+    trails = toggle "trails" start true
+  ]
+  tabs [
+    tab "shape" [
+      shape = dropdown "shape" [ "circle" "square" "ring" ]
+      sizes = range "size" 4 40 start 5 18
+      middle = xypad "middle"
+    ]
+    tab "color" [
+      ink = colorpicker "ink" start tomato
+      palette = list "palette" [ "solid" "rainbow" "fade" ]
+    ]
+    tab "words" [
+      words = textbox "title" start "studio"
+    ]
+  ]
+  separator
+  made = count stamps
+  row [
+    if image button badge "stamp" [ add { pos: { random 560, random 560 } } to stamps ]
+    column [
+      if button "clear stamps" [ stamps = [] ]
+      label ("stamps: " + made)
+    ]
+  ]
+  progress ((clamp made 0 20) / 20)
+]
+
+learn dot_color i [
+  if palette is "rainbow" [ give hsb (i * 256 / dots) 190 255 ]
+  if palette is "fade" [ give mix ink white (i / dots) ]
+  give ink
+]
+
+draw stage [
+  draw into paint [
+    if trails and not wipe [
+      fill 18
+      alpha 10
+      rect at 0 0 size 560 560
+      alpha 100
+    ] else [
+      background 18
+      wipe = false
+    ]
+    turning = frame * speed
+    if way is "anticlockwise" [ turning = -turning ]
+    for ring from 1 to rings [
+      for i from 0 to dots - 1 [
+        around = turning * (1 + ring * 0.25) + i * 360 / dots
+        spot = { middle.x * 560 + cos around * ring * 55, middle.y * 560 + sin around * ring * 55 }
+        grown = sizes.x + (sizes.y - sizes.x) * i / dots
+        color_here = dot_color i
+        if shape is "square" [
+          fill color_here
+          no stroke
+          square at spot size (grown * 2) as center
+        ] else if shape is "ring" [
+          no fill
+          stroke color_here
+          thickness 3
+          circle at spot radius grown
+        ] else [
+          fill color_here
+          no stroke
+          circle at spot radius grown
+        ]
+      ]
+    ]
+  ]
+  image paint at 0 0
+  for each s in stamps [ image badge at s.pos size 28 28 as center ]
+  fill white
+  font "Inter Bold" size 22
+  text words at 20 18
+]

@@ -75,6 +75,7 @@ EXAMPLES := [?]Example{
 	{"noisewave", 60, {1}}, // Processing's Noise Wave: three layers of noise bars and a row of dots, sliding
 	{"recursion", 3, {1}}, // Processing's Recursion: circles that draw four smaller circles on their sides
 	{"colorwheel", 20, {1}}, // Processing's Hue: wedges filled by hue round the wheel and by saturation in towards the middle
+	{"studio", 60, {1, 2}}, // two windows: a control surface with every widget, and a stage of circling dots they steer, with trails on a canvas
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.

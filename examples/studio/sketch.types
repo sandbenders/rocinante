@@ -1,0 +1,23 @@
+controls: a window
+stage: a window
+badge: a picture
+paint: a picture
+dots: a number
+rings: a number
+speed: a number
+sizes: a vector of 2 numbers
+middle: a vector of 2 numbers
+ink: a color
+shape: text
+palette: text
+way: text
+trails: true or false
+words: text
+stamps: a list of records with pos
+wipe: true or false
+made: a number
+turning: a number
+around: a number
+spot: a vector of 2 numbers
+grown: a number
+color_here: a color

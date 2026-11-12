@@ -1,0 +1,27 @@
+Window "controls"
+  Menu "file" expanded=false [Focus]
+  Group "motion" expanded=true [Focus Click]
+    Slider "dots" value="24.00" number=24 range=3..60 step=0.57 description="how many dots circle in each ring" [Focus Increment Decrement Set_Value]
+    Spin_Button "rings" value="2" number=2 range=1..4 step=1 [Focus Increment Decrement Set_Value]
+    Slider "speed" value="2.00" number=2 range=0..6 step=0.06 [Focus Increment Decrement Set_Value]
+    Radio_Group "direction" value="clockwise" [Focus]
+      Radio_Button "clockwise" checked=true [Focus Click]
+      Radio_Button "anticlockwise" checked=false [Focus Click]
+    Check_Box "trails" checked=true [Focus Click]
+  Tab "shape" selected=true [Focus Click]
+  Tab_Panel "shape"
+    Combo_Box "shape" value="circle" expanded=false [Focus Set_Value]
+    Group "size" value="5.00 to 18.00"
+      Slider "size, low end" value="5.00" number=5 range=4..40 step=0.36 [Focus Increment Decrement Set_Value]
+      Slider "size, high end" value="18.00" number=18 range=4..40 step=0.36 [Focus Increment Decrement Set_Value]
+    Group "middle" value="0.50, 0.50"
+      Slider "middle, across" value="0.50" number=0.5 range=0..1 step=0.01 [Focus Increment Decrement Set_Value]
+      Slider "middle, down" value="0.50" number=0.5 range=0..1 step=0.01 [Focus Increment Decrement Set_Value]
+  Tab "color" selected=false [Focus Click]
+  Tab_Panel "color"
+  Tab "words" selected=false [Focus Click]
+  Tab_Panel "words"
+  Button "stamp" [Focus Click]
+  Button "clear stamps" [Focus Click]
+  Label "stamps: 0"
+  Progress "progress" value="0%" number=0 range=0..1
