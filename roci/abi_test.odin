@@ -148,6 +148,9 @@ test_registry_prototypes_use_the_registrys_names_and_kinds :: proc(t: ^testing.T
 	testing.expect(t, strings.contains(header, "roci_color roci_mix(roci_color first, roci_color second, double amount);"))
 	testing.expect(t, strings.contains(header, "void roci_title(const char *text);"))
 	testing.expect(t, strings.contains(header, "double roci_dist(double x1, double y1, double x2, double y2);"))
+	testing.expect(t, strings.contains(header, "roci_vec2 roci_normalize(roci_vec2 v);"))
+	testing.expect(t, strings.contains(header, "roci_vec2 roci_limit(roci_vec2 v, double most);"))
+	testing.expect(t, strings.contains(header, "double roci_atan(double y, double x);"))
 	testing.expect(t, strings.contains(header, "void roci_quit(void);"))
 }
 

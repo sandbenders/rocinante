@@ -257,6 +257,12 @@ VERBS := []Verb{
 		{{{"x1", .Number}, {"y1", .Number}, {"x2", .Number}, {"y2", .Number}}, nil, .Number},
 		{{{"a", .Vector}, {"b", .Vector}}, nil, .Number},
 	}, "The distance between two points."},
+	{"atan", {
+		{{{"y", .Number}, {"x", .Number}}, nil, .Number},
+		{{{"v", .Vector}}, nil, .Number},
+	}, "The angle in degrees of a point, clockwise from straight right as the screen turns, from -180 to 180: `atan y x`, or `atan v` for the direction of a vector."},
+	{"normalize", {{{{"v", .Vector}}, nil, .Vector}}, "The vector in the same direction with a length of 1; a vector with no length stays the zero vector."},
+	{"limit", {{{{"v", .Vector}, {"most", .Number}}, nil, .Vector}}, "The vector shortened to at most a length, in the same direction: `limit speed 3`."},
 	{"abs", {{{{"value", .Number}}, nil, .Number}}, "A number without its sign."},
 	{"sqrt", {{{{"value", .Number}}, nil, .Number}}, "The square root."},
 	{"floor", {{{{"value", .Number}}, nil, .Number}}, "The whole number at or below a number: floor 2.7 is 2, floor -2.1 is -3."},

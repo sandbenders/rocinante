@@ -1,19 +1,20 @@
 // Rope, after Processing's Input/Follow 3: a chain of segments, the first pulled to the
 // mouse and each of the others pulled to the one before it, so the whole thing trails
-// like a rope. Each segment is a point, and `pull` moves it until it is one length away
-// from its target, on the line towards it, which is what `dist` is for.
+// like a rope. `pull` moves a segment until it is one length from its target, on the line
+// towards it: `normalize` gives that line's direction, and `atan` the angle it points,
+// which is what each segment is turned by when it is drawn.
 window size 480 320 title "rope" resizable false
 
 SEGMENTS = 14
 LENGTH = 20
 rope = []
-repeat SEGMENTS [ add { pos: { 240, 160 } } to rope ]
+repeat SEGMENTS [ add { pos: { 240, 160 }, angle: 0 } to rope ]
 
-// Moves a point so it is one length away from a target, on the line towards it.
+// Moves a segment so it is one length from a target, on the line towards it, and turns it to face the target.
 learn pull p target [
   gap = target - p.pos
-  d = dist p.pos.x p.pos.y target.x target.y
-  if d > 0 [ p.pos = target - gap * (LENGTH / d) ]
+  p.pos = target - normalize gap * LENGTH
+  p.angle = atan gap
 ]
 
 draw [
@@ -25,17 +26,17 @@ draw [
     before = item (i - 1) of rope
     pull seg before.pos
   ]
-  stroke (rgb 30 60 120)
-  thickness 10
   caps round
-  for i from 2 to SEGMENTS [
-    seg = item i of rope
-    before = item (i - 1) of rope
-    line from before.pos to seg.pos
-  ]
-  no stroke
+  thickness 10
   for i from 1 to SEGMENTS [
     seg = item i of rope
-    circle at seg.pos radius (14 - i * 0.6) fill (hsb (i * 14) 170 240)
+    push [
+      move seg.pos
+      turn seg.angle
+      stroke (rgb 30 60 120)
+      line from 0 0 to LENGTH 0
+      no stroke
+      circle at 0 0 radius (14 - i * 0.6) fill (hsb (i * 14) 170 240)
+    ]
   ]
 ]

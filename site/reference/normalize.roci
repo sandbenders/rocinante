@@ -1,0 +1,2 @@
+print (normalize { 3, 4 })
+print (normalize { 0, 0 })

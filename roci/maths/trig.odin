@@ -141,3 +141,70 @@ sin_cos_deg :: proc "contextless" (degrees: f64) -> (s, c: f64) {
 	}
 	return s + 0, c + 0
 }
+
+// ---- the angle of a point ----
+
+// 1/(2k+1), alternating in sign: the terms of the series of arctangent, for a number
+// of at most tan(11.25 degrees), worked out by the compiler and rounded once.
+@(private="file") A1 :: -1.0 / 3
+@(private="file") A2 :: 1.0 / 5
+@(private="file") A3 :: -1.0 / 7
+@(private="file") A4 :: 1.0 / 9
+@(private="file") A5 :: -1.0 / 11
+@(private="file") A6 :: 1.0 / 13
+@(private="file") A7 :: -1.0 / 15
+@(private="file") A8 :: 1.0 / 17
+@(private="file") A9 :: -1.0 / 19
+@(private="file") A10 :: 1.0 / 21
+@(private="file") A11 :: -1.0 / 23
+
+// Arctangent in radians of a number from 0 to 1: the number is halved twice with
+// atan t = 2 atan (t / (1 + sqrt (1 + t t))), which brings it under tan 11.25
+// degrees (0.1989), where the series is within a part in 10^16 by its 23rd power.
+// Only additions, multiplications, divisions and square roots, all exactly rounded, so
+// the same number comes out on every system.
+@(private="file")
+atan_unit :: proc "contextless" (t: f64) -> f64 {
+	h := t / (1 + math.sqrt(1 + t * t))
+	q := h / (1 + math.sqrt(1 + h * h))
+	z := q * q
+	series := q + q * z * (A1 + z * (A2 + z * (A3 + z * (A4 + z * (A5 + z * (A6 + z * (A7 + z * (A8 + z * (A9 + z * (A10 + z * A11))))))))))
+	return 4 * series
+}
+
+// The angle in degrees of the point x across and y down, clockwise from straight right as
+// the screen turns, from -180 to 180: exact for the four directions and the diagonals, never
+// -0, and 0 for the origin, NaN and infinity (a sketch's runtime failures give a usable
+// number).
+atan2_deg :: proc "contextless" (y, x: f64) -> f64 {
+	if y * 0 != 0 || x * 0 != 0 { // NaN or infinity
+		return 0
+	}
+	ay, ax := abs(y), abs(x)
+	if ax == 0 && ay == 0 {
+		return 0
+	}
+	// the angle from the nearer axis, from 0 to 45 degrees
+	steep := ay > ax
+	small, large := ay, ax
+	if steep {
+		small, large = ax, ay
+	}
+	t := small / large
+	a: f64
+	switch t {
+	case 0: a = 0
+	case 1: a = 45
+	case: a = atan_unit(t) * (180 / math.PI)
+	}
+	if steep {
+		a = 90 - a
+	}
+	if x < 0 {
+		a = 180 - a
+	}
+	if y < 0 {
+		a = -a
+	}
+	return a + 0 // turns -0 into 0
+}

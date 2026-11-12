@@ -333,6 +333,18 @@ double roci_dist(double x1, double y1, double x2, double y2);
 /* The distance between two points. */
 double roci_dist_v(roci_vec2 a, roci_vec2 b);
 
+/* The angle in degrees of a point, clockwise from straight right as the screen turns, from -180 to 180: `atan y x`, or `atan v` for the direction of a vector. */
+double roci_atan(double y, double x);
+
+/* The angle in degrees of a point, clockwise from straight right as the screen turns, from -180 to 180: `atan y x`, or `atan v` for the direction of a vector. */
+double roci_atan_v(roci_vec2 v);
+
+/* The vector in the same direction with a length of 1; a vector with no length stays the zero vector. */
+roci_vec2 roci_normalize(roci_vec2 v);
+
+/* The vector shortened to at most a length, in the same direction: `limit speed 3`. */
+roci_vec2 roci_limit(roci_vec2 v, double most);
+
 /* A number without its sign. */
 double roci_abs(double value);
 

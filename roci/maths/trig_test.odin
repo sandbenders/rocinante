@@ -128,3 +128,45 @@ test_trig_keeps_sine_squared_and_cosine_squared_at_one :: proc(t: ^testing.T) {
 		testing.expect(t, abs(s * s + c * c - 1) < 1e-15)
 	}
 }
+
+@(test)
+test_atan2_is_exact_for_the_four_directions_and_the_diagonals :: proc(t: ^testing.T) {
+	testing.expect_value(t, atan2_deg(0, 5), 0.0)
+	testing.expect_value(t, atan2_deg(5, 0), 90.0)
+	testing.expect_value(t, atan2_deg(0, -5), 180.0)
+	testing.expect_value(t, atan2_deg(-5, 0), -90.0)
+	testing.expect_value(t, atan2_deg(3, 3), 45.0)
+	testing.expect_value(t, atan2_deg(3, -3), 135.0)
+	testing.expect_value(t, atan2_deg(-3, -3), -135.0)
+	testing.expect_value(t, atan2_deg(-3, 3), -45.0)
+	// never -0: a point on the right axis from below, and the origin
+	testing.expect_value(t, transmute(u64)atan2_deg(-0.0, 5), u64(0))
+	testing.expect_value(t, transmute(u64)atan2_deg(0, 0), u64(0))
+}
+
+@(test)
+test_atan2_agrees_with_the_c_library_all_the_way_round :: proc(t: ^testing.T) {
+	worst := 0.0
+	for k in -3600 ..< 3600 {
+		a := f64(k) * 0.05 + 0.013
+		y, x := math.sin(math.to_radians(a)) * 7, math.cos(math.to_radians(a)) * 7
+		got := atan2_deg(y, x)
+		want := math.to_degrees(math.atan2(y, x))
+		worst = max(worst, abs(got - want))
+	}
+	testing.expectf(t, worst < 1e-12, "atan2 was %v degrees from the C library at worst", worst)
+	// long thin points, the nearly vertical and the nearly flat
+	testing.expect(t, abs(atan2_deg(1e-9, 1) - 1e-9 * 180 / math.PI) < 1e-18)
+	testing.expect(t, abs(atan2_deg(1, 1e-9) - (90 - 1e-9 * 180 / math.PI)) < 1e-12)
+	testing.expect(t, abs(atan2_deg(1e300, 1e-300) - 90) < 1e-12)
+}
+
+@(test)
+test_atan2_gives_zero_for_nan_and_infinity :: proc(t: ^testing.T) {
+	nan := math.nan_f64()
+	inf := math.inf_f64(1)
+	testing.expect_value(t, atan2_deg(nan, 1), 0.0)
+	testing.expect_value(t, atan2_deg(1, nan), 0.0)
+	testing.expect_value(t, atan2_deg(inf, 1), 0.0)
+	testing.expect_value(t, atan2_deg(1, -inf), 0.0)
+}

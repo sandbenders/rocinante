@@ -914,3 +914,29 @@ abi_measure :: proc "c" (content: cstring) -> Abi_Vec2 {
 	size := measure(text_from_abi(content))
 	return {size.x, size.y}
 }
+
+@(export, link_name = "roci_atan")
+abi_atan :: proc "c" (y, x: f64) -> f64 {
+	context = abi_context()
+	return atan_xy(y, x)
+}
+
+@(export, link_name = "roci_atan_v")
+abi_atan_v :: proc "c" (v: Abi_Vec2) -> f64 {
+	context = abi_context()
+	return atan_v(vec_from_abi(v))
+}
+
+@(export, link_name = "roci_normalize")
+abi_normalize :: proc "c" (v: Abi_Vec2) -> Abi_Vec2 {
+	context = abi_context()
+	out := normalize(vec_from_abi(v))
+	return Abi_Vec2{out.x, out.y}
+}
+
+@(export, link_name = "roci_limit")
+abi_limit :: proc "c" (v: Abi_Vec2, most: f64) -> Abi_Vec2 {
+	context = abi_context()
+	out := limit_length(vec_from_abi(v), most)
+	return Abi_Vec2{out.x, out.y}
+}

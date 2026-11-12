@@ -1,0 +1,3 @@
+print (atan 3 3)
+print (atan -1 0)
+print (atan { 4, 3 })

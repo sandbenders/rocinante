@@ -144,3 +144,28 @@ Ease :: maths.Ease
 ease :: proc(amount: f64, curve := Ease.Smooth) -> f64 {
 	return maths.ease(amount, curve)
 }
+
+// The angle in degrees of a point, clockwise from straight right as the screen turns, from -180
+// to 180 (`atan`): `atan y x`, and `atan v` for a vector's own direction.
+atan_xy :: proc(y, x: f64) -> f64 {
+	return maths.atan2_deg(y, x)
+}
+
+atan_v :: proc(v: [2]f64) -> f64 {
+	return maths.atan2_deg(v.y, v.x)
+}
+
+atan :: proc{atan_xy, atan_v}
+
+// The vector with the same direction and a length of 1, or the zero vector for one with no
+// length (`normalize`).
+normalize :: proc(v: [2]f64) -> [2]f64 {
+	out := maths.vec_normalize({v.x, v.y, 0, 0}, 2)
+	return {out.x, out.y}
+}
+
+// The vector shortened to at most this length, in the same direction (`limit`).
+limit_length :: proc(v: [2]f64, most: f64) -> [2]f64 {
+	out := maths.vec_limit({v.x, v.y, 0, 0}, 2, most)
+	return {out.x, out.y}
+}

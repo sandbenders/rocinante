@@ -47,8 +47,8 @@ REFERENCE_SECTIONS := []Reference_Section{
 	{"Time and animation", "Time, frames, and values that move smoothly from one place to another.", {
 		"time", "frame", "fps", "tween", "ease",
 	}},
-	{"Maths", "Numbers: rounding, ranges, distance and the trigonometry of angles in degrees.", {
-		"abs", "floor", "round", "ceil", "sqrt", "sin", "cos", "map", "clamp", "dist", "pi", "tau", "true", "false",
+	{"Maths", "Numbers: rounding, ranges, distance, the length and direction of vectors, and the trigonometry of angles in degrees.", {
+		"abs", "floor", "round", "ceil", "sqrt", "sin", "cos", "atan", "map", "clamp", "dist", "normalize", "limit", "pi", "tau", "true", "false",
 	}},
 	{"Random and noise", "Numbers that differ each time, and noise that changes smoothly. `seed` makes them repeat.", {
 		"random", "pick", "anywhere", "gaussian", "seed", "noise", "fbm", "shuffle",

@@ -561,3 +561,11 @@ next_write :: proc(it: ^Interp) -> u64 {
 	it.writes += 1
 	return it.writes
 }
+
+// A vector of any size, or the zero vector of two numbers for anything else.
+as_vec :: proc(v: Value) -> Vec {
+	if x, ok := v.(Vec); ok {
+		return x
+	}
+	return Vec{n = 2}
+}

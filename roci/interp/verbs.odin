@@ -618,6 +618,23 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			return roci.dist_xy(n(a, 0), n(a, 1), n(a, 2), n(a, 3))
 		}
 		return roci.dist_v(p(a, 0), p(a, 1))
+	case .Atan:
+		if call.shape == 0 {
+			return roci.atan_xy(n(a, 0), n(a, 1))
+		}
+		return roci.atan_v(p(a, 0))
+	case .Normalize:
+		v := as_vec(a[0]) if len(a) > 0 else Vec{n = 2}
+		if v.n == 2 {
+			return vec2(roci.normalize({v.v[0], v.v[1]}))
+		}
+		return Vec{n = v.n, v = maths.vec_normalize(v.v, v.n)}
+	case .Limit:
+		v := as_vec(a[0]) if len(a) > 0 else Vec{n = 2}
+		if v.n == 2 {
+			return vec2(roci.limit_length({v.v[0], v.v[1]}, n(a, 1)))
+		}
+		return Vec{n = v.n, v = maths.vec_limit(v.v, v.n, n(a, 1))}
 	case .Abs:
 		return roci.absolute(n(a, 0))
 	case .Floor:

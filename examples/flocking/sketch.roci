@@ -2,7 +2,9 @@
 // follows three small rules about the birds it can see. It keeps away from any that are
 // too close (separation), turns the way they are going (alignment), and drifts towards
 // where they are (cohesion). Nothing steers the flock as a whole, and it still moves as
-// one. The window wraps round, and a click scatters the birds.
+// one. `limit` holds a bird's speed under a top speed, `normalize` gives the direction of a
+// push, and `atan` turns each bird's triangle the way it is going. The window wraps round,
+// and a click scatters the birds.
 window size 480 320 title "flocking" resizable false
 
 BIRDS = 60
@@ -22,20 +24,20 @@ learn steer bird [
   seen = 0
   for each other in flock [
     gap = other.pos - bird.pos
-    d = dist 0 0 gap.x gap.y
+    d = dist other.pos bird.pos
     if d > 0 and d < VISION [
       seen = seen + 1
       same = same + other.vel
       middle = middle + gap
-      if d < CROWD [ away = away - gap / d * (CROWD - d) ]
+      if d < CROWD [ away = away - normalize gap * (CROWD - d) ]
     ]
   ]
   if seen > 0 [
     bird.vel = bird.vel + away * 0.05 + (same / seen - bird.vel) * 0.05 + middle / seen * 0.004
   ]
-  speed = dist 0 0 bird.vel.x bird.vel.y
-  if speed > TOP_SPEED [ bird.vel = bird.vel * (TOP_SPEED / speed) ]
-  if speed < LOW_SPEED and speed > 0 [ bird.vel = bird.vel * (LOW_SPEED / speed) ]
+  // Never faster than the top speed, never slower than the low one.
+  bird.vel = limit bird.vel TOP_SPEED
+  if dist 0 0 bird.vel.x bird.vel.y < LOW_SPEED [ bird.vel = normalize bird.vel * LOW_SPEED ]
 ]
 
 on mouse down [
@@ -52,10 +54,13 @@ draw [
     if bird.pos.y < 0 [ bird.pos.y = bird.pos.y + height ]
     if bird.pos.y > height [ bird.pos.y = bird.pos.y - height ]
   ]
-  caps round
   for each bird in flock [
-    tail = bird.pos - bird.vel * 4
-    line from tail to bird.pos stroke (rgb 40 70 110) thickness 3
-    circle at bird.pos radius 3 fill (rgb 20 40 80) stroke (rgb 20 40 80) thickness 1
+    push [
+      move bird.pos
+      turn (atan bird.vel)
+      fill (rgb 20 40 80)
+      no stroke
+      triangle { 7, 0 } { -5, -4 } { -5, 4 }
+    ]
   ]
 ]

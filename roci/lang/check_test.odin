@@ -1362,7 +1362,7 @@ test_the_turtle_is_a_record_of_pos_angle_and_down :: proc(t: ^testing.T) {
 @(test)
 test_a_check_sees_the_verbs_and_names_of_the_sketch :: proc(t: ^testing.T) {
 	expect_errors(t, "learn double n [ give n * 2 ]\ncheck \"double\" [\n  expect double 21 is 42\n]\n", {})
-	expect_errors(t, "limit = 10\ncheck \"limit\" [\n  expect limit > 5\n]\n", {})
+	expect_errors(t, "bound = 10\ncheck \"bound\" [\n  expect bound > 5\n]\n", {})
 }
 
 @(test)

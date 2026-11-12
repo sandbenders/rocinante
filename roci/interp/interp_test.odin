@@ -2513,3 +2513,25 @@ test_a_verb_that_calls_itself_with_a_bigger_value_each_time_is_stopped_when_run 
 	}
 	testing.expect(t, found, "the verb is said to call itself too many times")
 }
+
+@(test)
+test_atan_normalize_and_limit_work_on_vectors_of_two_three_and_four_numbers :: proc(t: ^testing.T) {
+	text := `print (atan 3 3)
+print (atan { 3, -3 })
+print (atan 0 0)
+print (normalize { 3, 4 })
+print (normalize { 2, 3, 6 })
+print (normalize { 0, 0 })
+print (normalize { 1, 1, 1, 1 })
+print (limit { 3, 4 } 2.5)
+print (limit { 2, 3, 6 } 3.5)
+print (limit { 3, 4 } 10)
+print (limit { 3, 4 } -1)
+v = { 6, 8 }
+shorter = limit v 5
+print (dist 0 0 shorter.x shorter.y)
+unit = normalize v
+print unit.x
+`
+	expect_printed(t, text, "45\n-45\n0\n{ 0.6, 0.8 }\n{ 0.2857142857142857, 0.42857142857142855, 0.8571428571428571 }\n{ 0, 0 }\n{ 0.5, 0.5, 0.5, 0.5 }\n{ 1.5, 2 }\n{ 1, 1.5, 3 }\n{ 3, 4 }\n{ 0, 0 }\n5\n0.6")
+}
