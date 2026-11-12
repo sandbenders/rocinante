@@ -48,15 +48,19 @@ record_example :: proc(code, apng_path: string, width, height: int, halve: bool,
 	base: gfx.Image // the last frame the sketch drew, for the pointer to go over
 	defer gfx.image_destroy(&base)
 	last: u64
+	size: [2]f64 // of the window shown: the visitor stays inside it
 	for step in 0 ..< seconds * rate * per_frame {
 		windows := roci.open_windows()
+		if len(windows) > window {
+			size = roci.window_size(windows[window])
+		}
 		events: []platform.Event
 		if visited && len(windows) > window {
-			events = visitor_events(step, platform.Window_Id(windows[window]), width, height)
+			events = visitor_events(step, platform.Window_Id(windows[window]), int(size.x), int(size.y))
 		} else if step == 0 {
 			still := make([dynamic]platform.Event, context.temp_allocator)
 			for w in windows {
-				append(&still, platform.Mouse_Moved{window = platform.Window_Id(w), x = 260, y = 110})
+				append(&still, platform.Mouse_Moved{window = platform.Window_Id(w), x = f32(0.65 * roci.window_size(w).x), y = f32(roci.window_size(w).y * 110 / 300)})
 			}
 			events = still[:]
 		}
@@ -91,7 +95,7 @@ record_example :: proc(code, apng_path: string, width, height: int, halve: bool,
 		frame := gfx.Image{width = base.width, height = base.height, pixels = make([]u8, len(base.pixels))}
 		copy(frame.pixels, base.pixels)
 		if visited {
-			draw_pointer(frame, visitor_at(f64(step) / 60, width, height), 0.5 if halve else 1)
+			draw_pointer(frame, visitor_at(f64(step) / 60, int(size.x), int(size.y)), 0.5 if halve else 1)
 		}
 		append(&frames, frame)
 		append(&ticks, 1)

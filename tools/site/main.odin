@@ -39,7 +39,9 @@ main :: proc() {
 	out := "output/site"
 	watching := false
 	for arg in os.args[1:] {
-		if arg == "--watch" {
+		if strings.has_prefix(arg, "--example=") {
+			showcase_only = strings.trim_prefix(arg, "--example=")
+		} else if arg == "--watch" {
 			watching = true
 		} else if arg == "--logo" {
 			svg, ok := read(LOGO)
@@ -55,6 +57,12 @@ main :: proc() {
 		} else {
 			out = arg
 		}
+	}
+	if showcase_only != "" {
+		// just one example's page and pictures, to look at while it is being written
+		ok := copy_tree("site/hugo", out)
+		ok = write_showcase(out) && ok
+		os.exit(0 if ok else 1)
 	}
 	if watching {
 		os.exit(0 if watch(out) else 1)
@@ -307,7 +315,7 @@ draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := E
 		events := make([dynamic]platform.Event, context.temp_allocator)
 		if f == 0 {
 			for w in roci.open_windows() {
-				append(&events, platform.Mouse_Moved{window = platform.Window_Id(w), x = 260, y = 110})
+				append(&events, platform.Mouse_Moved{window = platform.Window_Id(w), x = f32(0.65 * roci.window_size(w).x), y = f32(roci.window_size(w).y * 110 / 300)})
 			}
 		}
 		roci.step(events[:])

@@ -57,7 +57,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"sinewave", 1, "Sine wave", 20, 1},
 	{"noisewave", 1, "Noise wave", 60, 1},
 	{"ease", 1, "Easing", 200, 1},
-	{"rope", 1, "Rope", 150, 1},
+	{"rope", 1, "Rope", 270, 1},
 	{"mouse", 1, "Mouse", 5, 1},
 	{"touch", 1, "Touch", 5, 1},
 
@@ -118,6 +118,9 @@ SHOWCASE_SECONDS :: 5
 SHOWCASE_RATE :: 15
 SHOWCASE_HALVE_ABOVE :: 480
 
+// When it is a name, only that example is made (`odin run tools/site -- --example=rope`).
+showcase_only: string
+
 write_showcase :: proc(out: string) -> bool {
 	// An example runs in its own folder, where an installed font it names would be copied
 	// into its assets, which git tracks: the computer's fonts are not looked at.
@@ -133,7 +136,7 @@ write_showcase :: proc(out: string) -> bool {
 	for category, ci in SHOWCASE_CATEGORIES {
 		fmt.sbprintf(&index, `<section class="ex-section" id="%s"><h2>%s</h2><p>%s</p><ul class="ex-grid">`, registry.reference_slug(strings.to_lower(category.name, context.temp_allocator)), escape(category.name), escape(category.intro))
 		for entry, i in SHOWCASE {
-			if entry.category != ci {
+			if entry.category != ci || (showcase_only != "" && entry.name != showcase_only) {
 				continue
 			}
 			weight += 1
