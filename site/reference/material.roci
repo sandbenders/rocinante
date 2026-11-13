@@ -1,0 +1,7 @@
+background (rgb 12 14 28)
+light ambient fill (rgb 60 66 100)
+light sun from -0.5 -0.7 0.6
+material roughness 0.8
+sphere at -100 0 0 radius 55 fill (rgb 230 90 120)
+material metallic 1 roughness 0.2
+sphere at 100 0 0 radius 55 fill (rgb 235 190 90)

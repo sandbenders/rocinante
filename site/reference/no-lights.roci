@@ -1,0 +1,4 @@
+background (rgb 12 14 28)
+sphere at -80 0 0 radius 60 fill orange
+no lights
+sphere at 80 0 0 radius 60 fill orange

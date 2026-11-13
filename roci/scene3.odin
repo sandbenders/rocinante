@@ -12,6 +12,7 @@ import "ui"
 import "gfx"
 
 Axis :: gfx.Axis3
+Light_Kind :: gfx.Light_Kind
 
 @(private)
 add_shape3 :: proc(shape: gfx.Shape3, at, size: [3]f64, look: Look, params := [2]f64{}) {
@@ -332,4 +333,52 @@ screen_point :: proc(x, y, z: f64) -> (at: [2]f64, visible: bool) {
 // world has it. Gives false when the pixel looks past the floor.
 world_point :: proc(x, y: f64) -> (at: [3]f64, found: bool) {
 	return gfx.scene_world_point(&current_list().scene, canvas_of_current(), {x, y})
+}
+
+// ---- lights and materials ----
+
+// Adds a light to the scene: the first one of a frame takes the usual lights away, so a sketch
+// that writes its own writes all of them (an ambient light too). A point or spot light's place and
+// where a spot light looks are in the coordinates of the current transform; a sun's `at` is the
+// direction towards it in the world. Any of them left out is the usual: a white light 500 units
+// from half-brightness, a spot light's half angle of 30 degrees, looking at the middle.
+light :: proc(kind: gfx.Light_Kind, at: Maybe([3]f64) = nil, aim: Maybe([3]f64) = nil, colour: Maybe(Colour) = nil, falloff: Maybe(f64) = nil, angle: Maybe(f64) = nil) {
+	scene := &current_list().scene
+	l := gfx.Light3{kind = kind, colour = {1, 1, 1}, falloff = 500, angle = 30}
+	if c, ok := colour.?; ok {
+		l.colour = {c.r / 255, c.g / 255, c.b / 255}
+	}
+	if f, ok := falloff.?; ok {l.falloff = f32(f)}
+	if a, ok := angle.?; ok {l.angle = f32(a)}
+	switch kind {
+	case .Ambient:
+	case .Sun:
+		l.at = at.? or_else gfx.USUAL_SUN.at
+	case .Point:
+		l.at = gfx.scene_to_world(scene, at.? or_else {})
+	case .Spot:
+		l.at = gfx.scene_to_world(scene, at.? or_else {0, -200, 0})
+		l.aim = gfx.scene_to_world(scene, aim.? or_else {})
+	}
+	gfx.scene_light(scene, l)
+}
+
+// Shapes drawn from now on are flat in their color.
+no_lights :: proc() {
+	gfx.scene_no_lights(&current_list().scene)
+}
+
+// What 3D shapes drawn from now on are made of: how metal (0 to 1), how rough (0 to 1) and how much
+// they emissive by themselves (0 to 1); a word left out keeps what it was.
+material :: proc(metallic: Maybe(f64) = nil, roughness: Maybe(f64) = nil, emissive: Maybe(f64) = nil) {
+	gfx.scene_material(&current_list().scene, metallic, roughness, emissive)
+}
+
+// The lights a window wrote in its last frame and the material and lighting state, for tests and tools.
+scene_state :: proc(w: Window) -> (lights: []gfx.Light3, lit, unlit: bool, material: gfx.Material3) {
+	if win := win_for(w); win != nil {
+		s := &win.list.scene
+		return s.lights[:], s.lit, s.unlit, s.material
+	}
+	return
 }

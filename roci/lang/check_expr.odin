@@ -465,8 +465,12 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 			if i < len(def.kinds) && (def.kinds[i] == .Colour || def.kinds[i] == .Paint || (verb.name == "picture" && def.kinds[i] == .List)) {
 				check_colour_list(c, ir, a)
 			}
-			// A pair of numbers (`at 10 20`) may be written as one vector (`at p`).
-			is_pair := len(def.kinds) == 2 && def.kinds[0] == .Number && def.kinds[1] == .Number && len(o.args) == 1 && registry_kind(c.types, ir.type) == .Vector
+			// A pair or a triple of numbers (`at 10 20`, `at 1 2 3`) may be written as one vector (`at p`).
+			all_numbers := len(def.kinds) >= 2
+			for kind in def.kinds {
+				all_numbers &&= kind == .Number
+			}
+			is_pair := all_numbers && len(o.args) == 1 && registry_kind(c.types, ir.type) == .Vector
 			if !is_pair && i < len(def.kinds) && ir.type != T_ERROR && !registry.accepts(def.kinds[i], registry_kind(c.types, ir.type)) {
 				need := fmt.tprintf("%s after `%s`", kind_words(def.kinds[i]), o.word)
 				example := sample_for_kind(def.kinds[i])

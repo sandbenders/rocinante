@@ -484,6 +484,49 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		} else {
 			roci.look_at_v(p3(a, 0))
 		}
+	case .Light:
+		kind := roci.Light_Kind.Ambient
+		switch as_text(a[0]) {
+		case "sun":   kind = .Sun
+		case "point": kind = .Point
+		case "spot":  kind = .Spot
+		}
+		at: Maybe([3]f64)
+		if place, found := option_point(it, call.options, "at"); found {
+			at = place
+		} else if source, from_found := option_point(it, call.options, "from"); from_found {
+			at = source
+		}
+		aim: Maybe([3]f64)
+		if target, found := option_point(it, call.options, "to"); found {
+			aim = target
+		}
+		colour: Maybe(maths.Colour)
+		if given, found := option_value(it, call.options, "fill"); found {
+			colour = as_colour(given)
+		}
+		falloff, angle: Maybe(f64)
+		if given, found := option_value(it, call.options, "falloff"); found {
+			falloff = as_number(given)
+		}
+		if given, found := option_value(it, call.options, "angle"); found {
+			angle = as_number(given)
+		}
+		roci.light(kind, at, aim, colour, falloff, angle)
+	case .No_Lights:
+		roci.no_lights()
+	case .Material:
+		metallic, roughness, emissive: Maybe(f64)
+		if given, found := option_value(it, call.options, "metallic"); found {
+			metallic = as_number(given)
+		}
+		if given, found := option_value(it, call.options, "roughness"); found {
+			roughness = as_number(given)
+		}
+		if given, found := option_value(it, call.options, "emissive"); found {
+			emissive = as_number(given)
+		}
+		roci.material(metallic, roughness, emissive)
 	case .Ortho:
 		roci.ortho()
 	case .Perspective:
@@ -834,4 +877,19 @@ draw_into :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	}
 	roci.end_into()
 	return nil
+}
+
+// A point given after a word as three numbers (`at 0 -100 0`) or as one vector (`at p`).
+@(private)
+option_point :: proc(it: ^Interp, options: []lang.IR_Option, word: string) -> (point: [3]f64, found: bool) {
+	first, ok := option_value(it, options, word, 0)
+	if !ok {
+		return {}, false
+	}
+	if v, is_vec := first.(Vec); is_vec {
+		return {v.v[0], v.v[1], v.v[2]}, true
+	}
+	second, _ := option_value(it, options, word, 1)
+	third, _ := option_value(it, options, word, 2)
+	return {as_number(first), as_number(second), as_number(third)}, true
 }

@@ -233,3 +233,86 @@ print w.z
 	defer finish(p)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_every_kind_of_light_reaches_the_scene :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  light ambient fill (rgb 51 51 51)
+  light sun from 0 -1 1
+  light point at 10 -20 30 fill (rgb 255 0 0) falloff 80
+  light spot at 0 -100 0 to 0 0 0 angle 40 fill (rgb 0 0 255)
+  spot_place = { 5, -50, 5 }
+  light point at spot_place
+  box at 0 0 0 size 10
+]
+`, 1)
+	defer finish(p)
+	lights, lit, _, _ := roci.scene_state(first_window())
+	if !testing.expect_value(t, len(lights), 5) {
+		return
+	}
+	testing.expect(t, lit, "lights were written")
+	testing.expect_value(t, lights[0].kind, roci.Light_Kind.Ambient)
+	testing.expect(t, abs(lights[0].colour.r - 0.2) < 1e-6, "the ambient color")
+	testing.expect_value(t, lights[1].at, [3]f64{0, -1, 1})
+	testing.expect_value(t, lights[2].at, [3]f64{10, -20, 30})
+	testing.expect_value(t, lights[2].falloff, 80)
+	testing.expect_value(t, lights[2].colour, [3]f32{1, 0, 0})
+	testing.expect_value(t, lights[3].angle, 40)
+	testing.expect_value(t, lights[3].aim, [3]f64{0, 0, 0})
+	testing.expect_value(t, lights[4].at, [3]f64{5, -50, 5}) // a vector says the place as three numbers do
+	testing.expect_value(t, lights[4].falloff, 500)           // the usual falloff
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_a_light_is_where_the_transform_puts_it :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  push [
+    move 100 0 0
+    light point at 0 -50 0
+  ]
+]
+`, 1)
+	defer finish(p)
+	lights, _, _, _ := roci.scene_state(first_window())
+	if testing.expect_value(t, len(lights), 1) {
+		testing.expect_value(t, lights[0].at, [3]f64{100, -50, 0})
+	}
+}
+
+@(test)
+test_material_and_no_lights_shape_what_comes_after :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  box at 0 0 0 size 10
+  material metallic 0.9 roughness 0.1
+  box at 0 0 0 size 10
+  push [
+    material emissive 0.5
+    no lights
+    box at 0 0 0 size 10
+  ]
+  box at 0 0 0 size 10
+]
+`, 1)
+	defer finish(p)
+	items := roci.scene_items(first_window())
+	if !testing.expect_value(t, len(items), 4) {
+		return
+	}
+	testing.expect_value(t, items[0].material, [4]f32{0, 0.5, 0, 0})
+	testing.expect_value(t, items[1].material, [4]f32{0.9, 0.1, 0, 0})
+	testing.expect_value(t, items[2].material, [4]f32{0.9, 0.1, 1, 0.5}) // a word left out keeps its value
+	testing.expect_value(t, items[3].material, [4]f32{0.9, 0.1, 0, 0})   // the push put it back
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_the_lights_example_runs_with_its_own_lights :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("lights"), 3)
+	defer finish(p)
+	lights, lit, _, _ := roci.scene_state(first_window())
+	testing.expect(t, lit && len(lights) == 4, "an ambient light, a sun, a point light and a spot light")
+	testing.expect_value(t, len(roci.scene_items(first_window())), 6)
+	testing.expect_value(t, len(p.errors), 0)
+}

@@ -79,6 +79,7 @@ EXAMPLES := [?]Example{
 	{"solids", 60, {1}}, // the first 3D sketch: a floor, a sphere and a ring of turning boxes, lit and hiding each other, with a line of flat text over them
 	{"shapes3d", 60, {1}}, // every solid on a grid with the axes: a cone, a cylinder, a capsule, a torus, an icosphere and a box, turning, and an arrow under them
 	{"stage", 60, {1}}, // three boxes on a grid seen by a camera that circles them, their names written over them at their screen points, and a gold ball on the floor under the mouse
+	{"lights", 10, {1}}, // lights of its own: ambient, sun, a warm point light and a blue spot light on a floor and four spheres of different materials
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.

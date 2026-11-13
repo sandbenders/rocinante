@@ -1,0 +1,5 @@
+background (rgb 12 14 28)
+light ambient fill (rgb 40 44 70)
+light point at -120 -100 120 fill (rgb 255 170 90) falloff 260
+light sun from 0.6 -0.4 0.4 fill (rgb 90 110 170)
+sphere at 0 0 0 radius 80 fill white

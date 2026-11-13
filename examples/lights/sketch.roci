@@ -1,0 +1,40 @@
+// Lights: a scene lit by lights of its own. The first `light` of a frame takes the usual lights
+// away, so everything that lights the scene is written here: an `ambient` light so the shadows are
+// not black, a `sun` that shines from a direction (`from`), a `point` light at a place that is
+// weaker the further away (`falloff` is the distance at which it has dropped to half) and a `spot`
+// light at a place that looks `to` another, inside a cone of half `angle` degrees. `material` says
+// what the shapes after it are made of: `metallic` is paint at 0 and metal at 1, `roughness` a
+// mirror at 0 and chalk at 1, and `emissive` how much of its color a shape gives off by itself.
+// `no lights` draws what comes after it flat. Drag to look round.
+window size 760 460 title "lights"
+
+draw [
+  background (rgb 10 12 24)
+  light ambient fill (rgb 52 58 92)
+  light sun from -0.5 -0.8 0.4 fill (rgb 110 120 160)
+  light point at -170 -90 120 fill (rgb 255 150 70) falloff 220
+  light spot at 190 -260 60 to 130 0 0 fill (rgb 120 200 255) angle 24 falloff 600
+  fill (rgb 120 128 150)
+  material roughness 0.9
+  plane at 0 100 0 size 700 520
+  push [
+    material metallic 0 roughness 0.55
+    sphere at -170 40 0 radius 60 fill (rgb 235 235 235)
+  ]
+  push [
+    material metallic 1 roughness 0.25
+    sphere at -20 40 0 radius 60 fill (rgb 235 190 90)
+  ]
+  push [
+    material metallic 1 roughness 0.6
+    sphere at 130 40 0 radius 60 fill (rgb 190 200 215)
+  ]
+  push [
+    material roughness 0.4 emissive 0.8
+    sphere at 270 70 40 radius 30 fill (rgb 120 255 160)
+  ]
+  push [
+    no lights
+    sphere at -170 -90 120 radius 8 fill (rgb 255 190 120)
+  ]
+]

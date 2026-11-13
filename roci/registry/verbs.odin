@@ -123,6 +123,15 @@ SHAPE3_OPTIONS := []Option{
 	{"alpha", {.Number}, false},
 	{"style", {.Any}, false},
 }
+LIGHT_OPTIONS := []Option{
+	{"at", {.Number, .Number, .Number}, false},
+	{"from", {.Number, .Number, .Number}, false},
+	{"to", {.Number, .Number, .Number}, false},
+	{"angle", {.Number}, false},
+	{"fill", {.Colour}, false},
+	{"falloff", {.Number}, false},
+}
+MATERIAL_OPTIONS := []Option{{"metallic", {.Number}, false}, {"roughness", {.Number}, false}, {"emissive", {.Number}, false}}
 CAMERA_OPTIONS := []Option{{"fov", {.Number}, false}}
 TURN_OPTIONS := []Option{{"around", {.Name}, false}} // `around y`; without it a turn is the 2D one
 NOISE_OPTIONS := []Option{{"as", {.Name}, false}} // `as simplex`; Perlin is the default
@@ -245,6 +254,12 @@ VERBS := []Verb{
 		{{{"x", .Number}, {"y", .Number}}, nil, .Vector},
 		{{{"position", .Vector}}, nil, .Vector},
 	}, "The point of the floor, the plane where y is 0, that shows at a pixel of the window, as a vector of three numbers: `world point mouse`. A pixel that looks past the floor gives { 0, 0, 0 }."},
+
+	{"light", {
+		{{{"kind", .Name}}, LIGHT_OPTIONS, .None},
+	}, "Adds a light to the 3D scene: `ambient`, `sun` (from a direction, `from 0 -1 1`), `point` (at a place, weaker the further away, `falloff` the distance at which it has dropped to half) or `spot` (at a place, `to` a place, inside a cone of half `angle` degrees). `fill` is its color. The first light of a frame takes the usual lights away, so a sketch that lights its own scene writes all the lights, ambient too."},
+	{"no lights", {{{}, nil, .None}}, "Draws the 3D shapes that come after it flat in their color, with no light or shade, until the `push` it is in ends or the frame does."},
+	{"material", {{{}, MATERIAL_OPTIONS, .None}}, "Sets what the 3D shapes that come after it are made of: `metallic` 0 for paint up to 1 for metal, `roughness` 0 for a mirror up to 1 for chalk, and `emissive` how much of their color they give off by themselves. A word left out keeps its value."},
 
 	// Text
 	{"text", {
