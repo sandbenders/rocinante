@@ -503,6 +503,7 @@ Vertex3 :: struct {
 	position: [3]f32,
 	normal:   [3]f32,
 	stretch:  f32,
+	uv:       [2]f32, // where in a model's textures this corner is (0 for the shapes, which have none)
 }
 
 Mesh3 :: struct {
@@ -545,7 +546,7 @@ add_ring :: proc(m: ^Mesh3, y, radius: f32, normal_y: f32, normal_scale: f32, st
 		theta := f64(seg) / f64(SEGMENTS) * 360
 		c, s := f32(maths.cos_deg(theta)), f32(maths.sin_deg(theta))
 		n := normalize3f({c * normal_scale, normal_y, s * normal_scale})
-		append(&m.vertices, Vertex3{{c * radius, y, s * radius}, n, stretch})
+		append(&m.vertices, Vertex3{{c * radius, y, s * radius}, n, stretch, {}})
 	}
 	return first
 }
@@ -563,7 +564,7 @@ normalize3f :: proc(v: [3]f32) -> [3]f32 {
 @(private)
 add_cap :: proc(m: ^Mesh3, y: f32, facing: f32) {
 	centre := u32(len(m.vertices))
-	append(&m.vertices, Vertex3{{0, y, 0}, {0, facing, 0}, 0})
+	append(&m.vertices, Vertex3{{0, y, 0}, {0, facing, 0}, 0, {}})
 	ring := add_ring(m, y, 0.5, facing, 0, 0)
 	for seg in 0 ..< u32(SEGMENTS) {
 		append(&m.indices, centre, ring + seg, ring + seg + 1)
@@ -590,7 +591,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 		base := u32(len(m.vertices))
 		for corner in ([4][2]f32{{-1, -1}, {1, -1}, {1, 1}, {-1, 1}}) {
 			p := n * 0.5 + a * (corner.x * 0.5) + b * (corner.y * 0.5)
-			append(&m.vertices, Vertex3{p, n, 0})
+			append(&m.vertices, Vertex3{p, n, 0, {}})
 		}
 		append(&m.indices, base, base + 1, base + 2, base, base + 2, base + 3)
 	}
@@ -611,7 +612,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 				f32(-maths.cos_deg(phi)),
 				f32(maths.sin_deg(phi) * maths.sin_deg(theta)),
 			}
-			append(&m.vertices, Vertex3{n * 0.5, n, 0})
+			append(&m.vertices, Vertex3{n * 0.5, n, 0, {}})
 		}
 	}
 	for ring in 0 ..< rings {
@@ -623,7 +624,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 	start = u32(len(m.indices))
 	base := u32(len(m.vertices))
 	for corner in ([4][2]f32{{-1, -1}, {1, -1}, {1, 1}, {-1, 1}}) {
-		append(&m.vertices, Vertex3{{corner.x * 0.5, 0, corner.y * 0.5}, {0, -1, 0}, 0})
+		append(&m.vertices, Vertex3{{corner.x * 0.5, 0, corner.y * 0.5}, {0, -1, 0}, 0, {}})
 	}
 	append(&m.indices, base, base + 1, base + 2, base, base + 2, base + 3)
 	range(&out, .Plane, start)
@@ -660,7 +661,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 				f32(-maths.cos_deg(phi)),
 				f32(maths.sin_deg(phi) * maths.sin_deg(theta)),
 			}
-			append(&m.vertices, Vertex3{n * 0.5, n, -1})
+			append(&m.vertices, Vertex3{n * 0.5, n, -1, {}})
 		}
 	}
 	for ring in half ..= half * 2 {
@@ -674,7 +675,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 				f32(-maths.cos_deg(phi)),
 				f32(maths.sin_deg(phi) * maths.sin_deg(theta)),
 			}
-			append(&m.vertices, Vertex3{n * 0.5, n, 1})
+			append(&m.vertices, Vertex3{n * 0.5, n, 1, {}})
 		}
 	}
 	for i in 0 ..< len(capsule_rings) - 1 {
@@ -694,7 +695,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 			theta := f64(seg) / f64(SEGMENTS) * 360
 			dir := [3]f32{f32(maths.cos_deg(theta)), 0, f32(maths.sin_deg(theta))}
 			n := dir * f32(maths.cos_deg(angle)) + [3]f32{0, f32(-maths.sin_deg(angle)), 0}
-			append(&m.vertices, Vertex3{dir * 0.5, n, 0})
+			append(&m.vertices, Vertex3{dir * 0.5, n, 0, {}})
 		}
 	}
 	for i in 0 ..< len(torus_rings) - 1 {
@@ -725,7 +726,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 			n = -n
 		}
 		base := u32(len(m.vertices))
-		append(&m.vertices, Vertex3{a, n, 0}, Vertex3{b, n, 0}, Vertex3{c, n, 0})
+		append(&m.vertices, Vertex3{a, n, 0, {}}, Vertex3{b, n, 0, {}}, Vertex3{c, n, 0, {}})
 		append(&m.indices, base, base + 1, base + 2)
 	}
 	for tri in triangles {

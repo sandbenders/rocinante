@@ -270,7 +270,7 @@ can_typeset :: proc(r: ^Renderer) -> bool {
 // The texture of a kept picture, made and filled the first time it is asked for and
 // kept for the frames after. Nil when the picture is not there or the GPU would not
 // make a texture of it (`r.error` says so); a picture that failed is not tried again.
-image_texture :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, id: Image_Id) -> ^sdl.GPUTexture {
+image_texture :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, id: Image_Id, mipmaps := false) -> ^sdl.GPUTexture {
 	data := image_data(id)
 	if data == nil {
 		return nil
@@ -292,11 +292,11 @@ image_texture :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, id: Image_I
 	texture := sdl.CreateGPUTexture(r.device, {
 		type                 = .D2,
 		format               = .R8G8B8A8_UNORM,
-		usage                = {.SAMPLER},
+		usage                = {.SAMPLER, .COLOR_TARGET} if mipmaps else {.SAMPLER},
 		width                = u32(data.width),
 		height               = u32(data.height),
 		layer_count_or_depth = 1,
-		num_levels           = 1,
+		num_levels           = mip_levels(data.width, data.height) if mipmaps else 1,
 	})
 	if texture == nil {
 		set_error(r, "creating a picture's texture")
@@ -327,6 +327,9 @@ image_texture :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, id: Image_I
 	)
 	sdl.EndGPUCopyPass(pass)
 	sdl.ReleaseGPUTransferBuffer(r.device, transfer)
+	if mipmaps {
+		sdl.GenerateMipmapsForGPUTexture(commands, texture)
+	}
 	r.images[id] = texture
 	return texture
 }
@@ -351,4 +354,13 @@ image_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item_index
 	}
 	append(&s.indices, base, base + 1, base + 2, base, base + 2, base + 3)
 	append(&s.draws, Typeset_Draw{item_index, texture, first, 6})
+}
+
+// How many sizes a picture of this size has down to one pixel, each half the one before.
+mip_levels :: proc(width, height: int) -> u32 {
+	levels: u32 = 1
+	for side := max(width, height); side > 1; side /= 2 {
+		levels += 1
+	}
+	return levels
 }

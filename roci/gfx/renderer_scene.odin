@@ -19,13 +19,16 @@ Depth_Key :: struct {
 }
 
 scene_gpu_destroy :: proc(r: ^Renderer) {
-	for texture in ([?]^sdl.GPUTexture{r.shadow_map, r.shadow_blank}) {
+	for texture in ([?]^sdl.GPUTexture{r.shadow_map, r.shadow_blank, r.blank_white, r.blank_flat}) {
 		if texture != nil {
 			sdl.ReleaseGPUTexture(r.device, texture)
 		}
 	}
 	if r.shadow_sampler != nil {
 		sdl.ReleaseGPUSampler(r.device, r.shadow_sampler)
+	}
+	if r.model_sampler != nil {
+		sdl.ReleaseGPUSampler(r.device, r.model_sampler)
 	}
 	for buffer in ([?]^Gpu_Buffer{&r.scene_vertices, &r.scene_indices, &r.scene_instances}) {
 		if buffer.buffer != nil {
@@ -88,7 +91,8 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 		return nil
 	}
 	vertex := create_shader(r, source.vertex, source.vertex_entry, source.format, .VERTEX, 1, 0)
-	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 0 if shadow else 1, 0 if shadow else 1)
+	// the scene shader reads the lights and a few numbers for each part, the shadow map and a model's four pictures
+	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 0 if shadow else 2, 0 if shadow else 5)
 	if vertex == nil || fragment == nil {
 		set_error(r, "creating the 3D shaders")
 		if vertex != nil {sdl.ReleaseGPUShader(r.device, vertex)}
@@ -103,7 +107,7 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 		{slot = 0, pitch = size_of(Vertex3), input_rate = .VERTEX},
 		{slot = 1, pitch = size_of(Instance3), input_rate = .INSTANCE},
 	}
-	attributes := [9]sdl.GPUVertexAttribute{
+	attributes := [10]sdl.GPUVertexAttribute{
 		{location = 0, buffer_slot = 0, format = .FLOAT3, offset = u32(offset_of(Vertex3, position))},
 		{location = 1, buffer_slot = 0, format = .FLOAT3, offset = u32(offset_of(Vertex3, normal))},
 		{location = 2, buffer_slot = 0, format = .FLOAT, offset = u32(offset_of(Vertex3, stretch))},
@@ -113,6 +117,7 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 		{location = 6, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, colour))},
 		{location = 7, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, params))},
 		{location = 8, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, material))},
+		{location = 9, buffer_slot = 0, format = .FLOAT2, offset = u32(offset_of(Vertex3, uv))},
 	}
 	info := sdl.GPUGraphicsPipelineCreateInfo{
 		vertex_shader     = vertex,
@@ -200,6 +205,21 @@ scene_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comm
 		append(sorted, item.instance)
 	}
 	instance_bytes := len(sorted) * size_of(Instance3)
+
+	// the pictures of the parts that are drawn, on the card before the pass that reads them begins
+	if len(groups) > 0 {
+		if !ensure_model_resources(r, commands) {return false}
+		for group in groups {
+			if data := model_data(group.id); data != nil && int(group.part) < len(data.parts) {
+				for id in data.parts[group.part].textures {
+					if id != 0 {_ = image_texture(r, commands, id, true)}
+				}
+			}
+		}
+	} else if r.model_sampler == nil {
+		// the scene shader always has five pictures bound, so the stand-ins are made even with no model
+		if !ensure_model_resources(r, commands) {return false}
+	}
 
 	// models that are not on the card, or are an old version of themselves
 	if r.model_gpu_epoch != model_epoch() {
@@ -298,10 +318,15 @@ slice_contains_id :: proc(ids: []Model_Id, id: Model_Id) -> bool {
 // Draws the shapes and then the loaded models of the scene in the pass that is open, with the
 // pipeline and the uniforms already set: the shapes from the one mesh, each model from its own.
 @(private)
-draw_scene_items :: proc(r: ^Renderer, pass: ^sdl.GPURenderPass, counts: [Shape3]u32, groups: []Model_Group) {
+draw_scene_items :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, pass: ^sdl.GPURenderPass, counts: [Shape3]u32, groups: []Model_Group, textured: bool) {
 	bindings := [2]sdl.GPUBufferBinding{{buffer = r.scene_vertices.buffer}, {buffer = r.scene_instances.buffer}}
 	sdl.BindGPUVertexBuffers(pass, 0, raw_data(bindings[:]), 2)
 	sdl.BindGPUIndexBuffer(pass, {buffer = r.scene_indices.buffer}, ._32BIT)
+	if textured {
+		// the solids have no pictures: the stand-ins and no flags
+		none: Model_Part
+		bind_part(r, commands, pass, &none)
+	}
 	first: u32
 	for shape in Shape3 {
 		if shape == .Model {continue}
@@ -324,6 +349,9 @@ draw_scene_items :: proc(r: ^Renderer, pass: ^sdl.GPURenderPass, counts: [Shape3
 			bound = group.id
 		}
 		part := data.parts[group.part]
+		if textured {
+			bind_part(r, commands, pass, &part)
+		}
 		sdl.DrawGPUIndexedPrimitives(pass, part.index_count, group.count, part.first_index, 0, group.first)
 		r.stats.draws += 1
 	}
@@ -373,7 +401,7 @@ draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comman
 	map_bound := r.shadow_map if lights.shadow.x > 0 else r.shadow_blank
 	shadow_binding := sdl.GPUTextureSamplerBinding{texture = map_bound, sampler = r.shadow_sampler}
 	sdl.BindGPUFragmentSamplers(pass, 0, &shadow_binding, 1)
-	draw_scene_items(r, pass, counts, groups)
+	draw_scene_items(r, commands, pass, counts, groups, true)
 	return true
 }
 
@@ -445,6 +473,106 @@ draw_shadow_pass :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, lights: 
 	sdl.BindGPUGraphicsPipeline(pass, pipeline)
 	rows := lights.shadow_rows
 	sdl.PushGPUVertexUniformData(commands, 0, &rows, size_of(rows))
-	draw_scene_items(r, pass, counts, groups)
+	draw_scene_items(r, commands, pass, counts, groups, false)
 	return true
+}
+
+// A texture of one pixel of one color, which stands in for a picture a part does not have.
+@(private)
+solid_texture :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, rgba: [4]u8) -> ^sdl.GPUTexture {
+	texture := sdl.CreateGPUTexture(r.device, {type = .D2, format = .R8G8B8A8_UNORM, usage = {.SAMPLER}, width = 1, height = 1, layer_count_or_depth = 1, num_levels = 1})
+	transfer := sdl.CreateGPUTransferBuffer(r.device, {usage = .UPLOAD, size = 16})
+	if texture == nil || transfer == nil {
+		if texture != nil {sdl.ReleaseGPUTexture(r.device, texture)}
+		if transfer != nil {sdl.ReleaseGPUTransferBuffer(r.device, transfer)}
+		return nil
+	}
+	mapped := sdl.MapGPUTransferBuffer(r.device, transfer, false)
+	if mapped == nil {
+		sdl.ReleaseGPUTexture(r.device, texture)
+		sdl.ReleaseGPUTransferBuffer(r.device, transfer)
+		return nil
+	}
+	pixel := rgba
+	mem.copy(mapped, &pixel, 4)
+	sdl.UnmapGPUTransferBuffer(r.device, transfer)
+	pass := sdl.BeginGPUCopyPass(commands)
+	sdl.UploadToGPUTexture(pass, {transfer_buffer = transfer, pixels_per_row = 1, rows_per_layer = 1}, {texture = texture, w = 1, h = 1, d = 1}, false)
+	sdl.EndGPUCopyPass(pass)
+	sdl.ReleaseGPUTransferBuffer(r.device, transfer)
+	return texture
+}
+
+// Makes what a model's pictures need, once: the sampler (linear, repeating, mipmapped, a little anisotropic)
+// and the two stand-ins for a picture a part has not got.
+@(private)
+ensure_model_resources :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer) -> bool {
+	if r.model_sampler == nil {
+		r.model_sampler = sdl.CreateGPUSampler(r.device, {
+			min_filter        = .LINEAR,
+			mag_filter        = .LINEAR,
+			mipmap_mode       = .LINEAR,
+			address_mode_u    = .REPEAT,
+			address_mode_v    = .REPEAT,
+			address_mode_w    = .REPEAT,
+			enable_anisotropy = true,
+			max_anisotropy    = 4,
+			max_lod           = 16,
+		})
+		if r.model_sampler == nil {
+			set_error(r, "creating the sampler of a model's pictures")
+			return false
+		}
+	}
+	if r.blank_white == nil {
+		r.blank_white = solid_texture(r, commands, {255, 255, 255, 255})
+	}
+	if r.blank_flat == nil {
+		r.blank_flat = solid_texture(r, commands, {128, 128, 255, 255})
+	}
+	if r.blank_white == nil || r.blank_flat == nil {
+		set_error(r, "creating the stand-in pictures of a model")
+		return false
+	}
+	return true
+}
+
+// What the fragment shader is told about the part it is drawing: how strongly its normal picture bends the
+// surface (0 when it has none), whether its light comes from a picture, and the alpha below which a pixel is
+// not drawn (0 for none).
+Part_Flags :: struct {
+	normal_scale:   f32,
+	emissive_map:   f32,
+	alpha_cutoff:   f32,
+	unused:         f32,
+}
+
+// Binds the pictures of a part (the stand-ins for the ones it has not got) and tells the shader which it has.
+@(private)
+bind_part :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, pass: ^sdl.GPURenderPass, part: ^Model_Part) {
+	bindings: [4]sdl.GPUTextureSamplerBinding
+	for slot in Texture_Slot {
+		texture := r.blank_flat if slot == .Normal else r.blank_white
+		if id := part.textures[slot]; id != 0 {
+			if have, found := r.images[id]; found && have != nil {
+				texture = have
+			}
+		}
+		bindings[int(slot)] = {texture = texture, sampler = r.model_sampler}
+	}
+	sdl.BindGPUFragmentSamplers(pass, 1, raw_data(bindings[:]), 4)
+	flags := Part_Flags{alpha_cutoff = part.alpha_cutoff}
+	if part.textures[.Normal] != 0 && has_texture(r, part.textures[.Normal]) {
+		flags.normal_scale = part.normal_scale if part.normal_scale != 0 else 1
+	}
+	if part.textures[.Emissive] != 0 && has_texture(r, part.textures[.Emissive]) {
+		flags.emissive_map = 1
+	}
+	sdl.PushGPUFragmentUniformData(commands, 1, &flags, size_of(Part_Flags))
+}
+
+@(private)
+has_texture :: proc(r: ^Renderer, id: Image_Id) -> bool {
+	texture, found := r.images[id]
+	return found && texture != nil
 }

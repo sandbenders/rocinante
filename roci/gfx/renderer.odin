@@ -142,6 +142,9 @@ Renderer :: struct {
 	scene_instances: Gpu_Buffer, // one for each shape of the frame
 	shadow_map:     ^sdl.GPUTexture, // what the light sees, as depths in a color (SHADOW_SIZE square), made when a scene first has shadows
 	shadow_blank:   ^sdl.GPUTexture, // a texture to bind when there are none, so the shader always has one
+	model_sampler:  ^sdl.GPUSampler, // linear, repeating, mipmapped: how a model's pictures are read
+	blank_white:    ^sdl.GPUTexture, // bound for a picture a part has not got (one white pixel, which changes nothing it multiplies)
+	blank_flat:     ^sdl.GPUTexture, // and for a missing normal map (one pixel that leaves the surface as it is)
 	shadow_sampler: ^sdl.GPUSampler,
 	model_gpu:      map[Model_Id]Model_Gpu, // the loaded models on the card (renderer_scene.odin)
 	model_gpu_epoch: int,

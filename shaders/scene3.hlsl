@@ -29,6 +29,22 @@ cbuffer Scene : register(b0, space1)
 Texture2D<float4> shadow_map : register(t0, space2);
 SamplerState shadow_sampler : register(s0, space2);
 
+// A model's pictures, which a part that has none is given a stand-in for (see renderer_scene.odin): the color, the
+// normal map, metal and roughness (roughness in green, metal in blue) and the light the surface gives.
+Texture2D<float4> colour_map : register(t1, space2);
+SamplerState colour_sampler : register(s1, space2);
+Texture2D<float4> normal_map : register(t2, space2);
+SamplerState normal_sampler : register(s2, space2);
+Texture2D<float4> metal_map : register(t3, space2);
+SamplerState metal_sampler : register(s3, space2);
+Texture2D<float4> emissive_map : register(t4, space2);
+SamplerState emissive_sampler : register(s4, space2);
+
+cbuffer Part : register(b1, space3)
+{
+    float4 part; // x: how strongly the normal map bends the surface (0: there is none), y: 1 when the light comes from a picture, z: the alpha below which a pixel is not drawn (0: none)
+};
+
 cbuffer Lights : register(b0, space3)
 {
     float4 eye;      // where the eye is, in the world
@@ -52,6 +68,7 @@ struct VSInput
     float4 colour : TEXCOORD6;
     float4 params : TEXCOORD7;
     float4 material : TEXCOORD8;
+    float2 uv : TEXCOORD9;
 };
 
 struct VSOutput
@@ -61,6 +78,7 @@ struct VSOutput
     float3 normal : TEXCOORD1;
     float4 colour : TEXCOORD2;
     float4 material : TEXCOORD3;
+    float2 uv : TEXCOORD4;
 };
 
 VSOutput vs_main(VSInput input)
@@ -80,6 +98,7 @@ VSOutput vs_main(VSInput input)
     output.normal = float3(dot(c0, input.normal), dot(c1, input.normal), dot(c2, input.normal));
     output.colour = input.colour;
     output.material = input.material;
+    output.uv = input.uv;
     return output;
 }
 
@@ -118,10 +137,25 @@ float3 to_linear(float3 c)
 
 float4 ps_main(VSOutput input) : SV_Target0
 {
+    // the pictures are read before anything can leave the shader, so the sizes they are read at (from how fast
+    // the coordinates change across neighbouring pixels) are worked out for every pixel
+    float4 painted = colour_map.Sample(colour_sampler, input.uv);
+    float4 packed = metal_map.Sample(metal_sampler, input.uv);
+    float3 bump = normal_map.Sample(normal_sampler, input.uv).xyz * 2.0 - 1.0;
+    float3 glow = emissive_map.Sample(emissive_sampler, input.uv).rgb;
+    float3 dp1 = ddx(input.world);
+    float3 dp2 = ddy(input.world);
+    float2 duv1 = ddx(input.uv);
+    float2 duv2 = ddy(input.uv);
+    if (part.z > 0.0 && painted.a * input.colour.a < part.z)
+    {
+        discard;
+    }
+    float3 base = input.colour.rgb * painted.rgb;
     // flat in its color: no lights
     if (input.material.z > 0.5)
     {
-        return float4(input.colour.rgb, 1.0);
+        return float4(base, 1.0);
     }
     float3 n = normalize(input.normal);
     float3 v = normalize(eye.xyz - input.world);
@@ -129,9 +163,20 @@ float4 ps_main(VSOutput input) : SV_Target0
     {
         n = -n;
     }
-    float3 albedo = to_linear(input.colour.rgb);
-    float metallic = input.material.x;
-    float rough = clamp(input.material.y, 0.04, 1.0);
+    if (part.x != 0.0)
+    {
+        // the surface's own sideways directions, from how the picture's coordinates run across it (no tangents are kept
+        // in the mesh); the picture's up is where its v gets smaller
+        float3 perp2 = cross(dp2, n);
+        float3 perp1 = cross(n, dp1);
+        float3 tangent = perp2 * duv1.x + perp1 * duv2.x;
+        float3 bitangent = -(perp2 * duv1.y + perp1 * duv2.y);
+        float scale = rsqrt(max(max(dot(tangent, tangent), dot(bitangent, bitangent)), 1e-12));
+        n = normalize(tangent * scale * bump.x * part.x + bitangent * scale * bump.y * part.x + n * bump.z);
+    }
+    float3 albedo = to_linear(base);
+    float metallic = input.material.x * packed.b;
+    float rough = clamp(input.material.y * packed.g, 0.04, 1.0);
     float3 f0 = lerp(float3(0.04, 0.04, 0.04), albedo, metallic);
     float3 diffuse_colour = albedo * (1.0 - metallic);
     float a = rough * rough;
@@ -188,6 +233,7 @@ float4 ps_main(VSOutput input) : SV_Target0
     }
     float3 sky = to_linear(ambient.rgb);
     total += sky * (diffuse_colour + f0 * (1.8 - rough));
-    total += albedo * input.material.w;
+    float3 given = (part.y > 0.5) ? to_linear(glow) : albedo;
+    total += given * input.material.w;
     return float4(pow(saturate(total), 1.0 / 2.2), 1.0);
 }

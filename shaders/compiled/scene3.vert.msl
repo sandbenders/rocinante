@@ -18,6 +18,7 @@ struct main0_out
     float3 _entryPointOutput_normal [[user(locn1)]];
     float4 _entryPointOutput_colour [[user(locn2)]];
     float4 _entryPointOutput_material [[user(locn3)]];
+    float2 _entryPointOutput_uv [[user(locn4)]];
     float4 gl_Position [[position]];
 };
 
@@ -32,20 +33,22 @@ struct main0_in
     float4 input_colour [[attribute(6)]];
     float4 input_params [[attribute(7)]];
     float4 input_material [[attribute(8)]];
+    float2 input_uv [[attribute(9)]];
 };
 
-vertex main0_out main0(main0_in in [[stage_in]], constant Scene& _105 [[buffer(0)]])
+vertex main0_out main0(main0_in in [[stage_in]], constant Scene& _106 [[buffer(0)]])
 {
     main0_out out = {};
-    float3 _335 = in.input_position + (in.input_normal * in.input_params.y);
-    _335.y += (in.input_stretch * in.input_params.x);
-    float4 _357 = float4(_335, 1.0);
-    float4 _274 = float4(dot(in.input_row0, _357), dot(in.input_row1, _357), dot(in.input_row2, _357), 1.0);
-    out.gl_Position = float4(dot(_105.clip_x, _274), dot(_105.clip_y, _274), dot(_105.clip_z, _274), dot(_105.clip_w, _274));
-    out._entryPointOutput_world = _274.xyz;
+    float3 _359 = in.input_position + (in.input_normal * in.input_params.y);
+    _359.y += (in.input_stretch * in.input_params.x);
+    float4 _381 = float4(_359, 1.0);
+    float4 _295 = float4(dot(in.input_row0, _381), dot(in.input_row1, _381), dot(in.input_row2, _381), 1.0);
+    out.gl_Position = float4(dot(_106.clip_x, _295), dot(_106.clip_y, _295), dot(_106.clip_z, _295), dot(_106.clip_w, _295));
+    out._entryPointOutput_world = _295.xyz;
     out._entryPointOutput_normal = float3(dot(cross(in.input_row1.xyz, in.input_row2.xyz), in.input_normal), dot(cross(in.input_row2.xyz, in.input_row0.xyz), in.input_normal), dot(cross(in.input_row0.xyz, in.input_row1.xyz), in.input_normal));
     out._entryPointOutput_colour = in.input_colour;
     out._entryPointOutput_material = in.input_material;
+    out._entryPointOutput_uv = in.input_uv;
     return out;
 }
 

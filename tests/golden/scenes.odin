@@ -51,6 +51,7 @@ SCENES := [?]Scene{
 	{"effects", effects},
 	{"shader_fills", shader_fills},
 	{"ui_widgets", ui_backdrop},
+	{"model_pictures", model_pictures},
 }
 
 named :: proc(name: string) -> maths.Colour {

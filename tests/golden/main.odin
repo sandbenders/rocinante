@@ -191,6 +191,11 @@ run :: proc() -> bool {
 			continue
 		}
 		defer gfx.image_destroy(&reference)
+		saved := limits
+		defer limits = saved
+		if limits == STRICT && slice.contains(SHADED_PICTURES[:], scene.name) {
+			limits = SHADED
+		}
 		diff := gfx.image_diff(picture, reference, limits.tolerance)
 		switch {
 		case !diff.same_size:

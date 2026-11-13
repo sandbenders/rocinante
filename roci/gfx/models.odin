@@ -76,3 +76,12 @@ models_stop :: proc() {
 	model_slots = nil
 	model_epoch_value += 1
 }
+
+// Reads a model file's bytes as the kind of file its name says: an `.obj` is a Wavefront model and
+// anything else is glTF (`.glb` or `.gltf`).
+model_read :: proc(path: string, bytes: []byte, reader: Gltf_Reader = nil, allocator := context.allocator) -> (Model_Data, Gltf_Error) {
+	if strings.has_suffix(strings.to_lower(path, context.temp_allocator), ".obj") {
+		return obj_read(bytes, reader, allocator)
+	}
+	return gltf_read(bytes, reader, allocator)
+}

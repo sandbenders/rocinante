@@ -27,6 +27,18 @@ Model_Part :: struct {
 	metallic:    f32,
 	roughness:   f32,
 	emissive:    f32, // 0 to 1, from the brightest channel of the material's emissive color
+	textures:    [Texture_Slot]Image_Id, // pictures the material is painted with (0: none); they multiply what the numbers above give
+	normal_scale: f32, // how strongly the normal picture bends the surface
+	alpha_cutoff: f32, // above 0, a pixel whose alpha is less than this is not drawn (a leaf, a fence)
+}
+
+// The pictures a material can have: the color, the way the surface faces (a normal map), metal and roughness
+// (roughness in green, metal in blue, as glTF packs them) and the light the surface gives.
+Texture_Slot :: enum {
+	Colour,
+	Normal,
+	Metal_Rough,
+	Emissive,
 }
 
 Model_Data :: struct {
@@ -35,9 +47,15 @@ Model_Data :: struct {
 	parts:    [dynamic]Model_Part,
 	low:      [3]f32, // the box that holds it, in the sketch's world
 	high:     [3]f32,
+	lost_textures: int, // how many pictures the file names that could not be read
 }
 
 model_data_destroy :: proc(m: ^Model_Data) {
+	for part in m.parts {
+		for id in part.textures {
+			if id != 0 {image_release(id)} // a picture two parts share is let go once; the second try names nothing
+		}
+	}
 	delete(m.vertices)
 	delete(m.indices)
 	delete(m.parts)
@@ -53,6 +71,7 @@ Gltf_Error :: enum {
 	Missing_Buffer,  // a buffer that is not in the file and not beside it
 	Bad_Data,        // a number that points outside its buffer, or a shape that does not fit
 	No_Triangles,    // nothing in it to draw
+	Not_Obj,         // not an OBJ model: no faces and no corners
 }
 
 gltf_error_words :: proc(e: Gltf_Error) -> string {
@@ -64,6 +83,7 @@ gltf_error_words :: proc(e: Gltf_Error) -> string {
 	case .Missing_Buffer: return "it needs a file of data that is not beside it"
 	case .Bad_Data:       return "its data does not fit together, so the file is damaged"
 	case .No_Triangles:   return "there are no triangles in it to draw"
+	case .Not_Obj:        return "what is in it is not an OBJ model"
 	}
 	return ""
 }
@@ -79,6 +99,7 @@ Reading :: struct {
 	failed:   Gltf_Error,
 	reader:   Gltf_Reader,
 	have_box: bool,
+	pictures: map[int]Image_Id, // the glTF images read so far, by their number (0: one that could not be read)
 }
 
 // Reads a model from the bytes of a `.glb` or a `.gltf` file. Everything it makes temporarily is
@@ -139,6 +160,7 @@ gltf_read :: proc(bytes: []byte, reader: Gltf_Reader = nil, allocator := context
 	model.indices = make([dynamic]u32, allocator)
 	model.parts = make([dynamic]Model_Part, allocator)
 	r := Reading{root = root, model = &model, reader = reader}
+	r.pictures = make(map[int]Image_Id, context.temp_allocator)
 	r.buffers = make([dynamic][]byte, context.temp_allocator)
 	for entry, i in array_of(root, "buffers") {
 		buffer, is_buffer := entry.(json.Object)
@@ -509,6 +531,21 @@ add_mesh :: proc(r: ^Reading, index: int, world: matrix[4, 4]f32) {
 				return
 			}
 		}
+		uvs: Accessor
+		has_uvs := false
+		if uv_index, has := attributes["TEXCOORD_0"]; has {
+			uvs, has_uvs = open_accessor(r, int(number_value(uv_index)))
+			if has_uvs && (uvs.components != 2 || uvs.count != positions.count) {
+				r.failed = .Bad_Data
+				return
+			}
+		}
+		uv_of :: proc(uvs: Accessor, has: bool, at: u32) -> [2]f32 {
+			if !has {
+				return {}
+			}
+			return {f32(accessor_number(uvs, int(at), 0)), f32(accessor_number(uvs, int(at), 1))}
+		}
 		// the corners of the triangles, as indices into the primitive's own vertices
 		corners := make([dynamic]u32, context.temp_allocator)
 		raw := make([dynamic]u32, context.temp_allocator)
@@ -575,7 +612,7 @@ add_mesh :: proc(r: ^Reading, index: int, world: matrix[4, 4]f32) {
 			for i in 0 ..< positions.count {
 				n := [3]f64{accessor_number(normals, i, 0), accessor_number(normals, i, 1), accessor_number(normals, i, 2)}
 				n = transform_normal(world, n)
-				append(&r.model.vertices, Vertex3{place(r, world, positions, u32(i)), {f32(n.x), f32(-n.y), f32(n.z)}, 0})
+				append(&r.model.vertices, Vertex3{place(r, world, positions, u32(i)), {f32(n.x), f32(-n.y), f32(n.z)}, 0, uv_of(uvs, has_uvs, u32(i))})
 			}
 			for c in corners {
 				append(&r.model.indices, base + c)
@@ -589,11 +626,11 @@ add_mesh :: proc(r: ^Reading, index: int, world: matrix[4, 4]f32) {
 				// the sketch's world is the glTF one mirrored in y, which turns every triangle over, so the normal is the other way
 				n := -normalize3f(cross3f(b - a, c - a))
 				base := u32(len(r.model.vertices))
-				append(&r.model.vertices, Vertex3{a, n, 0}, Vertex3{b, n, 0}, Vertex3{c, n, 0})
+				append(&r.model.vertices, Vertex3{a, n, 0, uv_of(uvs, has_uvs, corners[t])}, Vertex3{b, n, 0, uv_of(uvs, has_uvs, corners[t + 1])}, Vertex3{c, n, 0, uv_of(uvs, has_uvs, corners[t + 2])})
 				append(&r.model.indices, base, base + 1, base + 2)
 			}
 		}
-		part := Model_Part{first_index = first_index, index_count = u32(len(r.model.indices)) - first_index, colour = {1, 1, 1, 1}, metallic = 1, roughness = 1}
+		part := Model_Part{first_index = first_index, index_count = u32(len(r.model.indices)) - first_index, colour = {1, 1, 1, 1}, metallic = 1, roughness = 1, normal_scale = 1}
 		if material_index, has := primitive["material"]; has {
 			read_material(r, int(number_value(material_index)), &part)
 		}
@@ -601,7 +638,6 @@ add_mesh :: proc(r: ^Reading, index: int, world: matrix[4, 4]f32) {
 	}
 }
 
-@(private = "file")
 cross3f :: proc(a, b: [3]f32) -> [3]f32 {
 	return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}
 }
@@ -623,11 +659,137 @@ read_material :: proc(r: ^Reading, index: int, part: ^Model_Part) {
 		}
 		part.metallic = f32(clamp(number_of(pbr, "metallicFactor", 1), 0, 1))
 		part.roughness = f32(clamp(number_of(pbr, "roughnessFactor", 1), 0, 1))
+		part.textures[.Colour] = texture_picture(r, pbr, "baseColorTexture")
+		part.textures[.Metal_Rough] = texture_picture(r, pbr, "metallicRoughnessTexture")
 	}
 	emissive: [3]f64
 	if numbers_of(material, "emissiveFactor", emissive[:]) {
 		part.emissive = f32(clamp(max(emissive[0], emissive[1], emissive[2]), 0, 1))
 	}
+	part.textures[.Emissive] = texture_picture(r, material, "emissiveTexture")
+	part.textures[.Normal] = texture_picture(r, material, "normalTexture")
+	if info, has := material["normalTexture"].(json.Object); has {
+		part.normal_scale = f32(clamp(number_of(info, "scale", 1), -4, 4))
+	}
+	// an alpha that cuts (a leaf, a fence) is a pixel there or not; one that blends is drawn solid, as the alpha of a color is
+	if mode, has := material["alphaMode"].(json.String); has && string(mode) == "MASK" {
+		part.alpha_cutoff = f32(clamp(number_of(material, "alphaCutoff", 0.5), 0.001, 1))
+	}
+}
+
+// The picture a material names under `key` (`{ "index": 2, "texCoord": 0 }`), read once however many
+// materials use it; 0 when there is none, it uses a second set of coordinates (not read), or the file
+// of the picture cannot be had, which is counted in `lost_textures`.
+@(private = "file")
+texture_picture :: proc(r: ^Reading, holder: json.Object, key: string) -> Image_Id {
+	info, has := holder[key].(json.Object)
+	if !has || int(number_of(info, "texCoord", 0)) != 0 {
+		return 0
+	}
+	textures := array_of(r.root, "textures")
+	ti := int(number_of(info, "index", -1))
+	if ti < 0 || ti >= len(textures) {
+		return 0
+	}
+	texture, is_texture := textures[ti].(json.Object)
+	if !is_texture {
+		return 0
+	}
+	si := int(number_of(texture, "source", -1))
+	if si < 0 {
+		return 0
+	}
+	if id, done := r.pictures[si]; done {
+		return id
+	}
+	id: Image_Id
+	defer r.pictures[si] = id
+	images := array_of(r.root, "images")
+	if si >= len(images) {
+		return 0
+	}
+	image_object, is_image := images[si].(json.Object)
+	if !is_image {
+		return 0
+	}
+	bytes: []byte
+	found := false
+	if uri, has_uri := image_object["uri"].(json.String); has_uri {
+		if strings.has_prefix(string(uri), "data:") {
+			if comma := strings.index_byte(string(uri), ','); comma >= 0 {
+				decoded, decode_error := base64.decode(string(uri)[comma + 1:], allocator = context.temp_allocator)
+				bytes, found = decoded, decode_error == nil
+			}
+		} else if r.reader != nil {
+			bytes, found = r.reader(percent_decoded(string(uri)))
+		}
+	} else if view, has_view := image_object["bufferView"]; has_view {
+		bytes, found = view_bytes(r, int(number_value(view)))
+	}
+	if found {
+		if picture, ok := image_add(bytes); ok {
+			id = picture
+		}
+	}
+	if id == 0 {
+		r.model.lost_textures += 1
+	}
+	return id
+}
+
+// A uri's `%20` and the like, back into the characters they stand for.
+percent_decoded :: proc(uri: string) -> string {
+	if !strings.contains_rune(uri, '%') {
+		return uri
+	}
+	out := make([dynamic]byte, context.temp_allocator)
+	i := 0
+	for i < len(uri) {
+		if uri[i] == '%' && i + 2 < len(uri) {
+			hi, lo := hex_value(uri[i + 1]), hex_value(uri[i + 2])
+			if hi >= 0 && lo >= 0 {
+				append(&out, byte(hi * 16 + lo))
+				i += 3
+				continue
+			}
+		}
+		append(&out, uri[i])
+		i += 1
+	}
+	return string(out[:])
+}
+
+@(private = "file")
+hex_value :: proc(c: byte) -> int {
+	switch c {
+	case '0' ..= '9': return int(c - '0')
+	case 'a' ..= 'f': return int(c - 'a') + 10
+	case 'A' ..= 'F': return int(c - 'A') + 10
+	}
+	return -1
+}
+
+// The bytes of a buffer view: a picture kept inside the file's own data.
+@(private = "file")
+view_bytes :: proc(r: ^Reading, index: int) -> ([]byte, bool) {
+	views := array_of(r.root, "bufferViews")
+	if index < 0 || index >= len(views) {
+		return nil, false
+	}
+	view, is_view := views[index].(json.Object)
+	if !is_view {
+		return nil, false
+	}
+	bi := int(number_of(view, "buffer", 0))
+	if bi < 0 || bi >= len(r.buffers) {
+		return nil, false
+	}
+	start, length := int(number_of(view, "byteOffset", 0)), int(number_of(view, "byteLength", 0))
+	buffer := r.buffers[bi]
+	if start < 0 || length <= 0 || start + length > len(buffer) {
+		return nil, false
+	}
+	return buffer[start:start + length], true
 }
 
 // A model's box: its middle and its longest side, which is what `model` fits to a size.
