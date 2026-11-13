@@ -209,6 +209,7 @@ frame_hash :: proc(w: Window) -> u64 {
 	}
 	bg := win.list.background
 	append(&parts, u64(transmute(u32)bg.r) << 32 | u64(transmute(u32)bg.g), u64(transmute(u32)bg.b) << 32 | u64(transmute(u32)bg.a))
+	append(&parts, gfx.scene_hash(&win.list.scene))
 	append(&parts, win.list.background_paint.hash, u64(win.width) << 32 | u64(win.height))
 	bi := win.list.background_image
 	append(&parts, u64(bi.image) | u64(bi.fit) << 32, u64(transmute(u32)bi.tile) << 32 | u64(transmute(u32)bi.at.x), u64(transmute(u32)bi.at.y))

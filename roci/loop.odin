@@ -182,6 +182,7 @@ handle_event :: proc(event: platform.Event) {
 			if w.handle != nil {
 				w.mouse /= platform.input_scale(w.handle)
 			}
+			orbit_drag(w, e.dx / f32(max(platform.input_scale(w.handle) if w.handle != nil else 1, 1)), e.dy / f32(max(platform.input_scale(w.handle) if w.handle != nil else 1, 1)))
 			the.focused = w
 		}
 	case platform.Mouse_Button_Changed:
@@ -199,6 +200,9 @@ handle_event :: proc(event: platform.Event) {
 		}
 	case platform.Wheel:
 		the.wheel += {f64(e.dx), f64(e.dy)}
+		if w := win_for_platform(e.window); w != nil {
+			orbit_wheel(w, e.dy)
+		}
 	case platform.Finger_Changed:
 		handle_finger(e)
 	case platform.Text_Input:

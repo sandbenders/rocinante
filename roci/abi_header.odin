@@ -37,6 +37,16 @@ ABI_NOT_IN_C := [?]Abi_Skip{
 	{"push", 0, "takes a block; C has roci_push and roci_pop"},
 	{"random", 1, "`random from 1 to 3` is roci_random_between"},
 	{"draw into", 0, "takes a block; C has roci_begin_into and roci_end_into"},
+	{"box", 0, "the 3D verbs come to C with the rest of Phase 4"},
+	{"box", 1, "the 3D verbs come to C with the rest of Phase 4"},
+	{"box", 2, "the 3D verbs come to C with the rest of Phase 4"},
+	{"box", 3, "the 3D verbs come to C with the rest of Phase 4"},
+	{"sphere", 0, "the 3D verbs come to C with the rest of Phase 4"},
+	{"sphere", 1, "the 3D verbs come to C with the rest of Phase 4"},
+	{"plane", 0, "the 3D verbs come to C with the rest of Phase 4"},
+	{"plane", 1, "the 3D verbs come to C with the rest of Phase 4"},
+	{"move", 2, "a 3D move; no C form yet"},
+	{"grow", 2, "a 3D scale; no C form yet"},
 }
 
 // Filled when the program starts: `typeid_of` is not a constant, and a table this

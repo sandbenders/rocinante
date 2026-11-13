@@ -43,6 +43,7 @@ WORD_CHOICES := []Word_Choices{
 	{"mouse up", "button", MOUSE_BUTTON_WORDS},
 	{"tween", "as", EASE_WORDS},
 	{"ui theme", "look", UI_THEME_WORDS},
+	{"turn", "around", {"x", "y", "z"}},
 	{"window", "cursor", CURSOR_WORDS},
 	{"set", "cursor", CURSOR_WORDS},
 	{"fill", "as", GRADIENT_KINDS},

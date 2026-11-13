@@ -768,7 +768,7 @@ test_for_every_on_use_and_learn_headers_are_checked :: proc(t: ^testing.T) {
 	expect_ids(t, "learn star size with points [ ]", {.Learn_Default_Not_One_Item})
 	expect_ids(t, "learn star size with fill 5 [ ]", {.Learn_Reserved_Name})
 	// `width`, `height` and `size` may be parameters.
-	expect_ids(t, "learn box width height [ ]", {})
+	expect_ids(t, "learn spot width height [ ]", {})
 }
 
 @(test)

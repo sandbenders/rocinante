@@ -1,0 +1,4 @@
+background (rgb 20 24 44)
+turn 30 around y
+turn 20 around x
+box at 0 0 0 size 110 fill orange

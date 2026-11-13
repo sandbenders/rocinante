@@ -426,3 +426,17 @@ look_hash :: proc(s: ^State) -> u64 {
 	}
 	return h
 }
+
+// Whether a point of the window (logical pixels) is over a widget of the last frame, so a
+// click there is the widget's and not the canvas's.
+over_widget :: proc(s: ^State, x, y: f32) -> bool {
+	if s == nil || s.hidden {
+		return false
+	}
+	for r in s.finished {
+		if x >= r.rect.min.x - 4 && x <= r.rect.max.x + 4 && y >= r.rect.min.y - 4 && y <= r.rect.max.y + 4 {
+			return true
+		}
+	}
+	return false
+}

@@ -11,6 +11,7 @@ import "../"
 import "../lang"
 import "../maths"
 import "core:mem/virtual"
+import "core:strings"
 
 Handler_Kind :: enum u8 {
 	Event,   // `on key "a"`, `on mouse down`
@@ -49,6 +50,9 @@ register_on :: proc(it: ^Interp, k: ^lang.IR_On) {
 		}
 	} else {
 		h.any = true
+	}
+	if strings.has_prefix(k.event, "mouse") || strings.has_prefix(k.event, "touch") {
+		roci.note_mouse_read(h.window if !h.any else 0)
 	}
 	append(&it.handlers, h)
 }

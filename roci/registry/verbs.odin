@@ -117,6 +117,13 @@ SET_OPTIONS := []Option{
 	{"minimized", {.Boolean}, false},
 }
 ALPHA_OPTION := []Option{{"alpha", {.Number}, false}}
+// What a 3D shape takes: the color it is drawn in. The other style words are for 2D.
+SHAPE3_OPTIONS := []Option{
+	{"fill", {.Colour}, false},
+	{"alpha", {.Number}, false},
+	{"style", {.Any}, false},
+}
+TURN_OPTIONS := []Option{{"around", {.Name}, false}} // `around y`; without it a turn is the 2D one
 NOISE_OPTIONS := []Option{{"as", {.Name}, false}} // `as simplex`; Perlin is the default
 EASE_OPTIONS := []Option{{"as", {.Name}, false}} // `as out`; smooth is the default
 RANDOM_RANGE := []Option{{"from", {.Number}, true}, {"to", {.Number}, true}}
@@ -171,6 +178,22 @@ VERBS := []Verb{
 	{"arc", {
 		{{{"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}, {"start", .Number}, {"stop", .Number}}, STYLE_OPTIONS, .None},
 	}, "Draws part of an ellipse, between two angles in degrees."},
+
+	// 3D shapes: drawn first, with a depth buffer, under everything 2D
+	{"box", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"side", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"width", .Number}, {"height", .Number}, {"depth", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"position", .Vector}, {"side", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"position", .Vector}, {"size", .Vector}}, SHAPE3_OPTIONS, .None},
+	}, "Draws a box in 3D about a point: with one side for a cube, or a width, height and depth. The window gets a camera that the mouse turns."},
+	{"sphere", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"radius", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"position", .Vector}, {"radius", .Number}}, SHAPE3_OPTIONS, .None},
+	}, "Draws a sphere in 3D about a point."},
+	{"plane", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"width", .Number}, {"depth", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"position", .Vector}, {"size", .Vector}}, SHAPE3_OPTIONS, .None},
+	}, "Draws a flat square in 3D, lying in the plane of x and z like a floor, about a point."},
 
 	// Text
 	{"text", {
@@ -231,11 +254,13 @@ VERBS := []Verb{
 	{"move", {
 		{{{"x", .Number}, {"y", .Number}}, nil, .None},
 		{{{"offset", .Vector}}, nil, .None},
-	}, "Moves everything drawn after it."},
-	{"turn", {{{{"degrees", .Number}}, nil, .None}}, "Turns everything drawn after it."},
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}}, nil, .None},
+	}, "Moves everything drawn after it; with three numbers, or a vector of three, it moves the 3D shapes."},
+	{"turn", {{{{"degrees", .Number}}, TURN_OPTIONS, .None}}, "Turns everything drawn after it: the canvas, or with `around x`, `around y` or `around z` the 3D shapes about that axis."},
 	{"grow", {
 		{{{"factor", .Number}}, nil, .None},
 		{{{"x", .Number}, {"y", .Number}}, nil, .None},
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}}, nil, .None},
 	}, "Scales everything drawn after it."},
 	{"shear", {{{{"x", .Number}, {"y", .Number}}, nil, .None}}, "Slants everything drawn after it, by angles in degrees."},
 	{"push", {{{{"body", .Block}}, nil, .None}}, "Runs a block, then puts the style, the transforms and the turtle back as they were."},

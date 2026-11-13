@@ -16,6 +16,9 @@ REFERENCE_SECTIONS := []Reference_Section{
 	{"Shapes", "The shapes a sketch draws. Positions are in pixels from the top left of the window.", {
 		"circle", "ellipse", "rect", "square", "line", "point", "triangle", "quad", "arc",
 	}},
+	{"3D", "Shapes in space, lit and hidden behind each other as they should be, under everything 2D. The origin is the middle of the window, x goes right, y down and z towards you, and the mouse turns the camera.", {
+		"box", "sphere", "plane",
+	}},
 	{"Text", "Words on the window, set in Inter or a font of your own.", {
 		"text", "font", "align", "leading", "measure",
 	}},

@@ -1430,7 +1430,7 @@ test_the_text_verbs_around_text_check :: proc(t: ^testing.T) {
 	expect_errors(t, "align right", {})
 	expect_errors(t, "align up", {.Unknown_Choice})
 	expect_errors(t, "size = measure \"hello\"\ncircle at size radius 5", {})
-	expect_errors(t, "box = measure \"hello\"\nprint box.x", {})
+	expect_errors(t, "area = measure \"hello\"\nprint area.x", {})
 	expect_errors(t, "font 5", {.Wrong_Argument_Kind})
 	expect_errors(t, "x = font \"Inter\"", {.Value_Of_Nothing})
 }

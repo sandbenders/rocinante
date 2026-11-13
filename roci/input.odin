@@ -12,16 +12,19 @@ import sdl "vendor:sdl3"
 
 // Where the mouse is in the current window, in logical pixels.
 mouse :: proc() -> [2]f64 {
+	read_mouse()
 	return current_win().mouse
 }
 
 // Where the mouse was one frame ago.
 pmouse :: proc() -> [2]f64 {
+	read_mouse()
 	return current_win().previous
 }
 
 // Whether a mouse button is down that went down in the current window.
 mouse_down :: proc(button := platform.Mouse_Button.Left) -> bool {
+	read_mouse()
 	return button in current_win().buttons
 }
 
@@ -45,11 +48,13 @@ mouse_button_by_name :: proc(name: string) -> (button: platform.Mouse_Button, ok
 
 // Whether any mouse button is held down in the current window (`pressed`).
 pressed :: proc() -> bool {
+	read_mouse()
 	return current_win().buttons != {}
 }
 
 // How far the wheel turned during the last frame: x to the right, y up.
 wheel :: proc() -> [2]f64 {
+	read_mouse()
 	return the.wheel
 }
 

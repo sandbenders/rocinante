@@ -273,13 +273,13 @@ roci_color roci_mix(roci_color first, roci_color second, double amount);
 /* Blends two colors, or two numbers; amount 0 gives the first and 1 the second. */
 double roci_mix_numbers(double first, double second, double amount);
 
-/* Moves everything drawn after it. */
+/* Moves everything drawn after it; with three numbers, or a vector of three, it moves the 3D shapes. */
 void roci_move(double x, double y);
 
-/* Moves everything drawn after it. */
+/* Moves everything drawn after it; with three numbers, or a vector of three, it moves the 3D shapes. */
 void roci_move_v(roci_vec2 offset);
 
-/* Turns everything drawn after it. */
+/* Turns everything drawn after it: the canvas, or with `around x`, `around y` or `around z` the 3D shapes about that axis. */
 void roci_turn(double degrees);
 
 /* Scales everything drawn after it. */

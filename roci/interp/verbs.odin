@@ -377,6 +377,13 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	p :: proc(a: []Value, i: int) -> [2]f64 {
 		return as_pair(a[i]) if i < len(a) else {}
 	}
+	p3 :: proc(a: []Value, i: int) -> [3]f64 {
+		if i < len(a) {
+			v := as_vec(a[i])
+			return {v.v[0], v.v[1], v.v[2]}
+		}
+		return {}
+	}
 	#partial switch code {
 	case .Window:
 		at: Maybe([2]int)
@@ -408,6 +415,25 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case .Clear:
 		roci.clear_window()
 
+	case .Box:
+		switch call.shape {
+		case 0: roci.box_xyz_side(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look^)
+		case 1: roci.box_xyz(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look^)
+		case 2: roci.box_v_side(p3(a, 0), n(a, 1), look^)
+		case:  roci.box_v_size(p3(a, 0), p3(a, 1), look^)
+		}
+	case .Sphere:
+		if call.shape == 0 {
+			roci.sphere_xyzr(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look^)
+		} else {
+			roci.sphere_vr(p3(a, 0), n(a, 1), look^)
+		}
+	case .Plane:
+		if call.shape == 0 {
+			roci.plane_xyz(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), look^)
+		} else {
+			roci.plane_v(p3(a, 0), p(a, 1), look^)
+		}
 	case .Circle:
 		if call.shape == 0 {
 			roci.circle_xyr(n(a, 0), n(a, 1), n(a, 2), look^, origin)
@@ -576,18 +602,32 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return roci.mix_numbers(n(a, 0), n(a, 1), n(a, 2))
 
 	case .Move:
-		if call.shape == 0 {
-			roci.move_xy(n(a, 0), n(a, 1))
-		} else {
-			roci.move_v(p(a, 0))
+		switch call.shape {
+		case 0: roci.move_xy(n(a, 0), n(a, 1))
+		case 1:
+			if v := as_vec(a[0]); v.n >= 3 {
+				roci.move_xyz(v.v[0], v.v[1], v.v[2])
+			} else {
+				roci.move_v(p(a, 0))
+			}
+		case: roci.move_xyz(n(a, 0), n(a, 1), n(a, 2))
 		}
 	case .Turn:
-		roci.turn(n(a, 0))
-	case .Grow:
-		if call.shape == 0 {
-			roci.grow_factor(n(a, 0))
+		if word, found := option_value(it, call.options, "around"); found {
+			axis := roci.Axis.Z
+			switch as_text(word) {
+			case "x": axis = .X
+			case "y": axis = .Y
+			}
+			roci.turn_about(n(a, 0), axis)
 		} else {
-			roci.grow_xy(n(a, 0), n(a, 1))
+			roci.turn(n(a, 0))
+		}
+	case .Grow:
+		switch call.shape {
+		case 0: roci.grow_factor(n(a, 0))
+		case 1: roci.grow_xy(n(a, 0), n(a, 1))
+		case: roci.grow_xyz(n(a, 0), n(a, 1), n(a, 2))
 		}
 	case .Shear:
 		roci.shear(n(a, 0), n(a, 1))

@@ -1,7 +1,7 @@
 background 250
 font "Inter" size 40
-box = measure "measure"
+area = measure "measure"
 fill gold
-rect at 30 80 size box
+rect at 30 80 size area
 fill 30
 text "measure" at 30 80

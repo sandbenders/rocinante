@@ -76,6 +76,7 @@ Win :: struct {
 	text_area:    ui.Rect,          // where the input method's window was put
 	ui:           ^ui.State,        // its widgets, made by the first one (ui_window.odin)
 	ui_theme:     Ui_Theme,         // the colors its widgets are asked for (`ui theme`); the system's to start with
+	mouse_read:   bool,             // the sketch read the mouse in the last frame it ran, so the camera is left to it
 }
 
 Sketch :: struct {

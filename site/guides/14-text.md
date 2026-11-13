@@ -79,12 +79,12 @@ text "Or a word of one text,\nleading 1." at 30 160 leading 1
 ```roci picture
 background 250
 font "Inter Bold" size 32
-box = measure "fits"
+area = measure "fits"
 fill gold
-rect at 40 60 size box
+rect at 40 60 size area
 fill 30
 text "fits" at 40 60
-text "next to it" at (40 + box.x + 16) 60 size 32 font "Inter"
+text "next to it" at (40 + area.x + 16) 60 size 32 font "Inter"
 ```
 
 A text with nothing in it measures 0 by 0. `measure` follows `font`, `size`, `align` and `leading`, so set them first.

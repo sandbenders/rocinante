@@ -29,11 +29,11 @@ rect at wall.pos size wall.size fill 120
 `touching a b` counts edges that only meet. `inside point shape` asks whether a point is in a shape, edges included:
 
 ```roci picture
-box = { pos: { 100, 75 }, size: { 200, 150 } }
+area = { pos: { 100, 75 }, size: { 200, 150 } }
 draw [
   background 240
-  if inside mouse box [ fill gold ] else [ fill 200 ]
-  rect at box.pos size box.size
+  if inside mouse area [ fill gold ] else [ fill 200 ]
+  rect at area.pos size area.size
 ]
 ```
 
