@@ -316,3 +316,36 @@ test_the_lights_example_runs_with_its_own_lights :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(roci.scene_items(first_window())), 6)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_sixty_four_lights_are_kept_and_the_next_is_said :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  repeat 64 [ light point at 0 -100 0 ]
+  box at 0 0 0 size 10
+]
+`, 1)
+	defer finish(p)
+	lights, _, _, _ := roci.scene_state(first_window())
+	testing.expect_value(t, len(lights), 64)
+	testing.expect_value(t, len(p.errors), 0) // sixty-four is not too many
+	roci.step()
+}
+
+@(test)
+test_a_light_past_the_most_is_left_out_with_a_message :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  repeat 70 [ light point at 0 -100 0 ]
+  box at 0 0 0 size 10
+]
+`, 2)
+	defer finish(p)
+	lights, _, _, _ := roci.scene_state(first_window())
+	testing.expect_value(t, len(lights), 64)
+	said := 0
+	for e in p.errors {
+		if e.id == .Too_Many_Lights {
+			said += 1
+		}
+	}
+	testing.expect_value(t, said, 1) // said once, not once for each light or each frame
+}

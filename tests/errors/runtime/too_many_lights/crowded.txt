@@ -1,0 +1,8 @@
+── A scene has at most 64 lights ────────────────────── sketch.roci:1:13
+
+1 │ repeat 70 [ light point at 0 -100 0 ]
+  │             ^^^^^^^^^^^^^^^^^^^^^^^
+
+Each light is worked out for every pixel of every shape, so a scene keeps its first 64. This one is left out, and the sketch carries on with the lights it has.
+
+Fewer lights make the same scene, for example one sun and a few points:  light sun from 0 -1 1

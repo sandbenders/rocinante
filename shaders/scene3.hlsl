@@ -6,7 +6,7 @@
 // matrices are passed as rows and multiplied out with dot products, so no system's idea of how
 // a matrix is laid out matters.
 //
-// The light is worked out per pixel from up to eight lights (ambient, sun, point and spot) with
+// The light is worked out per pixel from up to 64 lights (ambient, sun, point and spot) with
 // the usual physically based answer: a diffuse part tinted by the color and, for a metal, a
 // shine tinted by it, from a microfacet model (GGX for the highlight, Smith's shadowing and
 // Schlick's Fresnel). Colors are mixed in linear light and written back with the gamma curve,
@@ -28,7 +28,7 @@ cbuffer Lights : register(b0, space3)
 {
     float4 eye;      // where the eye is, in the world
     float4 ambient;  // the ambient color, and in w how many lights there are
-    float4 lights[24]; // three for each light: (place or direction, kind), (color, falloff), (spot axis, cosine of its half angle)
+    float4 lights[192]; // three for each light: (place or direction, kind), (color, falloff), (spot axis, cosine of its half angle)
 };
 
 struct VSInput

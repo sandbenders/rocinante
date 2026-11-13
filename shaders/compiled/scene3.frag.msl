@@ -7,7 +7,7 @@ struct Lights
 {
     float4 eye;
     float4 ambient;
-    float4 lights[24];
+    float4 lights[192];
 };
 
 struct main0_out

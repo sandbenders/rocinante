@@ -340,9 +340,10 @@ world_point :: proc(x, y: f64) -> (at: [3]f64, found: bool) {
 // Adds a light to the scene: the first one of a frame takes the usual lights away, so a sketch
 // that writes its own writes all of them (an ambient light too). A point or spot light's place and
 // where a spot light looks are in the coordinates of the current transform; a sun's `at` is the
-// direction towards it in the world. Any of them left out is the usual: a white light 500 units
+// direction towards it in the world. Gives false when the scene already has the most lights it can (`MAX_LIGHTS`),
+// and the light is left out. Any of them left out is the usual: a white light 500 units
 // from half-brightness, a spot light's half angle of 30 degrees, looking at the middle.
-light :: proc(kind: gfx.Light_Kind, at: Maybe([3]f64) = nil, aim: Maybe([3]f64) = nil, colour: Maybe(Colour) = nil, falloff: Maybe(f64) = nil, angle: Maybe(f64) = nil) {
+light :: proc(kind: gfx.Light_Kind, at: Maybe([3]f64) = nil, aim: Maybe([3]f64) = nil, colour: Maybe(Colour) = nil, falloff: Maybe(f64) = nil, angle: Maybe(f64) = nil) -> (room: bool) {
 	scene := &current_list().scene
 	l := gfx.Light3{kind = kind, colour = {1, 1, 1}, falloff = 500, angle = 30}
 	if c, ok := colour.?; ok {
@@ -360,7 +361,7 @@ light :: proc(kind: gfx.Light_Kind, at: Maybe([3]f64) = nil, aim: Maybe([3]f64) 
 		l.at = gfx.scene_to_world(scene, at.? or_else {0, -200, 0})
 		l.aim = gfx.scene_to_world(scene, aim.? or_else {})
 	}
-	gfx.scene_light(scene, l)
+	return gfx.scene_light(scene, l) != .Too_Many
 }
 
 // Shapes drawn from now on are flat in their color.

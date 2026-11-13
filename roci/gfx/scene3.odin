@@ -791,20 +791,32 @@ Light3 :: struct {
 	angle:    f32,     // a spot light's half angle in degrees
 }
 
-MAX_LIGHTS :: 8
+MAX_LIGHTS :: 64
+
+// A uniform block has to fit in 4,096 bytes, which is what Metal passes a shader that way.
+#assert(size_of(Scene_Lights) <= 4096)
+
+// What happened to a light a verb gave.
+Light_Result :: enum {
+	Added,
+	Left_Out, // a number that is not a number
+	Too_Many, // the scene has MAX_LIGHTS already
+}
 
 // Adds a light, in world coordinates. The first one of a frame takes the usual lights away; one
-// past the eighth is left out. Anything not a finite number leaves the light out.
-scene_light :: proc(s: ^Scene3, light: Light3) {
+// past the sixty-fourth is left out, which is said. Anything not a finite number leaves the light out.
+scene_light :: proc(s: ^Scene3, light: Light3) -> Light_Result {
 	for v in ([?]f64{light.at.x, light.at.y, light.at.z, light.aim.x, light.aim.y, light.aim.z, f64(light.falloff), f64(light.angle)}) {
 		if math.is_nan(v) || math.is_inf(v) {
-			return
+			return .Left_Out
 		}
 	}
 	s.lit = true
-	if len(s.lights) < MAX_LIGHTS {
-		append(&s.lights, light)
+	if len(s.lights) >= MAX_LIGHTS {
+		return .Too_Many
 	}
+	append(&s.lights, light)
+	return .Added
 }
 
 // What the fragment shader reads: where the eye is, the ambient light and the other lights, each

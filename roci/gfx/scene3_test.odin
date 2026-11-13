@@ -600,16 +600,19 @@ test_a_sun_is_a_direction_and_a_spot_light_has_an_axis_and_a_cone :: proc(t: ^te
 }
 
 @(test)
-test_there_are_at_most_eight_lights_and_a_bad_number_leaves_one_out :: proc(t: ^testing.T) {
+test_there_are_at_most_sixty_four_lights_and_a_bad_number_leaves_one_out :: proc(t: ^testing.T) {
 	s: Scene3
 	defer scene_destroy(&s)
-	for _ in 0 ..< 20 {
-		scene_light(&s, Light3{kind = .Point, colour = {1, 1, 1}, falloff = 10})
+	for i in 0 ..< MAX_LIGHTS + 20 {
+		result := scene_light(&s, Light3{kind = .Point, colour = {1, 1, 1}, falloff = 10})
+		testing.expect_value(t, result, Light_Result.Added if i < MAX_LIGHTS else Light_Result.Too_Many)
 	}
+	testing.expect_value(t, MAX_LIGHTS, 64)
 	testing.expect_value(t, len(s.lights), MAX_LIGHTS)
 	testing.expect_value(t, scene_lights(&s, {10, 10}).ambient.w, MAX_LIGHTS)
+	testing.expect(t, size_of(Scene_Lights) <= 4096, "the block of lights fits what Metal passes")
 	scene_begin(&s)
-	scene_light(&s, Light3{kind = .Point, at = {math.nan_f64(), 0, 0}, colour = {1, 1, 1}})
+	testing.expect_value(t, scene_light(&s, Light3{kind = .Point, at = {math.nan_f64(), 0, 0}, colour = {1, 1, 1}}), Light_Result.Left_Out)
 	testing.expect_value(t, len(s.lights), 0)
 	testing.expect(t, !s.lit, "a light that was left out is not a light written")
 }
