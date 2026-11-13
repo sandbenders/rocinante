@@ -22,6 +22,15 @@ Example :: struct {
 	windows: []int, // which windows to take a picture of, counting from 1
 }
 
+// The pictures of lit 3D scenes. Their light is worked out per pixel with powers and divisions
+// that two versions of lavapipe's compiler round differently, so a few pixels, mostly on the edge of
+// a highlight, differ by more than the flat pictures ever do: the first pipeline run on another
+// computer than the one that drew the references found one pixel 17 off where the Mac had none.
+// They get a larger worst channel and allowance than `STRICT`, which a shifted or wrongly lit
+// picture still fails.
+SHADED :: Limits{tolerance = 12, allowed = 60, worst = 40}
+SHADED_PICTURES := [?]string{"example_solids_1", "example_shapes3d_1", "example_stage_1", "example_lights_1"}
+
 // `benchmark` has no picture: 100,000 small circles hardly compress (737 KB), and an
 // interpreter test checks the work it does exactly, which is what it promises.
 EXAMPLES := [?]Example{
@@ -173,6 +182,12 @@ run_example :: proc(example: Example, number: int, name: string, update: bool) -
 		return true
 	}
 	defer gfx.image_destroy(&reference)
+	// A lit 3D picture is judged by limits of its own on lavapipe (see `SHADED`).
+	saved := limits
+	defer limits = saved
+	if limits == STRICT && slice.contains(SHADED_PICTURES[:], name) {
+		limits = SHADED
+	}
 	diff := gfx.image_diff(picture, reference, limits.tolerance)
 	switch {
 	case !diff.same_size:
