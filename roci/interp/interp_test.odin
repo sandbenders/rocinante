@@ -2251,6 +2251,11 @@ make_message_sketch :: proc(t: ^testing.T) -> string {
 		testing.expect(t, os.write_entire_file(root + "/assets/images/small.png", png) == nil)
 		delete(png)
 	}
+	testing.expect(t, folder.ensure_directory(root + "/assets/3d-models/a"))
+	testing.expect(t, folder.ensure_directory(root + "/assets/3d-models/b"))
+	testing.expect(t, os.write_entire_file(root + "/assets/3d-models/broken.glb", transmute([]byte)string("not a model")) == nil)
+	testing.expect(t, os.write_entire_file(root + "/assets/3d-models/a/twin.glb", transmute([]byte)string("x")) == nil)
+	testing.expect(t, os.write_entire_file(root + "/assets/3d-models/b/twin.glb", transmute([]byte)string("x")) == nil)
 	testing.expect(t, folder.ensure_directory(root + "/assets/shaders"))
 	testing.expect(t, os.write_entire_file(root + "/assets/shaders/broken.hlsl", transmute([]byte)string("float4 ps_main() : SV_Target0 { return oops; }\n")) == nil)
 	testing.expect(t, os.write_entire_file(root + "/assets/shaders/good.hlsl", transmute([]byte)string("float4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0 { return scene.Sample(scene_sampler, uv); }\n")) == nil)

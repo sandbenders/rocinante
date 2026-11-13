@@ -106,6 +106,7 @@ Interp :: struct {
 	check_at:  int, // the check being run, counting from 1; 0 when none is
 	home:     string, // the file the program was read from, so `load` and `font` can find its assets even when it is not watched
 	pictures: map[string]Picture_Entry, // what `load` found, by name (images.odin)
+	models:   map[string]Model_Entry, // what `model` found, by name (models.odin)
 	shaders:  map[string]Shader_Entry,  // what `effect` found, by name (effects.odin)
 	fonts_missed: map[string]bool, // font names already looked for everywhere and not found (fonts.odin)
 	events:    int, // every runtime error said, counting the ones `fail` left out as already said
@@ -205,6 +206,7 @@ destroy :: proc(p: ^Interp) {
 	}
 	delete(p.fonts_missed)
 	drop_pictures(p)
+	drop_models(p)
 	drop_shaders(p)
 	virtual.arena_destroy(&p.values[p.values_now])
 	virtual.arena_destroy(&p.arena)

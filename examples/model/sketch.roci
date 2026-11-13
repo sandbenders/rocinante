@@ -1,0 +1,25 @@
+// Model: a glTF model from the sketch's assets folder, drawn with `model`. The file, `ship.glb`,
+// was put together from a box and a cone, each with a material of its own, and the model brings those
+// materials with it: the metal of the hull, the orange of the wings, the glass that glows a little and
+// the hot engines. `model` puts the middle of the model at a place and makes its longest side `size`
+// long, whatever it was drawn in, and `turn`, `move` and `grow` work on it as on any shape. It lights
+// and casts shadows like the rest of the scene. Textures and animation are not read yet.
+// Drag to look round.
+window size 760 460 title "model"
+
+draw [
+  background (rgb 14 16 30)
+  light ambient fill (rgb 52 58 92)
+  light sun from -0.6 -0.7 0.5 fill (rgb 250 240 225)
+  light point at 160 -120 140 fill (rgb 255 150 80) falloff 260
+  shadows
+  fill (rgb 128 136 156)
+  material roughness 0.95
+  plane at 0 70 0 size 800 700
+  push [
+    move 0 (sin (frame * 2) * 8 - 55) 0
+    turn (frame * 0.7) around y
+    turn 10 around z
+    model "ship.glb" at 0 0 0 size 340
+  ]
+]

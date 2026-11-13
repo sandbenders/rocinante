@@ -1,0 +1,6 @@
+background (rgb 20 24 44)
+light ambient fill (rgb 60 66 100)
+light sun from -0.5 -0.7 0.6
+turn -35 around y
+turn 18 around x
+model "ship.glb" at 0 0 0 size 300

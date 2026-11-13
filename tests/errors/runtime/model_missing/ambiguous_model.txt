@@ -1,0 +1,8 @@
+── I could not find a model called `twin.glb` ────────── sketch.roci:1:1
+
+1 │ model "twin.glb" at 0 0 0 size 100
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Two or more files have that name: assets/3d-models/a/twin.glb and assets/3d-models/b/twin.glb. Say which one you mean with its folder. The model draws nothing, and the sketch carries on.
+
+Draw one that is there:  model "3d-models/a/twin.glb" at 0 0 0 size 200

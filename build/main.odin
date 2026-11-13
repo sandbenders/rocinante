@@ -174,6 +174,7 @@ check_packages :: proc() -> bool {
 	ok = step("check roci command", {"odin", "check", "cli", "-vet", "-strict-style"}) && ok
 	ok = step("check header tool", {"odin", "check", "tools/header", "-vet", "-strict-style"}) && ok
 	ok = step("check site tool", {"odin", "check", "tools/site", "-vet", "-strict-style"}) && ok
+	ok = step("check model tool", {"odin", "check", "tools/model", "-vet", "-strict-style"}) && ok
 	ok = step("check benchmark example", {"odin", "check", "examples/benchmark", "-vet", "-strict-style"}) && ok
 	ok = step("check circle example", {"odin", "check", "examples/circle", "-vet", "-strict-style"}) && ok
 	ok = step("check two windows example", {"odin", "check", "examples/two_windows", "-vet", "-strict-style"}) && ok

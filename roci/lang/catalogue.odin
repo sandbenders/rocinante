@@ -125,6 +125,8 @@ Message_Id :: enum u8 {
 	Font_Licence,
 	Image_Missing,
 	Image_Unreadable,
+	Model_Missing,
+	Model_Unreadable,
 	Save_Failed,
 	Save_Approximate,
 	Record_Failed,
@@ -436,6 +438,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Image_Unreadable = {.Error, "`{a}` is not a picture I can read",
 		"I read PNG, JPEG, BMP, TGA and QOI pictures. `{a}` is another kind of file, or it is damaged. The picture draws nothing, and the sketch carries on.",
 		"Load one I can read:", "{d}"},
+	.Model_Missing = {.Error, "I could not find a model called `{a}`",
+		"{b} The model draws nothing, and the sketch carries on.",
+		"Draw one that is there:", "{d}"},
+	.Model_Unreadable = {.Error, "I could not read the model `{a}`",
+		"{b} The model draws nothing, and the sketch carries on.",
+		"Draw one I can read:", "{d}"},
 	.Save_Failed = {.Error, "I could not save `{a}`",
 		"{b} The sketch carries on.",
 		"Save a PNG like this:", "{d}"},
@@ -537,7 +545,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Model_Missing, .Model_Unreadable, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

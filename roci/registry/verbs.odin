@@ -262,6 +262,11 @@ VERBS := []Verb{
 	{"no lights", {{{}, nil, .None}}, "Draws the 3D shapes that come after it flat in their color, with no light or shade, until the `push` it is in ends or the frame does."},
 	{"material", {{{}, MATERIAL_OPTIONS, .None}}, "Sets what the 3D shapes that come after it are made of: `metallic` 0 for paint up to 1 for metal, `roughness` 0 for a mirror up to 1 for chalk, and `emissive` how much of their color they give off by themselves. A word left out keeps its value."},
 
+	{"model", {
+		{{{"file", .Text}, {"x", .Number}, {"y", .Number}, {"z", .Number}, {"size", .Number}}, nil, .None},
+		{{{"file", .Text}, {"position", .Vector}, {"size", .Number}}, nil, .None},
+	}, "Draws a glTF model (a `.glb` or `.gltf` file in the sketch's assets) with its middle at a point and its longest side `size` long, in the colors, metal and roughness of its own materials. Its textures, animations and cameras are not used yet."},
+
 	// Text
 	{"text", {
 		{{{"words", .Text}, {"x", .Number}, {"y", .Number}}, TEXT_OPTIONS, .None},

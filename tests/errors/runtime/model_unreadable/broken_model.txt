@@ -1,0 +1,8 @@
+── I could not read the model `broken.glb` ───────────── sketch.roci:1:1
+
+1 │ model "broken.glb" at 0 0 0 size 100
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+I read glTF 2 models, which are `.glb` or `.gltf` files. I cannot use this one because what is in it is not glTF 2. The model draws nothing, and the sketch carries on.
+
+Draw one I can read:  model "broken.glb" at 0 0 0 size 200

@@ -17,7 +17,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"circle", "ellipse", "rect", "square", "line", "point", "triangle", "quad", "arc",
 	}},
 	{"3D", "Shapes in space, lit and hidden behind each other as they should be, under everything 2D. The origin is the middle of the window, x goes right, y down and z towards you, and the mouse turns the camera.", {
-		"box", "sphere", "plane", "cone", "cylinder", "capsule", "torus", "icosphere", "grid", "axes", "arrow", "camera", "look at", "ortho", "perspective", "screen point", "world point", "light", "no lights", "material", "shadows",
+		"box", "sphere", "plane", "cone", "cylinder", "capsule", "torus", "icosphere", "grid", "axes", "arrow", "camera", "look at", "ortho", "perspective", "screen point", "world point", "light", "no lights", "material", "shadows", "model",
 	}},
 	{"Text", "Words on the window, set in Inter or a font of your own.", {
 		"text", "font", "align", "leading", "measure",
