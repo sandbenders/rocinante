@@ -1,0 +1,8 @@
+SPOTS: a list of vectors of 3 numbers
+NAMES: a list of text
+flat: true or false
+turned: a number
+eye: a vector of 3 numbers
+spot: a vector of 3 numbers
+under: a vector of 3 numbers
+tag: a vector of 2 numbers

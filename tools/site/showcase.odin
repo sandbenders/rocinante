@@ -108,6 +108,7 @@ SHOWCASE := [?]Showcase_Entry{
 
 	{"solids", 8, "Solids", 60, 1},
 	{"shapes3d", 8, "Shapes in space", 60, 1},
+	{"stage", 8, "Stage", 60, 1},
 }
 
 // Examples that are not on the site, and why.

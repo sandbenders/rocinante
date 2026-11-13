@@ -169,3 +169,67 @@ test_the_shapes3d_example_runs_with_no_errors :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(roci.scene_items(first_window())), 34 + 6 + 6 + 2) // a grid of 17 lines each way, the axes, six solids and an arrow
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_the_stage_example_runs_and_names_its_boxes :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("stage"), 3)
+	defer finish(p)
+	items := roci.scene_items(first_window())
+	// a grid of 17 lines each way, three boxes and the ball
+	testing.expect_value(t, len(items), 34 + 3 + 1)
+	// the three names are flat text drawn over it
+	texts := 0
+	for c in roci.commands_snapshot(first_window()) {
+		if c.kind == .Typeset {
+			texts += 1
+		}
+	}
+	testing.expect_value(t, texts, 4)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_a_click_switches_the_stage_to_ortho :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("stage"), 2)
+	defer finish(p)
+	id := platform.Window_Id(first_window())
+	roci.step({platform.Mouse_Button_Changed{window = id, button = .Left, down = true, x = 10, y = 10}})
+	roci.step()
+	yaw, _, _ := roci.camera_of(first_window())
+	testing.expect_value(t, yaw, 0) // the sketch has the camera, and the click is the sketch's
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_world_point_gives_a_vector_of_three_and_screen_point_one_of_two :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  camera at 0 -250 400
+  look at 0 0 0
+  spot = world point 300 250
+  there = screen point spot
+  print spot.z
+  print there.y
+  middle = screen point 0 0 0
+  print middle
+  again = world point { 300, 250 }
+  print again.y
+]
+`, 1)
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect(t, len(p.printed) >= 4, "it printed")
+	if len(p.printed) >= 4 {
+		testing.expect_value(t, p.printed[len(p.printed) - 4:][3], "0")
+	}
+}
+
+@(test)
+test_normalize_and_limit_keep_the_length_of_the_vector_they_are_given :: proc(t: ^testing.T) {
+	p := run_text(t, `v = normalize { 0, 3, 4 }
+w = limit { 0, 30, 40 } 5
+print v.z
+print w.z
+`, 0)
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+}

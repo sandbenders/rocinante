@@ -90,7 +90,7 @@ orbit_window :: proc(w: ^Win, dx, dy: f32) {
 @(private)
 orbit_allowed :: proc(w: ^Win) -> bool {
 	scene := &w.list.scene
-	if !(scene.shown || len(scene.items) > 0) || w.mouse_read {
+	if !(scene.shown || len(scene.items) > 0) || w.mouse_read || scene.fixed {
 		return false
 	}
 	return !ui.over_widget(w.ui, f32(w.mouse.x), f32(w.mouse.y))
@@ -272,3 +272,64 @@ arrow_v :: proc(from, to: [3]f64, look := Look{}) {
 
 // An arrow from one place to another, in the fill.
 arrow :: proc{arrow_xyz, arrow_v}
+
+// ---- the camera ----
+
+@(private)
+canvas_of_current :: proc() -> [2]f32 {
+	return {f32(width()), f32(height())}
+}
+
+// Puts the eye somewhere. The camera then stays there, looking at the middle or at what
+// `look_at` says, until the frame ends, and the mouse no longer turns it.
+camera_xyz :: proc(x, y, z: f64, fov := 0.0) {
+	scene := &current_list().scene
+	gfx.scene_camera_at(scene, canvas_of_current(), {x, y, z})
+	if fov > 0 {
+		scene.fov = f32(fov)
+	}
+}
+
+camera_v :: proc(eye: [3]f64, fov := 0.0) {
+	camera_xyz(eye.x, eye.y, eye.z, fov)
+}
+
+camera :: proc{camera_xyz, camera_v}
+
+look_at_xyz :: proc(x, y, z: f64) {
+	gfx.scene_look_at(&current_list().scene, canvas_of_current(), {x, y, z})
+}
+
+look_at_v :: proc(target: [3]f64) {
+	look_at_xyz(target.x, target.y, target.z)
+}
+
+// Aims the camera at a place.
+look_at :: proc{look_at_xyz, look_at_v}
+
+// Draws the scene without perspective: the same size at every distance, one unit a pixel.
+ortho :: proc() {
+	current_list().scene.ortho = true
+}
+
+// Draws the scene with perspective again, with a field of view in degrees when given (50 otherwise).
+perspective :: proc(fov := 0.0) {
+	scene := &current_list().scene
+	scene.ortho = false
+	if fov > 0 {
+		scene.fov = f32(fov)
+	}
+}
+
+// Where a place of the scene shows in the window: its pixel from the top left, in the
+// coordinates of the current transform. Gives false for a place behind the camera.
+screen_point :: proc(x, y, z: f64) -> (at: [2]f64, visible: bool) {
+	scene := &current_list().scene
+	return gfx.scene_screen_point(scene, canvas_of_current(), gfx.scene_to_world(scene, {x, y, z}))
+}
+
+// The place on the floor (y = 0 of the world) that shows at a pixel of the window, as the
+// world has it. Gives false when the pixel looks past the floor.
+world_point :: proc(x, y: f64) -> (at: [3]f64, found: bool) {
+	return gfx.scene_world_point(&current_list().scene, canvas_of_current(), {x, y})
+}

@@ -1,0 +1,38 @@
+// Stage: the camera put where the sketch wants it. `camera at` puts the eye somewhere and
+// `look at` aims it, every frame, so here it circles three boxes on a grid and the mouse no
+// longer turns it. `screen point` gives the pixel where a place of the scene shows, which is
+// how each box gets its name written over it in flat text, and `world point` gives the place
+// on the floor under a pixel, so the gold ball follows the mouse across the grid. Click to
+// switch to `ortho`, where everything keeps its size at every distance, and back again.
+window size 720 460 title "stage"
+
+SPOTS = [ { -170, 0, -90 } { 0, 0, 110 } { 170, 0, -50 } ]
+NAMES = [ "left" "middle" "right" ]
+flat = false
+on mouse down [ flat = not flat ]
+
+draw [
+  background (rgb 16 20 38)
+  turned = frame * 0.5
+  eye = { cos turned * 560, -260, sin turned * 560 }
+  camera at eye
+  look at 0 -30 0
+  if flat [ ortho ]
+  fill (rgb 70 84 130)
+  grid size 640 lines 16
+  for i from 1 to 3 [
+    spot = item i of SPOTS
+    box at spot.x -30 spot.z size 60 fill (hsb (i * 70) 170 235)
+  ]
+  under = world point mouse
+  sphere at under.x -14 under.z radius 14 fill gold
+  fill white
+  align center
+  for i from 1 to 3 [
+    spot = item i of SPOTS
+    tag = screen point { spot.x, -90, spot.z }
+    text (item i of NAMES) at tag.x tag.y
+  ]
+  align left
+  text "click to switch between perspective and ortho" at 20 20
+]

@@ -1,0 +1,7 @@
+background (rgb 20 24 44)
+camera at 0 -120 220
+look at 0 0 0
+perspective fov 90
+box at -90 -30 -60 size 60 fill teal
+box at 0 -30 0 size 60 fill orange
+box at 90 -30 60 size 60 fill (rgb 230 90 120)

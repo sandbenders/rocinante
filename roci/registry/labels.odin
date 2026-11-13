@@ -68,6 +68,8 @@ LABELS := []Label_Form{
 	{verb = "axes", shape = 0, words = {{"size", 0, 1}}},
 	{verb = "arrow", shape = 0, words = {{"from", 0, 3}, {"to", 3, 3}}},
 	{verb = "arrow", shape = 1, words = {{"from", 0, 1}, {"to", 1, 1}}},
+	{verb = "camera", shape = 0, words = {{"at", 0, 3}}},
+	{verb = "camera", shape = 1, words = {{"at", 0, 1}}},
 	{verb = "triangle", shape = 1, words = {}},
 	{verb = "quad", shape = 1, words = {}},
 	{verb = "clip", shape = 0, words = AT_XY_SIZE_WH},

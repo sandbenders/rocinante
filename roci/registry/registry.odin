@@ -64,7 +64,7 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"align", "alpha", "angle", "around", "as", "at", "blend", "bordered", "by", "cursor", "fill", "focusable", "focused", "font", "from", "fullscreen", "grab", "height", "in",
+	"align", "alpha", "angle", "around", "as", "at", "blend", "bordered", "by", "cursor", "fill", "focusable", "focused", "font", "fov", "from", "fullscreen", "grab", "height", "in",
 	"largest", "leading", "lines", "maximized", "minimized", "modal", "of", "over", "parent", "radius", "ratio", "resizable", "size", "smallest", "start", "stops", "stroke", "style", "thickness", "tint", "title", "to", "topmost", "tube", "visible", "width",
 }
 

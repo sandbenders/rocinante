@@ -1,0 +1,7 @@
+background (rgb 20 24 44)
+camera at 200 -150 250
+look at 0 0 0
+box at 0 -30 0 size 60 fill orange
+tag = screen point { 0, -80, 0 }
+fill white
+text "box" at tag.x tag.y

@@ -1,0 +1,7 @@
+background (rgb 20 24 44)
+camera at 200 -150 250
+look at 0 0 0
+fill (rgb 90 110 170)
+grid size 300 lines 6
+spot = world point { 250, 200 }
+sphere at spot.x -10 spot.z radius 10 fill gold

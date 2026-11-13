@@ -1625,3 +1625,13 @@ test_a_verb_that_calls_itself_with_a_bigger_value_each_time_is_still_checked :: 
 		testing.expectf(t, len(got.checked.program.instances) <= 2 * MAX_OPEN_INSTANCES + 4, "`%s` made %d versions", text, len(got.checked.program.instances))
 	}
 }
+
+@(test)
+test_a_vector_a_verb_gives_is_as_long_as_it_should_be :: proc(t: ^testing.T) {
+	// a point of the floor has three parts, and normalize and limit keep the length of the vector they are given
+	expect_errors(t, "p = world point 10 20\nprint p.z", {})
+	expect_errors(t, "q = screen point 1 2 3\nprint q.y", {})
+	expect_errors(t, "v = normalize { 1, 2, 3 }\nprint v.z", {})
+	expect_errors(t, "v = limit { 1, 2, 3 } 2\nprint v.z", {})
+	expect_errors(t, "v = normalize { 1, 2 }\nprint v.x", {})
+}

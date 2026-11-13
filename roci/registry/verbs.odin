@@ -123,6 +123,7 @@ SHAPE3_OPTIONS := []Option{
 	{"alpha", {.Number}, false},
 	{"style", {.Any}, false},
 }
+CAMERA_OPTIONS := []Option{{"fov", {.Number}, false}}
 TURN_OPTIONS := []Option{{"around", {.Name}, false}} // `around y`; without it a turn is the 2D one
 NOISE_OPTIONS := []Option{{"as", {.Name}, false}} // `as simplex`; Perlin is the default
 EASE_OPTIONS := []Option{{"as", {.Name}, false}} // `as out`; smooth is the default
@@ -225,6 +226,25 @@ VERBS := []Verb{
 		{{{"x1", .Number}, {"y1", .Number}, {"z1", .Number}, {"x2", .Number}, {"y2", .Number}, {"z2", .Number}}, SHAPE3_OPTIONS, .None},
 		{{{"from", .Vector}, {"to", .Vector}}, SHAPE3_OPTIONS, .None},
 	}, "Draws an arrow in 3D from one point to another, in the fill."},
+
+	{"camera", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}}, CAMERA_OPTIONS, .None},
+		{{{"position", .Vector}}, CAMERA_OPTIONS, .None},
+	}, "Puts the eye of the 3D camera at a point, looking at the middle (or where `look at` says), until the frame ends. The mouse then no longer turns it; `fov` is how wide it sees in degrees, 50 to start with."},
+	{"look at", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}}, nil, .None},
+		{{{"position", .Vector}}, nil, .None},
+	}, "Aims the 3D camera at a point. If the camera has not been moved, it stays where it was and turns to look there."},
+	{"ortho", {{{}, nil, .None}}, "Draws the 3D scene without perspective: things are the same size at every distance, one unit a pixel."},
+	{"perspective", {{{}, CAMERA_OPTIONS, .None}}, "Draws the 3D scene with perspective again, after `ortho`; `fov` is how wide it sees in degrees."},
+	{"screen point", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}}, nil, .Vector},
+		{{{"position", .Vector}}, nil, .Vector},
+	}, "Where a point of the 3D scene shows in the window, as a pixel from the top left, the point in the coordinates of the moment: `screen point { 0, 0, 0 }`. A point behind the camera gives { 0, 0 }."},
+	{"world point", {
+		{{{"x", .Number}, {"y", .Number}}, nil, .Vector},
+		{{{"position", .Vector}}, nil, .Vector},
+	}, "The point of the floor, the plane where y is 0, that shows at a pixel of the window, as a vector of three numbers: `world point mouse`. A pixel that looks past the floor gives { 0, 0, 0 }."},
 
 	// Text
 	{"text", {

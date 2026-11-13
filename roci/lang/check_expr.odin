@@ -333,6 +333,14 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 	if special, handled := list_verb_type(c, verb, e, k, args[:], options); handled {
 		type = special
 	}
+	// a vector the verb gives is as long as the one it was given (normalize and limit), or three long (a point of the 3D floor)
+	if shape.gives == .Vector {
+		if verb.name == "world point" {
+			type = vector_of(c.types, 3)
+		} else if (verb.name == "normalize" || verb.name == "limit") && len(args) > 0 && kind_of(c.types, args[0].type) == .Vector {
+			type = args[0].type
+		}
+	}
 	if !as_stmt && type == T_NONE {
 		note(c, .Value_Of_Nothing, e.span, verb.name, "", "", text_at(c, e.span))
 		return error_ir(c, e.span)

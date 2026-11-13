@@ -468,6 +468,44 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.grid_size_lines(n(a, 0), int(n(a, 1)), look^)
 	case .Axes:
 		roci.axes_size(n(a, 0))
+	case .Camera:
+		fov := 0.0
+		if v, found := option_value(it, call.options, "fov"); found {
+			fov = as_number(v)
+		}
+		if call.shape == 0 {
+			roci.camera_xyz(n(a, 0), n(a, 1), n(a, 2), fov)
+		} else {
+			roci.camera_v(p3(a, 0), fov)
+		}
+	case .Look_At:
+		if call.shape == 0 {
+			roci.look_at_xyz(n(a, 0), n(a, 1), n(a, 2))
+		} else {
+			roci.look_at_v(p3(a, 0))
+		}
+	case .Ortho:
+		roci.ortho()
+	case .Perspective:
+		fov := 0.0
+		if v, found := option_value(it, call.options, "fov"); found {
+			fov = as_number(v)
+		}
+		roci.perspective(fov)
+	case .Screen_Point:
+		point := p3(a, 0)
+		if call.shape == 0 {
+			point = {n(a, 0), n(a, 1), n(a, 2)}
+		}
+		at, _ := roci.screen_point(point.x, point.y, point.z)
+		return vec2(at)
+	case .World_Point:
+		spot := p(a, 0)
+		if call.shape == 0 {
+			spot = {n(a, 0), n(a, 1)}
+		}
+		at, _ := roci.world_point(spot.x, spot.y)
+		return Vec{n = 3, v = {at.x, at.y, at.z, 0}}
 	case .Arrow:
 		if call.shape == 0 {
 			roci.arrow_xyz(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look^)

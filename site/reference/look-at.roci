@@ -1,0 +1,7 @@
+background (rgb 20 24 44)
+camera at 0 -170 300
+look at 90 0 0
+fill (rgb 90 110 170)
+grid size 300 lines 6
+box at -90 -30 0 size 60 fill teal
+box at 90 -30 0 size 60 fill orange
