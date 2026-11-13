@@ -1,0 +1,56 @@
+// Voyage: a generated city seen from a ship flying over it, the sketch the 3D work was built towards.
+// The city is made once, from the seed: towers set on rings round the middle, each as tall and as
+// colored as the numbers `random` gives it, with a lantern on some of them. Every frame the ship, an
+// OBJ model from Quaternius's CC0 Ultimate Spaceships pack, flies a loop over the towers and banks into
+// its turns, while a warm point light follows it and a sun low in the sky casts every shadow across
+// the streets. Towers, lantern spheres, floor and ship are all lit by the same lights, so the lights,
+// the shadows, the model and the shapes all show together. Drag to look round.
+window size 760 460 title "voyage"
+seed 7
+
+towers = []
+for ring from 1 to 5 [
+  n = ring * 6
+  for i from 0 to (n - 1) [
+    a = i * 360 / n + ring * 17
+    r = ring * 62
+    add {
+      x: sin a * r
+      z: cos a * r
+      h: 30 + random 90 * (6 - ring) / 3
+      w: 16 + random 14
+      hue: 150 + random 90
+      lamp: random 1 > 0.6
+    } to towers
+  ]
+]
+
+draw [
+  background (rgb 12 14 28)
+  t = frame * 1.2
+  ship_x = sin t * 150
+  ship_z = cos t * 150
+  light ambient fill (rgb 44 50 84)
+  light sun from -0.7 -0.5 0.4 fill (rgb 250 236 215)
+  light point at ship_x -150 ship_z fill (rgb 255 160 90) falloff 190
+  shadows
+  fill (rgb 96 104 124)
+  material roughness 0.95
+  plane at 0 0 0 size 900 900
+  material roughness 0.55
+  for each b in towers [
+    box at b.x (-b.h / 2) b.z size b.w b.h b.w fill (hsb b.hue 90 200)
+    if b.lamp [
+      push [
+        material roughness 0.3 emissive 0.9
+        sphere at b.x (-b.h - 5) b.z radius 5 fill (rgb 255 214 140)
+      ]
+    ]
+  ]
+  push [
+    move ship_x -150 ship_z
+    turn (t + 90) around y
+    turn (-14) around z
+    model "striker.obj" at 0 0 0 size 120
+  ]
+]

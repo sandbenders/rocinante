@@ -1,0 +1,7 @@
+towers: a list of records with x, z, h, w, hue and lamp
+n: a number
+a: a number
+r: a number
+t: a number
+ship_x: a number
+ship_z: a number
