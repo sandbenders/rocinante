@@ -1050,3 +1050,52 @@ scene_add_loaded_model :: proc(s: ^Scene3, id: Model_Id, at: [3]f64, size: f64) 
 	}
 	return len(data.parts)
 }
+
+// The line from the eye through a spot of the window, as two places of the world (y down): where it
+// starts (the eye, or for an orthographic view the spot's own place on the lens) and a far place along
+// it, `PICK_RANGE` from the start. `cast` along it finds what shows at the spot.
+PICK_RANGE :: 100_000.0
+
+scene_pixel_ray :: proc(s: ^Scene3, canvas: [2]f32, spot: [2]f64) -> (from, to: [3]f64) {
+	cam := scene_camera(s, canvas)
+	ndc := [2]f64{spot.x / f64(max(canvas.x, 1)) * 2 - 1, 1 - spot.y / f64(max(canvas.y, 1)) * 2}
+	origin, dir := cam.eye, cam.forward
+	if cam.ortho {
+		origin += cam.side * (ndc.x * cam.aspect * cam.half_height) + cam.up * (ndc.y * cam.half_height)
+	} else {
+		dir = normalize3(cam.forward + cam.side * (ndc.x * cam.aspect * cam.tan_half) + cam.up * (ndc.y * cam.tan_half))
+	}
+	far := origin + dir * PICK_RANGE
+	// back into the sketch's world, where y is down (and never a minus zero)
+	return {origin.x + 0, 0 - origin.y, origin.z + 0}, {far.x + 0, 0 - far.y, far.z + 0}
+}
+
+// The corners of a loaded model's triangles, three for each, as `scene_add_loaded_model` would draw it:
+// fitted to a size, with its middle at `at`, under the current transform. Nothing for a number that
+// names no model.
+scene_model_triangles :: proc(s: ^Scene3, id: Model_Id, at: [3]f64, size: f64, allocator := context.allocator) -> [][3]f64 {
+	data := model_data(id)
+	if data == nil || len(data.parts) == 0 {
+		return nil
+	}
+	for v in ([?]f64{at.x, at.y, at.z, size}) {
+		if math.is_nan(v) || math.is_inf(v) {
+			return nil
+		}
+	}
+	centre, longest := model_extent(data)
+	k := size / f64(longest) if longest > 0 else 1
+	m := current_model(s) * translate4(f32(at.x), f32(at.y), f32(at.z)) * scale4(f32(k), f32(k), f32(k)) * translate4(-centre.x, -centre.y, -centre.z)
+	out := make([dynamic][3]f64, allocator)
+	for part in data.parts {
+		for i in part.first_index ..< part.first_index + part.index_count {
+			p := data.vertices[data.indices[i]].position
+			append(&out, [3]f64{
+				f64(m[0, 0] * p.x + m[0, 1] * p.y + m[0, 2] * p.z + m[0, 3]),
+				f64(m[1, 0] * p.x + m[1, 1] * p.y + m[1, 2] * p.z + m[1, 3]),
+				f64(m[2, 0] * p.x + m[2, 1] * p.y + m[2, 2] * p.z + m[2, 3]),
+			})
+		}
+	}
+	return out[:]
+}

@@ -1,0 +1,10 @@
+background (rgb 20 24 44)
+light ambient fill (rgb 60 66 100)
+light sun from -0.5 -0.7 0.6
+turn -35 around y
+turn 18 around x
+ship = { triangles: triangles "striker.obj" at 0 0 0 size 300 }
+model "striker.obj" at 0 0 0 size 300
+ball = { pos: { 0, -30, 40 }, radius: 25 }
+if touching ball ship [ fill tomato ] else [ fill teal ]
+sphere at ball.pos radius ball.radius

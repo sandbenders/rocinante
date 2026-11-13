@@ -104,6 +104,7 @@ Shape_Class :: enum u8 {
 	Box,
 	Segment,
 	Polygon,
+	Mesh, // triangles in space, three places for each
 }
 
 // The class of a record written with these fields, or why it is none, as a
@@ -119,7 +120,13 @@ shape_class :: proc(names: []string) -> (class: Shape_Class, problem: string) {
 	}
 	points, from, to := has(names, "points"), has(names, "from"), has(names, "to")
 	pos, radius, size := has(names, "pos"), has(names, "radius"), has(names, "size")
+	triangles := has(names, "triangles")
 	switch {
+	case triangles && (points || from || to || pos || radius || size):
+		other := "points" if points else "from" if from else "to" if to else "pos" if pos else "radius" if radius else "size"
+		return .None, fmt.tprintf("It is made with `triangles` and `%s` too, so it could be two shapes. ", other)
+	case triangles:
+		return .Mesh, ""
 	case points && (from || to || pos):
 		other := "from" if from else "to" if to else "pos"
 		return .None, fmt.tprintf("It is made with `points` and `%s` too, so it could be two shapes. ", other)
@@ -180,11 +187,16 @@ shape_problem :: proc(c: ^Checker, type: Type_Id) -> (problem: string, ok: bool)
 		.Box     = {{"pos", .Vector}, {"size", .Vector}, {"angle", .Number}},
 		.Segment = {{"from", .Vector}, {"to", .Vector}},
 		.Polygon = {{"points", .List}},
+		.Mesh    = {{"triangles", .List}},
 	}
 	for class in classes {
+		turned_in_space := class == .Box && (vector_length(c, root, "pos") == 3 || vector_length(c, root, "size") == 3)
 		for need in NEEDS[class] {
+			if turned_in_space && need.name == "angle" {
+				continue // three numbers there, checked below
+			}
 			if _, has := shape_field(c.types, root, need.name); has {
-				if why, fine := field_problem(c, root, need.name, need.kind, class != .Polygon); !fine {
+				if why, fine := field_problem(c, root, need.name, need.kind, class == .Polygon, 3 if class == .Mesh else 2); !fine {
 					return why, false
 				}
 			}
@@ -206,8 +218,11 @@ shape_problem :: proc(c: ^Checker, type: Type_Id) -> (problem: string, ok: bool)
 			}
 		}
 		if class == .Box && first == 3 {
-			if _, turned := shape_field(c.types, root, "angle"); turned {
-				return "A box in space is not turned, so it has no `angle`. ", false
+			if turn, turned := shape_field(c.types, root, "angle"); turned {
+				kind := c.types.items[resolve(c.types, turn.type)]
+				if kind.kind == .Number || (kind.kind == .Vector && kind.a != 3) {
+					return "In space a box's `angle` is three numbers, a turn about each axis in degrees, as in `angle: { 0, 45, 0 }`. ", false
+				}
 			}
 		}
 	}
@@ -240,6 +255,9 @@ space_dimension :: proc(c: ^Checker, type: Type_Id) -> int {
 		return space_dimension(c, element_of(c, type))
 	case .Record:
 		root := c.types.items[resolved].a
+		if _, mesh := shape_field(c.types, root, "triangles"); mesh {
+			return 3
+		}
 		for name in ([?]string{"pos", "from", "to"}) {
 			if n := vector_length(c, root, name); n != 0 {
 				return n
@@ -291,7 +309,7 @@ sites_of :: proc(c: ^Checker, root: int) -> []int {
 // Whether a field holds the kind a shape needs: a number, a vector of 2, or a
 // list of vectors of 2.
 @(private = "file")
-field_problem :: proc(c: ^Checker, shape: int, name: string, want: Type_Kind, in_space := true) -> (problem: string, ok: bool) {
+field_problem :: proc(c: ^Checker, shape: int, name: string, want: Type_Kind, flat_only := false, list_dims := 2) -> (problem: string, ok: bool) {
 	field, _ := shape_field(c.types, shape, name)
 	resolved := resolve(c.types, field.type)
 	item := c.types.items[resolved]
@@ -301,14 +319,14 @@ field_problem :: proc(c: ^Checker, shape: int, name: string, want: Type_Kind, in
 	}
 	fits := item.kind == want
 	if fits && want == .Vector {
-		fits = item.a == 2 || (in_space && item.a == 3)
+		fits = item.a == 2 || (!flat_only && item.a == 3)
 	}
 	if fits && want == .List {
 		element := resolve(c.types, Type_Id(item.a))
 		#partial switch c.types.items[element].kind {
 		case .Variable, .Boxed, .Error:
 		case .Vector:
-			fits = c.types.items[element].a == 2
+			fits = c.types.items[element].a == list_dims
 		case:
 			fits = false
 		}
@@ -319,8 +337,8 @@ field_problem :: proc(c: ^Checker, shape: int, name: string, want: Type_Kind, in
 	wanted: string
 	#partial switch want {
 	case .Number: wanted = "a number"
-	case .Vector: wanted = "a vector of 2 numbers, or of 3 for a shape in space" if in_space else "a vector of 2 numbers"
-	case:         wanted = "a list of vectors of 2 numbers"
+	case .Vector: wanted = "a vector of 2 numbers" if flat_only else "a vector of 2 numbers, or of 3 for a shape in space"
+	case:         wanted = "a list of vectors of 3 numbers" if list_dims == 3 else "a list of vectors of 2 numbers"
 	}
 	return fmt.tprintf("Its `%s` is %s, and has to be %s. ", name, describe(c.types, field.type), wanted), false
 }
@@ -341,4 +359,18 @@ line_problem :: proc(c: ^Checker, type: Type_Id) -> (problem: string, ok: bool) 
 		return shape_problem(c, type)
 	}
 	return "A line to cast is a record made with `from` and `to`. ", false
+}
+
+// The record `ray` gives: a line, `from` and `to` of three numbers, which `cast` takes as the line it is
+// (the call's own place is written with those two fields, so the checker sees a segment in space).
+@(private = "file")
+RAY_FIELDS := [2]string{"from", "to"}
+
+@(private)
+ray_type :: proc(c: ^Checker, e: ^Expr) -> Type_Id {
+	type := result_record(c, e, {{"from", vector_of(c.types, 3)}, {"to", vector_of(c.types, 3)}})
+	if shape := c.sites[e.span.start]; shape >= 0 {
+		c.site_names[shape] = RAY_FIELDS[:]
+	}
+	return type
 }

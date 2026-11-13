@@ -77,6 +77,10 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		shade_verb(it, e, call)
 	case .Outline:
 		return outline_verb(it, call)
+	case .Ray:
+		return ray_verb(it, e, call)
+	case .Triangles:
+		return triangles_verb(it, e, call)
 	case .Pixel, .Pixels, .Picture, .Crop, .Resize, .Filter, .Mask:
 		return picture_verb(it, e, call, code)
 	case .Label, .Button, .Toggle, .Slider, .Number, .Textbox, .Dropdown, .Choice, .Progress, .Separator, .Tip, .List, .Colorpicker, .Knob, .Range, .Xypad, .Image_Button:

@@ -203,10 +203,17 @@ next :: proc(l: ^Lcg, low, high: f64) -> f64 {
 @(private = "file")
 random_shape :: proc(l: ^Lcg) -> Shape3 {
 	at := Vec3{next(l, -6, 6), next(l, -6, 6), next(l, -6, 6)}
-	switch int(next(l, 0, 4)) {
+	switch int(next(l, 0, 6)) {
 	case 0: return point3(at)
 	case 1: return sphere(at, next(l, 0.5, 5))
 	case 2: return box3(at, {next(l, 1, 8), next(l, 1, 8), next(l, 1, 8)})
+	case 3: return box3(at, {next(l, 1, 8), next(l, 1, 8), next(l, 1, 8)}, {next(l, 0, 360), next(l, 0, 360), next(l, 0, 360)})
+	case 4:
+		triangles := make([]Vec3, 6, context.temp_allocator)
+		for i in 0 ..< 6 {
+			triangles[i] = at + Vec3{next(l, -5, 5), next(l, -5, 5), next(l, -5, 5)}
+		}
+		return mesh3(triangles)
 	}
 	return segment3(at, at + Vec3{next(l, -6, 6), next(l, -6, 6), next(l, -6, 6)})
 }
@@ -245,7 +252,7 @@ test_a_shape_that_is_pushed_out_by_its_contact_no_longer_overlaps_much :: proc(t
 	for _ in 0 ..< 3000 {
 		a, b := random_shape(&l), random_shape(&l)
 		c, ok := contact3(a, b)
-		if !ok || c.depth < 1e-6 {
+		if !ok || c.depth < 1e-6 || a.kind == .Mesh || b.kind == .Mesh {
 			continue
 		}
 		moved := a
@@ -253,6 +260,10 @@ test_a_shape_that_is_pushed_out_by_its_contact_no_longer_overlaps_much :: proc(t
 		switch moved.kind {
 		case .Point, .Sphere, .Box: moved.pos += shift
 		case .Segment: moved.from += shift; moved.to += shift
+		case .Mesh:
+			shifted := make([]Vec3, len(moved.triangles), context.temp_allocator)
+			for v, i in moved.triangles {shifted[i] = v + shift}
+			moved.triangles = shifted
 		}
 		checked += 1
 		testing.expectf(t, !touching3(moved, b) || touching_depth(moved, b) < 1e-3, "still in each other after the push: %v and %v", a, b)
@@ -273,7 +284,7 @@ test_a_cast_agrees_with_stepping_along_the_line :: proc(t: ^testing.T) {
 	checked := 0
 	for _ in 0 ..< 1500 {
 		s := random_shape(&l)
-		if s.kind == .Point || s.kind == .Segment {
+		if s.kind == .Point || s.kind == .Segment || s.kind == .Mesh {
 			continue
 		}
 		from := Vec3{next(&l, -12, 12), next(&l, -12, 12), next(&l, -12, 12)}
@@ -297,4 +308,172 @@ test_a_cast_agrees_with_stepping_along_the_line :: proc(t: ^testing.T) {
 		}
 	}
 	testing.expect(t, checked > 30, "enough lines met a shape")
+}
+
+// ---- turned boxes, meshes and the tree ----
+
+@(test)
+test_a_boxs_turns_are_the_ones_turn_writes :: proc(t: ^testing.T) {
+	// a turn of 90 about z carries x onto y and y onto -x, as `turn 90 around z` does on the canvas
+	axes := box_axes({0, 0, 90})
+	testing.expect(t, near3(axes[0], {0, 1, 0}) && near3(axes[1], {-1, 0, 0}) && near3(axes[2], {0, 0, 1}), "about z")
+	axes = box_axes({90, 0, 0}) // about x: y goes onto z
+	testing.expect(t, near3(axes[1], {0, 0, 1}) && near3(axes[2], {0, -1, 0}), "about x")
+	axes = box_axes({0, 90, 0}) // about y: z goes onto x
+	testing.expect(t, near3(axes[2], {1, 0, 0}) && near3(axes[0], {0, 0, -1}), "about y")
+	// the turns come in the order x, y, z as written one after the other: z is applied to the box first
+	both := box_axes({0, 90, 90})
+	testing.expect(t, near3(both[0], {0, 1, 0}), "x goes by z onto y, which the turn about y leaves alone")
+	none := box_axes({0, 0, 0})
+	testing.expect(t, near3(none[0], {1, 0, 0}) && near3(none[1], {0, 1, 0}) && near3(none[2], {0, 0, 1}), "no turn")
+}
+
+@(test)
+test_a_turned_box_is_a_box_that_has_turned :: proc(t: ^testing.T) {
+	bar := box3({0, 0, 0}, {10, 2, 2}, {0, 0, 90}) // a bar along x, stood on its end
+	testing.expect(t, touching3(point3({0, 4.5, 0}), bar), "now it reaches up and down")
+	testing.expect(t, !touching3(point3({4.5, 0, 0}), bar), "and no longer left and right")
+	testing.expect(t, touching3(point3({0.9, 0, 0}), bar), "its width is the 2")
+	testing.expect(t, !touching3(point3({1.1, 0, 0}), bar), "and no more")
+	// the box round it
+	b := bounds3(bar)
+	testing.expect(t, near3(b.low, {-1, -5, -1}) && near3(b.high, {1, 5, 1}), "it holds the turned box")
+	// a cube turned 45 about y is a diamond seen from above: its corner reaches 1.414 times half the side
+	diamond := box3({0, 0, 0}, {2, 2, 2}, {0, 45, 0})
+	testing.expect(t, touching3(point3({1.41, 0, 0}), diamond), "the corner")
+	testing.expect(t, !touching3(point3({1.42, 0, 0}), diamond), "past the corner")
+	testing.expect(t, !touching3(point3({1.1, 0, 1.1}), diamond), "where the flat box would have a corner")
+	// two turned boxes
+	testing.expect(t, touching3(diamond, box3({2.4, 0, 0}, {2, 2, 2})), "a corner into a face: 1.414 + 1 = 2.414")
+	testing.expect(t, !touching3(diamond, box3({2.5, 0, 0}, {2, 2, 2})), "just apart")
+	c, ok := contact3(diamond, box3({2, 0, 0}, {2, 2, 2}))
+	testing.expect(t, ok, "overlapping")
+	testing.expect(t, near3(c.normal, {-1, 0, 0}), "the diamond is moved back away from the box")
+	testing.expect(t, near(c.depth, math.SQRT_TWO - 1), "by the way its corner is in")
+}
+
+@(test)
+test_a_line_meets_a_turned_box_on_the_face_it_comes_to :: proc(t: ^testing.T) {
+	diamond := box3({0, 0, 0}, {2, 2, 2}, {0, 45, 0})
+	h, ok := cast_shape3({-5, 0, 0}, {5, 0, 0}, diamond)
+	testing.expect(t, ok, "meets")
+	testing.expect(t, near3(h.point, {-math.SQRT_TWO, 0, 0}), "at the corner")
+	testing.expect(t, near(h.at, (5 - math.SQRT_TWO) / 10), "how far along")
+	l, lok := cast_shape3({-5, 0, -0.5}, {5, 0, -0.5}, diamond)
+	testing.expect(t, lok, "meets off the corner")
+	testing.expect(t, near(abs(l.normal.x), 1 / math.SQRT_TWO) && near(abs(l.normal.z), 1 / math.SQRT_TWO), "on a face that leans 45 degrees")
+	testing.expect(t, l.normal.x < 0, "the face is turned to the line")
+	inside, in_ok := cast_shape3({0, 0, 0}, {5, 0, 0}, diamond)
+	testing.expect(t, in_ok && near(inside.at, 0) && near3(inside.normal, {-1, 0, 0}), "from inside")
+	_, miss := cast_shape3({-5, 0, 1.5}, {5, 0, 1.5}, diamond)
+	testing.expect(t, !miss, "past the corner that the upright box would have")
+}
+
+@(test)
+test_a_mesh_is_a_surface_of_triangles :: proc(t: ^testing.T) {
+	flat := []Vec3{{0, 0, 0}, {10, 0, 0}, {0, 10, 0}}
+	m := mesh3(flat)
+	testing.expect(t, touching3(point3({2, 2, 0}), m), "a point on it")
+	testing.expect(t, !touching3(point3({2, 2, 0.1}), m), "a point above it")
+	testing.expect(t, !touching3(point3({8, 8, 0}), m), "a point in its plane, outside it")
+	testing.expect(t, touching3(sphere({2, 2, 3}, 3), m), "a sphere resting on it")
+	testing.expect(t, !touching3(sphere({2, 2, 3.1}, 3), m), "a sphere above it")
+	testing.expect(t, touching3(sphere({-2, 5, 0}, 2), m), "a sphere beside its edge, in its plane")
+	c, ok := contact3(sphere({2, 2, 2}, 3), m)
+	testing.expect(t, ok, "in it")
+	testing.expect(t, near3(c.normal, {0, 0, 1}), "the sphere is moved off along the face's normal")
+	testing.expect(t, near(c.depth, 1), "by how far it is in")
+	// a segment through it, a segment beside it, a segment lying in it
+	testing.expect(t, touching3(segment3({2, 2, -5}, {2, 2, 5}), m), "through")
+	testing.expect(t, !touching3(segment3({8, 8, -5}, {8, 8, 5}), m), "beside")
+	testing.expect(t, touching3(segment3({1, 1, 0}, {3, 1, 0}), m), "in its plane")
+	testing.expect(t, touching3(segment3({-5, 1, 0}, {5, 1, 0}), m), "in its plane, across its edge")
+	// a box through it, and two meshes that cross
+	testing.expect(t, touching3(box3({2, 2, 0}, {2, 2, 2}), m), "a box with it in the middle")
+	testing.expect(t, !touching3(box3({2, 2, 5}, {2, 2, 2}), m), "a box above it")
+	crossing := mesh3([]Vec3{{2, 2, -3}, {2, 2, 3}, {4, 2, 0}})
+	testing.expect(t, touching3(m, crossing), "a triangle standing through it")
+	testing.expect(t, !touching3(m, mesh3([]Vec3{{2, 2, 1}, {2, 2, 3}, {4, 2, 2}})), "one above it")
+	// a mesh with no triangles touches nothing, and so does one cut short
+	testing.expect(t, !touching3(point3({0, 0, 0}), mesh3(nil)), "none")
+	testing.expect(t, !touching3(point3({0, 0, 0}), mesh3([]Vec3{{0, 0, 0}, {1, 0, 0}})), "two corners are no triangle")
+	// more triangles: the deepest touch answers
+	two := mesh3([]Vec3{{0, 0, 0}, {10, 0, 0}, {0, 10, 0}, {0, 0, 5}, {10, 0, 5}, {0, 10, 5}})
+	d, dok := contact3(sphere({2, 2, 4.5}, 1), two)
+	testing.expect(t, dok && near3(d.normal, {0, 0, -1}) && near(d.depth, 0.5), "the upper triangle is the nearer: the sphere moves down off it")
+}
+
+@(test)
+test_a_line_meets_the_first_triangle_it_comes_to :: proc(t: ^testing.T) {
+	m := mesh3([]Vec3{{0, 0, 0}, {10, 0, 0}, {0, 10, 0}, {0, 0, 5}, {10, 0, 5}, {0, 10, 5}})
+	h, ok := cast_shape3({2, 2, 20}, {2, 2, -20}, m)
+	testing.expect(t, ok, "meets")
+	testing.expect(t, near3(h.point, {2, 2, 5}), "the upper one first")
+	testing.expect(t, near3(h.normal, {0, 0, 1}), "its face turned to the line")
+	testing.expect(t, near(h.at, 0.375), "15 of 40")
+	g, gok := cast_shape3({2, 2, -20}, {2, 2, 20}, m)
+	testing.expect(t, gok && near3(g.point, {2, 2, 0}) && near3(g.normal, {0, 0, -1}), "from below the lower one, facing down")
+	_, miss := cast_shape3({8, 8, 20}, {8, 8, -20}, m)
+	testing.expect(t, !miss, "past its corner")
+	_, parallel := cast_shape3({-5, 2, 0}, {15, 2, 0}, m)
+	testing.expect(t, !parallel, "along its plane is no crossing")
+}
+
+@(test)
+test_the_tree_answers_what_checking_every_shape_answers :: proc(t: ^testing.T) {
+	l := Lcg{2024}
+	shapes := make([]Shape3, 300, context.temp_allocator)
+	for i in 0 ..< len(shapes) {
+		shapes[i] = random_shape(&l)
+	}
+	tree := tree3_build(shapes)
+	defer tree3_destroy(&tree)
+	hit_total := 0
+	for _ in 0 ..< 200 {
+		probe := random_shape(&l)
+		got := tree3_hits(&tree, probe)
+		want := make([dynamic]int, context.temp_allocator)
+		for s, i in shapes {
+			if touching3(probe, s) {
+				append(&want, i)
+			}
+		}
+		if !testing.expectf(t, slice_equal(got, want[:]), "hits differ for %v: tree %v, one by one %v", probe, got, want[:]) {
+			return
+		}
+		hit_total += len(want)
+		from := Vec3{next(&l, -12, 12), next(&l, -12, 12), next(&l, -12, 12)}
+		to := Vec3{next(&l, -12, 12), next(&l, -12, 12), next(&l, -12, 12)}
+		index, hit, ok := tree3_cast(&tree, from, to)
+		best, best_index, found := math.INF_F64, -1, false
+		for s, i in shapes {
+			if h, met := cast_shape3(from, to, s); met && h.at < best {
+				best, best_index, found = h.at, i, true
+			}
+		}
+		if !testing.expect_value(t, ok, found) {
+			return
+		}
+		if found {
+			testing.expect_value(t, index, best_index)
+			testing.expect(t, near(hit.at, best), "the same hit")
+		}
+	}
+	testing.expect(t, hit_total > 100, "the probes touched things")
+	empty := tree3_build(nil)
+	defer tree3_destroy(&empty)
+	testing.expect_value(t, len(tree3_hits(&empty, point3({0, 0, 0}))), 0)
+}
+
+@(private = "file")
+slice_equal :: proc(a, b: []int) -> bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for v, i in a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
 }

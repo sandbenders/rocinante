@@ -217,3 +217,52 @@ test_a_model_whose_picture_is_not_beside_it_draws_plain_and_says_so_once :: proc
 	}
 	testing.expect_value(t, said, 1)
 }
+
+@(test)
+test_the_triangles_of_a_model_make_a_shape_that_collision_takes :: proc(t: ^testing.T) {
+	root := make_model_folder(t, "model_triangles")
+	text := `ship = { triangles: triangles "striker.obj" at 0 0 0 size 100 }
+print (count ship.triangles % 3)
+print ((count ship.triangles) > 300)
+print (touching { 0, 0, 0 } ship)
+print (touching { 1000, 0, 0 } ship)
+print (touching { pos: { 1000, 0, 0 }, radius: 10 } ship)
+bounds = { pos: { 0, 0, 0 }, size: { 100, 100, 100 } }
+print (hits { 0, 0, 0 } [ ship bounds ])`
+	p := run_in_folder(t, root, text, 1)
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	// the count of corners is a multiple of three, there are many, and the far point touches nothing
+	testing.expect(t, len(p.printed) >= 5, "it printed")
+	if len(p.printed) >= 5 {
+		testing.expect_value(t, p.printed[0], "0")
+		testing.expect_value(t, p.printed[1], "true")
+		testing.expect_value(t, p.printed[3], "false")
+		testing.expect_value(t, p.printed[4], "false")
+	}
+}
+
+@(test)
+test_a_ray_through_the_middle_of_the_window_meets_what_the_camera_looks_at :: proc(t: ^testing.T) {
+	text := `ball = { pos: { 0, 0, 0 }, radius: 50 }
+wall = { pos: { 0, 0, -200 }, size: { 400, 400, 10 } }
+draw [
+  camera at 0 0 500
+  look at 0 0 0
+  sight = ray { width / 2, height / 2 }
+  h = cast sight [ wall ball ]
+  print (round h.distance)
+  print (round h.point.z)
+  print sight.from
+  print (round sight.to.z)
+]`
+	p := run_text(t, text, 1)
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	if testing.expect(t, len(p.printed) >= 4, "it printed") {
+		testing.expect_value(t, p.printed[0], "450")
+		testing.expect_value(t, p.printed[1], "50")
+		testing.expect_value(t, p.printed[2], "{ 0, 0, 500 }")
+		testing.expect_value(t, p.printed[3], "-99500")
+	}
+}

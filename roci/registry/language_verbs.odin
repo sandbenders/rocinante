@@ -132,12 +132,17 @@ LANGUAGE_VERBS := []Verb{
 
 	// Collision: a shape is a vector (a point) or a record with pos and radius, pos
 	// and size (and angle), from and to, or points; with three numbers in its places a shape
-	// is in space (a sphere, a box that is not turned, a segment).
-	{"touching", {{{{"a", .Any}, {"b", .Any}}, nil, .Boolean}}, "Whether two shapes touch, edges included: `touching ball paddle`. Shapes with three numbers in their places (`pos: { 0, 0, 0 }`) are in space, a sphere or a box that is not turned."},
+	// is in space (a sphere, a box, a segment, a mesh of triangles).
+	{"touching", {{{{"a", .Any}, {"b", .Any}}, nil, .Boolean}}, "Whether two shapes touch, edges included: `touching ball paddle`. Shapes with three numbers in their places (`pos: { 0, 0, 0 }`) are in space: a sphere, a box (turned by `angle: { x, y, z }`), a segment or a mesh (`triangles`)."},
 	{"contact", {{{{"a", .Any}, {"b", .Any}}, nil, .Any}}, "Where two shapes touch: a record with point, normal (the way to move the first to part them) and depth, every field 0 when they do not."},
 	{"hits", {{{{"shape", .Any}, {"list", .List}}, nil, .List}}, "The items of a list that touch a shape, in list order: `hits ball bricks`."},
 	{"inside", {{{{"point", .Vector}, {"shape", .Any}}, nil, .Boolean}}, "Whether a point is inside a shape or on its edge: `inside mouse paddle`. In space the point has three numbers."},
 	{"cast", {{{{"line", .Any}, {"list", .List}}, nil, .Any}}, "The first item a line meets, from its `from` to its `to`: a record with item, point, normal and distance, every field 0 (and no item) when it meets nothing. In space the line and the items have three numbers in their places."},
+	{"ray", {{{{"pixel", .Vector}}, nil, .Any}}, "The line from the eye of the 3D camera through a pixel of the window, as a record with `from` (the eye) and `to` (far along the way the pixel looks), both as three numbers in the world: `cast (ray mouse) things` finds what is under the mouse."},
+	{"triangles", {
+		{{{"file", .Text}, {"x", .Number}, {"y", .Number}, {"z", .Number}, {"size", .Number}}, nil, .List},
+		{{{"file", .Text}, {"position", .Vector}, {"size", .Number}}, nil, .List},
+	}, "The corners of a model's triangles, three for each, as a list of vectors of three numbers, placed and sized as `model` draws it: `wall = { triangles: triangles \"hall.glb\" at 0 0 0 size 500 }` is a shape that `touching`, `hits` and `cast` take. It is the model's surface, so a ball inside a closed model touches none of it."},
 	{"outline", {{{{"picture", .Image}}, OUTLINE_OPTIONS, .List}}, "The corners of the solid part of a picture, as a list of vectors that makes a shape of its own: `touching ball { points: outline ship }`. A pixel is solid when it is more than 50 percent solid, or more than the `alpha` given; `at` puts the picture's top left where it is drawn and `size` stretches it as `image` does. Only the biggest solid piece is outlined, without its holes."},
 }
 

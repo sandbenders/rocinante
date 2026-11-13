@@ -1,7 +1,7 @@
 fill gold
 walls = [ { pos: { 300, 100 }, size: { 40, 100 } } { pos: { 200, 40 }, radius: 30 } ]
-ray = { from: { 20, 150 }, to: { 380, 150 } }
-h = cast ray walls
+beam = { from: { 20, 150 }, to: { 380, 150 } }
+h = cast beam walls
 for each w in walls [ circle at w.pos radius w.radius ]
 rect at 300 100 size 40 100
-line from ray.from to h.point stroke tomato thickness 3
+line from beam.from to h.point stroke tomato thickness 3

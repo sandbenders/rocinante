@@ -1,0 +1,2 @@
+wall = { triangles: [ { 0, 0, 0 } { 1, 0, 0 } { 0, 1, 0 } ], pos: { 0, 0, 0 } }
+print (touching wall { 0, 0, 0 })

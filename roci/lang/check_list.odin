@@ -158,6 +158,10 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 		return list_of(c.types, T_TEXT), true
 	case "outline":
 		return list_of(c.types, vector_of(c.types, 2)), true
+	case "triangles":
+		return list_of(c.types, vector_of(c.types, 3)), true
+	case "ray":
+		return ray_type(c, e), true
 	case "pixels":
 		return list_of(c.types, T_COLOUR), true
 	case "send":

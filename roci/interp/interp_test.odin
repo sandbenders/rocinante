@@ -2609,3 +2609,41 @@ test_a_flat_shape_and_a_shape_in_space_are_told_apart :: proc(t: ^testing.T) {
 print (touching { pos: { 0, 0, 0 }, radius: 5 } { 3, 0, 0 })`
 	expect_printed(t, text, "true\ntrue")
 }
+
+@(test)
+test_a_box_in_space_can_be_turned_and_a_mesh_is_a_surface :: proc(t: ^testing.T) {
+	text := `bar = { pos: { 0, 0, 0 }, size: { 10, 2, 2 }, angle: { 0, 0, 90 } }
+print (touching { 0, 4.5, 0 } bar)
+print (touching { 4.5, 0, 0 } bar)
+flat = { triangles: [ { 0, 0, 0 } { 10, 0, 0 } { 0, 10, 0 } ] }
+print (touching { 2, 2, 0 } flat)
+print (touching { 2, 2, 1 } flat)
+print (touching { pos: { 2, 2, 4 }, radius: 4 } flat)
+c = contact { pos: { 2, 2, 2 }, radius: 3 } flat
+print c.normal
+print c.depth
+h = cast { from: { 2, 2, 9 }, to: { 2, 2, -9 } } [ flat ]
+print h.point`
+	expect_printed(t, text, "true\nfalse\ntrue\nfalse\ntrue\n{ 0, 0, 1 }\n1\n{ 2, 2, 0 }")
+}
+
+@(test)
+test_a_list_asked_again_unchanged_gives_the_same_answers_through_its_tree :: proc(t: ^testing.T) {
+	// the second asking builds the tree; the answers are the same as the first, and change with the list
+	p := run_text(t, `walls = []
+for i from 0 to 29 [ add { pos: { i * 10, 0, 0 }, size: { 6, 6, 6 } } to walls ]
+probe = { pos: { 55, 0, 0 }, radius: 3 }
+print (count (hits probe walls))
+print (count (hits probe walls))
+print (count (hits probe walls))
+h = cast { from: { -20, 0, 0 }, to: { 400, 0, 0 } } walls
+print h.distance
+h2 = cast { from: { -20, 0, 0 }, to: { 400, 0, 0 } } walls
+print h2.distance
+remove (item 1 of walls) from walls
+print (count (hits probe walls))
+h3 = cast { from: { -20, 0, 0 }, to: { 400, 0, 0 } } walls
+print (round h3.distance)`)
+	defer finish(p)
+	testing.expect_value(t, printed(p), "2\n2\n2\n17\n17\n2\n27")
+}

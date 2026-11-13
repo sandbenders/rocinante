@@ -3,6 +3,7 @@ package roci
 
 import "core:testing"
 
+import "collide"
 import "platform"
 
 solids_sketch :: proc() {
@@ -286,4 +287,34 @@ test_screen_point_and_world_point_are_inverses_on_the_floor :: proc(t: ^testing.
 	testing.expect(t, found_result, "the floor is under that pixel")
 testing.expect(t, abs(screen_result.x - 300) < 1e-3 && abs(screen_result.y - 250) < 1e-3, "back to the same pixel")
 	testing.expect_value(t, floor_result.y, 0)
+}
+
+turned_box_sketch :: proc() {
+	push()
+	turn_about(20, .X)
+	turn_about(35, .Y)
+	turn_about(50, .Z)
+	box(0, 0, 0, 1, Look{})
+	pop()
+}
+
+@(test)
+test_the_angle_of_a_box_in_collision_is_the_turn_that_turn_writes :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(200, 200)
+	draw(turned_box_sketch)
+	step()
+	items := win_for(w).list.scene.items
+	if !testing.expect_value(t, len(items), 1) {
+		return
+	}
+	// the box drawn after turns about x, y and z has, as the columns of its matrix, the axes collide gives
+	// the angle { 20, 35, 50 }
+	axes := collide.box_axes({20, 35, 50})
+	for column in 0 ..< 3 {
+		for row in 0 ..< 3 {
+			testing.expectf(t, abs(f64(items[0].model[row][column]) - axes[column][row]) < 1e-5, "column %d row %d: drawn %v, collision %v", column, row, items[0].model[row][column], axes[column][row])
+		}
+	}
 }

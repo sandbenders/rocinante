@@ -1,8 +1,0 @@
-── `touching` needs a shape here ────────────────────── sketch.roci:2:17
-
-2 │ print (touching crate { 0, 0, 0 })
-  │                 ^^^^^
-
-This is a record with pos, size and angle. A box in space is not turned, so it has no `angle`. A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline. With three numbers in its places a shape is in space: a vector of 3 is a point, `pos` and `radius` make a sphere, `pos` and `size` a box that is not turned, and `from` and `to` a line.
-
-For example:  ball = { pos: { 200, 100 }, radius: 10 }

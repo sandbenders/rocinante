@@ -133,6 +133,8 @@ to_shape :: proc(it: ^Interp, v: Value, allocator := context.temp_allocator) -> 
 		switch x.class {
 		case .None:
 			return {}, false
+		case .Mesh:
+			return {}, false // a mesh is in space
 		case .Polygon:
 			list := as_list(read_field(it, x, "points"))
 			if list == nil {
@@ -164,44 +166,36 @@ SHAPE_CACHE_SIZE :: 8
 // shape against a list once is cheaper than building a tree, so a tree is built
 // only for a list that is asked again (a thousand particles against one list of
 // walls). The tree and its shapes are on the heap, and freed when the entry goes.
+// A list is flat or in space (`space`), and keeps the tree of its own kind.
 Shape_Cache :: struct {
-	list:   ^List,
-	id:     u64, // the list's id, so memory used again for another list is never mistaken for it
-	read:   u64, // `Interp.writes` when the list was last found changed
-	used:   u64, // when it was last asked, to choose the entry to drop
-	asked:  int, // how many times in a row it was asked unchanged
-	built:  bool,
-	tree:   collide.Tree,
-	shapes: []collide.Shape,
+	list:    ^List,
+	id:      u64, // the list's id, so memory used again for another list is never mistaken for it
+	read:    u64, // `Interp.writes` when the list was last found changed
+	used:    u64, // when it was last asked, to choose the entry to drop
+	asked:   int, // how many times in a row it was asked unchanged
+	built:   bool,
+	space:   bool,
+	tree:    collide.Tree,
+	shapes:  []collide.Shape,
+	tree3:   collide.Tree3,
+	shapes3: []collide.Shape3,
 }
 
-// The tree of a list's shapes, or nil when checking each shape is the way this time.
+// The entry for a list that was asked about, kept up to date: the one the list had if it has not changed
+// since (counting this asking), or a new one that replaces the one least used.
 @(private = "file")
-tree_for :: proc(it: ^Interp, list: ^List) -> ^collide.Tree {
+asked_entry :: proc(it: ^Interp, list: ^List, space: bool) -> (entry: ^Shape_Cache, same: bool) {
 	now := next_write(it)
-	entry: ^Shape_Cache
 	for &e in it.shape_cache {
 		if e.list == list && e.id == list.id {
 			entry = &e
 			break
 		}
 	}
-	if entry != nil && unchanged(it, list, entry.read) {
+	if entry != nil && entry.space == space && unchanged(it, list, entry.read) {
 		entry.used = now
 		entry.asked += 1
-		if !entry.built && entry.asked >= 2 {
-			entry.shapes = make([]collide.Shape, len(list.items))
-			for item, i in list.items {
-				if s, ok := to_shape(it, item, context.allocator); ok {
-					entry.shapes[i] = s
-				} else {
-					entry.shapes[i] = collide.polygon(nil) // touches nothing, and keeps the places
-				}
-			}
-			entry.tree = collide.tree_build(entry.shapes)
-			entry.built = true
-		}
-		return &entry.tree if entry.built else nil
+		return entry, true
 	}
 	if entry == nil {
 		entry = &it.shape_cache[0]
@@ -212,12 +206,56 @@ tree_for :: proc(it: ^Interp, list: ^List) -> ^collide.Tree {
 		}
 	}
 	drop_entry(entry)
-	entry^ = Shape_Cache{list = list, id = list.id, read = now, used = now, asked = 1}
-	return nil
+	entry^ = Shape_Cache{list = list, id = list.id, read = now, used = now, asked = 1, space = space}
+	return entry, false
+}
+
+// The tree of a list's shapes, or nil when checking each shape is the way this time.
+@(private = "file")
+tree_for :: proc(it: ^Interp, list: ^List) -> ^collide.Tree {
+	entry, same := asked_entry(it, list, false)
+	if !same {
+		return nil
+	}
+	if !entry.built && entry.asked >= 2 {
+		entry.shapes = make([]collide.Shape, len(list.items))
+		for item, i in list.items {
+			if s, ok := to_shape(it, item, context.allocator); ok {
+				entry.shapes[i] = s
+			} else {
+				entry.shapes[i] = collide.polygon(nil) // touches nothing, and keeps the places
+			}
+		}
+		entry.tree = collide.tree_build(entry.shapes)
+		entry.built = true
+	}
+	return &entry.tree if entry.built else nil
+}
+
+// The same for shapes in space.
+@(private)
+tree3_for :: proc(it: ^Interp, list: ^List) -> ^collide.Tree3 {
+	entry, same := asked_entry(it, list, true)
+	if !same {
+		return nil
+	}
+	if !entry.built && entry.asked >= 2 {
+		entry.shapes3 = make([]collide.Shape3, len(list.items))
+		for item, i in list.items {
+			if s, ok := to_shape3(it, item, context.allocator); ok {
+				entry.shapes3[i] = s
+			} else {
+				entry.shapes3[i] = collide.mesh3(nil) // touches nothing, and keeps the places
+			}
+		}
+		entry.tree3 = collide.tree3_build(entry.shapes3)
+		entry.built = true
+	}
+	return &entry.tree3 if entry.built else nil
 }
 
 // Whether nothing in the list has changed since `read`: the list itself, any
-// record in it, or the points of an outline.
+// record in it, or the points of an outline or the triangles of a mesh.
 @(private = "file")
 unchanged :: proc(it: ^Interp, list: ^List, read: u64) -> bool {
 	if list.stamp > read {
@@ -233,6 +271,11 @@ unchanged :: proc(it: ^Interp, list: ^List, read: u64) -> bool {
 					return false
 				}
 			}
+			if r.class == .Mesh {
+				if triangles := as_list(read_field(it, r, "triangles")); triangles != nil && triangles.stamp > read {
+					return false
+				}
+			}
 		}
 	}
 	return true
@@ -245,6 +288,11 @@ drop_entry :: proc(e: ^Shape_Cache) {
 		}
 		delete(e.shapes)
 		collide.tree_destroy(&e.tree)
+		for s in e.shapes3 {
+			delete(s.triangles)
+		}
+		delete(e.shapes3)
+		collide.tree3_destroy(&e.tree3)
 	}
 	e^ = {}
 }

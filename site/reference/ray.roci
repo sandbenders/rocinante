@@ -1,0 +1,9 @@
+background (rgb 20 24 44)
+light ambient fill (rgb 60 66 100)
+light sun from -0.5 -0.7 0.6
+cube = { pos: { -80, 0, 0 }, size: { 90, 90, 90 } }
+ball = { pos: { 90, 20, -30 }, radius: 50 }
+box at cube.pos size cube.size fill tomato
+sphere at ball.pos radius ball.radius fill teal
+h = cast (ray mouse) [ cube ball ]
+if h.distance > 0 [ sphere at h.point radius 8 fill gold ]

@@ -3,6 +3,6 @@
 2 │ print (inside { 1, 1 } roof)
   │                        ^^^^
 
-This is a record with points. Its `points` is a list of vectors of 3 numbers, and has to be a list of vectors of 2 numbers. A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline. With three numbers in its places a shape is in space: a vector of 3 is a point, `pos` and `radius` make a sphere, `pos` and `size` a box that is not turned, and `from` and `to` a line.
+This is a record with points. Its `points` is a list of vectors of 3 numbers, and has to be a list of vectors of 2 numbers. A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline. With three numbers in its places a shape is in space: a vector of 3 is a point, `pos` and `radius` make a sphere, `pos` and `size` a box (turned by `angle`, three numbers: a turn in degrees about each axis), `from` and `to` a line, and `triangles` a mesh, three places for each triangle.
 
 For example:  ball = { pos: { 200, 100 }, radius: 10 }

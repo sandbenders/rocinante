@@ -1,0 +1,2 @@
+wall = { triangles: [ { 0, 0 } { 1, 0 } { 0, 1 } ] }
+print (inside { 0, 0, 0 } wall)

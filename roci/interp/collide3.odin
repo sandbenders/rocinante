@@ -3,11 +3,12 @@
 // The collision verbs for shapes in space: the same `touching contact hits inside cast` as in the
 // plane (collide.odin), taken here when either side holds three numbers where it has places: a vector
 // of three is a point, and a record is the shape its `{ }` made it, with `pos` (the middle) and `radius`
-// a sphere, `pos` and `size` a box that is never turned, `from` and `to` a segment. A list is checked
-// shape by shape, each one first against the box round it, which is cheap enough for the thousands of
-// shapes a sketch has; a tree of boxes for space is not built yet.
+// a sphere, `pos`, `size` and `angle` (three turns, in degrees) a box, `from` and `to` a segment, `triangles` (three
+// places for each) a mesh. A list asked about twice unchanged is kept as a tree of boxes
+// (collide.Tree3), as in the plane.
 package interp
 
+import "../"
 import "../collide"
 import "../lang"
 import "core:math"
@@ -40,6 +41,9 @@ is_space :: proc(it: ^Interp, v: Value) -> bool {
 				return p.n == 3
 			}
 		}
+		if x.class == .Mesh {
+			return true
+		}
 	case ^List:
 		if x != nil && len(x.items) > 0 {
 			return is_space(it, x.items[0])
@@ -50,7 +54,7 @@ is_space :: proc(it: ^Interp, v: Value) -> bool {
 
 // A value as a shape in space: a vector is a point, a record what its class says.
 @(private)
-to_shape3 :: proc(it: ^Interp, v: Value) -> (s: collide.Shape3, ok: bool) {
+to_shape3 :: proc(it: ^Interp, v: Value, allocator := context.temp_allocator) -> (s: collide.Shape3, ok: bool) {
 	#partial switch x in v {
 	case Vec:
 		if x.n != 3 {
@@ -64,12 +68,22 @@ to_shape3 :: proc(it: ^Interp, v: Value) -> (s: collide.Shape3, ok: bool) {
 		switch x.class {
 		case .None, .Polygon:
 			return {}, false
+		case .Mesh:
+			list := as_list(read_field(it, x, "triangles"))
+			if list == nil {
+				return collide.mesh3(nil), true
+			}
+			corners := make([]collide.Vec3, len(list.items), allocator)
+			for p, i in list.items {
+				corners[i] = as_triple(p)
+			}
+			return collide.mesh3(corners), true
 		case .Segment:
 			return collide.segment3(as_triple(read_field(it, x, "from")), as_triple(read_field(it, x, "to"))), true
 		case .Circle:
 			return collide.sphere(as_triple(read_field(it, x, "pos")), as_number(read_field(it, x, "radius"))), true
 		case .Box:
-			return collide.box3(as_triple(read_field(it, x, "pos")), as_triple(read_field(it, x, "size"))), true
+			return collide.box3(as_triple(read_field(it, x, "pos")), as_triple(read_field(it, x, "size")), as_triple(read_field(it, x, "angle"))), true
 		}
 	}
 	return {}, false
@@ -103,6 +117,12 @@ collision_verb3 :: proc(it: ^Interp, e: ^lang.IR, code: Verb_Code, a, b: Value) 
 		if !ok || list == nil {
 			return out
 		}
+		if tree := tree3_for(it, list); tree != nil {
+			for i in collide.tree3_hits(tree, sa) {
+				append(&out.items, list.items[i])
+			}
+			return out
+		}
 		box := collide.bounds3(sa)
 		for item in list.items {
 			if s, is_shape := to_shape3(it, item); is_shape && collide.bounds3_overlap(box, collide.bounds3(s)) && collide.touching3(sa, s) {
@@ -120,13 +140,21 @@ collision_verb3 :: proc(it: ^Interp, e: ^lang.IR, code: Verb_Code, a, b: Value) 
 		best: collide.Hit3
 		found: Value
 		met := false
-		for item in list.items {
-			s, is_shape := to_shape3(it, item)
-			if !is_shape {
-				continue
+		if tree := tree3_for(it, list); tree != nil {
+			index: int
+			index, best, met = collide.tree3_cast(tree, from, to)
+			if met {
+				found = list.items[index]
 			}
-			if h, hit := collide.cast_shape3(from, to, s); hit && (!met || h.at < best.at) {
-				best, found, met = h, item, true
+		} else {
+			for item in list.items {
+				s, is_shape := to_shape3(it, item)
+				if !is_shape {
+					continue
+				}
+				if h, hit := collide.cast_shape3(from, to, s); hit && (!met || h.at < best.at) {
+					best, found, met = h, item, true
+				}
 			}
 		}
 		if !met {
@@ -137,4 +165,40 @@ collision_verb3 :: proc(it: ^Interp, e: ^lang.IR, code: Verb_Code, a, b: Value) 
 		return make_result(it, e.type, {{"item", found}, {"point", vec3(best.point)}, {"normal", vec3(best.normal)}, {"distance", distance}})
 	}
 	return nil
+}
+
+// `ray pixel`: the line from the eye of the camera through a pixel, a record of `from` and `to` that
+// `cast` takes as a line.
+@(private)
+ray_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
+	spot := as_pair(eval(it, call.args[0]))
+	from, to := roci.pixel_ray(spot.x, spot.y)
+	result := make_result(it, e.type, {{"from", vec3(from)}, {"to", vec3(to)}})
+	if record, ok := result.(^Record); ok && record != nil {
+		record.class = .Segment
+	}
+	return result
+}
+
+// `triangles "hall.glb" at 0 0 0 size 500`: the corners of a model's triangles, three for each, as a list of
+// vectors, placed and sized as `model` draws it, which makes a shape with `{ triangles: ... }`.
+@(private)
+triangles_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
+	out := new_list(it)
+	name := as_text(eval(it, call.args[0]))
+	id := load_model(it, name, e.span)
+	if id == 0 {
+		return out
+	}
+	corners: [][3]f64
+	if call.shape == 0 {
+		corners = roci.model_triangles(id, as_number(eval(it, call.args[1])), as_number(eval(it, call.args[2])), as_number(eval(it, call.args[3])), as_number(eval(it, call.args[4])), context.temp_allocator)
+	} else {
+		at := as_triple(eval(it, call.args[1]))
+		corners = roci.model_triangles(id, at.x, at.y, at.z, as_number(eval(it, call.args[2])), context.temp_allocator)
+	}
+	for corner in corners {
+		append(&out.items, vec3(corner))
+	}
+	return out
 }

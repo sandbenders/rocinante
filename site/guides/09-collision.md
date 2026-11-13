@@ -78,9 +78,9 @@ circle at ball.pos radius ball.radius fill teal
 
 ```roci picture
 walls = [ { pos: { 300, 100 }, size: { 40, 100 } } { pos: { 180, 150 }, radius: 30 } ]
-ray = { from: { 20, 150 }, to: { 380, 150 } }
-h = cast ray walls
-line from ray.from to h.point stroke tomato thickness 3
+beam = { from: { 20, 150 }, to: { 380, 150 } }
+h = cast beam walls
+line from beam.from to h.point stroke tomato thickness 3
 fill gold
 circle at 180 150 radius 30
 rect at 300 100 size 40 100

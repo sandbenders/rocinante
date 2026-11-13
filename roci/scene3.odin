@@ -446,3 +446,15 @@ model_lost_textures :: proc(model: Model) -> int {
 	}
 	return 0
 }
+
+// The line from the eye through a pixel of the window, as two places of the world (y down): the eye,
+// and a place far along the way the pixel looks. `cast` along it finds what shows at the pixel.
+pixel_ray :: proc(x, y: f64) -> (from, to: [3]f64) {
+	return gfx.scene_pixel_ray(&current_list().scene, canvas_of_current(), {x, y})
+}
+
+// The corners of a loaded model's triangles, three for each, as `model` would draw it at a place with a
+// longest side of `size`, under the transform of the moment; the shape of a model for collision.
+model_triangles :: proc(model: Model, x, y, z, size: f64, allocator := context.allocator) -> [][3]f64 {
+	return gfx.scene_model_triangles(&current_list().scene, model, {x, y, z}, size, allocator)
+}

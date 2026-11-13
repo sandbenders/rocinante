@@ -1,14 +1,22 @@
 // Collide3d: collision in space. The balls are records with a `pos` (their middle) and a `radius`,
 // the pillars records with a `pos` (their middle) and a `size`, the same words as in the plane with
-// three numbers where there were two. `hits` finds the pillars a ball touches, `contact` says which
-// way to move the ball out of one and how far (`normal` and `depth`), and the ball bounces off along
-// that normal; the gold ones touched a pillar a moment ago. The red laser sweeps across the room
-// and `cast` says what it meets first: the light stops at that point (`point`) after `distance`.
-// `touching`, `inside` and `cast` work the same way, and a box is never turned.
+// three numbers where there were two, and the bar that turns in the middle has an `angle` of three
+// turns in degrees, as `turn` writes them (x, then y, then z). `hits` finds the solids a ball touches,
+// `contact` says which way to move the ball out of one and how far (`normal` and `depth`), and the
+// ball bounces off along that normal; the gold ones touched something a moment ago. The red laser
+// sweeps across the room and `cast` says what it meets first: the light stops at that point (`point`)
+// after `distance`. `ray mouse` is the line from the camera through the mouse, so casting it along
+// the balls finds the one under the mouse, which turns gold too. `touching` and `inside` work the same
+// way, and a mesh (`triangles`, three places for each triangle, or `triangles` of a model) is a shape.
 window size 760 460 title "collide3d"
 
 FLOOR = 150
-PILLARS = [ { pos: { -120, 90, -40 }, size: { 60, 120, 60 } } { pos: { 110, 110, 30 }, size: { 80, 80, 140 } } { pos: { 0, 120, -150 }, size: { 200, 60, 40 } } ]
+solids = []
+bar = { pos: { 20, 130, 40 }, size: { 170, 18, 18 }, angle: { 0, 0, 0 } }
+add { pos: { -120, 90, -40 }, size: { 60, 120, 60 } } to solids
+add { pos: { 110, 110, 30 }, size: { 80, 80, 140 } } to solids
+add { pos: { 0, 120, -150 }, size: { 200, 60, 40 } } to solids
+add bar to solids
 
 balls = []
 for i from 1 to 12 [
@@ -33,8 +41,8 @@ learn bounce ball [
     ball.pos.z = clamp ball.pos.z (0 - deep) deep
     ball.vel.z = -ball.vel.z
   ]
-  for each pillar in (hits ball PILLARS) [
-    c = contact ball pillar
+  for each solid in (hits ball solids) [
+    c = contact ball solid
     ball.pos = ball.pos + c.normal * c.depth
     along = ball.vel.x * c.normal.x + ball.vel.y * c.normal.y + ball.vel.z * c.normal.z
     if along < 0 [ ball.vel = ball.vel - c.normal * (along * 1.8) ]
@@ -47,9 +55,18 @@ draw [
   light ambient fill (rgb 70 78 110)
   light sun from -0.5 -0.8 0.6
   plane at 0 FLOOR 0 size 560 460 fill (rgb 44 54 92)
-  for each pillar in PILLARS [
-    box at pillar.pos size pillar.size fill (rgb 150 156 190)
+  bar.angle = { 0, frame * 2, 0 }
+  for each solid in solids [
+    push [
+      move solid.pos.x solid.pos.y solid.pos.z
+      turn solid.angle.x around x
+      turn solid.angle.y around y
+      turn solid.angle.z around z
+      box at 0 0 0 size solid.size.x solid.size.y solid.size.z fill (rgb 150 156 190)
+    ]
   ]
+  under = cast (ray mouse) balls
+  if under.distance > 0 [ under.item.hit = 20 ]
   for each b in balls [
     bounce b
     if b.hit > 0 [ fill gold ] else [ fill (rgb 90 200 220) ]
@@ -57,12 +74,12 @@ draw [
   ]
   z = sin (frame * 1.5) * 110
   beam = { from: { -290, 110, z }, to: { 290, 110, z } }
-  h = cast beam PILLARS
+  h = cast beam solids
   reach = 580
   if h.distance > 0 [ reach = h.distance ]
   fill (rgb 255 60 60)
   box at (-290 + reach / 2) 110 z size reach 3 3
   if h.distance > 0 [ sphere at h.point radius 7 ]
   fill white
-  text "gold: touched a pillar. red: the laser and what it meets first" at 20 20
+  text "gold: touched something. red: the laser and what it meets first" at 20 20
 ]
