@@ -1,0 +1,68 @@
+// Collide3d: collision in space. The balls are records with a `pos` (their middle) and a `radius`,
+// the pillars records with a `pos` (their middle) and a `size`, the same words as in the plane with
+// three numbers where there were two. `hits` finds the pillars a ball touches, `contact` says which
+// way to move the ball out of one and how far (`normal` and `depth`), and the ball bounces off along
+// that normal; the gold ones touched a pillar a moment ago. The red laser sweeps across the room
+// and `cast` says what it meets first: the light stops at that point (`point`) after `distance`.
+// `touching`, `inside` and `cast` work the same way, and a box is never turned.
+window size 760 460 title "collide3d"
+
+FLOOR = 150
+PILLARS = [ { pos: { -120, 90, -40 }, size: { 60, 120, 60 } } { pos: { 110, 110, 30 }, size: { 80, 80, 140 } } { pos: { 0, 120, -150 }, size: { 200, 60, 40 } } ]
+
+balls = []
+for i from 1 to 12 [
+  add { pos: { -200 + i * 30, -120 - i * 12, -100 + (i % 4) * 60 }, vel: { 0.8 * (i % 3 - 1), 0, 1.2 * (i % 2 * 2 - 1) }, radius: 14, hit: 0 } to balls
+]
+
+learn bounce ball [
+  if ball.hit > 0 [ ball.hit = ball.hit - 1 ]
+  ball.vel.y = ball.vel.y + 0.25
+  ball.pos = ball.pos + ball.vel
+  if ball.pos.y + ball.radius > FLOOR [
+    ball.pos.y = FLOOR - ball.radius
+    ball.vel.y = -ball.vel.y * 0.85
+  ]
+  wide = 250 - ball.radius
+  deep = 200 - ball.radius
+  if (abs ball.pos.x) > wide [
+    ball.pos.x = clamp ball.pos.x (0 - wide) wide
+    ball.vel.x = -ball.vel.x
+  ]
+  if (abs ball.pos.z) > deep [
+    ball.pos.z = clamp ball.pos.z (0 - deep) deep
+    ball.vel.z = -ball.vel.z
+  ]
+  for each pillar in (hits ball PILLARS) [
+    c = contact ball pillar
+    ball.pos = ball.pos + c.normal * c.depth
+    along = ball.vel.x * c.normal.x + ball.vel.y * c.normal.y + ball.vel.z * c.normal.z
+    if along < 0 [ ball.vel = ball.vel - c.normal * (along * 1.8) ]
+    ball.hit = 20
+  ]
+]
+
+draw [
+  background (rgb 16 20 38)
+  light ambient fill (rgb 70 78 110)
+  light sun from -0.5 -0.8 0.6
+  plane at 0 FLOOR 0 size 560 460 fill (rgb 44 54 92)
+  for each pillar in PILLARS [
+    box at pillar.pos size pillar.size fill (rgb 150 156 190)
+  ]
+  for each b in balls [
+    bounce b
+    if b.hit > 0 [ fill gold ] else [ fill (rgb 90 200 220) ]
+    sphere at b.pos radius b.radius
+  ]
+  z = sin (frame * 1.5) * 110
+  beam = { from: { -290, 110, z }, to: { 290, 110, z } }
+  h = cast beam PILLARS
+  reach = 580
+  if h.distance > 0 [ reach = h.distance ]
+  fill (rgb 255 60 60)
+  box at (-290 + reach / 2) 110 z size reach 3 3
+  if h.distance > 0 [ sphere at h.point radius 7 ]
+  fill white
+  text "gold: touched a pillar. red: the laser and what it meets first" at 20 20
+]

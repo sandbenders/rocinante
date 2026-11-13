@@ -1,0 +1,7 @@
+FLOOR: a number
+PILLARS: a list of records with pos and size
+balls: a list of records with pos, vel, radius and hit
+z: a number
+beam: a record with from and to
+h: a record with item, point, normal and distance
+reach: a number
