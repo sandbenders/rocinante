@@ -66,6 +66,13 @@ highlight :: proc(text: string, allocator := context.allocator) -> []Highlight_S
 				}
 			}
 			kind = name_highlight(word, after_dot, starts_statement(tokens, i))
+			if kind == .Verb && (word == "up" || word == "down") && i > 0 && tokens[i - 1].kind == .Name {
+				// `on mouse down`, `on touch up`: the word of an event, not the turtle's verb
+				before := text[tokens[i - 1].span.start:tokens[i - 1].span.end]
+				if before == "mouse" || before == "touch" {
+					kind = .Name
+				}
+			}
 			if kind != .Keyword && !after_dot && i > 0 && tokens[i - 1].kind == .Name && is_choice_word(text[tokens[i - 1].span.start:tokens[i - 1].span.end], word) {
 				kind = .Word
 			}

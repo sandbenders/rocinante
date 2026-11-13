@@ -346,6 +346,10 @@ VERBS := []Verb{
 	{"pen down", {{{}, nil, .None}}, "Puts the turtle's pen down: it draws as it moves, in the stroke, or in black while there is none."},
 	{"home", {{{}, nil, .None}}, "Sends the turtle back to the middle of the window, facing up, without drawing."},
 	{"show turtle", {{{}, nil, .None}}, "Draws the turtle itself where it is: a small triangle pointing the way it faces, solid while its pen is down and an outline while it is up."},
+	{"turtle space", {{{}, nil, .None}}, "Makes the turtle walk the 3D scene for the rest of the frame, from the origin facing up the screen: `forward`, `back`, `left`, `right`, `pen up`, `pen down`, `home` and `show turtle` then act on it, and it draws thin tubes in the stroke (the thickness is their width), or in black while there is none."},
+	{"up", {{{{"degrees", .Number}}, nil, .None}}, "Tips the nose of the turtle in space towards its top, in degrees, which at the start is towards you. It needs `turtle space` first."},
+	{"down", {{{{"degrees", .Number}}, nil, .None}}, "Tips the nose of the turtle in space away from its top, in degrees. It needs `turtle space` first."},
+	{"roll", {{{{"degrees", .Number}}, nil, .None}}, "Rolls the turtle in space about the way it faces, its top going to the right, in degrees. It needs `turtle space` first."},
 
 	// Maths
 	{"map", {{{{"value", .Number}, {"from_low", .Number}, {"from_high", .Number}, {"to_low", .Number}, {"to_high", .Number}}, nil, .Number}}, "Moves a number from one range to another."},

@@ -1,0 +1,35 @@
+// A tree grown by the turtle in space. `turtle space` makes the turtle walk the 3D scene, from the
+// origin facing up the screen, drawing thin tubes in the stroke as it goes, and `up`, `down` and `roll`
+// turn it in the ways the flat turtle cannot: `up` tips its nose towards its top, `roll` turns it about
+// the way it faces. Each branch walks a stretch, then splits in three by rolling a third of a turn
+// and tipping up, and the verb that does it calls itself on a shorter branch, with `push` to come
+// back to the fork. Lit, and casting its shadow on the floor. Drag to look round.
+window size 760 460 title "turtle in space"
+
+learn branch length depth [
+  if depth is 0 [ stop ]
+  thickness (1.2 + depth * 1.6)
+  stroke (hsb (85 - depth * 10) 190 (240 - depth * 22))
+  forward length
+  for i from 0 to 2 [
+    push [
+      roll (i * 120 + depth * 25)
+      up (32 + sin (frame * 2 + depth * 40) * 5)
+      branch (length * 0.74) (depth - 1)
+    ]
+  ]
+]
+
+draw [
+  background (rgb 14 16 30)
+  light ambient fill (rgb 50 56 90)
+  light sun from -0.6 -0.8 0.5 fill (rgb 250 240 225)
+  shadows
+  fill (rgb 120 128 150)
+  material roughness 0.95
+  plane at 0 175 0 size 800 700
+  material roughness 0.6
+  move 0 175 0
+  turtle space
+  branch 85 6
+]

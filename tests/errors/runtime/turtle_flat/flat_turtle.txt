@@ -1,0 +1,8 @@
+── `up` turns the turtle in space, and this turtle is flat ─── sketch.roci:1:1
+
+1 │ up 30
+  │ ^^^^^
+
+The turtle walks the screen until the sketch says `turtle space`, and it can only turn left and right there. `up` does nothing until it does, and the sketch carries on.
+
+Put the turtle in space first:  turtle space

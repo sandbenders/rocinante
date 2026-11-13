@@ -58,13 +58,13 @@ learn fit_size [
     if m.x > widest [ widest = m.x ]
   ]
   across = 100 * width / widest
-  down = height / (5 * LINE)
-  if down < across [ give down ]
+  vertical = height / (5 * LINE)
+  if vertical < across [ give vertical ]
   give across
 ]
 
 // Chooses five words, a color for each, and the size that fits them in the window.
-learn roll [
+learn reroll [
   poem = []
   for k from 1 to 5 [
     add { word: word_for k, color: deep_color, previous: "", previous_color: black, mix: 1 } to poem
@@ -91,9 +91,9 @@ learn swap [
   schedule
 ]
 
-roll
+reroll
 
-on key "space" [ roll ]
+on key "space" [ reroll ]
 on key "s" [ save "sengen.svg" ]
 on key "p" [ save "sengen.pdf" ]
 

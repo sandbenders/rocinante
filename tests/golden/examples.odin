@@ -29,7 +29,7 @@ Example :: struct {
 // They get a larger worst channel and allowance than `STRICT`, which a shifted or wrongly lit
 // picture still fails.
 SHADED :: Limits{tolerance = 12, allowed = 60, worst = 40}
-SHADED_PICTURES := [?]string{"example_solids_1", "example_shapes3d_1", "example_stage_1", "example_lights_1", "example_shadows_1", "example_model_1"}
+SHADED_PICTURES := [?]string{"example_solids_1", "example_shapes3d_1", "example_stage_1", "example_lights_1", "example_shadows_1", "example_model_1", "example_turtle3d_1"}
 
 // `benchmark` has no picture: 100,000 small circles hardly compress (737 KB), and an
 // interpreter test checks the work it does exactly, which is what it promises.
@@ -91,6 +91,7 @@ EXAMPLES := [?]Example{
 	{"lights", 10, {1}}, // lights of its own: ambient, sun, a warm point light and a blue spot light on a floor and four spheres of different materials
 	{"shadows", 30, {1}}, // a low sun throwing the shadows of six boxes, a sphere and a turning torus across a floor and onto each other
 	{"model", 30, {1}}, // a glTF ship (a box and a cone, a material each, placed by nodes) turning above a floor, lit and casting its shadow
+	{"turtle3d", 30, {1}}, // a tree grown by the turtle in space, forking in threes by rolling and tipping up, lit and casting its shadow
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.

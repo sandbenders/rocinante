@@ -376,3 +376,95 @@ test_the_shadows_example_runs_with_a_sun_that_casts_them :: proc(t: ^testing.T) 
 	testing.expect_value(t, len(roci.scene_items(first_window())), 9) // a floor, six boxes, a sphere and a torus
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_the_turtle_in_space_walks_the_scene_with_the_flat_words :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  turtle space
+  stroke red
+  thickness 4
+  forward 100
+  right 90
+  forward 50
+  up 90
+  forward 20
+  pen up
+  forward 30
+  pen down
+  back 10
+  roll 45
+  down 45
+  left 10
+  home
+  show turtle
+]
+`, 1)
+	defer finish(p)
+	items := roci.scene_items(first_window())
+	// three walks that drew (a tube and a ball each), the walk with the pen up, one more that drew, and the turtle shown
+	testing.expect_value(t, len(items), 3 * 2 + 2 + 1)
+	testing.expect_value(t, items[0].colour, [4]f32{1, 0, 0, 1}) // the stroke
+	testing.expect(t, roci.turtle_in_space(), "the frame's turtle is the one in space") // outside a frame the last window's
+	at, heading, _, _ := roci.turtle3_state(first_window())
+	testing.expect(t, at == {} && heading[1] == -1, "home put it back, facing up")
+	testing.expect_value(t, len(roci.commands_snapshot(first_window())), 0) // nothing was drawn flat
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_the_flat_turtle_is_unchanged_when_space_is_not_asked_for :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  forward 100
+  right 90
+  forward 50
+]
+`, 1)
+	defer finish(p)
+	testing.expect_value(t, len(roci.scene_items(first_window())), 0)
+	testing.expect_value(t, len(roci.commands_snapshot(first_window())), 2)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_up_down_and_roll_on_a_flat_turtle_are_said_once_and_do_nothing :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  up 30
+  down 10
+  roll 5
+  forward 10
+]
+`, 3)
+	defer finish(p)
+	said := 0
+	for e in p.errors {
+		if e.id == .Turtle_Flat {said += 1}
+	}
+	testing.expect_value(t, said, 3) // once for each of the three places, not each frame
+	testing.expect_value(t, len(roci.commands_snapshot(first_window())), 1)
+}
+
+@(test)
+test_the_space_turtle_starts_each_frame_flat :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  if frame is 0 [ turtle space ]
+  forward 10
+]
+`, 1)
+	defer finish(p)
+	testing.expect_value(t, len(roci.scene_items(first_window())), 2) // frame 0 walked in space
+	roci.step()
+	testing.expect_value(t, len(roci.scene_items(first_window())), 0) // frame 1 is flat again
+	testing.expect_value(t, len(roci.commands_snapshot(first_window())), 1)
+}
+
+@(test)
+test_the_turtle3d_example_grows_a_tree :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("turtle3d"), 2)
+	defer finish(p)
+	items := roci.scene_items(first_window())
+	// branches of 6 generations, three at each fork, a tube and a ball for each, and the floor
+	branches := 1 + 3 + 9 + 27 + 81 + 243
+	testing.expect_value(t, len(items), branches * 2 + 1)
+	testing.expect(t, roci.shadows_of(first_window()), "it asks for shadows")
+	testing.expect_value(t, len(p.errors), 0)
+}

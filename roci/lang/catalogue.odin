@@ -134,6 +134,7 @@ Message_Id :: enum u8 {
 	Tab_Outside_Tabs,
 	Key_Unknown,
 	Too_Many_Lights,
+	Turtle_Flat,
 	Picture_Size,
 	Picture_Too_Big,
 	Pixels_Unavailable,
@@ -459,6 +460,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Tab_Outside_Tabs = {.Error, "A tab belongs inside `tabs`",
 		"A tab is one page of a group of tabs, so it has to be written inside `tabs`. This one is left out, and the sketch carries on.",
 		"Write the tabs together:", "{d}"},
+	.Turtle_Flat = {.Error, "`{a}` turns the turtle in space, and this turtle is flat",
+		"The turtle walks the screen until the sketch says `turtle space`, and it can only turn left and right there. `{a}` does nothing until it does, and the sketch carries on.",
+		"Put the turtle in space first:", "{d}"},
 	.Too_Many_Lights = {.Error, "A scene has at most {a} lights",
 		"Each light is worked out for every pixel of every shape, so a scene keeps its first {a}. This one is left out, and the sketch carries on with the lights it has.",
 		"Fewer lights make the same scene, for example one sun and a few points:", "{d}"},
@@ -545,7 +549,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Model_Missing, .Model_Unreadable, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Model_Missing, .Model_Unreadable, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

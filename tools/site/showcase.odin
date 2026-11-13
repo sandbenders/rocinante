@@ -112,6 +112,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"lights", 7, "Lights", 10, 1},
 	{"shadows", 7, "Shadows", 30, 1},
 	{"model", 7, "Model", 30, 1},
+	{"turtle3d", 7, "Turtle in space", 30, 1},
 }
 
 // Examples that are not on the site, and why.

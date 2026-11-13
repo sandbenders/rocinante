@@ -782,6 +782,20 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.home()
 	case .Show_Turtle:
 		roci.show_turtle()
+	case .Turtle_Space:
+		roci.turtle_space()
+	case .Up:
+		if !roci.turtle_up(n(a, 0)) {
+			fail(it, .Turtle_Flat, e.span, "up", "", "", "turtle space")
+		}
+	case .Down:
+		if !roci.turtle_down(n(a, 0)) {
+			fail(it, .Turtle_Flat, e.span, "down", "", "", "turtle space")
+		}
+	case .Roll:
+		if !roci.turtle_roll(n(a, 0)) {
+			fail(it, .Turtle_Flat, e.span, "roll", "", "", "turtle space")
+		}
 
 	case .Map:
 		return roci.map_range(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4))

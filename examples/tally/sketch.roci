@@ -16,10 +16,10 @@ put colors "cornflowerblue" cornflowerblue
 
 tiles = []
 counts = table
-for down from 0 to 5 [
+for r from 0 to 5 [
   for across from 0 to 5 [
     picked = pick NAMES
-    add { pos: { 20 + across * 52, 20 + down * 52 }, name: picked } to tiles
+    add { pos: { 20 + across * 52, 20 + r * 52 }, name: picked } to tiles
     put counts picked ((get counts picked) + 1)
   ]
 ]
