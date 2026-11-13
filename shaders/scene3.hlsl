@@ -6,8 +6,8 @@
 // matrices are passed as rows and multiplied out with dot products, so no system's idea
 // of how a matrix is laid out matters. The shading is one light and a little ambient light,
 // worked out per pixel, and a surface is lit on whichever side faces the eye.
-// The vertex layout is Vertex3 and Item3 in scene3.odin: TEXCOORD0 and 1 are per vertex,
-// TEXCOORD2 to 5 per instance.
+// The vertex layout is Vertex3 and Instance3 in scene3.odin: TEXCOORD0 to 2 are per vertex,
+// TEXCOORD3 to 7 per instance.
 
 cbuffer Scene : register(b0, space1)
 {
@@ -23,10 +23,12 @@ struct VSInput
 {
     float3 position : TEXCOORD0;
     float3 normal : TEXCOORD1;
-    float4 row0 : TEXCOORD2;
-    float4 row1 : TEXCOORD3;
-    float4 row2 : TEXCOORD4;
-    float4 colour : TEXCOORD5;
+    float stretch : TEXCOORD2;
+    float4 row0 : TEXCOORD3;
+    float4 row1 : TEXCOORD4;
+    float4 row2 : TEXCOORD5;
+    float4 colour : TEXCOORD6;
+    float4 params : TEXCOORD7;
 };
 
 struct VSOutput
@@ -42,7 +44,10 @@ struct VSOutput
 VSOutput vs_main(VSInput input)
 {
     VSOutput output;
-    float4 p = float4(input.position, 1.0);
+    // A capsule's two halves move apart by params.x, and a torus's ring grows a tube params.y thick.
+    float3 shaped = input.position + input.normal * input.params.y;
+    shaped.y += input.stretch * input.params.x;
+    float4 p = float4(shaped, 1.0);
     float4 w = float4(dot(input.row0, p), dot(input.row1, p), dot(input.row2, p), 1.0);
     output.position = float4(dot(clip_x, w), dot(clip_y, w), dot(clip_z, w), dot(clip_w, w));
     output.world = w.xyz;

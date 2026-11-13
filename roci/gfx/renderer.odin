@@ -857,7 +857,7 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 	}
 	// A 3D scene is drawn first, in a pass of its own with a depth buffer; the 2D pass then loads what it drew.
 	has_scene := len(list.scene.items) > 0
-	sorted := make([dynamic]Item3, context.temp_allocator)
+	sorted := make([dynamic]Instance3, context.temp_allocator)
 	counts: [Shape3]u32
 	scene_done := false
 	if ok && has_scene {

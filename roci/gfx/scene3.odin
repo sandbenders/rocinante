@@ -15,20 +15,32 @@ import "../maths"
 import "core:math"
 
 Shape3 :: enum u8 {
-	Box,    // a cube of side 1 about its middle
-	Sphere, // diameter 1 about its middle
-	Plane,  // a square of side 1 in the plane of x and z, about its middle
+	Box,       // a cube of side 1 about its middle
+	Sphere,    // diameter 1 about its middle
+	Plane,     // a square of side 1 in the plane of x and z, about its middle
+	Cone,      // base diameter 1 and height 1, the tip up (towards negative y)
+	Cylinder,  // diameter 1 and height 1, along y
+	Capsule,   // a sphere of diameter 1 stretched along y by `params.x` on each side
+	Torus,     // a ring of diameter 1 whose tube is `params.y` (in the same units) thick
+	Icosphere, // diameter 1, cut into 80 flat triangles
 }
 
 Axis3 :: enum u8 {X, Y, Z}
 
-Item3 :: struct {
+// What the vertex shader reads of each shape: three rows of its transform, its color and two
+// numbers that stretch it (`params.x` the length a capsule's middle adds on each side, `params.y`
+// how far a torus's tube reaches from its ring), both in the shape's own units. 80 bytes.
+Instance3 :: struct {
 	model:  [3][4]f32, // the first three rows of the transform from the shape's own space to the world
 	colour: [4]f32,    // 0 to 1; the alpha is not used yet
-	shape:  Shape3,
-	_:      [15]u8, // so an item is 80 bytes and the vertex shader reads it as it is
+	params: [4]f32,
 }
-#assert(size_of(Item3) == 80)
+#assert(size_of(Instance3) == 80)
+
+Item3 :: struct {
+	using instance: Instance3,
+	shape:          Shape3,
+}
 
 Scene3 :: struct {
 	items: [dynamic]Item3,
@@ -117,20 +129,101 @@ scene_grow :: proc(s: ^Scene3, x, y, z: f64) {
 
 // Adds a shape at a place, of a size (the diameter of a sphere is the size's x) and
 // a color. Anything not a finite number leaves it out.
-scene_add :: proc(s: ^Scene3, shape: Shape3, at, size: [3]f64, colour: maths.Colour) {
-	for v in ([?]f64{at.x, at.y, at.z, size.x, size.y, size.z}) {
+scene_add :: proc(s: ^Scene3, shape: Shape3, at, size: [3]f64, colour: maths.Colour, params := [2]f64{}) {
+	for v in ([?]f64{at.x, at.y, at.z, size.x, size.y, size.z, params.x, params.y}) {
 		if math.is_nan(v) || math.is_inf(v) {
 			return
 		}
 	}
 	m := current_model(s) * translate4(f32(at.x), f32(at.y), f32(at.z)) * scale4(f32(size.x), f32(size.y), f32(size.z))
-	item := Item3{shape = shape, colour = {colour.r / 255, colour.g / 255, colour.b / 255, colour.a / 255}}
+	add_item(s, shape, m, colour, params)
+}
+
+// Adds a shape whose whole transform from its own space is given (the model of `scene_add`
+// is only a place and a size), still under the current transform.
+scene_add_model :: proc(s: ^Scene3, shape: Shape3, model: matrix[4, 4]f32, colour: maths.Colour, params := [2]f64{}) {
+	for r in 0 ..< 4 {
+		for c in 0 ..< 4 {
+			if math.is_nan(f64(model[r, c])) || math.is_inf(f64(model[r, c])) {
+				return
+			}
+		}
+	}
+	add_item(s, shape, current_model(s) * model, colour, params)
+}
+
+@(private)
+add_item :: proc(s: ^Scene3, shape: Shape3, m: matrix[4, 4]f32, colour: maths.Colour, params: [2]f64) {
+	item := Item3{shape = shape}
+	item.colour = {colour.r / 255, colour.g / 255, colour.b / 255, colour.a / 255}
+	item.params = {f32(params.x), f32(params.y), 0, 0}
 	for r in 0 ..< 3 {
 		for c in 0 ..< 4 {
 			item.model[r][c] = m[r, c]
 		}
 	}
 	append(&s.items, item)
+}
+
+// A shape of a size, standing on its middle with its y axis along `direction`, the tip (for
+// a cone) the way the direction points. The turn that does it is the one that takes y to
+// `direction`; the other two axes are any two that are square to it.
+basis_along :: proc(direction: [3]f64) -> matrix[4, 4]f32 {
+	y := normalize3(direction)
+	if y == {} {
+		return identity4()
+	}
+	helper := [3]f64{1, 0, 0}
+	if abs(y.x) > 0.9 {
+		helper = {0, 0, 1}
+	}
+	x := normalize3(cross3(helper, y))
+	z := cross3(x, y)
+	m := identity4()
+	for r in 0 ..< 3 {
+		m[r, 0], m[r, 1], m[r, 2] = f32(x[r]), f32(y[r]), f32(z[r])
+	}
+	return m
+}
+
+// An arrow from one place to another: a thin shaft and a head, in one color. The cone's tip
+// is the way it is drawn towards negative y, so the head's basis points y back along the arrow.
+scene_arrow :: proc(s: ^Scene3, from, to: [3]f64, colour: maths.Colour, thickness := 0.012) {
+	along := to - from
+	length := math.sqrt(dot3(along, along))
+	if length == 0 || math.is_nan(length) || math.is_inf(length) {
+		return
+	}
+	dir := along / length
+	radius := length * thickness
+	head := length * 0.16
+	shaft := length - head
+	shaft_middle := from + dir * (shaft / 2)
+	scene_add_model(s, .Cylinder, translate4(f32(shaft_middle.x), f32(shaft_middle.y), f32(shaft_middle.z)) * basis_along(dir) * scale4(f32(radius * 2), f32(shaft), f32(radius * 2)), colour)
+	head_middle := from + dir * (shaft + head / 2)
+	scene_add_model(s, .Cone, translate4(f32(head_middle.x), f32(head_middle.y), f32(head_middle.z)) * basis_along(-dir) * scale4(f32(radius * 8), f32(head), f32(radius * 8)), colour)
+}
+
+// The three axes as arrows from the origin: x red, y green, z blue.
+scene_axes :: proc(s: ^Scene3, length: f64) {
+	scene_arrow(s, {}, {length, 0, 0}, {226, 72, 56, 255}, 0.03)
+	scene_arrow(s, {}, {0, length, 0}, {70, 190, 90, 255}, 0.03)
+	scene_arrow(s, {}, {0, 0, length}, {64, 120, 230, 255}, 0.03)
+}
+
+// A grid on the floor (the plane of x and z): `lines` squares each way across `size`,
+// made of thin boxes in a color. At most 200 squares, so a mistake cannot make a million boxes.
+scene_grid :: proc(s: ^Scene3, size: f64, lines: int, colour: maths.Colour) {
+	n := clamp(lines, 1, 200)
+	if size <= 0 || math.is_nan(size) || math.is_inf(size) {
+		return
+	}
+	thick := max(size / 400, 0.5)
+	for i in 0 ..= n {
+		offset := (f64(i) / f64(n) - 0.5) * size
+		scene_add(s, .Box, {offset, 0, 0}, {thick, thick, size + thick}, colour)
+		scene_add(s, .Box, {0, 0, offset}, {size + thick, thick, thick}, colour)
+	}
 }
 
 // Turns the orbit by a drag of the mouse, in pixels, and keeps the camera from going over the poles.
@@ -231,6 +324,7 @@ scene_hash :: proc(s: ^Scene3) -> u64 {
 		for v in item.colour {
 			h = hash_f32(h, v)
 		}
+		h = hash_f32_pair(h, item.params.x, item.params.y)
 	}
 	h = hash_f32_pair(h, s.yaw, s.pitch)
 	return hash_f32(h, s.zoom)
@@ -238,10 +332,13 @@ scene_hash :: proc(s: ^Scene3) -> u64 {
 
 // ---- the shapes ----
 
-// One corner of a shape's mesh: where it is and which way the surface faces.
+// One corner of a shape's mesh: where it is and which way the surface faces. `stretch` is
+// -1 or 1 for the corners of a capsule's two ends, which move apart by the instance's
+// `params.x`, and 0 for everything else.
 Vertex3 :: struct {
 	position: [3]f32,
 	normal:   [3]f32,
+	stretch:  f32,
 }
 
 Mesh3 :: struct {
@@ -265,60 +362,216 @@ shape_meshes_destroy :: proc(m: ^Shape_Meshes) {
 	m^ = {}
 }
 
-// Builds the three shapes into one mesh: a cube of side 1, a sphere of diameter 1 and a
-// square of side 1, all about their middles.
+SEGMENTS :: 48 // round the axis of a cone, cylinder, capsule or sphere
+
+// Joins two rings of `SEGMENTS + 1` corners that follow each other in the mesh.
+@(private)
+stitch_rings :: proc(m: ^Mesh3, first, second: u32) {
+	for seg in 0 ..< u32(SEGMENTS) {
+		a, b := first + seg, second + seg
+		append(&m.indices, a, b, a + 1, a + 1, b, b + 1)
+	}
+}
+
+// A ring of corners at height `y` and radius `radius`, each with its normal and stretch.
+@(private)
+add_ring :: proc(m: ^Mesh3, y, radius: f32, normal_y: f32, normal_scale: f32, stretch: f32) -> u32 {
+	first := u32(len(m.vertices))
+	for seg in 0 ..= SEGMENTS {
+		theta := f64(seg) / f64(SEGMENTS) * 360
+		c, s := f32(maths.cos_deg(theta)), f32(maths.sin_deg(theta))
+		n := normalize3f({c * normal_scale, normal_y, s * normal_scale})
+		append(&m.vertices, Vertex3{{c * radius, y, s * radius}, n, stretch})
+	}
+	return first
+}
+
+@(private)
+normalize3f :: proc(v: [3]f32) -> [3]f32 {
+	n := math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
+	if n == 0 {
+		return {}
+	}
+	return v / n
+}
+
+// A flat disc facing along y (a cone's or cylinder's end) at height y.
+@(private)
+add_cap :: proc(m: ^Mesh3, y: f32, facing: f32) {
+	centre := u32(len(m.vertices))
+	append(&m.vertices, Vertex3{{0, y, 0}, {0, facing, 0}, 0})
+	ring := add_ring(m, y, 0.5, facing, 0, 0)
+	for seg in 0 ..< u32(SEGMENTS) {
+		append(&m.indices, centre, ring + seg, ring + seg + 1)
+	}
+}
+
+// Builds every shape into one mesh, all about their middles: a cube of side 1, a sphere of
+// diameter 1, a square of side 1, a cone and a cylinder of diameter 1 and height 1, a capsule
+// that is a sphere until it is stretched, a ring of diameter 1 (whose tube the instance
+// thickens) and a sphere of 80 flat faces.
 build_shape_meshes :: proc() -> Shape_Meshes {
 	out: Shape_Meshes
 	m := &out.mesh
+	range :: proc(out: ^Shape_Meshes, shape: Shape3, start: u32) {
+		out.ranges[shape] = {start, u32(len(out.mesh.indices)) - start}
+	}
 
 	// the box: four corners for each face, so each face has its own normal
 	start := u32(len(m.indices))
 	faces := [6][3]f32{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}
 	for n in faces {
-		// two axes along the face
 		a: [3]f32 = {n.y, n.z, n.x}
 		b: [3]f32 = {n.z, n.x, n.y}
 		base := u32(len(m.vertices))
 		for corner in ([4][2]f32{{-1, -1}, {1, -1}, {1, 1}, {-1, 1}}) {
 			p := n * 0.5 + a * (corner.x * 0.5) + b * (corner.y * 0.5)
-			append(&m.vertices, Vertex3{p, n})
+			append(&m.vertices, Vertex3{p, n, 0})
 		}
 		append(&m.indices, base, base + 1, base + 2, base, base + 2, base + 3)
 	}
-	out.ranges[.Box] = {start, u32(len(m.indices)) - start}
+	range(&out, .Box, start)
 
 	// the sphere: rings of latitude (a diameter of 1, like the box's side)
 	start = u32(len(m.indices))
-	rings, segments := 24, 48
-	base := u32(len(m.vertices))
+	rings := 24
+	ring_starts := make([dynamic]u32, context.temp_allocator)
 	for ring in 0 ..= rings {
 		phi := f64(ring) / f64(rings) * 180
-		for seg in 0 ..= segments {
-			theta := f64(seg) / f64(segments) * 360
+		first := u32(len(m.vertices))
+		append(&ring_starts, first)
+		for seg in 0 ..= SEGMENTS {
+			theta := f64(seg) / f64(SEGMENTS) * 360
 			n := [3]f32{
 				f32(maths.sin_deg(phi) * maths.cos_deg(theta)),
 				f32(-maths.cos_deg(phi)),
 				f32(maths.sin_deg(phi) * maths.sin_deg(theta)),
 			}
-			append(&m.vertices, Vertex3{n * 0.5, n})
+			append(&m.vertices, Vertex3{n * 0.5, n, 0})
 		}
 	}
 	for ring in 0 ..< rings {
-		for seg in 0 ..< segments {
-			a := base + u32(ring * (segments + 1) + seg)
-			b := a + u32(segments + 1)
-			append(&m.indices, a, b, a + 1, a + 1, b, b + 1)
-		}
+		stitch_rings(m, ring_starts[ring], ring_starts[ring + 1])
 	}
-	out.ranges[.Sphere] = {start, u32(len(m.indices)) - start}
+	range(&out, .Sphere, start)
 
 	// the plane
 	start = u32(len(m.indices))
-	base = u32(len(m.vertices))
+	base := u32(len(m.vertices))
 	for corner in ([4][2]f32{{-1, -1}, {1, -1}, {1, 1}, {-1, 1}}) {
-		append(&m.vertices, Vertex3{{corner.x * 0.5, 0, corner.y * 0.5}, {0, -1, 0}})
+		append(&m.vertices, Vertex3{{corner.x * 0.5, 0, corner.y * 0.5}, {0, -1, 0}, 0})
 	}
 	append(&m.indices, base, base + 1, base + 2, base, base + 2, base + 3)
-	out.ranges[.Plane] = {start, u32(len(m.indices)) - start}
+	range(&out, .Plane, start)
+
+	// the cone: its tip at the top (negative y), its base at the bottom
+	start = u32(len(m.indices))
+	tip := add_ring(m, -0.5, 0, -1, 2, 0) // every corner at the tip, each with its side's normal
+	base_ring := add_ring(m, 0.5, 0.5, -1, 2, 0)
+	stitch_rings(m, tip, base_ring)
+	add_cap(m, 0.5, 1)
+	range(&out, .Cone, start)
+
+	// the cylinder
+	start = u32(len(m.indices))
+	top := add_ring(m, -0.5, 0.5, 0, 1, 0)
+	bottom := add_ring(m, 0.5, 0.5, 0, 1, 0)
+	stitch_rings(m, top, bottom)
+	add_cap(m, -0.5, -1)
+	add_cap(m, 0.5, 1)
+	range(&out, .Cylinder, start)
+
+	// the capsule: a sphere cut at its equator into two halves that the instance moves apart
+	start = u32(len(m.indices))
+	half := 12
+	capsule_rings := make([dynamic]u32, context.temp_allocator)
+	for ring in 0 ..= half {
+		phi := f64(ring) / f64(half) * 90
+		first := u32(len(m.vertices))
+		append(&capsule_rings, first)
+		for seg in 0 ..= SEGMENTS {
+			theta := f64(seg) / f64(SEGMENTS) * 360
+			n := [3]f32{
+				f32(maths.sin_deg(phi) * maths.cos_deg(theta)),
+				f32(-maths.cos_deg(phi)),
+				f32(maths.sin_deg(phi) * maths.sin_deg(theta)),
+			}
+			append(&m.vertices, Vertex3{n * 0.5, n, -1})
+		}
+	}
+	for ring in half ..= half * 2 {
+		phi := f64(ring) / f64(half) * 90
+		first := u32(len(m.vertices))
+		append(&capsule_rings, first)
+		for seg in 0 ..= SEGMENTS {
+			theta := f64(seg) / f64(SEGMENTS) * 360
+			n := [3]f32{
+				f32(maths.sin_deg(phi) * maths.cos_deg(theta)),
+				f32(-maths.cos_deg(phi)),
+				f32(maths.sin_deg(phi) * maths.sin_deg(theta)),
+			}
+			append(&m.vertices, Vertex3{n * 0.5, n, 1})
+		}
+	}
+	for i in 0 ..< len(capsule_rings) - 1 {
+		stitch_rings(m, capsule_rings[i], capsule_rings[i + 1])
+	}
+	range(&out, .Capsule, start)
+
+	// the torus: each corner is on the ring, and the instance pushes it out along its normal by the tube's radius
+	start = u32(len(m.indices))
+	tube_segments := 24
+	torus_rings := make([dynamic]u32, context.temp_allocator)
+	for v in 0 ..= tube_segments {
+		angle := f64(v) / f64(tube_segments) * 360
+		first := u32(len(m.vertices))
+		append(&torus_rings, first)
+		for seg in 0 ..= SEGMENTS {
+			theta := f64(seg) / f64(SEGMENTS) * 360
+			dir := [3]f32{f32(maths.cos_deg(theta)), 0, f32(maths.sin_deg(theta))}
+			n := dir * f32(maths.cos_deg(angle)) + [3]f32{0, f32(-maths.sin_deg(angle)), 0}
+			append(&m.vertices, Vertex3{dir * 0.5, n, 0})
+		}
+	}
+	for i in 0 ..< len(torus_rings) - 1 {
+		stitch_rings(m, torus_rings[i], torus_rings[i + 1])
+	}
+	range(&out, .Torus, start)
+
+	// the icosphere: an icosahedron cut once into 80 triangles, each flat
+	start = u32(len(m.indices))
+	t := f32((1 + math.sqrt(f64(5))) / 2)
+	corners := [12][3]f32{
+		{-1, t, 0}, {1, t, 0}, {-1, -t, 0}, {1, -t, 0},
+		{0, -1, t}, {0, 1, t}, {0, -1, -t}, {0, 1, -t},
+		{t, 0, -1}, {t, 0, 1}, {-t, 0, -1}, {-t, 0, 1},
+	}
+	triangles := [20][3]int{
+		{0, 11, 5}, {0, 5, 1}, {0, 1, 7}, {0, 7, 10}, {0, 10, 11},
+		{1, 5, 9}, {5, 11, 4}, {11, 10, 2}, {10, 7, 6}, {7, 1, 8},
+		{3, 9, 4}, {3, 4, 2}, {3, 2, 6}, {3, 6, 8}, {3, 8, 9},
+		{4, 9, 5}, {2, 4, 11}, {6, 2, 10}, {8, 6, 7}, {9, 8, 1},
+	}
+	add_face :: proc(m: ^Mesh3, p, q, r: [3]f32) {
+		a, b, c := normalize3f(p) * 0.5, normalize3f(q) * 0.5, normalize3f(r) * 0.5
+		edge1, edge2 := b - a, c - a
+		n := normalize3f({edge1.y * edge2.z - edge1.z * edge2.y, edge1.z * edge2.x - edge1.x * edge2.z, edge1.x * edge2.y - edge1.y * edge2.x})
+		// make it face away from the middle, which is the way every face of a convex shape faces
+		if n.x * (a.x + b.x + c.x) + n.y * (a.y + b.y + c.y) + n.z * (a.z + b.z + c.z) < 0 {
+			n = -n
+		}
+		base := u32(len(m.vertices))
+		append(&m.vertices, Vertex3{a, n, 0}, Vertex3{b, n, 0}, Vertex3{c, n, 0})
+		append(&m.indices, base, base + 1, base + 2)
+	}
+	for tri in triangles {
+		a, b, c := corners[tri[0]], corners[tri[1]], corners[tri[2]]
+		ab, bc, ca := normalize3f(a + b), normalize3f(b + c), normalize3f(c + a)
+		add_face(m, a, ab, ca)
+		add_face(m, b, bc, ab)
+		add_face(m, c, ca, bc)
+		add_face(m, ab, bc, ca)
+	}
+	range(&out, .Icosphere, start)
 	return out
 }

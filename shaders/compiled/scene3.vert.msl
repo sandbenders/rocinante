@@ -27,23 +27,27 @@ struct main0_in
 {
     float3 input_position [[attribute(0)]];
     float3 input_normal [[attribute(1)]];
-    float4 input_row0 [[attribute(2)]];
-    float4 input_row1 [[attribute(3)]];
-    float4 input_row2 [[attribute(4)]];
-    float4 input_colour [[attribute(5)]];
+    float input_stretch [[attribute(2)]];
+    float4 input_row0 [[attribute(3)]];
+    float4 input_row1 [[attribute(4)]];
+    float4 input_row2 [[attribute(5)]];
+    float4 input_colour [[attribute(6)]];
+    float4 input_params [[attribute(7)]];
 };
 
-vertex main0_out main0(main0_in in [[stage_in]], constant Scene& _49 [[buffer(0)]])
+vertex main0_out main0(main0_in in [[stage_in]], constant Scene& _73 [[buffer(0)]])
 {
     main0_out out = {};
-    float4 _187 = float4(in.input_position, 1.0);
-    float4 _200 = float4(dot(in.input_row0, _187), dot(in.input_row1, _187), dot(in.input_row2, _187), 1.0);
-    out.gl_Position = float4(dot(_49.clip_x, _200), dot(_49.clip_y, _200), dot(_49.clip_z, _200), dot(_49.clip_w, _200));
-    out._entryPointOutput_world = _200.xyz;
+    float3 _201 = in.input_position + (in.input_normal * in.input_params.y);
+    _201.y += (in.input_stretch * in.input_params.x);
+    float4 _234 = float4(_201, 1.0);
+    float4 _247 = float4(dot(in.input_row0, _234), dot(in.input_row1, _234), dot(in.input_row2, _234), 1.0);
+    out.gl_Position = float4(dot(_73.clip_x, _247), dot(_73.clip_y, _247), dot(_73.clip_z, _247), dot(_73.clip_w, _247));
+    out._entryPointOutput_world = _247.xyz;
     out._entryPointOutput_normal = float3(dot(cross(in.input_row1.xyz, in.input_row2.xyz), in.input_normal), dot(cross(in.input_row2.xyz, in.input_row0.xyz), in.input_normal), dot(cross(in.input_row0.xyz, in.input_row1.xyz), in.input_normal));
     out._entryPointOutput_colour = in.input_colour;
-    out._entryPointOutput_eye = _49.eye.xyz;
-    out._entryPointOutput_light = _49.light.xyz;
+    out._entryPointOutput_eye = _73.eye.xyz;
+    out._entryPointOutput_light = _73.light.xyz;
     return out;
 }
 

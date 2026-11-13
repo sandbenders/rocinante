@@ -86,15 +86,17 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 	target := sdl.GPUColorTargetDescription{format = key.format}
 	buffers := [2]sdl.GPUVertexBufferDescription{
 		{slot = 0, pitch = size_of(Vertex3), input_rate = .VERTEX},
-		{slot = 1, pitch = size_of(Item3), input_rate = .INSTANCE},
+		{slot = 1, pitch = size_of(Instance3), input_rate = .INSTANCE},
 	}
-	attributes := [6]sdl.GPUVertexAttribute{
+	attributes := [8]sdl.GPUVertexAttribute{
 		{location = 0, buffer_slot = 0, format = .FLOAT3, offset = u32(offset_of(Vertex3, position))},
 		{location = 1, buffer_slot = 0, format = .FLOAT3, offset = u32(offset_of(Vertex3, normal))},
-		{location = 2, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Item3, model))},
-		{location = 3, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Item3, model)) + 16},
-		{location = 4, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Item3, model)) + 32},
-		{location = 5, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Item3, colour))},
+		{location = 2, buffer_slot = 0, format = .FLOAT, offset = u32(offset_of(Vertex3, stretch))},
+		{location = 3, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, model))},
+		{location = 4, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, model)) + 16},
+		{location = 5, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, model)) + 32},
+		{location = 6, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, colour))},
+		{location = 7, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, params))},
 	}
 	info := sdl.GPUGraphicsPipelineCreateInfo{
 		vertex_shader     = vertex,
@@ -127,7 +129,7 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 // Puts the shapes' mesh on the GPU, once, and this frame's instances, grouped by shape so
 // each kind is one draw. Gives the instances in that order.
 @(private)
-scene_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Command_List, sorted: ^[dynamic]Item3, counts: ^[Shape3]u32) -> bool {
+scene_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Command_List, sorted: ^[dynamic]Instance3, counts: ^[Shape3]u32) -> bool {
 	meshes: Shape_Meshes
 	mesh_bytes_v, mesh_bytes_i := 0, 0
 	if !r.scene_ready {
@@ -140,12 +142,12 @@ scene_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comm
 	for shape in Shape3 {
 		for item in list.scene.items {
 			if item.shape == shape {
-				append(sorted, item)
+				append(sorted, item.instance)
 				counts[shape] += 1
 			}
 		}
 	}
-	instance_bytes := len(sorted) * size_of(Item3)
+	instance_bytes := len(sorted) * size_of(Instance3)
 
 	if !r.scene_ready {
 		if _, ok := ensure_buffer(r, &r.scene_vertices, {.VERTEX}, mesh_bytes_v); !ok {return false}
@@ -188,7 +190,7 @@ scene_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comm
 // draws every shape. The color is kept in the multisampled texture when there is one, not
 // resolved, because the 2D pass that follows adds to it and resolves it.
 @(private)
-draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Command_List, target, msaa: ^sdl.GPUTexture, format: sdl.GPUTextureFormat, pixels: [2]u32, canvas: [2]f32, samples: sdl.GPUSampleCount, sorted: []Item3, counts: [Shape3]u32) -> bool {
+draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Command_List, target, msaa: ^sdl.GPUTexture, format: sdl.GPUTextureFormat, pixels: [2]u32, canvas: [2]f32, samples: sdl.GPUSampleCount, sorted: []Instance3, counts: [Shape3]u32) -> bool {
 	pipeline := get_pipeline(r, .Scene3, format, samples)
 	depth := depth_texture(r, pixels.x, pixels.y, samples)
 	if pipeline == nil || depth == nil {

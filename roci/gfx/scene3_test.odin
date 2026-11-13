@@ -233,3 +233,135 @@ test_normalising_and_crossing_vectors :: proc(t: ^testing.T) {
 close :: proc(a, b: f32, tolerance: f32 = 1e-4) -> bool {
 	return abs(a - b) <= tolerance
 }
+
+@(test)
+test_every_shape_has_triangles_inside_its_unit_size :: proc(t: ^testing.T) {
+	m := build_shape_meshes()
+	defer shape_meshes_destroy(&m)
+	total := 0
+	for shape in Shape3 {
+		range := m.ranges[shape]
+		testing.expectf(t, range.index_count > 0 && range.index_count % 3 == 0, "%v has whole triangles", shape)
+		testing.expect_value(t, int(range.first_index), total)
+		total += int(range.index_count)
+	}
+	testing.expect_value(t, total, len(m.mesh.indices))
+	for i in m.mesh.indices {
+		testing.expect(t, int(i) < len(m.mesh.vertices), "an index inside the vertices")
+	}
+	for v in m.mesh.vertices {
+		n := math.sqrt(v.normal.x * v.normal.x + v.normal.y * v.normal.y + v.normal.z * v.normal.z)
+		testing.expect(t, close(n, 1, 1e-3), "normals are unit length")
+	}
+	// the cone and the cylinder stand on y: height 1 and diameter 1
+	for shape in ([?]Shape3{.Cone, .Cylinder}) {
+		low, high := f32(10), f32(-10)
+		widest := f32(0)
+		range := m.ranges[shape]
+		for i in range.first_index ..< range.first_index + range.index_count {
+			p := m.mesh.vertices[m.mesh.indices[i]].position
+			low, high = min(low, p.y), max(high, p.y)
+			widest = max(widest, math.sqrt(p.x * p.x + p.z * p.z))
+		}
+		testing.expect(t, close(low, -0.5) && close(high, 0.5), "a height of 1")
+		testing.expect(t, close(widest, 0.5), "a diameter of 1")
+	}
+	// the cone ends in a point at the top
+	cone := m.ranges[.Cone]
+	tip_seen := false
+	for i in cone.first_index ..< cone.first_index + cone.index_count {
+		p := m.mesh.vertices[m.mesh.indices[i]].position
+		if p.y == -0.5 && p.x == 0 && p.z == 0 {
+			tip_seen = true
+		}
+	}
+	testing.expect(t, tip_seen, "the tip is at the top")
+	// the capsule's two halves are told apart for the instance to move them apart
+	tops, bottoms := 0, 0
+	capsule := m.ranges[.Capsule]
+	for i in capsule.first_index ..< capsule.first_index + capsule.index_count {
+		switch m.mesh.vertices[m.mesh.indices[i]].stretch {
+		case -1: tops += 1
+		case 1:  bottoms += 1
+		case:    testing.expect(t, false, "every corner of a capsule is in a half")
+		}
+	}
+	testing.expect_value(t, tops > 0 && bottoms > 0, true)
+	// the icosphere has 80 flat faces
+	testing.expect_value(t, m.ranges[.Icosphere].index_count, 240)
+	// a torus corner is on the ring of radius 0.5 before the tube is added
+	torus := m.ranges[.Torus]
+	for i in torus.first_index ..< torus.first_index + torus.index_count {
+		p := m.mesh.vertices[m.mesh.indices[i]].position
+		testing.expect(t, close(math.sqrt(p.x * p.x + p.z * p.z), 0.5) && p.y == 0, "on the ring")
+	}
+}
+
+@(test)
+test_a_basis_along_a_direction_takes_y_there :: proc(t: ^testing.T) {
+	for dir in ([?][3]f64{{1, 0, 0}, {0, 1, 0}, {0, 0, -1}, {1, 2, 3}, {0, -1, 0}}) {
+		m := basis_along(dir)
+		want := normalize3(dir)
+		testing.expect(t, close(m[0, 1], f32(want.x)) && close(m[1, 1], f32(want.y)) && close(m[2, 1], f32(want.z)), "y goes along the direction")
+		// the other two axes are square to it and to each other, and have length 1
+		x := [3]f64{f64(m[0, 0]), f64(m[1, 0]), f64(m[2, 0])}
+		z := [3]f64{f64(m[0, 2]), f64(m[1, 2]), f64(m[2, 2])}
+		testing.expect(t, close(f32(dot3(x, want)), 0) && close(f32(dot3(z, want)), 0) && close(f32(dot3(x, z)), 0), "square to each other")
+		testing.expect(t, close(f32(dot3(x, x)), 1) && close(f32(dot3(z, z)), 1), "of length 1")
+	}
+	testing.expect_value(t, basis_along({}), identity4())
+}
+
+@(test)
+test_an_arrow_is_a_shaft_and_a_head_that_meet :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_arrow(&s, {0, 0, 0}, {100, 0, 0}, {255, 255, 255, 255})
+	if !testing.expect_value(t, len(s.items), 2) {
+		return
+	}
+	testing.expect_value(t, s.items[0].shape, Shape3.Cylinder)
+	testing.expect_value(t, s.items[1].shape, Shape3.Cone)
+	// the shaft's middle is at 42 along (the shaft is 84 long), the head's at 92
+	testing.expect(t, close(s.items[0].model[0][3], 42, 1e-3), "the shaft's middle")
+	testing.expect(t, close(s.items[1].model[0][3], 92, 1e-3), "the head's middle")
+	// no length, no arrow
+	scene_arrow(&s, {1, 1, 1}, {1, 1, 1}, {255, 255, 255, 255})
+	testing.expect_value(t, len(s.items), 2)
+	scene_arrow(&s, {0, 0, 0}, {math.nan_f64(), 0, 0}, {255, 255, 255, 255})
+	testing.expect_value(t, len(s.items), 2)
+}
+
+@(test)
+test_axes_and_a_grid_are_made_of_shapes :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_axes(&s, 100)
+	testing.expect_value(t, len(s.items), 6) // a shaft and a head for each
+	testing.expect(t, s.items[0].colour.r > 0.8 && s.items[0].colour.g < 0.5, "x is red")
+	testing.expect(t, s.items[2].colour.g > 0.6 && s.items[2].colour.r < 0.5, "y is green")
+	testing.expect(t, s.items[4].colour.b > 0.8 && s.items[4].colour.r < 0.5, "z is blue")
+	clear(&s.items)
+	scene_grid(&s, 100, 4, {255, 255, 255, 255})
+	testing.expect_value(t, len(s.items), 10) // five lines each way
+	clear(&s.items)
+	scene_grid(&s, 100, 100000, {255, 255, 255, 255})
+	testing.expect_value(t, len(s.items), 402) // never more than 200 squares
+	clear(&s.items)
+	scene_grid(&s, -5, 4, {255, 255, 255, 255})
+	scene_grid(&s, math.nan_f64(), 4, {255, 255, 255, 255})
+	testing.expect_value(t, len(s.items), 0)
+}
+
+@(test)
+test_params_reach_the_instance_and_the_hash :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_add(&s, .Capsule, {}, {1, 1, 1}, {0, 0, 0, 255}, {0.5, 0})
+	testing.expect_value(t, s.items[0].params, [4]f32{0.5, 0, 0, 0})
+	before := scene_hash(&s)
+	s.items[0].params.x = 1
+	testing.expect(t, scene_hash(&s) != before, "a longer capsule is a different picture")
+	scene_add(&s, .Torus, {}, {1, 1, 1}, {0, 0, 0, 255}, {math.nan_f64(), 0})
+	testing.expect_value(t, len(s.items), 1)
+}
