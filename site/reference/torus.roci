@@ -1,0 +1,3 @@
+background (rgb 20 24 44)
+turn 55 around x
+torus at 0 0 0 radius 80 tube 28 fill gold

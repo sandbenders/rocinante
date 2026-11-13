@@ -1,0 +1,4 @@
+background (rgb 20 24 44)
+turn 25 around x
+turn 20 around z
+cylinder at 0 0 0 radius 55 height 170 fill teal

@@ -195,6 +195,37 @@ VERBS := []Verb{
 		{{{"position", .Vector}, {"size", .Vector}}, SHAPE3_OPTIONS, .None},
 	}, "Draws a flat square in 3D, lying in the plane of x and z like a floor, about a point."},
 
+	{"cone", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"radius", .Number}, {"height", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"position", .Vector}, {"radius", .Number}, {"height", .Number}}, SHAPE3_OPTIONS, .None},
+	}, "Draws a cone in 3D about a point, its tip up."},
+	{"cylinder", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"radius", .Number}, {"height", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"position", .Vector}, {"radius", .Number}, {"height", .Number}}, SHAPE3_OPTIONS, .None},
+	}, "Draws a cylinder in 3D about a point, standing on its end."},
+	{"capsule", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"radius", .Number}, {"height", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"position", .Vector}, {"radius", .Number}, {"height", .Number}}, SHAPE3_OPTIONS, .None},
+	}, "Draws a capsule in 3D about a point: a cylinder with a half sphere on each end, the height counting both."},
+	{"torus", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"radius", .Number}, {"tube", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"position", .Vector}, {"radius", .Number}, {"tube", .Number}}, SHAPE3_OPTIONS, .None},
+	}, "Draws a ring in 3D lying in the plane of x and z about a point: the radius is to the middle of the tube, and the tube has a radius of its own."},
+	{"icosphere", {
+		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"radius", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"position", .Vector}, {"radius", .Number}}, SHAPE3_OPTIONS, .None},
+	}, "Draws a sphere of 80 flat faces in 3D about a point, which shows how the light falls on each."},
+	{"grid", {
+		{{{"size", .Number}, {"lines", .Number}}, SHAPE3_OPTIONS, .None},
+	}, "Draws a grid on the floor of the 3D scene, the plane of x and z: `lines` squares across a size, in the fill."},
+	{"axes", {
+		{{{"size", .Number}}, nil, .None},
+	}, "Draws the three axes of the 3D scene as arrows from the origin: x red, y green and z blue."},
+	{"arrow", {
+		{{{"x1", .Number}, {"y1", .Number}, {"z1", .Number}, {"x2", .Number}, {"y2", .Number}, {"z2", .Number}}, SHAPE3_OPTIONS, .None},
+		{{{"from", .Vector}, {"to", .Vector}}, SHAPE3_OPTIONS, .None},
+	}, "Draws an arrow in 3D from one point to another, in the fill."},
+
 	// Text
 	{"text", {
 		{{{"words", .Text}, {"x", .Number}, {"y", .Number}}, TEXT_OPTIONS, .None},

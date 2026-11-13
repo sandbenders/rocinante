@@ -14,11 +14,11 @@ import "gfx"
 Axis :: gfx.Axis3
 
 @(private)
-add_shape3 :: proc(shape: gfx.Shape3, at, size: [3]f64, look: Look) {
+add_shape3 :: proc(shape: gfx.Shape3, at, size: [3]f64, look: Look, params := [2]f64{}) {
 	list := current_list()
 	opened := begin_look(list, look)
 	if list.style.fill_on {
-		gfx.scene_add(&list.scene, shape, at, size, list.style.fill)
+		gfx.scene_add(&list.scene, shape, at, size, list.style.fill, params)
 	}
 	end_look(list, opened)
 }
@@ -152,3 +152,123 @@ camera_of :: proc(w: Window) -> (yaw, pitch, zoom: f32) {
 	}
 	return
 }
+
+// ---- the other solids ----
+
+@(private)
+add_round3 :: proc(shape: gfx.Shape3, at: [3]f64, radius, height: f64, look: Look) {
+	add_shape3(shape, at, {radius * 2, height, radius * 2}, look)
+}
+
+cone_xyz :: proc(x, y, z, radius, height: f64, look := Look{}) {
+	add_round3(.Cone, {x, y, z}, radius, height, look)
+}
+
+cone_v :: proc(position: [3]f64, radius, height: f64, look := Look{}) {
+	add_round3(.Cone, position, radius, height, look)
+}
+
+// A cone about its middle, its tip up, from a radius and a height.
+cone :: proc{cone_xyz, cone_v}
+
+cylinder_xyz :: proc(x, y, z, radius, height: f64, look := Look{}) {
+	add_round3(.Cylinder, {x, y, z}, radius, height, look)
+}
+
+cylinder_v :: proc(position: [3]f64, radius, height: f64, look := Look{}) {
+	add_round3(.Cylinder, position, radius, height, look)
+}
+
+// A cylinder about its middle, standing on its end, from a radius and a height.
+cylinder :: proc{cylinder_xyz, cylinder_v}
+
+@(private)
+add_capsule :: proc(at: [3]f64, given_radius, height: f64, look: Look) {
+	// the height counts the rounded ends, so it is never less than the two radii
+	radius := abs(given_radius)
+	stretch := 0.0
+	if radius > 0 {
+		stretch = max(height - radius * 2, 0) / (radius * 4)
+	}
+	add_shape3(.Capsule, at, {radius * 2, radius * 2, radius * 2}, look, {stretch, 0})
+}
+
+capsule_xyz :: proc(x, y, z, radius, height: f64, look := Look{}) {
+	add_capsule({x, y, z}, radius, height, look)
+}
+
+capsule_v :: proc(position: [3]f64, radius, height: f64, look := Look{}) {
+	add_capsule(position, radius, height, look)
+}
+
+// A capsule about its middle: a cylinder with a half sphere on each end, the height counting both.
+capsule :: proc{capsule_xyz, capsule_v}
+
+@(private)
+add_torus :: proc(at: [3]f64, given_radius, tube: f64, look: Look) {
+	radius := abs(given_radius)
+	ratio := 0.0
+	if radius > 0 {
+		ratio = abs(tube) / (radius * 2)
+	}
+	add_shape3(.Torus, at, {radius * 2, radius * 2, radius * 2}, look, {0, ratio})
+}
+
+torus_xyz :: proc(x, y, z, radius, tube: f64, look := Look{}) {
+	add_torus({x, y, z}, radius, tube, look)
+}
+
+torus_v :: proc(position: [3]f64, radius, tube: f64, look := Look{}) {
+	add_torus(position, radius, tube, look)
+}
+
+// A ring lying in the plane of x and z about a point: its radius is to the middle of the tube, whose own radius is `tube`.
+torus :: proc{torus_xyz, torus_v}
+
+icosphere_xyzr :: proc(x, y, z, radius: f64, look := Look{}) {
+	add_shape3(.Icosphere, {x, y, z}, {radius * 2, radius * 2, radius * 2}, look)
+}
+
+icosphere_vr :: proc(position: [3]f64, radius: f64, look := Look{}) {
+	icosphere_xyzr(position.x, position.y, position.z, radius, look)
+}
+
+// A sphere of 80 flat faces, which shows how the light falls on each.
+icosphere :: proc{icosphere_xyzr, icosphere_vr}
+
+// ---- helpers ----
+
+grid_size_lines :: proc(size: f64, lines: int, look := Look{}) {
+	list := current_list()
+	opened := begin_look(list, look)
+	if list.style.fill_on {
+		gfx.scene_grid(&list.scene, size, lines, list.style.fill)
+	}
+	end_look(list, opened)
+}
+
+// A grid on the floor, `lines` squares across, in the fill.
+grid :: proc{grid_size_lines}
+
+axes_size :: proc(size: f64) {
+	gfx.scene_axes(&current_list().scene, size)
+}
+
+// The three axes as arrows: x red, y green, z blue.
+axes :: proc{axes_size}
+
+arrow_xyz :: proc(x1, y1, z1, x2, y2, z2: f64, look := Look{}) {
+	arrow_v({x1, y1, z1}, {x2, y2, z2}, look)
+}
+
+arrow_v :: proc(from, to: [3]f64, look := Look{}) {
+	list := current_list()
+	opened := begin_look(list, look)
+	if list.style.fill_on {
+		gfx.scene_arrow(&list.scene, from, to, list.style.fill)
+	}
+	end_look(list, opened)
+}
+
+// An arrow from one place to another, in the fill.
+arrow :: proc{arrow_xyz, arrow_v}

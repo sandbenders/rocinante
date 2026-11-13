@@ -434,6 +434,46 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		} else {
 			roci.plane_v(p3(a, 0), p(a, 1), look^)
 		}
+	case .Cone:
+		if call.shape == 0 {
+			roci.cone_xyz(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), look^)
+		} else {
+			roci.cone_v(p3(a, 0), n(a, 1), n(a, 2), look^)
+		}
+	case .Cylinder:
+		if call.shape == 0 {
+			roci.cylinder_xyz(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), look^)
+		} else {
+			roci.cylinder_v(p3(a, 0), n(a, 1), n(a, 2), look^)
+		}
+	case .Capsule:
+		if call.shape == 0 {
+			roci.capsule_xyz(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), look^)
+		} else {
+			roci.capsule_v(p3(a, 0), n(a, 1), n(a, 2), look^)
+		}
+	case .Torus:
+		if call.shape == 0 {
+			roci.torus_xyz(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), look^)
+		} else {
+			roci.torus_v(p3(a, 0), n(a, 1), n(a, 2), look^)
+		}
+	case .Icosphere:
+		if call.shape == 0 {
+			roci.icosphere_xyzr(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look^)
+		} else {
+			roci.icosphere_vr(p3(a, 0), n(a, 1), look^)
+		}
+	case .Grid:
+		roci.grid_size_lines(n(a, 0), int(n(a, 1)), look^)
+	case .Axes:
+		roci.axes_size(n(a, 0))
+	case .Arrow:
+		if call.shape == 0 {
+			roci.arrow_xyz(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4), n(a, 5), look^)
+		} else {
+			roci.arrow_v(p3(a, 0), p3(a, 1), look^)
+		}
 	case .Circle:
 		if call.shape == 0 {
 			roci.circle_xyr(n(a, 0), n(a, 1), n(a, 2), look^, origin)

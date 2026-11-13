@@ -1,0 +1,4 @@
+background (rgb 20 24 44)
+turn 25 around x
+turn 35 around z
+capsule at 0 0 0 radius 45 height 190 fill (rgb 230 90 120)

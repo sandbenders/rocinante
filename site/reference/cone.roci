@@ -1,0 +1,3 @@
+background (rgb 20 24 44)
+turn 25 around x
+cone at 0 0 0 radius 70 height 160 fill orange

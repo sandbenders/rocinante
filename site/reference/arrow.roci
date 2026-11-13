@@ -1,0 +1,4 @@
+background (rgb 20 24 44)
+turn 25 around y
+turn 20 around x
+arrow from -100 60 0 to 100 -60 40 fill orange

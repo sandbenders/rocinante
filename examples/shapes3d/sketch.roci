@@ -1,0 +1,49 @@
+// Shapes in space: every solid there is so far, standing on a grid with the axes drawn at the
+// middle (x red, y green, z blue). `cone`, `cylinder` and `capsule` stand on their ends and
+// take a radius and a height; `torus` is a ring, whose radius reaches the middle of its tube
+// and whose `tube` is how thick that is; `icosphere` is a sphere of flat faces, which shows
+// how the light falls; `box` and `sphere` are as before. `grid`, `axes` and `arrow` are
+// helpers for seeing where things are. Drag to look round, and turn the wheel to come closer.
+window size 720 460 title "shapes in space"
+
+SPIN = 0.6
+
+draw [
+  background (rgb 16 20 38)
+  fill (rgb 70 84 130)
+  grid size 640 lines 16
+  axes size 90
+  push [
+    move -225 -60 0
+    turn (frame * SPIN) around y
+    cone at 0 0 0 radius 45 height 110 fill (rgb 240 150 60)
+  ]
+  push [
+    move -135 -60 0
+    turn (frame * SPIN) around y
+    cylinder at 0 0 0 radius 40 height 110 fill (rgb 70 190 170)
+  ]
+  push [
+    move -45 -60 0
+    turn (frame * SPIN) around y
+    turn 20 around z
+    capsule at 0 0 0 radius 32 height 130 fill (rgb 230 90 120)
+  ]
+  push [
+    move 45 -60 0
+    turn 60 around x
+    turn (frame * SPIN) around z
+    torus at 0 0 0 radius 45 tube 16 fill (rgb 240 200 70)
+  ]
+  push [
+    move 135 -60 0
+    turn (frame * SPIN) around y
+    icosphere at 0 0 0 radius 50 fill (rgb 120 170 250)
+  ]
+  push [
+    move 225 -60 0
+    turn (frame * SPIN) around y
+    box at 0 0 0 size 80 fill (rgb 170 120 230)
+  ]
+  arrow from -225 70 120 to 225 70 120 fill (rgb 240 240 240)
+]
