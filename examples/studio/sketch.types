@@ -17,7 +17,7 @@ stamps: a list of records with pos
 wipe: true or false
 made: a number
 turning: a number
-around: a number
+turned: a number
 spot: a vector of 2 numbers
 grown: a number
 color_here: a color

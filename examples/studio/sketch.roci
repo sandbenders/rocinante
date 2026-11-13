@@ -95,8 +95,8 @@ draw stage [
     if way is "anticlockwise" [ turning = -turning ]
     for ring from 1 to rings [
       for i from 0 to dots - 1 [
-        around = turning * (1 + ring * 0.25) + i * 360 / dots
-        spot = { middle.x * 560 + cos around * ring * 55, middle.y * 560 + sin around * ring * 55 }
+        turned = turning * (1 + ring * 0.25) + i * 360 / dots
+        spot = { middle.x * 560 + cos turned * ring * 55, middle.y * 560 + sin turned * ring * 55 }
         grown = sizes.x + (sizes.y - sizes.x) * i / dots
         color_here = dot_color i
         if shape is "square" [

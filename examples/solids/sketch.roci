@@ -1,0 +1,26 @@
+// Solids, the first sketch in space: a floor, a sphere and a ring of boxes that turns
+// round it. `box`, `sphere` and `plane` work like the flat shapes, with a z beside x and y:
+// the middle of the window is 0 0 0, x goes right, y goes down and z comes towards you.
+// `move`, `turn` and `grow` take three numbers or an axis (`turn 30 around y`) to
+// move and turn what is drawn after them. Drag the mouse to walk the camera round the
+// scene and turn the wheel to come closer; whatever is flat is drawn over it.
+window size 640 420 title "solids"
+
+draw [
+  background (rgb 16 20 38)
+  plane at 0 100 0 size 640 640 fill (rgb 44 54 92)
+  sphere at 0 30 0 radius 50 fill (rgb 255 190 80)
+  push [
+    turn (frame * 0.8) around y
+    for i from 1 to 6 [
+      push [
+        turn (i * 60) around y
+        move 150 40 0
+        turn (frame * 2) around x
+        box at 0 0 0 size 50 fill (hsb (i * 40 + frame) 170 235)
+      ]
+    ]
+  ]
+  fill white
+  text "drag to look round" at 20 20
+]

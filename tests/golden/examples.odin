@@ -76,6 +76,7 @@ EXAMPLES := [?]Example{
 	{"recursion", 3, {1}}, // Processing's Recursion: circles that draw four smaller circles on their sides
 	{"colorwheel", 20, {1}}, // Processing's Hue: wedges filled by hue round the wheel and by saturation in towards the middle
 	{"studio", 60, {1, 2}}, // two windows: a control surface with every widget, and a stage of circling dots they steer, with trails on a canvas
+	{"solids", 60, {1}}, // the first 3D sketch: a floor, a sphere and a ring of turning boxes, lit and hiding each other, with a line of flat text over them
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.
