@@ -2254,6 +2254,8 @@ make_message_sketch :: proc(t: ^testing.T) -> string {
 	testing.expect(t, folder.ensure_directory(root + "/assets/3d-models/a"))
 	testing.expect(t, folder.ensure_directory(root + "/assets/3d-models/b"))
 	testing.expect(t, os.write_entire_file(root + "/assets/3d-models/broken.glb", transmute([]byte)string("not a model")) == nil)
+	testing.expect(t, os.write_entire_file(root + "/assets/3d-models/lost.obj", transmute([]byte)string("mtllib lost.mtl\nusemtl painted\nv 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nf 1/1 2/2 3/3\n")) == nil)
+	testing.expect(t, os.write_entire_file(root + "/assets/3d-models/lost.mtl", transmute([]byte)string("newmtl painted\nKd 0.8 0.2 0.2\nmap_Kd lost.png\n")) == nil)
 	testing.expect(t, os.write_entire_file(root + "/assets/3d-models/a/twin.glb", transmute([]byte)string("x")) == nil)
 	testing.expect(t, os.write_entire_file(root + "/assets/3d-models/b/twin.glb", transmute([]byte)string("x")) == nil)
 	testing.expect(t, folder.ensure_directory(root + "/assets/shaders"))

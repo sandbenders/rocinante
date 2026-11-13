@@ -10,14 +10,19 @@ import "../folder"
 import "../gfx"
 import "../lang"
 
-// A sketch folder holding the example's ship, for tests of what `model` finds.
+// A sketch folder holding the box-and-cone ship of tests/models (`tools/model` writes it) and the example's textured one, for tests of what `model` finds.
 make_model_folder :: proc(t: ^testing.T, name: string) -> string {
 	root := strings.concatenate({"output/tests/", name}, context.temp_allocator)
 	_ = os.remove_all(root)
 	testing.expect(t, folder.ensure_directory(strings.concatenate({root, "/assets/3d-models"}, context.temp_allocator)))
-	ship, err := os.read_entire_file("examples/model/assets/3d-models/ship.glb", context.temp_allocator)
+	ship, err := os.read_entire_file("tests/models/ship.glb", context.temp_allocator)
 	testing.expect(t, err == nil)
 	testing.expect(t, os.write_entire_file(strings.concatenate({root, "/assets/3d-models/ship.glb"}, context.temp_allocator), ship) == nil)
+	for file in ([?]string{"striker.obj", "striker.mtl", "striker.png"}) {
+		bytes, read_error := os.read_entire_file(strings.concatenate({"examples/model/assets/3d-models/", file}, context.temp_allocator), context.temp_allocator)
+		testing.expect(t, read_error == nil)
+		testing.expect(t, os.write_entire_file(strings.concatenate({root, "/assets/3d-models/", file}, context.temp_allocator), bytes) == nil)
+	}
 	testing.expect(t, os.write_entire_file(strings.concatenate({root, "/sketch.roci"}, context.temp_allocator), transmute([]byte)string("circle at 1 1 radius 1\n")) == nil)
 	return root
 }
@@ -174,6 +179,41 @@ test_the_model_example_runs_with_its_ship :: proc(t: ^testing.T) {
 	}
 	defer finish(p)
 	testing.expect_value(t, len(p.errors), 0)
-	testing.expect_value(t, len(roci.scene_items(first_window())), 9) // eight parts of the ship and the floor
+	testing.expect_value(t, len(roci.scene_items(first_window())), 2) // the ship (one material, one part) and the floor
 	testing.expect(t, roci.shadows_of(first_window()), "it asks for shadows")
+}
+
+@(test)
+test_an_obj_model_is_found_by_name_and_wears_its_picture :: proc(t: ^testing.T) {
+	root := make_model_folder(t, "model_obj")
+	p := run_in_folder(t, root, "draw [ model \"striker.obj\" at 0 0 0 size 100 ]\n", 2)
+	defer finish(p)
+	items := roci.scene_items(first_window())
+	// one material, one part
+	if !testing.expect_value(t, len(items), 1) {
+		return
+	}
+	data := gfx.model_data(items[0].model_id)
+	if !testing.expect(t, data != nil, "the model is kept") {
+		return
+	}
+	testing.expect(t, data.parts[0].textures[.Colour] != 0, "the painted picture came with it")
+	testing.expect(t, gfx.image_data(data.parts[0].textures[.Colour]) != nil, "and is kept")
+	testing.expect_value(t, data.lost_textures, 0)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_a_model_whose_picture_is_not_beside_it_draws_plain_and_says_so_once :: proc(t: ^testing.T) {
+	root := make_model_folder(t, "model_lost_picture")
+	// the same ship, with a material that names a picture that is not there
+	testing.expect(t, os.write_entire_file(strings.concatenate({root, "/assets/3d-models/striker.mtl"}, context.temp_allocator), transmute([]byte)string("newmtl Texture\nKd 0.9 0.1 0.1\nmap_Kd gone.png\n")) == nil)
+	p := run_in_folder(t, root, "draw [ model \"striker.obj\" at 0 0 0 size 100 ]\n", 5)
+	defer finish(p)
+	testing.expect_value(t, len(roci.scene_items(first_window())), 1)
+	said := 0
+	for e in p.errors {
+		if e.id == .Model_Texture {said += 1}
+	}
+	testing.expect_value(t, said, 1)
 }

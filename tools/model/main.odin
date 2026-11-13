@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: 0BSD
 //
-// Makes the model that `examples/model` draws, `ship.glb`: a small ship put together from two
-// shapes (a box and a cone) placed by the nodes of a glTF file, each with a material of its own,
-// so the example has a model to show without one being downloaded from anywhere, and a file that
-// checks the loader's nodes, transforms and materials. It writes the glb by hand, the way the
-// loader reads it:
+// Makes `tests/models/ship.glb`: a small ship put together from two shapes (a box and a cone)
+// placed by the nodes of a glTF file, each with a material of its own, so the tests have a file that
+// checks the loader's nodes, transforms and materials with no model downloaded from anywhere (the
+// example draws a real one, with pictures). It writes the glb by hand, the way the loader reads it:
 //
-//     odin run tools/model -- examples/model/assets/3d-models/ship.glb
+//     odin run tools/model -- tests/models/ship.glb
 package main
 
 import "core:fmt"

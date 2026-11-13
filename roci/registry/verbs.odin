@@ -265,7 +265,7 @@ VERBS := []Verb{
 	{"model", {
 		{{{"file", .Text}, {"x", .Number}, {"y", .Number}, {"z", .Number}, {"size", .Number}}, nil, .None},
 		{{{"file", .Text}, {"position", .Vector}, {"size", .Number}}, nil, .None},
-	}, "Draws a glTF model (a `.glb` or `.gltf` file in the sketch's assets) with its middle at a point and its longest side `size` long, in the colors, metal and roughness of its own materials. Its textures, animations and cameras are not used yet."},
+	}, "Draws a model (a glTF `.glb` or `.gltf` file, or an OBJ `.obj` file, in the sketch's assets) with its middle at a point and its longest side `size` long, in the colors, metal and roughness of its own materials and with the pictures they are painted with: color, normal map, metal and roughness, and the light they give. The pictures are found beside the model (an OBJ names them in its `.mtl` file with `map_Kd`). Its animations, cameras and lights are not used yet."},
 
 	// Text
 	{"text", {

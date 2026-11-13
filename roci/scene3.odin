@@ -402,12 +402,13 @@ shadows_of :: proc(w: Window) -> bool {
 
 Model :: gfx.Model_Id
 
-// Reads a glTF model (the bytes of a `.glb` or `.gltf`) and keeps it. `path` and `stamp` (when the file
+// Reads a model (the bytes of a `.glb`, a `.gltf` or an `.obj`) and keeps it. `path` and `stamp` (when the file
 // was last changed) are how it is told from the others and found again: the same path with a new stamp
-// replaces what was kept, under the same number. `reader` gives the files a `.gltf` names beside itself.
+// replaces what was kept, under the same number. `reader` gives the files a model names beside itself: a
+// `.gltf`'s data, an `.obj`'s `.mtl`, and the pictures.
 // Gives the model, or why it could not be read.
 add_model :: proc(path: string, stamp: i64, bytes: []u8, reader: gfx.Gltf_Reader = nil) -> (model: Model, error: gfx.Gltf_Error) {
-	data, read_error := gfx.gltf_read(bytes, reader)
+	data, read_error := gfx.model_read(path, bytes, reader)
 	if read_error != .None {
 		return 0, read_error
 	}
@@ -436,3 +437,12 @@ model_v :: proc(model: Model, position: [3]f64, size: f64) {
 
 // Draws a loaded model: `model_xyz` or `model_v`.
 draw_model :: proc{model_xyz, model_v}
+
+// How many pictures a loaded model names that could not be read (a file that is not beside it, or not a
+// picture), which leave their material in its plain color.
+model_lost_textures :: proc(model: Model) -> int {
+	if data := gfx.model_data(model); data != nil {
+		return data.lost_textures
+	}
+	return 0
+}

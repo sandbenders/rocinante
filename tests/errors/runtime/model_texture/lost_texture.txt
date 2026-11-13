@@ -1,0 +1,8 @@
+── Warning: I could not read every picture of the model `lost.obj` ─── sketch.roci:1:1
+
+1 │ model "lost.obj" at 0 0 0 size 100
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A picture the model names is not beside it, or is not a PNG, JPEG, BMP, TGA or QOI file. Those parts are drawn in their plain colors, and the sketch carries on.
+
+Put the pictures beside the model, in its folder of `assets`, under the names the model gives them:  model "lost.obj" at 0 0 0 size 200

@@ -1,0 +1,5 @@
+# Striker, a spaceship from the Ultimate Spaceships pack by Quaternius (CC0, https://quaternius.com).
+# The picture is shrunk to 1024 pixels and named here, which the pack's own .mtl does not.
+newmtl Texture
+Ns 96.078431
+map_Kd striker.png

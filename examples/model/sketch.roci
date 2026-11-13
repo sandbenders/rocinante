@@ -1,9 +1,11 @@
-// Model: a glTF model from the sketch's assets folder, drawn with `model`. The file, `ship.glb`,
-// was put together from a box and a cone, each with a material of its own, and the model brings those
-// materials with it: the metal of the hull, the orange of the wings, the glass that glows a little and
-// the hot engines. `model` puts the middle of the model at a place and makes its longest side `size`
-// long, whatever it was drawn in, and `turn`, `move` and `grow` work on it as on any shape. It lights
-// and casts shadows like the rest of the scene. Textures and animation are not read yet.
+// Model: a model from the sketch's assets folder, drawn with `model`. The ship is `striker.obj`, one of
+// the CC0 spaceships of Quaternius's Ultimate Spaceships pack (quaternius.com): an OBJ file whose
+// `striker.mtl` names the painted picture, `striker.png`, that gives it every panel line and color.
+// `model` reads OBJ files and glTF ones (`.glb` and `.gltf`), with the pictures a material is painted
+// with: its color, its normal map, its metal and roughness, and the light it gives. `model` puts the
+// middle of the model at a place and makes its longest side `size` long, whatever it was drawn in,
+// and `turn`, `move` and `grow` work on it as on any shape. It lights and casts shadows like the
+// rest of the scene. Animation is not read yet.
 // Drag to look round.
 window size 760 460 title "model"
 
@@ -15,11 +17,11 @@ draw [
   shadows
   fill (rgb 128 136 156)
   material roughness 0.95
-  plane at 0 70 0 size 800 700
+  plane at 0 120 0 size 800 700
   push [
-    move 0 (sin (frame * 2) * 8 - 55) 0
+    move 0 (sin (frame * 2) * 8 - 45) 0
     turn (frame * 0.7) around y
-    turn 10 around z
-    model "ship.glb" at 0 0 0 size 340
+    turn 12 around z
+    model "striker.obj" at 0 0 0 size 380
   ]
 ]

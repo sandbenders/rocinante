@@ -35,6 +35,7 @@ Model_Entry :: struct {
 	others:  string,    // for an ambiguous name, the files that share it
 	suggest: string,    // and the first of them
 	reason:  string,    // for a file that cannot be read, why, in words
+	lost:    int,       // how many of its pictures could not be read
 }
 
 @(thread_local) model_directory: string
@@ -79,6 +80,9 @@ load_model :: proc(it: ^Interp, name: string, span: lang.Span) -> roci.Model {
 		say_model_problem(it, name, fresh, span)
 		return 0
 	}
+	if fresh.lost > 0 {
+		say_model_problem(it, name, fresh, span, true)
+	}
 	return fresh.id
 }
 
@@ -109,6 +113,7 @@ read_model :: proc(it: ^Interp, name: string) -> (entry: Model_Entry) {
 	// a file that was read already (by another interpreter, before a reload) is not read again
 	if id, found := roci.find_model(entry.path, stamp); found {
 		entry.id = id
+		entry.lost = roci.model_lost_textures(id)
 		return
 	}
 	bytes, read_err := os.read_entire_file(entry.path, context.temp_allocator)
@@ -126,6 +131,7 @@ read_model :: proc(it: ^Interp, name: string) -> (entry: Model_Entry) {
 		return
 	}
 	entry.id = id
+	entry.lost = roci.model_lost_textures(id)
 	return
 }
 
@@ -161,7 +167,13 @@ drop_models :: proc(it: ^Interp) {
 }
 
 @(private)
-say_model_problem :: proc(it: ^Interp, name: string, entry: Model_Entry, span: lang.Span) {
+say_model_problem :: proc(it: ^Interp, name: string, entry: Model_Entry, span: lang.Span, textures := false) {
+	if textures {
+		words := "A picture the model names is not beside it, or is not a PNG, JPEG, BMP, TGA or QOI file."
+		if entry.lost > 1 {words = "Some pictures the model names are not beside it, or are not PNG, JPEG, BMP, TGA or QOI files."}
+		fail(it, .Model_Texture, span, name, words, "", strings.concatenate({"model \"", name, "\" at 0 0 0 size 200"}, context.temp_allocator))
+		return
+	}
 	example := strings.concatenate({"model \"", name, "\" at 0 0 0 size 200"}, context.temp_allocator)
 	switch entry.state {
 	case .Loaded:
@@ -170,6 +182,6 @@ say_model_problem :: proc(it: ^Interp, name: string, entry: Model_Entry, span: l
 	case .Ambiguous:
 		fail(it, .Model_Missing, span, name, strings.concatenate({"Two or more files have that name: ", entry.others, ". Say which one you mean with its folder."}, context.temp_allocator), "", strings.concatenate({"model \"", entry.suggest, "\" at 0 0 0 size 200"}, context.temp_allocator))
 	case .Unreadable:
-		fail(it, .Model_Unreadable, span, name, strings.concatenate({"I read glTF 2 models, which are `.glb` or `.gltf` files. I cannot use this one because ", entry.reason, "."}, context.temp_allocator), "", example)
+		fail(it, .Model_Unreadable, span, name, strings.concatenate({"I read glTF 2 models, which are `.glb` or `.gltf` files, and OBJ models. I cannot use this one because ", entry.reason, "."}, context.temp_allocator), "", example)
 	}
 }
