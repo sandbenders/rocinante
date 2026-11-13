@@ -135,3 +135,25 @@ without_name_drops_the_name_a_paragraph_starts_with :: proc(t: ^testing.T) {
 	testing.expect_value(t, without_name("Name: "), "Name: ")
 	testing.expect_value(t, summary_of("Bounce: a ball `turns` at the edges of its window and goes on."), "A ball turns at the edges of its window and goes on.")
 }
+
+// A category is a number into the list, so a new group in the middle of it moves the ones after it:
+// this keeps an example in the group its page says.
+@(test)
+examples_are_in_the_groups_they_belong_to :: proc(t: ^testing.T) {
+	expect_group :: proc(t: ^testing.T, name, group: string) {
+		for entry in SHOWCASE {
+			if entry.name == name {
+				testing.expectf(t, SHOWCASE_CATEGORIES[entry.category].name == group, "%s is under %s, not %s", name, SHOWCASE_CATEGORIES[entry.category].name, group)
+				return
+			}
+		}
+		testing.expectf(t, false, "%s is not on the site", name)
+	}
+	expect_group(t, "circle", "Basics")
+	expect_group(t, "studio", "Interface and windows")
+	expect_group(t, "solids", "Space")
+	expect_group(t, "shapes3d", "Space")
+	expect_group(t, "stage", "Space")
+	expect_group(t, "checks", "Tools")
+	expect_group(t, "export", "Tools")
+}

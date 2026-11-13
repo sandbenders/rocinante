@@ -32,7 +32,7 @@ SHOWCASE_CATEGORIES := [?]Showcase_Category{
 	{"Pictures and canvases", "Pictures from files, pictures made of pixels, pictures that paint, and canvases that keep what is drawn on them."},
 	{"Shaders and effects", "Effects over the whole window and shaders as the fill of shapes, your own and the ones that come with rocinante."},
 	{"Interface and windows", "Widgets and windows: sliders, dials and buttons, and sketches that open more than one window."},
-	{"Space", "Shapes in three dimensions: boxes, spheres and planes with a depth buffer and a light, drawn under everything flat, with a camera the mouse turns."},
+	{"Space", "Shapes in three dimensions: solids with a depth buffer and a light, drawn under everything flat, with a camera the mouse turns or the sketch places."},
 	{"Tools", "Checks that test a sketch, saving what it draws, and a benchmark."},
 }
 
@@ -103,12 +103,12 @@ SHOWCASE := [?]Showcase_Entry{
 	{"two_windows", 6, "Two windows", 30, 2},
 	{"garden", 6, "Garden", 30, 2},
 
-	{"checks", 7, "Checks", 3, 1},
-	{"export", 7, "Saving pictures", 5, 1},
+	{"checks", 8, "Checks", 3, 1},
+	{"export", 8, "Saving pictures", 5, 1},
 
-	{"solids", 8, "Solids", 60, 1},
-	{"shapes3d", 8, "Shapes in space", 60, 1},
-	{"stage", 8, "Stage", 60, 1},
+	{"solids", 7, "Solids", 60, 1},
+	{"shapes3d", 7, "Shapes in space", 60, 1},
+	{"stage", 7, "Stage", 60, 1},
 }
 
 // Examples that are not on the site, and why.
