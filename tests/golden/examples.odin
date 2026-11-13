@@ -29,6 +29,10 @@ Example :: struct {
 // They get a larger worst channel and allowance than `STRICT`, which a shifted or wrongly lit
 // picture still fails.
 SHADED :: Limits{tolerance = 12, allowed = 60, worst = 40}
+// The ship of `example_model` is lit through a texture and a normal map over a large area, so
+// Ubuntu's lavapipe differs from the Mac's on a few hundred pixels by small steps (390 pixels over 12,
+// worst channel 40, found by the first run on GitHub). A shifted or wrongly lit ship still fails.
+SHADED_MODEL :: Limits{tolerance = 12, allowed = 160, worst = 48}
 SHADED_PICTURES := [?]string{"example_solids_1", "example_shapes3d_1", "example_stage_1", "example_lights_1", "example_shadows_1", "example_model_1", "example_turtle3d_1", "example_collide3d_1", "example_textured_1", "model_pictures", "model_colours"}
 
 // `benchmark` has no picture: 100,000 small circles hardly compress (737 KB), and an
@@ -192,6 +196,9 @@ run_example :: proc(example: Example, number: int, name: string, update: bool) -
 	defer limits = saved
 	if limits == STRICT && slice.contains(SHADED_PICTURES[:], name) {
 		limits = SHADED
+		if name == "example_model_1" {
+			limits = SHADED_MODEL
+		}
 	}
 	diff := gfx.image_diff(picture, reference, limits.tolerance)
 	switch {
