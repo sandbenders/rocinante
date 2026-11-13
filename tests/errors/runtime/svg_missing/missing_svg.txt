@@ -1,0 +1,8 @@
+── I could not find a drawing called `nothing.svg` ───── sketch.roci:1:1
+
+1 │ svg "nothing.svg" at 0 0
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^
+
+Drawings are found by their file name in your sketch's `assets` folder, and there is no file of that name there. `roci add` copies one in for you. The drawing is not drawn, and the sketch carries on.
+
+Draw one that is there:  svg "nothing.svg" at 0 0

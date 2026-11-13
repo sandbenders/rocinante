@@ -24,6 +24,7 @@ kind_name :: proc "contextless" (kind: Kind) -> string {
 	case .Point:    return "point"
 	case .Triangle: return "triangle"
 	case .Quad:     return "quadrilateral"
+	case .Path:     return "path"
 	case .Arc:      return "arc"
 	case .Text, .Typeset: return "text"
 	case .Image:    return "image"
@@ -53,6 +54,8 @@ local_bounds :: proc "contextless" (c: Command) -> (x, y, w, h: f32) {
 		x, y = a[0], a[1]
 		if is_centred(c) {x, y = a[0] - a[2], a[1] - a[2]}
 		return x, y, d, d
+	case .Path:
+		return a[0], a[1], a[2], a[3]
 	case .Ellipse, .Rect, .Arc, .Image:
 		x, y = a[0], a[1]
 		if is_centred(c) {x, y = a[0] - a[2] / 2, a[1] - a[3] / 2}
@@ -90,6 +93,8 @@ has_area :: proc "contextless" (c: Command) -> bool {
 	case .Quad:
 		_, _, w, h := local_bounds(c)
 		return w > 0 && h > 0
+	case .Path:
+		return a[5] > 1
 	case .Text, .Typeset:
 		return a[3] > 0 && a[4] > 0
 	case .Line, .Point:
@@ -115,7 +120,7 @@ is_visible :: proc "contextless" (c: Command) -> bool {
 		return c.style.fill_on && has_area(c) // text is drawn in the fill colour
 	case .Image:
 		return c.style.tint.a > 0 && has_area(c) // a picture shows through its tint, not the fill
-	case .Circle, .Ellipse, .Rect, .Triangle, .Quad, .Arc:
+	case .Circle, .Ellipse, .Rect, .Triangle, .Quad, .Arc, .Path:
 		return (c.style.fill_on && has_area(c)) || has_outline
 	}
 	return false

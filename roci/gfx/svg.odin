@@ -423,6 +423,8 @@ svg_shape :: proc(s: ^Svg, c: Command) {
 		strings.write_string(b, "/>\n")
 	case .Arc:
 		svg_arc(s, c, box)
+	case .Path:
+		path_element(s, c, box)
 	case .Typeset:
 		typeset_element(s, c, box)
 	case .Text:
@@ -715,5 +717,42 @@ image_element :: proc(s: ^Svg, c: Command) {
 	// the picture is its own size at the origin: scaled and moved into its box, then carried by the transform
 	t := transform_mul(c.transform, Transform{lw / f32(data.width), 0, 0, lh / f32(data.height), lx, ly})
 	write_transform(b, t)
+	strings.write_string(b, "/>\n")
+}
+
+// A path: one `path` element with a sub-path for each contour, filled by the even-odd rule as it is drawn.
+@(private = "file")
+path_element :: proc(s: ^Svg, c: Command, box: [4]f32) {
+	b := &s.body
+	points := path_points(s.list, c)
+	if len(points) == 0 {
+		return
+	}
+	strings.write_string(b, `<path fill-rule="evenodd" d="`)
+	at, first := 0, true
+	for {
+		contour, closed, after, ok := next_contour(points, at)
+		if !ok {
+			break
+		}
+		at = after
+		for p, i in contour {
+			if !first || i > 0 {
+				strings.write_byte(b, ' ')
+			}
+			first = false
+			strings.write_byte(b, 'M' if i == 0 else 'L')
+			number(b, p.x)
+			strings.write_byte(b, ',')
+			number(b, p.y)
+		}
+		if closed && len(contour) > 0 {
+			strings.write_string(b, " Z")
+		}
+	}
+	strings.write_byte(b, '"')
+	fill_attrs(s, c, box)
+	stroke_attrs(s, c, box)
+	write_transform(b, c.transform)
 	strings.write_string(b, "/>\n")
 }

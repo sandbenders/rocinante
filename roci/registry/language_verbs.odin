@@ -143,6 +143,12 @@ LANGUAGE_VERBS := []Verb{
 		{{{"file", .Text}, {"x", .Number}, {"y", .Number}, {"z", .Number}, {"size", .Number}}, nil, .List},
 		{{{"file", .Text}, {"position", .Vector}, {"size", .Number}}, nil, .List},
 	}, "The corners of a model's triangles, three for each, as a list of vectors of three numbers, placed and sized as `model` draws it: `wall = { triangles: triangles \"hall.glb\" at 0 0 0 size 500 }` is a shape that `touching`, `hits` and `cast` take. It is the model's surface, so a ball inside a closed model touches none of it."},
+	{"svg", {
+		{{{"file", .Text}, {"x", .Number}, {"y", .Number}}, nil, .None},
+		{{{"file", .Text}, {"position", .Vector}}, nil, .None},
+		{{{"file", .Text}, {"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}}, nil, .None},
+		{{{"file", .Text}, {"position", .Vector}, {"size", .Vector}}, nil, .None},
+	}, "Draws an SVG drawing from the sketch's assets with its top left at a point, at its own size or stretched to a size: `svg \"logo.svg\" at 20 20 size 200 100`. Its paths, rectangles, circles, ellipses, lines and polygons are drawn in the colors and strokes the file gives them, under the current transform; curves are cut into short pieces, fills are even-odd, and text, pictures, clips, masks, filters and patterns in the file are left out (a gradient is its first color)."},
 	{"outline", {{{{"picture", .Image}}, OUTLINE_OPTIONS, .List}}, "The corners of the solid part of a picture, as a list of vectors that makes a shape of its own: `touching ball { points: outline ship }`. A pixel is solid when it is more than 50 percent solid, or more than the `alpha` given; `at` puts the picture's top left where it is drawn and `size` stretches it as `image` does. Only the biggest solid piece is outlined, without its holes."},
 }
 

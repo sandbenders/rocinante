@@ -47,7 +47,7 @@ mesh_destroy :: proc(m: ^Mesh) {
 needs_mesh :: proc "contextless" (c: Command) -> bool {
 	outline := c.style.stroke_on && c.style.thickness > 0
 	switch c.kind {
-	case .Quad, .Arc:
+	case .Quad, .Arc, .Path:
 		return true
 	case .Circle, .Ellipse, .Text, .Typeset, .Image:
 		return false
@@ -106,7 +106,7 @@ outline_of :: proc(c: Command, tolerance: f64, points: ^[dynamic]geom.Point) -> 
 	case .Point:
 		append(points, P(a[0], a[1]))
 		return false
-	case .Circle, .Ellipse, .Arc, .Text, .Typeset, .Image:
+	case .Circle, .Ellipse, .Arc, .Text, .Typeset, .Image, .Path:
 		// Not outlines of straight corners; arcs are handled apart.
 		return false
 	}
@@ -115,7 +115,7 @@ outline_of :: proc(c: Command, tolerance: f64, points: ^[dynamic]geom.Point) -> 
 
 // Appends a command's fill and outline to the mesh. `fill_row` and `stroke_row`
 // are the gradient atlas rows (1 and up) of the command's paints, or 0 for plain colours.
-mesh_add_command :: proc(m: ^Mesh, c: Command, fill_row := u32(0), stroke_row := u32(0)) {
+mesh_add_command :: proc(m: ^Mesh, c: Command, fill_row := u32(0), stroke_row := u32(0), points_of_path: [][2]f32 = nil) {
 	style := c.style
 	scale := scale_of(c.transform)
 	if !(scale > 0) || math.is_inf(scale) {
@@ -137,6 +137,10 @@ mesh_add_command :: proc(m: ^Mesh, c: Command, fill_row := u32(0), stroke_row :=
 	defer geom.triangulation_destroy(&tri)
 	points := make([dynamic]geom.Point, context.temp_allocator)
 
+	if c.kind == .Path {
+		path_into_mesh(m, c, points_of_path, tolerance, {fill_colour, stroke_colour, fill_row, stroke_row, box_centre, box_half}, stroke)
+		return
+	}
 	if c.kind == .Arc {
 		arc_into_mesh(m, c, tolerance, {fill_colour, stroke_colour, fill_row, stroke_row, box_centre, box_half}, stroke)
 		return

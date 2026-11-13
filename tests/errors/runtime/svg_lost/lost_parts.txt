@@ -1,0 +1,8 @@
+── Warning: Not everything in the drawing `lost.svg` can be drawn ─── sketch.roci:1:1
+
+1 │ svg "lost.svg" at 0 0
+  │ ^^^^^^^^^^^^^^^^^^^^^
+
+The file has text, which I cannot draw. The rest of the drawing is drawn, and the sketch carries on.
+
+Draw the drawing as before, and add the left-out parts with `text` and `image`:  svg "lost.svg" at 0 0

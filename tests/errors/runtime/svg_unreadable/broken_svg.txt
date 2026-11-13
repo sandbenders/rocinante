@@ -1,0 +1,8 @@
+── I could not read the drawing `broken.svg` ─────────── sketch.roci:1:1
+
+1 │ svg "broken.svg" at 0 0
+  │ ^^^^^^^^^^^^^^^^^^^^^^^
+
+I read SVG files, and I cannot use this one because it is not an SVG file. The drawing is not drawn, and the sketch carries on.
+
+Draw one I can read:  svg "broken.svg" at 0 0

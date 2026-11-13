@@ -269,7 +269,7 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 	}
 	if pipeline == .Paths {
 		first = len(b.mesh.indices)
-		mesh_add_command(&b.mesh, command, fill_row, stroke_row)
+		mesh_add_command(&b.mesh, command, fill_row, stroke_row, path_points(list, command))
 		added = len(b.mesh.indices) - first
 		if added == 0 {
 			b.stats.skipped += 1
@@ -375,7 +375,7 @@ to_instance :: proc "contextless" (c: Command, fill_row := u32(0), stroke_row :=
 		i.kind = .Triangle
 		i.shape = {a[0] - cx, a[1] - cy, a[2] - cx, a[3] - cy, a[4] - cx, a[5] - cy}
 		hw, hh = (hi_x - lo_x) / 2, (hi_y - lo_y) / 2
-	case .Quad, .Arc, .Text, .Typeset, .Image:
+	case .Quad, .Arc, .Text, .Typeset, .Image, .Path:
 		return {}
 	}
 	t := transform_move(c.transform, cx, cy)

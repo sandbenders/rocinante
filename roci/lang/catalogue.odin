@@ -128,6 +128,9 @@ Message_Id :: enum u8 {
 	Model_Missing,
 	Model_Unreadable,
 	Model_Texture,
+	Svg_Missing,
+	Svg_Unreadable,
+	Svg_Lost,
 	Save_Failed,
 	Save_Approximate,
 	Record_Failed,
@@ -449,6 +452,15 @@ CATALOGUE := [Message_Id]Entry{
 	.Model_Texture = {.Warning, "I could not read every picture of the model `{a}`",
 		"{b} Those parts are drawn in their plain colors, and the sketch carries on.",
 		"Put the pictures beside the model, in its folder of `assets`, under the names the model gives them:", "{d}"},
+	.Svg_Missing = {.Error, "I could not find a drawing called `{a}`",
+		"{b} The drawing is not drawn, and the sketch carries on.",
+		"Draw one that is there:", "{d}"},
+	.Svg_Unreadable = {.Error, "I could not read the drawing `{a}`",
+		"I read SVG files, and I cannot use this one because {b}. The drawing is not drawn, and the sketch carries on.",
+		"Draw one I can read:", "{d}"},
+	.Svg_Lost = {.Warning, "Not everything in the drawing `{a}` can be drawn",
+		"{b} The rest of the drawing is drawn, and the sketch carries on.",
+		"Draw the drawing as before, and add the left-out parts with `text` and `image`:", "{d}"},
 	.Save_Failed = {.Error, "I could not save `{a}`",
 		"{b} The sketch carries on.",
 		"Save a PNG like this:", "{d}"},
@@ -553,7 +565,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

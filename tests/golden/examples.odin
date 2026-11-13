@@ -64,6 +64,7 @@ EXAMPLES := [?]Example{
 	{"canvas", 60, {1}}, // a canvas that keeps its drawing: two dots with fading trails
 	{"fills", 5, {1}}, // shapes filled with a picture: cover, fit, stretch, tile and center, and an outline over one
 	{"outline", 3, {1}}, // the same ball against a picture as a rectangle and as its outline
+	{"vector", 20, {1}}, // an SVG badge of paths, curves, arcs, a ring cut out by a hole, groups, a use and a style, drawn at its own size, stretched, turned and growing and shrinking
 	{"export", 5, {1}}, // a ring of dots; s and r save pictures, which a golden run never presses
 	{"blend", 3, {1}}, // seven blends over the same gray, and a bright wall clipped to a box
 	{"paint", 3, {1}}, // a picture as the window, the letters of a text and the outlines of shapes

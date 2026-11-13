@@ -1,0 +1,26 @@
+// Vector: an SVG drawing from the sketch's assets, drawn with `svg`. `badge.svg` is a hand-made file that
+// uses most of what the reader knows: circles, rectangles with rounded corners, polygons, paths with
+// curves and arcs, a compound path whose second contour is a hole, groups with transforms, a `use` of a
+// shape in `defs` repeated about a point, and colors from attributes and from a `<style>`.
+// `svg "badge.svg" at 20 20` draws it at its own size, and `size` stretches it. It is drawn as paths
+// under the current transform, so `move`, `turn` and `grow` work on it as on any shape, and the curves
+// stay sharp at every size. Text, pictures, clips, masks, filters and patterns in a file are left out
+// and said once, and a gradient is drawn in the first color of its stops.
+window size 760 460 title "vector"
+
+draw [
+  background (rgb 236 232 220)
+  svg "badge.svg" at 30 30
+  svg "badge.svg" at 260 30 size 100 100
+  svg "badge.svg" at 260 150 size 200 60
+  push [
+    move 600 230
+    turn (frame * 0.8)
+    svg "badge.svg" at -100 -100 size 200 200
+  ]
+  push [
+    move 130 340
+    grow (1 + sin (frame * 3) * 0.12)
+    svg "badge.svg" at -50 -50 size 100 100
+  ]
+]

@@ -29,6 +29,7 @@ Kind :: enum u8 {
 	Text,    // the overlay font (font.odin); see `debug_text`
 	Typeset, // real text, laid out and drawn through SDL_ttf (fonts.odin, typeset.odin); see `typeset`
 	Image,   // a loaded picture (images.odin), drawn as a textured quad through the typeset pipeline; see `draw_image`
+	Path,    // contours of straight pieces, filled and stroked (path.odin); see `path`
 }
 
 // What a position means. `Default` is each shape's own
@@ -58,6 +59,7 @@ Span :: struct {
 //     Arc      x y width height start stop     (angles in degrees)
 //     Text     x y scale width height offset length     (the text is in the list's `text`)
 //     Image    x y width height picture                 (`picture` is the Image_Id)
+//     Path     x y width height offset count closed   (the box of the points; the points are in the list's `points`, contours apart by a break; see `path`)
 Command :: struct {
 	kind:      Kind,
 	origin:    Origin,
@@ -121,6 +123,7 @@ Command_List :: struct {
 	gradients:  [dynamic]Gradient, // the gradients this frame's commands use; ids index it from 1
 	gradient_hashes: [dynamic]u64, // the hash of each of them, in step with `gradients`
 	text:       [dynamic]u8,       // the characters of this frame's text commands, end to end
+	points:     [dynamic][2]f32,   // the points of this frame's path commands, end to end, a contour ends at a break (path.odin)
 	background_paint: Gradient_Ref, // a gradient behind everything, when set
 	background_image: Image_Fill,   // a picture behind everything, when its id is not 0
 	background_set:   bool,         // `background` or `clear` was written since the frame (or, for a canvas, the last render) began
@@ -147,6 +150,7 @@ begin_frame :: proc(list: ^Command_List) {
 	clear(&list.gradients)
 	clear(&list.gradient_hashes)
 	clear(&list.text)
+	clear(&list.points)
 	clear(&list.effects)
 	clear(&list.effect_values)
 	list.background_paint = {}
@@ -176,6 +180,7 @@ destroy :: proc(list: ^Command_List) {
 	delete(list.gradients)
 	delete(list.gradient_hashes)
 	delete(list.text)
+	delete(list.points)
 	delete(list.effects)
 	delete(list.effect_values)
 	list^ = {}
@@ -571,7 +576,7 @@ pop :: proc(list: ^Command_List) -> bool {
 // overlay is drawn over a frame, shown, and then removed so a window that keeps its
 // commands from frame to frame does not collect one overlay a frame.
 List_Mark :: struct {
-	commands, looks, text, gradients, saved: int,
+	commands, looks, text, points, gradients, saved: int,
 	style:            Style,
 	transform:        Transform,
 	look_changed:     bool,
@@ -584,7 +589,7 @@ List_Mark :: struct {
 
 mark :: proc(list: ^Command_List) -> List_Mark {
 	return List_Mark{
-		commands = len(list.commands), looks = len(list.looks), text = len(list.text),
+		commands = len(list.commands), looks = len(list.looks), text = len(list.text), points = len(list.points),
 		gradients = len(list.gradients), saved = len(list.saved),
 		style = list.style, transform = list.transform, look_changed = list.look_changed,
 		span = list.span, background = list.background, background_paint = list.background_paint, background_image = list.background_image, turtle = list.turtle,
@@ -596,6 +601,7 @@ rewind :: proc(list: ^Command_List, m: List_Mark) {
 	resize(&list.commands, m.commands)
 	resize(&list.looks, m.looks)
 	resize(&list.text, m.text)
+	resize(&list.points, m.points)
 	resize(&list.gradients, m.gradients)
 	resize(&list.gradient_hashes, m.gradients)
 	resize(&list.saved, m.saved)

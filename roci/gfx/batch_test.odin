@@ -591,7 +591,7 @@ test_which_pipeline_draws_which_kind_by_default :: proc(t: ^testing.T) {
 	// The default style has a fill and no outline, with round caps.
 	for kind in Kind {
 		want := Pipeline.Shapes
-		if kind == .Quad || kind == .Arc {want = .Paths}
+		if kind == .Quad || kind == .Arc || kind == .Path {want = .Paths}
 		if kind == .Text {want = .Text}
 		if kind == .Typeset || kind == .Image {want = .Typeset}
 		testing.expect_value(t, pipeline_for(Command{kind = kind, style = DEFAULT_STYLE}), want)

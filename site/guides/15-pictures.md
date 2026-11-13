@@ -1,6 +1,6 @@
 ---
 title: "Pictures"
-summary: "Loading pictures, drawing them, painting with them, reading and changing their pixels, and saving the window as a PNG, SVG or PDF, and recording movies."
+summary: "Loading pictures, drawing them, painting with them, reading pixels, drawing SVG files, saving the window as PNG, SVG or PDF, and recording movies."
 weight: 15
 ---
 
@@ -177,6 +177,23 @@ image (filter photo as pixelate by 6) at 270 100 width 120
 ```
 
 These work on a canvas too, but a canvas keeps its pixels on the graphics card, so reading one copies them back first and stalls the frame. Do it once and keep the answer, not for every pixel of every frame. A made picture is remembered by what made it, so asking for the same crop or filter of the same picture each frame costs nothing after the first time, and the pictures the sketch made and has not used for a long while are let go if there are very many. Per-pixel loops in a sketch are slow; `filter`, `resize` and `mask` do the whole picture in one step, so reach for them first (`examples/pixels` shows a magnifier made of `crop` and `resize`).
+
+## Drawings from SVG files
+
+A picture is made of pixels, so it blurs when it is made big. A drawing made of shapes does not. `svg` draws an SVG file from `assets/` (any folder in it, found by name, as a picture is) as shapes:
+
+```roci
+draw [
+  svg "badge.svg" at 20 20
+  svg "badge.svg" at 260 20 size 100 100
+]
+```
+
+It takes the same two forms of place and size as `image`: `at` a point, and `size` for a width and a height (stretched, so write the sides in the file's own proportion to keep it true). It is drawn under the current transform, so `move`, `turn` and `grow` work on it, and it keeps its own colors: the style you have set is not used and is not changed.
+
+What it reads: paths with every command (lines, curves and arcs), rectangles with rounded corners, circles, ellipses, lines, polylines and polygons, in groups and `use`s, under any `transform`, with their fill, stroke, widths, caps, joins and opacity, whether they are written as attributes, in a `style` or in the rules of a `<style>` (`tag`, `.class` and `#id`). A shape with a hole in it, such as a ring written as two contours, has the hole. Fills are even-odd, whatever the file says.
+
+What it leaves out, and says once, so the rest is still drawn: text (the font is the viewer's, and rocinante's `text` is the way to write words), embedded pictures (use `image`), clip paths, masks, filters, patterns and markers. A gradient is drawn in the first color of its stops. If you export from Inkscape or Illustrator, turn text into outlines first and the file will draw whole.
 
 ## When a picture is not there
 

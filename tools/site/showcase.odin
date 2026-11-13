@@ -85,6 +85,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"paint", 4, "Picture as paint", 3, 1},
 	{"canvas", 4, "Canvas", 60, 1},
 	{"outline", 4, "Outline", 3, 1},
+	{"vector", 4, "Vector drawing", 20, 1},
 	{"blend", 4, "Blend and clip", 3, 1},
 
 	{"effects", 5, "Your own effects", 3, 1},

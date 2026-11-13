@@ -1,0 +1,8 @@
+── I could not find a drawing called `twin.svg` ──────── sketch.roci:1:1
+
+1 │ svg "twin.svg" at 0 0
+  │ ^^^^^^^^^^^^^^^^^^^^^
+
+Two or more files have that name: assets/images/svg/a/twin.svg and assets/images/svg/b/twin.svg. Say which one you mean with its folder. The drawing is not drawn, and the sketch carries on.
+
+Draw one that is there:  svg "images/svg/a/twin.svg" at 0 0

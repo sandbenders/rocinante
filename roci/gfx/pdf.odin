@@ -580,6 +580,8 @@ pdf_shape :: proc(p: ^Pdf, c: Command) {
 		strings.write_byte(out, '\n')
 	case .Arc:
 		pdf_arc(p, c, box)
+	case .Path:
+		pdf_path(p, c, box)
 	case .Typeset:
 		pdf_text(p, c, box)
 	case .Text:
@@ -844,4 +846,39 @@ pdf_image :: proc(p: ^Pdf, c: Command) {
 	strings.write_string(out, "/I")
 	strings.write_string(out, itoa(n))
 	strings.write_string(out, " Do\n")
+}
+
+// A path: a sub-path for each contour, painted by the even-odd rule (`f*`, `B*`).
+@(private = "file")
+pdf_path :: proc(p: ^Pdf, c: Command, box: [4]f32) {
+	out := &p.content
+	points := path_points(p.list, c)
+	if len(points) == 0 {
+		return
+	}
+	op := paint_ops(p, c, box)
+	write_cm(out, c.transform)
+	at := 0
+	for {
+		contour, closed, after, ok := next_contour(points, at)
+		if !ok {
+			break
+		}
+		at = after
+		for q, i in contour {
+			number(out, q.x)
+			strings.write_byte(out, ' ')
+			number(out, q.y)
+			strings.write_string(out, " m\n" if i == 0 else " l\n")
+		}
+		if closed && len(contour) > 1 {
+			strings.write_string(out, "h\n")
+		}
+	}
+	switch op {
+	case "f": strings.write_string(out, "f*")
+	case "B": strings.write_string(out, "B*")
+	case: strings.write_string(out, op)
+	}
+	strings.write_byte(out, '\n')
 }

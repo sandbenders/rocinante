@@ -139,6 +139,19 @@ commands_snapshot :: proc(w: Window) -> []gfx.Recorded {
 	return nil
 }
 
+// The commands a window drew in its last frame, each with its style and transform, for tests and tools.
+commands_whole :: proc(w: Window, allocator := context.temp_allocator) -> []gfx.Command {
+	win := win_for(w)
+	if win == nil {
+		return nil
+	}
+	out := make([]gfx.Command, len(win.list.commands), allocator)
+	for i in 0 ..< len(out) {
+		out[i] = gfx.command_at(&win.list, i)
+	}
+	return out
+}
+
 // The 3D shapes a window drew in its last frame, for tests and tools.
 scene_items :: proc(w: Window) -> []gfx.Item3 {
 	if win := win_for(w); win != nil {

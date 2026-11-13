@@ -85,6 +85,10 @@ LABELS := []Label_Form{
 	{verb = "image", shape = 1, words = {{"at", 1, 1}}, lead = 1},
 	{verb = "image", shape = 2, words = {{"at", 1, 2}, {"size", 3, 2}}, lead = 1},
 	{verb = "image", shape = 3, words = {{"at", 1, 1}, {"size", 2, 1}}, lead = 1},
+	{verb = "svg", shape = 0, words = {{"at", 1, 2}}, lead = 1},
+	{verb = "svg", shape = 1, words = {{"at", 1, 1}}, lead = 1},
+	{verb = "svg", shape = 2, words = {{"at", 1, 2}, {"size", 3, 2}}, lead = 1},
+	{verb = "svg", shape = 3, words = {{"at", 1, 1}, {"size", 2, 1}}, lead = 1},
 }
 
 // The forms of a verb, or none when the verb is written positionally.
