@@ -24,10 +24,10 @@ draw [
   ]
   sphere at 0 40 0 radius 60 fill (rgb 240 200 90)
   push [
-    move 0 -75 0
+    move 0 -118 0
     turn 70 around x
     turn (frame * 1.5) around z
     material metallic 0.8 roughness 0.3
-    torus at 0 0 0 radius 55 tube 12 fill (rgb 200 210 225)
+    torus at 0 0 0 radius 42 tube 10 fill (rgb 200 210 225)
   ]
 ]
