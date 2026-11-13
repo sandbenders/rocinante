@@ -26,7 +26,11 @@ compile_stage() {
   # glslang names the SPIR-V entry point "main"; SPIRV-Cross then calls it
   # "main0" in Metal, which is the name the renderer asks SDL for.
   glslang -D -V -S "$stage" -e main --source-entrypoint "$entry" --auto-sampled-textures -I. "$file" -o "compiled/$name.$suffix.spv"
-  spirv-cross --msl --msl-version 20300 --output "compiled/$name.$suffix.msl" "compiled/$name.$suffix.spv"
+  # Metal numbers textures by first use unless told to follow the bindings the HLSL declares; the 3D shader reads its
+  # pictures in another order than it declares them, so it must follow them (the renderer binds by the declared order)
+  bindings=""
+  if [ "$name" = scene3 ]; then bindings="--msl-decoration-binding"; fi
+  spirv-cross --msl --msl-version 20300 $bindings --output "compiled/$name.$suffix.msl" "compiled/$name.$suffix.spv"
 }
 
 for file in *.hlsl; do

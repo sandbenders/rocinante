@@ -38,7 +38,7 @@ struct main0_in
     float4 input_vcolour [[user(locn6)]];
 };
 
-fragment main0_out main0(main0_in in [[stage_in]], constant Lights& _43 [[buffer(0)]], constant Part& _205 [[buffer(1)]], texture2d<float> shadow_map [[texture(0)]], texture2d<float> colour_map [[texture(1)]], texture2d<float> metal_map [[texture(2)]], texture2d<float> normal_map [[texture(3)]], texture2d<float> emissive_map [[texture(4)]], sampler shadow_mapSmplr [[sampler(0)]], sampler colour_mapSmplr [[sampler(1)]], sampler metal_mapSmplr [[sampler(2)]], sampler normal_mapSmplr [[sampler(3)]], sampler emissive_mapSmplr [[sampler(4)]])
+fragment main0_out main0(main0_in in [[stage_in]], constant Lights& _43 [[buffer(0)]], constant Part& _205 [[buffer(1)]], texture2d<float> shadow_map [[texture(0)]], texture2d<float> colour_map [[texture(1)]], texture2d<float> normal_map [[texture(2)]], texture2d<float> metal_map [[texture(3)]], texture2d<float> emissive_map [[texture(4)]], sampler shadow_mapSmplr [[sampler(0)]], sampler colour_mapSmplr [[sampler(1)]], sampler normal_mapSmplr [[sampler(2)]], sampler metal_mapSmplr [[sampler(3)]], sampler emissive_mapSmplr [[sampler(4)]])
 {
     main0_out out = {};
     float4 _1689;
