@@ -57,6 +57,7 @@ Scene3 :: struct {
 	lights:   [dynamic]Light3,
 	lit:      bool,       // a `light` was written this frame, so the usual lights are not there
 	unlit:    bool,       // shapes are drawn flat in their color (`no lights`)
+	shadows:  bool,       // what the first sun or spot light does not reach is dark (`shadows`)
 	material: Material3,
 	fixed:       bool,
 	eye, target: [3]f64,
@@ -83,6 +84,7 @@ scene_begin :: proc(s: ^Scene3) {
 	s.fixed, s.eye, s.target, s.fov, s.ortho = false, {}, {}, 0, false
 	clear(&s.lights)
 	s.lit, s.unlit, s.material = false, false, {}
+	s.shadows = false
 	clear(&s.items)
 	s.model = {}
 }
@@ -479,7 +481,7 @@ scene_hash :: proc(s: ^Scene3) -> u64 {
 			h = hash_f32(h, f32(v))
 		}
 	}
-	h = hash_u64(h, u64(s.lit))
+	h = hash_u64(h, u64(s.lit) | u64(s.shadows) << 1)
 	for v in ([?]f64{s.eye.x, s.eye.y, s.eye.z, s.target.x, s.target.y, s.target.z, f64(s.fov)}) {
 		h = hash_f32(h, f32(v))
 	}
@@ -826,6 +828,8 @@ Scene_Lights :: struct {
 	eye:     [4]f32,
 	ambient: [4]f32, // the color, and in w how many lights there are
 	lights:  [MAX_LIGHTS][3][4]f32,
+	shadow_rows: [4][4]f32, // the matrix from the world to the shadow-casting light's view, as rows
+	shadow:      [4]f32,    // 1 when there is a shadow map, which light casts it, how far to push a surface out, the size of a texel
 }
 
 USUAL_AMBIENT :: [3]f32{0.4, 0.4, 0.4}
@@ -848,6 +852,12 @@ scene_lights :: proc(s: ^Scene3, canvas: [2]f32) -> Scene_Lights {
 		case .Ambient:
 			ambient += light.colour
 		case .Sun, .Point, .Spot:
+			if s.shadows && out.shadow.x == 0 && light.kind != .Point {
+				// the first sun or spot light casts the shadows; the number it has among the lights is the shader's way to find it
+				rows, texel := shadow_view(s, light)
+				out.shadow_rows = rows
+				out.shadow = {1, f32(count), f32(texel * 1.5), 1.0 / SHADOW_SIZE}
+			}
 			g := &out.lights[count]
 			count += 1
 			place := light.at
@@ -865,4 +875,120 @@ scene_lights :: proc(s: ^Scene3, canvas: [2]f32) -> Scene_Lights {
 	}
 	out.ambient = {min(ambient.r, 1), min(ambient.g, 1), min(ambient.b, 1), f32(count)}
 	return out
+}
+
+// ---- shadows ----
+
+// The shadow map is a square of this many texels, drawn from the first sun or spot light.
+SHADOW_SIZE :: 2048
+
+// Turns shadows on for the rest of the frame: what the first sun or spot light does not reach is dark.
+scene_shadows :: proc(s: ^Scene3) {
+	s.shadows = true
+}
+
+// A sphere that holds every shape of the scene: its middle and radius. Each shape is held by a
+// sphere of its own, as far across as its corner is from its middle, stretched by what makes a
+// capsule longer and a torus's tube thicker.
+scene_bounds :: proc(s: ^Scene3) -> (centre: [3]f64, radius: f64) {
+	if len(s.items) == 0 {
+		return {}, 1
+	}
+	low, high := [3]f64{math.INF_F64, math.INF_F64, math.INF_F64}, [3]f64{-math.INF_F64, -math.INF_F64, -math.INF_F64}
+	spheres := make([dynamic][4]f64, 0, len(s.items), context.temp_allocator)
+	for item in s.items {
+		widest := f64(0)
+		for column in 0 ..< 3 {
+			x, y, z := f64(item.model[0][column]), f64(item.model[1][column]), f64(item.model[2][column])
+			widest = max(widest, math.sqrt(x * x + y * y + z * z))
+		}
+		at := [3]f64{f64(item.model[0][3]), f64(item.model[1][3]), f64(item.model[2][3])}
+		r := widest * (0.87 + f64(abs(item.params.x)) + f64(abs(item.params.y)))
+		append(&spheres, [4]f64{at.x, at.y, at.z, r})
+		for axis in 0 ..< 3 {
+			low[axis] = min(low[axis], at[axis] - r)
+			high[axis] = max(high[axis], at[axis] + r)
+		}
+	}
+	centre = (low + high) / 2
+	for sphere in spheres {
+		d := [3]f64{sphere[0], sphere[1], sphere[2]} - centre
+		radius = max(radius, math.sqrt(dot3(d, d)) + sphere[3])
+	}
+	return centre, max(radius, 1e-3)
+}
+
+// The rows of the matrix that takes a place of the world to the view of a light that sits at
+// `eye` and looks along `forward` (both in the world of the sketch, whose y is down), with a
+// projection that is square on the screen: orthographic when `half_size` is given (the light
+// is a sun), a perspective of `fov` degrees otherwise (a spot light).
+light_matrix_rows :: proc(eye, forward: [3]f64, half_size, fov, near, far: f64) -> [4][4]f32 {
+	// the projection works in the y-up world, which is the sketch's flipped in y
+	e := [3]f64{eye.x, -eye.y, eye.z}
+	f := normalize3({forward.x, -forward.y, forward.z})
+	helper := [3]f64{0, 1, 0}
+	if abs(f.y) > 0.999 {
+		helper = {0, 0, -1}
+	}
+	side := normalize3(cross3(f, helper))
+	up := cross3(side, f)
+	view := identity4()
+	rows := [3][3]f64{side, up, -f}
+	for r in 0 ..< 3 {
+		for c in 0 ..< 3 {
+			view[r, c] = f32(rows[r][c])
+		}
+	}
+	view[0, 3] = f32(-dot3(side, e))
+	view[1, 3] = f32(-dot3(up, e))
+	view[2, 3] = f32(dot3(f, e))
+	proj: matrix[4, 4]f32
+	if half_size > 0 {
+		proj[0, 0] = f32(1 / half_size)
+		proj[1, 1] = f32(1 / half_size)
+		proj[2, 2] = f32(1 / (near - far))
+		proj[2, 3] = f32(near / (near - far))
+		proj[3, 3] = 1
+	} else {
+		t := math.tan(clamp(fov, 1, 170) * math.PI / 360)
+		proj[0, 0] = f32(1 / t)
+		proj[1, 1] = f32(1 / t)
+		proj[2, 2] = f32(far / (near - far))
+		proj[2, 3] = f32(near * far / (near - far))
+		proj[3, 2] = -1
+	}
+	all := proj * view * scale4(1, -1, 1)
+	out: [4][4]f32
+	for r in 0 ..< 4 {
+		for c in 0 ..< 4 {
+			out[r][c] = all[r, c]
+		}
+	}
+	return out
+}
+
+// The view of a sun or spot light that holds the whole scene: for a sun, a box as wide as the
+// scene looking along the way the light shines; for a spot light, a cone as wide as the light's
+// own with a little to spare. `texel` is how far across one texel of the map is at the scene's middle.
+shadow_view :: proc(s: ^Scene3, light: Light3) -> (rows: [4][4]f32, texel: f64) {
+	centre, radius := scene_bounds(s)
+	if light.kind == .Sun {
+		toward := normalize3(light.at)
+		if toward == {} {
+			toward = {0, -1, 0}
+		}
+		eye := centre + toward * (radius * 2)
+		return light_matrix_rows(eye, -toward, radius, 0, 0, radius * 4), radius * 2 / SHADOW_SIZE
+	}
+	away := centre - light.at
+	distance := math.sqrt(dot3(away, away))
+	fov := clamp(f64(light.angle) * 2 + 10, 10, 170)
+	near := max(1.0, (distance - radius) * 0.5)
+	far := max(distance + radius * 1.5, near + 1)
+	aim := normalize3(light.aim - light.at)
+	if aim == {} {
+		aim = normalize3(away)
+	}
+	width := 2 * math.tan(fov * math.PI / 360) * distance
+	return light_matrix_rows(light.at, aim, 0, fov, near, far), width / SHADOW_SIZE
 }

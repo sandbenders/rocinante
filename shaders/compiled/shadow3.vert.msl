@@ -1,0 +1,40 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct Light
+{
+    float4 clip_x;
+    float4 clip_y;
+    float4 clip_z;
+    float4 clip_w;
+};
+
+struct main0_out
+{
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float3 input_position [[attribute(0)]];
+    float3 input_normal [[attribute(1)]];
+    float input_stretch [[attribute(2)]];
+    float4 input_row0 [[attribute(3)]];
+    float4 input_row1 [[attribute(4)]];
+    float4 input_row2 [[attribute(5)]];
+    float4 input_params [[attribute(7)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant Light& _105 [[buffer(0)]])
+{
+    main0_out out = {};
+    float3 _216 = in.input_position + (in.input_normal * in.input_params.y);
+    _216.y += (in.input_stretch * in.input_params.x);
+    float4 _238 = float4(_216, 1.0);
+    float4 _196 = float4(dot(in.input_row0, _238), dot(in.input_row1, _238), dot(in.input_row2, _238), 1.0);
+    out.gl_Position = float4(dot(_105.clip_x, _196), dot(_105.clip_y, _196), dot(_105.clip_z, _196), dot(_105.clip_w, _196));
+    return out;
+}
+

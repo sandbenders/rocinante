@@ -633,3 +633,113 @@ test_the_hash_follows_the_lights_and_the_material :: proc(t: ^testing.T) {
 	scene_add(&s, .Box, {}, {1, 1, 1}, {255, 0, 0, 255})
 	testing.expect(t, scene_hash(&s) != plain, "the material")
 }
+
+// Where a place of the world lands in a light's view, as the matrix rows say: x and y from -1 to 1
+// across the map and z from 0 to 1 in depth.
+light_project :: proc(rows: [4][4]f32, p: [3]f64) -> (x, y, z: f32, ahead: bool) {
+	q := [4]f32{f32(p.x), f32(p.y), f32(p.z), 1}
+	row :: proc(r: [4]f32, q: [4]f32) -> f32 {return r[0] * q[0] + r[1] * q[1] + r[2] * q[2] + r[3] * q[3]}
+	w := row(rows[3], q)
+	return row(rows[0], q) / w, row(rows[1], q) / w, row(rows[2], q) / w, w > 0
+}
+
+@(test)
+test_the_bounds_of_a_scene_hold_every_shape :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	centre, radius := scene_bounds(&s)
+	testing.expect(t, centre == {} && radius == 1, "an empty scene is a unit sphere")
+	scene_add(&s, .Box, {100, 0, 0}, {20, 20, 20}, {0, 0, 0, 255})
+	scene_add(&s, .Sphere, {-100, 50, 0}, {40, 40, 40}, {0, 0, 0, 255})
+	scene_add(&s, .Capsule, {0, 0, 300}, {10, 10, 10}, {0, 0, 0, 255}, {3, 0})
+	centre, radius = scene_bounds(&s)
+	for item in s.items {
+		at := [3]f64{f64(item.model[0][3]), f64(item.model[1][3]), f64(item.model[2][3])}
+		d := at - centre
+		testing.expect(t, math.sqrt(dot3(d, d)) <= radius, "every shape's middle is inside")
+	}
+	// the capsule stretches by 3 each side of a 10 wide shape: 40 from its middle at least
+	far := [3]f64{0, 0, 340} - centre
+	testing.expect(t, math.sqrt(dot3(far, far)) <= radius + 1e-6, "and so is the end of the capsule")
+}
+
+@(test)
+test_a_suns_view_holds_the_whole_scene :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_add(&s, .Box, {100, 0, 0}, {40, 40, 40}, {0, 0, 0, 255})
+	scene_add(&s, .Sphere, {-120, 60, 50}, {60, 60, 60}, {0, 0, 0, 255})
+	scene_add(&s, .Plane, {0, 100, 0}, {400, 1, 400}, {0, 0, 0, 255})
+	for toward in ([?][3]f64{{-0.4, -0.7, 0.6}, {0, -1, 0}, {1, 0, 0}, {0, 0, 1}} ) {
+		rows, texel := shadow_view(&s, Light3{kind = .Sun, at = toward})
+		testing.expect(t, texel > 0, "a texel has a size")
+		for item in s.items {
+			at := [3]f64{f64(item.model[0][3]), f64(item.model[1][3]), f64(item.model[2][3])}
+			x, y, z, ahead := light_project(rows, at)
+			testing.expectf(t, ahead && abs(x) <= 1 && abs(y) <= 1 && z >= 0 && z <= 1, "the middle of a shape is inside the view from %v: %v %v %v", toward, x, y, z)
+		}
+	}
+	// a light with no direction still has a view
+	rows, _ := shadow_view(&s, Light3{kind = .Sun})
+	_, _, z, _ := light_project(rows, {0, 0, 0})
+	testing.expect(t, z >= 0 && z <= 1, "straight above when it has no direction")
+}
+
+@(test)
+test_a_spot_lights_view_holds_the_scene_it_lights :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_add(&s, .Box, {0, 0, 0}, {40, 40, 40}, {0, 0, 0, 255})
+	scene_add(&s, .Sphere, {60, 40, 20}, {30, 30, 30}, {0, 0, 0, 255})
+	light := Light3{kind = .Spot, at = {0, -300, 100}, aim = {0, 0, 0}, angle = 30}
+	rows, texel := shadow_view(&s, light)
+	testing.expect(t, texel > 0, "a texel has a size")
+	for item in s.items {
+		at := [3]f64{f64(item.model[0][3]), f64(item.model[1][3]), f64(item.model[2][3])}
+		x, y, z, ahead := light_project(rows, at)
+		testing.expectf(t, ahead && abs(x) <= 1 && abs(y) <= 1 && z > 0 && z < 1, "inside the cone: %v %v %v", x, y, z)
+	}
+	// a spot light that looks at itself still has a view
+	_, _ = shadow_view(&s, Light3{kind = .Spot, at = {1, 2, 3}, aim = {1, 2, 3}, angle = 30})
+}
+
+@(test)
+test_shadows_are_off_until_asked_for_and_the_first_sun_or_spot_light_casts_them :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_add(&s, .Box, {}, {10, 10, 10}, {0, 0, 0, 255})
+	testing.expect_value(t, scene_lights(&s, {640, 420}).shadow.x, 0)
+	scene_shadows(&s)
+	lights := scene_lights(&s, {640, 420})
+	testing.expect_value(t, lights.shadow.x, 1) // the usual sun casts them
+	testing.expect_value(t, lights.shadow.y, 0)
+	testing.expect(t, lights.shadow.z > 0 && lights.shadow.w == 1.0 / SHADOW_SIZE, "a push out along the normal and a texel")
+	// a point light is the first light, but it casts none: the sun after it does, and the shader finds it by its number
+	scene_light(&s, Light3{kind = .Point, colour = {1, 1, 1}, falloff = 10})
+	scene_light(&s, Light3{kind = .Ambient, colour = {0.2, 0.2, 0.2}})
+	scene_light(&s, Light3{kind = .Sun, at = {0, -1, 0}, colour = {1, 1, 1}})
+	scene_light(&s, Light3{kind = .Spot, at = {0, -100, 0}, colour = {1, 1, 1}, angle = 30})
+	lights = scene_lights(&s, {640, 420})
+	testing.expect_value(t, lights.shadow.x, 1)
+	testing.expect_value(t, lights.shadow.y, 1) // the sun is the second light that is not ambient
+	// nothing but point lights: nothing casts
+	scene_begin(&s)
+	scene_add(&s, .Box, {}, {10, 10, 10}, {0, 0, 0, 255})
+	scene_shadows(&s)
+	scene_light(&s, Light3{kind = .Point, colour = {1, 1, 1}, falloff = 10})
+	testing.expect_value(t, scene_lights(&s, {640, 420}).shadow.x, 0)
+	// a new frame starts without shadows
+	scene_begin(&s)
+	testing.expect(t, !s.shadows, "off again")
+	testing.expect(t, size_of(Scene_Lights) <= 4096, "the block still fits what Metal passes")
+}
+
+@(test)
+test_the_hash_follows_shadows :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_add(&s, .Box, {}, {1, 1, 1}, {255, 0, 0, 255})
+	plain := scene_hash(&s)
+	scene_shadows(&s)
+	testing.expect(t, scene_hash(&s) != plain, "shadows change the picture")
+}

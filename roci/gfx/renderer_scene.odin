@@ -19,6 +19,14 @@ Depth_Key :: struct {
 }
 
 scene_gpu_destroy :: proc(r: ^Renderer) {
+	for texture in ([?]^sdl.GPUTexture{r.shadow_map, r.shadow_blank}) {
+		if texture != nil {
+			sdl.ReleaseGPUTexture(r.device, texture)
+		}
+	}
+	if r.shadow_sampler != nil {
+		sdl.ReleaseGPUSampler(r.device, r.shadow_sampler)
+	}
 	for buffer in ([?]^Gpu_Buffer{&r.scene_vertices, &r.scene_indices, &r.scene_instances}) {
 		if buffer.buffer != nil {
 			sdl.ReleaseGPUBuffer(r.device, buffer.buffer)
@@ -67,13 +75,14 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 	if r.failed {
 		return nil
 	}
-	source, ok := shader_source_for(.Scene3, sdl.GetGPUShaderFormats(r.device))
+	shadow := key.program == .Shadow3
+	source, ok := shader_source_for(key.program, sdl.GetGPUShaderFormats(r.device))
 	if !ok {
 		set_plain_error(r, "the 3D shader is not built for this computer's graphics system yet (DXIL for Direct3D 12 comes from compile-dxil.sh on Windows)")
 		return nil
 	}
 	vertex := create_shader(r, source.vertex, source.vertex_entry, source.format, .VERTEX, 1, 0)
-	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 1, 0)
+	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 0 if shadow else 1, 0 if shadow else 1)
 	if vertex == nil || fragment == nil {
 		set_error(r, "creating the 3D shaders")
 		if vertex != nil {sdl.ReleaseGPUShader(r.device, vertex)}
@@ -200,6 +209,13 @@ draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comman
 		}
 		return false
 	}
+	lights := scene_lights(&list.scene, canvas)
+	if !ensure_shadow_resources(r, lights.shadow.x > 0) {
+		return false
+	}
+	if lights.shadow.x > 0 && !draw_shadow_pass(r, commands, lights, counts) {
+		lights.shadow.x = 0 // the scene is drawn without shadows rather than not at all
+	}
 	bg := list.background
 	colour := sdl.GPUColorTargetInfo{
 		texture     = msaa if msaa != nil else target,
@@ -220,8 +236,93 @@ draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comman
 	sdl.BindGPUGraphicsPipeline(pass, pipeline)
 	uniforms := scene_uniforms(&list.scene, canvas)
 	sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Scene_Uniforms))
-	lights := scene_lights(&list.scene, canvas)
 	sdl.PushGPUFragmentUniformData(commands, 0, &lights, size_of(Scene_Lights))
+	map_bound := r.shadow_map if lights.shadow.x > 0 else r.shadow_blank
+	shadow_binding := sdl.GPUTextureSamplerBinding{texture = map_bound, sampler = r.shadow_sampler}
+	sdl.BindGPUFragmentSamplers(pass, 0, &shadow_binding, 1)
+	bindings := [2]sdl.GPUBufferBinding{{buffer = r.scene_vertices.buffer}, {buffer = r.scene_instances.buffer}}
+	sdl.BindGPUVertexBuffers(pass, 0, raw_data(bindings[:]), 2)
+	sdl.BindGPUIndexBuffer(pass, {buffer = r.scene_indices.buffer}, ._32BIT)
+	first: u32
+	for shape in Shape3 {
+		if counts[shape] > 0 {
+			range := r.scene_ranges[shape]
+			sdl.DrawGPUIndexedPrimitives(pass, range.index_count, counts[shape], range.first_index, 0, first)
+			r.stats.draws += 1
+		}
+		first += counts[shape]
+	}
+	return true
+}
+
+SHADOW_FORMAT :: sdl.GPUTextureFormat.R32_FLOAT
+
+// Makes what shadows need, once: the sampler (nearest, because the shader compares depths
+// itself), a small texture to bind when there are no shadows and the map when there are.
+@(private)
+ensure_shadow_resources :: proc(r: ^Renderer, with_map: bool) -> bool {
+	if r.shadow_sampler == nil {
+		r.shadow_sampler = sdl.CreateGPUSampler(r.device, {
+			min_filter     = .NEAREST,
+			mag_filter     = .NEAREST,
+			mipmap_mode    = .NEAREST,
+			address_mode_u = .CLAMP_TO_EDGE,
+			address_mode_v = .CLAMP_TO_EDGE,
+			address_mode_w = .CLAMP_TO_EDGE,
+		})
+		if r.shadow_sampler == nil {
+			set_error(r, "creating the shadow sampler")
+			return false
+		}
+	}
+	if r.shadow_blank == nil {
+		r.shadow_blank = sdl.CreateGPUTexture(r.device, {type = .D2, format = SHADOW_FORMAT, usage = {.SAMPLER}, width = 1, height = 1, layer_count_or_depth = 1, num_levels = 1})
+		if r.shadow_blank == nil {
+			set_error(r, "creating the blank shadow texture")
+			return false
+		}
+	}
+	if with_map && r.shadow_map == nil {
+		r.shadow_map = sdl.CreateGPUTexture(r.device, {type = .D2, format = SHADOW_FORMAT, usage = {.COLOR_TARGET, .SAMPLER}, width = SHADOW_SIZE, height = SHADOW_SIZE, layer_count_or_depth = 1, num_levels = 1})
+		if r.shadow_map == nil {
+			set_error(r, "creating the shadow map")
+			return false
+		}
+	}
+	return true
+}
+
+// Draws the scene as the light sees it into the shadow map: how far away the nearest surface is,
+// at every texel, 1 where there is none.
+@(private)
+draw_shadow_pass :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, lights: Scene_Lights, counts: [Shape3]u32) -> bool {
+	pipeline := get_pipeline(r, .Shadow3, SHADOW_FORMAT, ._1)
+	depth := depth_texture(r, SHADOW_SIZE, SHADOW_SIZE, ._1)
+	if pipeline == nil || depth == nil {
+		if depth == nil && pipeline != nil {
+			set_error(r, "creating the depth buffer of the shadow map")
+		}
+		return false
+	}
+	colour := sdl.GPUColorTargetInfo{
+		texture     = r.shadow_map,
+		clear_color = sdl.FColor{1, 1, 1, 1},
+		load_op     = .CLEAR,
+		store_op    = .STORE,
+	}
+	depth_target := sdl.GPUDepthStencilTargetInfo{
+		texture          = depth,
+		clear_depth      = 1,
+		load_op          = .CLEAR,
+		store_op         = .DONT_CARE,
+		stencil_load_op  = .DONT_CARE,
+		stencil_store_op = .DONT_CARE,
+	}
+	pass := sdl.BeginGPURenderPass(commands, &colour, 1, &depth_target)
+	defer sdl.EndGPURenderPass(pass)
+	sdl.BindGPUGraphicsPipeline(pass, pipeline)
+	rows := lights.shadow_rows
+	sdl.PushGPUVertexUniformData(commands, 0, &rows, size_of(rows))
 	bindings := [2]sdl.GPUBufferBinding{{buffer = r.scene_vertices.buffer}, {buffer = r.scene_instances.buffer}}
 	sdl.BindGPUVertexBuffers(pass, 0, raw_data(bindings[:]), 2)
 	sdl.BindGPUIndexBuffer(pass, {buffer = r.scene_indices.buffer}, ._32BIT)

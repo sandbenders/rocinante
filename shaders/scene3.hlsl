@@ -11,6 +11,8 @@
 // shine tinted by it, from a microfacet model (GGX for the highlight, Smith's shadowing and
 // Schlick's Fresnel). Colors are mixed in linear light and written back with the gamma curve,
 // and a surface is lit on whichever side faces the eye.
+#include "scene3_shape.hlsli"
+
 // The vertex layout is Vertex3 and Instance3 in scene3.odin: TEXCOORD0 to 2 are per vertex,
 // TEXCOORD3 to 8 per instance. The fragment stage has its own uniform block (Scene_Lights),
 // because it cannot read the vertex stage's.
@@ -24,11 +26,19 @@ cbuffer Scene : register(b0, space1)
     float4 eye_unused;
 };
 
+Texture2D<float4> shadow_map : register(t0, space2);
+SamplerState shadow_sampler : register(s0, space2);
+
 cbuffer Lights : register(b0, space3)
 {
     float4 eye;      // where the eye is, in the world
     float4 ambient;  // the ambient color, and in w how many lights there are
     float4 lights[192]; // three for each light: (place or direction, kind), (color, falloff), (spot axis, cosine of its half angle)
+    float4 shadow_x;     // the rows of the matrix from the world to the shadow-casting light's view
+    float4 shadow_y;
+    float4 shadow_z;
+    float4 shadow_w;
+    float4 shadow;       // x: 1 when there is a shadow map, y: which light casts it, z: how far to push a surface out along its normal, w: the size of a texel of the map
 };
 
 struct VSInput
@@ -56,11 +66,7 @@ struct VSOutput
 VSOutput vs_main(VSInput input)
 {
     VSOutput output;
-    // A capsule's two halves move apart by params.x, and a torus's ring grows a tube params.y thick.
-    float3 shaped = input.position + input.normal * input.params.y;
-    shaped.y += input.stretch * input.params.x;
-    float4 p = float4(shaped, 1.0);
-    float4 w = float4(dot(input.row0, p), dot(input.row1, p), dot(input.row2, p), 1.0);
+    float4 w = float4(shape_world(input.position, input.normal, input.stretch, input.row0, input.row1, input.row2, input.params), 1.0);
     output.position = float4(dot(clip_x, w), dot(clip_y, w), dot(clip_z, w), dot(clip_w, w));
     output.world = w.xyz;
     // The normal goes through the cofactor matrix, which keeps it square to the surface
@@ -78,6 +84,32 @@ VSOutput vs_main(VSInput input)
 }
 
 static const float PI = 3.14159265;
+
+// How much of a light reaches a place: 1 for all of it, 0 for none, from the depths the light saw, looked up
+// over a three by three block of texels so an edge is soft rather than stepped.
+float shadow_factor(float3 world, float3 n, float nl)
+{
+    float3 pushed = world + n * shadow.z;
+    float4 p = float4(pushed, 1.0);
+    float4 clip = float4(dot(shadow_x, p), dot(shadow_y, p), dot(shadow_z, p), dot(shadow_w, p));
+    float3 ndc = clip.xyz / clip.w;
+    float2 uv = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    if (clip.w <= 0.0 || uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || ndc.z > 1.0)
+    {
+        return 1.0;
+    }
+    float bias = 0.0008 + 0.002 * (1.0 - nl);
+    float lit = 0.0;
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            float seen = shadow_map.SampleLevel(shadow_sampler, uv + float2(x, y) * shadow.w, 0).r;
+            lit += (ndc.z - bias > seen) ? 0.0 : 1.0;
+        }
+    }
+    return lit / 9.0;
+}
 
 float3 to_linear(float3 c)
 {
@@ -147,6 +179,10 @@ float4 ps_main(VSOutput input) : SV_Target0
             float3 fresnel = f0 + (1.0 - f0) * pow(1.0 - vh, 5.0);
             float3 specular = d_term * g_term * fresnel / (4.0 * nv * nl + 1e-4);
             // the diffuse part is the color times the light; its 1/pi and the light's pi cancel, so the highlight takes the pi
+            if (shadow.x > 0.5 && (float)i == shadow.y)
+            {
+                strength *= shadow_factor(input.world, n, nl);
+            }
             total += (diffuse_colour + specular * PI) * to_linear(second.rgb) * strength * nl;
         }
     }

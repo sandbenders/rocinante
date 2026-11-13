@@ -41,6 +41,17 @@ when #exists("../../shaders/compiled/scene3.vert.dxil") && #exists("../../shader
 	SCENE3_VERT_DXIL :: []byte{}
 	SCENE3_FRAG_DXIL :: []byte{}
 }
+SHADOW3_VERT_SPV :: #load("../../shaders/compiled/shadow3.vert.spv")
+SHADOW3_FRAG_SPV :: #load("../../shaders/compiled/shadow3.frag.spv")
+SHADOW3_VERT_MSL :: #load("../../shaders/compiled/shadow3.vert.msl")
+SHADOW3_FRAG_MSL :: #load("../../shaders/compiled/shadow3.frag.msl")
+when #exists("../../shaders/compiled/shadow3.vert.dxil") && #exists("../../shaders/compiled/shadow3.frag.dxil") {
+	SHADOW3_VERT_DXIL :: #load("../../shaders/compiled/shadow3.vert.dxil")
+	SHADOW3_FRAG_DXIL :: #load("../../shaders/compiled/shadow3.frag.dxil")
+} else {
+	SHADOW3_VERT_DXIL :: []byte{}
+	SHADOW3_FRAG_DXIL :: []byte{}
+}
 MESH_VERT_SPV :: #load("../../shaders/compiled/mesh.vert.spv")
 MESH_FRAG_SPV :: #load("../../shaders/compiled/mesh.frag.spv")
 MESH_VERT_MSL :: #load("../../shaders/compiled/mesh.vert.msl")
@@ -93,6 +104,7 @@ Program :: enum {
 	Text,
 	Typeset,
 	Scene3, // the 3D shapes (scene3.odin, renderer_scene.odin)
+	Shadow3, // the scene as a light sees it (renderer_scene.odin)
 }
 
 Pipeline_Key :: struct {
@@ -128,6 +140,9 @@ Renderer :: struct {
 	scene_vertices: Gpu_Buffer, // the 3D shapes' triangles, uploaded once
 	scene_indices:  Gpu_Buffer,
 	scene_instances: Gpu_Buffer, // one for each shape of the frame
+	shadow_map:     ^sdl.GPUTexture, // what the light sees, as depths in a color (SHADOW_SIZE square), made when a scene first has shadows
+	shadow_blank:   ^sdl.GPUTexture, // a texture to bind when there are none, so the shader always has one
+	shadow_sampler: ^sdl.GPUSampler,
 	scene_ranges:  [Shape3]Shape_Range, // where each shape's triangles are
 	scene_ready:   bool,
 	depth:         map[Depth_Key]^sdl.GPUTexture,
@@ -277,6 +292,7 @@ PROGRAM_CODE := [Program]Program_Code{
 	.Text   = {TEXT_VERT_SPV, TEXT_FRAG_SPV, TEXT_VERT_MSL, TEXT_FRAG_MSL, TEXT_VERT_DXIL, TEXT_FRAG_DXIL},
 	.Typeset = {TYPESET_VERT_SPV, TYPESET_FRAG_SPV, TYPESET_VERT_MSL, TYPESET_FRAG_MSL, TYPESET_VERT_DXIL, TYPESET_FRAG_DXIL},
 	.Scene3 = {SCENE3_VERT_SPV, SCENE3_FRAG_SPV, SCENE3_VERT_MSL, SCENE3_FRAG_MSL, SCENE3_VERT_DXIL, SCENE3_FRAG_DXIL},
+	.Shadow3 = {SHADOW3_VERT_SPV, SHADOW3_FRAG_SPV, SHADOW3_VERT_MSL, SHADOW3_FRAG_MSL, SHADOW3_VERT_DXIL, SHADOW3_FRAG_DXIL},
 }
 
 shader_source_for :: proc(program: Program, formats: sdl.GPUShaderFormat) -> (source: Shader_Source, ok: bool) {
@@ -356,7 +372,7 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 	if existing, found := r.pipelines[key]; found {
 		return existing
 	}
-	if program == .Scene3 {
+	if program == .Scene3 || program == .Shadow3 {
 		return make_scene_pipeline(r, key)
 	}
 	if r.failed {
@@ -433,7 +449,7 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 		{location = 3, format = .FLOAT, offset = u32(offset_of(Typeset_Vertex, coloured))},
 	}
 	switch program {
-	case .Scene3:
+	case .Scene3, .Shadow3:
 		return nil // made by make_scene_pipeline above
 	case .Text:
 		info.vertex_input_state = {
