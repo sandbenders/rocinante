@@ -61,6 +61,7 @@ Scene3 :: struct {
 	lit:      bool,       // a `light` was written this frame, so the usual lights are not there
 	unlit:    bool,       // shapes are drawn flat in their color (`no lights`)
 	shadows:  bool,       // what the first sun or spot light does not reach is dark (`shadows`)
+	turtle:   Turtle3,   // the turtle in space (turtle3.odin); `begin_frame` sends it home and `push` saves it
 	material: Material3,
 	fixed:       bool,
 	eye, target: [3]f64,
@@ -88,6 +89,7 @@ scene_begin :: proc(s: ^Scene3) {
 	clear(&s.lights)
 	s.lit, s.unlit, s.material = false, false, {}
 	s.shadows = false
+	s.turtle = {}
 	clear(&s.items)
 	s.model = {}
 }
