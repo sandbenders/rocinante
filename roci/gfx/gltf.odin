@@ -30,6 +30,20 @@ Model_Part :: struct {
 	textures:    [Texture_Slot]Image_Id, // pictures the material is painted with (0: none); they multiply what the numbers above give
 	normal_scale: f32, // how strongly the normal picture bends the surface
 	alpha_cutoff: f32, // above 0, a pixel whose alpha is less than this is not drawn (a leaf, a fence)
+	uv_set:       [Texture_Slot]u8, // which set of coordinates each picture is read with: 0 or 1
+	uv_transform: [Texture_Slot][6]f32, // how each picture's coordinates are moved: a, b, tx, c, d, ty, so u' = a u + b v + tx and v' = c u + d v + ty
+	dielectric:   f32, // how much a straight look at a surface that is not metal reflects: 0.04 unless the model says otherwise
+	unlit:        bool, // drawn in its color alone, with no light or shade
+}
+
+// A part with nothing said about it: white, metal and rough as glTF has them when a material says nothing, pictures
+// none, left where they are.
+model_part_default :: proc() -> Model_Part {
+	p := Model_Part{colour = {1, 1, 1, 1}, metallic = 1, roughness = 1, normal_scale = 1, dielectric = 0.04}
+	for slot in Texture_Slot {
+		p.uv_transform[slot] = {1, 0, 0, 0, 1, 0}
+	}
+	return p
 }
 
 // The pictures a material can have: the color, the way the surface faces (a normal map), metal and roughness
@@ -540,6 +554,34 @@ add_mesh :: proc(r: ^Reading, index: int, world: matrix[4, 4]f32) {
 				return
 			}
 		}
+		uvs1: Accessor
+		has_uvs1 := false
+		if uv_index, has := attributes["TEXCOORD_1"]; has {
+			uvs1, has_uvs1 = open_accessor(r, int(number_value(uv_index)))
+			if has_uvs1 && (uvs1.components != 2 || uvs1.count != positions.count) {
+				r.failed = .Bad_Data
+				return
+			}
+		}
+		colours: Accessor
+		has_colours := false
+		if colour_index, has := attributes["COLOR_0"]; has {
+			colours, has_colours = open_accessor(r, int(number_value(colour_index)))
+			if has_colours && ((colours.components != 3 && colours.components != 4) || colours.count != positions.count) {
+				r.failed = .Bad_Data
+				return
+			}
+		}
+		colour_of :: proc(colours: Accessor, has: bool, at: u32) -> [4]u8 {
+			if !has {
+				return {255, 255, 255, 255}
+			}
+			out := [4]u8{255, 255, 255, 255}
+			for k in 0 ..< colours.components {
+				out[k] = u8(clamp(accessor_number(colours, int(at), k), 0, 1) * 255 + 0.5)
+			}
+			return out
+		}
 		uv_of :: proc(uvs: Accessor, has: bool, at: u32) -> [2]f32 {
 			if !has {
 				return {}
@@ -612,7 +654,7 @@ add_mesh :: proc(r: ^Reading, index: int, world: matrix[4, 4]f32) {
 			for i in 0 ..< positions.count {
 				n := [3]f64{accessor_number(normals, i, 0), accessor_number(normals, i, 1), accessor_number(normals, i, 2)}
 				n = transform_normal(world, n)
-				append(&r.model.vertices, Vertex3{place(r, world, positions, u32(i)), {f32(n.x), f32(-n.y), f32(n.z)}, 0, uv_of(uvs, has_uvs, u32(i))})
+				append(&r.model.vertices, Vertex3{place(r, world, positions, u32(i)), {f32(n.x), f32(-n.y), f32(n.z)}, 0, uv_of(uvs, has_uvs, u32(i)), uv_of(uvs1, has_uvs1, u32(i)), colour_of(colours, has_colours, u32(i))})
 			}
 			for c in corners {
 				append(&r.model.indices, base + c)
@@ -626,11 +668,12 @@ add_mesh :: proc(r: ^Reading, index: int, world: matrix[4, 4]f32) {
 				// the sketch's world is the glTF one mirrored in y, which turns every triangle over, so the normal is the other way
 				n := -normalize3f(cross3f(b - a, c - a))
 				base := u32(len(r.model.vertices))
-				append(&r.model.vertices, Vertex3{a, n, 0, uv_of(uvs, has_uvs, corners[t])}, Vertex3{b, n, 0, uv_of(uvs, has_uvs, corners[t + 1])}, Vertex3{c, n, 0, uv_of(uvs, has_uvs, corners[t + 2])})
+				append(&r.model.vertices, Vertex3{a, n, 0, uv_of(uvs, has_uvs, corners[t]), uv_of(uvs1, has_uvs1, corners[t]), colour_of(colours, has_colours, corners[t])}, Vertex3{b, n, 0, uv_of(uvs, has_uvs, corners[t + 1]), uv_of(uvs1, has_uvs1, corners[t + 1]), colour_of(colours, has_colours, corners[t + 1])}, Vertex3{c, n, 0, uv_of(uvs, has_uvs, corners[t + 2]), uv_of(uvs1, has_uvs1, corners[t + 2]), colour_of(colours, has_colours, corners[t + 2])})
 				append(&r.model.indices, base, base + 1, base + 2)
 			}
 		}
-		part := Model_Part{first_index = first_index, index_count = u32(len(r.model.indices)) - first_index, colour = {1, 1, 1, 1}, metallic = 1, roughness = 1, normal_scale = 1}
+		part := model_part_default()
+		part.first_index, part.index_count = first_index, u32(len(r.model.indices)) - first_index
 		if material_index, has := primitive["material"]; has {
 			read_material(r, int(number_value(material_index)), &part)
 		}
@@ -659,15 +702,15 @@ read_material :: proc(r: ^Reading, index: int, part: ^Model_Part) {
 		}
 		part.metallic = f32(clamp(number_of(pbr, "metallicFactor", 1), 0, 1))
 		part.roughness = f32(clamp(number_of(pbr, "roughnessFactor", 1), 0, 1))
-		part.textures[.Colour] = texture_picture(r, pbr, "baseColorTexture")
-		part.textures[.Metal_Rough] = texture_picture(r, pbr, "metallicRoughnessTexture")
+		read_texture(r, part, .Colour, pbr, "baseColorTexture")
+		read_texture(r, part, .Metal_Rough, pbr, "metallicRoughnessTexture")
 	}
 	emissive: [3]f64
 	if numbers_of(material, "emissiveFactor", emissive[:]) {
-		part.emissive = f32(clamp(max(emissive[0], emissive[1], emissive[2]), 0, 1))
+		part.emissive = f32(clamp(max(emissive[0], emissive[1], emissive[2]), 0, 20))
 	}
-	part.textures[.Emissive] = texture_picture(r, material, "emissiveTexture")
-	part.textures[.Normal] = texture_picture(r, material, "normalTexture")
+	read_texture(r, part, .Emissive, material, "emissiveTexture")
+	read_texture(r, part, .Normal, material, "normalTexture")
 	if info, has := material["normalTexture"].(json.Object); has {
 		part.normal_scale = f32(clamp(number_of(info, "scale", 1), -4, 4))
 	}
@@ -675,18 +718,61 @@ read_material :: proc(r: ^Reading, index: int, part: ^Model_Part) {
 	if mode, has := material["alphaMode"].(json.String); has && string(mode) == "MASK" {
 		part.alpha_cutoff = f32(clamp(number_of(material, "alphaCutoff", 0.5), 0.001, 1))
 	}
+	// the extensions that change what a still picture of the material is: how strongly it glows, whether it is lit at all, and
+	// how much a surface that is not metal reflects (its index of refraction, and a factor on that); the rest (clearcoat,
+	// transmission, sheen, volume, anisotropy) are left out
+	if extensions, has_extensions := material["extensions"].(json.Object); has_extensions {
+		if strength, has_strength := extensions["KHR_materials_emissive_strength"].(json.Object); has_strength {
+			brightest := max(emissive[0], emissive[1], emissive[2])
+			part.emissive = f32(clamp(brightest * number_of(strength, "emissiveStrength", 1), 0, 20))
+		}
+		if _, unlit := extensions["KHR_materials_unlit"]; unlit {
+			part.unlit = true
+		}
+		if ior, has_ior := extensions["KHR_materials_ior"].(json.Object); has_ior {
+			n := clamp(number_of(ior, "ior", 1.5), 1, 5)
+			part.dielectric = f32(((n - 1) / (n + 1)) * ((n - 1) / (n + 1)))
+		}
+		if specular, has_specular := extensions["KHR_materials_specular"].(json.Object); has_specular {
+			part.dielectric = part.dielectric * f32(clamp(number_of(specular, "specularFactor", 1), 0, 1))
+		}
+	}
 }
 
-// The picture a material names under `key` (`{ "index": 2, "texCoord": 0 }`), read once however many
-// materials use it; 0 when there is none, it uses a second set of coordinates (not read), or the file
-// of the picture cannot be had, which is counted in `lost_textures`.
+// Reads the picture a material names under `key` (`{ "index": 2, "texCoord": 1 }`) into the slot of the part: the
+// picture, which set of coordinates it is read with (0 or 1), and `KHR_texture_transform`, which moves the
+// coordinates (its own `texCoord` wins). A set of coordinates past the second leaves the picture out.
 @(private = "file")
-texture_picture :: proc(r: ^Reading, holder: json.Object, key: string) -> Image_Id {
+read_texture :: proc(r: ^Reading, part: ^Model_Part, slot: Texture_Slot, holder: json.Object, key: string) {
 	info, has := holder[key].(json.Object)
-	if !has || int(number_of(info, "texCoord", 0)) != 0 {
-		return 0
+	if !has {
+		return
 	}
-	textures := array_of(r.root, "textures")
+	set := int(number_of(info, "texCoord", 0))
+	transform := [6]f32{1, 0, 0, 0, 1, 0}
+	if extensions, has_extensions := info["extensions"].(json.Object); has_extensions {
+		if moved, has_transform := extensions["KHR_texture_transform"].(json.Object); has_transform {
+			offset, scale := [2]f64{0, 0}, [2]f64{1, 1}
+			_ = numbers_of(moved, "offset", offset[:])
+			_ = numbers_of(moved, "scale", scale[:])
+			turn := number_of(moved, "rotation", 0)
+			c, s := math.cos(turn), math.sin(turn)
+			transform = {f32(c * scale.x), f32(s * scale.y), f32(offset.x), f32(-s * scale.x), f32(c * scale.y), f32(offset.y)}
+			set = int(number_of(moved, "texCoord", f64(set)))
+		}
+	}
+	if set < 0 || set > 1 {
+		return
+	}
+	if id := texture_picture(r, info); id != 0 {
+		part.textures[slot], part.uv_set[slot], part.uv_transform[slot] = id, u8(set), transform
+	}
+}
+
+// The picture a texture entry (`{ "index": 2 }`) names, read once however many materials use it; 0 when it is not
+// there or the file of the picture cannot be had, which is counted in `lost_textures`.
+@(private = "file")
+texture_picture :: proc(r: ^Reading, info: json.Object) -> Image_Id {	textures := array_of(r.root, "textures")
 	ti := int(number_of(info, "index", -1))
 	if ti < 0 || ti >= len(textures) {
 		return 0

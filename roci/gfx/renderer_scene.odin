@@ -107,7 +107,7 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 		{slot = 0, pitch = size_of(Vertex3), input_rate = .VERTEX},
 		{slot = 1, pitch = size_of(Instance3), input_rate = .INSTANCE},
 	}
-	attributes := [10]sdl.GPUVertexAttribute{
+	attributes := [12]sdl.GPUVertexAttribute{
 		{location = 0, buffer_slot = 0, format = .FLOAT3, offset = u32(offset_of(Vertex3, position))},
 		{location = 1, buffer_slot = 0, format = .FLOAT3, offset = u32(offset_of(Vertex3, normal))},
 		{location = 2, buffer_slot = 0, format = .FLOAT, offset = u32(offset_of(Vertex3, stretch))},
@@ -118,6 +118,8 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 		{location = 7, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, params))},
 		{location = 8, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, material))},
 		{location = 9, buffer_slot = 0, format = .FLOAT2, offset = u32(offset_of(Vertex3, uv))},
+		{location = 10, buffer_slot = 0, format = .FLOAT2, offset = u32(offset_of(Vertex3, uv1))},
+		{location = 11, buffer_slot = 0, format = .UBYTE4_NORM, offset = u32(offset_of(Vertex3, colour))},
 	}
 	info := sdl.GPUGraphicsPipelineCreateInfo{
 		vertex_shader     = vertex,
@@ -544,7 +546,9 @@ Part_Flags :: struct {
 	normal_scale:   f32,
 	emissive_map:   f32,
 	alpha_cutoff:   f32,
-	unused:         f32,
+	dielectric:     f32, // the reflectance of a non-metal looked at straight on
+	sets:           [4]f32, // the set of coordinates each picture is read with, 0 or 1
+	transform:      [8][4]f32, // two rows (a b tx, c d ty) for each picture
 }
 
 // Binds the pictures of a part (the stand-ins for the ones it has not got) and tells the shader which it has.
@@ -561,7 +565,17 @@ bind_part :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, pass: ^sdl.GPUR
 		bindings[int(slot)] = {texture = texture, sampler = r.model_sampler}
 	}
 	sdl.BindGPUFragmentSamplers(pass, 1, raw_data(bindings[:]), 4)
-	flags := Part_Flags{alpha_cutoff = part.alpha_cutoff}
+	flags := Part_Flags{alpha_cutoff = part.alpha_cutoff, dielectric = part.dielectric if part.dielectric > 0 else 0.04}
+	for slot in Texture_Slot {
+		i := int(slot)
+		flags.sets[i] = f32(part.uv_set[slot])
+		m := part.uv_transform[slot]
+		if m == {} {
+			m = {1, 0, 0, 0, 1, 0} // a part made with no default
+		}
+		flags.transform[i * 2] = {m[0], m[1], m[2], 0}
+		flags.transform[i * 2 + 1] = {m[3], m[4], m[5], 0}
+	}
 	if part.textures[.Normal] != 0 && has_texture(r, part.textures[.Normal]) {
 		flags.normal_scale = part.normal_scale if part.normal_scale != 0 else 1
 	}

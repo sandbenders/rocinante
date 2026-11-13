@@ -42,7 +42,9 @@ SamplerState emissive_sampler : register(s4, space2);
 
 cbuffer Part : register(b1, space3)
 {
-    float4 part; // x: how strongly the normal map bends the surface (0: there is none), y: 1 when the light comes from a picture, z: the alpha below which a pixel is not drawn (0: none)
+    float4 part;     // x: how strongly the normal map bends the surface (0: there is none), y: 1 when the light comes from a picture, z: the alpha below which a pixel is not drawn (0: none), w: how much a non-metal reflects looked at straight on
+    float4 sets;     // for each picture, 0 or 1: the set of coordinates it is read with
+    float4 xform[8]; // for each picture two rows, (a b tx) and (c d ty), that move its coordinates
 };
 
 cbuffer Lights : register(b0, space3)
@@ -69,6 +71,8 @@ struct VSInput
     float4 params : TEXCOORD7;
     float4 material : TEXCOORD8;
     float2 uv : TEXCOORD9;
+    float2 uv1 : TEXCOORD10;
+    float4 vcolour : TEXCOORD11;
 };
 
 struct VSOutput
@@ -79,6 +83,8 @@ struct VSOutput
     float4 colour : TEXCOORD2;
     float4 material : TEXCOORD3;
     float2 uv : TEXCOORD4;
+    float2 uv1 : TEXCOORD5;
+    float4 vcolour : TEXCOORD6;
 };
 
 VSOutput vs_main(VSInput input)
@@ -99,6 +105,8 @@ VSOutput vs_main(VSInput input)
     output.colour = input.colour;
     output.material = input.material;
     output.uv = input.uv;
+    output.uv1 = input.uv1;
+    output.vcolour = input.vcolour;
     return output;
 }
 
@@ -135,23 +143,32 @@ float3 to_linear(float3 c)
     return pow(c, 2.2);
 }
 
+// Where a picture is read: the set of coordinates it uses, moved by its own transform.
+float2 coords(VSOutput input, int slot)
+{
+    float2 uv = (sets[slot] > 0.5) ? input.uv1 : input.uv;
+    float3 p = float3(uv, 1.0);
+    return float2(dot(xform[slot * 2].xyz, p), dot(xform[slot * 2 + 1].xyz, p));
+}
+
 float4 ps_main(VSOutput input) : SV_Target0
 {
     // the pictures are read before anything can leave the shader, so the sizes they are read at (from how fast
     // the coordinates change across neighbouring pixels) are worked out for every pixel
-    float4 painted = colour_map.Sample(colour_sampler, input.uv);
-    float4 packed = metal_map.Sample(metal_sampler, input.uv);
-    float3 bump = normal_map.Sample(normal_sampler, input.uv).xyz * 2.0 - 1.0;
-    float3 glow = emissive_map.Sample(emissive_sampler, input.uv).rgb;
+    float4 painted = colour_map.Sample(colour_sampler, coords(input, 0));
+    float4 packed = metal_map.Sample(metal_sampler, coords(input, 2));
+    float3 bump = normal_map.Sample(normal_sampler, coords(input, 1)).xyz * 2.0 - 1.0;
+    float3 glow = emissive_map.Sample(emissive_sampler, coords(input, 3)).rgb;
     float3 dp1 = ddx(input.world);
     float3 dp2 = ddy(input.world);
-    float2 duv1 = ddx(input.uv);
-    float2 duv2 = ddy(input.uv);
-    if (part.z > 0.0 && painted.a * input.colour.a < part.z)
+    float2 bump_uv = coords(input, 1);
+    float2 duv1 = ddx(bump_uv);
+    float2 duv2 = ddy(bump_uv);
+    if (part.z > 0.0 && painted.a * input.colour.a * input.vcolour.a < part.z)
     {
         discard;
     }
-    float3 base = input.colour.rgb * painted.rgb;
+    float3 base = input.colour.rgb * painted.rgb * input.vcolour.rgb;
     // flat in its color: no lights
     if (input.material.z > 0.5)
     {
@@ -177,7 +194,7 @@ float4 ps_main(VSOutput input) : SV_Target0
     float3 albedo = to_linear(base);
     float metallic = input.material.x * packed.b;
     float rough = clamp(input.material.y * packed.g, 0.04, 1.0);
-    float3 f0 = lerp(float3(0.04, 0.04, 0.04), albedo, metallic);
+    float3 f0 = lerp(float3(part.w, part.w, part.w), albedo, metallic);
     float3 diffuse_colour = albedo * (1.0 - metallic);
     float a = rough * rough;
     float a2 = a * a;

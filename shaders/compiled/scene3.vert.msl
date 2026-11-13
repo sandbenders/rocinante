@@ -19,6 +19,8 @@ struct main0_out
     float4 _entryPointOutput_colour [[user(locn2)]];
     float4 _entryPointOutput_material [[user(locn3)]];
     float2 _entryPointOutput_uv [[user(locn4)]];
+    float2 _entryPointOutput_uv1 [[user(locn5)]];
+    float4 _entryPointOutput_vcolour [[user(locn6)]];
     float4 gl_Position [[position]];
 };
 
@@ -34,21 +36,25 @@ struct main0_in
     float4 input_params [[attribute(7)]];
     float4 input_material [[attribute(8)]];
     float2 input_uv [[attribute(9)]];
+    float2 input_uv1 [[attribute(10)]];
+    float4 input_vcolour [[attribute(11)]];
 };
 
 vertex main0_out main0(main0_in in [[stage_in]], constant Scene& _106 [[buffer(0)]])
 {
     main0_out out = {};
-    float3 _359 = in.input_position + (in.input_normal * in.input_params.y);
-    _359.y += (in.input_stretch * in.input_params.x);
-    float4 _381 = float4(_359, 1.0);
-    float4 _295 = float4(dot(in.input_row0, _381), dot(in.input_row1, _381), dot(in.input_row2, _381), 1.0);
-    out.gl_Position = float4(dot(_106.clip_x, _295), dot(_106.clip_y, _295), dot(_106.clip_z, _295), dot(_106.clip_w, _295));
-    out._entryPointOutput_world = _295.xyz;
+    float3 _387 = in.input_position + (in.input_normal * in.input_params.y);
+    _387.y += (in.input_stretch * in.input_params.x);
+    float4 _409 = float4(_387, 1.0);
+    float4 _317 = float4(dot(in.input_row0, _409), dot(in.input_row1, _409), dot(in.input_row2, _409), 1.0);
+    out.gl_Position = float4(dot(_106.clip_x, _317), dot(_106.clip_y, _317), dot(_106.clip_z, _317), dot(_106.clip_w, _317));
+    out._entryPointOutput_world = _317.xyz;
     out._entryPointOutput_normal = float3(dot(cross(in.input_row1.xyz, in.input_row2.xyz), in.input_normal), dot(cross(in.input_row2.xyz, in.input_row0.xyz), in.input_normal), dot(cross(in.input_row0.xyz, in.input_row1.xyz), in.input_normal));
     out._entryPointOutput_colour = in.input_colour;
     out._entryPointOutput_material = in.input_material;
     out._entryPointOutput_uv = in.input_uv;
+    out._entryPointOutput_uv1 = in.input_uv1;
+    out._entryPointOutput_vcolour = in.input_vcolour;
     return out;
 }
 

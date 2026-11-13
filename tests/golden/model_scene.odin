@@ -75,14 +75,14 @@ model_pictures :: proc(list: ^gfx.Command_List) {
 	square :: proc(data: ^gfx.Model_Data, left, right: f32) {
 		base := u32(len(data.vertices))
 		append(&data.vertices,
-			gfx.Vertex3{{left, -0.5, 0}, {0, 0, 1}, 0, {0, 0}},
-			gfx.Vertex3{{right, -0.5, 0}, {0, 0, 1}, 0, {1, 0}},
-			gfx.Vertex3{{right, 0.5, 0}, {0, 0, 1}, 0, {1, 1}},
-			gfx.Vertex3{{left, 0.5, 0}, {0, 0, 1}, 0, {0, 1}},
+			gfx.Vertex3{{left, -0.5, 0}, {0, 0, 1}, 0, {0, 0}, {}, {255, 255, 255, 255}},
+			gfx.Vertex3{{right, -0.5, 0}, {0, 0, 1}, 0, {1, 0}, {}, {255, 255, 255, 255}},
+			gfx.Vertex3{{right, 0.5, 0}, {0, 0, 1}, 0, {1, 1}, {}, {255, 255, 255, 255}},
+			gfx.Vertex3{{left, 0.5, 0}, {0, 0, 1}, 0, {0, 1}, {}, {255, 255, 255, 255}},
 		)
 		first := u32(len(data.indices))
 		append(&data.indices, base, base + 1, base + 2, base, base + 2, base + 3)
-		append(&data.parts, gfx.Model_Part{first_index = first, index_count = 6, colour = {1, 1, 1, 1}, metallic = 1, roughness = 1, normal_scale = 1})
+		append(&data.parts, gfx.Model_Part{first_index = first, index_count = 6, colour = {1, 1, 1, 1}, metallic = 1, roughness = 1, normal_scale = 1, dielectric = 0.04, uv_transform = {.Colour = {1, 0, 0, 0, 1, 0}, .Normal = {1, 0, 0, 0, 1, 0}, .Metal_Rough = {1, 0, 0, 0, 1, 0}, .Emissive = {1, 0, 0, 0, 1, 0}}})
 	}
 	square(&data, -1.1, -0.05)
 	square(&data, 0.05, 1.1)
@@ -99,4 +99,42 @@ model_pictures :: proc(list: ^gfx.Command_List) {
 	_ = gfx.scene_light(&list.scene, {kind = .Ambient, colour = {0.3, 0.32, 0.4}})
 	_ = gfx.scene_light(&list.scene, {kind = .Sun, at = {0.7, -0.5, 0.6}, colour = {1, 0.96, 0.9}})
 	gfx.scene_add_loaded_model(&list.scene, id, {0, 0, 0}, 150)
+}
+
+// Three squares for what a corner and a material can say beside their pictures: a color for each corner
+// (red, green, blue and white) that multiplies the checkered one, a picture moved by a transform (turned
+// and scaled, and read with the second set of coordinates, which run the other way), and a part that is
+// drawn unlit, in its color alone.
+model_colours :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.Colour{18, 20, 36, 255})
+	data: gfx.Model_Data
+	square :: proc(data: ^gfx.Model_Data, left, right: f32, colours: [4][4]u8) {
+		base := u32(len(data.vertices))
+		corners := [4][2]f32{{0, 0}, {1, 0}, {1, 1}, {0, 1}}
+		places := [4][2]f32{{left, -0.5}, {right, -0.5}, {right, 0.5}, {left, 0.5}}
+		for i in 0 ..< 4 {
+			append(&data.vertices, gfx.Vertex3{{places[i].x, places[i].y, 0}, {0, 0, 1}, 0, corners[i], {1 - corners[i].x, corners[i].y}, colours[i]})
+		}
+		first := u32(len(data.indices))
+		append(&data.indices, base, base + 1, base + 2, base, base + 2, base + 3)
+		part := gfx.model_part_default()
+		part.first_index, part.index_count = first, 6
+		part.metallic, part.roughness = 0, 0.6
+		append(&data.parts, part)
+	}
+	white := [4]u8{255, 255, 255, 255}
+	square(&data, -1.7, -0.6, {{255, 40, 40, 255}, {40, 255, 40, 255}, {40, 40, 255, 255}, white})
+	square(&data, -0.5, 0.6, {white, white, white, white})
+	square(&data, 0.7, 1.8, {white, white, white, white})
+	data.low, data.high = {-1.7, -0.5, 0}, {1.8, 0.5, 0}
+	data.parts[0].textures[.Colour] = painted(checkers)
+	data.parts[1].textures[.Colour] = painted(checkers)
+	data.parts[1].uv_set[.Colour] = 1
+	data.parts[1].uv_transform[.Colour] = {1.4142, 1.4142, 0, -1.4142, 1.4142, 0}
+	data.parts[2].colour = {1, 0.6, 0.1, 1}
+	data.parts[2].unlit = true
+	id := gfx.model_add("golden:model_colours", 1, data)
+	_ = gfx.scene_light(&list.scene, {kind = .Ambient, colour = {0.4, 0.4, 0.45}})
+	_ = gfx.scene_light(&list.scene, {kind = .Sun, at = {0.3, -0.5, 0.8}, colour = {1, 0.96, 0.9}})
+	gfx.scene_add_loaded_model(&list.scene, id, {0, 0, 0}, 170)
 }

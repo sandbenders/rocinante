@@ -15,6 +15,7 @@
 // however they are spread through the file, so a model is a draw for each material.
 package gfx
 
+import "../geom"
 import "core:math"
 import "core:strconv"
 import "core:strings"
@@ -25,6 +26,7 @@ Obj_Material :: struct {
 	name:      string,
 	part:      Model_Part,
 	has_color: bool, // the picture gave it
+	alpha_map: Image_Id, // `map_d`: a picture whose brightness is how much of the material is there
 }
 
 @(private = "file")
@@ -36,6 +38,7 @@ Obj_Corner :: [3]i32 // position, texture coordinate and normal, each as an inde
 obj_read :: proc(bytes: []byte, reader: Gltf_Reader = nil, allocator := context.allocator) -> (model: Model_Data, error: Gltf_Error) {
 	text := string(bytes)
 	positions := make([dynamic][3]f32, context.temp_allocator)
+	colours := make([dynamic][4]u8, context.temp_allocator) // of each position: white unless the file gives `v x y z r g b`
 	uvs := make([dynamic][2]f32, context.temp_allocator)
 	normals := make([dynamic][3]f32, context.temp_allocator)
 	materials := make([dynamic]Obj_Material, context.temp_allocator)
@@ -80,6 +83,13 @@ obj_read :: proc(bytes: []byte, reader: Gltf_Reader = nil, allocator := context.
 				return {}, .Bad_Data
 			}
 			append(&positions, [3]f32{number(words[1]), number(words[2]), number(words[3])})
+			colour := [4]u8{255, 255, 255, 255}
+			if len(words) >= 7 {
+				for k in 0 ..< 3 {
+					colour[k] = u8(clamp(number(words[4 + k]), 0, 1) * 255 + 0.5)
+				}
+			}
+			append(&colours, colour)
 		case "vt":
 			if len(words) < 2 {
 				return {}, .Bad_Data
@@ -128,7 +138,7 @@ obj_read :: proc(bytes: []byte, reader: Gltf_Reader = nil, allocator := context.
 					break
 				}
 			}
-			corner_vertex :: proc(vertices: ^[dynamic]Vertex3, corners: ^map[Obj_Corner]u32, positions: [][3]f32, uvs: [][2]f32, normals: [][3]f32, corner: Obj_Corner, face_normal: [3]f32) -> u32 {
+			corner_vertex :: proc(vertices: ^[dynamic]Vertex3, corners: ^map[Obj_Corner]u32, positions: [][3]f32, colours: [][4]u8, uvs: [][2]f32, normals: [][3]f32, corner: Obj_Corner, face_normal: [3]f32) -> u32 {
 				if corner.z >= 0 {
 					if found, has := corners[corner]; has {
 						return found
@@ -139,23 +149,35 @@ obj_read :: proc(bytes: []byte, reader: Gltf_Reader = nil, allocator := context.
 				uv := [2]f32{} if corner.y < 0 else uvs[corner.y]
 				// into the sketch's world, where y is down
 				index := u32(len(vertices^))
-				append(vertices, Vertex3{{position.x, -position.y, position.z}, {n.x, -n.y, n.z}, 0, uv})
+				append(vertices, Vertex3{{position.x, -position.y, position.z}, {n.x, -n.y, n.z}, 0, uv, uv, colours[corner.x]})
 				if corner.z >= 0 {
 					corners[corner] = index
 				}
 				return index
 			}
-			first := corner_vertex(&vertices, &corners, positions[:], uvs[:], normals[:], face[0], face_normal)
-			previous := corner_vertex(&vertices, &corners, positions[:], uvs[:], normals[:], face[1], face_normal)
-			for k in 2 ..< len(face) {
-				next := corner_vertex(&vertices, &corners, positions[:], uvs[:], normals[:], face[k], face_normal)
-				append(&per_material[current], first, previous, next)
-				previous = next
+			made := make([]u32, len(face), context.temp_allocator)
+			places := make([][3]f32, len(face), context.temp_allocator)
+			for corner, k in face {
+				made[k] = corner_vertex(&vertices, &corners, positions[:], colours[:], uvs[:], normals[:], corner, face_normal)
+				places[k] = positions[corner.x]
+			}
+			cut := face_triangles(places)
+			for t := 0; t + 2 < len(cut); t += 3 {
+				append(&per_material[current], made[cut[t]], made[cut[t + 1]], made[cut[t + 2]])
 			}
 		}
 	}
 	if !seen_face || len(vertices) == 0 {
 		return {}, .No_Triangles if len(positions) > 0 else .Not_Obj
+	}
+	// a `map_d` becomes the alpha of the color picture, and the part cuts where it is under half
+	for &m in materials {
+		if m.alpha_map != 0 {
+			if merged := merge_alpha(m.part.textures[.Colour], m.alpha_map); merged != 0 {
+				m.part.textures[.Colour] = merged
+				m.part.alpha_cutoff = 0.5
+			}
+		}
 	}
 
 	model.vertices = make([dynamic]Vertex3, allocator)
@@ -198,7 +220,9 @@ obj_read :: proc(bytes: []byte, reader: Gltf_Reader = nil, allocator := context.
 
 @(private = "file")
 default_part :: proc() -> Model_Part {
-	return Model_Part{colour = {0.8, 0.8, 0.8, 1}, metallic = 0, roughness = 0.7, normal_scale = 1}
+	p := model_part_default()
+	p.colour, p.metallic, p.roughness = {0.8, 0.8, 0.8, 1}, 0, 0.7
+	return p
 }
 
 @(private = "file")
@@ -306,6 +330,8 @@ read_mtl :: proc(text: string, materials: ^[dynamic]Obj_Material, per_material: 
 					}
 				}
 			}
+		case "map_d":
+			m.alpha_map = mtl_picture(line, words, pictures, lost, reader)
 		case "map_Ke":
 			if id := mtl_picture(line, words, pictures, lost, reader); id != 0 {
 				m.part.textures[.Emissive] = id
@@ -358,4 +384,106 @@ mtl_picture :: proc(line: string, words: []string, pictures: ^map[string]Image_I
 is_number :: proc(word: string) -> bool {
 	_, ok := strconv.parse_f64(word)
 	return ok
+}
+
+// How a face of three or more corners is cut into triangles, as the places of the corners three at a time. A
+// face that is convex (all its turns the same way about its normal, which is nearly every face) is a fan from its
+// first corner; a concave one is flattened along the largest part of its normal and cut by ear clipping, so a
+// notch is not covered.
+@(private)
+face_triangles :: proc(points: [][3]f32) -> []int {
+	n := len(points)
+	out := make([dynamic]int, context.temp_allocator)
+	if n < 3 {
+		return out[:]
+	}
+	fan :: proc(out: ^[dynamic]int, n: int) {
+		for k in 1 ..< n - 1 {
+			append(out, 0, k, k + 1)
+		}
+	}
+	if n == 3 {
+		fan(&out, n)
+		return out[:]
+	}
+	// the normal of the whole face (Newell), and whether every corner turns the way it does
+	normal := [3]f32{}
+	for i in 0 ..< n {
+		a, b := points[i], points[(i + 1) % n]
+		normal += {(a.y - b.y) * (a.z + b.z), (a.z - b.z) * (a.x + b.x), (a.x - b.x) * (a.y + b.y)}
+	}
+	convex := true
+	for i in 0 ..< n {
+		a, b, c := points[i], points[(i + 1) % n], points[(i + 2) % n]
+		turn := cross3f(b - a, c - b)
+		if turn.x * normal.x + turn.y * normal.y + turn.z * normal.z < 0 {
+			convex = false
+			break
+		}
+	}
+	if convex {
+		fan(&out, n)
+		return out[:]
+	}
+	axis := 0
+	if abs(normal.y) > abs(normal[axis]) {axis = 1}
+	if abs(normal.z) > abs(normal[axis]) {axis = 2}
+	flat := make([]geom.Point, n, context.temp_allocator)
+	for p, i in points {
+		switch axis {
+		case 0: flat[i] = {f64(p.y), f64(p.z)}
+		case 1: flat[i] = {f64(p.z), f64(p.x)}
+		case 2: flat[i] = {f64(p.x), f64(p.y)}
+		}
+	}
+	t: geom.Triangulation
+	defer geom.triangulation_destroy(&t)
+	if geom.triangulate({flat}, &t) == 0 {
+		fan(&out, n)
+		return out[:]
+	}
+	// the triangulation keeps the corners it uses as they were, so each is found again by where it is
+	original :: proc(flat: []geom.Point, p: geom.Point) -> int {
+		for q, i in flat {
+			if q == p {
+				return i
+			}
+		}
+		return 0
+	}
+	for index in t.indices {
+		append(&out, original(flat, t.points[index]))
+	}
+	return out[:]
+}
+
+// A new picture made of the color picture (white when there is none) with the red of the alpha picture as its
+// alpha, the alpha picture read at the same place of itself as each pixel is of the color one. 0 when either
+// cannot be had.
+@(private)
+merge_alpha :: proc(colour, alpha: Image_Id) -> Image_Id {
+	a := image_data(alpha)
+	if a == nil || a.pixels == nil {
+		return 0
+	}
+	c := image_data(colour) if colour != 0 else nil
+	width, height := a.width, a.height
+	if c != nil && c.pixels != nil {
+		width, height = c.width, c.height
+	}
+	pixels := make([]u8, width * height * 4, context.temp_allocator)
+	for y in 0 ..< height {
+		for x in 0 ..< width {
+			at := (y * width + x) * 4
+			if c != nil && c.pixels != nil {
+				copy(pixels[at:at + 3], c.pixels[at:at + 3])
+			} else {
+				pixels[at], pixels[at + 1], pixels[at + 2] = 255, 255, 255
+			}
+			ax, ay := x * a.width / width, y * a.height / height
+			pixels[at + 3] = a.pixels[(ay * a.width + ax) * 4]
+		}
+	}
+	id, _ := image_add_pixels(width, height, pixels)
+	return id
 }

@@ -29,7 +29,7 @@ Example :: struct {
 // They get a larger worst channel and allowance than `STRICT`, which a shifted or wrongly lit
 // picture still fails.
 SHADED :: Limits{tolerance = 12, allowed = 60, worst = 40}
-SHADED_PICTURES := [?]string{"example_solids_1", "example_shapes3d_1", "example_stage_1", "example_lights_1", "example_shadows_1", "example_model_1", "example_turtle3d_1", "example_collide3d_1", "model_pictures"}
+SHADED_PICTURES := [?]string{"example_solids_1", "example_shapes3d_1", "example_stage_1", "example_lights_1", "example_shadows_1", "example_model_1", "example_turtle3d_1", "example_collide3d_1", "model_pictures", "model_colours"}
 
 // `benchmark` has no picture: 100,000 small circles hardly compress (737 KB), and an
 // interpreter test checks the work it does exactly, which is what it promises.
