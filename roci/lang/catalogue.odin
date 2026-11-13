@@ -420,7 +420,7 @@ CATALOGUE := [Message_Id]Entry{
 		"{b}A tween moves a number, a vector or a color, a little each frame, so it needs one that lasts: a name of the sketch, or a field of a record.",
 		"For example:", "{d}"},
 	.Not_A_Shape = {.Error, "`{a}` needs a shape here",
-		"This is {b}. {c}A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline.",
+		"This is {b}. {c}A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline. With three numbers in its places a shape is in space: a vector of 3 is a point, `pos` and `radius` make a sphere, `pos` and `size` a box that is not turned, and `from` and `to` a line.",
 		"For example:", "{d}"},
 	.Changed_While_Walking = {.Error, "`{a}` changes while the loop walks it",
 		"A `for each` is going through `{a}` right now, and adding to it, taking from it or giving it a new value in the middle makes the walk lose its place. Walk a copy, then change the list.",

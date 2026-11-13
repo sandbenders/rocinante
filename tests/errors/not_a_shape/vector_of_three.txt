@@ -1,8 +1,8 @@
-── `touching` needs a shape here ────────────────────── sketch.roci:2:17
+── `touching` needs a shape here ────────────────────── sketch.roci:2:19
 
 2 │ print (touching p { pos: { 0, 0 }, radius: 4 })
-  │                 ^
+  │                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This is a vector of 3 numbers. It has 3 numbers, and a point has 2. A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline.
+This is a record with pos and radius. The first has 3 numbers in its places and this has 2, and a flat shape and a shape in space never touch. A shape is a vector, which is a point, or a record with `pos` and `radius` for a circle, `pos` and `size` for a rectangle, with `angle` to turn it, `from` and `to` for a line, or `points` for any outline. With three numbers in its places a shape is in space: a vector of 3 is a point, `pos` and `radius` make a sphere, `pos` and `size` a box that is not turned, and `from` and `to` a line.
 
-For example:  ball = { pos: { 200, 100 }, radius: 10 }
+For example:  ball = { pos: { 200, 100, 0 }, radius: 10 }

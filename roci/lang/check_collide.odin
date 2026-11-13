@@ -16,6 +16,8 @@ import "core:fmt"
 SHAPE_EXAMPLE :: "ball = { pos: { 200, 100 }, radius: 10 }"
 @(private = "file")
 LINE_EXAMPLE :: "h = cast { from: { 0, 0 }, to: mouse } walls"
+@(private = "file")
+SPACE_EXAMPLE :: "ball = { pos: { 200, 100, 0 }, radius: 10 }"
 
 @(private)
 collision_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, args: []^IR) -> Type_Id {
@@ -26,17 +28,22 @@ collision_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call
 	case "touching":
 		check_shape(c, verb.name, args[0].type, k.args[0].span)
 		check_shape(c, verb.name, args[1].type, k.args[1].span)
+		check_same_space(c, verb.name, args[0].type, args[1].type, k.args[1].span)
 		return T_BOOLEAN
 	case "inside":
 		check_shape(c, verb.name, args[1].type, k.args[1].span)
+		check_same_space(c, verb.name, args[0].type, args[1].type, k.args[1].span)
 		return T_BOOLEAN
 	case "contact":
 		check_shape(c, verb.name, args[0].type, k.args[0].span)
 		check_shape(c, verb.name, args[1].type, k.args[1].span)
-		return result_record(c, e, {{"point", vector_of(c.types, 2)}, {"normal", vector_of(c.types, 2)}, {"depth", T_NUMBER}})
+		check_same_space(c, verb.name, args[0].type, args[1].type, k.args[1].span)
+		space := space_of(c, args[0].type, args[1].type)
+		return result_record(c, e, {{"point", vector_of(c.types, space)}, {"normal", vector_of(c.types, space)}, {"depth", T_NUMBER}})
 	case "hits":
 		check_shape(c, verb.name, args[0].type, k.args[0].span)
 		check_shape_list(c, verb.name, args[1].type, k.args[1].span)
+		check_same_space(c, verb.name, args[0].type, args[1].type, k.args[1].span)
 		return args[1].type
 	case "cast":
 		if problem, ok := line_problem(c, args[0].type); !ok {
@@ -44,7 +51,9 @@ collision_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call
 		}
 		check_shape_list(c, verb.name, args[1].type, k.args[1].span)
 		item := element_of(c, args[1].type)
-		return result_record(c, e, {{"item", item}, {"point", vector_of(c.types, 2)}, {"normal", vector_of(c.types, 2)}, {"distance", T_NUMBER}})
+		check_same_space(c, verb.name, args[0].type, args[1].type, k.args[1].span)
+		space := space_of(c, args[0].type, args[1].type)
+		return result_record(c, e, {{"item", item}, {"point", vector_of(c.types, space)}, {"normal", vector_of(c.types, space)}, {"distance", T_NUMBER}})
 	}
 	return T_ERROR
 }
@@ -143,8 +152,8 @@ shape_problem :: proc(c: ^Checker, type: Type_Id) -> (problem: string, ok: bool)
 	case .Variable, .Boxed, .Error:
 		return "", true
 	case .Vector:
-		if n := c.types.items[resolved].a; n != 2 {
-			return fmt.tprintf("It has %d numbers, and a point has 2. ", n), false
+		if n := c.types.items[resolved].a; n != 2 && n != 3 {
+			return fmt.tprintf("It has %d numbers, and a point has 2 (flat) or 3 (in space). ", n), false
 		}
 		return "", true
 	case .Record:
@@ -175,13 +184,90 @@ shape_problem :: proc(c: ^Checker, type: Type_Id) -> (problem: string, ok: bool)
 	for class in classes {
 		for need in NEEDS[class] {
 			if _, has := shape_field(c.types, root, need.name); has {
-				if why, fine := field_problem(c, root, need.name, need.kind); !fine {
+				if why, fine := field_problem(c, root, need.name, need.kind, class != .Polygon); !fine {
 					return why, false
 				}
 			}
 		}
+		// a shape is flat or in space, never both: its vectors have the same number of numbers
+		first, first_name := 0, ""
+		for need in NEEDS[class] {
+			if need.kind != .Vector {
+				continue
+			}
+			n := vector_length(c, root, need.name)
+			if n == 0 {
+				continue
+			}
+			if first == 0 {
+				first, first_name = n, need.name
+			} else if n != first {
+				return fmt.tprintf("Its `%s` has %d numbers and its `%s` has %d, and a shape is flat (2) or in space (3), not both. ", first_name, first, need.name, n), false
+			}
+		}
+		if class == .Box && first == 3 {
+			if _, turned := shape_field(c.types, root, "angle"); turned {
+				return "A box in space is not turned, so it has no `angle`. ", false
+			}
+		}
 	}
 	return "", true
+}
+
+// How many numbers the vector in a field of a record has: 0 for a field that is not there or not a vector yet known.
+@(private = "file")
+vector_length :: proc(c: ^Checker, shape: int, name: string) -> int {
+	field, has := shape_field(c.types, shape, name)
+	if !has {
+		return 0
+	}
+	resolved := resolve(c.types, field.type)
+	if c.types.items[resolved].kind == .Vector {
+		return c.types.items[resolved].a
+	}
+	return 0
+}
+
+// Whether a value is flat (2), in space (3) or not known (0): a point by its numbers, a record by the
+// vector in its `pos` or `from`, a list by its items.
+@(private = "file")
+space_dimension :: proc(c: ^Checker, type: Type_Id) -> int {
+	resolved := resolve(c.types, type)
+	#partial switch c.types.items[resolved].kind {
+	case .Vector:
+		return c.types.items[resolved].a
+	case .List:
+		return space_dimension(c, element_of(c, type))
+	case .Record:
+		root := c.types.items[resolved].a
+		for name in ([?]string{"pos", "from", "to"}) {
+			if n := vector_length(c, root, name); n != 0 {
+				return n
+			}
+		}
+		if _, flat := shape_field(c.types, root, "points"); flat {
+			return 2
+		}
+	}
+	return 0
+}
+
+// The number of numbers of the places a call works with: 3 when either side is in space, otherwise 2.
+@(private = "file")
+space_of :: proc(c: ^Checker, a, b: Type_Id) -> int {
+	if space_dimension(c, a) == 3 || space_dimension(c, b) == 3 {
+		return 3
+	}
+	return 2
+}
+
+// A flat shape and a shape in space never touch, so a call that mixes them is a mistake to say.
+@(private = "file")
+check_same_space :: proc(c: ^Checker, verb: string, a, b: Type_Id, span: Span) {
+	da, db := space_dimension(c, a), space_dimension(c, b)
+	if da != 0 && db != 0 && da != db {
+		note(c, .Not_A_Shape, span, verb, describe(c.types, b), fmt.tprintf("The first has %d numbers in its places and this has %d, and a flat shape and a shape in space never touch. ", da, db), SPACE_EXAMPLE)
+	}
 }
 
 @(private = "file")
@@ -205,7 +291,7 @@ sites_of :: proc(c: ^Checker, root: int) -> []int {
 // Whether a field holds the kind a shape needs: a number, a vector of 2, or a
 // list of vectors of 2.
 @(private = "file")
-field_problem :: proc(c: ^Checker, shape: int, name: string, want: Type_Kind) -> (problem: string, ok: bool) {
+field_problem :: proc(c: ^Checker, shape: int, name: string, want: Type_Kind, in_space := true) -> (problem: string, ok: bool) {
 	field, _ := shape_field(c.types, shape, name)
 	resolved := resolve(c.types, field.type)
 	item := c.types.items[resolved]
@@ -215,7 +301,7 @@ field_problem :: proc(c: ^Checker, shape: int, name: string, want: Type_Kind) ->
 	}
 	fits := item.kind == want
 	if fits && want == .Vector {
-		fits = item.a == 2
+		fits = item.a == 2 || (in_space && item.a == 3)
 	}
 	if fits && want == .List {
 		element := resolve(c.types, Type_Id(item.a))
@@ -233,7 +319,7 @@ field_problem :: proc(c: ^Checker, shape: int, name: string, want: Type_Kind) ->
 	wanted: string
 	#partial switch want {
 	case .Number: wanted = "a number"
-	case .Vector: wanted = "a vector of 2 numbers"
+	case .Vector: wanted = "a vector of 2 numbers, or of 3 for a shape in space" if in_space else "a vector of 2 numbers"
 	case:         wanted = "a list of vectors of 2 numbers"
 	}
 	return fmt.tprintf("Its `%s` is %s, and has to be %s. ", name, describe(c.types, field.type), wanted), false

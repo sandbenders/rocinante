@@ -2542,3 +2542,70 @@ print unit.x
 `
 	expect_printed(t, text, "45\n-45\n0\n{ 0.6, 0.8 }\n{ 0.2857142857142857, 0.42857142857142855, 0.8571428571428571 }\n{ 0, 0 }\n{ 0.5, 0.5, 0.5, 0.5 }\n{ 1.5, 2 }\n{ 1, 1.5, 3 }\n{ 3, 4 }\n{ 0, 0 }\n5\n0.6")
 }
+
+// ---- collision in space ----
+
+@(test)
+test_touching_and_inside_answer_for_shapes_in_space :: proc(t: ^testing.T) {
+	text := `ball = { pos: { 0, 0, 0 }, radius: 5 }
+crate = { pos: { 8, 0, 0 }, size: { 6, 6, 6 } }
+wire = { from: { -10, 0, 0 }, to: { 10, 0, 0 } }
+print (touching ball crate)
+crate.pos = { 9, 0, 0 }
+print (touching ball crate)
+print (touching { 0, 0, 5 } ball)
+print (touching { 0, 0, 5.5 } ball)
+print (inside { 4, 0, 0 } ball)
+print (inside { 6, 0, 0 } crate)
+print (touching wire crate)
+print (touching wire { pos: { 0, 4, 0 }, radius: 3 })
+print (touching wire { pos: { 0, 4, 0 }, radius: 4 })`
+	expect_printed(t, text, "true\nfalse\ntrue\nfalse\ntrue\ntrue\ntrue\nfalse\ntrue")
+}
+
+@(test)
+test_contact_in_space_gives_three_numbers_and_an_empty_one_of_zeros :: proc(t: ^testing.T) {
+	text := `ball = { pos: { 0, 0, 8 }, radius: 5 }
+ground = { pos: { 0, 0, 0 }, size: { 100, 100, 6 } }
+c = contact ball ground
+print c.normal
+print c.depth
+print c.point
+ball.pos = { 0, 0, 40 }
+d = contact ball ground
+print d.normal
+print d.depth`
+	expect_printed(t, text, "{ 0, 0, 1 }\n0\n{ 0, 0, 3 }\n{ 0, 0, 0 }\n0")
+}
+
+@(test)
+test_hits_in_space_keeps_the_items_that_touch_in_list_order :: proc(t: ^testing.T) {
+	text := `balls = []
+for i from 0 to 4 [ add { pos: { i * 10, 0, 0 }, radius: 4 } to balls ]
+probe = { pos: { 15, 0, 0 }, radius: 2 }
+for each b in (hits probe balls) [ print b.pos.x ]
+print (count (hits { 500, 500, 500 } balls))`
+	expect_printed(t, text, "10\n20\n0")
+}
+
+@(test)
+test_cast_in_space_finds_the_first_item_along_a_line :: proc(t: ^testing.T) {
+	text := `things = [ { pos: { 0, 0, 20 }, size: { 10, 10, 10 } } { pos: { 0, 0, 50 }, radius: 4 } ]
+h = cast { from: { 0, 0, 0 }, to: { 0, 0, 100 } } things
+print h.point
+print h.normal
+print h.distance
+print h.item.size
+miss = cast { from: { 30, 0, 0 }, to: { 30, 0, 100 } } things
+print miss.distance
+print miss.point`
+	expect_printed(t, text, "{ 0, 0, 15 }\n{ 0, 0, -1 }\n15\n{ 10, 10, 10 }\n0\n{ 0, 0, 0 }")
+}
+
+@(test)
+test_a_flat_shape_and_a_shape_in_space_are_told_apart :: proc(t: ^testing.T) {
+	// flat sketches are as they were, and a record of three numbers is no flat shape at run time either
+	text := `print (touching { pos: { 0, 0 }, radius: 5 } { 3, 0 })
+print (touching { pos: { 0, 0, 0 }, radius: 5 } { 3, 0, 0 })`
+	expect_printed(t, text, "true\ntrue")
+}

@@ -1,0 +1,2 @@
+roof = { points: [ { 0, 0, 0 } { 10, 0, 0 } { 5, 8, 0 } ] }
+print (inside { 1, 1 } roof)

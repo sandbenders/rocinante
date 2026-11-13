@@ -19,6 +19,9 @@ collision_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_
 	}
 	a := eval(it, call.args[0])
 	b := eval(it, call.args[1])
+	if is_space(it, a) || is_space(it, b) {
+		return collision_verb3(it, e, code, a, b)
+	}
 	#partial switch code {
 	case .Touching:
 		sa, ok_a := to_shape(it, a)
@@ -96,13 +99,13 @@ collision_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_
 }
 
 // A record of the type the checker gave the call, its fields filled by name.
-@(private = "file")
+@(private)
 Named :: struct {
 	name:  string,
 	value: Value,
 }
 
-@(private = "file")
+@(private)
 make_result :: proc(it: ^Interp, type: lang.Type_Id, fields: []Named) -> Value {
 	shape := lang.shape_of(it.types, type)
 	if shape < 0 {

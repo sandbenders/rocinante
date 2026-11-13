@@ -1,0 +1,2 @@
+ball = { pos: { 1, 2, 3 }, size: { 4, 5 } }
+print (touching ball { 0, 0, 0 })
