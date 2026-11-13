@@ -1,4 +1,4 @@
 background (rgb 20 24 44)
-turn 30 around y
-turn 20 around x
-axes size 120
+turn -40 around y
+turn 25 around x
+axes size 110

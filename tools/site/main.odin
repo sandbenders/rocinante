@@ -331,7 +331,7 @@ draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := E
 	}
 	drawn.printed = printed
 	windows := roci.open_windows()
-	if len(windows) <= window || (len(roci.recorded(windows[window])) == 0 && !roci.ui_drawn(windows[window]) && !always) {
+	if len(windows) <= window || (len(roci.recorded(windows[window])) == 0 && len(roci.scene_items(windows[window])) == 0 && !roci.ui_drawn(windows[window]) && !always) {
 		return drawn, true
 	}
 	picture, rendered := roci.picture(windows[window], scale)
