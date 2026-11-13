@@ -49,6 +49,11 @@ Scene3 :: struct {
 	// mouse; `zoom` is in steps of a wheel notch, each making the distance a tenth less.
 	yaw, pitch, zoom: f32,
 	shown: bool, // the last frame drew an item, so the mouse may orbit
+	// A camera put somewhere by a verb, until the frame ends (the orbit comes back with the next one): where it is and what it looks at, in the sketch's world, how wide it sees (0 for the usual) and whether it sees without perspective.
+	fixed:       bool,
+	eye, target: [3]f64,
+	fov:         f32,
+	ortho:       bool,
 }
 
 // The vertical angle the camera sees, in degrees.
@@ -66,6 +71,7 @@ scene_destroy :: proc(s: ^Scene3) {
 // The orbit stays, so a window keeps the way it was turned.
 scene_begin :: proc(s: ^Scene3) {
 	s.shown = len(s.items) > 0
+	s.fixed, s.eye, s.target, s.fov, s.ortho = false, {}, {}, 0, false
 	clear(&s.items)
 	s.model = {}
 }
@@ -239,7 +245,7 @@ scene_zoom :: proc(s: ^Scene3, notches: f32) {
 }
 
 // What the vertex shader reads: the rows of the matrix that takes a world place to the
-// screen (view and perspective, with the flip that makes y go down), where the eye is and
+// screen (view and projection, with the flip that makes y go down), where the eye is and
 // the direction to the light, both in the world.
 Scene_Uniforms :: struct {
 	clip:  [4][4]f32, // rows
@@ -247,40 +253,96 @@ Scene_Uniforms :: struct {
 	light: [4]f32,
 }
 
-// The camera of a scene for a window of this size (logical pixels).
-scene_uniforms :: proc(s: ^Scene3, canvas: [2]f32) -> Scene_Uniforms {
+// Where the camera is and how it looks, in the y-up world the projection works in (the
+// sketch's world flipped in y): the eye, the three axes of the camera and how the picture
+// is cut. Every camera verb and the shader's matrix are made from it, so they agree.
+Camera :: struct {
+	eye:         [3]f64,
+	forward:     [3]f64,
+	side:        [3]f64,
+	up:          [3]f64,
+	tan_half:    f64, // of half the vertical field of view; a perspective camera's
+	half_height: f64, // how much the picture shows above the middle, in world units; an orthographic camera's
+	ortho:       bool,
+	aspect:      f64,
+	near, far:   f64,
+}
+
+// The camera of a scene for a window of this size (logical pixels): the orbit camera unless
+// a verb has put the eye somewhere.
+scene_camera :: proc(s: ^Scene3, canvas: [2]f32) -> Camera {
 	width, height := max(canvas.x, 1), max(canvas.y, 1)
 	fov := f64(SCENE_FOV)
-	tan_half := math.tan(fov * math.PI / 360)
-	distance := f64(height) / 2 / tan_half * math.exp(-0.1 * f64(s.zoom))
-	yaw, pitch := f64(s.yaw), clamp(f64(s.pitch) + CAMERA_PITCH, -89, 89)
-	// the eye in the y-up world the projection works in; the world of the sketch is it flipped in y
-	eye := [3]f64{
-		distance * maths.cos_deg(pitch) * maths.sin_deg(yaw),
-		distance * maths.sin_deg(pitch),
-		distance * maths.cos_deg(pitch) * maths.cos_deg(yaw),
+	if s.fov > 0 {
+		fov = clamp(f64(s.fov), 1, 170)
 	}
-	forward := normalize3(-eye)
-	side := normalize3(cross3(forward, {0, 1, 0}))
-	up := cross3(side, forward)
+	cam := Camera{aspect = f64(width) / f64(height), ortho = s.ortho}
+	cam.tan_half = math.tan(fov * math.PI / 360)
+	// how far away the middle plane is seen at one unit a pixel, with the starting field of view
+	distance := f64(height) / 2 / math.tan(f64(SCENE_FOV) * math.PI / 360) * math.exp(-0.1 * f64(s.zoom))
+	target := [3]f64{}
+	if s.fixed {
+		cam.eye = {s.eye.x, -s.eye.y, s.eye.z}
+		target = {s.target.x, -s.target.y, s.target.z}
+	} else {
+		yaw, pitch := f64(s.yaw), clamp(f64(s.pitch) + CAMERA_PITCH, -89, 89)
+		cam.eye = {
+			distance * maths.cos_deg(pitch) * maths.sin_deg(yaw),
+			distance * maths.sin_deg(pitch),
+			distance * maths.cos_deg(pitch) * maths.cos_deg(yaw),
+		}
+	}
+	away := target - cam.eye
+	length := math.sqrt(dot3(away, away))
+	if length == 0 {
+		// an eye at the target looks along the way it would have looked from the middle of the orbit
+		cam.forward = {0, 0, -1}
+		length = distance
+	} else {
+		cam.forward = away / length
+	}
+	helper := [3]f64{0, 1, 0}
+	if abs(cam.forward.y) > 0.9999 {
+		helper = {0, 0, -1} // looking straight up or down: keep the top of the picture to the back
+	}
+	cam.side = normalize3(cross3(cam.forward, helper))
+	cam.up = cross3(cam.side, cam.forward)
+	cam.half_height = f64(height) / 2 * math.exp(-0.1 * f64(s.zoom))
+	if s.fixed {
+		cam.half_height = f64(height) / 2
+	}
+	cam.near, cam.far = 1, max(length * 100, 10000)
+	return cam
+}
+
+// The camera of a scene for a window of this size (logical pixels).
+scene_uniforms :: proc(s: ^Scene3, canvas: [2]f32) -> Scene_Uniforms {
+	cam := scene_camera(s, canvas)
 	view := identity4()
-	rows := [3][3]f64{side, up, -forward}
+	rows := [3][3]f64{cam.side, cam.up, -cam.forward}
 	for r in 0 ..< 3 {
 		for c in 0 ..< 3 {
 			view[r, c] = f32(rows[r][c])
 		}
 	}
-	view[0, 3] = f32(-dot3(side, eye))
-	view[1, 3] = f32(-dot3(up, eye))
-	view[2, 3] = f32(dot3(forward, eye))
-	near, far := f64(1), max(distance * 100, 10000)
-	aspect := f64(width) / f64(height)
+	view[0, 3] = f32(-dot3(cam.side, cam.eye))
+	view[1, 3] = f32(-dot3(cam.up, cam.eye))
+	view[2, 3] = f32(dot3(cam.forward, cam.eye))
 	proj: matrix[4, 4]f32
-	proj[0, 0] = f32(1 / (aspect * tan_half))
-	proj[1, 1] = f32(1 / tan_half)
-	proj[2, 2] = f32(far / (near - far))
-	proj[2, 3] = f32(near * far / (near - far))
-	proj[3, 2] = -1
+	near, far := cam.near, cam.far
+	if cam.ortho {
+		proj[0, 0] = f32(1 / (cam.aspect * cam.half_height))
+		proj[1, 1] = f32(1 / cam.half_height)
+		proj[2, 2] = f32(1 / (near - far))
+		proj[2, 3] = f32(near / (near - far))
+		proj[3, 3] = 1
+	} else {
+		proj[0, 0] = f32(1 / (cam.aspect * cam.tan_half))
+		proj[1, 1] = f32(1 / cam.tan_half)
+		proj[2, 2] = f32(far / (near - far))
+		proj[2, 3] = f32(near * far / (near - far))
+		proj[3, 2] = -1
+	}
 	flip := scale4(1, -1, 1)
 	all := proj * view * flip
 	u := Scene_Uniforms{}
@@ -289,10 +351,82 @@ scene_uniforms :: proc(s: ^Scene3, canvas: [2]f32) -> Scene_Uniforms {
 			u.clip[r][c] = all[r, c]
 		}
 	}
+	// shading looks along the way the camera does; an orthographic camera has no place it looks from, so it is put far back
+	eye := cam.eye
+	if cam.ortho {
+		eye = cam.forward * -100000
+		eye += {cam.eye.x, cam.eye.y, cam.eye.z}
+	}
 	u.eye = {f32(eye.x), f32(-eye.y), f32(eye.z), 1}
 	l := normalize3({-0.4, -0.7, 0.6})
 	u.light = {f32(l.x), f32(l.y), f32(l.z), 0}
 	return u
+}
+
+// Where a place of the world shows in the window, in logical pixels from its top left.
+// `visible` is false for a place behind the camera, where the answer means nothing.
+scene_screen_point :: proc(s: ^Scene3, canvas: [2]f32, world: [3]f64) -> (at: [2]f64, visible: bool) {
+	cam := scene_camera(s, canvas)
+	p := [3]f64{world.x, -world.y, world.z} - cam.eye
+	x, y, depth := dot3(p, cam.side), dot3(p, cam.up), dot3(p, cam.forward)
+	ndc: [2]f64
+	if cam.ortho {
+		ndc = {x / (cam.aspect * cam.half_height), y / cam.half_height}
+	} else {
+		if depth <= 0 {
+			return {}, false
+		}
+		ndc = {x / (depth * cam.aspect * cam.tan_half), y / (depth * cam.tan_half)}
+	}
+	return {(ndc.x * 0.5 + 0.5) * f64(canvas.x), (0.5 - ndc.y * 0.5) * f64(canvas.y)}, true
+}
+
+// The place on the floor (the plane y = 0 of the world) that shows at a spot of the window,
+// where a line from the eye through the spot meets it. `found` is false when the line
+// runs parallel to the floor or meets it behind the eye.
+scene_world_point :: proc(s: ^Scene3, canvas: [2]f32, spot: [2]f64) -> (at: [3]f64, found: bool) {
+	cam := scene_camera(s, canvas)
+	ndc := [2]f64{spot.x / f64(max(canvas.x, 1)) * 2 - 1, 1 - spot.y / f64(max(canvas.y, 1)) * 2}
+	origin, dir := cam.eye, cam.forward
+	if cam.ortho {
+		origin += cam.side * (ndc.x * cam.aspect * cam.half_height) + cam.up * (ndc.y * cam.half_height)
+	} else {
+		dir = normalize3(cam.forward + cam.side * (ndc.x * cam.aspect * cam.tan_half) + cam.up * (ndc.y * cam.tan_half))
+	}
+	if abs(dir.y) < 1e-12 {
+		return {}, false
+	}
+	t := -origin.y / dir.y
+	if t < 0 && !cam.ortho { // an orthographic view has no eye, so its lines go both ways
+		return {}, false
+	}
+	hit := origin + dir * t
+	return {hit.x + 0, 0 - hit.y, hit.z + 0}, true // back into the sketch's world, where y is down (and never a minus zero)
+}
+
+// Puts the eye of the camera somewhere, which takes the camera off the mouse: until the frame
+// ends, it looks at the target (the middle at first) from there.
+scene_camera_at :: proc(s: ^Scene3, canvas: [2]f32, eye: [3]f64) {
+	scene_fix_camera(s, canvas)
+	s.eye = eye
+}
+
+// Aims the camera at a place, which takes it off the mouse like `scene_camera_at`.
+scene_look_at :: proc(s: ^Scene3, canvas: [2]f32, target: [3]f64) {
+	scene_fix_camera(s, canvas)
+	s.target = target
+}
+
+// Turns the orbit camera into a camera that stays where it is, starting where the orbit has it.
+@(private)
+scene_fix_camera :: proc(s: ^Scene3, canvas: [2]f32) {
+	if s.fixed {
+		return
+	}
+	cam := scene_camera(s, canvas)
+	s.eye = {cam.eye.x, -cam.eye.y, cam.eye.z}
+	s.target = {}
+	s.fixed = true
 }
 
 normalize3 :: proc(v: [3]f64) -> [3]f64 {
@@ -327,6 +461,10 @@ scene_hash :: proc(s: ^Scene3) -> u64 {
 		h = hash_f32_pair(h, item.params.x, item.params.y)
 	}
 	h = hash_f32_pair(h, s.yaw, s.pitch)
+	h = hash_u64(h, u64(s.fixed) | u64(s.ortho) << 1)
+	for v in ([?]f64{s.eye.x, s.eye.y, s.eye.z, s.target.x, s.target.y, s.target.z, f64(s.fov)}) {
+		h = hash_f32(h, f32(v))
+	}
 	return hash_f32(h, s.zoom)
 }
 
@@ -573,5 +711,16 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 		add_face(m, ab, bc, ca)
 	}
 	range(&out, .Icosphere, start)
+	return out
+}
+
+// A place given in the coordinates of the current transform, in the world.
+scene_to_world :: proc(s: ^Scene3, p: [3]f64) -> [3]f64 {
+	m := current_model(s)
+	v := [4]f32{f32(p.x), f32(p.y), f32(p.z), 1}
+	out: [3]f64
+	for r in 0 ..< 3 {
+		out[r] = f64(m[r, 0] * v[0] + m[r, 1] * v[1] + m[r, 2] * v[2] + m[r, 3] * v[3])
+	}
 	return out
 }

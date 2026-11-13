@@ -212,3 +212,78 @@ test_the_frame_hash_sees_3d_shapes :: proc(t: ^testing.T) {
 	step()
 	testing.expect_value(t, frame_hash(w), first)
 }
+
+@(test)
+test_the_camera_verbs_set_the_scene_camera :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(200, 200)
+	draw(proc() {
+		box(0, 0, 0, 20)
+		camera(0, -100, 400, 70)
+		look_at(10, 0, 0)
+		ortho()
+	})
+	step()
+	scene := &win_for(w).list.scene
+	testing.expect(t, scene.fixed && scene.ortho, "fixed and orthographic")
+	testing.expect_value(t, scene.eye, [3]f64{0, -100, 400})
+	testing.expect_value(t, scene.target, [3]f64{10, 0, 0})
+	testing.expect_value(t, scene.fov, 70)
+}
+
+@(test)
+test_perspective_undoes_ortho_and_sets_the_field_of_view :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(200, 200)
+	draw(proc() {
+		ortho()
+		perspective(80)
+	})
+	step()
+	testing.expect(t, !win_for(w).list.scene.ortho, "perspective again")
+	testing.expect_value(t, win_for(w).list.scene.fov, 80)
+}
+
+@(test)
+test_the_mouse_does_not_orbit_a_camera_the_sketch_places :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(200, 200)
+	draw(proc() {
+		box(0, 0, 0, 20)
+		camera([3]f64{0, -100, 400})
+	})
+	step()
+	step(orbit_events(w, true, 50, 20, 2))
+	scene := &win_for(w).list.scene
+	testing.expect_value(t, scene.yaw, 0)
+	testing.expect_value(t, scene.zoom, 0)
+}
+
+screen_result: [2]f64
+floor_result: [3]f64
+found_result: bool
+
+@(test)
+test_screen_point_and_world_point_are_inverses_on_the_floor :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	window(400, 300)
+	draw(proc() {
+		camera(100, -250, 400)
+		look_at(0, 0, 0)
+		floor, found := world_point(300, 250)
+		found_result, floor_result = found, floor
+		screen_result, _ = screen_point(floor.x, floor.y, floor.z)
+		plain, _ := screen_point(10, 0, 0)
+		move_xyz(10, 0, 0)
+		moved, _ := screen_point(0, 0, 0)
+		testing.expect_value(nil, moved, plain) // `screen point` is in the coordinates of the moment
+	})
+	step()
+	testing.expect(t, found_result, "the floor is under that pixel")
+testing.expect(t, abs(screen_result.x - 300) < 1e-3 && abs(screen_result.y - 250) < 1e-3, "back to the same pixel")
+	testing.expect_value(t, floor_result.y, 0)
+}

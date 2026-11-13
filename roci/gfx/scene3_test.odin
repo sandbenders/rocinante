@@ -365,3 +365,153 @@ test_params_reach_the_instance_and_the_hash :: proc(t: ^testing.T) {
 	scene_add(&s, .Torus, {}, {1, 1, 1}, {0, 0, 0, 255}, {math.nan_f64(), 0})
 	testing.expect_value(t, len(s.items), 1)
 }
+
+@(test)
+test_the_orbit_camera_starts_in_front_and_above :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	cam := scene_camera(&s, {640, 420})
+	testing.expect(t, cam.eye.z > 0 && cam.eye.y > 0, "in front and above (the internal world is y up)")
+	testing.expect(t, close(f32(dot3(cam.forward, cam.forward)), 1), "a unit direction")
+	testing.expect(t, close(f32(dot3(cam.side, cam.up)), 0) && close(f32(dot3(cam.side, cam.forward)), 0), "square axes")
+	testing.expect(t, cam.up.y > 0, "the top of the picture is up")
+	testing.expect(t, !cam.ortho, "with perspective")
+}
+
+@(test)
+test_a_fixed_camera_stays_where_it_was_put_and_looks_at_the_middle :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_camera_at(&s, {640, 420}, {0, -100, 500})
+	testing.expect(t, s.fixed, "the camera no longer follows the orbit")
+	cam := scene_camera(&s, {640, 420})
+	// the sketch's y is down, so the eye 100 above the floor is y = -100 there and +100 in the camera's y-up world
+	testing.expect(t, close(f32(cam.eye.y), 100) && close(f32(cam.eye.z), 500), "the eye where it was put")
+	at, visible := scene_screen_point(&s, {640, 420}, {0, 0, 0})
+	testing.expect(t, visible && close(f32(at.x), 320, 0.01) && close(f32(at.y), 210, 0.01), "the middle is in the middle of the window")
+	// the orbit does not move it
+	scene_orbit(&s, 100, 100)
+	again := scene_camera(&s, {640, 420})
+	testing.expect_value(t, again.eye, cam.eye)
+}
+
+@(test)
+test_look_at_aims_the_camera_and_starts_from_the_orbit_eye :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	before := scene_camera(&s, {640, 420})
+	scene_look_at(&s, {640, 420}, {100, 0, 0})
+	after := scene_camera(&s, {640, 420})
+	testing.expect_value(t, after.eye, before.eye) // it stayed where the orbit had it
+	at, visible := scene_screen_point(&s, {640, 420}, {100, 0, 0})
+	testing.expect(t, visible && close(f32(at.x), 320, 0.01) && close(f32(at.y), 210, 0.01), "the target is in the middle")
+	// to the right of the target is to the right of the window
+	right, _ := scene_screen_point(&s, {640, 420}, {200, 0, 0})
+	testing.expect(t, right.x > 320, "x still goes right")
+}
+
+@(test)
+test_a_new_frame_gives_the_camera_back_to_the_mouse :: proc(t: ^testing.T) {
+	list: Command_List
+	defer destroy(&list)
+	begin_frame(&list)
+	scene_camera_at(&list.scene, {640, 420}, {10, 20, 30})
+	list.scene.fov = 70
+	list.scene.ortho = true
+	begin_frame(&list)
+	testing.expect(t, !list.scene.fixed && !list.scene.ortho && list.scene.fov == 0, "the next frame starts with the orbit camera")
+}
+
+@(test)
+test_the_field_of_view_changes_how_much_is_seen :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	narrow, _ := scene_screen_point(&s, {640, 420}, {100, 0, 0})
+	s.fov = 100
+	wide, _ := scene_screen_point(&s, {640, 420}, {100, 0, 0})
+	testing.expect(t, abs(wide.x - 320) < abs(narrow.x - 320), "a wider view makes things smaller")
+	s.fov = 100000
+	cam := scene_camera(&s, {640, 420})
+	testing.expect(t, !math.is_inf(cam.tan_half) && cam.tan_half < 1e6, "the field of view is kept sane")
+}
+
+@(test)
+test_an_orthographic_camera_keeps_every_distance_the_same_size :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	s.pitch = -CAMERA_PITCH // straight on
+	s.ortho = true
+	near, _ := scene_screen_point(&s, {640, 420}, {100, 0, 200})
+	far, _ := scene_screen_point(&s, {640, 420}, {100, 0, -200})
+	testing.expect(t, close(f32(near.x), f32(far.x), 0.01) && close(f32(near.y), f32(far.y), 0.01), "the same size near and far")
+	testing.expect(t, close(f32(near.x - 320), 100, 0.01), "one unit a pixel")
+	// the shader's matrix agrees: depth is not divided by
+	u := scene_uniforms(&s, {640, 420})
+	testing.expect_value(t, u.clip[3], [4]f32{0, 0, 0, 1})
+	// and what is behind the middle of the orbit is still seen (nothing is behind the camera)
+	_, visible := scene_screen_point(&s, {640, 420}, {0, 0, 100000})
+	testing.expect(t, visible, "no perspective, so nothing is behind it")
+}
+
+@(test)
+test_a_place_behind_the_camera_is_not_visible :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	_, visible := scene_screen_point(&s, {640, 420}, {0, 0, 100000})
+	testing.expect(t, !visible, "behind the eye")
+}
+
+@(test)
+test_the_floor_under_a_pixel_and_the_pixel_of_a_floor_point_are_the_same_place :: proc(t: ^testing.T) {
+	for ortho in ([?]bool{false, true}) {
+		s: Scene3
+		defer scene_destroy(&s)
+		s.ortho = ortho
+		s.yaw = 25
+		for spot in ([?][2]f64{{320, 300}, {100, 380}, {500, 250}}) {
+			floor, found := scene_world_point(&s, {640, 420}, spot)
+			if !testing.expect(t, found, "the floor is under a pixel below the horizon") {
+				continue
+			}
+			testing.expect(t, abs(floor.y) < 1e-9, "on the floor")
+			back, visible := scene_screen_point(&s, {640, 420}, floor)
+			testing.expect(t, visible && close(f32(back.x), f32(spot.x), 0.01) && close(f32(back.y), f32(spot.y), 0.01), "and it shows where it was found")
+		}
+	}
+	// a pixel above the horizon looks past the floor
+	s: Scene3
+	defer scene_destroy(&s)
+	_, found := scene_world_point(&s, {640, 420}, {320, 0})
+	testing.expect(t, !found, "the sky has no floor")
+	// a camera on the floor looks along it
+	scene_camera_at(&s, {640, 420}, {0, 0, 300})
+	scene_look_at(&s, {640, 420}, {0, 0, 0})
+	_, found = scene_world_point(&s, {640, 420}, {320, 210})
+	testing.expect(t, !found, "parallel to the floor")
+}
+
+@(test)
+test_a_screen_point_follows_the_current_transform :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_move(&s, 50, 0, 0)
+	moved := scene_to_world(&s, {0, 0, 0})
+	testing.expect_value(t, moved, [3]f64{50, 0, 0})
+	scene_grow(&s, 2, 2, 2)
+	testing.expect_value(t, scene_to_world(&s, {1, 1, 1}), [3]f64{52, 2, 2})
+}
+
+@(test)
+test_the_hash_follows_the_camera_verbs :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	plain := scene_hash(&s)
+	s.ortho = true
+	testing.expect(t, scene_hash(&s) != plain, "ortho")
+	s.ortho = false
+	s.fov = 70
+	testing.expect(t, scene_hash(&s) != plain, "fov")
+	s.fov = 0
+	scene_camera_at(&s, {640, 420}, {1, 2, 3})
+	testing.expect(t, scene_hash(&s) != plain, "the eye")
+}
