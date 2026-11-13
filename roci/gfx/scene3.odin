@@ -23,6 +23,7 @@ Shape3 :: enum u8 {
 	Capsule,   // a sphere of diameter 1 stretched along y by `params.x` on each side
 	Torus,     // a ring of diameter 1 whose tube is `params.y` (in the same units) thick
 	Icosphere, // diameter 1, cut into 80 flat triangles
+	Model,     // a part of a loaded model (models.odin): the item says which
 }
 
 Axis3 :: enum u8 {X, Y, Z}
@@ -43,6 +44,8 @@ Instance3 :: struct {
 Item3 :: struct {
 	using instance: Instance3,
 	shape:          Shape3,
+	model_id:       Model_Id, // for a `Model`: which model
+	part:           u32,      // and which of its parts
 }
 
 Scene3 :: struct {
@@ -461,6 +464,7 @@ scene_hash :: proc(s: ^Scene3) -> u64 {
 	h := FNV_OFFSET
 	for item in s.items {
 		h = hash_u64(h, u64(item.shape))
+		h = hash_u64(h, u64(item.model_id) << 32 | u64(item.part))
 		for row in item.model {
 			for v in row {
 				h = hash_f32(h, v)
@@ -897,6 +901,24 @@ scene_bounds :: proc(s: ^Scene3) -> (centre: [3]f64, radius: f64) {
 	low, high := [3]f64{math.INF_F64, math.INF_F64, math.INF_F64}, [3]f64{-math.INF_F64, -math.INF_F64, -math.INF_F64}
 	spheres := make([dynamic][4]f64, 0, len(s.items), context.temp_allocator)
 	for item in s.items {
+		if item.shape == .Model {
+			// a loaded model is held by the box it was fitted from, whose corners are put where the item puts them
+			if data := model_data(item.model_id); data != nil {
+				for corner in 0 ..< 8 {
+					p := [3]f32{data.low.x if corner & 1 == 0 else data.high.x, data.low.y if corner & 2 == 0 else data.high.y, data.low.z if corner & 4 == 0 else data.high.z}
+					w: [3]f64
+					for row in 0 ..< 3 {
+						w[row] = f64(item.model[row][0] * p.x + item.model[row][1] * p.y + item.model[row][2] * p.z + item.model[row][3])
+					}
+					append(&spheres, [4]f64{w.x, w.y, w.z, 0})
+					for axis in 0 ..< 3 {
+						low[axis] = min(low[axis], w[axis])
+						high[axis] = max(high[axis], w[axis])
+					}
+				}
+			}
+			continue
+		}
 		widest := f64(0)
 		for column in 0 ..< 3 {
 			x, y, z := f64(item.model[0][column]), f64(item.model[1][column]), f64(item.model[2][column])
@@ -991,4 +1013,37 @@ shadow_view :: proc(s: ^Scene3, light: Light3) -> (rows: [4][4]f32, texel: f64) 
 	}
 	width := 2 * math.tan(fov * math.PI / 360) * distance
 	return light_matrix_rows(light.at, aim, 0, fov, near, far), width / SHADOW_SIZE
+}
+
+// ---- loaded models ----
+
+// Adds a loaded model, fitted to a size: its box is moved so its middle is at `at` and scaled so
+// its longest side is `size` long, under the current transform. Each part of the model is one
+// item, with the color, metal, roughness and glow its material gave; `no lights` still makes it flat.
+// Gives how many items it added: none for a number that names no model.
+scene_add_loaded_model :: proc(s: ^Scene3, id: Model_Id, at: [3]f64, size: f64) -> int {
+	data := model_data(id)
+	if data == nil || len(data.parts) == 0 {
+		return 0
+	}
+	for v in ([?]f64{at.x, at.y, at.z, size}) {
+		if math.is_nan(v) || math.is_inf(v) {
+			return 0
+		}
+	}
+	centre, longest := model_extent(data)
+	k := size / f64(longest) if longest > 0 else 1
+	m := current_model(s) * translate4(f32(at.x), f32(at.y), f32(at.z)) * scale4(f32(k), f32(k), f32(k)) * translate4(-centre.x, -centre.y, -centre.z)
+	for part, i in data.parts {
+		item := Item3{shape = .Model, model_id = id, part = u32(i)}
+		item.colour = {part.colour.r, part.colour.g, part.colour.b, 1}
+		item.material = {part.metallic, part.roughness, 1 if s.unlit else 0, part.emissive}
+		for r in 0 ..< 3 {
+			for c in 0 ..< 4 {
+				item.model[r][c] = m[r, c]
+			}
+		}
+		append(&s.items, item)
+	}
+	return len(data.parts)
 }

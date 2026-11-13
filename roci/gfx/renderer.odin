@@ -143,6 +143,8 @@ Renderer :: struct {
 	shadow_map:     ^sdl.GPUTexture, // what the light sees, as depths in a color (SHADOW_SIZE square), made when a scene first has shadows
 	shadow_blank:   ^sdl.GPUTexture, // a texture to bind when there are none, so the shader always has one
 	shadow_sampler: ^sdl.GPUSampler,
+	model_gpu:      map[Model_Id]Model_Gpu, // the loaded models on the card (renderer_scene.odin)
+	model_gpu_epoch: int,
 	scene_ranges:  [Shape3]Shape_Range, // where each shape's triangles are
 	scene_ready:   bool,
 	depth:         map[Depth_Key]^sdl.GPUTexture,
@@ -199,6 +201,7 @@ renderer_init :: proc(r: ^Renderer, device: ^sdl.GPUDevice) {
 	r.pipelines = make(map[Pipeline_Key]^sdl.GPUGraphicsPipeline)
 	r.msaa = make(map[Msaa_Key]^sdl.GPUTexture)
 	r.depth = make(map[Depth_Key]^sdl.GPUTexture)
+	r.model_gpu = make(map[Model_Id]Model_Gpu)
 	image_reader_add(&r.released_seen)
 }
 
@@ -875,11 +878,12 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 	has_scene := len(list.scene.items) > 0
 	sorted := make([dynamic]Instance3, context.temp_allocator)
 	counts: [Shape3]u32
+	groups := make([dynamic]Model_Group, context.temp_allocator)
 	scene_done := false
 	if ok && has_scene {
-		if !scene_prepare(r, commands, list, &sorted, &counts) {
+		if !scene_prepare(r, commands, list, &sorted, &counts, &groups) {
 			ok = false
-		} else if draw_scene3(r, commands, list, target, msaa, format, pixels, canvas, samples, sorted[:], counts) {
+		} else if draw_scene3(r, commands, list, target, msaa, format, pixels, canvas, samples, sorted[:], counts, groups[:]) {
 			scene_done = true
 		} else {
 			ok = false

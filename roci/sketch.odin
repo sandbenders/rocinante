@@ -225,6 +225,7 @@ shutdown :: proc() {
 	}
 	delete(the.canvas_reads)
 	gfx.images_stop()
+	gfx.models_stop()
 	gfx.shaders_stop()
 	gfx.effect_vertex_stop()
 	gfx.fill_vertex_stop()

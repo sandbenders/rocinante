@@ -196,6 +196,7 @@ test_the_shape_meshes_are_whole :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.ranges[.Sphere].index_count, 24 * 48 * 6)
 	total := 0
 	for shape in Shape3 {
+		if shape == .Model {continue} // a loaded model has its own mesh
 		range := m.ranges[shape]
 		testing.expect_value(t, int(range.first_index), total)
 		total += int(range.index_count)
@@ -240,6 +241,7 @@ test_every_shape_has_triangles_inside_its_unit_size :: proc(t: ^testing.T) {
 	defer shape_meshes_destroy(&m)
 	total := 0
 	for shape in Shape3 {
+		if shape == .Model {continue}
 		range := m.ranges[shape]
 		testing.expectf(t, range.index_count > 0 && range.index_count % 3 == 0, "%v has whole triangles", shape)
 		testing.expect_value(t, int(range.first_index), total)

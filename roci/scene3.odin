@@ -397,3 +397,42 @@ shadows_of :: proc(w: Window) -> bool {
 	}
 	return false
 }
+
+// ---- models ----
+
+Model :: gfx.Model_Id
+
+// Reads a glTF model (the bytes of a `.glb` or `.gltf`) and keeps it. `path` and `stamp` (when the file
+// was last changed) are how it is told from the others and found again: the same path with a new stamp
+// replaces what was kept, under the same number. `reader` gives the files a `.gltf` names beside itself.
+// Gives the model, or why it could not be read.
+add_model :: proc(path: string, stamp: i64, bytes: []u8, reader: gfx.Gltf_Reader = nil) -> (model: Model, error: gfx.Gltf_Error) {
+	data, read_error := gfx.gltf_read(bytes, reader)
+	if read_error != .None {
+		return 0, read_error
+	}
+	return gfx.model_add(path, stamp, data), .None
+}
+
+// The number of the model read from `path` when it was last changed at `stamp`, if there is one.
+find_model :: proc(path: string, stamp: i64) -> (Model, bool) {
+	return gfx.model_find(path, stamp)
+}
+
+// Which models exist now: it changes when every model is let go (`shutdown`).
+model_epoch :: proc() -> int {
+	return gfx.model_epoch()
+}
+
+// Draws a loaded model with its middle at a place, as big as `size` along its longest side.
+// Its colors come from the model's own materials.
+model_xyz :: proc(model: Model, x, y, z, size: f64) {
+	gfx.scene_add_loaded_model(&current_list().scene, model, {x, y, z}, size)
+}
+
+model_v :: proc(model: Model, position: [3]f64, size: f64) {
+	model_xyz(model, position.x, position.y, position.z, size)
+}
+
+// Draws a loaded model: `model_xyz` or `model_v`.
+draw_model :: proc{model_xyz, model_v}
