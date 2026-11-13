@@ -73,7 +73,7 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 		return nil
 	}
 	vertex := create_shader(r, source.vertex, source.vertex_entry, source.format, .VERTEX, 1, 0)
-	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 0, 0)
+	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 1, 0)
 	if vertex == nil || fragment == nil {
 		set_error(r, "creating the 3D shaders")
 		if vertex != nil {sdl.ReleaseGPUShader(r.device, vertex)}
@@ -88,7 +88,7 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 		{slot = 0, pitch = size_of(Vertex3), input_rate = .VERTEX},
 		{slot = 1, pitch = size_of(Instance3), input_rate = .INSTANCE},
 	}
-	attributes := [8]sdl.GPUVertexAttribute{
+	attributes := [9]sdl.GPUVertexAttribute{
 		{location = 0, buffer_slot = 0, format = .FLOAT3, offset = u32(offset_of(Vertex3, position))},
 		{location = 1, buffer_slot = 0, format = .FLOAT3, offset = u32(offset_of(Vertex3, normal))},
 		{location = 2, buffer_slot = 0, format = .FLOAT, offset = u32(offset_of(Vertex3, stretch))},
@@ -97,6 +97,7 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 		{location = 5, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, model)) + 32},
 		{location = 6, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, colour))},
 		{location = 7, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, params))},
+		{location = 8, buffer_slot = 1, format = .FLOAT4, offset = u32(offset_of(Instance3, material))},
 	}
 	info := sdl.GPUGraphicsPipelineCreateInfo{
 		vertex_shader     = vertex,
@@ -219,6 +220,8 @@ draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comman
 	sdl.BindGPUGraphicsPipeline(pass, pipeline)
 	uniforms := scene_uniforms(&list.scene, canvas)
 	sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Scene_Uniforms))
+	lights := scene_lights(&list.scene, canvas)
+	sdl.PushGPUFragmentUniformData(commands, 0, &lights, size_of(Scene_Lights))
 	bindings := [2]sdl.GPUBufferBinding{{buffer = r.scene_vertices.buffer}, {buffer = r.scene_instances.buffer}}
 	sdl.BindGPUVertexBuffers(pass, 0, raw_data(bindings[:]), 2)
 	sdl.BindGPUIndexBuffer(pass, {buffer = r.scene_indices.buffer}, ._32BIT)

@@ -9,8 +9,7 @@ struct Scene
     float4 clip_y;
     float4 clip_z;
     float4 clip_w;
-    float4 eye;
-    float4 light;
+    float4 eye_unused;
 };
 
 struct main0_out
@@ -18,8 +17,7 @@ struct main0_out
     float3 _entryPointOutput_world [[user(locn0)]];
     float3 _entryPointOutput_normal [[user(locn1)]];
     float4 _entryPointOutput_colour [[user(locn2)]];
-    float3 _entryPointOutput_eye [[user(locn3)]];
-    float3 _entryPointOutput_light [[user(locn4)]];
+    float4 _entryPointOutput_material [[user(locn3)]];
     float4 gl_Position [[position]];
 };
 
@@ -33,21 +31,21 @@ struct main0_in
     float4 input_row2 [[attribute(5)]];
     float4 input_colour [[attribute(6)]];
     float4 input_params [[attribute(7)]];
+    float4 input_material [[attribute(8)]];
 };
 
 vertex main0_out main0(main0_in in [[stage_in]], constant Scene& _73 [[buffer(0)]])
 {
     main0_out out = {};
-    float3 _201 = in.input_position + (in.input_normal * in.input_params.y);
-    _201.y += (in.input_stretch * in.input_params.x);
-    float4 _234 = float4(_201, 1.0);
-    float4 _247 = float4(dot(in.input_row0, _234), dot(in.input_row1, _234), dot(in.input_row2, _234), 1.0);
-    out.gl_Position = float4(dot(_73.clip_x, _247), dot(_73.clip_y, _247), dot(_73.clip_z, _247), dot(_73.clip_w, _247));
-    out._entryPointOutput_world = _247.xyz;
+    float3 _203 = in.input_position + (in.input_normal * in.input_params.y);
+    _203.y += (in.input_stretch * in.input_params.x);
+    float4 _236 = float4(_203, 1.0);
+    float4 _249 = float4(dot(in.input_row0, _236), dot(in.input_row1, _236), dot(in.input_row2, _236), 1.0);
+    out.gl_Position = float4(dot(_73.clip_x, _249), dot(_73.clip_y, _249), dot(_73.clip_z, _249), dot(_73.clip_w, _249));
+    out._entryPointOutput_world = _249.xyz;
     out._entryPointOutput_normal = float3(dot(cross(in.input_row1.xyz, in.input_row2.xyz), in.input_normal), dot(cross(in.input_row2.xyz, in.input_row0.xyz), in.input_normal), dot(cross(in.input_row0.xyz, in.input_row1.xyz), in.input_normal));
     out._entryPointOutput_colour = in.input_colour;
-    out._entryPointOutput_eye = _73.eye.xyz;
-    out._entryPointOutput_light = _73.light.xyz;
+    out._entryPointOutput_material = in.input_material;
     return out;
 }
 

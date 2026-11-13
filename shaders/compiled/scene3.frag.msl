@@ -3,6 +3,13 @@
 
 using namespace metal;
 
+struct Lights
+{
+    float4 eye;
+    float4 ambient;
+    float4 lights[24];
+};
+
 struct main0_out
 {
     float4 _entryPointOutput [[color(0)]];
@@ -13,24 +20,94 @@ struct main0_in
     float3 input_world [[user(locn0)]];
     float3 input_normal [[user(locn1)]];
     float4 input_colour [[user(locn2)]];
-    float3 input_eye [[user(locn3)]];
-    float3 input_light [[user(locn4)]];
+    float4 input_material [[user(locn3)]];
 };
 
-fragment main0_out main0(main0_in in [[stage_in]])
+fragment main0_out main0(main0_in in [[stage_in]], constant Lights& _59 [[buffer(0)]])
 {
     main0_out out = {};
-    float3 _108 = fast::normalize(in.input_normal);
-    float3 _165;
-    if (dot(_108, fast::normalize(in.input_eye - in.input_world)) < 0.0)
+    float4 _741;
+    do
     {
-        _165 = -_108;
-    }
-    else
-    {
-        _165 = _108;
-    }
-    out._entryPointOutput = float4(in.input_colour.xyz * (0.2800000011920928955078125 + (0.7200000286102294921875 * fast::clamp(dot(_165, fast::normalize(in.input_light)), 0.0, 1.0))), 1.0);
+        if (in.input_material.z > 0.5)
+        {
+            _741 = float4(in.input_colour.xyz, 1.0);
+            break;
+        }
+        float3 _448 = fast::normalize(in.input_normal);
+        float3 _455 = fast::normalize(_59.eye.xyz - in.input_world);
+        float3 _726;
+        if (dot(_448, _455) < 0.0)
+        {
+            _726 = -_448;
+        }
+        else
+        {
+            _726 = _448;
+        }
+        float3 _693 = powr(in.input_colour.xyz, float3(2.2000000476837158203125));
+        float _472 = fast::clamp(in.input_material.y, 0.039999999105930328369140625, 1.0);
+        float3 _476 = mix(float3(0.039999999105930328369140625), _693, float3(in.input_material.x));
+        float3 _480 = _693 * (1.0 - in.input_material.x);
+        float _483 = _472 * _472;
+        float _486 = _483 * _483;
+        float _492 = ((_472 + 1.0) * (_472 + 1.0)) * 0.125;
+        float _496 = fast::max(dot(_726, _455), 0.001000000047497451305389404296875);
+        int _499 = int(_59.ambient.w);
+        float3 _728;
+        _728 = float3(0.0);
+        float3 _742;
+        for (int _727 = 0; _727 < _499; _728 = _742, _727++)
+        {
+            int _507 = _727 * 3;
+            float4 _410 = _59.lights[_507];
+            int _512 = (_727 * 3) + 1;
+            float4 _411 = _59.lights[_512];
+            int _517 = (_727 * 3) + 2;
+            float4 _412 = _59.lights[_517];
+            float3 _732;
+            float _734;
+            if (_410.w < 1.5)
+            {
+                _734 = 1.0;
+                _732 = fast::normalize(_59.lights[_507].xyz);
+            }
+            else
+            {
+                float3 _532 = _59.lights[_507].xyz - in.input_world;
+                float _535 = fast::max(length(_532), 0.001000000047497451305389404296875);
+                float3 _539 = _532 / float3(_535);
+                float _543 = _535 / _411.w;
+                float _548 = 1.0 / (1.0 + (_543 * _543));
+                float _735;
+                if (_410.w > 2.5)
+                {
+                    _735 = _548 * smoothstep(_412.w, mix(_412.w, 1.0, 0.20000000298023223876953125), dot(-_539, fast::normalize(_59.lights[_517].xyz)));
+                }
+                else
+                {
+                    _735 = _548;
+                }
+                _734 = _735;
+                _732 = _539;
+            }
+            float _573 = fast::clamp(dot(_726, _732), 0.0, 1.0);
+            if (_573 > 0.0)
+            {
+                float3 _580 = fast::normalize(_732 + _455);
+                float _584 = fast::clamp(dot(_726, _580), 0.0, 1.0);
+                float _595 = ((_584 * _584) * (_486 - 1.0)) + 1.0;
+                _742 = _728 + ((((_480 + ((((_476 + ((float3(1.0) - _476) * powr(1.0 - fast::clamp(dot(_455, _580), 0.0, 1.0), 5.0))) * ((_486 / ((3.1415927410125732421875 * _595) * _595)) * ((_573 / ((_573 * (1.0 - _492)) + _492)) * (_496 / ((_496 * (1.0 - _492)) + _492))))) / float3(((4.0 * _496) * _573) + 9.9999997473787516355514526367188e-05)) * 3.1415927410125732421875)) * powr(_59.lights[_512].xyz, float3(2.2000000476837158203125))) * _734) * _573);
+            }
+            else
+            {
+                _742 = _728;
+            }
+        }
+        _741 = float4(powr(fast::clamp((_728 + (powr(_59.ambient.xyz, float3(2.2000000476837158203125)) * (_480 + (_476 * (1.7999999523162841796875 - _472))))) + (_693 * in.input_material.w), float3(0.0), float3(1.0)), float3(0.4545454680919647216796875)), 1.0);
+        break;
+    } while(false);
+    out._entryPointOutput = _741;
     return out;
 }
 

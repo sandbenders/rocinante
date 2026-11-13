@@ -29,13 +29,16 @@ Axis3 :: enum u8 {X, Y, Z}
 
 // What the vertex shader reads of each shape: three rows of its transform, its color and two
 // numbers that stretch it (`params.x` the length a capsule's middle adds on each side, `params.y`
-// how far a torus's tube reaches from its ring), both in the shape's own units. 80 bytes.
+// how far a torus's tube reaches from its ring), both in the shape's own units, and its material. 96 bytes.
 Instance3 :: struct {
 	model:  [3][4]f32, // the first three rows of the transform from the shape's own space to the world
 	colour: [4]f32,    // 0 to 1; the alpha is not used yet
 	params: [4]f32,
+	// How the surface answers light: how metal it is, how rough, 1 when it is drawn flat in its color
+	// (no lights), and how much it glows by itself.
+	material: [4]f32,
 }
-#assert(size_of(Instance3) == 80)
+#assert(size_of(Instance3) == 96)
 
 Item3 :: struct {
 	using instance: Instance3,
@@ -50,6 +53,11 @@ Scene3 :: struct {
 	yaw, pitch, zoom: f32,
 	shown: bool, // the last frame drew an item, so the mouse may orbit
 	// A camera put somewhere by a verb, until the frame ends (the orbit comes back with the next one): where it is and what it looks at, in the sketch's world, how wide it sees (0 for the usual) and whether it sees without perspective.
+	// The lights of the frame, and the material and lighting that shapes drawn from now on get.
+	lights:   [dynamic]Light3,
+	lit:      bool,       // a `light` was written this frame, so the usual lights are not there
+	unlit:    bool,       // shapes are drawn flat in their color (`no lights`)
+	material: Material3,
 	fixed:       bool,
 	eye, target: [3]f64,
 	fov:         f32,
@@ -64,6 +72,7 @@ CAMERA_PITCH :: 18.0
 
 scene_destroy :: proc(s: ^Scene3) {
 	delete(s.items)
+	delete(s.lights)
 	s^ = {}
 }
 
@@ -72,6 +81,8 @@ scene_destroy :: proc(s: ^Scene3) {
 scene_begin :: proc(s: ^Scene3) {
 	s.shown = len(s.items) > 0
 	s.fixed, s.eye, s.target, s.fov, s.ortho = false, {}, {}, 0, false
+	clear(&s.lights)
+	s.lit, s.unlit, s.material = false, false, {}
 	clear(&s.items)
 	s.model = {}
 }
@@ -163,6 +174,8 @@ add_item :: proc(s: ^Scene3, shape: Shape3, m: matrix[4, 4]f32, colour: maths.Co
 	item := Item3{shape = shape}
 	item.colour = {colour.r / 255, colour.g / 255, colour.b / 255, colour.a / 255}
 	item.params = {f32(params.x), f32(params.y), 0, 0}
+	material := current_material(s)
+	item.material = {material.metallic, material.roughness, 1 if s.unlit else 0, material.emissive}
 	for r in 0 ..< 3 {
 		for c in 0 ..< 4 {
 			item.model[r][c] = m[r, c]
@@ -245,12 +258,10 @@ scene_zoom :: proc(s: ^Scene3, notches: f32) {
 }
 
 // What the vertex shader reads: the rows of the matrix that takes a world place to the
-// screen (view and projection, with the flip that makes y go down), where the eye is and
-// the direction to the light, both in the world.
+// screen (view and projection, with the flip that makes y go down) and where the eye is in the world.
 Scene_Uniforms :: struct {
 	clip:  [4][4]f32, // rows
 	eye:   [4]f32,
-	light: [4]f32,
 }
 
 // Where the camera is and how it looks, in the y-up world the projection works in (the
@@ -358,8 +369,6 @@ scene_uniforms :: proc(s: ^Scene3, canvas: [2]f32) -> Scene_Uniforms {
 		eye += {cam.eye.x, cam.eye.y, cam.eye.z}
 	}
 	u.eye = {f32(eye.x), f32(-eye.y), f32(eye.z), 1}
-	l := normalize3({-0.4, -0.7, 0.6})
-	u.light = {f32(l.x), f32(l.y), f32(l.z), 0}
 	return u
 }
 
@@ -459,9 +468,18 @@ scene_hash :: proc(s: ^Scene3) -> u64 {
 			h = hash_f32(h, v)
 		}
 		h = hash_f32_pair(h, item.params.x, item.params.y)
+		h = hash_f32_pair(h, item.material[0], item.material[1])
+		h = hash_f32_pair(h, item.material[2], item.material[3])
 	}
 	h = hash_f32_pair(h, s.yaw, s.pitch)
 	h = hash_u64(h, u64(s.fixed) | u64(s.ortho) << 1)
+	for light in s.lights {
+		h = hash_u64(h, u64(light.kind))
+		for v in ([?]f64{light.at.x, light.at.y, light.at.z, light.aim.x, light.aim.y, light.aim.z, f64(light.falloff), f64(light.angle), f64(light.colour.r), f64(light.colour.g), f64(light.colour.b)}) {
+			h = hash_f32(h, f32(v))
+		}
+	}
+	h = hash_u64(h, u64(s.lit))
 	for v in ([?]f64{s.eye.x, s.eye.y, s.eye.z, s.target.x, s.target.y, s.target.z, f64(s.fov)}) {
 		h = hash_f32(h, f32(v))
 	}
@@ -722,5 +740,117 @@ scene_to_world :: proc(s: ^Scene3, p: [3]f64) -> [3]f64 {
 	for r in 0 ..< 3 {
 		out[r] = f64(m[r, 0] * v[0] + m[r, 1] * v[1] + m[r, 2] * v[2] + m[r, 3] * v[3])
 	}
+	return out
+}
+
+// ---- materials and lights ----
+
+// How a surface answers light, as `material` says it: `metallic` 0 for paint and plastic up to 1
+// for metal (which tints what it reflects with its own color), `roughness` 0 for a mirror up to 1
+// for chalk, and `emissive` how much of its color it gives off itself.
+Material3 :: struct {
+	metallic, roughness, emissive: f32,
+	set:                       bool, // a `material` was written; otherwise the usual one is meant
+}
+
+DEFAULT_ROUGHNESS :: 0.5
+
+current_material :: proc(s: ^Scene3) -> Material3 {
+	if s.material.set {
+		return s.material
+	}
+	return {roughness = DEFAULT_ROUGHNESS, set = true}
+}
+
+scene_material :: proc(s: ^Scene3, metallic, roughness, emissive: Maybe(f64)) {
+	m := current_material(s)
+	if v, ok := metallic.?; ok {m.metallic = f32(clamp(v, 0, 1))}
+	if v, ok := roughness.?; ok {m.roughness = f32(clamp(v, 0, 1))}
+	if v, ok := emissive.?; ok {m.emissive = f32(clamp(v, 0, 1))}
+	s.material = m
+}
+
+// Shapes drawn from now on are flat in their color, with no light or shade.
+scene_no_lights :: proc(s: ^Scene3) {
+	s.unlit = true
+}
+
+Light_Kind :: enum u8 {
+	Ambient, // from everywhere, the same on every surface
+	Sun,     // from far away in one direction
+	Point,   // from a place, weaker the further away
+	Spot,    // from a place, towards a place, inside a cone
+}
+
+Light3 :: struct {
+	kind:     Light_Kind,
+	at:       [3]f64,  // a point or spot light's place; a sun's direction towards the light
+	aim:      [3]f64,  // where a spot light looks
+	colour:   [3]f32,  // 0 to 1
+	falloff:  f32,     // the distance at which a point or spot light has dropped to half
+	angle:    f32,     // a spot light's half angle in degrees
+}
+
+MAX_LIGHTS :: 8
+
+// Adds a light, in world coordinates. The first one of a frame takes the usual lights away; one
+// past the eighth is left out. Anything not a finite number leaves the light out.
+scene_light :: proc(s: ^Scene3, light: Light3) {
+	for v in ([?]f64{light.at.x, light.at.y, light.at.z, light.aim.x, light.aim.y, light.aim.z, f64(light.falloff), f64(light.angle)}) {
+		if math.is_nan(v) || math.is_inf(v) {
+			return
+		}
+	}
+	s.lit = true
+	if len(s.lights) < MAX_LIGHTS {
+		append(&s.lights, light)
+	}
+}
+
+// What the fragment shader reads: where the eye is, the ambient light and the other lights, each
+// three float4: (place or direction, kind), (color, falloff), (the way a spot light points, the
+// cosine of its half angle). The color of the lights the frame did not give is the usual pair.
+Scene_Lights :: struct {
+	eye:     [4]f32,
+	ambient: [4]f32, // the color, and in w how many lights there are
+	lights:  [MAX_LIGHTS][3][4]f32,
+}
+
+USUAL_AMBIENT :: [3]f32{0.4, 0.4, 0.4}
+USUAL_SUN :: Light3{kind = .Sun, at = {-0.4, -0.7, 0.6}, colour = {0.96, 0.96, 0.96}}
+
+scene_lights :: proc(s: ^Scene3, canvas: [2]f32) -> Scene_Lights {
+	out: Scene_Lights
+	u := scene_uniforms(s, canvas)
+	out.eye = u.eye
+	lights := s.lights[:]
+	usual := [1]Light3{USUAL_SUN}
+	ambient := [3]f32{}
+	if !s.lit {
+		lights = usual[:]
+		ambient = USUAL_AMBIENT
+	}
+	count := 0
+	for light in lights {
+		switch light.kind {
+		case .Ambient:
+			ambient += light.colour
+		case .Sun, .Point, .Spot:
+			g := &out.lights[count]
+			count += 1
+			place := light.at
+			if light.kind == .Sun {
+				place = normalize3(place)
+			}
+			g[0] = {f32(place.x), f32(place.y), f32(place.z), f32(light.kind)}
+			g[1] = {light.colour.r, light.colour.g, light.colour.b, max(light.falloff, 1e-3)}
+			if light.kind == .Spot {
+				axis := normalize3(light.aim - light.at)
+				half := clamp(f64(light.angle), 1, 89)
+				g[2] = {f32(axis.x), f32(axis.y), f32(axis.z), f32(maths.cos_deg(half))}
+			}
+		}
+	}
+	out.ambient = {min(ambient.r, 1), min(ambient.g, 1), min(ambient.b, 1), f32(count)}
 	return out
 }

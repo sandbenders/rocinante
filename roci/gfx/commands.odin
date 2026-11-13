@@ -102,6 +102,8 @@ Saved :: struct {
 	transform: Transform,
 	turtle:    Turtle, // saved and put back with the transform
 	model:     matrix[4, 4]f32, // the 3D transform, saved and put back with the transform
+	unlit:     bool,        // whether 3D shapes are drawn flat, saved and put back with it
+	material:  Material3,   // the 3D material, the same
 }
 
 Command_List :: struct {
@@ -539,7 +541,7 @@ shear :: proc(list: ^Command_List, x_degrees, y_degrees: f64) {
 // ---- scopes ----
 
 push :: proc(list: ^Command_List, scope: Scope) {
-	append(&list.saved, Saved{scope, list.style, list.transform, list.turtle, list.scene.model})
+	append(&list.saved, Saved{scope, list.style, list.transform, list.turtle, list.scene.model, list.scene.unlit, list.scene.material})
 }
 
 // Brings back what the matching `push` saved. Gives false when there was
@@ -556,6 +558,7 @@ pop :: proc(list: ^Command_List) -> bool {
 		list.transform = saved.transform
 		list.turtle = saved.turtle
 		list.scene.model = saved.model
+		list.scene.unlit, list.scene.material = saved.unlit, saved.material
 	}
 	return true
 }

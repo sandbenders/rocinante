@@ -515,3 +515,118 @@ test_the_hash_follows_the_camera_verbs :: proc(t: ^testing.T) {
 	scene_camera_at(&s, {640, 420}, {1, 2, 3})
 	testing.expect(t, scene_hash(&s) != plain, "the eye")
 }
+
+@(test)
+test_a_shape_carries_the_material_it_was_drawn_with :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_add(&s, .Box, {}, {1, 1, 1}, {0, 0, 0, 255})
+	testing.expect_value(t, s.items[0].material, [4]f32{0, DEFAULT_ROUGHNESS, 0, 0}) // the usual material, lit
+	scene_material(&s, 1.0, 0.2, nil)
+	scene_add(&s, .Box, {}, {1, 1, 1}, {0, 0, 0, 255})
+	testing.expect_value(t, s.items[1].material, [4]f32{1, 0.2, 0, 0})
+	// a word left out keeps its value; the others are clamped to 0 and 1
+	scene_material(&s, nil, 5.0, 0.5)
+	scene_material(&s, -3.0, nil, nil)
+	scene_add(&s, .Box, {}, {1, 1, 1}, {0, 0, 0, 255})
+	testing.expect_value(t, s.items[2].material, [4]f32{0, 1, 0, 0.5})
+	scene_no_lights(&s)
+	scene_add(&s, .Box, {}, {1, 1, 1}, {0, 0, 0, 255})
+	testing.expect_value(t, s.items[3].material[2], 1)
+	testing.expect_value(t, size_of(Instance3), 96)
+}
+
+@(test)
+test_push_and_pop_put_the_material_and_the_lighting_back :: proc(t: ^testing.T) {
+	list: Command_List
+	defer destroy(&list)
+	begin_frame(&list)
+	scene_material(&list.scene, 0.3, nil, nil)
+	push(&list, .Style_And_Transform)
+	scene_material(&list.scene, 1.0, 0.1, nil)
+	scene_no_lights(&list.scene)
+	testing.expect(t, list.scene.unlit && list.scene.material.metallic == 1, "changed inside")
+	pop(&list)
+	testing.expect(t, !list.scene.unlit, "lit again")
+	testing.expect_value(t, list.scene.material.metallic, 0.3)
+	// a new frame starts with the usual material, and lit
+	scene_no_lights(&list.scene)
+	begin_frame(&list)
+	testing.expect(t, !list.scene.unlit && !list.scene.material.set, "a new frame starts afresh")
+}
+
+@(test)
+test_the_usual_lights_are_there_until_a_sketch_writes_its_own :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	lights := scene_lights(&s, {640, 420})
+	testing.expect_value(t, lights.ambient.w, 1) // one sun
+	testing.expect_value(t, lights.lights[0][0][3], f32(Light_Kind.Sun))
+	testing.expect(t, lights.ambient.r > 0, "and an ambient light")
+	// the first light of the sketch takes them away
+	scene_light(&s, Light3{kind = .Point, at = {1, 2, 3}, colour = {1, 0.5, 0}, falloff = 100})
+	lights = scene_lights(&s, {640, 420})
+	testing.expect_value(t, lights.ambient.w, 1)
+	testing.expect_value(t, lights.lights[0][0][3], f32(Light_Kind.Point))
+	testing.expect_value(t, lights.lights[0][0][0], 1)
+	testing.expect_value(t, lights.lights[0][1], [4]f32{1, 0.5, 0, 100})
+	testing.expect_value(t, lights.ambient.r, 0) // no ambient light was written
+	// ambient lights add up, to at most 1
+	scene_light(&s, Light3{kind = .Ambient, colour = {0.4, 0.2, 0.9}})
+	scene_light(&s, Light3{kind = .Ambient, colour = {0.4, 0.2, 0.9}})
+	lights = scene_lights(&s, {640, 420})
+	testing.expect(t, close(lights.ambient.r, 0.8) && close(lights.ambient.g, 0.4) && lights.ambient.b == 1, "added and kept to 1")
+	testing.expect_value(t, lights.ambient.w, 1) // ambient lights are not counted among the others
+	// a new frame gives the usual lights back
+	scene_begin(&s)
+	lights = scene_lights(&s, {640, 420})
+	testing.expect_value(t, lights.lights[0][0][3], f32(Light_Kind.Sun))
+}
+
+@(test)
+test_a_sun_is_a_direction_and_a_spot_light_has_an_axis_and_a_cone :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_light(&s, Light3{kind = .Sun, at = {0, -3, 4}, colour = {1, 1, 1}})
+	scene_light(&s, Light3{kind = .Spot, at = {0, -100, 0}, aim = {0, 0, 0}, colour = {1, 1, 1}, angle = 60, falloff = 50})
+	lights := scene_lights(&s, {640, 420})
+	testing.expect(t, close(lights.lights[0][0][1], -0.6) && close(lights.lights[0][0][2], 0.8), "the sun's direction is made unit length")
+	testing.expect(t, close(lights.lights[1][2][1], 1) && close(lights.lights[1][2][3], 0.5, 1e-3), "the spot light points down (y is down) and its cone's cosine is that of 60 degrees")
+	// a cone of no width or a flat one is kept sane
+	scene_light(&s, Light3{kind = .Spot, aim = {1, 0, 0}, colour = {1, 1, 1}, angle = 0})
+	scene_light(&s, Light3{kind = .Spot, aim = {1, 0, 0}, colour = {1, 1, 1}, angle = 500})
+	lights = scene_lights(&s, {640, 420})
+	testing.expect(t, lights.lights[2][2][3] < 1 && lights.lights[3][2][3] > 0, "a cone is never a line or a plane")
+}
+
+@(test)
+test_there_are_at_most_eight_lights_and_a_bad_number_leaves_one_out :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	for _ in 0 ..< 20 {
+		scene_light(&s, Light3{kind = .Point, colour = {1, 1, 1}, falloff = 10})
+	}
+	testing.expect_value(t, len(s.lights), MAX_LIGHTS)
+	testing.expect_value(t, scene_lights(&s, {10, 10}).ambient.w, MAX_LIGHTS)
+	scene_begin(&s)
+	scene_light(&s, Light3{kind = .Point, at = {math.nan_f64(), 0, 0}, colour = {1, 1, 1}})
+	testing.expect_value(t, len(s.lights), 0)
+	testing.expect(t, !s.lit, "a light that was left out is not a light written")
+}
+
+@(test)
+test_the_hash_follows_the_lights_and_the_material :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_add(&s, .Box, {}, {1, 1, 1}, {255, 0, 0, 255})
+	plain := scene_hash(&s)
+	scene_light(&s, Light3{kind = .Sun, at = {1, 1, 1}, colour = {1, 1, 1}})
+	lit := scene_hash(&s)
+	testing.expect(t, lit != plain, "a light")
+	s.lights[0].colour = {0.5, 1, 1}
+	testing.expect(t, scene_hash(&s) != lit, "its color")
+	scene_begin(&s)
+	scene_material(&s, 1.0, nil, nil)
+	scene_add(&s, .Box, {}, {1, 1, 1}, {255, 0, 0, 255})
+	testing.expect(t, scene_hash(&s) != plain, "the material")
+}
