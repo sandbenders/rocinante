@@ -258,6 +258,7 @@ VERBS := []Verb{
 	{"light", {
 		{{{"kind", .Name}}, LIGHT_OPTIONS, .None},
 	}, "Adds a light to the 3D scene: `ambient`, `sun` (from a direction, `from 0 -1 1`), `point` (at a place, weaker the further away, `falloff` the distance at which it has dropped to half) or `spot` (at a place, `to` a place, inside a cone of half `angle` degrees). `fill` is its color. The first light of a frame takes the usual lights away, so a sketch that lights its own scene writes all the lights, ambient too."},
+	{"shadows", {{{}, nil, .None}}, "Turns shadows on for the rest of the frame: the first `sun` or `spot` light casts them (the usual sun, if no light is written), and the 3D shapes are dark where it does not reach. Point lights cast none yet."},
 	{"no lights", {{{}, nil, .None}}, "Draws the 3D shapes that come after it flat in their color, with no light or shade, until the `push` it is in ends or the frame does."},
 	{"material", {{{}, MATERIAL_OPTIONS, .None}}, "Sets what the 3D shapes that come after it are made of: `metallic` 0 for paint up to 1 for metal, `roughness` 0 for a mirror up to 1 for chalk, and `emissive` how much of their color they give off by themselves. A word left out keeps its value."},
 

@@ -1,0 +1,33 @@
+// Shadows: `shadows` turns them on for the frame. The first `sun` or `spot` light casts them, and
+// the shapes are dark where it does not reach: here a low sun throws the shadows of a ring of
+// boxes, a sphere and a turning torus across the floor, and each shadow falls on the shapes
+// beside it as well. A point light casts none, so the warm one only lights. The usual sun casts
+// them too, if no light is written. Drag to look round.
+window size 760 460 title "shadows"
+
+draw [
+  background (rgb 14 16 30)
+  light ambient fill (rgb 46 52 86)
+  light sun from -0.7 -0.55 0.45 fill (rgb 250 240 225)
+  light point at 0 -60 150 fill (rgb 255 140 70) falloff 160
+  shadows
+  fill (rgb 128 136 156)
+  material roughness 0.95
+  plane at 0 100 0 size 760 700
+  material roughness 0.5
+  for i from 0 to 5 [
+    push [
+      turn (i * 60 + frame * 0.3) around y
+      move 190 55 0
+      box at 0 0 0 size 80 fill (hsb (i * 40) 150 235)
+    ]
+  ]
+  sphere at 0 40 0 radius 60 fill (rgb 240 200 90)
+  push [
+    move 0 -75 0
+    turn 70 around x
+    turn (frame * 1.5) around z
+    material metallic 0.8 roughness 0.3
+    torus at 0 0 0 radius 55 tube 12 fill (rgb 200 210 225)
+  ]
+]

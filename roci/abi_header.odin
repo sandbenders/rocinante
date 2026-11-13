@@ -63,6 +63,7 @@ ABI_NOT_IN_C := [?]Abi_Skip{
 	{"light", 0, "the 3D verbs come to C with the rest of Phase 4"},
 	{"no lights", 0, "the 3D verbs come to C with the rest of Phase 4"},
 	{"material", 0, "the 3D verbs come to C with the rest of Phase 4"},
+	{"shadows", 0, "the 3D verbs come to C with the rest of Phase 4"},
 	{"camera", 1, "the 3D verbs come to C with the rest of Phase 4"},
 	{"look at", 0, "the 3D verbs come to C with the rest of Phase 4"},
 	{"look at", 1, "the 3D verbs come to C with the rest of Phase 4"},

@@ -349,3 +349,30 @@ test_a_light_past_the_most_is_left_out_with_a_message :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, said, 1) // said once, not once for each light or each frame
 }
+
+@(test)
+test_shadows_are_on_for_the_frame_that_asks_and_the_next_starts_without :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [
+  box at 0 0 0 size 10
+  if frame is 1 [ shadows ]
+]
+`, 1)
+	defer finish(p)
+	testing.expect(t, !roci.shadows_of(first_window()), "frame 0 did not ask")
+	roci.step()
+	testing.expect(t, roci.shadows_of(first_window()), "frame 1 did")
+	roci.step()
+	testing.expect(t, !roci.shadows_of(first_window()), "frame 2 starts without")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_the_shadows_example_runs_with_a_sun_that_casts_them :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("shadows"), 3)
+	defer finish(p)
+	testing.expect(t, roci.shadows_of(first_window()), "it asks for shadows")
+	lights, lit, _, _ := roci.scene_state(first_window())
+	testing.expect(t, lit && len(lights) == 3, "an ambient light, a sun and a point light")
+	testing.expect_value(t, len(roci.scene_items(first_window())), 9) // a floor, six boxes, a sphere and a torus
+	testing.expect_value(t, len(p.errors), 0)
+}

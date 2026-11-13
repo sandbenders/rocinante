@@ -1,0 +1,7 @@
+background (rgb 12 14 28)
+light ambient fill (rgb 50 56 90)
+light sun from -0.6 -0.9 0.5
+shadows
+plane at 0 60 0 size 420 420 fill (rgb 120 128 150)
+sphere at -40 0 0 radius 50 fill orange
+box at 90 25 40 size 70 fill teal

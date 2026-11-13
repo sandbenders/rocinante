@@ -516,6 +516,8 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		if !roci.light(kind, at, aim, colour, falloff, angle) {
 			fail(it, .Too_Many_Lights, e.span, fmt.tprint(gfx.MAX_LIGHTS), "", "", "light sun from 0 -1 1")
 		}
+	case .Shadows:
+		roci.shadows()
 	case .No_Lights:
 		roci.no_lights()
 	case .Material:

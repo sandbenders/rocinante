@@ -155,6 +155,7 @@ examples_are_in_the_groups_they_belong_to :: proc(t: ^testing.T) {
 	expect_group(t, "shapes3d", "Space")
 	expect_group(t, "stage", "Space")
 	expect_group(t, "lights", "Space")
+	expect_group(t, "shadows", "Space")
 	expect_group(t, "checks", "Tools")
 	expect_group(t, "export", "Tools")
 }

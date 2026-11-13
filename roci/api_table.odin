@@ -43,6 +43,7 @@ API_NAMES := [?]Api_Entry{
 	{"light", "light"},
 	{"no lights", "no_lights"},
 	{"material", "material"},
+	{"shadows", "shadows"},
 	{"look at", "look_at"},
 	{"ortho", "ortho"},
 	{"perspective", "perspective"},
