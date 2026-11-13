@@ -880,13 +880,13 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 	// A 3D scene is drawn first, in a pass of its own with a depth buffer; the 2D pass then loads what it drew.
 	has_scene := len(list.scene.items) > 0
 	sorted := make([dynamic]Instance3, context.temp_allocator)
-	counts: [Shape3]u32
+	runs := make([dynamic]Shape_Run, context.temp_allocator)
 	groups := make([dynamic]Model_Group, context.temp_allocator)
 	scene_done := false
 	if ok && has_scene {
-		if !scene_prepare(r, commands, list, &sorted, &counts, &groups) {
+		if !scene_prepare(r, commands, list, &sorted, &runs, &groups) {
 			ok = false
-		} else if draw_scene3(r, commands, list, target, msaa, format, pixels, canvas, samples, sorted[:], counts, groups[:]) {
+		} else if draw_scene3(r, commands, list, target, msaa, format, pixels, canvas, samples, sorted[:], runs[:], groups[:]) {
 			scene_done = true
 		} else {
 			ok = false

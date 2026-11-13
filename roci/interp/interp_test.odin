@@ -2647,3 +2647,27 @@ print (round h3.distance)`)
 	defer finish(p)
 	testing.expect_value(t, printed(p), "2\n2\n2\n17\n17\n2\n27")
 }
+
+@(test)
+test_a_picture_as_the_fill_of_a_solid_paints_it :: proc(t: ^testing.T) {
+	text := `cs = [ red green blue white ]
+board = picture from cs size 2 2
+draw [
+  box at 0 0 0 size 50 fill board
+  sphere at 100 0 0 radius 20 fill red
+  fill board
+  cone at 0 100 0 radius 20 height 40
+  no fill
+  box at 0 0 100 size 10
+]`
+	p := run_text(t, text, 1)
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	items := roci.scene_items(first_window())
+	if testing.expect_value(t, len(items), 3) { // a solid with no fill is not drawn
+		testing.expect(t, items[0].texture != 0, "the box wears the picture")
+		testing.expect(t, items[1].texture == 0, "the sphere is red")
+		testing.expect(t, items[2].texture != 0, "a fill that lasts reaches the cone")
+		testing.expect(t, items[0].texture == items[2].texture, "the same picture")
+	}
+}

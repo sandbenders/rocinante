@@ -1,0 +1,4 @@
+SIDE: a number
+colors: a list of colors
+cell: a number
+board: a picture

@@ -46,6 +46,7 @@ Item3 :: struct {
 	shape:          Shape3,
 	model_id:       Model_Id, // for a `Model`: which model
 	part:           u32,      // and which of its parts
+	texture:        Image_Id, // for a solid: the picture that paints it (0: its color)
 }
 
 Scene3 :: struct {
@@ -153,14 +154,14 @@ scene_grow :: proc(s: ^Scene3, x, y, z: f64) {
 
 // Adds a shape at a place, of a size (the diameter of a sphere is the size's x) and
 // a color. Anything not a finite number leaves it out.
-scene_add :: proc(s: ^Scene3, shape: Shape3, at, size: [3]f64, colour: maths.Colour, params := [2]f64{}) {
+scene_add :: proc(s: ^Scene3, shape: Shape3, at, size: [3]f64, colour: maths.Colour, params := [2]f64{}, texture := Image_Id(0)) {
 	for v in ([?]f64{at.x, at.y, at.z, size.x, size.y, size.z, params.x, params.y}) {
 		if math.is_nan(v) || math.is_inf(v) {
 			return
 		}
 	}
 	m := current_model(s) * translate4(f32(at.x), f32(at.y), f32(at.z)) * scale4(f32(size.x), f32(size.y), f32(size.z))
-	add_item(s, shape, m, colour, params)
+	add_item(s, shape, m, colour, params, texture)
 }
 
 // Adds a shape whose whole transform from its own space is given (the model of `scene_add`
@@ -177,9 +178,12 @@ scene_add_model :: proc(s: ^Scene3, shape: Shape3, model: matrix[4, 4]f32, colou
 }
 
 @(private)
-add_item :: proc(s: ^Scene3, shape: Shape3, m: matrix[4, 4]f32, colour: maths.Colour, params: [2]f64) {
-	item := Item3{shape = shape}
+add_item :: proc(s: ^Scene3, shape: Shape3, m: matrix[4, 4]f32, colour: maths.Colour, params: [2]f64, texture := Image_Id(0)) {
+	item := Item3{shape = shape, texture = texture}
 	item.colour = {colour.r / 255, colour.g / 255, colour.b / 255, colour.a / 255}
+	if texture != 0 {
+		item.colour = {1, 1, 1, 1} // the picture is the color
+	}
 	item.params = {f32(params.x), f32(params.y), 0, 0}
 	material := current_material(s)
 	item.material = {material.metallic, material.roughness, 1 if s.unlit else 0, material.emissive}
@@ -542,13 +546,13 @@ stitch_rings :: proc(m: ^Mesh3, first, second: u32) {
 
 // A ring of corners at height `y` and radius `radius`, each with its normal and stretch.
 @(private)
-add_ring :: proc(m: ^Mesh3, y, radius: f32, normal_y: f32, normal_scale: f32, stretch: f32) -> u32 {
+add_ring :: proc(m: ^Mesh3, y, radius: f32, normal_y: f32, normal_scale: f32, stretch: f32, v := f32(0)) -> u32 {
 	first := u32(len(m.vertices))
 	for seg in 0 ..= SEGMENTS {
 		theta := f64(seg) / f64(SEGMENTS) * 360
 		c, s := f32(maths.cos_deg(theta)), f32(maths.sin_deg(theta))
 		n := normalize3f({c * normal_scale, normal_y, s * normal_scale})
-		append(&m.vertices, Vertex3{{c * radius, y, s * radius}, n, stretch, {}, {}, {255, 255, 255, 255}})
+		append(&m.vertices, Vertex3{{c * radius, y, s * radius}, n, stretch, {f32(seg) / f32(SEGMENTS), v}, {}, {255, 255, 255, 255}})
 	}
 	return first
 }
@@ -568,6 +572,11 @@ add_cap :: proc(m: ^Mesh3, y: f32, facing: f32) {
 	centre := u32(len(m.vertices))
 	append(&m.vertices, Vertex3{{0, y, 0}, {0, facing, 0}, 0, {}, {}, {255, 255, 255, 255}})
 	ring := add_ring(m, y, 0.5, facing, 0, 0)
+	m.vertices[centre].uv = {0.5, 0.5}
+	for seg in 0 ..= SEGMENTS {
+		theta := f64(seg) / f64(SEGMENTS) * 360
+		m.vertices[ring + u32(seg)].uv = {0.5 + 0.5 * f32(maths.cos_deg(theta)), 0.5 + 0.5 * f32(maths.sin_deg(theta))} // the disc seen from its end
+	}
 	for seg in 0 ..< u32(SEGMENTS) {
 		append(&m.indices, centre, ring + seg, ring + seg + 1)
 	}
@@ -593,7 +602,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 		base := u32(len(m.vertices))
 		for corner in ([4][2]f32{{-1, -1}, {1, -1}, {1, 1}, {-1, 1}}) {
 			p := n * 0.5 + a * (corner.x * 0.5) + b * (corner.y * 0.5)
-			append(&m.vertices, Vertex3{p, n, 0, {}, {}, {255, 255, 255, 255}})
+			append(&m.vertices, Vertex3{p, n, 0, {corner.x * 0.5 + 0.5, 0.5 - corner.y * 0.5}, {}, {255, 255, 255, 255}}) // each face holds the whole picture
 		}
 		append(&m.indices, base, base + 1, base + 2, base, base + 2, base + 3)
 	}
@@ -614,7 +623,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 				f32(-maths.cos_deg(phi)),
 				f32(maths.sin_deg(phi) * maths.sin_deg(theta)),
 			}
-			append(&m.vertices, Vertex3{n * 0.5, n, 0, {}, {}, {255, 255, 255, 255}})
+			append(&m.vertices, Vertex3{n * 0.5, n, 0, {f32(seg) / f32(SEGMENTS), f32(ring) / f32(rings)}, {}, {255, 255, 255, 255}})
 		}
 	}
 	for ring in 0 ..< rings {
@@ -626,23 +635,23 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 	start = u32(len(m.indices))
 	base := u32(len(m.vertices))
 	for corner in ([4][2]f32{{-1, -1}, {1, -1}, {1, 1}, {-1, 1}}) {
-		append(&m.vertices, Vertex3{{corner.x * 0.5, 0, corner.y * 0.5}, {0, -1, 0}, 0, {}, {}, {255, 255, 255, 255}})
+		append(&m.vertices, Vertex3{{corner.x * 0.5, 0, corner.y * 0.5}, {0, -1, 0}, 0, {corner.x * 0.5 + 0.5, corner.y * 0.5 + 0.5}, {}, {255, 255, 255, 255}})
 	}
 	append(&m.indices, base, base + 1, base + 2, base, base + 2, base + 3)
 	range(&out, .Plane, start)
 
 	// the cone: its tip at the top (negative y), its base at the bottom
 	start = u32(len(m.indices))
-	tip := add_ring(m, -0.5, 0, -1, 2, 0) // every corner at the tip, each with its side's normal
-	base_ring := add_ring(m, 0.5, 0.5, -1, 2, 0)
+	tip := add_ring(m, -0.5, 0, -1, 2, 0, 0) // every corner at the tip, each with its side's normal
+	base_ring := add_ring(m, 0.5, 0.5, -1, 2, 0, 1)
 	stitch_rings(m, tip, base_ring)
 	add_cap(m, 0.5, 1)
 	range(&out, .Cone, start)
 
 	// the cylinder
 	start = u32(len(m.indices))
-	top := add_ring(m, -0.5, 0.5, 0, 1, 0)
-	bottom := add_ring(m, 0.5, 0.5, 0, 1, 0)
+	top := add_ring(m, -0.5, 0.5, 0, 1, 0, 0)
+	bottom := add_ring(m, 0.5, 0.5, 0, 1, 0, 1)
 	stitch_rings(m, top, bottom)
 	add_cap(m, -0.5, -1)
 	add_cap(m, 0.5, 1)
@@ -663,7 +672,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 				f32(-maths.cos_deg(phi)),
 				f32(maths.sin_deg(phi) * maths.sin_deg(theta)),
 			}
-			append(&m.vertices, Vertex3{n * 0.5, n, -1, {}, {}, {255, 255, 255, 255}})
+			append(&m.vertices, Vertex3{n * 0.5, n, -1, {f32(seg) / f32(SEGMENTS), 0.25 * f32(ring) / f32(half)}, {}, {255, 255, 255, 255}})
 		}
 	}
 	for ring in half ..= half * 2 {
@@ -677,7 +686,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 				f32(-maths.cos_deg(phi)),
 				f32(maths.sin_deg(phi) * maths.sin_deg(theta)),
 			}
-			append(&m.vertices, Vertex3{n * 0.5, n, 1, {}, {}, {255, 255, 255, 255}})
+			append(&m.vertices, Vertex3{n * 0.5, n, 1, {f32(seg) / f32(SEGMENTS), 0.75 + 0.25 * f32(ring - half) / f32(half)}, {}, {255, 255, 255, 255}})
 		}
 	}
 	for i in 0 ..< len(capsule_rings) - 1 {
@@ -697,7 +706,7 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 			theta := f64(seg) / f64(SEGMENTS) * 360
 			dir := [3]f32{f32(maths.cos_deg(theta)), 0, f32(maths.sin_deg(theta))}
 			n := dir * f32(maths.cos_deg(angle)) + [3]f32{0, f32(-maths.sin_deg(angle)), 0}
-			append(&m.vertices, Vertex3{dir * 0.5, n, 0, {}, {}, {255, 255, 255, 255}})
+			append(&m.vertices, Vertex3{dir * 0.5, n, 0, {f32(seg) / f32(SEGMENTS), f32(v) / f32(tube_segments)}, {}, {255, 255, 255, 255}})
 		}
 	}
 	for i in 0 ..< len(torus_rings) - 1 {
@@ -727,8 +736,18 @@ build_shape_meshes :: proc() -> Shape_Meshes {
 		if n.x * (a.x + b.x + c.x) + n.y * (a.y + b.y + c.y) + n.z * (a.z + b.z + c.z) < 0 {
 			n = -n
 		}
+		// longitude and latitude, with a face that crosses the seam taking the far side past 1 (the picture repeats)
+		spot :: proc(p: [3]f32) -> [2]f32 {
+			return {0.5 + f32(math.atan2(f64(p.z), f64(p.x)) / (2 * math.PI)), 0.5 + f32(math.asin(clamp(f64(p.y) * 2, -1, 1)) / math.PI)}
+		}
+		ua, ub, uc := spot(a), spot(b), spot(c)
+		if max(ua.x, ub.x, uc.x) - min(ua.x, ub.x, uc.x) > 0.5 {
+			for uv in ([3]^[2]f32{&ua, &ub, &uc}) {
+				if uv.x < 0.5 {uv.x += 1}
+			}
+		}
 		base := u32(len(m.vertices))
-		append(&m.vertices, Vertex3{a, n, 0, {}, {}, {255, 255, 255, 255}}, Vertex3{b, n, 0, {}, {}, {255, 255, 255, 255}}, Vertex3{c, n, 0, {}, {}, {255, 255, 255, 255}})
+		append(&m.vertices, Vertex3{a, n, 0, ua, {}, {255, 255, 255, 255}}, Vertex3{b, n, 0, ub, {}, {255, 255, 255, 255}}, Vertex3{c, n, 0, uc, {}, {255, 255, 255, 255}})
 		append(&m.indices, base, base + 1, base + 2)
 	}
 	for tri in triangles {

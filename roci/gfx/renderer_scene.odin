@@ -149,6 +149,21 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 	return pipeline
 }
 
+// One run of the instances of one solid wearing one picture (0: none), which is one draw.
+Shape_Run :: struct {
+	shape:        Shape3,
+	texture:      Image_Id,
+	first, count: u32, // the first instance and how many
+}
+
+@(private)
+slice_contains_picture :: proc(ids: []Image_Id, id: Image_Id) -> bool {
+	for have in ids {
+		if have == id {return true}
+	}
+	return false
+}
+
 // One run of the instances that are the same part of the same loaded model, which is one draw.
 Model_Group :: struct {
 	id:           Model_Id,
@@ -168,7 +183,7 @@ Model_Gpu :: struct {
 // frame's instances: the shapes grouped by kind (each kind is one draw), then the parts of models
 // grouped by model and part. Gives the instances in that order.
 @(private)
-scene_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Command_List, sorted: ^[dynamic]Instance3, counts: ^[Shape3]u32, groups: ^[dynamic]Model_Group) -> bool {
+scene_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Command_List, sorted: ^[dynamic]Instance3, runs: ^[dynamic]Shape_Run, groups: ^[dynamic]Model_Group) -> bool {
 	meshes: Shape_Meshes
 	mesh_bytes_v, mesh_bytes_i := 0, 0
 	if !r.scene_ready {
@@ -180,11 +195,22 @@ scene_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comm
 
 	for shape in Shape3 {
 		if shape == .Model {continue}
+		// a run of the shape for each picture its items wear (usually the one run of no picture)
+		seen := make([dynamic]Image_Id, context.temp_allocator)
 		for item in list.scene.items {
-			if item.shape == shape {
-				append(sorted, item.instance)
-				counts[shape] += 1
+			if item.shape == shape && !slice_contains_picture(seen[:], item.texture) {
+				append(&seen, item.texture)
 			}
+		}
+		for texture in seen {
+			run := Shape_Run{shape = shape, texture = texture, first = u32(len(sorted))}
+			for item in list.scene.items {
+				if item.shape == shape && item.texture == texture {
+					append(sorted, item.instance)
+					run.count += 1
+				}
+			}
+			append(runs, run)
 		}
 	}
 	// the parts of loaded models, in order of model and part (a small insertion sort: there are few)
@@ -207,6 +233,16 @@ scene_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comm
 		append(sorted, item.instance)
 	}
 	instance_bytes := len(sorted) * size_of(Instance3)
+
+	// the pictures of solids, on the card too before the pass that reads them begins
+	if len(runs) > 0 {
+		for run in runs {
+			if run.texture != 0 {
+				if !ensure_model_resources(r, commands) {return false}
+				_ = image_texture(r, commands, run.texture, true)
+			}
+		}
+	}
 
 	// the pictures of the parts that are drawn, on the card before the pass that reads them begins
 	if len(groups) > 0 {
@@ -320,24 +356,20 @@ slice_contains_id :: proc(ids: []Model_Id, id: Model_Id) -> bool {
 // Draws the shapes and then the loaded models of the scene in the pass that is open, with the
 // pipeline and the uniforms already set: the shapes from the one mesh, each model from its own.
 @(private)
-draw_scene_items :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, pass: ^sdl.GPURenderPass, counts: [Shape3]u32, groups: []Model_Group, textured: bool) {
+draw_scene_items :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, pass: ^sdl.GPURenderPass, runs: []Shape_Run, groups: []Model_Group, textured: bool) {
 	bindings := [2]sdl.GPUBufferBinding{{buffer = r.scene_vertices.buffer}, {buffer = r.scene_instances.buffer}}
 	sdl.BindGPUVertexBuffers(pass, 0, raw_data(bindings[:]), 2)
 	sdl.BindGPUIndexBuffer(pass, {buffer = r.scene_indices.buffer}, ._32BIT)
-	if textured {
-		// the solids have no pictures: the stand-ins and no flags
-		none: Model_Part
-		bind_part(r, commands, pass, &none)
-	}
-	first: u32
-	for shape in Shape3 {
-		if shape == .Model {continue}
-		if counts[shape] > 0 {
-			range := r.scene_ranges[shape]
-			sdl.DrawGPUIndexedPrimitives(pass, range.index_count, counts[shape], range.first_index, 0, first)
-			r.stats.draws += 1
+	for run in runs {
+		if textured {
+			// a solid is painted with its picture as the color, or has none: the stand-ins and no flags
+			painted := Model_Part{}
+			painted.textures[.Colour] = run.texture
+			bind_part(r, commands, pass, &painted)
 		}
-		first += counts[shape]
+		range := r.scene_ranges[run.shape]
+		sdl.DrawGPUIndexedPrimitives(pass, range.index_count, run.count, range.first_index, 0, run.first)
+		r.stats.draws += 1
 	}
 	bound := Model_Id(0)
 	for group in groups {
@@ -363,7 +395,7 @@ draw_scene_items :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, pass: ^s
 // draws every shape. The color is kept in the multisampled texture when there is one, not
 // resolved, because the 2D pass that follows adds to it and resolves it.
 @(private)
-draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Command_List, target, msaa: ^sdl.GPUTexture, format: sdl.GPUTextureFormat, pixels: [2]u32, canvas: [2]f32, samples: sdl.GPUSampleCount, sorted: []Instance3, counts: [Shape3]u32, groups: []Model_Group) -> bool {
+draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Command_List, target, msaa: ^sdl.GPUTexture, format: sdl.GPUTextureFormat, pixels: [2]u32, canvas: [2]f32, samples: sdl.GPUSampleCount, sorted: []Instance3, runs: []Shape_Run, groups: []Model_Group) -> bool {
 	pipeline := get_pipeline(r, .Scene3, format, samples)
 	depth := depth_texture(r, pixels.x, pixels.y, samples)
 	if pipeline == nil || depth == nil {
@@ -376,7 +408,7 @@ draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comman
 	if !ensure_shadow_resources(r, lights.shadow.x > 0) {
 		return false
 	}
-	if lights.shadow.x > 0 && !draw_shadow_pass(r, commands, lights, counts, groups) {
+	if lights.shadow.x > 0 && !draw_shadow_pass(r, commands, lights, runs, groups) {
 		lights.shadow.x = 0 // the scene is drawn without shadows rather than not at all
 	}
 	bg := list.background
@@ -403,7 +435,7 @@ draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comman
 	map_bound := r.shadow_map if lights.shadow.x > 0 else r.shadow_blank
 	shadow_binding := sdl.GPUTextureSamplerBinding{texture = map_bound, sampler = r.shadow_sampler}
 	sdl.BindGPUFragmentSamplers(pass, 0, &shadow_binding, 1)
-	draw_scene_items(r, commands, pass, counts, groups, true)
+	draw_scene_items(r, commands, pass, runs, groups, true)
 	return true
 }
 
@@ -447,7 +479,7 @@ ensure_shadow_resources :: proc(r: ^Renderer, with_map: bool) -> bool {
 // Draws the scene as the light sees it into the shadow map: how far away the nearest surface is,
 // at every texel, 1 where there is none.
 @(private)
-draw_shadow_pass :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, lights: Scene_Lights, counts: [Shape3]u32, groups: []Model_Group) -> bool {
+draw_shadow_pass :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, lights: Scene_Lights, runs: []Shape_Run, groups: []Model_Group) -> bool {
 	pipeline := get_pipeline(r, .Shadow3, SHADOW_FORMAT, ._1)
 	depth := depth_texture(r, SHADOW_SIZE, SHADOW_SIZE, ._1)
 	if pipeline == nil || depth == nil {
@@ -475,7 +507,7 @@ draw_shadow_pass :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, lights: 
 	sdl.BindGPUGraphicsPipeline(pass, pipeline)
 	rows := lights.shadow_rows
 	sdl.PushGPUVertexUniformData(commands, 0, &rows, size_of(rows))
-	draw_scene_items(r, commands, pass, counts, groups, false)
+	draw_scene_items(r, commands, pass, runs, groups, false)
 	return true
 }
 

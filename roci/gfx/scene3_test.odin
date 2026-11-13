@@ -745,3 +745,36 @@ test_the_hash_follows_shadows :: proc(t: ^testing.T) {
 	scene_shadows(&s)
 	testing.expect(t, scene_hash(&s) != plain, "shadows change the picture")
 }
+
+@(test)
+test_every_solid_has_texture_coordinates_that_cover_its_picture :: proc(t: ^testing.T) {
+	meshes := build_shape_meshes()
+	defer shape_meshes_destroy(&meshes)
+	for shape in Shape3 {
+		if shape == .Model {
+			continue
+		}
+		range := meshes.ranges[shape]
+		low, high := [2]f32{1e9, 1e9}, [2]f32{-1e9, -1e9}
+		for i in range.first_index ..< range.first_index + range.index_count {
+			uv := meshes.mesh.vertices[meshes.mesh.indices[i]].uv
+			low = {min(low.x, uv.x), min(low.y, uv.y)}
+			high = {max(high.x, uv.x), max(high.y, uv.y)}
+		}
+		// the whole picture is used (a face that crosses the seam of a sphere goes a little past 1, where the picture repeats)
+		testing.expectf(t, low.x >= 0 && low.y >= 0 && high.x <= 2 && high.y <= 1.0001, "%v has coordinates from %v to %v", shape, low, high)
+		testing.expectf(t, high.x - low.x > 0.9 && high.y - low.y > 0.9, "%v covers only %v of its picture", shape, high - low)
+	}
+}
+
+@(test)
+test_a_solid_that_wears_a_picture_has_it_for_its_color_and_keeps_the_other_solids_plain :: proc(t: ^testing.T) {
+	s: Scene3
+	defer delete(s.items)
+	scene_add(&s, .Box, {0, 0, 0}, {1, 1, 1}, {255, 0, 0, 255}, {}, Image_Id(7))
+	scene_add(&s, .Sphere, {0, 0, 0}, {1, 1, 1}, {0, 255, 0, 255})
+	testing.expect_value(t, s.items[0].texture, Image_Id(7))
+	testing.expect_value(t, s.items[0].colour, [4]f32{1, 1, 1, 1}) // the picture is the color
+	testing.expect_value(t, s.items[1].texture, Image_Id(0))
+	testing.expect_value(t, s.items[1].colour, [4]f32{0, 1, 0, 1})
+}

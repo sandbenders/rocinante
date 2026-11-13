@@ -1,0 +1,37 @@
+// Textured: a picture as the fill of a solid. `fill picture` paints a solid with it, over the
+// solid's own coordinates: a box shows the whole picture on each face, a sphere wraps it from
+// pole to pole, a cylinder and a cone round their sides, a torus round the ring and the tube, a
+// plane across it. The picture here is made by the sketch (`picture from colors`), a board of
+// colored squares, so the way each solid maps it shows; one that comes from `load` works the same,
+// and so does a picture inside a model. Drag to look round.
+window size 760 460 title "textured"
+
+SIDE = 64
+colors = []
+for y from 0 to SIDE - 1 [
+  for x from 0 to SIDE - 1 [
+    cell = (floor (x / 8) + floor (y / 8)) % 2
+    add (hsb (x * 4) 170 (140 + cell * 100)) to colors
+  ]
+]
+board = picture from colors size SIDE SIDE
+
+draw [
+  background (rgb 16 20 38)
+  light ambient fill (rgb 70 78 110)
+  light sun from -0.5 -0.7 0.6
+  turn (frame * 0.6) around y
+  turn 14 around x
+  box at -210 -70 0 size 100 fill board
+  sphere at -70 -70 0 radius 55 fill board
+  cone at 70 -70 0 radius 50 height 110 fill board
+  cylinder at 210 -70 0 radius 48 height 110 fill board
+  capsule at -210 90 0 radius 40 height 130 fill board
+  torus at -70 90 0 radius 52 tube 18 fill board
+  icosphere at 70 90 0 radius 55 fill board
+  push [
+    move 210 90 0
+    turn 65 around x
+    plane at 0 0 0 size 120 120 fill board
+  ]
+]

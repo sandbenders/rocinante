@@ -119,7 +119,7 @@ SET_OPTIONS := []Option{
 ALPHA_OPTION := []Option{{"alpha", {.Number}, false}}
 // What a 3D shape takes: the color it is drawn in. The other style words are for 2D.
 SHAPE3_OPTIONS := []Option{
-	{"fill", {.Colour}, false},
+	{"fill", {.Paint}, false}, // a color, or a picture that paints the solid (a gradient is not used on a solid)
 	{"alpha", {.Number}, false},
 	{"style", {.Any}, false},
 }

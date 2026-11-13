@@ -29,7 +29,7 @@ Example :: struct {
 // They get a larger worst channel and allowance than `STRICT`, which a shifted or wrongly lit
 // picture still fails.
 SHADED :: Limits{tolerance = 12, allowed = 60, worst = 40}
-SHADED_PICTURES := [?]string{"example_solids_1", "example_shapes3d_1", "example_stage_1", "example_lights_1", "example_shadows_1", "example_model_1", "example_turtle3d_1", "example_collide3d_1", "model_pictures", "model_colours"}
+SHADED_PICTURES := [?]string{"example_solids_1", "example_shapes3d_1", "example_stage_1", "example_lights_1", "example_shadows_1", "example_model_1", "example_turtle3d_1", "example_collide3d_1", "example_textured_1", "model_pictures", "model_colours"}
 
 // `benchmark` has no picture: 100,000 small circles hardly compress (737 KB), and an
 // interpreter test checks the work it does exactly, which is what it promises.
@@ -93,6 +93,7 @@ EXAMPLES := [?]Example{
 	{"model", 30, {1}}, // a glTF ship (a box and a cone, a material each, placed by nodes) turning above a floor, lit and casting its shadow
 	{"turtle3d", 30, {1}}, // a tree grown by the turtle in space, forking in threes by rolling and tipping up, lit and casting its shadow
 	{"collide3d", 40, {1}}, // balls bouncing off pillars in a room by `hits` and `contact`, gold for a moment after each touch, and a laser swept across it that `cast` stops at the first pillar it meets
+	{"textured", 30, {1}}, // a board of colored squares made by the sketch, painted over a box, a sphere, a cone, a cylinder, a capsule, a torus, an icosphere and a plane by `fill`
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.

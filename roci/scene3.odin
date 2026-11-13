@@ -19,7 +19,8 @@ add_shape3 :: proc(shape: gfx.Shape3, at, size: [3]f64, look: Look, params := [2
 	list := current_list()
 	opened := begin_look(list, look)
 	if list.style.fill_on {
-		gfx.scene_add(&list.scene, shape, at, size, list.style.fill, params)
+		// a picture as the fill paints the solid with it, over the shape's own coordinates (the mode words of the flat fills do not apply)
+		gfx.scene_add(&list.scene, shape, at, size, list.style.fill, params, list.style.fill_image.image)
 	}
 	end_look(list, opened)
 }
