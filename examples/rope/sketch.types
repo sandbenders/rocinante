@@ -4,7 +4,6 @@ WAIT: a number
 rope: a list of records with pos and angle
 still: a number
 aim: a vector of 2 numbers
-goal: a vector of 2 numbers
 head: a record with pos and angle
 seg: a record with pos and angle
 before: a record with pos and angle

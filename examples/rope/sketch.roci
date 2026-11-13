@@ -2,18 +2,16 @@
 // mouse and each of the others pulled to the one before it, so the whole thing trails
 // like a rope. `pull` moves a segment until it is one length from its target, on the line
 // towards it: `normalize` gives that line's direction, and `atan` the angle it points,
-// which is what turns the head to face where it is going. Move the mouse to lead the rope;
-// when the mouse has been still for a moment, the rope leads itself in a loop across the window.
+// which is what each segment is turned by when it is drawn. Move the mouse to lead the
+// rope; when the mouse has been still for a second, the rope leads itself round the window.
 window size 480 320 title "rope" resizable false
 
-SEGMENTS = 40
-LENGTH = 12
-WAIT = 20
+SEGMENTS = 22
+LENGTH = 17
+WAIT = 60
 rope = []
-// It starts stretched across the window, the head on the right.
-for i from 1 to SEGMENTS [ add { pos: { 474 - (i - 1) * LENGTH, 160 }, angle: 180 } to rope ]
+repeat SEGMENTS [ add { pos: { 240, 160 }, angle: 0 } to rope ]
 still = 0
-aim = { 474, 160 }
 
 // Moves a segment so it is one length from a target, on the line towards it, and turns it to face the target.
 learn pull p target [
@@ -23,13 +21,11 @@ learn pull p target [
 ]
 
 draw [
-  background (rgb 24 28 44)
+  background 245
   // How long the mouse has not moved.
   if mouse.x is not pmouse.x or mouse.y is not pmouse.y [ still = 0 ] else [ still = still + 1 ]
-  goal = mouse
-  if still > WAIT [ goal = { 240 + cos (frame * 1.2) * 190, 160 + sin (frame * 2.4) * 105 } ]
-  // The aim goes to where the rope is led, a part of the way each frame, so it never jumps.
-  aim = aim + (goal - aim) * 0.2
+  aim = mouse
+  if still > WAIT [ aim = { 240 + cos (frame * 1.5) * 170, 160 + sin (frame * 3) * 100 } ]
   head = item 1 of rope
   pull head aim
   for i from 2 to SEGMENTS [
@@ -37,21 +33,17 @@ draw [
     before = item (i - 1) of rope
     pull seg before.pos
   ]
-  // From the tail to the head, thinner and bluer towards the tail, so the head is on top.
   caps round
-  for i from SEGMENTS to 2 by -1 [
+  thickness 10
+  for i from 1 to SEGMENTS [
     seg = item i of rope
-    before = item (i - 1) of rope
-    line from before.pos to seg.pos stroke (hsb (150 + i * 3) 190 245) thickness (20 - i * 0.4)
-  ]
-  push [
-    move head.pos
-    turn head.angle
-    no stroke
-    circle at 0 0 radius 14 fill (hsb 150 190 250)
-    circle at 5 -5.5 radius 3.6 fill white
-    circle at 5 5.5 radius 3.6 fill white
-    circle at 6.4 -5.5 radius 1.7 fill 20
-    circle at 6.4 5.5 radius 1.7 fill 20
+    push [
+      move seg.pos
+      turn seg.angle
+      stroke (rgb 30 60 120)
+      line from 0 0 to LENGTH 0
+      no stroke
+      circle at 0 0 radius (13 - i * 0.4) fill (hsb (i * 11) 170 240)
+    ]
   ]
 ]

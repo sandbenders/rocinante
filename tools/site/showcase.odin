@@ -57,7 +57,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"sinewave", 1, "Sine wave", 20, 1},
 	{"noisewave", 1, "Noise wave", 60, 1},
 	{"ease", 1, "Easing", 200, 1},
-	{"rope", 1, "Rope", 270, 1},
+	{"rope", 1, "Rope", 150, 1},
 	{"mouse", 1, "Mouse", 5, 1},
 	{"touch", 1, "Touch", 5, 1},
 
