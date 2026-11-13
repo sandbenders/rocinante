@@ -108,6 +108,7 @@ Interp :: struct {
 	pictures: map[string]Picture_Entry, // what `load` found, by name (images.odin)
 	models:   map[string]Model_Entry, // what `model` found, by name (models.odin)
 	svgs:     map[string]Svg_Entry,     // what `svg` found, by name (svgs.odin)
+	mesh_calls: Mesh_Calls,            // which meshes each call drew this frame (meshes.odin)
 	shaders:  map[string]Shader_Entry,  // what `effect` found, by name (effects.odin)
 	fonts_missed: map[string]bool, // font names already looked for everywhere and not found (fonts.odin)
 	events:    int, // every runtime error said, counting the ones `fail` left out as already said
@@ -209,6 +210,7 @@ destroy :: proc(p: ^Interp) {
 	drop_pictures(p)
 	drop_models(p)
 	drop_svgs(p)
+	drop_meshes(p)
 	drop_shaders(p)
 	virtual.arena_destroy(&p.values[p.values_now])
 	virtual.arena_destroy(&p.arena)

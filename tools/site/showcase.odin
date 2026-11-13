@@ -117,6 +117,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"collide3d", 7, "Collision in space", 40, 1},
 	{"voyage", 7, "A city seen from a ship", 30, 1},
 	{"textured", 7, "Textured solids", 30, 1},
+	{"wireframe", 7, "Wireframe", 30, 1},
 }
 
 // Examples that are not on the site, and why.

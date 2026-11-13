@@ -1,0 +1,31 @@
+background (rgb 20 24 44)
+light ambient fill (rgb 60 66 100)
+light sun from -0.5 -0.7 0.6
+turn -30 around y
+turn 20 around x
+peak = { 0, -70, 0 }
+pyramid = [
+  { -60, 50, -60 }
+  { 60, 50, -60 }
+  peak
+  { 60, 50, -60 }
+  { 60, 50, 60 }
+  peak
+  { 60, 50, 60 }
+  { -60, 50, 60 }
+  peak
+  { -60, 50, 60 }
+  { -60, 50, -60 }
+  peak
+]
+push [
+  move -90 0 0
+  fill orange
+  mesh pyramid
+]
+push [
+  move 90 0 0
+  fill skyblue
+  thickness 3
+  mesh pyramid as wireframe
+]

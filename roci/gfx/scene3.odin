@@ -1058,10 +1058,21 @@ scene_add_loaded_model :: proc(s: ^Scene3, id: Model_Id, at: [3]f64, size: f64) 
 	centre, longest := model_extent(data)
 	k := size / f64(longest) if longest > 0 else 1
 	m := current_model(s) * translate4(f32(at.x), f32(at.y), f32(at.z)) * scale4(f32(k), f32(k), f32(k)) * translate4(-centre.x, -centre.y, -centre.z)
+	return add_loaded_parts(s, data, id, m)
+}
+
+// One item for each part of a model, placed by `m`; the parts' own colors unless `colour` is given.
+@(private)
+add_loaded_parts :: proc(s: ^Scene3, data: ^Model_Data, id: Model_Id, m: matrix[4, 4]f32, colour: Maybe(maths.Colour) = nil) -> int {
 	for part, i in data.parts {
 		item := Item3{shape = .Model, model_id = id, part = u32(i)}
 		item.colour = {part.colour.r, part.colour.g, part.colour.b, 1}
+		material := current_material(s)
 		item.material = {part.metallic, part.roughness, 1 if (s.unlit || part.unlit) else 0, part.emissive}
+		if own, given := colour.?; given {
+			item.colour = {own.r / 255, own.g / 255, own.b / 255, own.a / 255}
+			item.material = {material.metallic, material.roughness, 1 if s.unlit else 0, material.emissive}
+		}
 		for r in 0 ..< 3 {
 			for c in 0 ..< 4 {
 				item.model[r][c] = m[r, c]

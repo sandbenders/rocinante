@@ -123,6 +123,14 @@ SHAPE3_OPTIONS := []Option{
 	{"alpha", {.Number}, false},
 	{"style", {.Any}, false},
 }
+// What `mesh` takes: how it is drawn (`as wireframe`), its color, and for a wireframe how thick the lines are.
+MESH_OPTIONS := []Option{
+	{"as", {.Name}, false},
+	{"fill", {.Paint}, false},
+	{"thickness", {.Number}, false},
+	{"alpha", {.Number}, false},
+	{"style", {.Any}, false},
+}
 LIGHT_OPTIONS := []Option{
 	{"at", {.Number, .Number, .Number}, false},
 	{"from", {.Number, .Number, .Number}, false},

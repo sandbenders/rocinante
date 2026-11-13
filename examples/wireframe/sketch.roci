@@ -1,0 +1,68 @@
+// Wireframe: `mesh` draws a list of vectors of three numbers as triangles, three corners for each, and
+// `as wireframe` draws only its edges, as tubes as wide as the `thickness`. The gem is a star-shaped prism
+// the sketch calculates once: for each point of the star two flat faces and, on the top and the bottom, a
+// fan of triangles. The wireframe leaves out an edge that two triangles in one plane share, so the faces,
+// each cut into two triangles, show no diagonal, and the fans no spokes: only the real edges are left.
+// The solid gem is flat shaded in the fill; the wireframe is drawn in the fill too, lit and casting its
+// shadow like any shape. Drag to look round.
+window size 760 460 title "wireframe"
+
+learn corner_of i points reach depth [
+  a = i * 360 / (points * 2)
+  arm = reach
+  if i % 2 is 1 [ arm = reach * 0.55 ]
+  give { sin a * arm, depth, cos a * arm }
+]
+
+learn star_gem points reach height [
+  tris = []
+  n = points * 2
+  for i from 0 to (n - 1) [
+    next = (i + 1) % n
+    top_a = corner_of i points reach (-height)
+    top_b = corner_of next points reach (-height)
+    bottom_a = corner_of i points reach height
+    bottom_b = corner_of next points reach height
+    // the side, two triangles in one plane
+    add top_a to tris
+    add bottom_a to tris
+    add bottom_b to tris
+    add top_a to tris
+    add bottom_b to tris
+    add top_b to tris
+    // a triangle of the top and one of the bottom, from the middle
+    add { 0, -height, 0 } to tris
+    add top_b to tris
+    add top_a to tris
+    add { 0, height, 0 } to tris
+    add bottom_a to tris
+    add bottom_b to tris
+  ]
+  give tris
+]
+
+gem = star_gem 5 90 30
+
+draw [
+  background (rgb 14 16 30)
+  light ambient fill (rgb 56 62 96)
+  light sun from -0.6 -0.7 0.5 fill (rgb 250 240 225)
+  shadows
+  fill (rgb 120 128 150)
+  material roughness 0.95
+  plane at 0 110 0 size 900 700
+  material roughness 0.4
+  push [
+    move -150 -10 0
+    turn (frame * 0.7) around y
+    fill (rgb 240 170 80)
+    mesh gem
+  ]
+  push [
+    move 150 -10 0
+    turn (frame * 0.7) around y
+    fill (rgb 120 210 230)
+    thickness 2.5
+    mesh gem as wireframe
+  ]
+]

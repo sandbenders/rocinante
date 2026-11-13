@@ -33,7 +33,7 @@ SHADED :: Limits{tolerance = 12, allowed = 60, worst = 40}
 // Ubuntu's lavapipe differs from the Mac's on a few hundred pixels by small steps (390 pixels over 12,
 // worst channel 40, found by the first run on GitHub). A shifted or wrongly lit ship still fails.
 SHADED_MODEL :: Limits{tolerance = 12, allowed = 160, worst = 48}
-SHADED_PICTURES := [?]string{"example_solids_1", "example_shapes3d_1", "example_stage_1", "example_lights_1", "example_shadows_1", "example_model_1", "example_turtle3d_1", "example_collide3d_1", "example_voyage_1", "example_textured_1", "model_pictures", "model_colours"}
+SHADED_PICTURES := [?]string{"example_solids_1", "example_shapes3d_1", "example_stage_1", "example_lights_1", "example_shadows_1", "example_model_1", "example_turtle3d_1", "example_collide3d_1", "example_voyage_1", "example_textured_1", "example_wireframe_1", "model_pictures", "model_colours"}
 
 // `benchmark` has no picture: 100,000 small circles hardly compress (737 KB), and an
 // interpreter test checks the work it does exactly, which is what it promises.
@@ -100,6 +100,7 @@ EXAMPLES := [?]Example{
 	{"collide3d", 40, {1}}, // balls bouncing off pillars in a room by `hits` and `contact`, gold for a moment after each touch, and a laser swept across it that `cast` stops at the first pillar it meets
 	{"voyage", 30, {1}}, // a generated city of towers and lanterns lit by a sun, a point light that follows an OBJ ship flying over it, and every shadow
 	{"textured", 30, {1}}, // a board of colored squares made by the sketch, painted over a box, a sphere, a cone, a cylinder, a capsule, a torus, an icosphere and a plane by `fill`
+	{"wireframe", 30, {1}}, // a star-shaped gem the sketch calculates as triangles, flat shaded and as a wireframe of tubes with no diagonals, turning above a floor and casting their shadows
 }
 
 // Examples with a sketch.roci that have no picture to compare, and why.

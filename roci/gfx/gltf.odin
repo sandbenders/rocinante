@@ -62,6 +62,7 @@ Model_Data :: struct {
 	low:      [3]f32, // the box that holds it, in the sketch's world
 	high:     [3]f32,
 	lost_textures: int, // how many pictures the file names that could not be read
+	edges:    [dynamic][2][3]f32, // the lines of a wireframe, for a mesh a sketch made (mesh3.odin)
 }
 
 model_data_destroy :: proc(m: ^Model_Data) {
@@ -73,6 +74,7 @@ model_data_destroy :: proc(m: ^Model_Data) {
 	delete(m.vertices)
 	delete(m.indices)
 	delete(m.parts)
+	delete(m.edges)
 	m^ = {}
 }
 

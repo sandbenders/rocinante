@@ -472,3 +472,25 @@ pixel_ray :: proc(x, y: f64) -> (from, to: [3]f64) {
 model_triangles :: proc(model: Model, x, y, z, size: f64, allocator := context.allocator) -> [][3]f64 {
 	return gfx.scene_model_triangles(&current_list().scene, model, {x, y, z}, size, allocator)
 }
+
+// Draws a mesh the sketch made: `corners` are the corners of its triangles, three for each, in the coordinates of
+// the moment, flat shaded in the fill, or with `wireframe` only its edges as tubes as wide as the `thickness`
+// (which is 1 unless set), in the fill too. `key` names the call that draws it, so a list drawn again unchanged is
+// not sent to the graphics card again and one that changed takes the old one's place.
+mesh :: proc(key: string, corners: [][3]f64, wireframe := false, look := Look{}) {
+	list := current_list()
+	opened := begin_look(list, look)
+	defer end_look(list, opened)
+	if !list.style.fill_on {
+		return
+	}
+	id := gfx.mesh_keep(key, corners)
+	if id == 0 {
+		return
+	}
+	if wireframe {
+		gfx.scene_add_wireframe(&list.scene, id, f64(max(list.style.thickness, 0.5)), list.style.fill)
+	} else {
+		gfx.scene_add_mesh(&list.scene, id, list.style.fill)
+	}
+}

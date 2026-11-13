@@ -38,6 +38,7 @@ WORD_CHOICES := []Word_Choices{
 	{"text", "align", ALIGN_WORDS},
 	{"joins", "style", {"miter", "round", "bevel"}},
 	{"noise", "as", {"perlin", "simplex"}},
+	{"mesh", "as", {"solid", "wireframe"}},
 	{"ease", "as", EASE_WORDS},
 	{"mouse down", "button", MOUSE_BUTTON_WORDS}, // events: `on mouse down right`
 	{"mouse up", "button", MOUSE_BUTTON_WORDS},

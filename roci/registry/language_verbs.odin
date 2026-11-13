@@ -143,6 +143,7 @@ LANGUAGE_VERBS := []Verb{
 		{{{"file", .Text}, {"x", .Number}, {"y", .Number}, {"z", .Number}, {"size", .Number}}, nil, .List},
 		{{{"file", .Text}, {"position", .Vector}, {"size", .Number}}, nil, .List},
 	}, "The corners of a model's triangles, three for each, as a list of vectors of three numbers, placed and sized as `model` draws it: `wall = { triangles: triangles \"hall.glb\" at 0 0 0 size 500 }` is a shape that `touching`, `hits` and `cast` take. It is the model's surface, so a ball inside a closed model touches none of it."},
+	{"mesh", {{{{"corners", .List}}, MESH_OPTIONS, .None}}, "Draws a mesh made of triangles in space: a list of vectors of three numbers, three for each triangle, in the coordinates of the moment, flat shaded in the fill, so `mesh (triangles \"hall.glb\" at 0 0 0 size 500)` shows a model's own triangles and a list a sketch calculates makes any shape. `as wireframe` draws only its edges, as tubes as wide as the `thickness` (1 unless set) in the fill: an edge shared by two triangles in one plane is left out, so a square cut in two shows no diagonal. A mesh drawn every frame from the same list is made once."},
 	{"svg", {
 		{{{"file", .Text}, {"x", .Number}, {"y", .Number}}, nil, .None},
 		{{{"file", .Text}, {"position", .Vector}}, nil, .None},
