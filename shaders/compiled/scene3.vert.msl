@@ -1,0 +1,49 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct Scene
+{
+    float4 clip_x;
+    float4 clip_y;
+    float4 clip_z;
+    float4 clip_w;
+    float4 eye;
+    float4 light;
+};
+
+struct main0_out
+{
+    float3 _entryPointOutput_world [[user(locn0)]];
+    float3 _entryPointOutput_normal [[user(locn1)]];
+    float4 _entryPointOutput_colour [[user(locn2)]];
+    float3 _entryPointOutput_eye [[user(locn3)]];
+    float3 _entryPointOutput_light [[user(locn4)]];
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float3 input_position [[attribute(0)]];
+    float3 input_normal [[attribute(1)]];
+    float4 input_row0 [[attribute(2)]];
+    float4 input_row1 [[attribute(3)]];
+    float4 input_row2 [[attribute(4)]];
+    float4 input_colour [[attribute(5)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant Scene& _49 [[buffer(0)]])
+{
+    main0_out out = {};
+    float4 _187 = float4(in.input_position, 1.0);
+    float4 _200 = float4(dot(in.input_row0, _187), dot(in.input_row1, _187), dot(in.input_row2, _187), 1.0);
+    out.gl_Position = float4(dot(_49.clip_x, _200), dot(_49.clip_y, _200), dot(_49.clip_z, _200), dot(_49.clip_w, _200));
+    out._entryPointOutput_world = _200.xyz;
+    out._entryPointOutput_normal = float3(dot(cross(in.input_row1.xyz, in.input_row2.xyz), in.input_normal), dot(cross(in.input_row2.xyz, in.input_row0.xyz), in.input_normal), dot(cross(in.input_row0.xyz, in.input_row1.xyz), in.input_normal));
+    out._entryPointOutput_colour = in.input_colour;
+    out._entryPointOutput_eye = _49.eye.xyz;
+    out._entryPointOutput_light = _49.light.xyz;
+    return out;
+}
+

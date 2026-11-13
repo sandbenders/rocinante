@@ -29,6 +29,18 @@ SHAPES_VERT_SPV :: #load("../../shaders/compiled/shapes.vert.spv")
 SHAPES_FRAG_SPV :: #load("../../shaders/compiled/shapes.frag.spv")
 SHAPES_VERT_MSL :: #load("../../shaders/compiled/shapes.vert.msl")
 SHAPES_FRAG_MSL :: #load("../../shaders/compiled/shapes.frag.msl")
+SCENE3_VERT_SPV :: #load("../../shaders/compiled/scene3.vert.spv")
+SCENE3_FRAG_SPV :: #load("../../shaders/compiled/scene3.frag.spv")
+SCENE3_VERT_MSL :: #load("../../shaders/compiled/scene3.vert.msl")
+SCENE3_FRAG_MSL :: #load("../../shaders/compiled/scene3.frag.msl")
+// Like the typeset shader, the 3D shader has its own DXIL guard: until compile-dxil.sh has made it on Windows, 3D is the only thing Direct3D 12 cannot draw.
+when #exists("../../shaders/compiled/scene3.vert.dxil") && #exists("../../shaders/compiled/scene3.frag.dxil") {
+	SCENE3_VERT_DXIL :: #load("../../shaders/compiled/scene3.vert.dxil")
+	SCENE3_FRAG_DXIL :: #load("../../shaders/compiled/scene3.frag.dxil")
+} else {
+	SCENE3_VERT_DXIL :: []byte{}
+	SCENE3_FRAG_DXIL :: []byte{}
+}
 MESH_VERT_SPV :: #load("../../shaders/compiled/mesh.vert.spv")
 MESH_FRAG_SPV :: #load("../../shaders/compiled/mesh.frag.spv")
 MESH_VERT_MSL :: #load("../../shaders/compiled/mesh.vert.msl")
@@ -80,6 +92,7 @@ Program :: enum {
 	Mesh,
 	Text,
 	Typeset,
+	Scene3, // the 3D shapes (scene3.odin, renderer_scene.odin)
 }
 
 Pipeline_Key :: struct {
@@ -112,6 +125,12 @@ Renderer :: struct {
 	mesh_vertices: Gpu_Buffer,
 	mesh_indices:  Gpu_Buffer,
 	glyphs:        Gpu_Buffer,
+	scene_vertices: Gpu_Buffer, // the 3D shapes' triangles, uploaded once
+	scene_indices:  Gpu_Buffer,
+	scene_instances: Gpu_Buffer, // one for each shape of the frame
+	scene_ranges:  [Shape3]Shape_Range, // where each shape's triangles are
+	scene_ready:   bool,
+	depth:         map[Depth_Key]^sdl.GPUTexture,
 	transfer:      ^sdl.GPUTransferBuffer,
 	transfer_capacity: int,
 
@@ -164,6 +183,7 @@ renderer_init :: proc(r: ^Renderer, device: ^sdl.GPUDevice) {
 	r.samples = MSAA_SAMPLES
 	r.pipelines = make(map[Pipeline_Key]^sdl.GPUGraphicsPipeline)
 	r.msaa = make(map[Msaa_Key]^sdl.GPUTexture)
+	r.depth = make(map[Depth_Key]^sdl.GPUTexture)
 	image_reader_add(&r.released_seen)
 }
 
@@ -175,6 +195,7 @@ renderer_destroy :: proc(r: ^Renderer) {
 	delete(r.pipelines)
 	release_msaa(r)
 	delete(r.msaa)
+	scene_gpu_destroy(r)
 	for buffer in ([?]^Gpu_Buffer{&r.instances, &r.mesh_vertices, &r.mesh_indices, &r.glyphs}) {
 		if buffer.buffer != nil {
 			sdl.ReleaseGPUBuffer(r.device, buffer.buffer)
@@ -255,6 +276,7 @@ PROGRAM_CODE := [Program]Program_Code{
 	.Mesh   = {MESH_VERT_SPV, MESH_FRAG_SPV, MESH_VERT_MSL, MESH_FRAG_MSL, MESH_VERT_DXIL, MESH_FRAG_DXIL},
 	.Text   = {TEXT_VERT_SPV, TEXT_FRAG_SPV, TEXT_VERT_MSL, TEXT_FRAG_MSL, TEXT_VERT_DXIL, TEXT_FRAG_DXIL},
 	.Typeset = {TYPESET_VERT_SPV, TYPESET_FRAG_SPV, TYPESET_VERT_MSL, TYPESET_FRAG_MSL, TYPESET_VERT_DXIL, TYPESET_FRAG_DXIL},
+	.Scene3 = {SCENE3_VERT_SPV, SCENE3_FRAG_SPV, SCENE3_VERT_MSL, SCENE3_FRAG_MSL, SCENE3_VERT_DXIL, SCENE3_FRAG_DXIL},
 }
 
 shader_source_for :: proc(program: Program, formats: sdl.GPUShaderFormat) -> (source: Shader_Source, ok: bool) {
@@ -334,6 +356,9 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 	if existing, found := r.pipelines[key]; found {
 		return existing
 	}
+	if program == .Scene3 {
+		return make_scene_pipeline(r, key)
+	}
 	if r.failed {
 		return nil
 	}
@@ -408,6 +433,8 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 		{location = 3, format = .FLOAT, offset = u32(offset_of(Typeset_Vertex, coloured))},
 	}
 	switch program {
+	case .Scene3:
+		return nil // made by make_scene_pipeline above
 	case .Text:
 		info.vertex_input_state = {
 			vertex_buffer_descriptions = raw_data(glyph_buffers[:]),
@@ -828,12 +855,26 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 	if ok && !upload(r, commands, b) {
 		ok = false
 	}
+	// A 3D scene is drawn first, in a pass of its own with a depth buffer; the 2D pass then loads what it drew.
+	has_scene := len(list.scene.items) > 0
+	sorted := make([dynamic]Item3, context.temp_allocator)
+	counts: [Shape3]u32
+	scene_done := false
+	if ok && has_scene {
+		if !scene_prepare(r, commands, list, &sorted, &counts) {
+			ok = false
+		} else if draw_scene3(r, commands, list, target, msaa, format, pixels, canvas, samples, sorted[:], counts) {
+			scene_done = true
+		} else {
+			ok = false
+		}
+	}
 
 	bg := list.background
 	colour_target := sdl.GPUColorTargetInfo{
 		texture     = msaa if msaa != nil else target,
 		clear_color = sdl.FColor{bg.r / 255, bg.g / 255, bg.b / 255, bg.a / 255},
-		load_op     = .CLEAR,
+		load_op     = .LOAD if scene_done else .CLEAR,
 		store_op    = .STORE,
 	}
 	if msaa != nil {

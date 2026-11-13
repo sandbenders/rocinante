@@ -101,6 +101,7 @@ Saved :: struct {
 	style:     Style,
 	transform: Transform,
 	turtle:    Turtle, // saved and put back with the transform
+	model:     matrix[4, 4]f32, // the 3D transform, saved and put back with the transform
 }
 
 Command_List :: struct {
@@ -121,6 +122,7 @@ Command_List :: struct {
 	background_image: Image_Fill,   // a picture behind everything, when its id is not 0
 	background_set:   bool,         // `background` or `clear` was written since the frame (or, for a canvas, the last render) began
 	turtle:     Turtle, // turtle.odin
+	scene:      Scene3, // the 3D shapes of the frame and the camera (scene3.odin)
 	effects:       [dynamic]Effect, // shaders run over the finished frame, in order (shaders.odin)
 	effect_values: [dynamic]u8,     // the bytes of their own values, end to end (effects, and shader fills through `Style.fill_shader`)
 	shader_clock:  Shader_Clock,    // what the shaders that fill read as time, frame and mouse
@@ -152,6 +154,7 @@ begin_frame :: proc(list: ^Command_List) {
 	list.transform = IDENTITY
 	list.span = {}
 	list.turtle = {}
+	scene_begin(&list.scene)
 }
 
 // Ends a frame. Gives how many `push`es were never popped; the list is put
@@ -163,6 +166,7 @@ end_frame :: proc(list: ^Command_List) -> (unbalanced: int) {
 }
 
 destroy :: proc(list: ^Command_List) {
+	scene_destroy(&list.scene)
 	delete(list.commands)
 	delete(list.looks)
 	delete(list.saved)
@@ -535,7 +539,7 @@ shear :: proc(list: ^Command_List, x_degrees, y_degrees: f64) {
 // ---- scopes ----
 
 push :: proc(list: ^Command_List, scope: Scope) {
-	append(&list.saved, Saved{scope, list.style, list.transform, list.turtle})
+	append(&list.saved, Saved{scope, list.style, list.transform, list.turtle, list.scene.model})
 }
 
 // Brings back what the matching `push` saved. Gives false when there was
@@ -551,6 +555,7 @@ pop :: proc(list: ^Command_List) -> bool {
 	if saved.scope == .Style_And_Transform {
 		list.transform = saved.transform
 		list.turtle = saved.turtle
+		list.scene.model = saved.model
 	}
 	return true
 }
