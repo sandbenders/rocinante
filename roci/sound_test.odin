@@ -121,3 +121,77 @@ test_sound_shutdown :: proc(t: ^testing.T) {
 	step(nil, 0)
 	testing.expect_value(t, sound_state(s).at, 0)
 }
+
+// What plays can be measured headless too, since a headless step mixes the frames it moves by.
+@(test)
+test_sound_level_and_bands :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	testing.expect_value(t, level(), 0)
+	testing.expect_value(t, len(bands()), BANDS_USUAL)
+	s := tone(t)
+	testing.expect_value(t, level(s), 0)
+	loop(s)
+	step(nil, 0.1)
+	// the tone is a sine at an eighth of full volume
+	testing.expectf(t, abs(level(s) - 12.5) < 0.5, "level %v", level(s))
+	testing.expectf(t, abs(level() - 12.5) < 0.5, "everything %v", level())
+	b := bands(s, 8)
+	testing.expect_value(t, len(b), 8)
+	loudest := 0
+	for v, i in b {
+		if v > b[loudest] {
+			loudest = i
+		}
+	}
+	// eight bands from 40 to 16,000 Hz: 440 Hz is in the fourth
+	testing.expectf(t, loudest == 3 && b[3] > 60, "440 Hz in the fourth of eight bands: %v", b)
+	testing.expect_value(t, len(bands_all(0)), 1)
+	testing.expect_value(t, len(bands_all(1000)), BANDS_MOST)
+	pause(s)
+	step(nil, 0.1)
+	testing.expect_value(t, level(s), 0)
+	testing.expect_value(t, level(), 0)
+}
+
+@(test)
+test_sound_microphone :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	m := mic()
+	testing.expect_value(t, m, MIC)
+	testing.expect(t, !sound_state(m).playing, "a headless sketch opens no microphone")
+	testing.expect_value(t, level(m), 0)
+	heard := make([]f32, 2048, context.temp_allocator)
+	for &v, i in heard {
+		v = 0.5 if i % 2 == 0 else -0.5
+	}
+	feed_microphone(heard)
+	testing.expect(t, sound_state(m).playing)
+	testing.expectf(t, abs(level(m) - 70.7) < 0.5, "a square wave at half volume: %v", level(m))
+	testing.expect_value(t, level(), 0)
+	play(m)
+	pause(m)
+	testing.expect_value(t, sound_state(m).at, 0)
+}
+
+@(test)
+test_abi_level_bands_mic :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	s := abi_load_sound_file("tests/sounds/tone.wav")
+	abi_loop(s)
+	step(nil, 0.1)
+	testing.expectf(t, abs(abi_level() - 12.5) < 0.5, "%v", abi_level())
+	testing.expectf(t, abs(abi_level_of(s) - 12.5) < 0.5, "%v", abi_level_of(s))
+	out: [300]f64
+	testing.expect_value(t, abi_bands(4, raw_data(out[:])), 4)
+	testing.expect(t, out[1] > 50 || out[2] > 50)
+	testing.expect_value(t, abi_bands_of(s, 1000, raw_data(out[:])), 256)
+	testing.expect_value(t, abi_bands(0, raw_data(out[:])), 0)
+	testing.expect_value(t, abi_bands_of(s, 4, nil), 0)
+	m := abi_mic()
+	testing.expect_value(t, Sound(u32(m)), MIC)
+	testing.expect_value(t, abi_level_of(m), 0)
+	testing.expect_value(t, abi_sound_playing(m), 0)
+}

@@ -1,6 +1,6 @@
 ---
 title: "Sound"
-summary: "Sounds from files: play, loop, pause, rewind and move them, and make them louder, softer, faster and from either side."
+summary: "Sounds from files that play, loop, pause and move, louder or softer and from either side, and how loud and how high what plays is."
 weight: 20
 ---
 
@@ -73,10 +73,44 @@ draw [
 ]
 ```
 
+## Drawing with sound
+
+`level` is how loud everything that plays is now, from 0 (silent) to 100 (a full-volume tone), and `bands` is how much of each pitch it holds: a list of numbers 0 to 100, the lowest pitches first, 16 of them unless you ask for another number (`bands 32`, up to 256). Both are read in `draw`, every frame:
+
+```roci
+tune = load "rain.ogg"
+loop tune
+draw [
+  background 20
+  circle at 200 150 radius (10 + level * 2)
+  heard = bands 16
+  for i from 1 to 16 [
+    high = (item i of heard) * 2
+    rect at (i * 23) (300 - high) size 18 high fill (hsb (i * 14) 170 240)
+  ]
+]
+```
+
+The bands are equal steps of pitch, as a piano's keys are, from the lowest note of a bass guitar on the left to the highest a person hears on the right. Given a sound, they listen to it alone: `level rain`, `bands rain 8`.
+
+`level` alone, as the value of a call, is written in brackets, `round (level)`, since it can also take a sound. `roci fmt` adds them for you.
+
+## The microphone
+
+`mic` is the computer's microphone as a sound to listen to. `level mic` is how loud it hears and `bands mic` its pitches. The first time a sketch reads it the microphone opens, and the system may ask whether the sketch may use it. What it hears is not played through the speakers:
+
+```roci
+draw [
+  background 20
+  fill (rgb 255 200 80)
+  circle at 200 150 radius (10 + (level mic) * 3)
+]
+```
+
 ## Saving the file again
 
 While `roci run` is going, a sound file saved again is read again into the same sound, which goes on playing where it was, louder or softer as it was set, so a sound can be edited while the sketch listens to it. Saving the sketch keeps the sounds playing too: a sound loaded by a line that did not change is the same sound.
 
 ## Not yet
 
-Sound is the work of rocinante's next phase, and this is its first part. Synthesis, effects, the microphone, a sound's loudness and frequencies to draw with, MIDI and OSC come next.
+Synthesis, effects, recording what plays, MIDI and OSC come next.

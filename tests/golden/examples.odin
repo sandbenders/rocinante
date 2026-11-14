@@ -101,6 +101,7 @@ EXAMPLES := [?]Example{
 	{"voyage", 30, {1}}, // a generated city of towers and lanterns lit by a sun, a point light that follows an OBJ ship flying over it, and every shadow
 	{"textured", 30, {1}}, // a board of colored squares made by the sketch, painted over a box, a sphere, a cone, a cylinder, a capsule, a torus, an icosphere and a plane by `fill`
 	{"lamp", 30, {1}}, // a warm point light circling among six pillars, a sphere and a turning torus, every shadow swinging away from it
+	{"music", 60, {1}}, // the bars of a chiptune's pitches a second in, and a ring as big as it is loud
 	{"sound", 30, {1}}, // rain as loud as the mouse is high (headless, the mouse is at the top left), and the bar of where it is
 	{"wireframe", 30, {1}}, // a star-shaped gem the sketch calculates as triangles, flat shaded and as a wireframe of tubes with no diagonals, turning above a floor and casting their shadows
 }

@@ -85,6 +85,8 @@ API_NAMES := [?]Api_Entry{
 	{"loop", "loop"},
 	{"pause", "pause"},
 	{"rewind", "rewind"},
+	{"level", "level"},
+	{"bands", "bands"},
 	{"back", "back"},
 	{"left", "left"},
 	{"right", "right"},

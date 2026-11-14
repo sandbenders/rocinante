@@ -71,3 +71,61 @@ audio_callback :: proc "c" (userdata: rawptr, stream: ^sdl.AudioStream, addition
 		frames -= n
 	}
 }
+
+// What the microphone heard: one float a frame, called on SDL's audio thread, which must not
+// allocate.
+Audio_Heard :: #type proc(user: rawptr, frames: []f32)
+
+Audio_In :: struct {
+	stream:  ^sdl.AudioStream,
+	heard:   Audio_Heard,
+	user:    rawptr,
+	scratch: [AUDIO_CHUNK]f32,
+	error:   string, // SDL's words when the device would not open
+}
+
+// Opens the default recording device for one float a frame at `rate` and starts it; the system may
+// ask the person first. On failure the result's `error` says why and `stream` is nil.
+open_microphone :: proc(rate: int, heard: Audio_Heard, user: rawptr, allocator := context.allocator) -> ^Audio_In {
+	mic := new(Audio_In, allocator)
+	mic.heard = heard
+	mic.user = user
+	if !sdl.InitSubSystem({.AUDIO}) {
+		mic.error = string(sdl.GetError())
+		return mic
+	}
+	spec := sdl.AudioSpec{format = .F32, channels = 1, freq = c.int(rate)}
+	mic.stream = sdl.OpenAudioDeviceStream(sdl.AUDIO_DEVICE_DEFAULT_RECORDING, &spec, microphone_callback, mic)
+	if mic.stream == nil {
+		mic.error = string(sdl.GetError())
+		sdl.QuitSubSystem({.AUDIO})
+		return mic
+	}
+	sdl.ResumeAudioStreamDevice(mic.stream)
+	return mic
+}
+
+// Stops the microphone and lets go of it.
+close_microphone :: proc(mic: ^Audio_In) {
+	if mic == nil {
+		return
+	}
+	if mic.stream != nil {
+		sdl.DestroyAudioStream(mic.stream)
+		sdl.QuitSubSystem({.AUDIO})
+	}
+	free(mic)
+}
+
+@(private)
+microphone_callback :: proc "c" (userdata: rawptr, stream: ^sdl.AudioStream, additional_amount, total_amount: c.int) {
+	context = runtime.default_context()
+	mic := (^Audio_In)(userdata)
+	for {
+		got := sdl.GetAudioStreamData(stream, raw_data(mic.scratch[:]), c.int(len(mic.scratch) * size_of(f32)))
+		if got <= 0 {
+			return
+		}
+		mic.heard(mic.user, mic.scratch[:int(got) / size_of(f32)])
+	}
+}

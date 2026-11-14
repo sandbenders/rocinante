@@ -1,0 +1,6 @@
+tune: a sound
+listening: true or false
+bars: a list of records with at and high
+loud: a number
+heard: a list of numbers
+target: a number

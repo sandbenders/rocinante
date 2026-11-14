@@ -1,0 +1,7 @@
+draw [
+  background 20
+  fill (rgb 255 200 80)
+  circle at 200 150 radius (10 + (level mic) * 3)
+  fill white
+  text "speak or clap: the circle hears the microphone" at 20 20
+]

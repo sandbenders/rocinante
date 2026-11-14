@@ -333,6 +333,10 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 	if special, handled := list_verb_type(c, verb, e, k, args[:], options); handled {
 		type = special
 	}
+	// the bands of a sound are numbers
+	if verb.name == "bands" {
+		type = list_of(c.types, T_NUMBER)
+	}
 	// `load` of a sound file's name gives a sound, of any other a picture
 	if verb.name == "load" && len(args) == 1 && is_sound_file(args[0]) {
 		type = T_SOUND

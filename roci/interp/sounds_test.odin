@@ -243,3 +243,71 @@ test_the_bricks_example_sounds_every_hit :: proc(t: ^testing.T) {
 	testing.expect_value(t, as_pair(read_field(p, ball, "pos")), [2]f64{240, 250})
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// The music example draws what plays, and M turns it to the microphone, which a test feeds.
+@(test)
+test_the_music_example_draws_what_it_hears :: proc(t: ^testing.T) {
+	text, read := os.read_entire_file("examples/music/sketch.roci", context.temp_allocator)
+	testing.expect(t, read == nil)
+	p := run_with_sounds(t, "music_example", string(text), "examples/music/assets/sounds", {"title.ogg"})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	for _ in 0 ..< 30 {
+		roci.step()
+	}
+	testing.expectf(t, as_number(global_named(p, "loud")) > 10, "the tune is loud: %v", global_named(p, "loud"))
+	heard := as_list(global_named(p, "heard"))
+	testing.expect_value(t, len(heard.items), 32)
+	risen := 0
+	for bar in as_list(global_named(p, "bars")).items {
+		if as_number(read_field(p, bar, "high")) > 5 {
+			risen += 1
+		}
+	}
+	testing.expectf(t, risen > 16, "most bars rose: %d", risen)
+	// M: the microphone, silent until it hears something
+	w := first_window()
+	roci.step({key_event(w, sdl.Scancode.M)})
+	testing.expect(t, as_bool(global_named(p, "listening")))
+	testing.expect_value(t, as_number(global_named(p, "loud")), 0)
+	clap := make([]f32, 2048, context.temp_allocator)
+	for &v, i in clap {
+		v = 0.8 if (i / 20) % 2 == 0 else -0.8
+	}
+	roci.feed_microphone(clap)
+	roci.step()
+	testing.expectf(t, as_number(global_named(p, "loud")) > 50, "the clap is loud: %v", global_named(p, "loud"))
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_level_bands_and_mic_in_a_sketch :: proc(t: ^testing.T) {
+	text := `tone = load "tone.wav"
+print (level)
+print (count (bands))
+print (count (bands 4))
+print (count (bands tone 300))
+nothing = 0 / 0
+print (count (bands tone nothing))
+print mic.playing
+loop tone
+draw [
+  if frame is 5 [
+    tone_level = level tone
+    print (tone_level > 10 and tone_level < 15)
+    print ((level) > 10)
+    print (level mic)
+    b = bands tone 8
+    fourth = item 4 of b
+    print (fourth > 50)
+  ]
+]
+`
+	p := run_with_sounds(t, "level_words", text, "tests/sounds", {"tone.wav"})
+	defer finish(p)
+	for _ in 0 ..< 10 {
+		roci.step()
+	}
+	// 0 / 0 is 0 (said once as a division by zero), and fewer than one band is one
+	testing.expect_value(t, printed(p), "0\n16\n4\n256\n1\nfalse\ntrue\ntrue\n0\ntrue")
+}

@@ -138,6 +138,52 @@ abi_sound_speed :: proc "c" (sound: c.int) -> f64 {
 	return sound_state(Sound(sound)).speed
 }
 
+@(export, link_name = "roci_level")
+abi_level :: proc "c" () -> f64 {
+	context = abi_context()
+	return level_all()
+}
+
+@(export, link_name = "roci_level_of")
+abi_level_of :: proc "c" (sound: c.int) -> f64 {
+	context = abi_context()
+	return level_of(Sound(u32(sound)))
+}
+
+@(export, link_name = "roci_mic")
+abi_mic :: proc "c" () -> c.int {
+	context = abi_context()
+	return c.int(u32(mic()))
+}
+
+// Writes `count` bands (at most 256) into `out` and gives how many it wrote.
+@(private)
+abi_write_bands :: proc(values: []f64, out: [^]f64) -> c.int {
+	if out == nil {
+		return 0
+	}
+	copy(out[:len(values)], values)
+	return c.int(len(values))
+}
+
+@(export, link_name = "roci_bands")
+abi_bands :: proc "c" (count: c.int, out: [^]f64) -> c.int {
+	context = abi_context()
+	if count <= 0 {
+		return 0
+	}
+	return abi_write_bands(bands_all(int(count)), out)
+}
+
+@(export, link_name = "roci_bands_of")
+abi_bands_of :: proc "c" (sound: c.int, count: c.int, out: [^]f64) -> c.int {
+	context = abi_context()
+	if count <= 0 {
+		return 0
+	}
+	return abi_write_bands(bands_of(Sound(u32(sound)), int(count)), out)
+}
+
 // The table rows of the functions above that are not a registry shape.
 abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_load_sound", typeid_of(type_of(abi_load_sound)), "roci_sound_id roci_load_sound(const unsigned char *bytes, int length)", "Decodes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A sound is stopped at its start, at volume 100, in the middle and at speed 1."))
@@ -155,5 +201,8 @@ abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_sound_length", typeid_of(type_of(abi_sound_length)), "double roci_sound_length(roci_sound_id sound)", "How long a sound is, in seconds (0 for no sound)."))
 	append(all, abi_entry("roci_sound_volume", typeid_of(type_of(abi_sound_volume)), "double roci_sound_volume(roci_sound_id sound)", "How loud a sound plays, 0 to 100."))
 	append(all, abi_entry("roci_sound_pan", typeid_of(type_of(abi_sound_pan)), "double roci_sound_pan(roci_sound_id sound)", "Where a sound is between the speakers, -100 to 100."))
+	append(all, abi_entry("roci_mic", typeid_of(type_of(abi_mic)), "roci_sound_id roci_mic(void)", "The microphone, as a sound for roci_level_of and roci_bands_of. The first call in a program with a window opens the computer's default recording device (the system may ask first). Playing it does nothing."))
+	append(all, abi_entry("roci_bands", typeid_of(type_of(abi_bands)), "int roci_bands(int count, double *out)", "How much of each pitch everything that plays holds now: writes `count` numbers 0 to 100 (at most 256), the lowest pitches first, into `out`, and gives how many it wrote."))
+	append(all, abi_entry("roci_bands_of", typeid_of(type_of(abi_bands_of)), "int roci_bands_of(roci_sound_id sound, int count, double *out)", "The same for one sound, or the microphone (roci_mic)."))
 	append(all, abi_entry("roci_sound_speed", typeid_of(type_of(abi_sound_speed)), "double roci_sound_speed(roci_sound_id sound)", "How fast a sound plays, 1 as recorded."))
 }

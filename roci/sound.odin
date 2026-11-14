@@ -34,6 +34,8 @@ Sound_State :: struct {
 @(thread_local) @(private) mixer: ^audio.Mixer
 @(thread_local) @(private) speakers: ^platform.Audio_Out
 @(thread_local) @(private) speakers_tried: bool
+@(thread_local) @(private) microphone: ^platform.Audio_In
+@(thread_local) @(private) microphone_tried: bool
 @(thread_local) @(private) headless_frames: f64 // the fraction of a frame a headless step did not mix yet
 @(thread_local) @(private) sounds_epoch: int     // raised each time every sound is let go
 
@@ -131,11 +133,81 @@ set_sound :: proc(s: Sound, at := Maybe(f64){}, volume := Maybe(f64){}, pan := M
 	}
 }
 
-// What a sound is doing now; a number that is no sound gives every field 0.
+// What a sound is doing now; a number that is no sound gives every field 0. The microphone is
+// playing while it is open.
 sound_state :: proc(s: Sound) -> Sound_State {
+	if s == MIC {
+		m := the_mixer()
+		return {playing = m.mic_open, volume = 100, speed = 1}
+	}
 	st := audio.state(the_mixer(), s)
 	return {st.playing, st.looping, st.at, st.length, st.volume * 100, st.pan * 100, st.speed}
 }
+
+// The microphone, as a sound `level` and `bands` can listen to (playing it does nothing).
+MIC :: audio.MIC
+
+// The microphone: the first time it is asked for in a sketch with a window it opens the computer's
+// default recording device (the system may ask the person first). A headless sketch and a test
+// have none and hear silence, unless a test feeds it (`feed_microphone`).
+mic :: proc() -> Sound {
+	the_mixer()
+	if !microphone_tried && !the.headless && !graphics_refused {
+		microphone_tried = true
+		microphone = platform.open_microphone(audio.RATE, microphone_heard, mixer, the.allocator if the.allocator.procedure != nil else context.allocator)
+		if microphone.stream == nil {
+			delete(sound_problem, the.allocator if the.allocator.procedure != nil else context.allocator)
+			sound_problem = strings.clone(microphone.error, the.allocator if the.allocator.procedure != nil else context.allocator)
+			platform.close_microphone(microphone)
+			microphone = nil
+		}
+	}
+	return MIC
+}
+
+@(private)
+microphone_heard :: proc(user: rawptr, frames: []f32) {
+	audio.feed_mic((^audio.Mixer)(user), frames)
+}
+
+// Gives the microphone frames to hear, as a recording device would (one float a frame at 48,000 a
+// second): for tests, which open no device.
+feed_microphone :: proc(frames: []f32) {
+	audio.feed_mic(the_mixer(), frames)
+}
+
+// How loud everything that plays is now, 0 (silent) to 100 (a full-volume sine).
+level_all :: proc() -> f64 {
+	return audio.level(the_mixer(), 0, everything = true)
+}
+
+// How loud one sound, or the microphone, is now, 0 to 100.
+level_of :: proc(s: Sound) -> f64 {
+	return audio.level(the_mixer(), s)
+}
+
+level :: proc{level_all, level_of}
+
+// How many bands `bands` gives when it is not told, and the most it gives.
+BANDS_USUAL :: 16
+BANDS_MOST :: 256
+
+// How much of each pitch everything that plays holds now: `count` numbers 0 to 100, from the
+// lowest pitches to the highest, in steps of equal pitch; made with the frame's memory.
+bands_all :: proc(count := BANDS_USUAL) -> []f64 {
+	out := make([]f64, clamp(count, 1, BANDS_MOST), context.temp_allocator)
+	audio.bands(the_mixer(), 0, out, everything = true)
+	return out
+}
+
+// The same for one sound, or the microphone.
+bands_of :: proc(s: Sound, count := BANDS_USUAL) -> []f64 {
+	out := make([]f64, clamp(count, 1, BANDS_MOST), context.temp_allocator)
+	audio.bands(the_mixer(), s, out)
+	return out
+}
+
+bands :: proc{bands_all, bands_of}
 
 // Opens the speakers the first time a sound plays in a sketch that has a window to show (never
 // in a headless one or a test that refused graphics, which move their sounds on in `step`).
@@ -172,7 +244,8 @@ sounds_step :: proc(dt: f64) {
 	headless_frames += dt * audio.RATE
 	frames := int(headless_frames)
 	headless_frames -= f64(frames)
-	if frames == 0 || !audio.any_playing(mixer) {
+	// mixed even when nothing plays, as the speakers do, so what `level` hears falls silent
+	if frames == 0 {
 		return
 	}
 	buffer := make([]f32, min(frames, audio.RATE) * audio.CHANNELS, context.temp_allocator)
@@ -189,6 +262,9 @@ sounds_stop :: proc() {
 	platform.close_audio(speakers)
 	speakers = nil
 	speakers_tried = false
+	platform.close_microphone(microphone)
+	microphone = nil
+	microphone_tried = false
 	if mixer != nil {
 		sounds_epoch += 1
 	}

@@ -1,0 +1,40 @@
+// Music: a picture that moves with what plays. `level` is how loud everything playing is now,
+// 0 to 100, and `bands 32` how much of each pitch it holds, 32 numbers from the lowest pitches on
+// the left to the highest on the right. Both are read in `draw`, every frame, with nothing to set
+// up. M listens to the microphone instead (`level mic`, `bands mic 32`), so a voice or a clap
+// draws too. The tune is the title theme of Juhani Junkala's Retro Game Music Pack (CC0).
+window size 640 400 title "music"
+
+tune = load "title.ogg"
+loop tune
+listening = false
+bars = []
+for i from 1 to 32 [ add { at: i, high: 0 } to bars ]
+
+on key "m" [ listening = not listening ]
+
+draw [
+  background (rgb 12 14 30)
+  if listening [
+    loud = level mic
+    heard = bands mic 32
+  ] else [
+    loud = level
+    heard = bands 32
+  ]
+  // a ring as big as the sound is loud
+  no fill
+  stroke (rgb 255 200 80 alpha 70)
+  thickness 6
+  circle at 320 170 radius (30 + loud * 2)
+  no stroke
+  // the bars rise at once and fall slowly, so they are easy to follow
+  for each bar in bars [
+    target = item bar.at of heard
+    if target > bar.high [ bar.high = target ] else [ bar.high = bar.high * 0.9 ]
+    fill (hsb (bar.at * 7) 180 240)
+    rect at (bar.at * 19 + 6) (390 - bar.high * 2.2) size 15 (bar.high * 2.2)
+  ]
+  fill white
+  if listening [ text "the microphone: M for the tune" at 16 16 ] else [ text "the tune: M for the microphone" at 16 16 ]
+]

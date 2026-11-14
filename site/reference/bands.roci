@@ -1,0 +1,11 @@
+rain = load "rain.ogg"
+loop rain
+
+draw [
+  background 20
+  heard = bands 16
+  for i from 1 to 16 [
+    high = (item i of heard) * 2.5
+    rect at (i * 23) (280 - high) size 18 high fill (hsb (i * 14) 170 240)
+  ]
+]

@@ -367,6 +367,16 @@ VERBS := []Verb{
 	{"loop", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish."},
 	{"pause", {{{{"sound", .Sound}}, nil, .None}}, "Holds a sound where it is; `play` or `loop` goes on from there."},
 	{"rewind", {{{{"sound", .Sound}}, {{"by", {.Number}, false}}, .None}}, "Puts a sound back to its start, or some seconds back: `rewind rain by 10`. A sound that plays goes on playing."},
+	{"level", {
+		{{}, nil, .Number},
+		{{{"sound", .Sound}}, nil, .Number},
+	}, "How loud everything that plays is now, 0 (silent) to 100: `circle at 200 200 radius (level * 2)`. `level rain` is one sound, `level mic` the microphone."},
+	{"bands", {
+		{{}, nil, .List},
+		{{{"count", .Number}}, nil, .List},
+		{{{"sound", .Sound}}, nil, .List},
+		{{{"sound", .Sound}, {"count", .Number}}, nil, .List},
+	}, "How much of each pitch everything that plays holds now: a list of numbers 0 to 100, the lowest pitches first, 16 of them or as many as asked (`bands 32`, up to 256). `bands rain` is one sound, `bands mic 8` the microphone."},
 
 	// Maths
 	{"map", {{{{"value", .Number}, {"from_low", .Number}, {"from_high", .Number}, {"to_low", .Number}, {"to_high", .Number}}, nil, .Number}}, "Moves a number from one range to another."},

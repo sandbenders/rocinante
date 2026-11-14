@@ -783,6 +783,24 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 	case .Pause:
 		roci.pause(as_sound(a[0]))
+	case .Level:
+		if call.shape == 1 {
+			return roci.level_of(as_sound(a[0]))
+		}
+		return roci.level_all()
+	case .Bands:
+		values: []f64
+		switch call.shape {
+		case 0: values = roci.bands_all()
+		case 1: values = roci.bands_all(band_count(n(a, 0)))
+		case 2: values = roci.bands_of(as_sound(a[0]))
+		case: values = roci.bands_of(as_sound(a[0]), band_count(n(a, 1)))
+		}
+		out := new_list(it)
+		for v in values {
+			append(&out.items, Value(v))
+		}
+		return out
 	case .Rewind:
 		by: Maybe(f64)
 		if v, ok := option_value(it, call.options, "by"); ok {

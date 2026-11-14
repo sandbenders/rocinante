@@ -617,6 +617,12 @@ void roci_pause(roci_sound_id sound);
 /* Puts a sound back to its start, or some seconds back: `rewind rain by 10`. A sound that plays goes on playing. */
 void roci_rewind(roci_sound_id sound);
 
+/* How loud everything that plays is now, 0 (silent) to 100: `circle at 200 200 radius (level * 2)`. `level rain` is one sound, `level mic` the microphone. */
+double roci_level(void);
+
+/* How loud everything that plays is now, 0 (silent) to 100: `circle at 200 200 radius (level * 2)`. `level rain` is one sound, `level mic` the microphone. */
+double roci_level_of(roci_sound_id sound);
+
 /* The line from the eye of the 3D camera through a pixel of the window: `from` is the eye and `to` is far along the way the pixel looks, in the world. */
 roci_line3 roci_ray(double x, double y);
 
@@ -1141,6 +1147,15 @@ double roci_sound_volume(roci_sound_id sound);
 
 /* Where a sound is between the speakers, -100 to 100. */
 double roci_sound_pan(roci_sound_id sound);
+
+/* The microphone, as a sound for roci_level_of and roci_bands_of. The first call in a program with a window opens the computer's default recording device (the system may ask first). Playing it does nothing. */
+roci_sound_id roci_mic(void);
+
+/* How much of each pitch everything that plays holds now: writes `count` numbers 0 to 100 (at most 256), the lowest pitches first, into `out`, and gives how many it wrote. */
+int roci_bands(int count, double *out);
+
+/* The same for one sound, or the microphone (roci_mic). */
+int roci_bands_of(roci_sound_id sound, int count, double *out);
 
 /* How fast a sound plays, 1 as recorded. */
 double roci_sound_speed(roci_sound_id sound);

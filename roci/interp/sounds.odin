@@ -240,3 +240,12 @@ sound_options :: proc(it: ^Interp, options: []lang.IR_Option) -> (volume, pan, s
 	}
 	return
 }
+
+// How many bands a sketch asked for, as a whole number; one that is not a number is the usual.
+@(private)
+band_count :: proc(v: f64) -> int {
+	if !(v == v) {
+		return roci.BANDS_USUAL
+	}
+	return int(clamp(v, 1, f64(roci.BANDS_MOST)))
+}

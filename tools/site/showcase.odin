@@ -109,6 +109,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"export", 9, "Saving pictures", 5, 1},
 
 	{"sound", 8, "Sound", 30, 1},
+	{"music", 8, "Music", 60, 1},
 
 	{"solids", 7, "Solids", 60, 1},
 	{"shapes3d", 7, "Shapes in space", 60, 1},

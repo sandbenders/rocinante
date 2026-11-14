@@ -42,6 +42,10 @@ ABI_NOT_IN_C := [?]Abi_Skip{
 	{"model", 0, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
 	{"model", 1, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
 	{"forward", 1, "moves a sound by the seconds after `by`; C has roci_forward_sound"},
+	{"bands", 0, "gives a list; C has roci_bands, which writes the numbers into the caller's array"},
+	{"bands", 1, "gives a list; C has roci_bands, which writes the numbers into the caller's array"},
+	{"bands", 2, "gives a list; C has roci_bands_of, which writes the numbers into the caller's array"},
+	{"bands", 3, "gives a list; C has roci_bands_of, which writes the numbers into the caller's array"},
 }
 
 // The verbs only the language has (registry.LANGUAGE_VERBS) and the C functions that do their job; a verb with no function is one whose
@@ -313,6 +317,8 @@ abi_table_init :: proc "contextless" () {
 	{"roci_loop", "loop", 0, typeid_of(type_of(abi_loop)), "", ""},
 	{"roci_pause", "pause", 0, typeid_of(type_of(abi_pause)), "", ""},
 	{"roci_rewind", "rewind", 0, typeid_of(type_of(abi_rewind)), "", ""},
+	{"roci_level", "level", 0, typeid_of(type_of(abi_level)), "", ""},
+	{"roci_level_of", "level", 1, typeid_of(type_of(abi_level_of)), "", ""},
 	{"roci_ray", "", 0, typeid_of(type_of(abi_ray)), "roci_line3 roci_ray(double x, double y)", "The line from the eye of the 3D camera through a pixel of the window: `from` is the eye and `to` is far along the way the pixel looks, in the world."},
 	{"roci_ray_v", "", 0, typeid_of(type_of(abi_ray_v)), "roci_line3 roci_ray_v(roci_vec2 pixel)", "The same for a pixel given as a point, such as the mouse."},
 	{"roci_triangles", "", 0, typeid_of(type_of(abi_triangles)), "int roci_triangles(roci_model_id model, double x, double y, double z, double size, roci_vec3 *corners, int capacity)", "The corners of a loaded model's triangles, three for each, placed and sized as roci_model draws it. Copies up to `capacity` corners into `corners` (which may be NULL) and gives how many there are in all, so a first call with capacity 0 says how big an array to make."},

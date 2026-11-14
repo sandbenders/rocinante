@@ -27,11 +27,15 @@ Player :: struct {
 	volume:  f64, // 0 to 1
 	pan:     f64, // -1 left to 1 right
 	speed:   f64, // 1 as recorded, 2 twice as fast and an octave up
+	heard:   Ring, // what it played last, for `level` and `bands` of this sound
 }
 
 Mixer :: struct {
-	lock:    sync.Mutex,
-	players: [dynamic]Player,
+	lock:     sync.Mutex,
+	players:  [dynamic]Player,
+	heard:    Ring, // what the mix gave last: everything that played
+	mic:      Ring, // what the microphone heard last
+	mic_open: bool, // the microphone gives frames
 }
 
 // Makes a mixer whose players are kept in the allocator given.
@@ -104,6 +108,10 @@ play :: proc(m: ^Mixer, s: Sound, looping: bool) {
 	p.looping = looping
 	p.playing = frames_of(p^) > 0
 }
+
+// The microphone's number: `level mic` and `bands mic` read what it heard. It is no sound of the
+// mixer's, so playing it does nothing.
+MIC :: Sound(max(u32))
 
 // Holds a sound where it is; `play` goes on from there.
 pause :: proc(m: ^Mixer, s: Sound) {
@@ -218,6 +226,8 @@ mix :: proc(m: ^Mixer, out: []f32) {
 	frames := len(out) / CHANNELS
 	for &p in m.players {
 		if !p.playing {
+			// a sound that stopped is silent at once
+			ring_clear(&p.heard)
 			continue
 		}
 		count := frames_of(p)
@@ -225,6 +235,7 @@ mix :: proc(m: ^Mixer, out: []f32) {
 			p.playing = false
 			continue
 		}
+		played := 0
 		left := f32(p.volume * min(1, 1 - p.pan))
 		right := f32(p.volume * min(1, 1 + p.pan))
 		end := f64(count)
@@ -250,12 +261,39 @@ mix :: proc(m: ^Mixer, out: []f32) {
 			r := p.samples[whole * 2 + 1] + (p.samples[next * 2 + 1] - p.samples[whole * 2 + 1]) * part
 			out[i * 2] += l * left
 			out[i * 2 + 1] += r * right
+			ring_push(&p.heard, (l * left + r * right) / 2)
+			played += 1
 			p.at += p.speed
+		}
+		// what is left of the buffer after its end is silence
+		for _ in played ..< frames {
+			ring_push(&p.heard, 0)
 		}
 		// the last frame read may have reached the end exactly
 		if p.at >= end && !p.looping {
 			p.at = end
 			p.playing = false
 		}
+	}
+	for i in 0 ..< frames {
+		ring_push(&m.heard, (out[i * 2] + out[i * 2 + 1]) / 2)
+	}
+}
+
+// Takes the frames the microphone heard (one float a frame, at RATE).
+feed_mic :: proc(m: ^Mixer, frames: []f32) {
+	sync.guard(&m.lock)
+	m.mic_open = true
+	for v in frames {
+		ring_push(&m.mic, v)
+	}
+}
+
+// Whether the microphone is open; one that closes is silent from then on.
+set_mic_open :: proc(m: ^Mixer, open: bool) {
+	sync.guard(&m.lock)
+	m.mic_open = open
+	if !open {
+		ring_clear(&m.mic)
 	}
 }

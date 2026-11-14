@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "false", "finger", "fps", "frame", "height", "key", "mouse", "pi", "pmouse", "pressed", "tau", "time", "touches", "true", "turtle", "wheel", "width",
+	"anywhere", "false", "finger", "fps", "frame", "height", "key", "mic", "mouse", "pi", "pmouse", "pressed", "tau", "time", "touches", "true", "turtle", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -97,6 +97,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"frame", .Number, 0, "How many frames the sketch has drawn, counting from 0."},
 	{"height", .Number, 0, "The height of the window the code runs in, in pixels."},
 	{"key", .Text, 0, "The name of the key pressed last."},
+	{"mic", .Sound, 0, "The computer's microphone, as a sound to listen to: `level mic` is how loud it hears and `bands mic` its pitches. The first time a sketch with a window reads it, the microphone opens (the system may ask first); it is not played through the speakers."},
 	{"mouse", .Vector, 2, "Where the mouse is in the window: `mouse.x` and `mouse.y`."},
 	{"pressed", .Boolean, 0, "Whether a mouse button is held down in this window."},
 	{"pi", .Number, 0, "Half a turn in radians, 3.14159…, for sketches that work in radians."},
