@@ -186,3 +186,41 @@ test_sound_ambiguous :: proc(t: ^testing.T) {
 	// asked again within the second, it is not looked for again
 	testing.expect_value(t, load_sound(p, "twin.wav", {}), Value(nil))
 }
+
+// The bricks example plays a sound for each hit: glass for a brick, wood for a wall, a plate for
+// the paddle, each from the start and from where the ball is between the speakers.
+@(test)
+test_the_bricks_example_sounds_every_hit :: proc(t: ^testing.T) {
+	text, read := os.read_entire_file("examples/bricks/sketch.roci", context.temp_allocator)
+	testing.expect(t, read == nil)
+	p := run_with_sounds(t, "bricks_example", string(text), "examples/bricks/assets/sounds", {"brick.ogg", "wall.ogg", "paddle.ogg"})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	for name in ([]string{"brick_sound", "wall_sound", "paddle_sound"}) {
+		st := sound_of(p, name)
+		testing.expectf(t, st.length > 0.1 && st.length < 0.6 && st.at == 0 && !st.playing, "%s: %v", name, st)
+	}
+	// up and to the right from the middle: the lowest row of bricks is reached in under thirty frames
+	before := len(as_list(global_named(p, "bricks")).items)
+	frames := 0
+	for len(as_list(global_named(p, "bricks")).items) == before && frames < 60 {
+		roci.step()
+		frames += 1
+	}
+	brick := sound_of(p, "brick_sound")
+	testing.expectf(t, brick.playing && brick.at < 0.05, "a brick broke and its sound started: %v", brick)
+	testing.expect(t, brick.pan > 0, "the ball is right of the middle")
+	testing.expect(t, sound_of(p, "wall_sound").at == 0)
+	// the paddle is under the mouse: put it where the ball comes down, and it plays the plate
+	w := first_window()
+	paddle_played, wall_played := false, false
+	for _ in 0 ..< 200 {
+		x := as_vec(read_field(p, global_named(p, "ball"), "pos")).v[0]
+		roci.step({platform.Mouse_Moved{window = platform.Window_Id(w), x = f32(x), y = 300}})
+		paddle_played ||= sound_of(p, "paddle_sound").at > 0
+		wall_played ||= sound_of(p, "wall_sound").at > 0
+	}
+	testing.expect(t, paddle_played, "the paddle sounded")
+	testing.expect(t, wall_played, "a wall sounded")
+	testing.expect_value(t, len(p.errors), 0)
+}

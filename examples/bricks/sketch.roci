@@ -1,14 +1,21 @@
 // Bricks: a ball bounces inside four walls, off a paddle that follows the mouse,
 // and breaks the bricks it hits. Shapes are plain records: the ball is a circle
 // (pos and radius), the bricks and the paddle are rectangles (pos and size), the
-// walls are lines (from and to). `contact` says which way to bounce.
+// walls are lines (from and to). `contact` says which way to bounce. Every hit has
+// its sound: glass for a brick, wood for a wall and a metal plate for the paddle,
+// from Kenney's Impact Sounds (CC0, kenney.nl). A sound plays on from where it is,
+// so `rewind` first lets a brick broken straight after another be heard too.
 window size 480 360 title "bricks" resizable false cursor none
 
 COLORS = [ tomato orange gold yellowgreen mediumturquoise ]
 bricks = []
 for tier from 0 to 4 [
   for col from 0 to 7 [
-    add { pos: { col * 56 + 16, tier * 22 + 30 }, size: { 50, 16 }, tint: item (tier + 1) of COLORS } to bricks
+    add {
+      pos: { col * 56 + 16, tier * 22 + 30 }
+      size: { 50, 16 }
+      tint: item (tier + 1) of COLORS
+    } to bricks
   ]
 ]
 walls = [
@@ -18,6 +25,9 @@ walls = [
 ]
 ball = { pos: { 240, 250 }, radius: 7, vel: { 3, -4 } }
 paddle = { pos: { 200, 330 }, size: { 80, 10 } }
+brick_sound = load "brick.ogg"
+wall_sound = load "wall.ogg"
+paddle_sound = load "paddle.ogg"
 
 learn bounce off [
   c = contact ball off
@@ -27,15 +37,28 @@ learn bounce off [
   if along < 0 [ ball.vel = ball.vel - c.normal * (2 * along) ]
 ]
 
+// From the start, and from where the ball is between the speakers.
+learn hit sound [
+  rewind sound
+  play sound pan (ball.pos.x / width * 200 - 100)
+]
+
 draw [
   background 24
   paddle.pos = { clamp (mouse.x - 40) 0 400, 330 }
   ball.pos = ball.pos + ball.vel
-  for each w in (hits ball walls) [ bounce w ]
-  if touching ball paddle [ bounce paddle ]
+  for each w in (hits ball walls) [
+    bounce w
+    hit wall_sound
+  ]
+  if touching ball paddle [
+    bounce paddle
+    hit paddle_sound
+  ]
   for each b in (hits ball bricks) [
     bounce b
     remove b from bricks
+    hit brick_sound
   ]
   if ball.pos.y > 380 [ ball.pos = { 240, 250 }  ball.vel = { 3, -4 } ]
   for each b in bricks [ rect at b.pos size b.size fill b.tint ]
