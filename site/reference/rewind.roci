@@ -1,0 +1,13 @@
+rain = load "rain.ogg"
+loop rain
+on key "left" [ rewind rain by 1 ]
+on key "right" [ forward rain by 1 ]
+on key "home" [ rewind rain ]
+
+draw [
+  background 20
+  fill (rgb 90 150 230)
+  rect at 20 40 size (rain.at / rain.length * 360) 20
+  fill white
+  text "left and right: a second back and ahead; home: the start" at 20 80
+]

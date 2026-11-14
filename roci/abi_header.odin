@@ -41,6 +41,7 @@ ABI_NOT_IN_C := [?]Abi_Skip{
 	{"material", 0, "takes optional words; C has roci_material with all three numbers"},
 	{"model", 0, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
 	{"model", 1, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
+	{"forward", 1, "moves a sound by the seconds after `by`; C has roci_forward_sound"},
 }
 
 // The verbs only the language has (registry.LANGUAGE_VERBS) and the C functions that do their job; a verb with no function is one whose
@@ -73,7 +74,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"save", "roci_save", ""},
 	{"record", "roci_record roci_no_record", ""},
 	{"no record", "roci_no_record", ""},
-	{"load", "roci_load_image roci_load_image_file roci_load_model roci_load_svg", ""},
+	{"load", "roci_load_image roci_load_image_file roci_load_model roci_load_svg roci_load_sound roci_load_sound_file", ""},
 	{"pixel", "roci_pixel", ""},
 	{"pixels", "roci_pixels", ""},
 	{"picture", "roci_picture_from_colors roci_picture_of_window", ""},
@@ -110,7 +111,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"tab", "roci_tab_begin roci_tab_end", ""},
 	{"menu", "roci_menu_begin roci_menu_end", ""},
 	{"list", "roci_list", ""},
-	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent", ""},
+	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent roci_set_sound_at roci_set_sound_volume roci_set_sound_pan roci_set_sound_speed roci_set_sound_loop", ""},
 	{"send", "roci_send roci_send_number roci_send_text roci_send_vec2 roci_send_boolean", ""},
 	{"print", "roci_print", ""},
 	{"held", "roci_held", ""},
@@ -308,6 +309,10 @@ abi_table_init :: proc "contextless" () {
 	{"roci_up", "up", 0, typeid_of(type_of(abi_up)), "", ""},
 	{"roci_down", "down", 0, typeid_of(type_of(abi_down)), "", ""},
 	{"roci_roll", "roll", 0, typeid_of(type_of(abi_roll)), "", ""},
+	{"roci_play", "play", 0, typeid_of(type_of(abi_play)), "", ""},
+	{"roci_loop", "loop", 0, typeid_of(type_of(abi_loop)), "", ""},
+	{"roci_pause", "pause", 0, typeid_of(type_of(abi_pause)), "", ""},
+	{"roci_rewind", "rewind", 0, typeid_of(type_of(abi_rewind)), "", ""},
 	{"roci_ray", "", 0, typeid_of(type_of(abi_ray)), "roci_line3 roci_ray(double x, double y)", "The line from the eye of the 3D camera through a pixel of the window: `from` is the eye and `to` is far along the way the pixel looks, in the world."},
 	{"roci_ray_v", "", 0, typeid_of(type_of(abi_ray_v)), "roci_line3 roci_ray_v(roci_vec2 pixel)", "The same for a pixel given as a point, such as the mouse."},
 	{"roci_triangles", "", 0, typeid_of(type_of(abi_triangles)), "int roci_triangles(roci_model_id model, double x, double y, double z, double size, roci_vec3 *corners, int capacity)", "The corners of a loaded model's triangles, three for each, placed and sized as roci_model draws it. Copies up to `capacity` corners into `corners` (which may be NULL) and gives how many there are in all, so a first call with capacity 0 says how big an array to make."},
@@ -334,6 +339,7 @@ abi_table_init :: proc "contextless" () {
 	abi_collide_group(&all)
 	abi_ui_group(&all)
 	abi_misc_group(&all)
+	abi_sound_group(&all)
 	ABI_TABLE = all[:]
 }
 
@@ -352,6 +358,7 @@ abi_c_type :: proc(kind: registry.Kind, wide := false) -> (name: string, ok: boo
 	case .Vector:               return "roci_vec3" if wide else "roci_vec2", true
 	case .Window:               return "roci_window_id", true
 	case .Image:                return "roci_image_id", true
+	case .Sound:                return "roci_sound_id", true
 	case .List, .Table, .Block, .Gradient, .Any, .Boolean, .Expr_Block, .Record: return "", false
 	}
 	return "", false
@@ -466,6 +473,7 @@ typedef struct { double x, y; } roci_vec2;
 typedef struct { double x, y, z; } roci_vec3;
 typedef int roci_window_id;
 typedef int roci_image_id;
+typedef int roci_sound_id;
 typedef int roci_model_id;
 typedef int roci_svg_id;
 typedef int roci_gradient_id;

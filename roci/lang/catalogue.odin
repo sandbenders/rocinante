@@ -34,6 +34,8 @@ Message_Id :: enum u8 {
 	Index_Brackets,
 	Word_Outside_Brackets,
 	Set_Window,
+	Set_Sound,
+	Word_For_Other_Kind,
 	Title_Of_Window,
 	Definitions_Only,
 	Verb_Twice,
@@ -125,6 +127,8 @@ Message_Id :: enum u8 {
 	Font_Licence,
 	Image_Missing,
 	Image_Unreadable,
+	Sound_Missing,
+	Sound_Unreadable,
 	Model_Missing,
 	Model_Unreadable,
 	Model_Texture,
@@ -194,6 +198,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Set_Window = {.Error, "A window is changed with `set`",
 		"`{a}` is a setting of a window. A window that is open is changed with the verb `set`, then the window, then the settings as in `window`.",
 		"Write:", "{d}"},
+	.Set_Sound = {.Error, "A sound is changed with `set`",
+		"`{a}` is a setting of a sound. A sound is changed with the verb `set`, then the sound, then the settings as in `play`.",
+		"Write:", "{d}"},
+	.Word_For_Other_Kind = {.Error, "`{a}` does not go with {b}",
+		"{c}",
+		"Without it:", "{d}"},
 	.Title_Of_Window = {.Error, "`title` names the window the code runs in",
 		"`title` takes only the text and names the window the code runs in. Another window is changed with `set`, then the window, then `title` and the text.",
 		"Write:", "{b}"},
@@ -443,6 +453,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Image_Unreadable = {.Error, "`{a}` is not a picture I can read",
 		"I read PNG, JPEG, BMP, TGA and QOI pictures. `{a}` is another kind of file, or it is damaged. The picture draws nothing, and the sketch carries on.",
 		"Load one I can read:", "{d}"},
+	.Sound_Missing = {.Error, "I could not load a sound called `{a}`",
+		"{b} The sound plays nothing, and the sketch carries on.",
+		"Load one that is there:", "{d}"},
+	.Sound_Unreadable = {.Error, "`{a}` is not a sound I can read",
+		"I read WAV, FLAC, MP3 and Ogg Vorbis sounds. `{a}` is another kind of file, or it is damaged. The sound plays nothing, and the sketch carries on.",
+		"Load one I can read:", "{d}"},
 	.Model_Missing = {.Error, "I could not find a model called `{a}`",
 		"{b} The model draws nothing, and the sketch carries on.",
 		"Draw one that is there:", "{d}"},
@@ -565,7 +581,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

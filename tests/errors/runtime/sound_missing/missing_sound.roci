@@ -1,0 +1,2 @@
+rain = load "rain.wav"
+play rain

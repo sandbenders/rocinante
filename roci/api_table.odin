@@ -81,6 +81,10 @@ API_NAMES := [?]Api_Entry{
 	{"shear", "shear"},
 	{"push", "push"}, // with `pop`: Odin has no blocks to hand to a verb
 	{"forward", "forward"},
+	{"play", "play"},
+	{"loop", "loop"},
+	{"pause", "pause"},
+	{"rewind", "rewind"},
 	{"back", "back"},
 	{"left", "left"},
 	{"right", "right"},

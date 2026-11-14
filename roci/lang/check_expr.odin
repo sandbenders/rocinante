@@ -139,7 +139,7 @@ check_unary :: proc(c: ^Checker, e: ^Expr, k: Unary) -> ^IR {
 		if k.op == .Negate {
 			return new_ir(c, e.span, operand.type, IR_Unary{op = k.op, operand = operand})
 		}
-	case .None, .Text, .Gradient, .Window, .Image, .Block, .List, .Table, .Record:
+	case .None, .Text, .Gradient, .Window, .Image, .Sound, .Block, .List, .Table, .Record:
 	}
 	if kind_of(c.types, operand.type) == .Number && k.op == .Negate || kind_of(c.types, operand.type) == .Boolean && k.op == .Not {
 		return new_ir(c, e.span, resolve(c.types, operand.type), IR_Unary{op = k.op, operand = operand})
@@ -333,6 +333,10 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 	if special, handled := list_verb_type(c, verb, e, k, args[:], options); handled {
 		type = special
 	}
+	// `load` of a sound file's name gives a sound, of any other a picture
+	if verb.name == "load" && len(args) == 1 && is_sound_file(args[0]) {
+		type = T_SOUND
+	}
 	// a vector the verb gives is as long as the one it was given (normalize and limit), or three long (a point of the 3D floor)
 	if shape.gives == .Vector {
 		if verb.name == "world point" {
@@ -437,6 +441,32 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 			}
 		}
 		if !found {
+			// a word another shape of the verb takes (`set` has a window's words and a sound's)
+			for other in verb.shapes {
+				if len(other.params) == 0 || len(shape.params) == 0 || other.params[0].kind == shape.params[0].kind {
+					continue
+				}
+				for d in other.options {
+					if d.word == o.word {
+						found = true
+					}
+				}
+				if found {
+					words := make([dynamic]string, context.temp_allocator)
+					for d in shape.options {
+						append(&words, d.word)
+					}
+					given := kind_words(shape.params[0].kind)
+					end := o.span.end
+					for a in o.args {
+						end = max(end, a.span.end)
+					}
+					note(c, .Word_For_Other_Kind, o.span, o.word, given,
+						fmt.tprintf("`%s` takes `%s` when it is given %s. With %s its words are %s.", verb.name, o.word, kind_words(other.params[0].kind), given, names_words(words[:])),
+						line_replacing(c.src, Span{o.span.file, o.span.start - 1, end}, "", c.alloc))
+					break
+				}
+			}
 			continue
 		}
 		if slice_contains(seen[:], o.word) {
@@ -527,7 +557,7 @@ check_paint_words :: proc(c: ^Checker, o: Option_Use, value: ^IR, may_reroute: b
 		choices_for = "fill picture"
 	case .List, .Gradient:
 		table = registry.GRADIENT_OPTIONS
-	case .None, .Number, .Text, .Colour, .Paint, .Vector, .Block, .Window, .Name, .Any, .Boolean, .Expr_Block, .Table, .Record:
+	case .None, .Number, .Text, .Colour, .Paint, .Vector, .Block, .Window, .Sound, .Name, .Any, .Boolean, .Expr_Block, .Table, .Record:
 		if value.type == T_ERROR {
 			return
 		}
@@ -627,4 +657,21 @@ word_param_name :: proc(verb: ^registry.Verb, given, index: int) -> string {
 		}
 	}
 	return ""
+}
+
+// Whether an argument is a text written in the sketch that names a sound file. A name worked out
+// while the sketch runs cannot be known, so it is a picture.
+@(private)
+is_sound_file :: proc(arg: ^IR) -> bool {
+	text, is_text := arg.kind.(IR_Text)
+	if !is_text {
+		return false
+	}
+	lower := strings.to_lower(text.value, context.temp_allocator)
+	for ending in registry.SOUND_EXTENSIONS {
+		if strings.has_suffix(lower, ending) {
+			return true
+		}
+	}
+	return false
 }

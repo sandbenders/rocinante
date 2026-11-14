@@ -1635,3 +1635,45 @@ test_a_vector_a_verb_gives_is_as_long_as_it_should_be :: proc(t: ^testing.T) {
 	expect_errors(t, "v = limit { 1, 2, 3 } 2\nprint v.z", {})
 	expect_errors(t, "v = normalize { 1, 2 }\nprint v.x", {})
 }
+
+@(test)
+test_load_gives_a_sound_by_the_files_name :: proc(t: ^testing.T) {
+	for name in ([]string{"rain.wav", "a.FLAC", "song.mp3", "b.Ogg"}) {
+		got, ids := types_of(fmt.tprintf("s = load \"%s\"", name))
+		testing.expectf(t, len(ids) == 0 && strings.contains(got, "s: a sound"), "%s: %s %v", name, got, ids)
+	}
+	for text in ([]string{"s = load \"cat.png\"", "s = load \"rain.wav.png\"", "s = load (\"rain\" + \".wav\")", "s = load \"wav\""}) {
+		got, _ := types_of(text)
+		testing.expectf(t, strings.contains(got, "s: a picture"), "%s: %s", text, got)
+	}
+	expect_errors(t, "photo = load \"cat.png\"\nplay photo", {.Wrong_Argument_Kind})
+	expect_errors(t, "rain = load \"rain.wav\"\nimage rain at 0 0", {.Wrong_Argument_Kind})
+	got, _ := types_of("sounds = [ (load \"a.wav\") (load \"b.mp3\") ]")
+	testing.expectf(t, strings.contains(got, "a list of sounds"), "%s", got)
+}
+
+@(test)
+test_a_sounds_words_fields_and_set :: proc(t: ^testing.T) {
+	expect_errors(t, "rain = load \"rain.wav\"\nplay rain volume 40 pan -50 speed 1.5\nloop rain\npause rain\nrewind rain\nrewind rain by 2\nforward rain by 3\nforward 100", {})
+	expect_errors(t, "rain = load \"rain.wav\"\nset rain at 30 volume 50 pan -50 speed 1.5 loop false", {})
+	got, ids := types_of("rain = load \"rain.wav\"\na = rain.playing\nb = rain.at + rain.length + rain.volume + rain.pan + rain.speed\nc = rain.loop")
+	testing.expectf(t, len(ids) == 0 && strings.contains(got, "a: true or false") && strings.contains(got, "b: a number") && strings.contains(got, "c: true or false"), "%s %v", got, ids)
+	expect_errors(t, "rain = load \"rain.wav\"\nrain.volume = 50", {.Set_Sound})
+	expect_errors(t, "rain = load \"rain.wav\"\nrain.loop = true", {.Set_Sound})
+	expect_errors(t, "rain = load \"rain.wav\"\nrain.length = 3", {.Bad_Field})
+	expect_errors(t, "rain = load \"rain.wav\"\nrain.lenght = 3", {.Bad_Field})
+	expect_errors(t, "rain = load \"rain.wav\"\nprint rain.vollume", {.Bad_Field})
+	expect_errors(t, "rain = load \"rain.wav\"\nforward rain", {.Missing_Required_Word})
+	expect_errors(t, "rain = load \"rain.wav\"\nset rain volume \"loud\"", {.Wrong_Argument_Kind})
+	expect_errors(t, "rain = load \"rain.wav\"\nset rain loop 1", {.Wrong_Argument_Kind})
+	expect_errors(t, "w = window size 100 100\nset w volume 50", {.Word_For_Other_Kind})
+	expect_errors(t, "rain = load \"rain.wav\"\nset rain title \"x\" resizable true", {.Word_For_Other_Kind, .Word_For_Other_Kind})
+}
+
+// The words only a sound's settings use stay free as names, and as a taught verb's parameters.
+@(test)
+test_the_words_of_a_sound_stay_free_as_names :: proc(t: ^testing.T) {
+	expect_errors(t, "speed = 3\nvolume = 2\npan = speed + volume\nrain = load \"rain.wav\"\nplay rain speed speed volume volume pan pan", {})
+	expect_errors(t, "learn go speed [ print speed ]\ngo 2", {})
+	expect_errors(t, "loop = 3", {.Reserved_Name})
+}

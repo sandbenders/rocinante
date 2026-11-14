@@ -73,7 +73,10 @@ on_statement    = "on" ( [ argument ] 'event phrase' { argument } | argument "re
 (* A call: a verb, matched as a phrase longest first, then its
    required arguments, then connecting words. Which shape of a verb group is meant
    is the checker's choice, by count and then kinds; the parser only
-   needs the largest count any shape takes and the options any shape lists. *)
+   needs the largest count any shape takes and the options any shape lists.
+   A word that is a connecting word and free as a name (`size`, `speed`, `volume`, a window's
+   `ratio`) starts an option, except straight after a connecting word that has no value yet,
+   where it is that value: `play rain speed speed` (decided 2026-11-14). *)
 (* A verb a library teaches may be written with the library before it, `physics.wiggle ball`; it has to be
    named so when two libraries teach the same word. *)
 call           = 'verb' { argument } { option } ;

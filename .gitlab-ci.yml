@@ -32,6 +32,8 @@ variables:
   - sh tools/ui-libs.sh
   # accesskit-c, the screen-reader bridge's library: its release archive, checked by sha256.
   - sh tools/ui-libs.sh accesskit
+  # The sound file decoders, from the vendor folder of the job's Odin.
+  - sh tools/sound-libs.sh
 
 # Fast check on merge requests only.
 fast:

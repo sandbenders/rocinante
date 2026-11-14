@@ -23,6 +23,7 @@ Kind :: enum u8 {
 	Block, // a [ ] block of statements
 	Window,
 	Image, // a loaded picture: `photo = load "cat.png"`
+	Sound, // a loaded sound: `rain = load "rain.wav"`
 	Name, // a plain word such as `center` after `as`
 	Gradient, // made by `gradient`, or written as a list of colours where a colour goes
 	Any,
@@ -65,7 +66,7 @@ Verb :: struct {
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
 	"align", "alpha", "angle", "around", "as", "at", "blend", "bordered", "by", "cursor", "emissive", "falloff", "fill", "focusable", "focused", "font", "fov", "from", "fullscreen", "grab", "height", "in",
-	"largest", "leading", "lines", "maximized", "metallic", "minimized", "modal", "of", "over", "parent", "radius", "ratio", "resizable", "roughness", "size", "smallest", "start", "stops", "stroke", "style", "thickness", "tint", "title", "to", "topmost", "tube", "visible", "width",
+	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "of", "over", "pan", "parent", "radius", "ratio", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "thickness", "tint", "title", "to", "topmost", "tube", "visible", "volume", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.
@@ -149,6 +150,20 @@ WINDOW_PROPERTIES := [?]Property_Def{
 	{"covered", .Boolean, 0, false},  // whether other windows hide it
 }
 
+// What can be read from a sound, and which of it `set` changes: the settings of `play` and `at`.
+SOUND_PROPERTIES := [?]Property_Def{
+	{"playing", .Boolean, 0, false}, // whether it is playing now
+	{"at", .Number, 0, true},        // seconds from its start
+	{"length", .Number, 0, false},   // how long it is, in seconds
+	{"volume", .Number, 0, true},    // 0 to 100
+	{"pan", .Number, 0, true},       // -100 left to 100 right
+	{"speed", .Number, 0, true},     // 1 as recorded
+	{"loop", .Boolean, 0, true},     // whether it starts again at its end
+}
+
+// The file names `load` reads as sounds, by what they end with (in any case); every other name is a picture.
+SOUND_EXTENSIONS := [?]string{".wav", ".flac", ".mp3", ".ogg"}
+
 // What a property gives, in words: "a number", "a vector of 2 numbers".
 property_words :: proc(def: Property_Def) -> string {
 	switch def.kind {
@@ -158,6 +173,7 @@ property_words :: proc(def: Property_Def) -> string {
 	case .Vector:  return "a vector of 2 numbers" if def.size == 2 else "a vector"
 	case .Window:  return "a window"
 	case .Image:   return "a picture"
+	case .Sound:   return "a sound"
 	case .None, .List, .Block, .Name, .Gradient, .Any, .Expr_Block, .Colour, .Paint, .Table, .Record: return "a value"
 	}
 	return "a value"
@@ -174,6 +190,10 @@ WINDOW_FREE_WORDS := [?]string{
 	"bordered", "cursor", "focusable", "focused", "grab", "largest", "maximized", "minimized", "modal", "parent", "ratio",
 	"resizable", "smallest", "topmost", "visible",
 }
+
+// Words only the settings of a sound use (`play rain volume 40`, `set rain pan -50 speed 1.5`),
+// which stay free as names in the same way: `speed` is a name many sketches have.
+SOUND_FREE_WORDS := [?]string{"pan", "speed", "volume"}
 
 // An `on` event and what follows its name: `on key "space" [ ... ]`, `on mouse down [ ... ]`.
 // `on w receive msg [ ... ]` is its own form, because a window comes first.

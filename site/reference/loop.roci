@@ -1,0 +1,11 @@
+rain = load "rain.ogg"
+loop rain volume 40
+
+draw [
+  background 20
+  set rain volume (mouse.y / height * 100)
+  fill (rgb 90 150 230)
+  rect at 20 (height - rain.volume * 2.6) size 40 (rain.volume * 2.6)
+  fill white
+  text ("volume " + round rain.volume) at 80 20
+]

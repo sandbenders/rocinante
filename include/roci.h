@@ -24,6 +24,7 @@ typedef struct { double x, y; } roci_vec2;
 typedef struct { double x, y, z; } roci_vec3;
 typedef int roci_window_id;
 typedef int roci_image_id;
+typedef int roci_sound_id;
 typedef int roci_model_id;
 typedef int roci_svg_id;
 typedef int roci_gradient_id;
@@ -343,7 +344,7 @@ void roci_push(void);
 /* Puts back what the matching roci_push saved. Gives 0 for a pop without a push. */
 int roci_pop(void);
 
-/* Walks the turtle forward, drawing a line while its pen is down. */
+/* Walks the turtle forward, drawing a line while its pen is down; with a sound, moves it ahead: `forward rain by 10` (seconds). */
 void roci_forward(double distance);
 
 /* Walks the turtle backwards, without turning it round. */
@@ -603,6 +604,18 @@ void roci_down(double degrees);
 
 /* Rolls the turtle in space about the way it faces, its top going to the right, in degrees. It needs `turtle space` first. */
 void roci_roll(double degrees);
+
+/* Plays a sound once, from where it is, or from its start when it had come to its end: `play click`. `volume` is 0 to 100, `pan` -100 (left) to 100 (right) and `speed` 1 as recorded. */
+void roci_play(roci_sound_id sound);
+
+/* Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish. */
+void roci_loop(roci_sound_id sound);
+
+/* Holds a sound where it is; `play` or `loop` goes on from there. */
+void roci_pause(roci_sound_id sound);
+
+/* Puts a sound back to its start, or some seconds back: `rewind rain by 10`. A sound that plays goes on playing. */
+void roci_rewind(roci_sound_id sound);
 
 /* The line from the eye of the 3D camera through a pixel of the window: `from` is the eye and `to` is far along the way the pixel looks, in the world. */
 roci_line3 roci_ray(double x, double y);
@@ -1083,6 +1096,54 @@ void roci_default_window_size(double width, double height);
 
 /* A number that is the same for two frames that look the same, for a window's last frame: what tests compare. */
 unsigned long long roci_frame_hash(roci_window_id window);
+
+/* Decodes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A sound is stopped at its start, at volume 100, in the middle and at speed 1. */
+roci_sound_id roci_load_sound(const unsigned char *bytes, int length);
+
+/* Reads a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when it cannot be read. */
+roci_sound_id roci_load_sound_file(const char *path);
+
+/* Moves a sound some seconds back, no further than its start. */
+void roci_rewind_by(roci_sound_id sound, double seconds);
+
+/* Moves a sound some seconds ahead; past its end, a sound that does not loop has ended and one that loops goes on from its start. */
+void roci_forward_sound(roci_sound_id sound, double seconds);
+
+/* Puts a sound that many seconds from its start, kept between its start and its end. */
+void roci_set_sound_at(roci_sound_id sound, double seconds);
+
+/* How loud a sound plays, 0 to 100. */
+void roci_set_sound_volume(roci_sound_id sound, double volume);
+
+/* Where a sound is between the speakers, -100 (left) to 100 (right): in the middle both play it at full volume, towards one side the other fades. */
+void roci_set_sound_pan(roci_sound_id sound, double pan);
+
+/* How fast a sound plays, 1 as recorded, 0 (held still) to 8; faster is higher, as on a record player. */
+void roci_set_sound_speed(roci_sound_id sound, double speed);
+
+/* Whether a sound starts again at its end: 0 lets a looping sound finish where it is. */
+void roci_set_sound_loop(roci_sound_id sound, int on);
+
+/* 1 while a sound is playing. */
+int roci_sound_playing(roci_sound_id sound);
+
+/* 1 when a sound starts again at its end. */
+int roci_sound_loops(roci_sound_id sound);
+
+/* Where a sound is, in seconds from its start. */
+double roci_sound_at(roci_sound_id sound);
+
+/* How long a sound is, in seconds (0 for no sound). */
+double roci_sound_length(roci_sound_id sound);
+
+/* How loud a sound plays, 0 to 100. */
+double roci_sound_volume(roci_sound_id sound);
+
+/* Where a sound is between the speakers, -100 to 100. */
+double roci_sound_pan(roci_sound_id sound);
+
+/* How fast a sound plays, 1 as recorded. */
+double roci_sound_speed(roci_sound_id sound);
 
 #ifdef __cplusplus
 }

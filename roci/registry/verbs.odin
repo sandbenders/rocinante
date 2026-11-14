@@ -346,7 +346,10 @@ VERBS := []Verb{
 	{"push", {{{{"body", .Block}}, nil, .None}}, "Runs a block, then puts the style, the transforms and the turtle back as they were."},
 
 	// Turtle: one a window, in the middle facing up at the start of every frame
-	{"forward", {{{{"distance", .Number}}, nil, .None}}, "Walks the turtle forward, drawing a line while its pen is down."},
+	{"forward", {
+		{{{"distance", .Number}}, nil, .None},
+		{{{"sound", .Sound}}, {{"by", {.Number}, true}}, .None},
+	}, "Walks the turtle forward, drawing a line while its pen is down; with a sound, moves it ahead: `forward rain by 10` (seconds)."},
 	{"back", {{{{"distance", .Number}}, nil, .None}}, "Walks the turtle backwards, without turning it round."},
 	{"left", {{{{"degrees", .Number}}, nil, .None}}, "Turns the turtle anticlockwise, in degrees."},
 	{"right", {{{{"degrees", .Number}}, nil, .None}}, "Turns the turtle clockwise, in degrees."},
@@ -358,6 +361,12 @@ VERBS := []Verb{
 	{"up", {{{{"degrees", .Number}}, nil, .None}}, "Tips the nose of the turtle in space towards its top, in degrees, which at the start is towards you. It needs `turtle space` first."},
 	{"down", {{{{"degrees", .Number}}, nil, .None}}, "Tips the nose of the turtle in space away from its top, in degrees. It needs `turtle space` first."},
 	{"roll", {{{{"degrees", .Number}}, nil, .None}}, "Rolls the turtle in space about the way it faces, its top going to the right, in degrees. It needs `turtle space` first."},
+
+	// Sound: a sound is one player, made by `load` from a sound file of the assets
+	{"play", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound once, from where it is, or from its start when it had come to its end: `play click`. `volume` is 0 to 100, `pan` -100 (left) to 100 (right) and `speed` 1 as recorded."},
+	{"loop", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish."},
+	{"pause", {{{{"sound", .Sound}}, nil, .None}}, "Holds a sound where it is; `play` or `loop` goes on from there."},
+	{"rewind", {{{{"sound", .Sound}}, {{"by", {.Number}, false}}, .None}}, "Puts a sound back to its start, or some seconds back: `rewind rain by 10`. A sound that plays goes on playing."},
 
 	// Maths
 	{"map", {{{{"value", .Number}, {"from_low", .Number}, {"from_high", .Number}, {"to_low", .Number}, {"to_high", .Number}}, nil, .Number}}, "Moves a number from one range to another."},
@@ -396,4 +405,20 @@ VERBS := []Verb{
 		{{{"x", .Number}, {"y", .Number}, {"z", .Number}, {"w", .Number}}, NOISE_OPTIONS, .Number},
 	}, "Smooth random noise from 0 to 1 in one to four dimensions; add `as simplex` for simplex noise."},
 	{"fbm", {{{{"x", .Number}, {"y", .Number}, {"z", .Number}}, nil, .Number}}, "Layers of noise from 0 to 1, with finer detail added on top."},
+}
+
+// The settings of `play` and `loop`, which `set` changes later.
+SOUND_OPTIONS := []Option{
+	{"volume", {.Number}, false},
+	{"pan", {.Number}, false},
+	{"speed", {.Number}, false},
+}
+
+// What `set` changes of a sound: the settings of `play`, where it is and whether it loops.
+SOUND_SET_OPTIONS := []Option{
+	{"at", {.Number}, false},
+	{"volume", {.Number}, false},
+	{"pan", {.Number}, false},
+	{"speed", {.Number}, false},
+	{"loop", {.Boolean}, false},
 }

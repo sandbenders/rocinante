@@ -353,6 +353,7 @@ sample_of :: proc(c: ^Checker, type: Type_Id) -> string {
 	case .Colour:  return "red"
 	case .Window:  return "w"
 	case .Image:   return "photo"
+	case .Sound:   return "rain"
 	case .Vector:  return strings.concatenate({"{ ", strings.join(slice.repeat([]string{"0"}, item.a, context.temp_allocator), ", ", context.temp_allocator), " }"}, context.temp_allocator)
 	case .List:    return "[ 1 2 3 ]"
 	case .Table:   return "table"
@@ -370,6 +371,7 @@ sample_for_kind :: proc(kind: registry.Kind) -> string {
 	case .Table:    return "table"
 	case .Window:   return "w"
 	case .Image:    return "photo"
+	case .Sound:    return "rain"
 	case .Boolean:  return "true"
 	case .Gradient: return "[ red teal ]"
 	case .Name:     return "center"
@@ -393,6 +395,7 @@ kind_words :: proc(kind: registry.Kind) -> string {
 	case .Block, .Expr_Block: return "a block"
 	case .Window:   return "a window"
 	case .Image:    return "a picture"
+	case .Sound:    return "a sound"
 	case .Name:     return "a word"
 	case .Gradient: return "a gradient"
 	case .Any:      return "any value"
@@ -774,6 +777,20 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 	case .Image:
 		note(c, .Bad_Field, last_span, last, "a picture", fmt.tprintf("`%s` can be read but not changed.", last), fix(c, last_span, "width"))
 		return IR_Error_Stmt{}
+	case .Sound:
+		def, found := sound_property(last)
+		if !found {
+			bad_sound_property(c, last, last_span)
+			return IR_Error_Stmt{}
+		}
+		if !def.settable {
+			note(c, .Bad_Field, last_span, last, "a sound", fmt.tprintf("`%s` can be read but not changed.", last), fix(c, last_span, "volume"))
+			return IR_Error_Stmt{}
+		}
+		sound_text := text_at(c, Span{span.file, span.start, last_span.start - 1})
+		whole := Span{span.file, span.start, k.value.span.end}
+		note(c, .Set_Sound, whole, label, "", "", fix(c, whole, fmt.tprintf("set %s %s %s", sound_text, last, text_at(c, k.value.span))))
+		return IR_Error_Stmt{}
 	case .Vector:
 		want := swizzle_type(c, item.a, last)
 		if want == T_ERROR {
@@ -1020,6 +1037,12 @@ check_field :: proc(c: ^Checker, base: ^IR, part: string, span: Span) -> ^IR {
 		}
 		bad_window_property(c, part, span)
 		return error_ir(c, base.span)
+	case .Sound:
+		if def, found := sound_property(part); found {
+			return new_ir(c, base.span, type_of_property(c, def), IR_Field{base = base, name = part})
+		}
+		bad_sound_property(c, part, span)
+		return error_ir(c, base.span)
 	case .Image:
 		if part == "width" || part == "height" {
 			return new_ir(c, base.span, T_NUMBER, IR_Field{base = base, name = part})
@@ -1104,6 +1127,31 @@ bad_window_property :: proc(c: ^Checker, part: string, span: Span) {
 		}
 	}
 	note(c, .Bad_Field, span, part, "a window", fmt.tprintf("A window has %s.", names_words(names[:])), fix(c, span, found))
+}
+
+@(private)
+sound_property :: proc(name: string) -> (def: registry.Property_Def, found: bool) {
+	for d in registry.SOUND_PROPERTIES {
+		if d.name == name {
+			return d, true
+		}
+	}
+	return
+}
+
+@(private)
+bad_sound_property :: proc(c: ^Checker, part: string, span: Span) {
+	names := make([dynamic]string, context.temp_allocator)
+	for def in registry.SOUND_PROPERTIES {
+		append(&names, def.name)
+	}
+	best, found := 3, "playing"
+	for name in names {
+		if d := registry.edit_distance(part, name); d < best {
+			best, found = d, name
+		}
+	}
+	note(c, .Bad_Field, span, part, "a sound", fmt.tprintf("A sound has %s.", names_words(names[:])), fix(c, span, found))
 }
 
 // In a program of several files only `sketch.roci`, the last one, has statements

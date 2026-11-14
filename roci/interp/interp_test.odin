@@ -41,6 +41,7 @@ run_text :: proc(t: ^testing.T, text: string, frames := 0, loc := #caller_locati
 finish :: proc(p: ^Interp) {
 	destroy(p)
 	forget_decoded_pictures() // a thread's table of decoded files lives on into the next test
+	forget_decoded_sounds()
 	roci.shutdown()
 }
 
@@ -1942,6 +1943,7 @@ trace_example :: proc(t: ^testing.T, name: string, frames: int, chosen: lang.Pas
 	roci.start_headless(3)
 	defer roci.shutdown()
 	defer forget_decoded_pictures()
+	defer forget_decoded_sounds()
 	p, loaded := load_files(program.files)
 	defer destroy(p)
 	if !testing.expectf(t, loaded, "%s does not load", name) {
@@ -2247,6 +2249,8 @@ make_message_sketch :: proc(t: ^testing.T) -> string {
 	testing.expect(t, folder.ensure_directory(root + "/assets/images/b"))
 	testing.expect(t, os.write_entire_file(root + "/sketch.roci", transmute([]byte)string("circle at 1 1 radius 1\n")) == nil)
 	testing.expect(t, os.write_entire_file(root + "/assets/images/broken.png", transmute([]byte)string("not a picture")) == nil)
+	testing.expect(t, folder.ensure_directory(root + "/assets/sounds"))
+	testing.expect(t, os.write_entire_file(root + "/assets/sounds/broken.wav", transmute([]byte)string("not a sound")) == nil)
 	if png, encoded := gfx.png_encode(gfx.Image{2, 2, make([]u8, 16, context.temp_allocator)}); encoded {
 		testing.expect(t, os.write_entire_file(root + "/assets/images/small.png", png) == nil)
 		delete(png)

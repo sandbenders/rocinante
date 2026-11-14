@@ -49,6 +49,7 @@ Value :: union {
 	^roci.Gradient,
 	roci.Window,
 	roci.Image,
+	roci.Sound,
 	^List,
 	^Record,
 	^Table,
@@ -90,6 +91,14 @@ as_text :: proc(v: Value) -> string {
 as_image :: proc(v: Value) -> roci.Image {
 	if picture, ok := v.(roci.Image); ok {
 		return picture
+	}
+	return 0
+}
+
+// A sound, or no sound (which plays nothing) for anything else.
+as_sound :: proc(v: Value) -> roci.Sound {
+	if s, ok := v.(roci.Sound); ok {
+		return s
 	}
 	return 0
 }
@@ -271,7 +280,7 @@ copier_shell :: proc(c: ^Copier, v: Value) -> Value {
 		g := new(roci.Gradient, alloc)
 		g^ = x^
 		return g
-	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
+	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image, roci.Sound:
 	}
 	return v
 }
@@ -301,7 +310,7 @@ copier_fill :: proc(c: ^Copier) {
 				append(&to.keys, key)
 				append(&to.values, copier_shell(c, from.values[i]))
 			}
-		case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, ^roci.Gradient:
+		case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, roci.Sound, ^roci.Gradient:
 		}
 	}
 }
@@ -383,6 +392,9 @@ equal_plain :: proc(a, b: Value) -> (answer: bool, decided: bool) {
 	case roci.Image:
 		y, ok := b.(roci.Image)
 		return ok && x == y, true
+	case roci.Sound:
+		y, ok := b.(roci.Sound)
+		return ok && x == y, true
 	case ^roci.Gradient:
 		y, ok := b.(^roci.Gradient)
 		return ok && (x == y || (x != nil && y != nil && mem.compare_ptrs(x, y, size_of(roci.Gradient)) == 0)), true
@@ -454,7 +466,7 @@ equal_parts :: proc(a, b: Value, pairs: ^[dynamic][2]Value, met: ^map[[2]rawptr]
 			}
 			append(pairs, [2]Value{x.values[i], other})
 		}
-	case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, ^roci.Gradient:
+	case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, roci.Sound, ^roci.Gradient:
 	}
 	return true
 }
@@ -501,6 +513,8 @@ format :: proc(it: ^Interp, v: Value, allocator := context.temp_allocator, depth
 		return strings.concatenate({"window ", format_number(f64(x), allocator)}, allocator)
 	case roci.Image:
 		return strings.concatenate({"a ", format_number(roci.image_size(x).x, allocator), " by ", format_number(roci.image_size(x).y, allocator), " picture"}, allocator)
+	case roci.Sound:
+		return strings.concatenate({"a ", format_number(roci.sound_state(x).length, allocator), " second sound"}, allocator)
 	case ^roci.Gradient:
 		return "a gradient"
 	case ^List:

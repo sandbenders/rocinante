@@ -767,7 +767,28 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.shear(n(a, 0), n(a, 1))
 
 	case .Forward:
-		roci.forward(n(a, 0))
+		if call.shape == 1 {
+			if by, ok := option_value(it, call.options, "by"); ok {
+				roci.forward_sound(as_sound(a[0]), as_number(by))
+			}
+		} else {
+			roci.forward(n(a, 0))
+		}
+	case .Play, .Loop:
+		volume, pan, speed := sound_options(it, call.options)
+		if code == .Play {
+			roci.play(as_sound(a[0]), volume, pan, speed)
+		} else {
+			roci.loop(as_sound(a[0]), volume, pan, speed)
+		}
+	case .Pause:
+		roci.pause(as_sound(a[0]))
+	case .Rewind:
+		by: Maybe(f64)
+		if v, ok := option_value(it, call.options, "by"); ok {
+			by = as_number(v)
+		}
+		roci.rewind(as_sound(a[0]), by)
 	case .Back:
 		roci.back(n(a, 0))
 	case .Left:

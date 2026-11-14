@@ -1,0 +1,2 @@
+rain = load "rain.wav"
+set rain title "storm"

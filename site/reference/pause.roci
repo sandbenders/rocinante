@@ -1,0 +1,12 @@
+rain = load "rain.ogg"
+loop rain
+
+on key "space" [
+  if rain.playing [ pause rain ] else [ loop rain ]
+]
+
+draw [
+  background 20
+  fill white
+  text ("space pauses and goes on: " + rain.at) at 20 20
+]

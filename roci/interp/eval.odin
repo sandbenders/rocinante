@@ -271,6 +271,9 @@ read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
 		}
 		return nil
 	}
+	if s, is_sound := base.(roci.Sound); is_sound {
+		return sound_field(s, name)
+	}
 	if picture, is_picture := base.(roci.Image); is_picture {
 		switch name {
 		case "width":  return roci.image_size(picture).x

@@ -1,0 +1,8 @@
+── `volume` does not go with a window ────────────────── sketch.roci:2:7
+
+2 │ set w volume 50 title "quiet"
+  │       ^^^^^^^^^
+
+`set` takes `volume` when it is given a sound. With a window its words are size, width, height, at, title, fullscreen, resizable, bordered, topmost, visible, alpha, smallest, largest, ratio, focusable, grab, parent, modal, cursor, focused, maximized and minimized.
+
+Without it:  set w title "quiet"

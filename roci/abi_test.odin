@@ -17,7 +17,7 @@ type_for_kind :: proc(kind: registry.Kind, wide := false) -> (id: typeid, ok: bo
 	case .Number:      return f64, true
 	case .Text, .Name: return cstring, true
 	case .Colour, .Paint: return Abi_Color, true
-	case .Image:       return c.int, true
+	case .Image, .Sound: return c.int, true
 	case .Vector:      return typeid_of(Abi_Vec3) if wide else typeid_of(Abi_Vec2), true
 	case .None, .Window, .List, .Table, .Block, .Gradient, .Any, .Boolean, .Expr_Block, .Record: return nil, false
 	}

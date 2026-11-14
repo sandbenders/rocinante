@@ -186,6 +186,7 @@ shutdown :: proc() {
 	ui_forget_file()
 	finish_recordings()
 	print_record_results()
+	sounds_stop()
 	for w in the.windows {
 		destroy_win(w)
 	}

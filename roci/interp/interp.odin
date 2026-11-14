@@ -106,6 +106,7 @@ Interp :: struct {
 	check_at:  int, // the check being run, counting from 1; 0 when none is
 	home:     string, // the file the program was read from, so `load` and `font` can find its assets even when it is not watched
 	pictures: map[string]Picture_Entry, // what `load` found, by name (images.odin)
+	sounds:   map[string]Sound_Entry,   // the sounds `load` found, by name (sounds.odin)
 	models:   map[string]Model_Entry, // what `model` found, by name (models.odin)
 	svgs:     map[string]Svg_Entry,     // what `svg` found, by name (svgs.odin)
 	mesh_calls: Mesh_Calls,            // which meshes each call drew this frame (meshes.odin)
@@ -208,6 +209,7 @@ destroy :: proc(p: ^Interp) {
 	}
 	delete(p.fonts_missed)
 	drop_pictures(p)
+	drop_sounds(p)
 	drop_models(p)
 	drop_svgs(p)
 	drop_meshes(p)

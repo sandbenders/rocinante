@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: 0BSD
 #
 # Builds, for arm64 Android with the NDK, the libraries roci links beside SDL3:
-# SDL3_ttf (with its own FreeType and HarfBuzz), shaderc, SPIRV-Cross and Dear ImGui
-# with its C wrappers, into .cache/android/lib. Written for the phone smoke test;
+# SDL3_ttf (with its own FreeType and HarfBuzz), shaderc, SPIRV-Cross, Dear ImGui
+# with its C wrappers and the sound file decoders, into .cache/android/lib. Written for the phone smoke test;
 # `roci package android` will ship these prebuilt.
 #
 # Needs git, cmake, ninja and SDL3 already built for Android (SDL_ANDROID_LIB, the
@@ -105,6 +105,16 @@ if [ ! -f "$lib/libroci_ui.a" ]; then
       -I"$c_api" -I"$c_api/backends" -I"$SDL_ANDROID_SRC/include" -c "$s.cpp" -o "$obj/$(basename "$s").o"
   done
   "$ar" rcs "$lib/libroci_ui.a" "$obj"/*.o
+fi
+
+# The sound file decoders: miniaudio's and stb_vorbis, from the vendor folder of the Odin on the PATH.
+if [ ! -f "$lib/libroci_sound.a" ]; then
+  cc="$ndk/toolchains/llvm/prebuilt/$host/bin/aarch64-linux-android$API_LEVEL-clang"
+  ar="$ndk/toolchains/llvm/prebuilt/$host/bin/llvm-ar"
+  odin_root="$(odin root)"
+  "$cc" -O2 -fPIC -I"$odin_root/vendor/miniaudio/src" -I"$odin_root/vendor/stb/src" \
+    -c "$root/vendor/sound/c/roci_sound.c" -o "$src/roci_sound.o"
+  "$ar" rcs "$lib/libroci_sound.a" "$src/roci_sound.o"
 fi
 
 # The C++ runtime the libraries above were built against, linked statically into libmain.so.

@@ -1,0 +1,49 @@
+// Sound: rain that follows the mouse, and a click where you click. `load` gives a sound from a WAV,
+// FLAC, MP3 or Ogg file in the sketch's assets folder, and `loop` plays it over and over. Up and
+// down the window is how loud the rain is and left to right where it is between the speakers, both
+// changed every frame with `set`. A click plays a short sound from where it is pressed, and a ring
+// grows there while it plays. Space pauses the rain and goes on, and the bar along the bottom is
+// where the rain is in its four seconds.
+window size 640 400 title "sound"
+
+rain = load "rain.ogg"
+click = load "click.wav"
+loop rain volume 50
+rings = []
+
+on mouse down [
+  play click pan (mouse.x / width * 200 - 100)
+  add { pos: mouse, age: 0 } to rings
+]
+
+on key "space" [
+  if rain.playing [ pause rain ] else [ loop rain ]
+]
+
+draw [
+  background (rgb 14 18 34)
+  set rain volume (100 - mouse.y / height * 100) pan (mouse.x / width * 200 - 100)
+  // drops, as many as the rain is loud
+  stroke (rgb 110 150 220)
+  thickness 2
+  for i from 1 to (round (rain.volume * 1.2)) [
+    x = (i * 151) % width
+    y = ((i * 37 + frame * 6) % height)
+    line from x y to (x - 3) (y + 14)
+  ]
+  no stroke
+  for each r in rings [
+    r.age = r.age + 1
+    stroke (rgb 255 200 80 alpha (100 - r.age * 3))
+    thickness 3
+    no fill
+    circle at r.pos radius (r.age * 2)
+  ]
+  rings = keep rings [ it.age < 33 ]
+  no stroke
+  fill (rgb 90 150 230)
+  rect at 0 (height - 6) size (rain.at / rain.length * width) 6
+  fill white
+  text ("volume " + round rain.volume + "   pan " + round rain.pan) at 16 16
+  if not rain.playing [ text "paused: space goes on" at 16 40 ]
+]

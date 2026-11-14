@@ -142,6 +142,9 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			}
 		}
 	case .Load:
+		if e.type == lang.T_SOUND {
+			return load_sound(it, as_text(eval(it, call.args[0])), e.span)
+		}
 		return load_picture(it, as_text(eval(it, call.args[0])), e.span)
 	case .Count:
 		v := eval(it, call.args[0])
@@ -233,7 +236,12 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case .Send:
 		send_message(it, eval(it, call.args[0]), eval(it, call.args[1]))
 	case .Set:
-		set_window(it, eval(it, call.args[0]), call.options)
+		target := eval(it, call.args[0])
+		if call.shape == 1 {
+			set_sound(it, target, call.options)
+		} else {
+			set_window(it, target, call.options)
+		}
 	case .Held:
 		// "mouse right" is a button held down in this window, anything else a key.
 		name := as_text(eval(it, call.args[0]))

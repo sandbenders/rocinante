@@ -236,13 +236,13 @@ is_reserved_name :: proc(word: string) -> bool {
 // Words that are connecting words as well as values or settings, and so may be a
 // parameter's name.
 is_free_as_parameter :: proc(word: string) -> bool {
-	return slice.contains(FREE_AS_PARAMETERS[:], word) || slice.contains(WINDOW_FREE_WORDS[:], word)
+	return slice.contains(FREE_AS_PARAMETERS[:], word) || slice.contains(WINDOW_FREE_WORDS[:], word) || slice.contains(SOUND_FREE_WORDS[:], word)
 }
 
 // Whether a sketch may give a variable this word as a name although the language
-// uses it too: `size`, and the words only a window's settings use.
+// uses it too: `size`, and the words only a window's or a sound's settings use.
 is_free_as_name :: proc(word: string) -> bool {
-	return word == "size" || slice.contains(WINDOW_FREE_WORDS[:], word)
+	return word == "size" || slice.contains(WINDOW_FREE_WORDS[:], word) || slice.contains(SOUND_FREE_WORDS[:], word)
 }
 
 // Every reserved word, sorted and without repeats, for the docs.

@@ -1,0 +1,8 @@
+── `title` does not go with a sound ─────────────────── sketch.roci:2:10
+
+2 │ set rain title "storm"
+  │          ^^^^^^^^^^^^^
+
+`set` takes `title` when it is given a window. With a sound its words are at, volume, pan, speed and loop.
+
+Without it:  set rain

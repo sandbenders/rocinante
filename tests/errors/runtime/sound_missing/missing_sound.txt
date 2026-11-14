@@ -1,0 +1,8 @@
+── I could not load a sound called `rain.wav` ────────── sketch.roci:1:8
+
+1 │ rain = load "rain.wav"
+  │        ^^^^^^^^^^^^^^^
+
+Sounds are found by their file name in your sketch's `assets` folder, and there is no file of that name there. `roci add` copies one in for you. The sound plays nothing, and the sketch carries on.
+
+Load one that is there:  rain = load "rain.wav"

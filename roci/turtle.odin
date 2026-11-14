@@ -13,8 +13,11 @@ turtle_home_point :: proc(w: ^Win) -> [2]f64 {
 	return {f64(w.width) / 2, f64(w.height) / 2}
 }
 
+// `forward 100` walks the turtle; `forward rain by 10` moves a sound ahead (sound.odin).
+forward :: proc{forward_distance, forward_sound}
+
 // Walks the turtle forward, drawing a line while the pen is down.
-forward :: proc(distance: f64) {
+forward_distance :: proc(distance: f64) {
 	w := current_win()
 	if scene := &w.list.scene; scene.turtle.on {
 		gfx.turtle3_forward(scene, distance, f64(w.list.style.thickness), turtle3_ink(&w.list))

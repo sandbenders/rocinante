@@ -1,0 +1,10 @@
+click = load "click.wav"
+on mouse down [ play click pan (mouse.x / width * 200 - 100) ]
+
+draw [
+  background 30
+  fill (rgb 255 200 80)
+  if click.playing [ circle at mouse radius 40 ]
+  fill white
+  text "click: the sound plays from where you click, left to right" at 20 20
+]

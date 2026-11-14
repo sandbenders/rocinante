@@ -378,8 +378,12 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 				break
 			}
 			// `rect at p size 10 20`: `size` is a value in places, but here it starts the next word.
+			// Straight after a word that has no value yet, a word that is free as a name is that
+			// value (`play rain speed speed`, where `speed` is the sketch's own number), since a
+			// word with nothing after it could only be a mistake.
 			if next.kind == .Name {
-				if _, starts_option := option_kinds(info, text_of(p, next), len(args)); starts_option {
+				name := text_of(p, next)
+				if _, starts_option := option_kinds(info, name, len(args)); starts_option && !(len(option_args) == 0 && registry.is_free_as_parameter(name)) {
 					break
 				}
 			}

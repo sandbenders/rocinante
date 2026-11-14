@@ -1,0 +1,3 @@
+rain = load "rain.wav"
+loop rain
+rain.volume = 50

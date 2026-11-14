@@ -1,0 +1,8 @@
+── A sound is changed with `set` ─────────────────────── sketch.roci:3:1
+
+3 │ rain.volume = 50
+  │ ^^^^^^^^^^^^^^^^
+
+`rain.volume` is a setting of a sound. A sound is changed with the verb `set`, then the sound, then the settings as in `play`.
+
+Write:  set rain volume 50

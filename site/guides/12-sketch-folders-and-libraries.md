@@ -26,7 +26,7 @@ Everything a sketch uses goes in `assets/`, and is found by its name wherever it
 roci add ~/Pictures/cat.png
 ```
 
-(The verbs that load images, sounds and fonts arrive in the next phases of rocinante.)
+`load "cat.png"` gives a picture and `load "rain.wav"` a sound, and `font "Name"` finds a font file there.
 
 ## Several files
 

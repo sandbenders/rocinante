@@ -99,7 +99,7 @@ move_value :: proc(p: ^Interp, v: Value, moved: ^map[rawptr]rawptr) -> Value {
 				append(&to.keys, key)
 				append(&to.values, move_shell(p, from.values[i], moved, &work))
 			}
-		case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, ^roci.Gradient:
+		case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, roci.Sound, ^roci.Gradient:
 		}
 	}
 	return out
@@ -163,7 +163,7 @@ move_shell :: proc(p: ^Interp, v: Value, moved: ^map[rawptr]rawptr, work: ^[dyna
 		g^ = x^
 		moved[x] = g
 		return g
-	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
+	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image, roci.Sound:
 	}
 	return v
 }

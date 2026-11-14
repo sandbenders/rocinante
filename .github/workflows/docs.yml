@@ -79,6 +79,8 @@ jobs:
           export HUGO_BASEURL="https://rocinante-lang.org/"
           # Every program that opens a window links Dear ImGui, which is built here, as in ci.yml.
           sh tools/ui-libs.sh
+          # and the sound file decoders, which every program with the engine links
+          sh tools/sound-libs.sh
           odin run build -- docs
       - name: Send the site to rocinante-lang.org
         env:

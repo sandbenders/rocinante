@@ -97,6 +97,7 @@ shutdown :: proc() {
 		destroy(running)
 	}
 	forget_decoded_pictures()
+	forget_decoded_sounds()
 }
 
 @(private)
@@ -254,7 +255,7 @@ convert :: proc(old, fresh: ^Interp, v: Value, nt: lang.Type_Id, carried: ^Carri
 				append(&to.keys, key)
 				append(&to.values, convert_shell(fresh, from.values[i], lang.Type_Id(item.a), carried, &work))
 			}
-		case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, ^roci.Gradient:
+		case string, f64, bool, Vec, maths.Colour, roci.Window, roci.Image, roci.Sound, ^roci.Gradient:
 		}
 	}
 	return out
@@ -317,7 +318,7 @@ convert_shell :: proc(fresh: ^Interp, v: Value, nt: lang.Type_Id, carried: ^Carr
 		carried[{x, n}] = t
 		append(work, Carrying{from = x, to = t, type = n})
 		return t
-	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image:
+	case f64, bool, Vec, maths.Colour, roci.Window, roci.Image, roci.Sound:
 	}
 	return v
 }

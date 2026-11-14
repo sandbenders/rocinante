@@ -1,0 +1,8 @@
+── `broken.wav` is not a sound I can read ────────────── sketch.roci:1:8
+
+1 │ rain = load "broken.wav"
+  │        ^^^^^^^^^^^^^^^^^
+
+I read WAV, FLAC, MP3 and Ogg Vorbis sounds. `broken.wav` is another kind of file, or it is damaged. The sound plays nothing, and the sketch carries on.
+
+Load one I can read:  rain = load "broken.wav"
