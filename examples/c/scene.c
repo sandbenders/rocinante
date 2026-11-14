@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: 0BSD
  *
  * A small 3D scene in C: a lamp circling a ring of pillars, a sphere and a turning torus over a
- * floor, with shadows and a mesh drawn as a wireframe. The same verbs as examples/lamp, in C.
+ * floor, with shadows, a mesh drawn as a wireframe, a ball where the mouse points at the floor (found
+ * with roci_ray) and a flat SVG badge over it all. The same verbs as examples/lamp, in C. Run it from
+ * the repository root, where the badge is.
  * Build and run it like circle.c:
  *
  *     cc examples/c/scene.c -Iinclude -Loutput -lroci -lm -o output/c_scene
@@ -11,6 +13,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "roci.h"
+
+static roci_svg_id badge;
 
 static void draw(void) {
 	double t = roci_frame_count();
@@ -58,12 +62,25 @@ static void draw(void) {
 	roci_thickness(2);
 	roci_mesh("pyramid", pyramid, 12, 1);
 	roci_pop();
+
+	/* the point of the floor (y is 100) under the mouse: where the ray from the eye meets it */
+	roci_line3 ray = roci_ray_v(roci_mouse());
+	double along = (100 - ray.from.y) / (ray.to.y - ray.from.y);
+	if (along > 0) {
+		roci_fill(roci_rgb(255, 255, 255));
+		roci_sphere(ray.from.x + (ray.to.x - ray.from.x) * along, 92, ray.from.z + (ray.to.z - ray.from.z) * along, 8);
+	}
+
+	if (badge) {
+		roci_svg_sized(badge, 12, 12, 64, 64);
+	}
 }
 
 int main(int argc, char **argv) {
 	int frames = argc > 1 ? atoi(argv[1]) * 60 : 0; /* ./c_scene 3 runs for 3 seconds */
 	roci_title("scene in C");
 	roci_window(760, 460);
+	badge = roci_load_svg("examples/vector/assets/images/badge.svg");
 	roci_draw(0, draw);
 	if (!roci_run(frames)) {
 		fprintf(stderr, "could not start the graphics\n");

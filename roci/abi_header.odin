@@ -225,6 +225,18 @@ abi_table_init :: proc "contextless" () {
 	{"roci_up", "up", 0, typeid_of(type_of(abi_up)), "", ""},
 	{"roci_down", "down", 0, typeid_of(type_of(abi_down)), "", ""},
 	{"roci_roll", "roll", 0, typeid_of(type_of(abi_roll)), "", ""},
+	{"roci_ray", "", 0, typeid_of(type_of(abi_ray)), "roci_line3 roci_ray(double x, double y)", "The line from the eye of the 3D camera through a pixel of the window: `from` is the eye and `to` is far along the way the pixel looks, in the world."},
+	{"roci_ray_v", "", 0, typeid_of(type_of(abi_ray_v)), "roci_line3 roci_ray_v(roci_vec2 pixel)", "The same for a pixel given as a point, such as the mouse."},
+	{"roci_triangles", "", 0, typeid_of(type_of(abi_triangles)), "int roci_triangles(roci_model_id model, double x, double y, double z, double size, roci_vec3 *corners, int capacity)", "The corners of a loaded model's triangles, three for each, placed and sized as roci_model draws it. Copies up to `capacity` corners into `corners` (which may be NULL) and gives how many there are in all, so a first call with capacity 0 says how big an array to make."},
+	{"roci_triangles_v", "", 0, typeid_of(type_of(abi_triangles_v)), "int roci_triangles_v(roci_model_id model, roci_vec3 position, double size, roci_vec3 *corners, int capacity)", "The same at a point given as a vector."},
+	{"roci_load_svg", "", 0, typeid_of(type_of(abi_load_svg)), "roci_svg_id roci_load_svg(const char *path)", "Reads an SVG drawing from a file and gives its number, or 0 when it cannot be read. The same file read again, unchanged, gives the same number; saved again, it is read again under it."},
+	{"roci_svg", "", 0, typeid_of(type_of(abi_svg)), "void roci_svg(roci_svg_id drawing, double x, double y)", "Draws an SVG drawing with its top left at a point, at its own size, in its own colors, under the current transform."},
+	{"roci_svg_v", "", 0, typeid_of(type_of(abi_svg_v)), "void roci_svg_v(roci_svg_id drawing, roci_vec2 position)", "The same at a point given as a vector."},
+	{"roci_svg_sized", "", 0, typeid_of(type_of(abi_svg_sized)), "void roci_svg_sized(roci_svg_id drawing, double x, double y, double width, double height)", "Draws an SVG drawing stretched to a width and a height."},
+	{"roci_svg_sized_v", "", 0, typeid_of(type_of(abi_svg_sized_v)), "void roci_svg_sized_v(roci_svg_id drawing, roci_vec2 position, roci_vec2 size)", "The same with the point and the size given as vectors."},
+	{"roci_svg_width", "", 0, typeid_of(type_of(abi_svg_width)), "double roci_svg_width(roci_svg_id drawing)", "How wide a drawing is in its own units (0 for no drawing)."},
+	{"roci_svg_height", "", 0, typeid_of(type_of(abi_svg_height)), "double roci_svg_height(roci_svg_id drawing)", "How high a drawing is in its own units (0 for no drawing)."},
+	{"roci_svg_lost", "", 0, typeid_of(type_of(abi_svg_lost)), "int roci_svg_lost(roci_svg_id drawing)", "What the drawing has that cannot be drawn, as bits: 1 text, 2 pictures, 4 gradients (drawn in the first color of their stops), 8 clips, 16 masks, 32 filters, 64 patterns, 128 markers."},
 	{"roci_mouse", "", 0, typeid_of(type_of(abi_mouse)), "roci_vec2 roci_mouse(void)", "Where the mouse is in the current window, in logical pixels."},
 	{"roci_pmouse", "", 0, typeid_of(type_of(abi_pmouse)), "roci_vec2 roci_pmouse(void)", "Where the mouse was one frame ago."},
 	{"roci_mouse_down", "", 0, typeid_of(type_of(abi_mouse_down)), "int roci_mouse_down(void)", "1 while the left mouse button is down, in the current window."},
@@ -342,7 +354,7 @@ abi_header :: proc(allocator := context.allocator) -> string {
  *
  * Numbers are double, text is a NUL-terminated const char *, colors are
  * roci_color (four floats, each 0 to 255), points are roci_vec2 (roci_vec3 in space), windows are
- * roci_window_id, pictures roci_image_id and models roci_model_id (ints; 0 is none) and true and false are int. A verb with
+ * roci_window_id, pictures roci_image_id and models roci_model_id and drawings roci_svg_id (ints; 0 is none) and true and false are int. A verb with
  * several shapes has one function per shape: the first keeps the verb's name and
  * the others add a suffix (_v is the form that takes points; sized takes a size for each side).
  */
@@ -359,6 +371,8 @@ typedef struct { double x, y, z; } roci_vec3;
 typedef int roci_window_id;
 typedef int roci_image_id;
 typedef int roci_model_id;
+typedef int roci_svg_id;
+typedef struct { roci_vec3 from, to; } roci_line3;
 
 typedef enum { ROCI_NUMBER, ROCI_TEXT, ROCI_BOOLEAN, ROCI_VEC2 } roci_value_kind;
 

@@ -5,6 +5,8 @@ package roci
 
 import "core:testing"
 
+import "gfx"
+
 abi_solids_sketch :: proc "c" () {
 	abi_box(1, 2, 3, 4)
 	abi_box_sized(0, 0, 0, 4, 5, 6)
@@ -185,3 +187,108 @@ test_the_c_model_is_read_from_a_file_and_drawn :: proc(t: ^testing.T) {
 
 @(thread_local)
 abi_model_for_test: i32
+
+@(thread_local)
+abi_ray_result: Abi_Line3
+
+@(test)
+test_the_c_ray_starts_at_the_eye_and_looks_through_the_pixel :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	window(400, 300)
+	draw(proc() {
+		abi_camera(0, 0, 500)
+		abi_look_at(0, 0, 0)
+		abi_ray_result = abi_ray(200, 150)
+		abi_ray_again = abi_ray_v({200, 150})
+	})
+	step()
+	ray := abi_ray_result
+	testing.expect(t, abs(ray.from.z - 500) < 1e-6 && abs(ray.from.x) < 1e-6, "from the eye")
+	testing.expect(t, abs(ray.to.x) < 1e-3 && abs(ray.to.y) < 1e-3 && ray.to.z < 0, "through the middle of the window, away from the eye")
+	testing.expect(t, abi_ray_again == ray, "both forms agree")
+}
+
+@(thread_local)
+abi_ray_again: Abi_Line3
+
+@(thread_local)
+abi_triangle_model: i32
+
+@(test)
+test_the_c_triangles_are_counted_and_copied_as_far_as_they_fit :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	window(200, 200)
+	model := abi_load_model("tests/models/ship.glb")
+	if !testing.expect(t, model != 0, "the fixture is a model") {
+		return
+	}
+	total := abi_triangles(model, 0, 0, 0, 100, nil, 0)
+	testing.expect(t, total > 0 && total % 3 == 0, "three corners for each triangle")
+	testing.expect_value(t, abi_triangles_v(model, {0, 0, 0}, 100, nil, 0), total)
+	corners: [3]Abi_Vec3
+	corners[2] = {-7, -7, -7}
+	testing.expect_value(t, abi_triangles(model, 0, 0, 0, 100, raw_data(corners[:]), 2), total) // two fit
+	testing.expect(t, corners[0] != corners[1], "the first two corners were written")
+	testing.expect_value(t, corners[2], Abi_Vec3{-7, -7, -7}) // and no more
+	testing.expect_value(t, abi_triangles(0, 0, 0, 0, 100, nil, 0), 0) // no model, no triangles
+	// a model placed elsewhere has the same count and moved corners
+	moved: [3]Abi_Vec3
+	abi_triangles_v(model, {1000, 0, 0}, 100, raw_data(moved[:]), 3)
+	testing.expect(t, moved[0].x > corners[0].x + 500, "moved along x")
+}
+
+@(test)
+test_the_c_svg_is_read_kept_and_drawn :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(300, 300)
+	testing.expect_value(t, abi_load_svg(nil), 0)
+	testing.expect_value(t, abi_load_svg(""), 0)
+	testing.expect_value(t, abi_load_svg("examples/vector/assets/images/no-such.svg"), 0)
+	testing.expect_value(t, abi_svg_width(0), 0)
+	testing.expect_value(t, abi_svg_lost(0), 0)
+	svg := abi_load_svg("examples/vector/assets/images/badge.svg")
+	if !testing.expect(t, svg != 0, "the badge is a drawing") {
+		return
+	}
+	testing.expect_value(t, abi_load_svg("examples/vector/assets/images/badge.svg"), svg) // unchanged: the same number
+	testing.expect(t, abi_svg_width(svg) > 0 && abi_svg_height(svg) > 0, "it has a size")
+	abi_svg_for_test = svg
+	draw(proc() {
+		abi_svg(abi_svg_for_test, 0, 0)
+		abi_svg_v(abi_svg_for_test, {10, 10})
+		abi_svg_sized(abi_svg_for_test, 0, 0, 100, 50)
+		abi_svg_sized_v(abi_svg_for_test, {0, 0}, {100, 50})
+		abi_svg(99, 0, 0) // no such drawing: nothing
+	})
+	step()
+	testing.expect(t, len(win_for(w).list.commands) >= 4, "each draw added the drawing's shapes")
+}
+
+@(thread_local)
+abi_svg_for_test: i32
+
+@(test)
+test_a_kept_svg_is_replaced_under_its_number_when_its_file_changes :: proc(t: ^testing.T) {
+	defer svgs_stop()
+	first := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>`
+	second := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 40"><rect width="20" height="40"/><text x="1" y="1">hi</text></svg>`
+	a, error := add_svg("some/where.svg", 1, transmute([]u8)first)
+	testing.expect_value(t, error, gfx.Svg_Error.None)
+	testing.expect_value(t, svg_size(a), [2]f64{10, 10})
+	_, found := find_svg("some/where.svg", 1)
+	testing.expect(t, found, "found by path and time")
+	b, _ := add_svg("some/where.svg", 2, transmute([]u8)second)
+	testing.expect_value(t, b, a)
+	testing.expect_value(t, svg_size(a), [2]f64{20, 40})
+	testing.expect(t, .Text in svg_lost(a), "the text cannot be drawn")
+	_, found = find_svg("some/where.svg", 1)
+	testing.expect(t, !found, "the old time is gone")
+	_, bad := add_svg("not.svg", 1, transmute([]u8)string("plain words"))
+	testing.expect_value(t, bad, gfx.Svg_Error.Not_Svg)
+	other, _ := add_svg("other.svg", 1, transmute([]u8)first)
+	testing.expect(t, other != a, "another path is another drawing")
+	testing.expect_value(t, svg_size(Svg(100)), [2]f64{})
+}

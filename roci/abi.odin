@@ -37,6 +37,10 @@ Abi_Vec3 :: struct {
 	x, y, z: f64,
 }
 
+Abi_Line3 :: struct {
+	from, to: Abi_Vec3,
+}
+
 // What a message holds, for C: a kind and the matching field.
 Abi_Value_Kind :: enum c.int {
 	Number,
@@ -1322,4 +1326,109 @@ abi_down :: proc "c" (degrees: f64) {
 abi_roll :: proc "c" (degrees: f64) {
 	context = abi_context()
 	turtle_roll(degrees)
+}
+
+// ---- picking, a model's triangles and drawings ----
+
+@(export, link_name = "roci_ray")
+abi_ray :: proc "c" (x, y: f64) -> Abi_Line3 {
+	context = abi_context()
+	from, to := pixel_ray(x, y)
+	return {{from.x, from.y, from.z}, {to.x, to.y, to.z}}
+}
+
+@(export, link_name = "roci_ray_v")
+abi_ray_v :: proc "c" (pixel: Abi_Vec2) -> Abi_Line3 {
+	context = abi_context()
+	from, to := pixel_ray(pixel.x, pixel.y)
+	return {{from.x, from.y, from.z}, {to.x, to.y, to.z}}
+}
+
+// Copies the corners of a model's triangles into the caller's array, as many as fit, and gives how many there are.
+@(private)
+abi_copy_triangles :: proc(model: c.int, at: [3]f64, size: f64, corners: [^]Abi_Vec3, capacity: c.int) -> c.int {
+	found := model_triangles(Model(model), at.x, at.y, at.z, size)
+	defer delete(found)
+	if corners != nil {
+		for corner, i in found[:min(len(found), int(max(capacity, 0)))] {
+			corners[i] = {corner.x, corner.y, corner.z}
+		}
+	}
+	return c.int(len(found))
+}
+
+@(export, link_name = "roci_triangles")
+abi_triangles :: proc "c" (model: c.int, x, y, z, size: f64, corners: [^]Abi_Vec3, capacity: c.int) -> c.int {
+	context = abi_context()
+	return abi_copy_triangles(model, {x, y, z}, size, corners, capacity)
+}
+
+@(export, link_name = "roci_triangles_v")
+abi_triangles_v :: proc "c" (model: c.int, position: Abi_Vec3, size: f64, corners: [^]Abi_Vec3, capacity: c.int) -> c.int {
+	context = abi_context()
+	return abi_copy_triangles(model, vec3_from_abi(position), size, corners, capacity)
+}
+
+@(export, link_name = "roci_load_svg")
+abi_load_svg :: proc "c" (path: cstring) -> c.int {
+	context = abi_context()
+	file := text_from_abi(path)
+	if file == "" {
+		return 0
+	}
+	stamp := i64(0)
+	if info, err := os.stat(file, context.temp_allocator); err == nil {
+		stamp = time.to_unix_nanoseconds(info.modification_time)
+	}
+	if svg, found := find_svg(file, stamp); found {
+		return c.int(svg)
+	}
+	bytes, read_error := os.read_entire_file(file, context.temp_allocator)
+	if read_error != nil {
+		return 0
+	}
+	svg, error := add_svg(file, stamp, bytes)
+	return c.int(svg) if error == .None else 0
+}
+
+@(export, link_name = "roci_svg")
+abi_svg :: proc "c" (svg: c.int, x, y: f64) {
+	context = abi_context()
+	draw_kept_svg(Svg(svg), x, y)
+}
+
+@(export, link_name = "roci_svg_v")
+abi_svg_v :: proc "c" (svg: c.int, position: Abi_Vec2) {
+	context = abi_context()
+	draw_kept_svg(Svg(svg), position.x, position.y)
+}
+
+@(export, link_name = "roci_svg_sized")
+abi_svg_sized :: proc "c" (svg: c.int, x, y, width, height: f64) {
+	context = abi_context()
+	draw_kept_svg_sized(Svg(svg), x, y, width, height)
+}
+
+@(export, link_name = "roci_svg_sized_v")
+abi_svg_sized_v :: proc "c" (svg: c.int, position, size: Abi_Vec2) {
+	context = abi_context()
+	draw_kept_svg_sized(Svg(svg), position.x, position.y, size.x, size.y)
+}
+
+@(export, link_name = "roci_svg_width")
+abi_svg_width :: proc "c" (svg: c.int) -> f64 {
+	context = abi_context()
+	return svg_size(Svg(svg)).x
+}
+
+@(export, link_name = "roci_svg_height")
+abi_svg_height :: proc "c" (svg: c.int) -> f64 {
+	context = abi_context()
+	return svg_size(Svg(svg)).y
+}
+
+@(export, link_name = "roci_svg_lost")
+abi_svg_lost :: proc "c" (svg: c.int) -> c.int {
+	context = abi_context()
+	return c.int(transmute(u8)svg_lost(Svg(svg)))
 }

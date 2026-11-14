@@ -6,7 +6,7 @@
  *
  * Numbers are double, text is a NUL-terminated const char *, colors are
  * roci_color (four floats, each 0 to 255), points are roci_vec2 (roci_vec3 in space), windows are
- * roci_window_id, pictures roci_image_id and models roci_model_id (ints; 0 is none) and true and false are int. A verb with
+ * roci_window_id, pictures roci_image_id and models roci_model_id and drawings roci_svg_id (ints; 0 is none) and true and false are int. A verb with
  * several shapes has one function per shape: the first keeps the verb's name and
  * the others add a suffix (_v is the form that takes points; sized takes a size for each side).
  */
@@ -23,6 +23,8 @@ typedef struct { double x, y, z; } roci_vec3;
 typedef int roci_window_id;
 typedef int roci_image_id;
 typedef int roci_model_id;
+typedef int roci_svg_id;
+typedef struct { roci_vec3 from, to; } roci_line3;
 
 typedef enum { ROCI_NUMBER, ROCI_TEXT, ROCI_BOOLEAN, ROCI_VEC2 } roci_value_kind;
 
@@ -559,6 +561,42 @@ void roci_down(double degrees);
 
 /* Rolls the turtle in space about the way it faces, its top going to the right, in degrees. It needs `turtle space` first. */
 void roci_roll(double degrees);
+
+/* The line from the eye of the 3D camera through a pixel of the window: `from` is the eye and `to` is far along the way the pixel looks, in the world. */
+roci_line3 roci_ray(double x, double y);
+
+/* The same for a pixel given as a point, such as the mouse. */
+roci_line3 roci_ray_v(roci_vec2 pixel);
+
+/* The corners of a loaded model's triangles, three for each, placed and sized as roci_model draws it. Copies up to `capacity` corners into `corners` (which may be NULL) and gives how many there are in all, so a first call with capacity 0 says how big an array to make. */
+int roci_triangles(roci_model_id model, double x, double y, double z, double size, roci_vec3 *corners, int capacity);
+
+/* The same at a point given as a vector. */
+int roci_triangles_v(roci_model_id model, roci_vec3 position, double size, roci_vec3 *corners, int capacity);
+
+/* Reads an SVG drawing from a file and gives its number, or 0 when it cannot be read. The same file read again, unchanged, gives the same number; saved again, it is read again under it. */
+roci_svg_id roci_load_svg(const char *path);
+
+/* Draws an SVG drawing with its top left at a point, at its own size, in its own colors, under the current transform. */
+void roci_svg(roci_svg_id drawing, double x, double y);
+
+/* The same at a point given as a vector. */
+void roci_svg_v(roci_svg_id drawing, roci_vec2 position);
+
+/* Draws an SVG drawing stretched to a width and a height. */
+void roci_svg_sized(roci_svg_id drawing, double x, double y, double width, double height);
+
+/* The same with the point and the size given as vectors. */
+void roci_svg_sized_v(roci_svg_id drawing, roci_vec2 position, roci_vec2 size);
+
+/* How wide a drawing is in its own units (0 for no drawing). */
+double roci_svg_width(roci_svg_id drawing);
+
+/* How high a drawing is in its own units (0 for no drawing). */
+double roci_svg_height(roci_svg_id drawing);
+
+/* What the drawing has that cannot be drawn, as bits: 1 text, 2 pictures, 4 gradients (drawn in the first color of their stops), 8 clips, 16 masks, 32 filters, 64 patterns, 128 markers. */
+int roci_svg_lost(roci_svg_id drawing);
 
 /* Where the mouse is in the current window, in logical pixels. */
 roci_vec2 roci_mouse(void);
