@@ -65,8 +65,8 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"align", "alpha", "angle", "around", "as", "at", "blend", "bordered", "by", "cursor", "emissive", "falloff", "fill", "focusable", "focused", "font", "fov", "from", "fullscreen", "grab", "height", "in",
-	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "of", "over", "pan", "parent", "radius", "ratio", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "thickness", "tint", "title", "to", "topmost", "tube", "visible", "volume", "width",
+	"align", "alpha", "angle", "around", "as", "at", "blend", "bordered", "by", "cursor", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "height", "in",
+	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "radius", "ratio", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "thickness", "tint", "title", "to", "topmost", "tube", "visible", "volume", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.
@@ -160,6 +160,8 @@ SOUND_PROPERTIES := [?]Property_Def{
 	{"pan", .Number, 0, true},       // -100 left to 100 right
 	{"speed", .Number, 0, true},     // 1 as recorded
 	{"loop", .Boolean, 0, true},     // whether it starts again at its end
+	{"pitch", .Number, 0, true},     // hertz: an instrument's, or middle C at the speed of a sound from a file
+	{"note", .Number, 0, true},      // the same as a note number, 60 for middle C
 }
 
 // The file names `load` reads as sounds, by what they end with (in any case); every other name is a picture.
@@ -194,7 +196,7 @@ WINDOW_FREE_WORDS := [?]string{
 
 // Words only the settings of a sound use (`play rain volume 40`, `set rain pan -50 speed 1.5`),
 // which stay free as names in the same way: `speed` is a name many sketches have.
-SOUND_FREE_WORDS := [?]string{"pan", "speed", "volume"}
+SOUND_FREE_WORDS := [?]string{"note", "pan", "pitch", "speed", "volume"}
 
 // An `on` event and what follows its name: `on key "space" [ ... ]`, `on mouse down [ ... ]`.
 // `on w receive msg [ ... ]` is its own form, because a window comes first.

@@ -28,6 +28,12 @@ Player :: struct {
 	pan:     f64, // -1 left to 1 right
 	speed:   f64, // 1 as recorded, 2 twice as fast and an octave up
 	heard:   Ring, // what it played last, for `level` and `bands` of this sound
+	left:    f64, // seconds before it pauses itself (`play ... for`), or 0 for no such end
+	// an instrument (synth.odin): its wave, its notes, and the pitch a note without one plays at
+	wave:    Wave,
+	voices:  [MAX_VOICES]Voice,
+	pitch:   f64,
+	noise:   u32,
 }
 
 Mixer :: struct {
@@ -102,10 +108,16 @@ play :: proc(m: ^Mixer, s: Sound, looping: bool) {
 	if p == nil {
 		return
 	}
+	if p.wave != .None {
+		// an instrument plays a note at its pitch, until it is paused
+		start_note(p, p.pitch, 0)
+		return
+	}
 	if p.at >= f64(frames_of(p^)) {
 		p.at = 0
 	}
 	p.looping = looping
+	p.left = 0
 	p.playing = frames_of(p^) > 0
 }
 
@@ -117,6 +129,12 @@ MIC :: Sound(max(u32))
 pause :: proc(m: ^Mixer, s: Sound) {
 	sync.guard(&m.lock)
 	if p := player(m, s); p != nil {
+		if p.wave != .None {
+			// an instrument's notes fade out, and it stops playing once they have
+			release_notes(p, nil)
+			return
+		}
+		p.left = 0
 		p.playing = false
 	}
 }
@@ -191,6 +209,7 @@ State :: struct {
 	volume:  f64,
 	pan:     f64,
 	speed:   f64,
+	pitch:   f64, // an instrument's pitch in hertz; a sound from a file is middle C at its speed
 }
 
 // The state of a sound; a number that is no sound gives the zero state.
@@ -200,7 +219,8 @@ state :: proc(m: ^Mixer, s: Sound) -> State {
 	if p == nil {
 		return {}
 	}
-	return {p.playing, p.looping, p.at / RATE, f64(frames_of(p^)) / RATE, p.volume, p.pan, p.speed}
+	pitch := p.pitch if p.wave != .None else MIDDLE_C * p.speed
+	return {p.playing, p.looping, p.at / RATE, f64(frames_of(p^)) / RATE, p.volume, p.pan, p.speed, pitch}
 }
 
 // Whether any sound is playing, so a device can be opened only when there is something to hear.
@@ -228,6 +248,10 @@ mix :: proc(m: ^Mixer, out: []f32) {
 		if !p.playing {
 			// a sound that stopped is silent at once
 			ring_clear(&p.heard)
+			continue
+		}
+		if p.wave != .None {
+			mix_instrument(&p, out)
 			continue
 		}
 		count := frames_of(p)
@@ -264,6 +288,15 @@ mix :: proc(m: ^Mixer, out: []f32) {
 			ring_push(&p.heard, (l * left + r * right) / 2)
 			played += 1
 			p.at += p.speed
+			// played `for` some seconds: it pauses itself when they are over
+			if p.left > 0 {
+				p.left -= 1.0 / RATE
+				if p.left <= 0 {
+					p.left = 0
+					p.playing = false
+					break
+				}
+			}
 		}
 		// what is left of the buffer after its end is silence
 		for _ in played ..< frames {

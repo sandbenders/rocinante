@@ -365,7 +365,8 @@ VERBS := []Verb{
 	// Sound: a sound is one player, made by `load` from a sound file of the assets
 	{"play", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound once, from where it is, or from its start when it had come to its end: `play click`. `volume` is 0 to 100, `pan` -100 (left) to 100 (right) and `speed` 1 as recorded."},
 	{"loop", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish."},
-	{"pause", {{{{"sound", .Sound}}, nil, .None}}, "Holds a sound where it is; `play` or `loop` goes on from there."},
+	{"pause", {{{{"sound", .Sound}}, {{"note", {.Number}, false}}, .None}}, "Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade out, all of them or one: `pause piano note 60`."},
+	{"synth", {{{{"wave", .Name}}, nil, .Sound}}, "Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`). `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together."},
 	{"rewind", {{{{"sound", .Sound}}, {{"by", {.Number}, false}}, .None}}, "Puts a sound back to its start, or some seconds back: `rewind rain by 10`. A sound that plays goes on playing."},
 	{"level", {
 		{{}, nil, .Number},
@@ -417,11 +418,14 @@ VERBS := []Verb{
 	{"fbm", {{{{"x", .Number}, {"y", .Number}, {"z", .Number}}, nil, .Number}}, "Layers of noise from 0 to 1, with finer detail added on top."},
 }
 
-// The settings of `play` and `loop`, which `set` changes later.
+// The settings of `play` and `loop`, which `set` changes later, and the note to play and for how long.
 SOUND_OPTIONS := []Option{
 	{"volume", {.Number}, false},
 	{"pan", {.Number}, false},
 	{"speed", {.Number}, false},
+	{"note", {.Number}, false},
+	{"pitch", {.Number}, false},
+	{"for", {.Number}, false},
 }
 
 // What `set` changes of a sound: the settings of `play`, where it is and whether it loops.
@@ -431,4 +435,6 @@ SOUND_SET_OPTIONS := []Option{
 	{"pan", {.Number}, false},
 	{"speed", {.Number}, false},
 	{"loop", {.Boolean}, false},
+	{"note", {.Number}, false},
+	{"pitch", {.Number}, false},
 }

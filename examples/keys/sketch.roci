@@ -1,0 +1,59 @@
+// Keys: an instrument of the sketch's own, played from the keyboard. `synth triangle` makes it,
+// and each key from A to K plays a note of the C major scale while it is held: `play piano note
+// 60` starts middle C and `pause piano note 60` lets it go, so notes held together sound together
+// as a chord. A click on a key plays it too. The bars above the keys are the instrument's `bands`,
+// its pitches from low to high, and they move to the right as the notes go up. It starts with a
+// chord of C major for a second (`for 1`), which lets itself go.
+window size 640 300 title "keys"
+
+piano = synth triangle
+for each n in [ 60 64 67 ] [ play piano note n for 1 ]
+LETTERS = [ "a" "s" "d" "f" "g" "h" "j" "k" ]
+LABELS = [ "A" "S" "D" "F" "G" "H" "J" "K" ]
+NOTES = [ 60 62 64 65 67 69 71 72 ]
+board = []
+for i from 1 to 8 [
+  add {
+    letter: item i of LETTERS
+    label: item i of LABELS
+    note: item i of NOTES
+    down: false
+    x: i * 76 - 52
+  } to board
+]
+clicked = 0
+
+on mouse down [
+  for each k in board [
+    if mouse.x > k.x and mouse.x < k.x + 70 and mouse.y > 130 [
+      clicked = k.note
+      play piano note k.note
+    ]
+  ]
+]
+
+on mouse up [
+  if clicked > 0 [
+    pause piano note clicked
+    clicked = 0
+  ]
+]
+
+draw [
+  background (rgb 16 18 34)
+  heard = bands piano 48
+  for i from 1 to 48 [
+    high = (item i of heard) * 0.9
+    rect at (i * 13 + 4) (110 - high) size 10 high fill (hsb (i * 5) 170 240)
+  ]
+  for each k in board [
+    now = held k.letter
+    if now and not k.down [ play piano note k.note ]
+    if k.down and not now [ pause piano note k.note ]
+    k.down = now
+    if k.down or clicked is k.note [ fill (rgb 255 200 80) ] else [ fill (rgb 235 235 240) ]
+    rect at k.x 130 size 70 150
+    fill (rgb 60 60 80)
+    text k.label at (k.x + 28) 250
+  ]
+]

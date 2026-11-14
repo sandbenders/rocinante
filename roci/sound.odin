@@ -29,6 +29,8 @@ Sound_State :: struct {
 	volume:  f64, // 0 to 100
 	pan:     f64, // -100 to 100
 	speed:   f64, // 1 as recorded
+	pitch:   f64, // hertz: an instrument's, or middle C at its speed for a sound from a file
+	note:    f64, // the same as a note number, 60 for middle C
 }
 
 @(thread_local) @(private) mixer: ^audio.Mixer
@@ -91,23 +93,77 @@ sound_change :: proc(s: Sound, volume, pan, speed: Maybe(f64), looping: Maybe(bo
 	audio.change(the_mixer(), s, c)
 }
 
-// Plays a sound once, from where it is (from the start when it had come to its end).
-play :: proc(s: Sound, volume := Maybe(f64){}, pan := Maybe(f64){}, speed := Maybe(f64){}) {
+// Plays a sound once, from where it is (from the start when it had come to its end). An
+// instrument plays a note, at `note` (60 is middle C) or `pitch` (hertz) or its own pitch, held
+// until it is paused or for `seconds`; a sound from a file plays as if it were middle C, faster
+// for a higher note, and pauses itself after `seconds`.
+play :: proc(s: Sound, volume := Maybe(f64){}, pan := Maybe(f64){}, speed := Maybe(f64){}, note := Maybe(f64){}, pitch := Maybe(f64){}, seconds := Maybe(f64){}) {
+	start_sound(s, false, volume, pan, speed, note, pitch, seconds)
+}
+
+// Plays a sound over and over, from where it is; for an instrument, the same as `play`.
+loop :: proc(s: Sound, volume := Maybe(f64){}, pan := Maybe(f64){}, speed := Maybe(f64){}, note := Maybe(f64){}, pitch := Maybe(f64){}, seconds := Maybe(f64){}) {
+	start_sound(s, true, volume, pan, speed, note, pitch, seconds)
+}
+
+// The pitch a call asks for in hertz: `pitch`, else `note`, else 0 for none.
+@(private)
+asked_pitch :: proc(note, pitch: Maybe(f64)) -> f64 {
+	if hz, ok := pitch.?; ok {
+		return hz if hz > 0 else -1
+	}
+	if n, ok := note.?; ok && n == n {
+		return audio.note_hz(n)
+	}
+	return 0
+}
+
+@(private)
+start_sound :: proc(s: Sound, looping: bool, volume, pan, speed, note, pitch, seconds: Maybe(f64)) {
+	m := the_mixer()
 	sound_change(s, volume, pan, speed, nil)
-	audio.play(the_mixer(), s, false)
+	hz := asked_pitch(note, pitch)
+	if hz < 0 {
+		return
+	}
+	for_seconds := seconds.? or_else 0
+	if audio.wave_of(m, s) != .None {
+		audio.play_note(m, s, hz, for_seconds)
+	} else {
+		if hz > 0 {
+			audio.set_pitch(m, s, hz)
+		}
+		audio.play(m, s, looping)
+		audio.stop_after(m, s, for_seconds)
+	}
 	open_speakers()
 }
 
-// Plays a sound over and over, from where it is.
-loop :: proc(s: Sound, volume := Maybe(f64){}, pan := Maybe(f64){}, speed := Maybe(f64){}) {
-	sound_change(s, volume, pan, speed, nil)
-	audio.play(the_mixer(), s, true)
-	open_speakers()
-}
-
-// Holds a sound where it is; `play` or `loop` goes on from there.
-pause :: proc(s: Sound) {
+// Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade
+// out: every one, or those of `note`.
+pause :: proc(s: Sound, note := Maybe(f64){}) {
+	if n, ok := note.?; ok {
+		audio.release_note(the_mixer(), s, n)
+		return
+	}
 	audio.pause(the_mixer(), s)
+}
+
+// How many notes of an instrument are held now, not yet let go (0 for a sound from a file).
+sound_notes :: proc(s: Sound) -> int {
+	return audio.held_notes(the_mixer(), s)
+}
+
+// Makes an instrument: a sound of the sketch's own, of a wave, "sine", "triangle", "square",
+// "saw" or "noise" (any other is a sine). Its notes are played with `play` and sound together.
+synth :: proc(wave: string) -> Sound {
+	chosen := audio.Wave.Sine
+	for name, w in audio.WAVE_NAMES {
+		if name != "" && name == wave {
+			chosen = w
+		}
+	}
+	return audio.add_instrument(the_mixer(), chosen)
 }
 
 // Puts a sound back to its start, or `by` seconds back.
@@ -126,10 +182,13 @@ forward_sound :: proc(s: Sound, by: f64) {
 
 // Changes a sound: `at` puts it that many seconds from its start, and the rest are the settings
 // of `play`; `looping` false lets a looping sound finish where it is.
-set_sound :: proc(s: Sound, at := Maybe(f64){}, volume := Maybe(f64){}, pan := Maybe(f64){}, speed := Maybe(f64){}, looping := Maybe(bool){}) {
+set_sound :: proc(s: Sound, at := Maybe(f64){}, volume := Maybe(f64){}, pan := Maybe(f64){}, speed := Maybe(f64){}, looping := Maybe(bool){}, note := Maybe(f64){}, pitch := Maybe(f64){}) {
 	sound_change(s, volume, pan, speed, looping)
 	if seconds, ok := at.?; ok {
 		audio.seek(the_mixer(), s, seconds)
+	}
+	if hz := asked_pitch(note, pitch); hz > 0 {
+		audio.set_pitch(the_mixer(), s, hz)
 	}
 }
 
@@ -141,7 +200,8 @@ sound_state :: proc(s: Sound) -> Sound_State {
 		return {playing = m.mic_open, volume = 100, speed = 1}
 	}
 	st := audio.state(the_mixer(), s)
-	return {st.playing, st.looping, st.at, st.length, st.volume * 100, st.pan * 100, st.speed}
+	note := audio.hz_note(st.pitch) if st.pitch > 0 else 0
+	return {st.playing, st.looping, st.at, st.length, st.volume * 100, st.pan * 100, st.speed, st.pitch, note}
 }
 
 // The microphone, as a sound `level` and `bands` can listen to (playing it does nothing).

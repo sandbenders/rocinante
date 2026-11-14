@@ -184,6 +184,36 @@ abi_bands_of :: proc "c" (sound: c.int, count: c.int, out: [^]f64) -> c.int {
 	return abi_write_bands(bands_of(Sound(u32(sound)), int(count)), out)
 }
 
+@(export, link_name = "roci_synth")
+abi_synth :: proc "c" (wave: cstring) -> c.int {
+	context = abi_context()
+	return c.int(synth(text_from_abi(wave)))
+}
+
+@(export, link_name = "roci_play_note")
+abi_play_note :: proc "c" (sound: c.int, note: f64, seconds: f64) {
+	context = abi_context()
+	play(Sound(sound), note = note, seconds = seconds)
+}
+
+@(export, link_name = "roci_pause_note")
+abi_pause_note :: proc "c" (sound: c.int, note: f64) {
+	context = abi_context()
+	pause(Sound(sound), note)
+}
+
+@(export, link_name = "roci_set_sound_pitch")
+abi_set_sound_pitch :: proc "c" (sound: c.int, hertz: f64) {
+	context = abi_context()
+	set_sound(Sound(sound), pitch = hertz)
+}
+
+@(export, link_name = "roci_sound_pitch")
+abi_sound_pitch :: proc "c" (sound: c.int) -> f64 {
+	context = abi_context()
+	return sound_state(Sound(sound)).pitch
+}
+
 // The table rows of the functions above that are not a registry shape.
 abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_load_sound", typeid_of(type_of(abi_load_sound)), "roci_sound_id roci_load_sound(const unsigned char *bytes, int length)", "Decodes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A sound is stopped at its start, at volume 100, in the middle and at speed 1."))
@@ -201,6 +231,10 @@ abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_sound_length", typeid_of(type_of(abi_sound_length)), "double roci_sound_length(roci_sound_id sound)", "How long a sound is, in seconds (0 for no sound)."))
 	append(all, abi_entry("roci_sound_volume", typeid_of(type_of(abi_sound_volume)), "double roci_sound_volume(roci_sound_id sound)", "How loud a sound plays, 0 to 100."))
 	append(all, abi_entry("roci_sound_pan", typeid_of(type_of(abi_sound_pan)), "double roci_sound_pan(roci_sound_id sound)", "Where a sound is between the speakers, -100 to 100."))
+	append(all, abi_entry("roci_play_note", typeid_of(type_of(abi_play_note)), "void roci_play_note(roci_sound_id sound, double note, double seconds)", "Plays a note (60 is middle C, each step a semitone) for some seconds, or held until roci_pause_note when `seconds` is 0. An instrument's notes sound together; a sound from a file plays as if it were middle C, faster for a higher note."))
+	append(all, abi_entry("roci_pause_note", typeid_of(type_of(abi_pause_note)), "void roci_pause_note(roci_sound_id sound, double note)", "Lets an instrument's notes of that number go; they fade out. roci_pause lets all of them go."))
+	append(all, abi_entry("roci_set_sound_pitch", typeid_of(type_of(abi_set_sound_pitch)), "void roci_set_sound_pitch(roci_sound_id sound, double hertz)", "Sets an instrument's pitch: its sounding notes slide there, and a note played with none takes it. A sound from a file plays at the speed that makes it that pitch, taking it to be middle C."))
+	append(all, abi_entry("roci_sound_pitch", typeid_of(type_of(abi_sound_pitch)), "double roci_sound_pitch(roci_sound_id sound)", "An instrument's pitch in hertz, or middle C at the speed of a sound from a file."))
 	append(all, abi_entry("roci_mic", typeid_of(type_of(abi_mic)), "roci_sound_id roci_mic(void)", "The microphone, as a sound for roci_level_of and roci_bands_of. The first call in a program with a window opens the computer's default recording device (the system may ask first). Playing it does nothing."))
 	append(all, abi_entry("roci_bands", typeid_of(type_of(abi_bands)), "int roci_bands(int count, double *out)", "How much of each pitch everything that plays holds now: writes `count` numbers 0 to 100 (at most 256), the lowest pitches first, into `out`, and gives how many it wrote."))
 	append(all, abi_entry("roci_bands_of", typeid_of(type_of(abi_bands_of)), "int roci_bands_of(roci_sound_id sound, int count, double *out)", "The same for one sound, or the microphone (roci_mic)."))

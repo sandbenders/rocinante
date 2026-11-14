@@ -322,3 +322,40 @@ draw [
 	// 0 / 0 is 0 (said once as a division by zero), and fewer than one band is one
 	testing.expect_value(t, printed(p), "0\n16\n4\n256\n1\nfalse\ntrue\ntrue\n0\ntrue")
 }
+
+// The keys example: a held key plays its note and letting it go lets the note go; keys held
+// together sound together, and a click plays a key too.
+@(test)
+test_the_keys_example_plays_held_keys :: proc(t: ^testing.T) {
+	text, read := os.read_entire_file("examples/keys/sketch.roci", context.temp_allocator)
+	testing.expect(t, read == nil)
+	p := run_with_sounds(t, "keys_example", string(text), "examples/keys", {})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	piano := as_sound(global_named(p, "piano"))
+	notes_on := roci.sound_notes
+	testing.expect_value(t, notes_on(piano), 3) // the chord it starts with
+	for _ in 0 ..< 80 {
+		roci.step()
+	}
+	testing.expect_value(t, notes_on(piano), 0)
+	w := first_window()
+	roci.step({key_event(w, sdl.Scancode.A), key_event(w, sdl.Scancode.D), key_event(w, sdl.Scancode.G)})
+	testing.expect_value(t, notes_on(piano), 3)
+	testing.expect(t, roci.sound_state(piano).playing)
+	roci.step({key_event(w, sdl.Scancode.D, false)})
+	for _ in 0 ..< 10 {
+		roci.step()
+	}
+	testing.expect_value(t, notes_on(piano), 2)
+	roci.step({key_event(w, sdl.Scancode.A, false), key_event(w, sdl.Scancode.G, false)})
+	for _ in 0 ..< 10 {
+		roci.step()
+	}
+	testing.expect_value(t, notes_on(piano), 0)
+	// a click on the fourth key plays F until the button comes up
+	roci.step({platform.Mouse_Moved{window = platform.Window_Id(w), x = 260, y = 200}, click_event(w, 260, 200)})
+	roci.step()
+	testing.expect_value(t, as_number(global_named(p, "clicked")), 65)
+	testing.expect_value(t, len(p.errors), 0)
+}

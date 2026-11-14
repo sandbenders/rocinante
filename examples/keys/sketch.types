@@ -1,0 +1,9 @@
+piano: a sound
+LETTERS: a list of text
+LABELS: a list of text
+NOTES: a list of numbers
+board: a list of records with letter, label, note, down and x
+clicked: a number
+heard: a list of numbers
+high: a number
+now: true or false

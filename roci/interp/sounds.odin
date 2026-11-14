@@ -197,6 +197,8 @@ sound_field :: proc(s: roci.Sound, name: string) -> Value {
 	case "pan":     return st.pan
 	case "speed":   return st.speed
 	case "loop":    return st.looping
+	case "pitch":   return st.pitch
+	case "note":    return st.note
 	}
 	return nil
 }
@@ -208,7 +210,7 @@ set_sound :: proc(it: ^Interp, target: Value, options: []lang.IR_Option) {
 	if !is_sound {
 		return
 	}
-	at, volume, pan, speed: Maybe(f64)
+	at, volume, pan, speed, note, pitch: Maybe(f64)
 	looping: Maybe(bool)
 	for o in options {
 		if len(o.args) == 0 {
@@ -221,14 +223,25 @@ set_sound :: proc(it: ^Interp, target: Value, options: []lang.IR_Option) {
 		case "pan":    pan = as_number(v)
 		case "speed":  speed = as_number(v)
 		case "loop":   looping = as_bool(v)
+		case "note":   note = as_number(v)
+		case "pitch":  pitch = as_number(v)
 		}
 	}
-	roci.set_sound(s, at, volume, pan, speed, looping)
+	roci.set_sound(s, at, volume, pan, speed, looping, note, pitch)
 }
 
-// The settings `play` and `loop` take.
+// The settings `play` and `loop` take, and the note, pitch and seconds of what they play.
 @(private)
-sound_options :: proc(it: ^Interp, options: []lang.IR_Option) -> (volume, pan, speed: Maybe(f64)) {
+sound_options :: proc(it: ^Interp, options: []lang.IR_Option) -> (volume, pan, speed, note, pitch, seconds: Maybe(f64)) {
+	if v, ok := option_value(it, options, "note"); ok {
+		note = as_number(v)
+	}
+	if v, ok := option_value(it, options, "pitch"); ok {
+		pitch = as_number(v)
+	}
+	if v, ok := option_value(it, options, "for"); ok {
+		seconds = as_number(v)
+	}
 	if v, ok := option_value(it, options, "volume"); ok {
 		volume = as_number(v)
 	}

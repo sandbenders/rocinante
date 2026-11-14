@@ -87,6 +87,7 @@ API_NAMES := [?]Api_Entry{
 	{"rewind", "rewind"},
 	{"level", "level"},
 	{"bands", "bands"},
+	{"synth", "synth"},
 	{"back", "back"},
 	{"left", "left"},
 	{"right", "right"},

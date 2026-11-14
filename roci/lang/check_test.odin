@@ -1677,3 +1677,17 @@ test_the_words_of_a_sound_stay_free_as_names :: proc(t: ^testing.T) {
 	expect_errors(t, "learn go speed [ print speed ]\ngo 2", {})
 	expect_errors(t, "loop = 3", {.Reserved_Name})
 }
+
+@(test)
+test_instruments_and_notes :: proc(t: ^testing.T) {
+	got, ids := types_of("piano = synth triangle\nplay piano note 60 for 0.5\nloop piano pitch 220\nset piano note 62 pitch 300\npause piano note 60\npause piano\nn = piano.note + piano.pitch")
+	testing.expectf(t, len(ids) == 0 && strings.contains(got, "piano: a sound") && strings.contains(got, "n: a number"), "%s %v", got, ids)
+	expect_errors(t, "piano = synth whistle", {.Unknown_Choice})
+	expect_errors(t, "piano = synth triangle\npiano.note = 60", {.Set_Sound})
+	expect_errors(t, "piano = synth triangle\nplay piano note \"C4\"", {.Wrong_Argument_Kind})
+	// `for` is a connecting word of `play` and still starts a loop on a line of its own, or after two spaces
+	expect_errors(t, "piano = synth sine\nfor i from 1 to 3 [ play piano note (60 + i) for 0.25 ]", {})
+	expect_errors(t, "piano = synth sine\ndraw [ play piano for 1  for i from 1 to 2 [ print i ] ]", {})
+	// and `note` and `pitch` stay free as names
+	expect_errors(t, "note = 60\npitch = 2\npiano = synth sine\nplay piano note note pitch pitch", {})
+}

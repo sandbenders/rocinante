@@ -3,6 +3,6 @@
 2 │ set rain title "storm"
   │          ^^^^^^^^^^^^^
 
-`set` takes `title` when it is given a window. With a sound its words are at, volume, pan, speed and loop.
+`set` takes `title` when it is given a window. With a sound its words are at, volume, pan, speed, loop, note and pitch.
 
 Without it:  set rain

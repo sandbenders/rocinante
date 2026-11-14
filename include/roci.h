@@ -611,7 +611,7 @@ void roci_play(roci_sound_id sound);
 /* Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish. */
 void roci_loop(roci_sound_id sound);
 
-/* Holds a sound where it is; `play` or `loop` goes on from there. */
+/* Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade out, all of them or one: `pause piano note 60`. */
 void roci_pause(roci_sound_id sound);
 
 /* Puts a sound back to its start, or some seconds back: `rewind rain by 10`. A sound that plays goes on playing. */
@@ -619,6 +619,9 @@ void roci_rewind(roci_sound_id sound);
 
 /* How loud everything that plays is now, 0 (silent) to 100: `circle at 200 200 radius (level * 2)`. `level rain` is one sound, `level mic` the microphone. */
 double roci_level(void);
+
+/* Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`). `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together. */
+roci_sound_id roci_synth(const char *wave);
 
 /* How loud everything that plays is now, 0 (silent) to 100: `circle at 200 200 radius (level * 2)`. `level rain` is one sound, `level mic` the microphone. */
 double roci_level_of(roci_sound_id sound);
@@ -1147,6 +1150,18 @@ double roci_sound_volume(roci_sound_id sound);
 
 /* Where a sound is between the speakers, -100 to 100. */
 double roci_sound_pan(roci_sound_id sound);
+
+/* Plays a note (60 is middle C, each step a semitone) for some seconds, or held until roci_pause_note when `seconds` is 0. An instrument's notes sound together; a sound from a file plays as if it were middle C, faster for a higher note. */
+void roci_play_note(roci_sound_id sound, double note, double seconds);
+
+/* Lets an instrument's notes of that number go; they fade out. roci_pause lets all of them go. */
+void roci_pause_note(roci_sound_id sound, double note);
+
+/* Sets an instrument's pitch: its sounding notes slide there, and a note played with none takes it. A sound from a file plays at the speed that makes it that pitch, taking it to be middle C. */
+void roci_set_sound_pitch(roci_sound_id sound, double hertz);
+
+/* An instrument's pitch in hertz, or middle C at the speed of a sound from a file. */
+double roci_sound_pitch(roci_sound_id sound);
 
 /* The microphone, as a sound for roci_level_of and roci_bands_of. The first call in a program with a window opens the computer's default recording device (the system may ask first). Playing it does nothing. */
 roci_sound_id roci_mic(void);

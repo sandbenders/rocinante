@@ -1,6 +1,6 @@
 ---
 title: "Sound"
-summary: "Sounds from files that play, loop, pause and move, louder or softer and from either side, and how loud and how high what plays is."
+summary: "Sounds from files and instruments of your own: play, loop and pause them, play notes and chords, and draw with how loud and how high they are."
 weight: 20
 ---
 
@@ -73,6 +73,36 @@ draw [
 ]
 ```
 
+## Instruments of your own
+
+`synth` makes an instrument, a sound the sketch makes itself from a wave: `sine` (soft and pure), `triangle` (a little brighter), `square` (hollow, like an old game), `saw` (buzzing, bright) or `noise` (a hiss, with no pitch). It is a sound like any other, so `play`, `pause`, `set`, `level` and `bands` all work on it, and what it plays are notes:
+
+```roci
+piano = synth triangle
+play piano note 60 for 0.5
+```
+
+`note 60` is middle C, the number a MIDI keyboard sends for it: each step up is the next key of a piano, black keys included, so 62 is D, 64 E, 67 G and 72 the C above. A fraction is between two keys. `pitch 440` says the pitch in hertz instead, for sounds that slide. `for 0.5` plays it for half a second; without it the note is held until it is let go with `pause piano note 60`, and `pause piano` lets every note go. Notes played one after another sound together, so a chord is three of them:
+
+```roci
+piano = synth triangle
+for each n in [ 60 64 67 ] [ play piano note n for 1 ]
+```
+
+`held` says whether a key is down, so a key can hold a note for as long as it is pressed:
+
+```roci
+organ = synth square
+pressing = false
+draw [
+  if held "a" and not pressing [ play organ note 57 ]
+  if pressing and not held "a" [ pause organ note 57 ]
+  pressing = held "a"
+]
+```
+
+`set organ pitch (mouse.x + 100)` slides the notes that sound, and a note played with no `note` or `pitch` takes the instrument's own pitch, which `set` changes. A note comes in and fades out over a few thousandths of a second, so starting and stopping never clicks. A sound from a file can be played at a note too: it is taken to be middle C, and plays faster and higher for a higher note.
+
 ## Drawing with sound
 
 `level` is how loud everything that plays is now, from 0 (silent) to 100 (a full-volume tone), and `bands` is how much of each pitch it holds: a list of numbers 0 to 100, the lowest pitches first, 16 of them unless you ask for another number (`bands 32`, up to 256). Both are read in `draw`, every frame:
@@ -113,4 +143,4 @@ While `roci run` is going, a sound file saved again is read again into the same 
 
 ## Not yet
 
-Synthesis, effects, recording what plays, MIDI and OSC come next.
+Effects, recording what plays, MIDI and OSC come next.

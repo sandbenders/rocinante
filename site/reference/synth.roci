@@ -1,0 +1,10 @@
+bell = synth sine
+on mouse down [ play bell pitch (100 + mouse.x * 2) for 0.4 ]
+
+draw [
+  background 20
+  fill (rgb 255 200 80)
+  circle at 200 150 radius (10 + level * 4)
+  fill white
+  text "click: further right is higher" at 20 20
+]

@@ -45,6 +45,7 @@ WORD_CHOICES := []Word_Choices{
 	{"tween", "as", EASE_WORDS},
 	{"ui theme", "look", UI_THEME_WORDS},
 	{"light", "kind", {"ambient", "sun", "point", "spot"}},
+	{"synth", "wave", {"sine", "triangle", "square", "saw", "noise"}},
 	{"turn", "around", {"x", "y", "z"}},
 	{"window", "cursor", CURSOR_WORDS},
 	{"set", "cursor", CURSOR_WORDS},
