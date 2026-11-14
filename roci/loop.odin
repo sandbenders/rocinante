@@ -13,6 +13,7 @@ import "core:strings"
 import "core:time"
 import "gfx"
 import "platform"
+import sdl "vendor:sdl3"
 
 // Shows the sketch: opens the default window if none is open, runs `block` every
 // frame for it when given, and returns when every window is closed or `quit` is
@@ -32,6 +33,7 @@ run :: proc(block: proc() = nil, frames := 0) -> bool {
 	events: [dynamic]platform.Event
 	defer delete(events)
 	for !the.quit && len(the.windows) > 0 && (frames <= 0 || the.frame < frames) {
+		wait_for_screens()
 		clear(&events)
 		platform.poll_events(&events)
 		step(events[:])
@@ -85,9 +87,10 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 		}
 		the.current = w
 		deliver_messages(w)
-		if w.draw != nil {
+		if w.draw != nil && !w.begun {
 			gfx.begin_frame(&w.list)
 		}
+		w.begun = false
 		if the.hook != nil {
 			the.hook(w.id)
 		}
@@ -144,7 +147,8 @@ show_frame :: proc(w: ^Win) {
 	}
 	with_ui(&the.renderer, w)
 	defer with_ui(&the.renderer, nil)
-	if !gfx.render_window(&the.renderer, w.handle.handle, canvas, &w.list, &w.batcher) && the.renderer.failed && !the.render_reported {
+	drawn := gfx.render_acquired(&the.renderer, w.handle.handle, &w.acquired, canvas, &w.list, &w.batcher) if w.acquired.commands != nil else gfx.render_window(&the.renderer, w.handle.handle, canvas, &w.list, &w.batcher)
+	if !drawn && the.renderer.failed && !the.render_reported {
 		// Say so once; the sketch keeps running with the last good frame on screen.
 		the.render_reported = true
 		delete(the.error)
@@ -275,3 +279,41 @@ poison_frames := ODIN_TEST
 
 @(private)
 FREED_BYTE :: 0xDD
+
+// How long the loop waits for a window's screen by asking again and again before it waits the
+// usual way, which runs nothing meanwhile: a driver that never says "not yet" costs this once a frame.
+SCREEN_WAIT_LIMIT :: 50 * time.Millisecond
+
+// Waits for each window's screen to take a new frame before the frame is built, instead of after,
+// and runs the sketch's MIDI blocks as soon as their notes are read meanwhile, so a key is heard a
+// frame sooner. A window the system is not showing is not waited for.
+@(private)
+wait_for_screens :: proc() {
+	if the.headless || !the.started || the.renderer.failed {
+		return
+	}
+	for w in the.windows {
+		if !w.alive || w.handle == nil || w.acquired.commands != nil {
+			continue
+		}
+		if sdl.GetWindowFlags(w.handle.handle) & {.MINIMIZED, .HIDDEN, .OCCLUDED} != {} {
+			continue
+		}
+		started := time.tick_now()
+		for {
+			acquired, ok, ready := gfx.acquire_window(&the.renderer, w.handle.handle)
+			if !ok {
+				break // said when the frame is drawn the usual way
+			}
+			if ready {
+				w.acquired = acquired
+				break
+			}
+			midi_early()
+			if time.tick_since(started) > SCREEN_WAIT_LIMIT {
+				break
+			}
+			time.sleep(500 * time.Microsecond)
+		}
+	}
+}

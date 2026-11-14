@@ -9,10 +9,12 @@
 // and values are 0 to 100, as volume is; notes are MIDI's numbers, 60 for middle C.
 package roci
 
+import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:time"
 
+import "gfx"
 import "platform"
 
 // A key or a controller, as the language reads it: `midi.note`, `midi.velocity` and the rest.
@@ -31,6 +33,7 @@ Midi_Message :: struct {
 @(thread_local) @(private) midi_values: [128]f64 // the latest value of each controller, 0 to 100
 // How long notes waited between being read from the device and reaching the sketch, for ROCI_LATENCY.
 @(thread_local) @(private) midi_waits: [dynamic]f64
+@(thread_local) @(private) midi_early_count: int // how many of them ran while the loop waited for the screen
 
 // Starts reading every MIDI device, once, in a sketch with a window; a headless sketch and a test
 // read none.
@@ -67,29 +70,76 @@ midi_percent :: proc(v: u8) -> f64 {
 	return f64(v) * 100 / 127
 }
 
-// Turns what came from the devices and from `feed_midi` since the last frame into the frame's
-// happenings and the controllers' values. Called by `step`.
+// What came from the devices and from `feed_midi` since it was last taken.
 @(private)
-midi_step :: proc() {
+midi_taken :: proc() -> []platform.Midi_Event {
 	events := make([dynamic]platform.Midi_Event, context.temp_allocator)
 	if midi_in != nil {
 		platform.midi_take(midi_in, &events)
 	}
 	append(&events, ..midi_fed[:])
 	clear(&midi_fed)
-	if len(events) == 0 {
-		return
+	return events[:]
+}
+
+// The window MIDI is heard in: the one with the keyboard's focus, or else the first.
+@(private)
+midi_target :: proc() -> ^Win {
+	if the.focused != nil && the.focused.alive {
+		return the.focused
 	}
-	target := the.focused
-	if target == nil || !target.alive {
-		target = nil
-		for w in the.windows {
-			if w.alive {
-				target = w
-				break
-			}
+	for w in the.windows {
+		if w.alive {
+			return w
 		}
 	}
+	return nil
+}
+
+// Turns what came from the devices and from `feed_midi` since the last frame into the frame's
+// happenings and the controllers' values. Called by `step`.
+@(private)
+midi_step :: proc() {
+	happenings := midi_happenings(midi_taken(), midi_target())
+	append(&the.log, ..happenings)
+}
+
+// Runs the sketch's MIDI blocks for what has come since it was last taken, now, before the next
+// frame is built: called while the loop waits for the screen. The window's next frame is begun
+// first (when it has a `draw` block, which begins a frame anyway), so what a block draws is in the
+// frame, as it would be had it run there; those happenings are not in the frame's log again.
+midi_early :: proc() {
+	if midi_in == nil && len(midi_fed) == 0 {
+		return
+	}
+	if !frame_memory_ready {
+		runtime.default_temp_allocator_init(&frame_memory, int(runtime.DEFAULT_ARENA_GROWING_MINIMUM_BLOCK_SIZE), runtime.default_allocator())
+		frame_memory_ready = true
+	}
+	// the frame's own memory, which the next `step` lets go of
+	context.temp_allocator = runtime.Allocator{procedure = runtime.default_temp_allocator_proc, data = &frame_memory}
+	target := midi_target()
+	happenings := midi_happenings(midi_taken(), target, early = true)
+	if len(happenings) == 0 || target == nil {
+		return
+	}
+	if target.draw != nil && !target.begun {
+		gfx.begin_frame(&target.list)
+		target.begun = true
+	}
+	if the.early_hook != nil {
+		previous := the.current
+		the.current = target
+		the.early_hook(target.id, happenings)
+		the.current = previous
+	}
+}
+
+// The happenings of MIDI events for a window, and the controllers' new values; a window of nil (none
+// open) logs nothing.
+@(private)
+midi_happenings :: proc(events: []platform.Midi_Event, target: ^Win, early := false) -> []Happened {
+	out := make([dynamic]Happened, context.temp_allocator)
 	for e in events {
 		message := Midi_Message{channel = f64(e.channel)}
 		kind: Happening
@@ -98,6 +148,9 @@ midi_step :: proc() {
 			kind = .Midi_Down
 			if e.at != {} && measuring_latency() {
 				append(&midi_waits, time.duration_milliseconds(time.tick_since(e.at)))
+				if early {
+					midi_early_count += 1
+				}
 			}
 			message.note, message.velocity = f64(e.number), midi_percent(e.value)
 		case .Note_Up:
@@ -109,9 +162,10 @@ midi_step :: proc() {
 			midi_values[e.number & 127] = message.value
 		}
 		if target != nil {
-			append(&the.log, Happened{kind = kind, window = target.id, midi = message})
+			append(&out, Happened{kind = kind, window = target.id, midi = message})
 		}
 	}
+	return out[:]
 }
 
 // Whether ROCI_LATENCY is set: then a run says, when it ends, how long a note takes to be heard.
@@ -136,7 +190,7 @@ report_latency :: proc() {
 			wait_most = max(wait_most, w)
 		}
 		wait_mean /= f64(len(midi_waits))
-		fmt.printfln("  read from the keyboard until the sketch's frame: %.1f ms on average, %.1f ms at most (%d notes)", wait_mean, wait_most, len(midi_waits))
+		fmt.printfln("  read from the keyboard until the sketch's block ran: %.1f ms on average, %.1f ms at most (%d notes, %d of them while the loop waited for the screen)", wait_mean, wait_most, len(midi_waits), midi_early_count)
 	} else {
 		fmt.println("  no notes came from a keyboard")
 	}
@@ -162,6 +216,7 @@ midi_stop :: proc() {
 	report_latency()
 	delete(midi_waits)
 	midi_waits = nil
+	midi_early_count = 0
 	platform.close_midi(midi_in)
 	midi_in = nil
 	midi_tried = false

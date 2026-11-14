@@ -74,3 +74,45 @@ test_abi_midi_events :: proc(t: ^testing.T) {
 	testing.expect_value(t, heard_kinds[1], 11)
 	testing.expect_value(t, heard_midi[1].control, 74)
 }
+
+@(thread_local) @(private = "file") early_runs: int
+
+@(private = "file")
+count_early :: proc "c" (event: ^Abi_Event) {
+	early_runs += 1
+}
+
+// MIDI read while the loop waits for the screen runs its handlers at once, and not again in the
+// frame; the window's frame was begun for it, so what it draws is in that frame.
+@(test)
+test_midi_early :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	early_runs = 0
+	w := window(100, 100)
+	draw_default(proc() { circle(10, 10, 5) })
+	abi_on(0, "midi down", nil, count_early)
+	step()
+	// nothing read: nothing begun
+	midi_early()
+	testing.expect(t, !win_for(w).begun)
+	feed_midi({0x90, 60, 100})
+	midi_early()
+	testing.expect_value(t, early_runs, 1)
+	testing.expect(t, win_for(w).begun)
+	step()
+	testing.expect_value(t, early_runs, 1) // not again in the frame
+	testing.expect(t, !win_for(w).begun)
+	testing.expect_value(t, len(happened()), 0)
+	// the controller's value is set at once too
+	feed_midi({0xB0, 3, 127})
+	midi_early()
+	testing.expect_value(t, midi_control(3), 100)
+	step()
+	// with no window open the values still move and nothing runs
+	close_window(win_for(w))
+	feed_midi({0x90, 61, 1, 0xB0, 4, 127})
+	midi_early()
+	testing.expect_value(t, early_runs, 1)
+	testing.expect_value(t, midi_control(4), 100)
+}

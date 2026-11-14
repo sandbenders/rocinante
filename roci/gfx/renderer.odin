@@ -1045,23 +1045,55 @@ scissor_for :: proc "contextless" (clip: Clip, scale: f32, pixels: [2]u32) -> sd
 // frame and presents it. A window the system is not showing (minimised) has no
 // texture; that frame is skipped and is not an error.
 render_window :: proc(r: ^Renderer, window: ^sdl.Window, canvas: [2]f32, list: ^Command_List, b: ^Batcher) -> bool {
+	acquired, ok, _ := acquire_window(r, window, wait = true)
+	if !ok {
+		return false
+	}
+	return render_acquired(r, window, &acquired, canvas, list, b)
+}
+
+// A window's frame waiting to be drawn: the command buffer and the swapchain texture (nil for a
+// window the system is not showing).
+Acquired :: struct {
+	commands:  ^sdl.GPUCommandBuffer,
+	swapchain: ^sdl.GPUTexture,
+	size:      [2]u32,
+}
+
+// Acquires a window's next swapchain texture. With `wait` it blocks until the display has one;
+// without, `ready` is false when it has none yet (too many frames are on their way), and nothing is
+// held, so the caller can do other work and ask again. ok is false on an error.
+acquire_window :: proc(r: ^Renderer, window: ^sdl.Window, wait := false) -> (acquired: Acquired, ok: bool, ready: bool) {
 	commands := sdl.AcquireGPUCommandBuffer(r.device)
 	if commands == nil {
 		set_error(r, "acquiring a command buffer")
-		return false
+		return {}, false, false
 	}
 	swapchain: ^sdl.GPUTexture
 	width, height: u32
-	if !sdl.WaitAndAcquireGPUSwapchainTexture(commands, window, &swapchain, &width, &height) {
+	got := sdl.WaitAndAcquireGPUSwapchainTexture(commands, window, &swapchain, &width, &height) if wait else sdl.AcquireGPUSwapchainTexture(commands, window, &swapchain, &width, &height)
+	if !got {
 		set_error(r, "acquiring the swapchain texture")
 		_ = sdl.CancelGPUCommandBuffer(commands)
-		return false
+		return {}, false, false
 	}
+	if swapchain == nil && !wait {
+		// not yet: give the command buffer back, as nothing was acquired on it
+		_ = sdl.CancelGPUCommandBuffer(commands)
+		return {}, true, false
+	}
+	return {commands, swapchain, {width, height}}, true, true
+}
+
+// Draws a frame into the texture `acquire_window` gave and presents it.
+render_acquired :: proc(r: ^Renderer, window: ^sdl.Window, acquired: ^Acquired, canvas: [2]f32, list: ^Command_List, b: ^Batcher) -> bool {
 	ok := true
-	if swapchain != nil {
-		ok = render(r, commands, swapchain, sdl.GetGPUSwapchainTextureFormat(r.device, window), {width, height}, canvas, list, b)
+	if acquired.swapchain != nil {
+		ok = render(r, acquired.commands, acquired.swapchain, sdl.GetGPUSwapchainTextureFormat(r.device, window), acquired.size, canvas, list, b)
 	}
-	if !sdl.SubmitGPUCommandBuffer(commands) {
+	submitted := sdl.SubmitGPUCommandBuffer(acquired.commands)
+	acquired^ = {}
+	if !submitted {
 		set_error(r, "submitting the frame")
 		return false
 	}

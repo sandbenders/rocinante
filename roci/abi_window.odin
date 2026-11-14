@@ -344,22 +344,7 @@ abi_event_name :: proc(kind: Happening) -> string {
 @(private)
 abi_frame_hook :: proc(w: Window) {
 	abi_step_tweens()
-	for happening in happened() {
-		if happening.window != w {
-			continue
-		}
-		name := abi_event_name(happening.kind)
-		for h in abi_handlers {
-			if h.fn == nil || h.event != name || (!h.any && h.window != w) {
-				continue
-			}
-			if h.argument != "" && h.argument != happening.name {
-				continue
-			}
-			event := Abi_Event{kind = c.int(happening.kind), window = c.int(w), name = strings.clone_to_cstring(happening.name, context.temp_allocator), finger = touch_to_abi(happening.finger), midi = happening.midi}
-			h.fn(&event)
-		}
-	}
+	abi_run_handlers(w, happened())
 	for &h in abi_handlers {
 		if h.every == nil || h.window != w {
 			continue
@@ -376,9 +361,37 @@ abi_frame_hook :: proc(w: Window) {
 	}
 }
 
+// The MIDI events read while the loop waits for the screen, run at once.
+@(private)
+abi_early_hook :: proc(w: Window, happenings: []Happened) {
+	abi_run_handlers(w, happenings)
+}
+
+// Runs the handlers C registered with `roci_on` for what happened in window `w`.
+@(private)
+abi_run_handlers :: proc(w: Window, happenings: []Happened) {
+	for happening in happenings {
+		if happening.window != w {
+			continue
+		}
+		name := abi_event_name(happening.kind)
+		for h in abi_handlers {
+			if h.fn == nil || h.event != name || (!h.any && h.window != w) {
+				continue
+			}
+			if h.argument != "" && h.argument != happening.name {
+				continue
+			}
+			event := Abi_Event{kind = c.int(happening.kind), window = c.int(w), name = strings.clone_to_cstring(happening.name, context.temp_allocator), finger = touch_to_abi(happening.finger), midi = happening.midi}
+			h.fn(&event)
+		}
+	}
+}
+
 @(private)
 abi_install_hook :: proc() {
 	set_frame_hook(abi_frame_hook)
+	set_early_hook(abi_early_hook)
 }
 
 // Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key",

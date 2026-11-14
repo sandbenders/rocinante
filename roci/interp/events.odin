@@ -91,6 +91,37 @@ event_name :: proc(kind: roci.Happening) -> string {
 	return ""
 }
 
+// Runs the `on` blocks of window `w` for what happened, in order.
+@(private)
+run_event_handlers :: proc(p: ^Interp, w: roci.Window, happenings: []roci.Happened) {
+	for happening in happenings {
+		if happening.window != w {
+			continue
+		}
+		for &h in p.handlers {
+			if h.kind != .Event || h.event != event_name(happening.kind) || (!h.any && h.window != w) {
+				continue
+			}
+			if len(h.args) > 0 && !event_arg_matches(p, h, happening) {
+				continue
+			}
+			p.finger = happening.finger
+			p.midi = happening.midi
+			run_block(p, h.body)
+			p.finger = {}
+			p.midi = {}
+		}
+	}
+}
+
+// Put into the app loop's wait for the screen: the `on midi` blocks of MIDI read meanwhile run at
+// once, before the frame they belong to is built.
+early_hook :: proc(w: roci.Window, happenings: []roci.Happened) {
+	if p := current; p != nil {
+		run_event_handlers(p, w, happenings)
+	}
+}
+
 // Put into each window's frame by the app loop.
 frame_hook :: proc(w: roci.Window) {
 	p := current
@@ -134,24 +165,7 @@ frame_hook :: proc(w: roci.Window) {
 			}
 		}
 	}
-	for happening in roci.happened() {
-		if happening.window != w {
-			continue
-		}
-		for &h in p.handlers {
-			if h.kind != .Event || h.event != event_name(happening.kind) || (!h.any && h.window != w) {
-				continue
-			}
-			if len(h.args) > 0 && !event_arg_matches(p, h, happening) {
-				continue
-			}
-			p.finger = happening.finger
-			p.midi = happening.midi
-			run_block(p, h.body)
-			p.finger = {}
-			p.midi = {}
-		}
-	}
+	run_event_handlers(p, w, roci.happened())
 	for &h in p.handlers {
 		if h.kind != .Every || h.window != w {
 			continue

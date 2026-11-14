@@ -467,3 +467,31 @@ test_the_soundfont_example_plays_the_piano :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(as_list(global_named(p, "bars")).items), 0)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// An `on midi down` block that runs while the loop waits for the screen draws into the frame that
+// is then built, and runs once.
+@(test)
+test_midi_blocks_run_early :: proc(t: ^testing.T) {
+	text := `struck = 0
+on midi down [
+  struck = struck + 1
+  circle at 50 50 radius midi.velocity
+]
+draw [ background 20 ]
+`
+	p := run_with_sounds(t, "midi_early", text, "tests/sounds", {})
+	defer finish(p)
+	w := first_window()
+	plain := roci.frame_hash(w) // a frame of the background alone
+	roci.feed_midi({0x90, 60, 127})
+	roci.midi_early()
+	testing.expect_value(t, as_number(global_named(p, "struck")), 1)
+	roci.step()
+	testing.expect_value(t, as_number(global_named(p, "struck")), 1)
+	// the frame built after it holds the circle, and the next one does not
+	with_circle := roci.frame_hash(w)
+	testing.expect(t, with_circle != plain, "the circle drawn early is in the frame")
+	roci.step()
+	testing.expect_value(t, roci.frame_hash(w), plain)
+	testing.expect_value(t, len(p.errors), 0)
+}

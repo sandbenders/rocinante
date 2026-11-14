@@ -186,6 +186,7 @@ destroy :: proc(p: ^Interp) {
 	if current == p {
 		current = nil
 		roci.set_frame_hook(nil)
+		roci.set_early_hook(nil)
 	}
 	for i in 0 ..< 2 {
 		delete(p.inbox[i])
@@ -226,6 +227,7 @@ destroy :: proc(p: ^Interp) {
 start :: proc(p: ^Interp) {
 	current = p
 	roci.set_frame_hook(frame_hook)
+	roci.set_early_hook(early_hook)
 	if p.has_errors {
 		// It does not run, but the file is still watched, and the overlay says why.
 		set_problem(p, p)

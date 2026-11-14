@@ -77,6 +77,8 @@ Win :: struct {
 	ui:           ^ui.State,        // its widgets, made by the first one (ui_window.odin)
 	ui_theme:     Ui_Theme,         // the colors its widgets are asked for (`ui theme`); the system's to start with
 	mouse_read:   bool,             // the sketch read the mouse in the last frame it ran, so the camera is left to it
+	acquired:     gfx.Acquired,     // its next frame's texture, acquired while the loop waited for the screen
+	begun:        bool,             // its next frame was begun early, by MIDI blocks that ran while the loop waited
 }
 
 Sketch :: struct {
@@ -112,6 +114,7 @@ Sketch :: struct {
 	log:          [dynamic]Happened, // what happened in the frame in progress
 	last_key:     string,
 	hook:         proc(w: Window), // run for each window in each frame
+	early_hook:   proc(w: Window, happenings: []Happened), // runs MIDI blocks while the loop waits for the screen
 	save_problems: [dynamic]Save_Problem, // files that could not be written, for the language to say (save.odin)
 	record_results: [dynamic]Record_Result, // recordings that ended, for the language to say (record.odin)
 	overlay_title: string, // what the error overlay says, or "" for none
@@ -238,6 +241,10 @@ shutdown :: proc() {
 
 @(private)
 destroy_win :: proc(w: ^Win) {
+	// a texture acquired and not drawn yet has to be given back by submitting it
+	if w.acquired.commands != nil {
+		gfx.render_acquired(&the.renderer, w.handle.handle if w.handle != nil else nil, &w.acquired, {}, &w.list, &w.batcher)
+	}
 	access_detach(w)
 	ui.destroy(w.ui)
 	gfx.destroy(&w.list)

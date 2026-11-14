@@ -49,6 +49,13 @@ set_frame_hook :: proc(hook: proc(w: Window)) {
 	the.hook = hook
 }
 
+// Runs `hook` with MIDI happenings as soon as they are read while the loop waits for the screen,
+// before the frame they belong to is built; they are not in that frame's `happened` again. One
+// hook per sketch; nil removes it.
+set_early_hook :: proc(hook: proc(w: Window, happenings: []Happened)) {
+	the.early_hook = hook
+}
+
 // The names `key_down` and `on key` know, and the key each is.
 KEY_NAMES := [?]string{
 	"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
