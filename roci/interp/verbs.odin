@@ -788,6 +788,10 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			roci.pause(as_sound(a[0]))
 		}
 	case .Synth:
+		if call.shape == 1 {
+			preset, _ := option_value(it, call.options, "preset")
+			return load_soundfont(it, as_text(a[0]), preset, e.span)
+		}
 		return roci.synth(as_text(a[0]))
 	case .Midi_Control:
 		return roci.midi_control(n(a, 0))

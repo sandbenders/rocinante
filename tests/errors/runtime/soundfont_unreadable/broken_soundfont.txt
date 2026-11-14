@@ -1,0 +1,8 @@
+── `broken.sf2` is not a SoundFont I can read ────────── sketch.roci:1:9
+
+1 │ piano = synth "broken.sf2"
+  │         ^^^^^^^^^^^^^^^^^^
+
+A SoundFont is a .sf2 file of recorded instruments. `broken.sf2` is another kind of file, or it is damaged. The instrument plays nothing, and the sketch carries on.
+
+Use one I can read:  piano = synth "broken.sf2"

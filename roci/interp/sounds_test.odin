@@ -415,3 +415,55 @@ test_the_midi_example_plays_and_draws :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(as_list(global_named(p, "rings")).items), 0)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// An instrument from a SoundFont in the assets, by preset number or name; a synth in draw makes one
+// instrument, not one a frame.
+@(test)
+test_soundfonts_in_a_sketch :: proc(t: ^testing.T) {
+	text := `sine = synth "tiny.sf2"
+split = synth "tiny.sf2" preset 1
+drums = synth "tiny.sf2" preset "drums"
+play sine note 69
+print sine.pitch
+draw [
+  again = synth "tiny.sf2" preset 1
+  if frame is 3 [ print (again is split)  print ((level sine) > 10) ]
+]
+`
+	p := run_with_sounds(t, "soundfont_words", text, "tests/sounds", {"tiny.sf2"})
+	defer finish(p)
+	for _ in 0 ..< 4 {
+		roci.step()
+	}
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, printed(p), "440\ntrue\ntrue")
+	testing.expect(t, as_sound(global_named(p, "drums")) != as_sound(global_named(p, "split")))
+}
+
+// The SoundFont example: the chord it starts with, then keys held grow bars that float away when let go.
+@(test)
+test_the_soundfont_example_plays_the_piano :: proc(t: ^testing.T) {
+	text, read := os.read_entire_file("examples/soundfont/sketch.roci", context.temp_allocator)
+	testing.expect(t, read == nil)
+	p := run_with_sounds(t, "soundfont_example", string(text), "examples/soundfont/assets/sounds", {"upright.sf2"})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	piano := as_sound(global_named(p, "piano"))
+	testing.expect(t, roci.sound_state(piano).playing, "the chord")
+	testing.expect_value(t, len(as_list(global_named(p, "bars")).items), 4)
+	w := first_window()
+	roci.step({key_event(w, sdl.Scancode.A)})
+	testing.expect_value(t, len(as_list(global_named(p, "bars")).items), 5)
+	roci.feed_midi({0x90, 50, 90})
+	roci.step()
+	testing.expect_value(t, len(as_list(global_named(p, "bars")).items), 6)
+	testing.expect(t, roci.level(piano) > 1)
+	roci.feed_midi({0x80, 50, 0})
+	roci.step({key_event(w, sdl.Scancode.A, false)})
+	// every bar floats off the top in time
+	for _ in 0 ..< 300 {
+		roci.step()
+	}
+	testing.expect_value(t, len(as_list(global_named(p, "bars")).items), 0)
+	testing.expect_value(t, len(p.errors), 0)
+}

@@ -13,6 +13,8 @@ package interp
 import "../"
 import "../folder"
 import "../lang"
+import "../maths"
+import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:time"
@@ -261,4 +263,67 @@ band_count :: proc(v: f64) -> int {
 		return roci.BANDS_USUAL
 	}
 	return int(clamp(v, 1, f64(roci.BANDS_MOST)))
+}
+
+// An instrument from a preset of a SoundFont in the assets (`synth "upright.sf2" preset 48`). Like
+// a sound it is kept by name (with its preset), so a `synth` in `draw` makes one instrument, not
+// one a frame; a preset that is not there is said once and the first preset plays.
+@(private)
+load_soundfont :: proc(it: ^Interp, name: string, preset: Value, span: lang.Span) -> Value {
+	number, wanted := -1, ""
+	switch v in preset {
+	case f64:    number = int(v)
+	case string: wanted = v
+	case bool, Vec, maths.Colour, ^roci.Gradient, roci.Window, roci.Image, roci.Sound, ^List, ^Record, ^Table:
+	}
+	key := strings.concatenate({name, "\x00", wanted, "\x00", fmt.tprint(number)}, context.temp_allocator)
+	if entry, known := it.sounds[key]; known && entry.epoch == roci.sound_epoch() {
+		if entry.state == .Loaded {
+			return entry.id
+		}
+		if time.duration_seconds(time.tick_since(entry.tried)) < PICTURE_RETRY_SECONDS {
+			return nil
+		}
+	}
+	entry := Sound_Entry{tried = time.tick_now(), epoch = roci.sound_epoch()}
+	root, _ := assets_root(it)
+	path: string
+	status := folder.Find_Status.Missing
+	candidates: []string
+	if root != "" {
+		path, status, candidates = folder.find_asset(root, name, context.temp_allocator)
+	}
+	example := strings.concatenate({"piano = synth \"", name, "\""}, context.temp_allocator)
+	#partial switch status {
+	case .Missing:
+		entry.state = .Missing
+		store_sound(it, key, entry)
+		fail(it, .Sound_Missing, span, name, "SoundFonts are found by their file name in your sketch's `assets` folder, and there is no file of that name there. `roci add` copies one in for you.", "", example)
+		return nil
+	case .Ambiguous:
+		entry.state = .Ambiguous
+		store_sound(it, key, entry)
+		fail(it, .Sound_Missing, span, name, strings.concatenate({"Two or more files have that name: ", strings.join(candidates, " and ", context.temp_allocator), ". Say which one you mean with its folder."}, context.temp_allocator), "", example)
+		return nil
+	}
+	bytes, err := os.read_entire_file(strings.concatenate({root, "/", path}, context.temp_allocator), context.temp_allocator)
+	s, found, ok := roci.Sound(0), false, false
+	if err == nil {
+		s, found, ok = roci.add_soundfont(bytes, number, wanted)
+	}
+	if !ok {
+		entry.state = .Unreadable
+		store_sound(it, key, entry)
+		fail(it, .Soundfont_Unreadable, span, name, "", "", example)
+		return nil
+	}
+	entry.state, entry.id = .Loaded, s
+	store_sound(it, key, entry)
+	if !found {
+		asked := strings.concatenate({"\"", wanted, "\""}, context.temp_allocator) if wanted != "" else fmt.tprint(number)
+		presets := roci.soundfont_presets(s)
+		first := presets[0] if len(presets) > 0 else "0"
+		fail(it, .Preset_Missing, span, name, asked, strings.join(presets, ", ", context.temp_allocator), strings.concatenate({"piano = synth \"", name, "\" preset ", first[:strings.index_byte(first, ' ')] if strings.index_byte(first, ' ') > 0 else first}, context.temp_allocator))
+	}
+	return s
 }

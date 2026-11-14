@@ -9,6 +9,7 @@
 // player's own, so it is the same on every run.
 package audio
 
+import "core:fmt"
 import "core:math"
 import "core:sync"
 
@@ -19,10 +20,15 @@ Wave :: enum u8 {
 	Square,
 	Saw,
 	Noise,
+	Font, // a preset of a SoundFont (soundfont.odin): recorded samples instead of a wave
 }
 
 // The words a sketch writes for the waves, in the order of `Wave`.
-WAVE_NAMES := [Wave]string{.None = "", .Sine = "sine", .Triangle = "triangle", .Square = "square", .Saw = "saw", .Noise = "noise"}
+WAVE_NAMES := [Wave]string{.None = "", .Sine = "sine", .Triangle = "triangle", .Square = "square", .Saw = "saw", .Noise = "noise", .Font = ""}
+
+// How loud a SoundFont's notes are at full volume: their samples are recorded near full level, so
+// they are halved, which leaves room for a chord.
+FONT_GAIN :: 0.5
 
 MAX_VOICES :: 32
 // How long a note takes to come in and to fade out, in seconds.
@@ -42,6 +48,27 @@ Voice :: struct {
 	phase: f64,  // 0 to 1 through the wave
 	gain:  f64,  // the fade, 0 to 1
 	left:  f64,  // seconds before it lets itself go, or 0 for held until let go
+	// a SoundFont's note: its region, where it is in the sample, how far it moves a frame at
+	// speed 1, and its envelope's time and the level its fade out started from
+	region:    int,
+	pos:       f64,
+	step:      f64,
+	age:       f64,
+	fade_from: f64,
+}
+
+// A new instrument playing a preset of a SoundFont (read by `font_read` with the mixer's
+// allocator, which it now belongs to), silent, at full volume, in the middle.
+add_font_instrument :: proc(m: ^Mixer, font: ^Font, preset: int) -> Sound {
+	sync.guard(&m.lock)
+	append(&m.players, Player{wave = .Font, font = font, preset = clamp(preset, 0, max(0, len(font.presets) - 1)), volume = 1, speed = 1, pitch = A4})
+	return Sound(len(m.players))
+}
+
+// How far a region's sample moves a frame of the mixer for a note.
+@(private)
+region_step :: proc(r: Region, note: f64) -> f64 {
+	return r.rate / RATE * math.pow(2, (note - r.root) * r.key_scale / 12)
 }
 
 // The pitch of a note number in hertz: 69 is the A at 440, and each step is a semitone.
@@ -120,6 +147,9 @@ set_pitch :: proc(m: ^Mixer, s: Sound, hz: f64) {
 		if v.on {
 			v.hz = hz
 			v.note = hz_note(hz)
+			if p.wave == .Font && p.font != nil && v.region < len(p.font.presets[p.preset].regions) {
+				v.step = region_step(p.font.presets[p.preset].regions[v.region], v.note)
+			}
 		}
 	}
 }
@@ -148,6 +178,10 @@ wave_of :: proc(m: ^Mixer, s: Sound) -> Wave {
 
 @(private)
 start_note :: proc(p: ^Player, hz: f64, seconds: f64) {
+	if p.wave == .Font {
+		start_font_note(p, hz, seconds)
+		return
+	}
 	// a free voice, or else the quietest one
 	chosen := 0
 	for v, i in p.voices {
@@ -163,6 +197,42 @@ start_note :: proc(p: ^Player, hz: f64, seconds: f64) {
 	p.playing = true
 }
 
+// A free voice of an instrument, or else the quietest one, which the new note takes.
+@(private)
+free_voice :: proc(p: ^Player) -> int {
+	chosen := 0
+	for v, i in p.voices {
+		if !v.on {
+			return i
+		}
+		if v.gain < p.voices[chosen].gain || (v.gain == p.voices[chosen].gain && !v.held && p.voices[chosen].held) {
+			chosen = i
+		}
+	}
+	return chosen
+}
+
+// A SoundFont's note: a voice for each region of the preset whose keys and velocities hold it (the
+// instrument's volume is the velocity, so a sketch that plays at a key's velocity picks the layer
+// a keyboard would).
+@(private)
+start_font_note :: proc(p: ^Player, hz: f64, seconds: f64) {
+	if p.font == nil || p.preset >= len(p.font.presets) {
+		return
+	}
+	note := hz_note(hz)
+	key := int(math.round(note))
+	velocity := int(math.round(p.volume * 127))
+	for r, i in p.font.presets[p.preset].regions {
+		if key < r.low_key || key > r.high_key || velocity < r.low_velocity || velocity > r.high_velocity {
+			continue
+		}
+		chosen := free_voice(p)
+		p.voices[chosen] = Voice{on = true, held = true, note = note, hz = hz, left = seconds if seconds > 0 else 0, region = i, pos = f64(r.start), step = region_step(r, note)}
+		p.playing = true
+	}
+}
+
 @(private)
 release_notes :: proc(p: ^Player, note: Maybe(f64)) {
 	for &v in p.voices {
@@ -171,6 +241,11 @@ release_notes :: proc(p: ^Player, note: Maybe(f64)) {
 		}
 		if n, ok := note.?; ok && abs(v.note - n) > 0.001 {
 			continue
+		}
+		if v.held && p.wave == .Font {
+			// a SoundFont's note fades from where its envelope is, over its region's release
+			v.fade_from = v.gain
+			v.age = 0
 		}
 		v.held = false
 	}
@@ -216,7 +291,7 @@ wave_value :: proc(p: ^Player, wave: Wave, t, dt: f64) -> f64 {
 		p.noise ~= p.noise >> 17
 		p.noise ~= p.noise << 5
 		return f64(p.noise) / f64(max(u32)) * 2 - 1
-	case .None:
+	case .None, .Font:
 	}
 	return 0
 }
@@ -224,6 +299,10 @@ wave_value :: proc(p: ^Player, wave: Wave, t, dt: f64) -> f64 {
 // Adds an instrument's notes into `out` (two floats a frame) and moves them on.
 @(private)
 mix_instrument :: proc(p: ^Player, out: []f32) {
+	if p.wave == .Font {
+		mix_font(p, out)
+		return
+	}
 	frames := len(out) / CHANNELS
 	left := f32(p.volume * min(1, 1 - p.pan))
 	right := f32(p.volume * min(1, 1 + p.pan))
@@ -265,4 +344,111 @@ mix_instrument :: proc(p: ^Player, out: []f32) {
 		still ||= v.on
 	}
 	p.playing = still
+}
+
+// The level of a SoundFont note's envelope while it is held, `age` seconds after it began: up
+// over the attack, held, down over the decay to the sustain level, and there while the key is down.
+@(private)
+envelope_level :: proc(r: Region, age: f64) -> f64 {
+	t := age
+	if t < r.attack {
+		return t / r.attack
+	}
+	t -= r.attack
+	if t < r.hold {
+		return 1
+	}
+	t -= r.hold
+	if r.decay > 0 && t < r.decay {
+		return 1 - (1 - r.sustain) * t / r.decay
+	}
+	return r.sustain
+}
+
+// Adds a SoundFont instrument's notes into `out`: each reads its region's sample between frames
+// by a straight line, loops where the region loops while the note sounds, and ends at the sample's
+// end or when its fade out is over.
+@(private)
+mix_font :: proc(p: ^Player, out: []f32) {
+	frames := len(out) / CHANNELS
+	samples := p.font.samples if p.font != nil else nil
+	regions := p.font.presets[p.preset].regions if p.font != nil && p.preset < len(p.font.presets) else nil
+	dt := 1.0 / RATE
+	for i in 0 ..< frames {
+		sum_left, sum_right: f64
+		for &v in p.voices {
+			if !v.on {
+				continue
+			}
+			if v.region >= len(regions) {
+				v = {}
+				continue
+			}
+			r := regions[v.region]
+			level: f64
+			if v.held {
+				level = envelope_level(r, v.age)
+				if v.left > 0 {
+					v.left -= dt
+					if v.left <= 0 {
+						v.held = false
+						v.fade_from = level
+						v.age = 0
+					}
+				}
+			} else {
+				level = v.fade_from * (1 - v.age / r.release)
+				if level <= 0 {
+					v = {}
+					continue
+				}
+			}
+			v.gain = level
+			// a looping sample goes back to its loop's start; the loop's end is the first frame after it
+			if r.looping {
+				for v.pos >= f64(r.loop_end) {
+					v.pos -= f64(r.loop_end - r.loop_start)
+				}
+			}
+			whole := int(v.pos)
+			next := whole + 1
+			if r.looping && next >= r.loop_end {
+				next = r.loop_start
+			}
+			if whole >= r.end || next >= r.end {
+				v = {}
+				continue
+			}
+			part := v.pos - f64(whole)
+			value := (f64(samples[whole]) * (1 - part) + f64(samples[next]) * part) * level * r.gain
+			sum_left += value * min(1, 1 - r.pan)
+			sum_right += value * min(1, 1 + r.pan)
+			v.pos += v.step * p.speed
+			v.age += dt
+		}
+		l := f32(sum_left * FONT_GAIN * p.volume * min(1, 1 - p.pan))
+		rr := f32(sum_right * FONT_GAIN * p.volume * min(1, 1 + p.pan))
+		out[i * 2] += l
+		out[i * 2 + 1] += rr
+		ring_push(&p.heard, (l + rr) / 2)
+	}
+	still := false
+	for v in p.voices {
+		still ||= v.on
+	}
+	p.playing = still
+}
+
+// The presets of a SoundFont instrument's font, as "number name", or nil for any other sound.
+font_preset_names :: proc(m: ^Mixer, s: Sound, allocator := context.allocator) -> []string {
+	sync.guard(&m.lock)
+	p := player(m, s)
+	if p == nil || p.font == nil {
+		return nil
+	}
+	out := make([]string, len(p.font.presets), allocator)
+	for preset, i in p.font.presets {
+		out[i] = fmt.aprintf("%d %s", preset.number, preset.name, allocator = allocator)
+	}
+	return out
 }

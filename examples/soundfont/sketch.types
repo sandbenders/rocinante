@@ -1,0 +1,7 @@
+piano: a sound
+LETTERS: a list of text
+NOTES: a list of numbers
+board: a list of records with letter, note and down
+bars: a list of records with note, top, high and held
+now: true or false
+place: a number

@@ -1,0 +1,2 @@
+harp = synth "tiny.sf2" preset "Harp"
+play harp note 60

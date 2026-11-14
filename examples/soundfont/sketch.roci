@@ -1,0 +1,52 @@
+// SoundFont: a piano of real recorded notes. `synth "upright.sf2"` makes an instrument from a
+// SoundFont, a file of recorded instruments, here a Kawai upright piano that FreePats recorded and
+// gave to everyone (CC0), cut down to a small file. It plays like any instrument: from a MIDI
+// keyboard (`on midi down`), and from the computer's keys A to K, the C major scale. Each note
+// grows a bar while it is held, and lets it float away when it is let go. It starts with a chord.
+window size 720 400 title "soundfont"
+
+piano = synth "upright.sf2"
+LETTERS = [ "a" "s" "d" "f" "g" "h" "j" "k" ]
+NOTES = [ 60 62 64 65 67 69 71 72 ]
+board = []
+for i from 1 to 8 [ add { letter: item i of LETTERS, note: item i of NOTES, down: false } to board ]
+bars = []
+
+learn begin n strength [
+  play piano note n volume strength
+  add { note: n, top: 390, high: 0, held: true } to bars
+]
+
+learn finish n [
+  pause piano note n
+  for each b in bars [
+    if b.note is n [ b.held = false ]
+  ]
+]
+
+for each n in [ 48 60 64 67 ] [
+  play piano note n for 2
+  add { note: n, top: 390, high: 40, held: false } to bars
+]
+
+on midi down [ begin midi.note midi.velocity ]
+on midi up [ finish midi.note ]
+
+draw [
+  background (rgb 14 12 22)
+  for each k in board [
+    now = held k.letter
+    if now and not k.down [ begin k.note 80 ]
+    if k.down and not now [ finish k.note ]
+    k.down = now
+  ]
+  for each b in bars [
+    if b.held [ b.high = b.high + 3 ] else [ b.top = b.top - 2 ]
+    place = b.note - 21
+    fill (hsb (place * 3) 150 240 alpha (b.top / 4))
+    rect at (place * 8 + 4) (b.top - b.high) size 6 b.high
+  ]
+  bars = keep bars [ it.top - it.high > -20 ]
+  fill white
+  text "play a MIDI keyboard, or the keys A to K" at 16 16
+]

@@ -1,0 +1,8 @@
+── Warning: `tiny.sf2` has no preset "Harp" ──────────── sketch.roci:1:8
+
+1 │ harp = synth "tiny.sf2" preset "Harp"
+  │        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The presets in it are: 0 Sine, 1 Split, 0 Drums. The first one plays instead.
+
+Ask for one that is there:  piano = synth "tiny.sf2" preset 0

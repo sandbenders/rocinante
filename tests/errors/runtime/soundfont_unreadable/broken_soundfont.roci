@@ -1,0 +1,2 @@
+piano = synth "broken.sf2"
+play piano note 60

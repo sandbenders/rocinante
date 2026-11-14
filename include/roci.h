@@ -627,7 +627,7 @@ void roci_rewind(roci_sound_id sound);
 /* How loud everything that plays is now, 0 (silent) to 100: `circle at 200 200 radius (level * 2)`. `level rain` is one sound, `level mic` the microphone. */
 double roci_level(void);
 
-/* Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`). `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together. */
+/* Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`), or from a SoundFont in the assets, `piano = synth "upright.sf2"`, with `preset` naming one of its instruments by number (General MIDI's 0 is a piano, 48 strings) or by name. `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together. */
 roci_sound_id roci_synth(const char *wave);
 
 /* The latest value of a MIDI controller, 0 to 100, 0 until it first moves: `midi control 1` is the mod wheel, and the knobs and faders of a controller have numbers of their own (its manual says which, or `on midi control [ print midi.control ]`). */
@@ -1172,6 +1172,12 @@ void roci_set_sound_pitch(roci_sound_id sound, double hertz);
 
 /* An instrument's pitch in hertz, or middle C at the speed of a sound from a file. */
 double roci_sound_pitch(roci_sound_id sound);
+
+/* Reads a SoundFont (.sf2) and makes an instrument of one of its presets, by number (General MIDI's 0 is a piano), or the first one for -1 or a number it does not have; 0 when the file cannot be read. Its notes are played with roci_play_note. */
+roci_sound_id roci_soundfont(const char *path, int preset);
+
+/* The same, the preset found by its name in any case (the first one when no preset has it). */
+roci_sound_id roci_soundfont_named(const char *path, const char *preset);
 
 /* The microphone, as a sound for roci_level_of and roci_bands_of. The first call in a program with a window opens the computer's default recording device (the system may ask first). Playing it does nothing. */
 roci_sound_id roci_mic(void);

@@ -220,6 +220,28 @@ abi_midi_control :: proc "c" (number: f64) -> f64 {
 	return midi_control(number)
 }
 
+@(export, link_name = "roci_soundfont")
+abi_soundfont :: proc "c" (path: cstring, preset: c.int) -> c.int {
+	context = abi_context()
+	bytes, err := os.read_entire_file(text_from_abi(path), context.temp_allocator)
+	if err != nil {
+		return 0
+	}
+	s, _, ok := add_soundfont(bytes, int(preset))
+	return c.int(s) if ok else 0
+}
+
+@(export, link_name = "roci_soundfont_named")
+abi_soundfont_named :: proc "c" (path: cstring, preset: cstring) -> c.int {
+	context = abi_context()
+	bytes, err := os.read_entire_file(text_from_abi(path), context.temp_allocator)
+	if err != nil {
+		return 0
+	}
+	s, _, ok := add_soundfont(bytes, name = text_from_abi(preset))
+	return c.int(s) if ok else 0
+}
+
 // The table rows of the functions above that are not a registry shape.
 abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_load_sound", typeid_of(type_of(abi_load_sound)), "roci_sound_id roci_load_sound(const unsigned char *bytes, int length)", "Decodes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A sound is stopped at its start, at volume 100, in the middle and at speed 1."))
@@ -241,6 +263,8 @@ abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_pause_note", typeid_of(type_of(abi_pause_note)), "void roci_pause_note(roci_sound_id sound, double note)", "Lets an instrument's notes of that number go; they fade out. roci_pause lets all of them go."))
 	append(all, abi_entry("roci_set_sound_pitch", typeid_of(type_of(abi_set_sound_pitch)), "void roci_set_sound_pitch(roci_sound_id sound, double hertz)", "Sets an instrument's pitch: its sounding notes slide there, and a note played with none takes it. A sound from a file plays at the speed that makes it that pitch, taking it to be middle C."))
 	append(all, abi_entry("roci_sound_pitch", typeid_of(type_of(abi_sound_pitch)), "double roci_sound_pitch(roci_sound_id sound)", "An instrument's pitch in hertz, or middle C at the speed of a sound from a file."))
+	append(all, abi_entry("roci_soundfont", typeid_of(type_of(abi_soundfont)), "roci_sound_id roci_soundfont(const char *path, int preset)", "Reads a SoundFont (.sf2) and makes an instrument of one of its presets, by number (General MIDI's 0 is a piano), or the first one for -1 or a number it does not have; 0 when the file cannot be read. Its notes are played with roci_play_note."))
+	append(all, abi_entry("roci_soundfont_named", typeid_of(type_of(abi_soundfont_named)), "roci_sound_id roci_soundfont_named(const char *path, const char *preset)", "The same, the preset found by its name in any case (the first one when no preset has it)."))
 	append(all, abi_entry("roci_mic", typeid_of(type_of(abi_mic)), "roci_sound_id roci_mic(void)", "The microphone, as a sound for roci_level_of and roci_bands_of. The first call in a program with a window opens the computer's default recording device (the system may ask first). Playing it does nothing."))
 	append(all, abi_entry("roci_bands", typeid_of(type_of(abi_bands)), "int roci_bands(int count, double *out)", "How much of each pitch everything that plays holds now: writes `count` numbers 0 to 100 (at most 256), the lowest pitches first, into `out`, and gives how many it wrote."))
 	append(all, abi_entry("roci_bands_of", typeid_of(type_of(abi_bands_of)), "int roci_bands_of(roci_sound_id sound, int count, double *out)", "The same for one sound, or the microphone (roci_mic)."))

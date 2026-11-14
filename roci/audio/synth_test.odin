@@ -179,8 +179,8 @@ test_every_wave_sounds_and_noise_repeats :: proc(t: ^testing.T) {
 		m := make_mixer()
 		defer destroy_mixer(m)
 		for wave in Wave {
-			if wave == .None {
-				continue
+			if wave == .None || wave == .Font {
+				continue // a SoundFont instrument is made from a font, in soundfont_test.odin
 			}
 			s := add_instrument(m, wave)
 			play_note(m, s, 1000, 0)

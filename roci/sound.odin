@@ -149,6 +149,27 @@ pause :: proc(s: Sound, note := Maybe(f64){}) {
 	audio.pause(the_mixer(), s)
 }
 
+// Makes an instrument from a preset of a SoundFont (the bytes of a .sf2 file): the preset with a
+// number (General MIDI's program: 0 a piano, 48 strings), or with a name (in any case), or the
+// first one when neither is given. `found` is false when the one asked for is not there, and then
+// the first preset plays; ok is false when the bytes are not a SoundFont.
+add_soundfont :: proc(bytes: []u8, number := -1, name := "") -> (s: Sound, found: bool, ok: bool) {
+	m := the_mixer()
+	font, read := audio.font_read(bytes, m.players.allocator)
+	if !read {
+		return 0, false, false
+	}
+	preset: int
+	preset, found = audio.font_preset(font, number, name)
+	return audio.add_font_instrument(m, font, preset), found, true
+}
+
+// The presets of a SoundFont instrument's font, as "number name" in the frame's memory (for a
+// message that lists them), or nil for any other sound.
+soundfont_presets :: proc(s: Sound) -> []string {
+	return audio.font_preset_names(the_mixer(), s, context.temp_allocator)
+}
+
 // How many notes of an instrument are held now, not yet let go (0 for a sound from a file).
 sound_notes :: proc(s: Sound) -> int {
 	return audio.held_notes(the_mixer(), s)

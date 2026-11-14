@@ -103,6 +103,17 @@ draw [
 
 `set organ pitch (mouse.x + 100)` slides the notes that sound, and a note played with no `note` or `pitch` takes the instrument's own pitch, which `set` changes. A note comes in and fades out over a few thousandths of a second, so starting and stopping never clicks. A sound from a file can be played at a note too: it is taken to be middle C, and plays faster and higher for a higher note.
 
+## Recorded instruments: SoundFonts
+
+A SoundFont (a `.sf2` file) is a bank of recorded instruments: a piano, strings, drums, each a set of recordings and the keys and strengths each one covers. Put one in `assets/` and `synth` makes an instrument of it, played exactly as the waves are:
+
+```roci
+piano = synth "upright.sf2"
+play piano note 60 for 1
+```
+
+A file with many instruments, such as a General MIDI set, numbers them: `preset 0` is a piano, `preset 48` strings, `preset 56` a trumpet. `preset` also takes the instrument's name, `preset "Trumpet"`. Without it the first instrument plays, and a preset the file does not have says which ones it has. The instrument's volume picks the recordings made at that strength, so `volume midi.velocity` plays the keyboard's touch. The files can be large, a General MIDI set over a hundred megabytes; small ones of a single instrument are a few megabytes.
+
 ## A MIDI keyboard
 
 A MIDI keyboard or controller plugged in (USB) is heard with no setup. `on midi down` runs when a key goes down, and inside it `midi` is that key: `midi.note` is its number, the same numbers `note` takes, and `midi.velocity` how hard it was struck, 0 to 100. `on midi up` runs when it comes up. So an instrument is played by a keyboard in three lines:

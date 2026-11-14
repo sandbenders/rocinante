@@ -42,6 +42,7 @@ ABI_NOT_IN_C := [?]Abi_Skip{
 	{"model", 0, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
 	{"model", 1, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
 	{"forward", 1, "moves a sound by the seconds after `by`; C has roci_forward_sound"},
+	{"synth", 1, "takes a file found in the assets; C has roci_soundfont and roci_soundfont_named, which read the file by its path"},
 	{"bands", 0, "gives a list; C has roci_bands, which writes the numbers into the caller's array"},
 	{"bands", 1, "gives a list; C has roci_bands, which writes the numbers into the caller's array"},
 	{"bands", 2, "gives a list; C has roci_bands_of, which writes the numbers into the caller's array"},

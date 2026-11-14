@@ -130,6 +130,8 @@ Message_Id :: enum u8 {
 	Image_Unreadable,
 	Sound_Missing,
 	Sound_Unreadable,
+	Soundfont_Unreadable,
+	Preset_Missing,
 	Model_Missing,
 	Model_Unreadable,
 	Model_Texture,
@@ -463,6 +465,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Sound_Unreadable = {.Error, "`{a}` is not a sound I can read",
 		"I read WAV, FLAC, MP3 and Ogg Vorbis sounds. `{a}` is another kind of file, or it is damaged. The sound plays nothing, and the sketch carries on.",
 		"Load one I can read:", "{d}"},
+	.Soundfont_Unreadable = {.Error, "`{a}` is not a SoundFont I can read",
+		"A SoundFont is a .sf2 file of recorded instruments. `{a}` is another kind of file, or it is damaged. The instrument plays nothing, and the sketch carries on.",
+		"Use one I can read:", "{d}"},
+	.Preset_Missing = {.Warning, "`{a}` has no preset {b}",
+		"The presets in it are: {c}. The first one plays instead.",
+		"Ask for one that is there:", "{d}"},
 	.Model_Missing = {.Error, "I could not find a model called `{a}`",
 		"{b} The model draws nothing, and the sketch carries on.",
 		"Draw one that is there:", "{d}"},
@@ -585,7 +593,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

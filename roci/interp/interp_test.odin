@@ -2251,6 +2251,10 @@ make_message_sketch :: proc(t: ^testing.T) -> string {
 	testing.expect(t, os.write_entire_file(root + "/assets/images/broken.png", transmute([]byte)string("not a picture")) == nil)
 	testing.expect(t, folder.ensure_directory(root + "/assets/sounds"))
 	testing.expect(t, os.write_entire_file(root + "/assets/sounds/broken.wav", transmute([]byte)string("not a sound")) == nil)
+	testing.expect(t, os.write_entire_file(root + "/assets/sounds/broken.sf2", transmute([]byte)string("not a SoundFont")) == nil)
+	if tiny, err := os.read_entire_file("tests/sounds/tiny.sf2", context.temp_allocator); err == nil {
+		testing.expect(t, os.write_entire_file(root + "/assets/sounds/tiny.sf2", tiny) == nil)
+	}
 	if png, encoded := gfx.png_encode(gfx.Image{2, 2, make([]u8, 16, context.temp_allocator)}); encoded {
 		testing.expect(t, os.write_entire_file(root + "/assets/images/small.png", png) == nil)
 		delete(png)

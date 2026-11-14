@@ -101,6 +101,7 @@ EXAMPLES := [?]Example{
 	{"voyage", 30, {1}}, // a generated city of towers and lanterns lit by a sun, a point light that follows an OBJ ship flying over it, and every shadow
 	{"textured", 30, {1}}, // a board of colored squares made by the sketch, painted over a box, a sphere, a cone, a cylinder, a capsule, a torus, an icosphere and a plane by `fill`
 	{"lamp", 30, {1}}, // a warm point light circling among six pillars, a sphere and a turning torus, every shadow swinging away from it
+	{"soundfont", 40, {1}}, // the four notes of the chord it starts with, floating up from the piano
 	{"midi", 5, {1}}, // the 61 keys waiting for a MIDI keyboard (the notes come in the interpreter's test)
 	{"keys", 10, {1}}, // the eight keys and the bands of the C major chord it starts with
 	{"music", 60, {1}}, // the bars of a chiptune's pitches a second in, and a ring as big as it is loud

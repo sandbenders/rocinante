@@ -34,6 +34,8 @@ Player :: struct {
 	voices:  [MAX_VOICES]Voice,
 	pitch:   f64,
 	noise:   u32,
+	font:    ^Font, // a SoundFont instrument's font, the player's own
+	preset:  int,
 }
 
 Mixer :: struct {
@@ -59,6 +61,7 @@ destroy_mixer :: proc(m: ^Mixer) {
 	allocator := m.players.allocator
 	for p in m.players {
 		delete(p.samples, allocator)
+		font_destroy(p.font, allocator)
 	}
 	delete(m.players)
 	free(m, allocator)

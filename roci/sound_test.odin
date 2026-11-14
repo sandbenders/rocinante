@@ -272,3 +272,30 @@ test_abi_instruments :: proc(t: ^testing.T) {
 	step(nil, 0.2)
 	testing.expect_value(t, abi_sound_playing(s), 0)
 }
+
+@(test)
+test_sound_soundfonts :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	data, _ := os.read_entire_file_from_path("tests/sounds/tiny.sf2", context.temp_allocator)
+	s, found, ok := add_soundfont(data)
+	testing.expect(t, ok && found)
+	play(s, note = 69)
+	step(nil, 0.1)
+	testing.expect(t, level(s) > 10)
+	testing.expect_value(t, sound_state(s).pitch, 440)
+	split, found2, ok2 := add_soundfont(data, name = "split")
+	testing.expect(t, ok2 && found2)
+	_, found3, ok3 := add_soundfont(data, 42)
+	testing.expect(t, ok3 && !found3)
+	testing.expect_value(t, len(soundfont_presets(split)), 3)
+	testing.expect_value(t, len(soundfont_presets(Sound(999))), 0)
+	_, _, bad := add_soundfont([]u8{1, 2, 3})
+	testing.expect(t, !bad)
+	// in C
+	testing.expect(t, abi_soundfont("tests/sounds/tiny.sf2", 1) != 0)
+	testing.expect(t, abi_soundfont_named("tests/sounds/tiny.sf2", "Drums") != 0)
+	testing.expect_value(t, abi_soundfont("tests/sounds/none.sf2", 0), 0)
+	testing.expect_value(t, abi_soundfont_named("tests/sounds/tone.wav", "x"), 0)
+	testing.expect_value(t, abi_soundfont_named("tests/sounds/none.sf2", "x"), 0)
+}
