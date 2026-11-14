@@ -1,7 +1,8 @@
 PALETTE: a list of colors
 GAP: a number
-bars: a list of records with height, level, tint and x
-level: a number
-shown: a list of records with height, level, tint and x
+bars: a list of records with height, group, tint and x
+group: a number
+shown: a list of records with height, group, tint and x
 step: a number
-tallest: a record with height, level, tint and x
+mean: a number
+tallest: a record with height, group, tint and x
