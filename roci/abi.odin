@@ -10,17 +10,19 @@
 // of the exported procedures.
 //
 // Conventions: numbers are `double`, text is a NUL-terminated `const char *`,
-// colors are `roci_color` (four floats, 0 to 255) and points `roci_vec2` (two
-// doubles), windows are `roci_window` (an int, 0 for none), true and false are
+// colors are `roci_color` (four floats, 0 to 255), points `roci_vec2` (two
+// doubles) and points in space `roci_vec3` (three), windows are `roci_window` (an int, 0 for none), true and false are
 // `int`. Words such as the arguments of `caps` and `joins` are text ("round").
 // Callbacks are `void (*)(void)`. A verb with several shapes has one function per
 // shape: the first keeps the verb's name and the others add a suffix (`_v` for the
-// form that takes points).
+// form that takes points, which are `roci_vec3` for the 3D verbs).
 package roci
 
 import "base:runtime"
 import "core:c"
+import "core:os"
 import "core:strings"
+import "core:time"
 import "maths"
 
 Abi_Color :: struct {
@@ -29,6 +31,10 @@ Abi_Color :: struct {
 
 Abi_Vec2 :: struct {
 	x, y: f64,
+}
+
+Abi_Vec3 :: struct {
+	x, y, z: f64,
 }
 
 // What a message holds, for C: a kind and the matching field.
@@ -62,6 +68,11 @@ color_to_abi :: proc "contextless" (c: Colour) -> Abi_Color {
 @(private)
 vec_from_abi :: proc "contextless" (v: Abi_Vec2) -> [2]f64 {
 	return {v.x, v.y}
+}
+
+@(private)
+vec3_from_abi :: proc "contextless" (v: Abi_Vec3) -> [3]f64 {
+	return {v.x, v.y, v.z}
 }
 
 @(private)
@@ -939,4 +950,376 @@ abi_limit :: proc "c" (v: Abi_Vec2, most: f64) -> Abi_Vec2 {
 	context = abi_context()
 	out := limit_length(vec_from_abi(v), most)
 	return Abi_Vec2{out.x, out.y}
+}
+
+// ---- 3D shapes ----
+
+@(export, link_name = "roci_box")
+abi_box :: proc "c" (x, y, z, side: f64) {
+	context = abi_context()
+	box(x, y, z, side)
+}
+
+@(export, link_name = "roci_box_sized")
+abi_box_sized :: proc "c" (x, y, z, width, height, depth: f64) {
+	context = abi_context()
+	box(x, y, z, width, height, depth)
+}
+
+@(export, link_name = "roci_box_v")
+abi_box_v :: proc "c" (position: Abi_Vec3, side: f64) {
+	context = abi_context()
+	box(vec3_from_abi(position), side)
+}
+
+@(export, link_name = "roci_box_sized_v")
+abi_box_sized_v :: proc "c" (position, size: Abi_Vec3) {
+	context = abi_context()
+	box(vec3_from_abi(position), vec3_from_abi(size))
+}
+
+@(export, link_name = "roci_sphere")
+abi_sphere :: proc "c" (x, y, z, radius: f64) {
+	context = abi_context()
+	sphere(x, y, z, radius)
+}
+
+@(export, link_name = "roci_sphere_v")
+abi_sphere_v :: proc "c" (position: Abi_Vec3, radius: f64) {
+	context = abi_context()
+	sphere(vec3_from_abi(position), radius)
+}
+
+@(export, link_name = "roci_plane")
+abi_plane :: proc "c" (x, y, z, width, depth: f64) {
+	context = abi_context()
+	plane(x, y, z, width, depth)
+}
+
+@(export, link_name = "roci_plane_v")
+abi_plane_v :: proc "c" (position: Abi_Vec3, size: Abi_Vec2) {
+	context = abi_context()
+	plane(vec3_from_abi(position), vec_from_abi(size))
+}
+
+@(export, link_name = "roci_cone")
+abi_cone :: proc "c" (x, y, z, radius, height: f64) {
+	context = abi_context()
+	cone(x, y, z, radius, height)
+}
+
+@(export, link_name = "roci_cone_v")
+abi_cone_v :: proc "c" (position: Abi_Vec3, radius, height: f64) {
+	context = abi_context()
+	cone(vec3_from_abi(position), radius, height)
+}
+
+@(export, link_name = "roci_cylinder")
+abi_cylinder :: proc "c" (x, y, z, radius, height: f64) {
+	context = abi_context()
+	cylinder(x, y, z, radius, height)
+}
+
+@(export, link_name = "roci_cylinder_v")
+abi_cylinder_v :: proc "c" (position: Abi_Vec3, radius, height: f64) {
+	context = abi_context()
+	cylinder(vec3_from_abi(position), radius, height)
+}
+
+@(export, link_name = "roci_capsule")
+abi_capsule :: proc "c" (x, y, z, radius, height: f64) {
+	context = abi_context()
+	capsule(x, y, z, radius, height)
+}
+
+@(export, link_name = "roci_capsule_v")
+abi_capsule_v :: proc "c" (position: Abi_Vec3, radius, height: f64) {
+	context = abi_context()
+	capsule(vec3_from_abi(position), radius, height)
+}
+
+@(export, link_name = "roci_torus")
+abi_torus :: proc "c" (x, y, z, radius, tube: f64) {
+	context = abi_context()
+	torus(x, y, z, radius, tube)
+}
+
+@(export, link_name = "roci_torus_v")
+abi_torus_v :: proc "c" (position: Abi_Vec3, radius, tube: f64) {
+	context = abi_context()
+	torus(vec3_from_abi(position), radius, tube)
+}
+
+@(export, link_name = "roci_icosphere")
+abi_icosphere :: proc "c" (x, y, z, radius: f64) {
+	context = abi_context()
+	icosphere(x, y, z, radius)
+}
+
+@(export, link_name = "roci_icosphere_v")
+abi_icosphere_v :: proc "c" (position: Abi_Vec3, radius: f64) {
+	context = abi_context()
+	icosphere(vec3_from_abi(position), radius)
+}
+
+@(export, link_name = "roci_grid")
+abi_grid :: proc "c" (size, lines: f64) {
+	context = abi_context()
+	grid(size, int(clamp(lines, 0, 100000)))
+}
+
+@(export, link_name = "roci_axes")
+abi_axes :: proc "c" (size: f64) {
+	context = abi_context()
+	axes(size)
+}
+
+@(export, link_name = "roci_arrow")
+abi_arrow :: proc "c" (x1, y1, z1, x2, y2, z2: f64) {
+	context = abi_context()
+	arrow(x1, y1, z1, x2, y2, z2)
+}
+
+@(export, link_name = "roci_arrow_v")
+abi_arrow_v :: proc "c" (from, to: Abi_Vec3) {
+	context = abi_context()
+	arrow(vec3_from_abi(from), vec3_from_abi(to))
+}
+
+// ---- meshes and models ----
+
+@(export, link_name = "roci_mesh")
+abi_mesh :: proc "c" (key: cstring, corners: [^]Abi_Vec3, count: c.int, wireframe: c.int) {
+	context = abi_context()
+	if corners == nil || count < 3 {
+		return
+	}
+	// an Abi_Vec3 is three doubles in a row, as a [3]f64 is
+	points := ([^][3]f64)(corners)[:count]
+	mesh(text_from_abi(key), points, wireframe != 0)
+}
+
+@(thread_local)
+abi_model_directory: string
+
+// The files a model names beside itself, in its own folder and nowhere else.
+@(private)
+abi_model_neighbour :: proc(uri: string) -> ([]byte, bool) {
+	if uri == "" || strings.contains(uri, "..") || strings.has_prefix(uri, "/") || strings.contains(uri, ":") || strings.contains(uri, "\\") {
+		return nil, false
+	}
+	bytes, err := os.read_entire_file(strings.concatenate({abi_model_directory, "/", uri}, context.temp_allocator), context.temp_allocator)
+	return bytes, err == nil
+}
+
+@(export, link_name = "roci_load_model")
+abi_load_model :: proc "c" (path: cstring) -> c.int {
+	context = abi_context()
+	file := text_from_abi(path)
+	if file == "" {
+		return 0
+	}
+	stamp := i64(0)
+	if info, err := os.stat(file, context.temp_allocator); err == nil {
+		stamp = time.to_unix_nanoseconds(info.modification_time)
+	}
+	if model, found := find_model(file, stamp); found {
+		return c.int(model)
+	}
+	bytes, read_error := os.read_entire_file(file, context.temp_allocator)
+	if read_error != nil {
+		return 0
+	}
+	slash := strings.last_index_byte(file, '/')
+	abi_model_directory = file[:slash] if slash >= 0 else "."
+	model, error := add_model(file, stamp, bytes, abi_model_neighbour)
+	return c.int(model) if error == .None else 0
+}
+
+@(export, link_name = "roci_model")
+abi_model :: proc "c" (model: c.int, x, y, z, size: f64) {
+	context = abi_context()
+	draw_model(Model(model), x, y, z, size)
+}
+
+@(export, link_name = "roci_model_v")
+abi_model_v :: proc "c" (model: c.int, position: Abi_Vec3, size: f64) {
+	context = abi_context()
+	draw_model(Model(model), vec3_from_abi(position), size)
+}
+
+// ---- the camera ----
+
+@(export, link_name = "roci_camera")
+abi_camera :: proc "c" (x, y, z: f64) {
+	context = abi_context()
+	camera(x, y, z)
+}
+
+@(export, link_name = "roci_camera_v")
+abi_camera_v :: proc "c" (position: Abi_Vec3) {
+	context = abi_context()
+	camera(vec3_from_abi(position))
+}
+
+@(export, link_name = "roci_camera_fov")
+abi_camera_fov :: proc "c" (x, y, z, fov: f64) {
+	context = abi_context()
+	camera(x, y, z, fov)
+}
+
+@(export, link_name = "roci_look_at")
+abi_look_at :: proc "c" (x, y, z: f64) {
+	context = abi_context()
+	look_at(x, y, z)
+}
+
+@(export, link_name = "roci_look_at_v")
+abi_look_at_v :: proc "c" (position: Abi_Vec3) {
+	context = abi_context()
+	look_at(vec3_from_abi(position))
+}
+
+@(export, link_name = "roci_ortho")
+abi_ortho :: proc "c" () {
+	context = abi_context()
+	ortho()
+}
+
+@(export, link_name = "roci_perspective")
+abi_perspective :: proc "c" () {
+	context = abi_context()
+	perspective()
+}
+
+@(export, link_name = "roci_perspective_fov")
+abi_perspective_fov :: proc "c" (fov: f64) {
+	context = abi_context()
+	perspective(fov)
+}
+
+@(export, link_name = "roci_screen_point")
+abi_screen_point :: proc "c" (x, y, z: f64) -> Abi_Vec2 {
+	context = abi_context()
+	at, _ := screen_point(x, y, z)
+	return {at.x, at.y}
+}
+
+@(export, link_name = "roci_screen_point_v")
+abi_screen_point_v :: proc "c" (position: Abi_Vec3) -> Abi_Vec2 {
+	context = abi_context()
+	at, _ := screen_point(position.x, position.y, position.z)
+	return {at.x, at.y}
+}
+
+@(export, link_name = "roci_world_point")
+abi_world_point :: proc "c" (x, y: f64) -> Abi_Vec3 {
+	context = abi_context()
+	at, _ := world_point(x, y)
+	return {at.x, at.y, at.z}
+}
+
+@(export, link_name = "roci_world_point_v")
+abi_world_point_v :: proc "c" (position: Abi_Vec2) -> Abi_Vec3 {
+	context = abi_context()
+	at, _ := world_point(position.x, position.y)
+	return {at.x, at.y, at.z}
+}
+
+// ---- lights, materials and shadows ----
+
+@(export, link_name = "roci_light_ambient")
+abi_light_ambient :: proc "c" (colour: Abi_Color) -> c.int {
+	context = abi_context()
+	return 1 if light(.Ambient, colour = color_from_abi(colour)) else 0
+}
+
+@(export, link_name = "roci_light_sun")
+abi_light_sun :: proc "c" (x, y, z: f64, colour: Abi_Color) -> c.int {
+	context = abi_context()
+	return 1 if light(.Sun, at = [3]f64{x, y, z}, colour = color_from_abi(colour)) else 0
+}
+
+@(export, link_name = "roci_light_point")
+abi_light_point :: proc "c" (x, y, z: f64, colour: Abi_Color, falloff: f64) -> c.int {
+	context = abi_context()
+	return 1 if light(.Point, at = [3]f64{x, y, z}, colour = color_from_abi(colour), falloff = falloff) else 0
+}
+
+@(export, link_name = "roci_light_spot")
+abi_light_spot :: proc "c" (x, y, z, to_x, to_y, to_z, angle: f64, colour: Abi_Color, falloff: f64) -> c.int {
+	context = abi_context()
+	return 1 if light(.Spot, at = [3]f64{x, y, z}, aim = [3]f64{to_x, to_y, to_z}, colour = color_from_abi(colour), falloff = falloff, angle = angle) else 0
+}
+
+@(export, link_name = "roci_no_lights")
+abi_no_lights :: proc "c" () {
+	context = abi_context()
+	no_lights()
+}
+
+@(export, link_name = "roci_material")
+abi_material :: proc "c" (metallic, roughness, emissive: f64) {
+	context = abi_context()
+	material(metallic, roughness, emissive)
+}
+
+@(export, link_name = "roci_shadows")
+abi_shadows :: proc "c" () {
+	context = abi_context()
+	shadows()
+}
+
+// ---- 3D transforms and the turtle in space ----
+
+@(export, link_name = "roci_move_xyz")
+abi_move_xyz :: proc "c" (x, y, z: f64) {
+	context = abi_context()
+	move_xyz(x, y, z)
+}
+
+@(export, link_name = "roci_move_v3")
+abi_move_v3 :: proc "c" (offset: Abi_Vec3) {
+	context = abi_context()
+	move_v3(vec3_from_abi(offset))
+}
+
+@(export, link_name = "roci_grow_xyz")
+abi_grow_xyz :: proc "c" (x, y, z: f64) {
+	context = abi_context()
+	grow_xyz(x, y, z)
+}
+
+@(export, link_name = "roci_turn_about")
+abi_turn_about :: proc "c" (degrees: f64, axis: cstring) {
+	context = abi_context()
+	switch text_from_abi(axis) {
+	case "x": turn_about(degrees, .X)
+	case "y": turn_about(degrees, .Y)
+	case "z": turn_about(degrees, .Z)
+	}
+}
+
+@(export, link_name = "roci_turtle_space")
+abi_turtle_space :: proc "c" () {
+	context = abi_context()
+	turtle_space()
+}
+
+@(export, link_name = "roci_up")
+abi_up :: proc "c" (degrees: f64) {
+	context = abi_context()
+	turtle_up(degrees)
+}
+
+@(export, link_name = "roci_down")
+abi_down :: proc "c" (degrees: f64) {
+	context = abi_context()
+	turtle_down(degrees)
+}
+
+@(export, link_name = "roci_roll")
+abi_roll :: proc "c" (degrees: f64) {
+	context = abi_context()
+	turtle_roll(degrees)
 }

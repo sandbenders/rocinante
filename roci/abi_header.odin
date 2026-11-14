@@ -37,50 +37,10 @@ ABI_NOT_IN_C := [?]Abi_Skip{
 	{"push", 0, "takes a block; C has roci_push and roci_pop"},
 	{"random", 1, "`random from 1 to 3` is roci_random_between"},
 	{"draw into", 0, "takes a block; C has roci_begin_into and roci_end_into"},
-	{"box", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"box", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"box", 2, "the 3D verbs come to C with the rest of Phase 4"},
-	{"box", 3, "the 3D verbs come to C with the rest of Phase 4"},
-	{"sphere", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"sphere", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"plane", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"plane", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"cone", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"cone", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"cylinder", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"cylinder", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"capsule", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"capsule", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"torus", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"torus", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"icosphere", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"icosphere", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"grid", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"axes", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"arrow", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"arrow", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"camera", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"light", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"no lights", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"material", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"shadows", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"model", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"model", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"turtle space", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"up", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"down", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"roll", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"camera", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"look at", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"look at", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"ortho", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"perspective", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"screen point", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"screen point", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"world point", 0, "the 3D verbs come to C with the rest of Phase 4"},
-	{"world point", 1, "the 3D verbs come to C with the rest of Phase 4"},
-	{"move", 2, "a 3D move; no C form yet"},
-	{"grow", 2, "a 3D scale; no C form yet"},
+	{"light", 0, "takes a kind word and options; C has roci_light_ambient, roci_light_sun, roci_light_point and roci_light_spot"},
+	{"material", 0, "takes optional words; C has roci_material with all three numbers"},
+	{"model", 0, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
+	{"model", 1, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
 }
 
 // Filled when the program starts: `typeid_of` is not a constant, and a table this
@@ -212,6 +172,59 @@ abi_table_init :: proc "contextless" () {
 	{"roci_noise3", "noise", 2, typeid_of(type_of(abi_noise3)), "", ""},
 	{"roci_noise4", "noise", 3, typeid_of(type_of(abi_noise4)), "", ""},
 	{"roci_fbm", "fbm", 0, typeid_of(type_of(abi_fbm)), "", ""},
+	{"roci_box", "box", 0, typeid_of(type_of(abi_box)), "", ""},
+	{"roci_box_sized", "box", 1, typeid_of(type_of(abi_box_sized)), "", ""},
+	{"roci_box_v", "box", 2, typeid_of(type_of(abi_box_v)), "", ""},
+	{"roci_box_sized_v", "box", 3, typeid_of(type_of(abi_box_sized_v)), "", ""},
+	{"roci_sphere", "sphere", 0, typeid_of(type_of(abi_sphere)), "", ""},
+	{"roci_sphere_v", "sphere", 1, typeid_of(type_of(abi_sphere_v)), "", ""},
+	{"roci_plane", "plane", 0, typeid_of(type_of(abi_plane)), "", ""},
+	{"roci_plane_v", "plane", 1, typeid_of(type_of(abi_plane_v)), "", ""},
+	{"roci_cone", "cone", 0, typeid_of(type_of(abi_cone)), "", ""},
+	{"roci_cone_v", "cone", 1, typeid_of(type_of(abi_cone_v)), "", ""},
+	{"roci_cylinder", "cylinder", 0, typeid_of(type_of(abi_cylinder)), "", ""},
+	{"roci_cylinder_v", "cylinder", 1, typeid_of(type_of(abi_cylinder_v)), "", ""},
+	{"roci_capsule", "capsule", 0, typeid_of(type_of(abi_capsule)), "", ""},
+	{"roci_capsule_v", "capsule", 1, typeid_of(type_of(abi_capsule_v)), "", ""},
+	{"roci_torus", "torus", 0, typeid_of(type_of(abi_torus)), "", ""},
+	{"roci_torus_v", "torus", 1, typeid_of(type_of(abi_torus_v)), "", ""},
+	{"roci_icosphere", "icosphere", 0, typeid_of(type_of(abi_icosphere)), "", ""},
+	{"roci_icosphere_v", "icosphere", 1, typeid_of(type_of(abi_icosphere_v)), "", ""},
+	{"roci_grid", "grid", 0, typeid_of(type_of(abi_grid)), "", ""},
+	{"roci_axes", "axes", 0, typeid_of(type_of(abi_axes)), "", ""},
+	{"roci_arrow", "arrow", 0, typeid_of(type_of(abi_arrow)), "", ""},
+	{"roci_arrow_v", "arrow", 1, typeid_of(type_of(abi_arrow_v)), "", ""},
+	{"roci_mesh", "", 0, typeid_of(type_of(abi_mesh)), "void roci_mesh(const char *key, const roci_vec3 *corners, int count, int wireframe)", "Draws a mesh of triangles: `corners` holds `count` corners, three for each triangle, in the coordinates of the moment, flat shaded in the fill; with `wireframe` 1 only the feature edges are drawn, as tubes as wide as the thickness. `key` names the call that draws it, so a list drawn again unchanged is sent to the graphics card once."},
+	{"roci_load_model", "", 0, typeid_of(type_of(abi_load_model)), "roci_model_id roci_load_model(const char *path)", "Reads a glTF (.glb or .gltf) or OBJ model from a file, with the pictures and data it names beside it, and gives its number, or 0 when it cannot be read. The same file read again, unchanged, gives the same number."},
+	{"roci_model", "", 0, typeid_of(type_of(abi_model)), "void roci_model(roci_model_id model, double x, double y, double z, double size)", "Draws a loaded model with its middle at a point and its longest side `size` long, in the colors and pictures of its own materials."},
+	{"roci_model_v", "", 0, typeid_of(type_of(abi_model_v)), "void roci_model_v(roci_model_id model, roci_vec3 position, double size)", "The same at a point given as a vector."},
+	{"roci_camera", "camera", 0, typeid_of(type_of(abi_camera)), "", ""},
+	{"roci_camera_v", "camera", 1, typeid_of(type_of(abi_camera_v)), "", ""},
+	{"roci_camera_fov", "", 0, typeid_of(type_of(abi_camera_fov)), "void roci_camera_fov(double x, double y, double z, double fov)", "Puts the eye of the 3D camera at a point, as roci_camera does, seeing `fov` degrees wide (50 to start with)."},
+	{"roci_look_at", "look at", 0, typeid_of(type_of(abi_look_at)), "", ""},
+	{"roci_look_at_v", "look at", 1, typeid_of(type_of(abi_look_at_v)), "", ""},
+	{"roci_ortho", "ortho", 0, typeid_of(type_of(abi_ortho)), "", ""},
+	{"roci_perspective", "perspective", 0, typeid_of(type_of(abi_perspective)), "", ""},
+	{"roci_perspective_fov", "", 0, typeid_of(type_of(abi_perspective_fov)), "void roci_perspective_fov(double fov)", "Draws the 3D scene with perspective again, seeing `fov` degrees wide."},
+	{"roci_screen_point", "screen point", 0, typeid_of(type_of(abi_screen_point)), "", ""},
+	{"roci_screen_point_v", "screen point", 1, typeid_of(type_of(abi_screen_point_v)), "", ""},
+	{"roci_world_point", "world point", 0, typeid_of(type_of(abi_world_point)), "", ""},
+	{"roci_world_point_v", "world point", 1, typeid_of(type_of(abi_world_point_v)), "", ""},
+	{"roci_light_ambient", "", 0, typeid_of(type_of(abi_light_ambient)), "int roci_light_ambient(roci_color color)", "Adds an ambient light of a color to the 3D scene. The first light of a frame takes the usual lights away. Gives 0 when the scene already has as many lights as it can hold."},
+	{"roci_light_sun", "", 0, typeid_of(type_of(abi_light_sun)), "int roci_light_sun(double x, double y, double z, roci_color color)", "Adds a sun: light from the direction x, y, z (the direction towards the sun, in the world, y down). Gives 0 when the scene has no room."},
+	{"roci_light_point", "", 0, typeid_of(type_of(abi_light_point)), "int roci_light_point(double x, double y, double z, roci_color color, double falloff)", "Adds a point light at a place, weaker the further away: `falloff` is the distance at which it has dropped to half (500 is usual). Gives 0 when the scene has no room."},
+	{"roci_light_spot", "", 0, typeid_of(type_of(abi_light_spot)), "int roci_light_spot(double x, double y, double z, double to_x, double to_y, double to_z, double angle, roci_color color, double falloff)", "Adds a spot light at a place, aimed at another, inside a cone of half `angle` degrees (30 is usual). Gives 0 when the scene has no room."},
+	{"roci_no_lights", "no lights", 0, typeid_of(type_of(abi_no_lights)), "", ""},
+	{"roci_material", "", 0, typeid_of(type_of(abi_material)), "void roci_material(double metallic, double roughness, double emissive)", "Sets what the 3D shapes drawn from now on are made of: `metallic` 0 for paint up to 1 for metal, `roughness` 0 for a mirror up to 1 for chalk, and `emissive` how much of their color they give off by themselves."},
+	{"roci_shadows", "shadows", 0, typeid_of(type_of(abi_shadows)), "", ""},
+	{"roci_move_xyz", "move", 2, typeid_of(type_of(abi_move_xyz)), "", ""},
+	{"roci_move_v3", "", 0, typeid_of(type_of(abi_move_v3)), "void roci_move_v3(roci_vec3 offset)", "Moves the 3D shapes drawn after it, by a vector of three numbers."},
+	{"roci_grow_xyz", "grow", 2, typeid_of(type_of(abi_grow_xyz)), "", ""},
+	{"roci_turn_about", "", 0, typeid_of(type_of(abi_turn_about)), "void roci_turn_about(double degrees, const char *axis)", "Turns the 3D shapes drawn after it about an axis, \"x\", \"y\" or \"z\", in degrees: clockwise seen from the end of the axis."},
+	{"roci_turtle_space", "turtle space", 0, typeid_of(type_of(abi_turtle_space)), "", ""},
+	{"roci_up", "up", 0, typeid_of(type_of(abi_up)), "", ""},
+	{"roci_down", "down", 0, typeid_of(type_of(abi_down)), "", ""},
+	{"roci_roll", "roll", 0, typeid_of(type_of(abi_roll)), "", ""},
 	{"roci_mouse", "", 0, typeid_of(type_of(abi_mouse)), "roci_vec2 roci_mouse(void)", "Where the mouse is in the current window, in logical pixels."},
 	{"roci_pmouse", "", 0, typeid_of(type_of(abi_pmouse)), "roci_vec2 roci_pmouse(void)", "Where the mouse was one frame ago."},
 	{"roci_mouse_down", "", 0, typeid_of(type_of(abi_mouse_down)), "int roci_mouse_down(void)", "1 while the left mouse button is down, in the current window."},
@@ -224,18 +237,54 @@ abi_table_init :: proc "contextless" () {
 }
 
 // The C type for a registry kind, or false when C has no form for it.
-abi_c_type :: proc(kind: registry.Kind) -> (name: string, ok: bool) {
+abi_c_type :: proc(kind: registry.Kind, wide := false) -> (name: string, ok: bool) {
 	switch kind {
 	case .None:                 return "void", true
 	case .Number:               return "double", true
 	case .Text, .Name:          return "const char *", true
 	case .Colour, .Paint:       return "roci_color", true
-	case .Vector:               return "roci_vec2", true
+	case .Vector:               return "roci_vec3" if wide else "roci_vec2", true
 	case .Window:               return "roci_window_id", true
 	case .Image:                return "roci_image_id", true
 	case .List, .Table, .Block, .Gradient, .Any, .Boolean, .Expr_Block, .Record: return "", false
 	}
 	return "", false
+}
+
+// The functions whose vectors are points in space: the vector parameters (counted among all the
+// parameters) and the result that have three numbers where the registry only says vector, because
+// the language's vector is two to four numbers.
+Abi_Wide :: struct {
+	c_name: string,
+	params: bit_set[0 ..< 8], // which parameters
+	result: bool,
+}
+
+ABI_WIDE := [?]Abi_Wide{
+	{"roci_box_v", {0}, false},
+	{"roci_box_sized_v", {0, 1}, false},
+	{"roci_sphere_v", {0}, false},
+	{"roci_plane_v", {0}, false}, // its size is a vector of two
+	{"roci_cone_v", {0}, false},
+	{"roci_cylinder_v", {0}, false},
+	{"roci_capsule_v", {0}, false},
+	{"roci_torus_v", {0}, false},
+	{"roci_icosphere_v", {0}, false},
+	{"roci_arrow_v", {0, 1}, false},
+	{"roci_camera_v", {0}, false},
+	{"roci_look_at_v", {0}, false},
+	{"roci_screen_point_v", {0}, false}, // it gives a pixel, a vector of two
+	{"roci_world_point", {}, true},
+	{"roci_world_point_v", {}, true}, // it takes a pixel
+}
+
+abi_wide_of :: proc(c_name: string) -> Abi_Wide {
+	for wide in ABI_WIDE {
+		if wide.c_name == c_name {
+			return wide
+		}
+	}
+	return {}
 }
 
 // A C identifier for a registry parameter name.
@@ -256,7 +305,8 @@ abi_prototype_for :: proc(entry: Abi_Entry, allocator := context.allocator) -> (
 		return "", "", false
 	}
 	shape := verb.shapes[entry.shape]
-	ret, ret_ok := abi_c_type(shape.gives)
+	wide := abi_wide_of(entry.c_name)
+	ret, ret_ok := abi_c_type(shape.gives, wide.result)
 	if !ret_ok {
 		return "", "", false
 	}
@@ -266,7 +316,7 @@ abi_prototype_for :: proc(entry: Abi_Entry, allocator := context.allocator) -> (
 		strings.write_string(&b, "void")
 	}
 	for param, i in shape.params {
-		c_type, type_ok := abi_c_type(param.kind)
+		c_type, type_ok := abi_c_type(param.kind, i in wide.params)
 		if !type_ok {
 			strings.builder_destroy(&b)
 			return "", "", false
@@ -291,10 +341,10 @@ abi_header :: proc(allocator := context.allocator) -> string {
  * do not edit it by hand.
  *
  * Numbers are double, text is a NUL-terminated const char *, colors are
- * roci_color (four floats, each 0 to 255), points are roci_vec2, windows are
- * roci_window_id and pictures roci_image_id (ints; 0 is none) and true and false are int. A verb with
+ * roci_color (four floats, each 0 to 255), points are roci_vec2 (roci_vec3 in space), windows are
+ * roci_window_id, pictures roci_image_id and models roci_model_id (ints; 0 is none) and true and false are int. A verb with
  * several shapes has one function per shape: the first keeps the verb's name and
- * the others add a suffix (_v is the form that takes points).
+ * the others add a suffix (_v is the form that takes points; sized takes a size for each side).
  */
 #ifndef ROCI_H
 #define ROCI_H
@@ -305,8 +355,10 @@ extern "C" {
 
 typedef struct { float r, g, b, a; } roci_color;
 typedef struct { double x, y; } roci_vec2;
+typedef struct { double x, y, z; } roci_vec3;
 typedef int roci_window_id;
 typedef int roci_image_id;
+typedef int roci_model_id;
 
 typedef enum { ROCI_NUMBER, ROCI_TEXT, ROCI_BOOLEAN, ROCI_VEC2 } roci_value_kind;
 

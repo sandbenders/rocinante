@@ -5,10 +5,10 @@
  * do not edit it by hand.
  *
  * Numbers are double, text is a NUL-terminated const char *, colors are
- * roci_color (four floats, each 0 to 255), points are roci_vec2, windows are
- * roci_window_id and pictures roci_image_id (ints; 0 is none) and true and false are int. A verb with
+ * roci_color (four floats, each 0 to 255), points are roci_vec2 (roci_vec3 in space), windows are
+ * roci_window_id, pictures roci_image_id and models roci_model_id (ints; 0 is none) and true and false are int. A verb with
  * several shapes has one function per shape: the first keeps the verb's name and
- * the others add a suffix (_v is the form that takes points).
+ * the others add a suffix (_v is the form that takes points; sized takes a size for each side).
  */
 #ifndef ROCI_H
 #define ROCI_H
@@ -19,8 +19,10 @@ extern "C" {
 
 typedef struct { float r, g, b, a; } roci_color;
 typedef struct { double x, y; } roci_vec2;
+typedef struct { double x, y, z; } roci_vec3;
 typedef int roci_window_id;
 typedef int roci_image_id;
+typedef int roci_model_id;
 
 typedef enum { ROCI_NUMBER, ROCI_TEXT, ROCI_BOOLEAN, ROCI_VEC2 } roci_value_kind;
 
@@ -398,6 +400,165 @@ double roci_noise4(double x, double y, double z, double w);
 
 /* Layers of noise from 0 to 1, with finer detail added on top. */
 double roci_fbm(double x, double y, double z);
+
+/* Draws a box in 3D about a point: with one side for a cube, or a width, height and depth. The window gets a camera that the mouse turns. */
+void roci_box(double x, double y, double z, double side);
+
+/* Draws a box in 3D about a point: with one side for a cube, or a width, height and depth. The window gets a camera that the mouse turns. */
+void roci_box_sized(double x, double y, double z, double width, double height, double depth);
+
+/* Draws a box in 3D about a point: with one side for a cube, or a width, height and depth. The window gets a camera that the mouse turns. */
+void roci_box_v(roci_vec3 position, double side);
+
+/* Draws a box in 3D about a point: with one side for a cube, or a width, height and depth. The window gets a camera that the mouse turns. */
+void roci_box_sized_v(roci_vec3 position, roci_vec3 size);
+
+/* Draws a sphere in 3D about a point. */
+void roci_sphere(double x, double y, double z, double radius);
+
+/* Draws a sphere in 3D about a point. */
+void roci_sphere_v(roci_vec3 position, double radius);
+
+/* Draws a flat square in 3D, lying in the plane of x and z like a floor, about a point. */
+void roci_plane(double x, double y, double z, double width, double depth);
+
+/* Draws a flat square in 3D, lying in the plane of x and z like a floor, about a point. */
+void roci_plane_v(roci_vec3 position, roci_vec2 size);
+
+/* Draws a cone in 3D about a point, its tip up. */
+void roci_cone(double x, double y, double z, double radius, double height);
+
+/* Draws a cone in 3D about a point, its tip up. */
+void roci_cone_v(roci_vec3 position, double radius, double height);
+
+/* Draws a cylinder in 3D about a point, standing on its end. */
+void roci_cylinder(double x, double y, double z, double radius, double height);
+
+/* Draws a cylinder in 3D about a point, standing on its end. */
+void roci_cylinder_v(roci_vec3 position, double radius, double height);
+
+/* Draws a capsule in 3D about a point: a cylinder with a half sphere on each end, the height counting both. */
+void roci_capsule(double x, double y, double z, double radius, double height);
+
+/* Draws a capsule in 3D about a point: a cylinder with a half sphere on each end, the height counting both. */
+void roci_capsule_v(roci_vec3 position, double radius, double height);
+
+/* Draws a ring in 3D lying in the plane of x and z about a point: the radius is to the middle of the tube, and the tube has a radius of its own. */
+void roci_torus(double x, double y, double z, double radius, double tube);
+
+/* Draws a ring in 3D lying in the plane of x and z about a point: the radius is to the middle of the tube, and the tube has a radius of its own. */
+void roci_torus_v(roci_vec3 position, double radius, double tube);
+
+/* Draws a sphere of 80 flat faces in 3D about a point, which shows how the light falls on each. */
+void roci_icosphere(double x, double y, double z, double radius);
+
+/* Draws a sphere of 80 flat faces in 3D about a point, which shows how the light falls on each. */
+void roci_icosphere_v(roci_vec3 position, double radius);
+
+/* Draws a grid on the floor of the 3D scene, the plane of x and z: `lines` squares across a size, in the fill. */
+void roci_grid(double size, double lines);
+
+/* Draws the three axes of the 3D scene as arrows from the origin: x red, y green and z blue. */
+void roci_axes(double size);
+
+/* Draws an arrow in 3D from one point to another, in the fill. */
+void roci_arrow(double x1, double y1, double z1, double x2, double y2, double z2);
+
+/* Draws an arrow in 3D from one point to another, in the fill. */
+void roci_arrow_v(roci_vec3 from, roci_vec3 to);
+
+/* Draws a mesh of triangles: `corners` holds `count` corners, three for each triangle, in the coordinates of the moment, flat shaded in the fill; with `wireframe` 1 only the feature edges are drawn, as tubes as wide as the thickness. `key` names the call that draws it, so a list drawn again unchanged is sent to the graphics card once. */
+void roci_mesh(const char *key, const roci_vec3 *corners, int count, int wireframe);
+
+/* Reads a glTF (.glb or .gltf) or OBJ model from a file, with the pictures and data it names beside it, and gives its number, or 0 when it cannot be read. The same file read again, unchanged, gives the same number. */
+roci_model_id roci_load_model(const char *path);
+
+/* Draws a loaded model with its middle at a point and its longest side `size` long, in the colors and pictures of its own materials. */
+void roci_model(roci_model_id model, double x, double y, double z, double size);
+
+/* The same at a point given as a vector. */
+void roci_model_v(roci_model_id model, roci_vec3 position, double size);
+
+/* Puts the eye of the 3D camera at a point, looking at the middle (or where `look at` says), until the frame ends. The mouse then no longer turns it; `fov` is how wide it sees in degrees, 50 to start with. */
+void roci_camera(double x, double y, double z);
+
+/* Puts the eye of the 3D camera at a point, looking at the middle (or where `look at` says), until the frame ends. The mouse then no longer turns it; `fov` is how wide it sees in degrees, 50 to start with. */
+void roci_camera_v(roci_vec3 position);
+
+/* Puts the eye of the 3D camera at a point, as roci_camera does, seeing `fov` degrees wide (50 to start with). */
+void roci_camera_fov(double x, double y, double z, double fov);
+
+/* Aims the 3D camera at a point. If the camera has not been moved, it stays where it was and turns to look there. */
+void roci_look_at(double x, double y, double z);
+
+/* Aims the 3D camera at a point. If the camera has not been moved, it stays where it was and turns to look there. */
+void roci_look_at_v(roci_vec3 position);
+
+/* Draws the 3D scene without perspective: things are the same size at every distance, one unit a pixel. */
+void roci_ortho(void);
+
+/* Draws the 3D scene with perspective again, after `ortho`; `fov` is how wide it sees in degrees. */
+void roci_perspective(void);
+
+/* Draws the 3D scene with perspective again, seeing `fov` degrees wide. */
+void roci_perspective_fov(double fov);
+
+/* Where a point of the 3D scene shows in the window, as a pixel from the top left, the point in the coordinates of the moment: `screen point { 0, 0, 0 }`. A point behind the camera gives { 0, 0 }. */
+roci_vec2 roci_screen_point(double x, double y, double z);
+
+/* Where a point of the 3D scene shows in the window, as a pixel from the top left, the point in the coordinates of the moment: `screen point { 0, 0, 0 }`. A point behind the camera gives { 0, 0 }. */
+roci_vec2 roci_screen_point_v(roci_vec3 position);
+
+/* The point of the floor, the plane where y is 0, that shows at a pixel of the window, as a vector of three numbers: `world point mouse`. A pixel that looks past the floor gives { 0, 0, 0 }. */
+roci_vec3 roci_world_point(double x, double y);
+
+/* The point of the floor, the plane where y is 0, that shows at a pixel of the window, as a vector of three numbers: `world point mouse`. A pixel that looks past the floor gives { 0, 0, 0 }. */
+roci_vec3 roci_world_point_v(roci_vec2 position);
+
+/* Adds an ambient light of a color to the 3D scene. The first light of a frame takes the usual lights away. Gives 0 when the scene already has as many lights as it can hold. */
+int roci_light_ambient(roci_color color);
+
+/* Adds a sun: light from the direction x, y, z (the direction towards the sun, in the world, y down). Gives 0 when the scene has no room. */
+int roci_light_sun(double x, double y, double z, roci_color color);
+
+/* Adds a point light at a place, weaker the further away: `falloff` is the distance at which it has dropped to half (500 is usual). Gives 0 when the scene has no room. */
+int roci_light_point(double x, double y, double z, roci_color color, double falloff);
+
+/* Adds a spot light at a place, aimed at another, inside a cone of half `angle` degrees (30 is usual). Gives 0 when the scene has no room. */
+int roci_light_spot(double x, double y, double z, double to_x, double to_y, double to_z, double angle, roci_color color, double falloff);
+
+/* Draws the 3D shapes that come after it flat in their color, with no light or shade, until the `push` it is in ends or the frame does. */
+void roci_no_lights(void);
+
+/* Sets what the 3D shapes drawn from now on are made of: `metallic` 0 for paint up to 1 for metal, `roughness` 0 for a mirror up to 1 for chalk, and `emissive` how much of their color they give off by themselves. */
+void roci_material(double metallic, double roughness, double emissive);
+
+/* Turns shadows on for the rest of the frame: the first `sun` or `spot` light casts them (the usual sun, if no light is written), and so does the first `point` light, in every direction, and the 3D shapes are dark where they do not reach. */
+void roci_shadows(void);
+
+/* Moves everything drawn after it; with three numbers, or a vector of three, it moves the 3D shapes. */
+void roci_move_xyz(double x, double y, double z);
+
+/* Moves the 3D shapes drawn after it, by a vector of three numbers. */
+void roci_move_v3(roci_vec3 offset);
+
+/* Scales everything drawn after it. */
+void roci_grow_xyz(double x, double y, double z);
+
+/* Turns the 3D shapes drawn after it about an axis, "x", "y" or "z", in degrees: clockwise seen from the end of the axis. */
+void roci_turn_about(double degrees, const char *axis);
+
+/* Makes the turtle walk the 3D scene for the rest of the frame, from the origin facing up the screen: `forward`, `back`, `left`, `right`, `pen up`, `pen down`, `home` and `show turtle` then act on it, and it draws thin tubes in the stroke (the thickness is their width), or in black while there is none. */
+void roci_turtle_space(void);
+
+/* Tips the nose of the turtle in space towards its top, in degrees, which at the start is towards you. It needs `turtle space` first. */
+void roci_up(double degrees);
+
+/* Tips the nose of the turtle in space away from its top, in degrees. It needs `turtle space` first. */
+void roci_down(double degrees);
+
+/* Rolls the turtle in space about the way it faces, its top going to the right, in degrees. It needs `turtle space` first. */
+void roci_roll(double degrees);
 
 /* Where the mouse is in the current window, in logical pixels. */
 roci_vec2 roci_mouse(void);

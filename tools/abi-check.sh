@@ -43,7 +43,10 @@ echo "abi-check: $(wc -l < output/abi-header.txt | tr -d ' ') functions, the hea
 
 cc -Wall -Wextra -Werror examples/c/circle.c -Iinclude -Loutput -lroci -o output/c_circle
 echo "abi-check: examples/c/circle.c builds"
+cc -Wall -Wextra -Werror examples/c/scene.c -Iinclude -Loutput -lroci -lm -o output/c_scene
+echo "abi-check: examples/c/scene.c builds"
 if [ "${1:-}" = "--run" ]; then
   LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_circle 2
-  echo "abi-check: the C example ran"
+  LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_scene 2
+  echo "abi-check: the C examples ran"
 fi

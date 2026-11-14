@@ -12,13 +12,13 @@ import "core:testing"
 import "registry"
 
 // What a registry kind is as an exported procedure's parameter or result.
-type_for_kind :: proc(kind: registry.Kind) -> (id: typeid, ok: bool) {
+type_for_kind :: proc(kind: registry.Kind, wide := false) -> (id: typeid, ok: bool) {
 	switch kind {
 	case .Number:      return f64, true
 	case .Text, .Name: return cstring, true
 	case .Colour, .Paint: return Abi_Color, true
 	case .Image:       return c.int, true
-	case .Vector:      return Abi_Vec2, true
+	case .Vector:      return typeid_of(Abi_Vec3) if wide else typeid_of(Abi_Vec2), true
 	case .None, .Window, .List, .Table, .Block, .Gradient, .Any, .Boolean, .Expr_Block, .Record: return nil, false
 	}
 	return nil, false
@@ -107,10 +107,11 @@ test_exported_procedures_take_what_the_registry_says :: proc(t: ^testing.T) {
 		if !testing.expectf(t, ok, "%s is not a procedure", entry.c_name) {
 			continue
 		}
+		wide := abi_wide_of(entry.c_name)
 		// A window result is a C int in Odin; every other kind has one Odin type.
 		if testing.expectf(t, len(params) == len(shape.params), "%s takes %d parameters, the registry's `%s` takes %d", entry.c_name, len(params), verb.name, len(shape.params)) {
 			for param, i in shape.params {
-				want, known := type_for_kind(param.kind)
+				want, known := type_for_kind(param.kind, i in wide.params)
 				testing.expectf(t, known && params[i].id == want, "%s parameter %d (`%s`) is not the type for %v", entry.c_name, i, param.name, param.kind)
 			}
 		}
@@ -119,7 +120,7 @@ test_exported_procedures_take_what_the_registry_says :: proc(t: ^testing.T) {
 		} else if shape.gives == .Window {
 			testing.expectf(t, len(results) == 1, "%s should give a window", entry.c_name)
 		} else {
-			want, known := type_for_kind(shape.gives)
+			want, known := type_for_kind(shape.gives, wide.result)
 			testing.expectf(t, known && len(results) == 1 && results[0].id == want, "%s does not give the type for %v", entry.c_name, shape.gives)
 		}
 	}
@@ -210,5 +211,48 @@ test_the_header_compiles_as_c_and_as_cplusplus :: proc(t: ^testing.T) {
 			continue // no such compiler here
 		}
 		testing.expectf(t, state.exit_code == 0, "%s rejects include/roci.h (exit code %d, stdout %q): %s", desc[0], state.exit_code, string(stdout), string(stderr))
+	}
+}
+
+@(test)
+test_the_3d_functions_take_points_in_space :: proc(t: ^testing.T) {
+	header := abi_header()
+	defer delete(header)
+	testing.expect(t, strings.contains(header, "typedef struct { double x, y, z; } roci_vec3;"))
+	testing.expect(t, strings.contains(header, "void roci_box(double x, double y, double z, double side);"))
+	testing.expect(t, strings.contains(header, "void roci_box_sized_v(roci_vec3 position, roci_vec3 size);"))
+	testing.expect(t, strings.contains(header, "void roci_plane_v(roci_vec3 position, roci_vec2 size);"), "a plane's size is flat")
+	testing.expect(t, strings.contains(header, "void roci_arrow_v(roci_vec3 from, roci_vec3 to);"))
+	testing.expect(t, strings.contains(header, "roci_vec2 roci_screen_point_v(roci_vec3 position);"), "it gives a pixel")
+	testing.expect(t, strings.contains(header, "roci_vec3 roci_world_point_v(roci_vec2 position);"), "it takes a pixel")
+	testing.expect(t, strings.contains(header, "roci_vec3 roci_world_point(double x, double y);"))
+	testing.expect(t, strings.contains(header, "void roci_shadows(void);"))
+	testing.expect(t, strings.contains(header, "void roci_turtle_space(void);"))
+	testing.expect(t, strings.contains(header, "int roci_light_point(double x, double y, double z, roci_color color, double falloff);"))
+	testing.expect(t, strings.contains(header, "void roci_mesh(const char *key, const roci_vec3 *corners, int count, int wireframe);"))
+}
+
+@(test)
+test_every_wide_function_is_in_the_table_and_has_a_vector_to_widen :: proc(t: ^testing.T) {
+	for wide in ABI_WIDE {
+		found := false
+		for entry in ABI_TABLE {
+			if entry.c_name != wide.c_name {
+				continue
+			}
+			found = true
+			verb, ok := registry.find_verb(entry.verb)
+			if !testing.expectf(t, ok && entry.verb != "", "%s widens a registry verb's vectors, so it is one", wide.c_name) {
+				continue
+			}
+			shape := verb.shapes[entry.shape]
+			for i in 0 ..< 8 {
+				if i in wide.params {
+					testing.expectf(t, i < len(shape.params) && shape.params[i].kind == .Vector, "%s widens parameter %d, which is not a vector", wide.c_name, i)
+				}
+			}
+			testing.expectf(t, !wide.result || shape.gives == .Vector, "%s widens a result that is not a vector", wide.c_name)
+		}
+		testing.expectf(t, found, "%s is widened but not in the table", wide.c_name)
 	}
 }
