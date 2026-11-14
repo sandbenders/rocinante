@@ -4,20 +4,28 @@
 // walls are lines (from and to). `contact` says which way to bounce. Every hit has
 // its sound: glass for a brick, wood for a wall and a metal plate for the paddle,
 // from Kenney's Impact Sounds (CC0, kenney.nl). A sound plays on from where it is,
-// so `rewind` first lets a brick broken straight after another be heard too.
+// so `rewind` first lets a brick broken straight after another be heard too. A
+// ball the paddle misses tolls a bell and comes back to the middle, and when the
+// last brick is broken the wall is built again and the game starts over.
 window size 480 360 title "bricks" resizable false cursor none
 
 COLORS = [ tomato orange gold yellowgreen mediumturquoise ]
 bricks = []
-for tier from 0 to 4 [
-  for col from 0 to 7 [
-    add {
-      pos: { col * 56 + 16, tier * 22 + 30 }
-      size: { 50, 16 }
-      tint: item (tier + 1) of COLORS
-    } to bricks
+
+// Five rows of eight bricks, a color for each row.
+learn build [
+  for tier from 0 to 4 [
+    for col from 0 to 7 [
+      add {
+        pos: { col * 56 + 16, tier * 22 + 30 }
+        size: { 50, 16 }
+        tint: item (tier + 1) of COLORS
+      } to bricks
+    ]
   ]
 ]
+
+build
 walls = [
   { from: { 0, 0 }, to: { 480, 0 } }
   { from: { 0, 0 }, to: { 0, 360 } }
@@ -28,6 +36,7 @@ paddle = { pos: { 200, 330 }, size: { 80, 10 } }
 brick_sound = load "brick.ogg"
 wall_sound = load "wall.ogg"
 paddle_sound = load "paddle.ogg"
+miss_sound = load "miss.ogg"
 
 learn bounce off [
   c = contact ball off
@@ -35,6 +44,12 @@ learn bounce off [
   ball.pos = ball.pos + c.normal * c.depth
   along = ball.vel.x * c.normal.x + ball.vel.y * c.normal.y
   if along < 0 [ ball.vel = ball.vel - c.normal * (2 * along) ]
+]
+
+// The ball back in the middle, going up and to the right.
+learn serve [
+  ball.pos = { 240, 250 }
+  ball.vel = { 3, -4 }
 ]
 
 // From the start, and from where the ball is between the speakers.
@@ -60,7 +75,14 @@ draw [
     remove b from bricks
     hit brick_sound
   ]
-  if ball.pos.y > 380 [ ball.pos = { 240, 250 }  ball.vel = { 3, -4 } ]
+  if ball.pos.y > 380 [
+    hit miss_sound
+    serve
+  ]
+  if (count bricks) is 0 [
+    build
+    serve
+  ]
   for each b in bricks [ rect at b.pos size b.size fill b.tint ]
   rect at paddle.pos size paddle.size fill white
   circle at ball.pos radius ball.radius fill white

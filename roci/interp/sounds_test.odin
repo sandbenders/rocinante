@@ -193,12 +193,12 @@ test_sound_ambiguous :: proc(t: ^testing.T) {
 test_the_bricks_example_sounds_every_hit :: proc(t: ^testing.T) {
 	text, read := os.read_entire_file("examples/bricks/sketch.roci", context.temp_allocator)
 	testing.expect(t, read == nil)
-	p := run_with_sounds(t, "bricks_example", string(text), "examples/bricks/assets/sounds", {"brick.ogg", "wall.ogg", "paddle.ogg"})
+	p := run_with_sounds(t, "bricks_example", string(text), "examples/bricks/assets/sounds", {"brick.ogg", "wall.ogg", "paddle.ogg", "miss.ogg"})
 	defer finish(p)
 	testing.expect_value(t, len(p.errors), 0)
-	for name in ([]string{"brick_sound", "wall_sound", "paddle_sound"}) {
+	for name in ([]string{"brick_sound", "wall_sound", "paddle_sound", "miss_sound"}) {
 		st := sound_of(p, name)
-		testing.expectf(t, st.length > 0.1 && st.length < 0.6 && st.at == 0 && !st.playing, "%s: %v", name, st)
+		testing.expectf(t, st.length > 0.1 && st.length < 1.6 && st.at == 0 && !st.playing, "%s: %v", name, st)
 	}
 	// up and to the right from the middle: the lowest row of bricks is reached in under thirty frames
 	before := len(as_list(global_named(p, "bricks")).items)
@@ -222,5 +222,24 @@ test_the_bricks_example_sounds_every_hit :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, paddle_played, "the paddle sounded")
 	testing.expect(t, wall_played, "a wall sounded")
+	testing.expect(t, sound_of(p, "miss_sound").at == 0, "the paddle missed nothing")
+	// with the paddle far to the left the ball falls out: the bell tolls and the ball is served again
+	missed := false
+	for _ in 0 ..< 300 {
+		roci.step({platform.Mouse_Moved{window = platform.Window_Id(w), x = 0, y = 300}})
+		if sound_of(p, "miss_sound").playing {
+			missed = true
+			break
+		}
+	}
+	testing.expect(t, missed, "the bell tolled")
+	ball := global_named(p, "ball")
+	testing.expect_value(t, as_pair(read_field(p, ball, "pos")), [2]f64{240, 250})
+	testing.expect_value(t, as_pair(read_field(p, ball, "vel")), [2]f64{3, -4})
+	// the last brick broken, the wall is built again and the ball served
+	clear(&as_list(global_named(p, "bricks")).items)
+	roci.step()
+	testing.expect_value(t, len(as_list(global_named(p, "bricks")).items), 40)
+	testing.expect_value(t, as_pair(read_field(p, ball, "pos")), [2]f64{240, 250})
 	testing.expect_value(t, len(p.errors), 0)
 }

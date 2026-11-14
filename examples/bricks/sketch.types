@@ -6,3 +6,4 @@ paddle: a record with pos and size
 brick_sound: a sound
 wall_sound: a sound
 paddle_sound: a sound
+miss_sound: a sound
