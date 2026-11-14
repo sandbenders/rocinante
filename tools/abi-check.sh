@@ -33,7 +33,7 @@ if ! odin build roci -build-mode:shared -no-entry-point -vet -strict-style -out:
 fi
 
 # Every function the header declares is exported, and nothing else is.
-sed -n 's/.* \(roci_[a-z0-9_]*\)(.*/\1/p' include/roci.h | sort > output/abi-header.txt
+sed -n 's/.*[ *]\(roci_[a-z0-9_]*\)(.*/\1/p' include/roci.h | sort > output/abi-header.txt
 nm -g "$lib" | sed -n "s/.* [TDRS] _\{0,1\}\(roci_[a-z0-9_]*\)\$/\1/p" | sort > output/abi-library.txt
 if ! diff output/abi-header.txt output/abi-library.txt; then
   echo "abi-check: the header and the library disagree (header on the left)" >&2
@@ -45,8 +45,11 @@ cc -Wall -Wextra -Werror examples/c/circle.c -Iinclude -Loutput -lroci -o output
 echo "abi-check: examples/c/circle.c builds"
 cc -Wall -Wextra -Werror examples/c/scene.c -Iinclude -Loutput -lroci -lm -o output/c_scene
 echo "abi-check: examples/c/scene.c builds"
+cc -Wall -Wextra -Werror examples/c/controls.c -Iinclude -Loutput -lroci -o output/c_controls
+echo "abi-check: examples/c/controls.c builds"
 if [ "${1:-}" = "--run" ]; then
   LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_circle 2
   LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_scene 2
+  LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_controls 2
   echo "abi-check: the C examples ran"
 fi

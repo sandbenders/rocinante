@@ -227,6 +227,7 @@ shutdown :: proc() {
 	gfx.images_stop()
 	gfx.models_stop()
 	svgs_stop()
+	abi_stop()
 	gfx.shaders_stop()
 	gfx.effect_vertex_stop()
 	gfx.fill_vertex_stop()

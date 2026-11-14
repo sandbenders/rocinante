@@ -131,8 +131,12 @@ test_the_header_declares_every_function_once :: proc(t: ^testing.T) {
 	header := abi_header()
 	defer delete(header)
 	for entry in ABI_TABLE {
-		needle := strings.concatenate({" ", entry.c_name, "("}, context.temp_allocator)
-		testing.expectf(t, strings.count(header, needle) == 1, "%s is declared %d times", entry.c_name, strings.count(header, needle))
+		// a function that gives text back has its star beside its name
+		declared := 0
+		for lead in ([?]string{" ", "*"}) {
+			declared += strings.count(header, strings.concatenate({lead, entry.c_name, "("}, context.temp_allocator))
+		}
+		testing.expectf(t, declared == 1, "%s is declared %d times", entry.c_name, declared)
 	}
 	testing.expect(t, strings.has_prefix(header, "/* SPDX-License-Identifier: 0BSD"))
 	testing.expect(t, strings.contains(header, "#ifndef ROCI_H"))
@@ -254,5 +258,55 @@ test_every_wide_function_is_in_the_table_and_has_a_vector_to_widen :: proc(t: ^t
 			testing.expectf(t, !wide.result || shape.gives == .Vector, "%s widens a result that is not a vector", wide.c_name)
 		}
 		testing.expectf(t, found, "%s is widened but not in the table", wide.c_name)
+	}
+}
+
+@(test)
+test_a_shape_with_no_c_form_of_its_own_names_the_functions_that_do_its_job :: proc(t: ^testing.T) {
+	for skip in ABI_NOT_IN_C {
+		words := strings.fields(skip.reason, context.temp_allocator)
+		named := 0
+		for word in words {
+			name := strings.trim_right(word, ",.;")
+			if !strings.has_prefix(name, "roci_") {
+				continue
+			}
+			named += 1
+			found := false
+			for entry in ABI_TABLE {
+				if entry.c_name == name {
+					found = true
+				}
+			}
+			testing.expectf(t, found, "`%s` shape %d says %s does its job, and there is no such function", skip.verb, skip.shape, name)
+		}
+		testing.expectf(t, named > 0, "`%s` shape %d has no C form of its own, so its reason has to name the function that does its job", skip.verb, skip.shape)
+	}
+}
+
+@(test)
+test_every_language_only_verb_has_c_functions_or_a_reason_c_needs_none :: proc(t: ^testing.T) {
+	for verb in registry.LANGUAGE_VERBS {
+		listed := false
+		for entry in ABI_LANGUAGE {
+			if entry.verb == verb.name {
+				listed = true
+			}
+		}
+		testing.expectf(t, listed, "the language verb `%s` is in neither ABI_LANGUAGE's functions nor its reasons: C needs the same", verb.name)
+	}
+	for entry in ABI_LANGUAGE {
+		_, known := registry.find_verb(entry.verb)
+		testing.expectf(t, known, "ABI_LANGUAGE lists `%s`, which the language does not have", entry.verb)
+		testing.expectf(t, (entry.functions != "") != (entry.reason != ""), "`%s` needs C functions or a reason, not both and not neither", entry.verb)
+		for name in strings.fields(entry.functions, context.temp_allocator) {
+			found := false
+			for row in ABI_TABLE {
+				if row.c_name == name {
+					found = true
+				}
+			}
+			testing.expectf(t, found, "`%s` says %s does its job, and there is no such function", entry.verb, name)
+		}
 	}
 }

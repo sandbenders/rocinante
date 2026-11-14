@@ -47,6 +47,7 @@ Abi_Value_Kind :: enum c.int {
 	Text,
 	Boolean,
 	Vec2,
+	List,
 }
 
 Abi_Value :: struct {
@@ -54,6 +55,8 @@ Abi_Value :: struct {
 	number:  f64,
 	text:    cstring,
 	vec:     Abi_Vec2,
+	items:   [^]Abi_Value, // for a list
+	count:   c.int,
 }
 
 Abi_Draw_Fn :: proc "c" ()
@@ -168,21 +171,52 @@ abi_receive_trampoline :: proc(value: Value) {
 	if !ok || f == nil {
 		return
 	}
-	message: Abi_Value
+	message := value_to_abi(value)
+	f(&message)
+}
+
+// A message as C reads it; a list's items are in the temporary memory, valid while the handler runs.
+@(private)
+value_to_abi :: proc(value: Value) -> Abi_Value {
 	switch v in value {
 	case f64:
-		message = {kind = .Number, number = v}
+		return {kind = .Number, number = v}
 	case bool:
-		message = {kind = .Boolean, number = 1 if v else 0}
+		return {kind = .Boolean, number = 1 if v else 0}
 	case string:
-		text := strings.clone_to_cstring(v, context.temp_allocator)
-		message = {kind = .Text, text = text}
+		return {kind = .Text, text = strings.clone_to_cstring(v, context.temp_allocator)}
 	case [2]f64:
-		message = {kind = .Vec2, vec = {v.x, v.y}}
+		return {kind = .Vec2, vec = {v.x, v.y}}
 	case []Value:
-		return // lists have no C form yet
+		items := make([]Abi_Value, len(v), context.temp_allocator)
+		for item, i in v {
+			items[i] = value_to_abi(item)
+		}
+		return {kind = .List, items = raw_data(items), count = c.int(len(items))}
 	}
-	f(&message)
+	return {}
+}
+
+// What C sends as a message, as the Odin value, in the temporary memory (`send` copies it).
+@(private)
+value_from_abi :: proc(message: ^Abi_Value) -> Value {
+	if message == nil {
+		return f64(0)
+	}
+	switch message.kind {
+	case .Number:  return message.number
+	case .Text:    return text_from_abi(message.text)
+	case .Boolean: return message.number != 0
+	case .Vec2:    return [2]f64{message.vec.x, message.vec.y}
+	case .List:
+		count := int(max(message.count, 0)) if message.items != nil else 0
+		items := make([]Value, count, context.temp_allocator)
+		for i in 0 ..< count {
+			items[i] = value_from_abi(&message.items[i])
+		}
+		return items
+	}
+	return f64(0)
 }
 
 // Runs `block` every frame for the window (0 for the default window).
@@ -262,49 +296,49 @@ abi_clear :: proc "c" () {
 @(export, link_name = "roci_circle")
 abi_circle :: proc "c" (x, y, radius: f64) {
 	context = abi_context()
-	circle(x, y, radius)
+	circle(x, y, radius, origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_circle_v")
 abi_circle_v :: proc "c" (position: Abi_Vec2, radius: f64) {
 	context = abi_context()
-	circle(vec_from_abi(position), radius)
+	circle(vec_from_abi(position), radius, origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_ellipse")
 abi_ellipse :: proc "c" (x, y, width, height: f64) {
 	context = abi_context()
-	ellipse(x, y, width, height)
+	ellipse(x, y, width, height, origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_ellipse_v")
 abi_ellipse_v :: proc "c" (position, size: Abi_Vec2) {
 	context = abi_context()
-	ellipse(vec_from_abi(position), vec_from_abi(size))
+	ellipse(vec_from_abi(position), vec_from_abi(size), origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_rect")
 abi_rect :: proc "c" (x, y, width, height: f64) {
 	context = abi_context()
-	rect(x, y, width, height)
+	rect(x, y, width, height, origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_rect_v")
 abi_rect_v :: proc "c" (position, size: Abi_Vec2) {
 	context = abi_context()
-	rect(vec_from_abi(position), vec_from_abi(size))
+	rect(vec_from_abi(position), vec_from_abi(size), origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_square")
 abi_square :: proc "c" (x, y, side: f64) {
 	context = abi_context()
-	square(x, y, side)
+	square(x, y, side, origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_square_v")
 abi_square_v :: proc "c" (position: Abi_Vec2, side: f64) {
 	context = abi_context()
-	square(vec_from_abi(position), side)
+	square(vec_from_abi(position), side, origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_line")
@@ -358,7 +392,7 @@ abi_quad_v :: proc "c" (a, b, c, d: Abi_Vec2) {
 @(export, link_name = "roci_arc")
 abi_arc :: proc "c" (x, y, width, height, start, stop: f64) {
 	context = abi_context()
-	arc(x, y, width, height, start, stop)
+	arc(x, y, width, height, start, stop, origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_debug_text")
@@ -877,25 +911,25 @@ abi_image_height :: proc "c" (picture: c.int) -> f64 {
 @(export, link_name = "roci_image")
 abi_image :: proc "c" (picture: c.int, x, y: f64) {
 	context = abi_context()
-	image_xy(Image(picture), x, y)
+	image_xy(Image(picture), x, y, origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_image_v")
 abi_image_v :: proc "c" (picture: c.int, position: Abi_Vec2) {
 	context = abi_context()
-	image_v(Image(picture), vec_from_abi(position))
+	image_v(Image(picture), vec_from_abi(position), origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_image_sized")
 abi_image_sized :: proc "c" (picture: c.int, x, y, width, height: f64) {
 	context = abi_context()
-	image_sized_xy(Image(picture), x, y, width, height)
+	image_sized_xy(Image(picture), x, y, width, height, origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_image_sized_v")
 abi_image_sized_v :: proc "c" (picture: c.int, position, size: Abi_Vec2) {
 	context = abi_context()
-	image_sized_v(Image(picture), vec_from_abi(position), vec_from_abi(size))
+	image_sized_v(Image(picture), vec_from_abi(position), vec_from_abi(size), origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_canvas")

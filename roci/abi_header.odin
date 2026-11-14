@@ -32,8 +32,8 @@ Abi_Skip :: struct {
 }
 
 ABI_NOT_IN_C := [?]Abi_Skip{
-	{"gradient", 0, "takes a list of colors; no C form yet"},
-	{"pick", 0, "takes a list; no C form yet"},
+	{"gradient", 0, "takes a list of colors; C has roci_gradient, which gives a gradient number for roci_fill_gradient, roci_stroke_gradient and roci_background_gradient"},
+	{"pick", 0, "takes a list; C has roci_pick_index, the place of a random item"},
 	{"push", 0, "takes a block; C has roci_push and roci_pop"},
 	{"random", 1, "`random from 1 to 3` is roci_random_between"},
 	{"draw into", 0, "takes a block; C has roci_begin_into and roci_end_into"},
@@ -41,6 +41,89 @@ ABI_NOT_IN_C := [?]Abi_Skip{
 	{"material", 0, "takes optional words; C has roci_material with all three numbers"},
 	{"model", 0, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
 	{"model", 1, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
+}
+
+// The verbs only the language has (registry.LANGUAGE_VERBS) and the C functions that do their job; a verb with no function is one whose
+// job C does with its own arrays and loops, and says so. A new language verb has to be listed here, so none is left out of C unnoticed.
+Abi_Language :: struct {
+	verb:      string,
+	functions: string, // the C functions, separated by spaces, or ""
+	reason:    string, // for a verb with none
+}
+
+ABI_LANGUAGE := [?]Abi_Language{
+	{"add", "", "a list is a C array: C appends to its own"},
+	{"remove", "", "a list is a C array: C removes from its own"},
+	{"count", "", "a list is a C array: C knows its length"},
+	{"item", "roci_item", ""},
+	{"keep", "", "takes a block over a list: C has its own loops"},
+	{"skip", "", "takes a block over a list: C has its own loops"},
+	{"collect", "", "takes a block over a list: C has its own loops"},
+	{"combine", "", "takes a block over a list: C has its own loops"},
+	{"find", "", "takes a block over a list: C has its own loops"},
+	{"sort", "", "takes a block over a list: C has qsort"},
+	{"shuffle", "roci_shuffle", ""},
+	{"copy", "", "a record or list is C's own memory: C copies it"},
+	{"table", "", "a table is a map of text to values: C has its own"},
+	{"put", "", "a table is a map of text to values: C has its own"},
+	{"get", "", "a table is a map of text to values: C has its own"},
+	{"keys", "", "a table is a map of text to values: C has its own"},
+	{"effect", "roci_effect roci_builtin_effect roci_add_shader roci_update_shader", ""},
+	{"shade", "roci_shade roci_add_shader", ""},
+	{"save", "roci_save", ""},
+	{"record", "roci_record roci_no_record", ""},
+	{"no record", "roci_no_record", ""},
+	{"load", "roci_load_image roci_load_image_file roci_load_model roci_load_svg", ""},
+	{"pixel", "roci_pixel", ""},
+	{"pixels", "roci_pixels", ""},
+	{"picture", "roci_picture_from_colors roci_picture_of_window", ""},
+	{"crop", "roci_crop", ""},
+	{"resize", "roci_resize", ""},
+	{"filter", "roci_filter", ""},
+	{"mask", "roci_mask", ""},
+	{"outline", "roci_outline", ""},
+	{"label", "roci_label", ""},
+	{"button", "roci_button", ""},
+	{"toggle", "roci_toggle", ""},
+	{"slider", "roci_slider", ""},
+	{"number", "roci_number", ""},
+	{"textbox", "roci_textbox", ""},
+	{"dropdown", "roci_dropdown", ""},
+	{"choice", "roci_choice", ""},
+	{"progress", "roci_progress", ""},
+	{"separator", "roci_separator", ""},
+	{"tip", "roci_tip", ""},
+	{"colorpicker", "roci_colorpicker", ""},
+	{"knob", "roci_knob", ""},
+	{"range", "roci_range", ""},
+	{"xypad", "roci_xypad", ""},
+	{"image button", "roci_image_button", ""},
+	{"ui hide", "roci_ui_hide", ""},
+	{"ui show", "roci_ui_show", ""},
+	{"ui key", "roci_ui_key", ""},
+	{"ui theme", "roci_ui_theme", ""},
+	{"forget ui", "roci_forget_ui", ""},
+	{"panel", "roci_panel_begin roci_panel_end", ""},
+	{"row", "roci_row_begin roci_row_end", ""},
+	{"column", "roci_column_begin roci_column_end", ""},
+	{"tabs", "roci_tabs_begin roci_tabs_end", ""},
+	{"tab", "roci_tab_begin roci_tab_end", ""},
+	{"menu", "roci_menu_begin roci_menu_end", ""},
+	{"list", "roci_list", ""},
+	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent", ""},
+	{"send", "roci_send roci_send_number roci_send_text roci_send_vec2 roci_send_boolean", ""},
+	{"print", "roci_print", ""},
+	{"held", "roci_held", ""},
+	{"tween", "roci_tween roci_tween_vec2 roci_tween_vec3 roci_tween_color", ""},
+	{"touching", "roci_touching", ""},
+	{"contact", "roci_contact", ""},
+	{"hits", "roci_hits roci_tree_hits", ""},
+	{"inside", "roci_inside", ""},
+	{"cast", "roci_cast roci_tree_cast", ""},
+	{"ray", "roci_ray roci_ray_v", ""},
+	{"triangles", "roci_triangles roci_triangles_v", ""},
+	{"mesh", "roci_mesh", ""},
+	{"svg", "roci_svg roci_svg_v roci_svg_sized roci_svg_sized_v roci_load_svg", ""},
 }
 
 // Filled when the program starts: `typeid_of` is not a constant, and a table this
@@ -244,8 +327,19 @@ abi_table_init :: proc "contextless" () {
 	{"roci_time", "", 0, typeid_of(type_of(abi_time)), "double roci_time(void)", "Seconds since the sketch began."},
 	{"roci_frame_count", "", 0, typeid_of(type_of(abi_frame_count)), "int roci_frame_count(void)", "How many frames have been drawn."},
 }
-	ABI_TABLE = make([]Abi_Entry, len(entries))
-	copy(ABI_TABLE, entries[:])
+	all := make([dynamic]Abi_Entry, 0, 512)
+	append(&all, ..entries[:])
+	abi_window_group(&all)
+	abi_pictures_group(&all)
+	abi_collide_group(&all)
+	abi_ui_group(&all)
+	abi_misc_group(&all)
+	ABI_TABLE = all[:]
+}
+
+// One table row for a function of ours (one that is not a registry verb).
+abi_entry :: proc(c_name: string, procedure: typeid, prototype, doc: string) -> Abi_Entry {
+	return {c_name = c_name, procedure = procedure, prototype = prototype, doc = doc}
 }
 
 // The C type for a registry kind, or false when C has no form for it.
@@ -354,12 +448,14 @@ abi_header :: proc(allocator := context.allocator) -> string {
  *
  * Numbers are double, text is a NUL-terminated const char *, colors are
  * roci_color (four floats, each 0 to 255), points are roci_vec2 (roci_vec3 in space), windows are
- * roci_window_id, pictures roci_image_id and models roci_model_id and drawings roci_svg_id (ints; 0 is none) and true and false are int. A verb with
+ * roci_window_id, pictures roci_image_id and models roci_model_id, drawings roci_svg_id, gradients roci_gradient_id and shaders roci_shader_id (ints; 0 is none) and true and false are int. A verb with
  * several shapes has one function per shape: the first keeps the verb's name and
  * the others add a suffix (_v is the form that takes points; sized takes a size for each side).
  */
 #ifndef ROCI_H
 #define ROCI_H
+
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -372,19 +468,59 @@ typedef int roci_window_id;
 typedef int roci_image_id;
 typedef int roci_model_id;
 typedef int roci_svg_id;
+typedef int roci_gradient_id;
+typedef int roci_shader_id;
+typedef int roci_tree_id;
 typedef struct { roci_vec3 from, to; } roci_line3;
 
-typedef enum { ROCI_NUMBER, ROCI_TEXT, ROCI_BOOLEAN, ROCI_VEC2 } roci_value_kind;
+typedef enum { ROCI_NUMBER, ROCI_TEXT, ROCI_BOOLEAN, ROCI_VEC2, ROCI_LIST } roci_value_kind;
 
-/* A message: read the field that goes with kind. The text is valid only while
- * the handler runs. */
-typedef struct {
+/* A message: read the field that goes with kind (a boolean is number 0 or 1, a list has count items). The
+ * text and the items are valid only while the handler runs. */
+typedef struct roci_value {
 	roci_value_kind kind;
 	double number;
 	const char *text;
 	roci_vec2 vec;
+	const struct roci_value *items;
+	int count;
 } roci_value;
 
+typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
+
+typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS } roci_event_kind;
+
+/* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
+ * mouse events; valid only while the handler runs) and the finger (for touch events). */
+typedef struct {
+	int kind;
+	roci_window_id window;
+	const char *name;
+	roci_finger finger;
+} roci_event;
+
+/* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;
+ * ROCI_POINT3, ROCI_SPHERE, ROCI_BOX3, ROCI_SEGMENT3 and ROCI_MESH are in space. pos is a point, a circle's or sphere's middle, a flat
+ * box's top left corner or a box's middle in space; radius a circle's or sphere's; size a box's; angle.x a flat box's turn in degrees
+ * and angle a box's turns about x, y and z in space; from and to a segment's ends; points and count a polygon's corners (x and y)
+ * or a mesh's triangles (three corners for each). Fields a kind does not use are ignored. */
+typedef enum { ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT, ROCI_POLYGON, ROCI_POINT3, ROCI_SPHERE, ROCI_BOX3, ROCI_SEGMENT3, ROCI_MESH } roci_shape_kind;
+
+typedef struct {
+	int kind;
+	roci_vec3 pos;
+	double radius;
+	roci_vec3 size;
+	roci_vec3 angle;
+	roci_vec3 from, to;
+	const roci_vec3 *points;
+	int count;
+} roci_shape;
+
+typedef struct { int touching; roci_vec3 point, normal; double depth; } roci_contact_info;
+typedef struct { int index; roci_vec3 point, normal; double distance; } roci_cast_hit;
+
+typedef void (*roci_event_fn)(const roci_event *event);
 typedef void (*roci_draw_fn)(void);
 typedef void (*roci_receive_fn)(roci_value *value);
 

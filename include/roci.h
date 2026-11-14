@@ -6,12 +6,14 @@
  *
  * Numbers are double, text is a NUL-terminated const char *, colors are
  * roci_color (four floats, each 0 to 255), points are roci_vec2 (roci_vec3 in space), windows are
- * roci_window_id, pictures roci_image_id and models roci_model_id and drawings roci_svg_id (ints; 0 is none) and true and false are int. A verb with
+ * roci_window_id, pictures roci_image_id and models roci_model_id, drawings roci_svg_id, gradients roci_gradient_id and shaders roci_shader_id (ints; 0 is none) and true and false are int. A verb with
  * several shapes has one function per shape: the first keeps the verb's name and
  * the others add a suffix (_v is the form that takes points; sized takes a size for each side).
  */
 #ifndef ROCI_H
 #define ROCI_H
+
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,19 +26,59 @@ typedef int roci_window_id;
 typedef int roci_image_id;
 typedef int roci_model_id;
 typedef int roci_svg_id;
+typedef int roci_gradient_id;
+typedef int roci_shader_id;
+typedef int roci_tree_id;
 typedef struct { roci_vec3 from, to; } roci_line3;
 
-typedef enum { ROCI_NUMBER, ROCI_TEXT, ROCI_BOOLEAN, ROCI_VEC2 } roci_value_kind;
+typedef enum { ROCI_NUMBER, ROCI_TEXT, ROCI_BOOLEAN, ROCI_VEC2, ROCI_LIST } roci_value_kind;
 
-/* A message: read the field that goes with kind. The text is valid only while
- * the handler runs. */
-typedef struct {
+/* A message: read the field that goes with kind (a boolean is number 0 or 1, a list has count items). The
+ * text and the items are valid only while the handler runs. */
+typedef struct roci_value {
 	roci_value_kind kind;
 	double number;
 	const char *text;
 	roci_vec2 vec;
+	const struct roci_value *items;
+	int count;
 } roci_value;
 
+typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
+
+typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS } roci_event_kind;
+
+/* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
+ * mouse events; valid only while the handler runs) and the finger (for touch events). */
+typedef struct {
+	int kind;
+	roci_window_id window;
+	const char *name;
+	roci_finger finger;
+} roci_event;
+
+/* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;
+ * ROCI_POINT3, ROCI_SPHERE, ROCI_BOX3, ROCI_SEGMENT3 and ROCI_MESH are in space. pos is a point, a circle's or sphere's middle, a flat
+ * box's top left corner or a box's middle in space; radius a circle's or sphere's; size a box's; angle.x a flat box's turn in degrees
+ * and angle a box's turns about x, y and z in space; from and to a segment's ends; points and count a polygon's corners (x and y)
+ * or a mesh's triangles (three corners for each). Fields a kind does not use are ignored. */
+typedef enum { ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT, ROCI_POLYGON, ROCI_POINT3, ROCI_SPHERE, ROCI_BOX3, ROCI_SEGMENT3, ROCI_MESH } roci_shape_kind;
+
+typedef struct {
+	int kind;
+	roci_vec3 pos;
+	double radius;
+	roci_vec3 size;
+	roci_vec3 angle;
+	roci_vec3 from, to;
+	const roci_vec3 *points;
+	int count;
+} roci_shape;
+
+typedef struct { int touching; roci_vec3 point, normal; double depth; } roci_contact_info;
+typedef struct { int index; roci_vec3 point, normal; double distance; } roci_cast_hit;
+
+typedef void (*roci_event_fn)(const roci_event *event);
 typedef void (*roci_draw_fn)(void);
 typedef void (*roci_receive_fn)(roci_value *value);
 
@@ -615,6 +657,432 @@ double roci_time(void);
 
 /* How many frames have been drawn. */
 int roci_frame_count(void);
+
+/* Copies the open windows into `windows` as far as `capacity` allows (it may be NULL) and gives how many are open. */
+int roci_open_windows(roci_window_id *windows, int capacity);
+
+/* Sets the title in a window's bar. */
+void roci_set_title(roci_window_id window, const char *text);
+
+/* Sets the size of a window in logical pixels. */
+void roci_set_size(roci_window_id window, double width, double height);
+
+/* Moves a window to a place on the screen. */
+void roci_set_position(roci_window_id window, double x, double y);
+
+/* Sets the smallest size a window can be dragged to; 0 and 0 for no limit. */
+void roci_set_smallest(roci_window_id window, double width, double height);
+
+/* Sets the largest size a window can be dragged to; 0 and 0 for no limit. */
+void roci_set_largest(roci_window_id window, double width, double height);
+
+/* Sets the shape (width over height) a window keeps when it is resized; 0 for any. */
+void roci_set_ratio(roci_window_id window, double ratio);
+
+/* Sets how solid the whole window is, 0 (gone) to 255 (solid). */
+void roci_set_window_alpha(roci_window_id window, double alpha);
+
+/* Makes a window belong to another. */
+void roci_set_parent(roci_window_id window, roci_window_id parent);
+
+/* Sets the mouse cursor over a window: "arrow" or "none". */
+void roci_set_cursor(roci_window_id window, const char *name);
+
+/* Turns a yes-or-no setting of a window on or off, by the name the language uses: "fullscreen", "resizable", "bordered", "topmost", "visible", "focusable", "grab", "modal", "focused" (on brings it to the front), "maximized" or "minimized". */
+void roci_set_window_flag(roci_window_id window, const char *name, int on);
+
+/* Whether a yes-or-no fact about a window is true: the names of roci_set_window_flag, and "hovered" and "covered". */
+int roci_window_flag(roci_window_id window, const char *name);
+
+/* The width of a window in logical pixels. */
+double roci_window_width(roci_window_id window);
+
+/* The height of a window in logical pixels. */
+double roci_window_height(roci_window_id window);
+
+/* Where a window is on the screen. */
+roci_vec2 roci_window_at_position(roci_window_id window);
+
+/* Where the mouse is in a window. */
+roci_vec2 roci_window_mouse(roci_window_id window);
+
+/* How solid a window is, 0 to 255. */
+double roci_window_alpha(roci_window_id window);
+
+/* The shape a window keeps when resized; 0 for any. */
+double roci_window_ratio(roci_window_id window);
+
+/* The smallest size a window can be dragged to. */
+roci_vec2 roci_window_smallest(roci_window_id window);
+
+/* The largest size a window can be dragged to. */
+roci_vec2 roci_window_largest(roci_window_id window);
+
+/* The window a window belongs to, 0 for none. */
+roci_window_id roci_window_parent(roci_window_id window);
+
+/* The title of a window. The text stays valid until the next function that gives text back. */
+const char *roci_window_title(roci_window_id window);
+
+/* The name of the cursor over a window. The text stays valid until the next function that gives text back. */
+const char *roci_window_cursor(roci_window_id window);
+
+/* Turns waiting for the display's refresh on or off for the current window (on to start with). */
+void roci_vsync(int on);
+
+/* How many frames a second the sketch is drawing. */
+double roci_fps(void);
+
+/* The seed of this run, chosen at random unless roci_seed set it. */
+unsigned long long roci_current_seed(void);
+
+/* How far the wheel turned during the last frame: x to the right, y up. */
+roci_vec2 roci_wheel(void);
+
+/* 1 while any mouse button is held down in the current window. */
+int roci_pressed(void);
+
+/* 1 while the mouse button with this name ("left", "middle", "right", "back" or "forward") is down in the current window. */
+int roci_mouse_button_down(const char *name);
+
+/* The name of the key pressed last, or an empty text before any. The text stays valid until the next function that gives text back. */
+const char *roci_last_key(void);
+
+/* 1 while "shift", "ctrl" or "alt" is held, on either side. */
+int roci_modifier_down(const char *name);
+
+/* How many fingers are down in the current window. */
+int roci_touch_count(void);
+
+/* The finger at a place (from 0) in the order the fingers went down, every field 0 past the last. */
+roci_finger roci_touch(int index);
+
+/* Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key", "mouse down", "mouse up", "touch down", "touch up", "resize", "move" or "focus", and `argument` the key or mouse button it is for ("space", "right"), or NULL for any. */
+void roci_on(roci_window_id window, const char *event, const char *argument, roci_event_fn handler);
+
+/* Runs `handler` again and again in the current window, every `count` seconds, or frames when `unit` is "frames". */
+void roci_every(double count, const char *unit, roci_draw_fn handler);
+
+/* Makes a gradient from one to 16 colors and gives its number, or 0 when they do not fit. `kind` is 0 linear, 1 radial or 2 conic; `angle` is in degrees (0 runs left to right, clockwise); `space` is the color space the colors are mixed in, 0 Oklab, 1 RGB or 2 Oklch; `stops` is one percentage along the way for each color, or NULL to spread them evenly; `at_x` and `at_y` are the middle in percent of the shape for radial and conic (50 and 50 is the middle). */
+roci_gradient_id roci_gradient(const roci_color *colors, int count, int kind, double angle, int space, const float *stops, double at_x, double at_y);
+
+/* Fills with a gradient from now on. */
+void roci_fill_gradient(roci_gradient_id gradient);
+
+/* Outlines with a gradient from now on. */
+void roci_stroke_gradient(roci_gradient_id gradient);
+
+/* Paints the whole window with a gradient, behind everything. */
+void roci_background_gradient(roci_gradient_id gradient);
+
+/* A color by its CSS name ("orange", "teal"); clear black for a name that is not one. */
+roci_color roci_named(const char *name);
+
+/* A color from "#rgb", "#rgba", "#rrggbb" or "#rrggbbaa"; clear black for text that is not one. */
+roci_color roci_hex(const char *text);
+
+/* Blends two colors in a color space: 0 Oklab, 1 RGB or 2 Oklch. roci_mix is the Oklab one. */
+roci_color roci_mix_in(roci_color first, roci_color second, double amount, int space);
+
+/* Reads a picture file (PNG, JPEG, BMP, TGA or QOI) and gives its number, or 0 when it cannot be read. */
+roci_image_id roci_load_image_file(const char *path);
+
+/* The last frame of a window as a picture, `scale` times its logical size (1 or more), or 0 when there are no graphics to draw it. */
+roci_image_id roci_picture_of_window(roci_window_id window, int scale);
+
+/* The color of a pixel of a picture; clear black outside it. */
+roci_color roci_pixel(roci_image_id picture, double x, double y);
+
+/* Copies the colors of a picture, left to right and top to bottom, into `colors` as far as `capacity` allows (it may be NULL) and gives how many there are, or 0 for no picture or one of more than a million pixels. */
+int roci_pixels(roci_image_id picture, roci_color *colors, int capacity);
+
+/* Makes a picture of `width` by `height` from exactly that many colors, left to right and top to bottom, and gives it, or 0. */
+roci_image_id roci_picture_from_colors(const roci_color *colors, int count, int width, int height);
+
+/* A new picture of the part of a picture in a box from its top left, in pixels; the picture is left as it was. */
+roci_image_id roci_crop(roci_image_id picture, double x, double y, double width, double height);
+
+/* A new picture of a size (a side of 0 follows the picture's shape); `smooth` 0 keeps hard edges. */
+roci_image_id roci_resize(roci_image_id picture, double width, double height, int smooth);
+
+/* A new picture with a filter applied: "gray", "invert", "threshold", "posterize", "blur", "edges" or "pixelate". `amount` is what the filter uses (a brightness, a number of steps, a radius or a block size), or NaN for its usual. 0 for an unknown filter. */
+roci_image_id roci_filter(roci_image_id picture, const char *name, double amount);
+
+/* A new picture whose alpha is multiplied by how much of the stencil shows at each place, the stencil stretched over it. */
+roci_image_id roci_mask(roci_image_id picture, roci_image_id stencil);
+
+/* The corners of the solid part of a picture (its biggest piece, without holes), copied into `points` as far as `capacity` allows (it may be NULL), and how many there are. `alpha` is how solid a pixel has to be in percent (below 0 for 50); `at_x` and `at_y` put the picture where it is drawn, and a `width` and `height` of 0 leave it its own size. */
+int roci_outline(roci_image_id picture, double alpha, double at_x, double at_y, double width, double height, roci_vec2 *points, int capacity);
+
+/* Saves the current window as a PNG, SVG or PDF once the frame is drawn; a run of # in the name is the frame number. Gives 0 for a name that is none of those. What goes wrong later comes from roci_next_message. */
+int roci_save(const char *path);
+
+/* Starts recording the current window into a movie: ".apng", or ".mp4", ".mov", ".webm", ".mkv" or ".gif" through the user's ffmpeg. Gives 1, or 0 with the reason in roci_record_problem. */
+int roci_record(const char *path);
+
+/* Ends the current window's recording and writes the file. */
+void roci_no_record(void);
+
+/* Why the last roci_record gave 0, or an empty text. The text stays valid until the next function that gives text back. */
+const char *roci_record_problem(void);
+
+/* What saving and recording have to say, one message at a time (a file that could not be written, one not quite what the window shows, a recording that ended), or NULL when there is nothing more. The text stays valid until the next function that gives text back. */
+const char *roci_next_message(void);
+
+/* Translates the HLSL source of a shader and keeps it: `fill` 0 for an effect over a window or canvas, 1 for a shader that fills shapes; `file` names it in messages. Gives its number, or 0 when it is not a good shader, with what the translator said in roci_shader_message. */
+roci_shader_id roci_add_shader(const char *source, const char *file, int fill);
+
+/* Translates a changed source into a shader again. Gives 1 when it is good, or 0 with the message in roci_shader_message. */
+int roci_update_shader(roci_shader_id shader, const char *source, const char *file);
+
+/* What the translator said of the last shader that was not good, or an empty text. The text stays valid until the next function that gives text back. */
+const char *roci_shader_message(void);
+
+/* Runs a shader over the current window's frame once it is drawn, or over the canvas being drawn into. The shader's globals are given by name: `count` names, and in `values` the numbers of each one after the other, `counts` of each (1 to 4). Gives 0 for a shader that is not good. */
+int roci_effect(roci_shader_id shader, const char *const *names, const double *values, const int *counts, int count);
+
+/* Fills the shapes drawn from now on with a fill shader, until another fill is chosen; the values as for roci_effect. Gives 0 for a shader that is not good or is an effect. */
+int roci_shade(roci_shader_id shader, const char *const *names, const double *values, const int *counts, int count);
+
+/* Runs one of the effects that come with rocinante ("blur", "glow", "pixelate", "vignette", "split", "grain", "gray", "invert") over the frame, the values given by name as for roci_effect over the effect's own. Gives 0 for a name that is not one. */
+int roci_builtin_effect(const char *name, const char *const *names, const double *values, const int *counts, int count);
+
+/* How many effects come with rocinante. */
+int roci_builtin_effect_count(void);
+
+/* The name of a built-in effect (from 0), or NULL past the last. The text stays valid until the next function that gives text back. */
+const char *roci_builtin_effect_name(int index);
+
+/* Adds a font from the bytes of its file (a face of a collection by `face`) under a name, so roci_font finds it. Gives 1 when the bytes are a font. */
+int roci_add_font(const char *name, const unsigned char *bytes, int length, int face);
+
+/* Whether a font of this name is known. */
+int roci_has_font(const char *name);
+
+/* Whether two shapes touch, edges included. A flat shape and a shape in space never touch. */
+int roci_touching(const roci_shape *a, const roci_shape *b);
+
+/* Where two shapes touch: `normal` is the direction to move `a` to part them, `depth` how far, `point` a place where they touch. `touching` is 0, and every field 0, when they are apart. */
+roci_contact_info roci_contact(const roci_shape *a, const roci_shape *b);
+
+/* Whether a point is inside a shape, edges included. The point's z is not used for a flat shape. */
+int roci_inside(roci_vec3 point, const roci_shape *shape);
+
+/* Which items of a list a shape touches: copies their places in the list (from 0, in list order) into `out` as far as `capacity` allows (it may be NULL) and gives how many there are. A flat shape touches only flat items, and one in space only items in space. */
+int roci_hits(const roci_shape *shape, const roci_shape *list, int count, int *out, int capacity);
+
+/* The first item of a list a line from `from` to `to` meets: its place in the list, the point, the normal out of the shape and how far along the line. `index` is -1 (and the rest 0) when it meets nothing. The line is flat when the first item is. */
+roci_cast_hit roci_cast(roci_vec3 from, roci_vec3 to, const roci_shape *list, int count);
+
+/* Builds a tree of boxes for a list of shapes to ask about again and again; it answers what checking every shape answers, much faster for a long list. The shapes are copied. The tree is flat when the first shape is, and items of the other kind touch nothing. Gives the tree's number, or 0 for an empty list. */
+roci_tree_id roci_collision_tree(const roci_shape *list, int count);
+
+/* Lets a tree go. */
+void roci_tree_free(roci_tree_id tree);
+
+/* The items of a tree a shape touches, in list order, as roci_hits gives them. */
+int roci_tree_hits(roci_tree_id tree, const roci_shape *shape, int *out, int capacity);
+
+/* The first item of a tree a line meets, as roci_cast gives it. */
+roci_cast_hit roci_tree_cast(roci_tree_id tree, roci_vec3 from, roci_vec3 to);
+
+/* Runs `block` every frame after a window's draw (0 for the current window): the widgets of the window are made in it. They can also be made inside a draw function. */
+void roci_ui(roci_window_id window, roci_draw_fn block);
+
+/* A line of text in the interface. */
+void roci_label(const char *text);
+
+/* A button: gives 1 on the frame it is clicked. */
+int roci_button(const char *text);
+
+/* A check box that keeps its own value, `start` the first time its text is seen: gives 1 while it is ticked. */
+int roci_toggle(const char *text, int start);
+
+/* A slider that keeps its own value, `start` the first time its text is seen: gives its number. */
+double roci_slider(const char *text, double low, double high, double start);
+
+/* A number box with steppers that keeps its own value: gives it, inside `low` and `high`. */
+double roci_number(const char *text, double low, double high, double start);
+
+/* A box of text (`lines` high) that keeps its own text, `start` the first time its text is seen: copies what it holds into `out` (NUL-terminated, cut to `capacity`; it may be NULL) and gives the length of the whole text. */
+int roci_textbox(const char *text, const char *start, int lines, char *out, int capacity);
+
+/* A drop-down list of the items that keeps which is chosen (`start` the first time): gives its place, from 0, or -1 for no items. */
+int roci_dropdown(const char *text, const char *const *items, int count, int start);
+
+/* Radio buttons for the items; gives the place of the chosen one as roci_dropdown does. */
+int roci_choice(const char *text, const char *const *items, int count, int start);
+
+/* A selectable list of the items; gives the place of the chosen one as roci_dropdown does. */
+int roci_list(const char *text, const char *const *items, int count, int start);
+
+/* A color box that keeps its own color, `start` the first time its text is seen: gives it. */
+roci_color roci_colorpicker(const char *text, roci_color start);
+
+/* A rotary knob that keeps its own value: gives it, inside `low` and `high`. */
+double roci_knob(const char *text, double low, double high, double start);
+
+/* A two-handled range that keeps its own ends: gives them, the low one as x and the high one as y. */
+roci_vec2 roci_range(const char *text, double low, double high, double start_low, double start_high);
+
+/* A pad that keeps the place pressed on it, 0 to 1 across and down, starting at `start`: gives it. */
+roci_vec2 roci_xypad(const char *text, roci_vec2 start);
+
+/* A button that shows a picture, `width` by `height` across and down (0 and 0 for the picture's own size, down to 64 pixels on the longer side): gives 1 on the frame it is clicked. */
+int roci_image_button(const char *text, roci_image_id picture, double width, double height);
+
+/* A progress bar, from 0 to 1. */
+void roci_progress(double fraction);
+
+/* A line between widgets. */
+void roci_separator(void);
+
+/* Words that show beside the widget made just before, when the mouse rests on it. */
+void roci_tip(const char *text);
+
+/* An entry of a menu: gives 1 on the frame it is chosen. */
+int roci_item(const char *text);
+
+/* Opens a titled panel that folds up. Gives 1 when the widgets inside are to be made (it is open), and has to be closed with roci_panel_end either way. */
+int roci_panel_begin(const char *text);
+
+/* Closes the panel opened last. */
+void roci_panel_end(void);
+
+/* Opens a row: the widgets inside sit side by side. Close it with roci_row_end. */
+int roci_row_begin(void);
+
+/* Closes the row opened last. */
+void roci_row_end(void);
+
+/* Opens a column of widgets. Close it with roci_column_end. */
+int roci_column_begin(void);
+
+/* Closes the column opened last. */
+void roci_column_end(void);
+
+/* Opens a group of tabs, which holds roci_tab_begin groups. Close it with roci_tabs_end. */
+int roci_tabs_begin(void);
+
+/* Closes the group of tabs opened last. */
+void roci_tabs_end(void);
+
+/* Opens a tab of a group of tabs. Gives 1 when it is the one showing; close it with roci_tab_end either way. */
+int roci_tab_begin(const char *text);
+
+/* Closes the tab opened last. */
+void roci_tab_end(void);
+
+/* Opens a menu. Gives 1 when it is open, and its entries (roci_item) are made; close it with roci_menu_end either way. */
+int roci_menu_begin(const char *text);
+
+/* Closes the menu opened last. */
+void roci_menu_end(void);
+
+/* Says where the next widget or group goes (`has_at` 1: at x and y in the window's pixels, or, inside a draw function, on the canvas so it follows what is drawn) and how wide it is (`width` above 0). `name` is the widget's text, empty for a group with none. Call it just before the widget. */
+void roci_place(const char *name, int has_at, double x, double y, double width);
+
+/* Says that this call has made a widget `n` times already this frame (0 the first time), so widgets made in a loop that say the same keep apart. */
+void roci_salt(int n);
+
+/* Hides the current window's interface: its widgets are still made and read, but nothing is drawn and no input reaches them. */
+void roci_ui_hide(void);
+
+/* Shows the interface again, with the keyboard on its first widget. */
+void roci_ui_show(void);
+
+/* Changes the key that hides and shows the interface (the backtick to start with) to the key with this name ("f1"). Gives 0 for a name no key has. */
+int roci_ui_key(const char *name);
+
+/* Chooses the colors of the widgets: "dark", "light" or "system" (the computer's own, to start with). Any other word does nothing. */
+void roci_ui_theme(const char *name);
+
+/* Puts every widget of the window back to the value it starts with. */
+void roci_forget_ui(void);
+
+/* Remembers the widgets' values in this TOML file (such as "ui.toml") from now on, taking what it already says, and writes it when the sketch ends and after a pause in changes. */
+void roci_ui_remember(const char *path);
+
+/* Whether the window's interface drew anything in its last finished frame (nothing while it is hidden). */
+int roci_ui_drawn(roci_window_id window);
+
+/* How many mistakes the window's widgets have (two with one text), each said once. */
+int roci_ui_problem_count(roci_window_id window);
+
+/* One of those mistakes by its place (from 0), or NULL. The text stays valid until the next function that gives text back. */
+const char *roci_ui_problem(roci_window_id window, int index);
+
+/* Sends a message of any kind: a number, text, true or false, a point or a list of messages (which can hold lists in turn). It arrives on that window's next frame, and what is sent is copied. */
+void roci_send(roci_window_id to, const roci_value *message);
+
+/* Sends true or false to a window. */
+void roci_send_boolean(roci_window_id to, int on);
+
+/* Moves a number from where it is to `to` over `seconds`, a little each frame, on a curve ("smooth", the usual, "linear", "in", "out", "back", "elastic" or "bounce"), landing exactly on it. The place has to stay where it is until the tween ends. A new tween of the same place replaces the old one. */
+void roci_tween(double *place, double to, double seconds, const char *curve);
+
+/* The same for a point. */
+void roci_tween_vec2(roci_vec2 *place, roci_vec2 to, double seconds, const char *curve);
+
+/* The same for a point in space. */
+void roci_tween_vec3(roci_vec3 *place, roci_vec3 to, double seconds, const char *curve);
+
+/* The same for a color, mixed in Oklab on the way. */
+void roci_tween_color(roci_color *place, roci_color to, double seconds, const char *curve);
+
+/* Ends every tween where it is, without landing. */
+void roci_stop_tweens(void);
+
+/* A random place in the current window. */
+roci_vec2 roci_anywhere(void);
+
+/* A random place in a list of `count` items, from 0, by the sketch's own random numbers (so a seed repeats it); -1 for an empty list. */
+int roci_pick_index(int count);
+
+/* Mixes the `count` items of an array, each `size` bytes, by the sketch's own random numbers, so a seed repeats it. */
+void roci_shuffle(void *items, int count, size_t size);
+
+/* Writes a line to the console. */
+void roci_print(const char *text);
+
+/* 1 while a key is held, by its name ("space", "a", "left"), or a mouse button of the current window, as "mouse right". */
+int roci_held(const char *name);
+
+/* Saves the style (fill, stroke, thickness, font and the rest, not the transform) until the matching roci_pop_style: what is set in between is for the shapes in between only, as the language's `with` is. */
+void roci_push_style(void);
+
+/* Puts back the style roci_push_style saved. Gives 0 for a pop without a push. */
+int roci_pop_style(void);
+
+/* Says what the position of the next shape means: "center" or "corner" ("default" for the shape's usual), as the language's `as center` and `as corner`. It is for the next circle, ellipse, rectangle, square, arc or picture only. */
+void roci_origin(const char *word);
+
+/* Draws text with its top at a point, broken into lines of at most `width` pixels. */
+void roci_text_wrapped(const char *text, double x, double y, double width);
+
+/* The same at a point given as a vector. */
+void roci_text_wrapped_v(const char *text, roci_vec2 position, double width);
+
+/* How big a text is in the current font when it is broken into lines of at most `width` pixels: its width and height. */
+roci_vec2 roci_measure_wrapped(const char *text, double width);
+
+/* Starts a sketch with no windows and no graphics, so that the verbs record and roci_step runs a frame at a time: for tests of a program, and for pictures made with roci_picture_of_window. */
+void roci_start_headless(unsigned long long seed);
+
+/* Runs one frame of a sketch started with roci_start_headless, or of one that is showing, which is how a program can drive it itself. */
+void roci_step(void);
+
+/* Closes every window and gives everything back. The sketch can be started again. */
+void roci_shutdown(void);
+
+/* What went wrong when the graphics could not start, or an empty text. The text stays valid until the next function that gives text back. */
+const char *roci_last_error(void);
+
+/* Sets the size of the window a sketch gets when it never calls roci_window. */
+void roci_default_window_size(double width, double height);
+
+/* A number that is the same for two frames that look the same, for a window's last frame: what tests compare. */
+unsigned long long roci_frame_hash(roci_window_id window);
 
 #ifdef __cplusplus
 }
