@@ -858,6 +858,9 @@ Scene_Lights :: struct {
 	lights:  [MAX_LIGHTS][3][4]f32,
 	shadow_rows: [4][4]f32, // the matrix from the world to the shadow-casting light's view, as rows
 	shadow:      [4]f32,    // 1 when there is a shadow map, which light casts it, how far to push a surface out, the size of a texel
+	point_rows:  [6][4][4]f32, // for a point light's shadow: the matrix of each of its six faces, as rows (see point_faces)
+	point_at:    [4]f32,    // where the point light that casts shadows is, and in w its number among the lights plus 1 (0: none casts)
+	point_info:  [4]f32,    // the faces' near and far distance, how far one texel of a face is across at a distance of 1, one over a face's size
 }
 
 USUAL_AMBIENT :: [3]f32{0.4, 0.4, 0.4}
@@ -880,6 +883,13 @@ scene_lights :: proc(s: ^Scene3, canvas: [2]f32) -> Scene_Lights {
 		case .Ambient:
 			ambient += light.colour
 		case .Sun, .Point, .Spot:
+			if s.shadows && out.point_at.w == 0 && light.kind == .Point {
+				// the first point light casts shadows too, into a map of its own with a face for each direction
+				rows, near, far := point_faces(s, light.at)
+				out.point_rows = rows
+				out.point_at = {f32(light.at.x), f32(light.at.y), f32(light.at.z), f32(count + 1)}
+				out.point_info = {f32(near), f32(far), f32(2 * math.tan(POINT_FOV * math.PI / 360) / POINT_FACE_SIZE), 1.0 / POINT_FACE_SIZE}
+			}
 			if s.shadows && out.shadow.x == 0 && light.kind != .Point {
 				// the first sun or spot light casts the shadows; the number it has among the lights is the shader's way to find it
 				rows, texel := shadow_view(s, light)
@@ -910,7 +920,27 @@ scene_lights :: proc(s: ^Scene3, canvas: [2]f32) -> Scene_Lights {
 // The shadow map is a square of this many texels, drawn from the first sun or spot light.
 SHADOW_SIZE :: 2048
 
-// Turns shadows on for the rest of the frame: what the first sun or spot light does not reach is dark.
+// A point light's shadow map holds a view for each of six directions, side by side in a
+// texture three faces wide and two high; each face is this many texels square and sees a little
+// more than a quarter turn so the softening of an edge never reads past it.
+POINT_FACE_SIZE :: 1024
+POINT_FOV :: 94.0
+
+// The six views of a point light at `at`, looking along +x, -x, +y, -y, +z and -z of the sketch's
+// world, as rows of the matrix from the world to the view, and the distances they cut the scene at.
+point_faces :: proc(s: ^Scene3, at: [3]f64) -> (rows: [6][4][4]f32, near, far: f64) {
+	centre, radius := scene_bounds(s)
+	away := centre - at
+	near = 1
+	far = max(math.sqrt(dot3(away, away)) + radius * 1.5, near + 1)
+	forwards := [6][3]f64{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}
+	for forward, i in forwards {
+		rows[i] = light_matrix_rows(at, forward, 0, POINT_FOV, near, far)
+	}
+	return rows, near, far
+}
+
+// Turns shadows on for the rest of the frame: what the first sun or spot light, and the first point light, does not reach is dark.
 scene_shadows :: proc(s: ^Scene3) {
 	s.shadows = true
 }

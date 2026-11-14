@@ -399,7 +399,7 @@ scene_state :: proc(w: Window) -> (lights: []gfx.Light3, lit, unlit: bool, mater
 }
 
 // Turns shadows on for the rest of the frame: the first `sun` or `spot` light (the usual sun, when no
-// light is written) casts them, and everything in the scene is dark where it does not reach. Point lights cast none.
+// light is written) casts them, and so does the first `point` light, and everything in the scene is dark where they do not reach.
 shadows :: proc() {
 	gfx.scene_shadows(&current_list().scene)
 }

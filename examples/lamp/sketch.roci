@@ -1,0 +1,31 @@
+// Lamp: a point light casts shadows in every direction. `shadows` turns them on, and the first
+// `point` light, like the first `sun` or `spot`, is the one that casts: here a warm lamp circles
+// among a ring of pillars, a sphere and a turning torus, and their shadows swing out across the
+// floor and up the pillars beside them, away from the lamp wherever it is. Drag to look round.
+window size 760 460 title "lamp"
+
+draw [
+  background (rgb 10 12 24)
+  light ambient fill (rgb 30 34 60)
+  light point at (cos (frame * 1.2) * 120) -70 (sin (frame * 1.2) * 120) fill (rgb 255 190 120) falloff 260
+  shadows
+  fill (rgb 128 136 156)
+  material roughness 0.95
+  plane at 0 100 0 size 900 900
+  material roughness 0.5
+  for i from 0 to 5 [
+    push [
+      turn (i * 60) around y
+      move 230 20 0
+      box at 0 0 0 size 50 160 50 fill (hsb (i * 40) 150 235)
+    ]
+  ]
+  sphere at 0 60 0 radius 40 fill (rgb 240 200 90)
+  push [
+    move 0 -20 0
+    turn 70 around x
+    turn (frame * 1.5) around z
+    material metallic 0.8 roughness 0.3
+    torus at 0 0 0 radius 30 tube 8 fill (rgb 200 210 225)
+  ]
+]

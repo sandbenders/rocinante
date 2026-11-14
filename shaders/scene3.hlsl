@@ -40,6 +40,10 @@ SamplerState metal_sampler : register(s3, space2);
 Texture2D<float4> emissive_map : register(t4, space2);
 SamplerState emissive_sampler : register(s4, space2);
 
+// A point light's shadow map: six faces (+x, -x, +y, -y, +z, -z of the world) in a texture three faces wide and two high
+Texture2D<float4> point_map : register(t5, space2);
+SamplerState point_sampler : register(s5, space2);
+
 cbuffer Part : register(b1, space3)
 {
     float4 part;     // x: how strongly the normal map bends the surface (0: there is none), y: 1 when the light comes from a picture, z: the alpha below which a pixel is not drawn (0: none), w: how much a non-metal reflects looked at straight on
@@ -57,6 +61,9 @@ cbuffer Lights : register(b0, space3)
     float4 shadow_z;
     float4 shadow_w;
     float4 shadow;       // x: 1 when there is a shadow map, y: which light casts it, z: how far to push a surface out along its normal, w: the size of a texel of the map
+    float4 point_rows[24]; // the four rows of the matrix of each face of the point light's map
+    float4 point_at;     // xyz: where the point light that casts shadows is, w: its number among the lights plus 1 (0: none casts)
+    float4 point_info;   // x, y: the near and far distance of the faces, z: how far across a texel of a face is at a distance of 1, w: one over a face's size in texels
 };
 
 struct VSInput
@@ -133,6 +140,57 @@ float shadow_factor(float3 world, float3 n, float nl)
         {
             float seen = shadow_map.SampleLevel(shadow_sampler, uv + float2(x, y) * shadow.w, 0).r;
             lit += (ndc.z - bias > seen) ? 0.0 : 1.0;
+        }
+    }
+    return lit / 9.0;
+}
+
+// The same for a point light: the face the place is in is the one its largest distance from the light points at, and what
+// the map holds there is the depth of a perspective that is turned back into a distance along that axis to be compared.
+float point_shadow_factor(float3 world, float3 n, float nl)
+{
+    float3 d0 = world - point_at.xyz;
+    float3 a = abs(d0);
+    float dist = max(max(a.x, a.y), a.z);
+    int face;
+    if (a.x >= a.y && a.x >= a.z)
+    {
+        face = d0.x > 0.0 ? 0 : 1;
+    }
+    else if (a.y >= a.z)
+    {
+        face = d0.y > 0.0 ? 2 : 3;
+    }
+    else
+    {
+        face = d0.z > 0.0 ? 4 : 5;
+    }
+    float4 p = float4(world + n * (dist * point_info.z * 1.5), 1.0);
+    float4 clip = float4(dot(point_rows[face * 4], p), dot(point_rows[face * 4 + 1], p), dot(point_rows[face * 4 + 2], p), dot(point_rows[face * 4 + 3], p));
+    if (clip.w <= 0.0)
+    {
+        return 1.0;
+    }
+    float2 ndc = clip.xy / clip.w;
+    float2 inside = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    float margin = 1.5 * point_info.w;
+    inside = clamp(inside, margin, 1.0 - margin);
+    float2 origin = float2(face % 3, face / 3);
+    float2 uv = (origin + inside) / float2(3.0, 2.0);
+    float2 texel = float2(point_info.w / 3.0, point_info.w / 2.0);
+    float near = point_info.x;
+    float far = point_info.y;
+    float ka = far / (near - far);
+    float kb = near * far / (near - far);
+    float bias = clip.w * (0.003 + 0.01 * (1.0 - nl));
+    float lit = 0.0;
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            float seen = point_map.SampleLevel(point_sampler, uv + float2(x, y) * texel, 0).r;
+            float seen_distance = kb / (seen + ka);
+            lit += (clip.w - bias > seen_distance) ? 0.0 : 1.0;
         }
     }
     return lit / 9.0;
@@ -244,6 +302,10 @@ float4 ps_main(VSOutput input) : SV_Target0
             if (shadow.x > 0.5 && (float)i == shadow.y)
             {
                 strength *= shadow_factor(input.world, n, nl);
+            }
+            if (point_at.w > 0.5 && (float)i + 1.0 == point_at.w)
+            {
+                strength *= point_shadow_factor(input.world, n, nl);
             }
             total += (diffuse_colour + specular * PI) * to_linear(second.rgb) * strength * nl;
         }

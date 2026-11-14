@@ -716,7 +716,7 @@ test_shadows_are_off_until_asked_for_and_the_first_sun_or_spot_light_casts_them 
 	testing.expect_value(t, lights.shadow.x, 1) // the usual sun casts them
 	testing.expect_value(t, lights.shadow.y, 0)
 	testing.expect(t, lights.shadow.z > 0 && lights.shadow.w == 1.0 / SHADOW_SIZE, "a push out along the normal and a texel")
-	// a point light is the first light, but it casts none: the sun after it does, and the shader finds it by its number
+	// a point light is the first light and casts into a map of its own: the sun after it casts the other, and the shader finds each by its number
 	scene_light(&s, Light3{kind = .Point, colour = {1, 1, 1}, falloff = 10})
 	scene_light(&s, Light3{kind = .Ambient, colour = {0.2, 0.2, 0.2}})
 	scene_light(&s, Light3{kind = .Sun, at = {0, -1, 0}, colour = {1, 1, 1}})
@@ -724,16 +724,59 @@ test_shadows_are_off_until_asked_for_and_the_first_sun_or_spot_light_casts_them 
 	lights = scene_lights(&s, {640, 420})
 	testing.expect_value(t, lights.shadow.x, 1)
 	testing.expect_value(t, lights.shadow.y, 1) // the sun is the second light that is not ambient
-	// nothing but point lights: nothing casts
+	testing.expect_value(t, lights.point_at.w, 1) // the point light is the first
+	// a second point light casts nothing, and nothing but point lights leaves the sun's map unused
 	scene_begin(&s)
 	scene_add(&s, .Box, {}, {10, 10, 10}, {0, 0, 0, 255})
 	scene_shadows(&s)
 	scene_light(&s, Light3{kind = .Point, colour = {1, 1, 1}, falloff = 10})
-	testing.expect_value(t, scene_lights(&s, {640, 420}).shadow.x, 0)
+	scene_light(&s, Light3{kind = .Point, at = {5, 5, 5}, colour = {1, 1, 1}, falloff = 10})
+	lights = scene_lights(&s, {640, 420})
+	testing.expect_value(t, lights.shadow.x, 0)
+	testing.expect_value(t, lights.point_at.w, 1)
+	testing.expect_value(t, lights.point_at.x, 0) // the first one's place
+	// no shadows asked for: nothing casts
+	scene_begin(&s)
+	scene_light(&s, Light3{kind = .Point, colour = {1, 1, 1}, falloff = 10})
+	testing.expect_value(t, scene_lights(&s, {640, 420}).point_at.w, 0)
 	// a new frame starts without shadows
 	scene_begin(&s)
 	testing.expect(t, !s.shadows, "off again")
 	testing.expect(t, size_of(Scene_Lights) <= 4096, "the block still fits what Metal passes")
+}
+
+@(test)
+test_the_six_faces_of_a_point_light_see_every_direction :: proc(t: ^testing.T) {
+	s: Scene3
+	defer scene_destroy(&s)
+	scene_add(&s, .Box, {0, 0, 0}, {40, 40, 40}, {0, 0, 0, 255})
+	scene_add(&s, .Sphere, {200, 40, 20}, {30, 30, 30}, {0, 0, 0, 255})
+	light := [3]f64{20, -50, 30}
+	rows, near, far := point_faces(&s, light)
+	testing.expect(t, near > 0 && far > near, "the faces cut the scene between two distances")
+	// a place one step from the light along each axis is straight ahead of exactly the face that looks that way
+	steps := [6][3]f64{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}
+	for step, face in steps {
+		for other in 0 ..< 6 {
+			x, y, z, ahead := light_project(rows[other], light + step * 10)
+			if other == face {
+				testing.expectf(t, ahead && abs(x) < 1e-5 && abs(y) < 1e-5 && z > 0 && z < 1, "face %v looks along step %v: %v %v %v", face, step, x, y, z)
+			}
+		}
+	}
+	// every shape of the scene is inside the face its middle is nearest the axis of
+	for item in s.items {
+		at := [3]f64{f64(item.model[0][3]), f64(item.model[1][3]), f64(item.model[2][3])}
+		d := at - light
+		best, best_len := 0, f64(0)
+		for step, face in steps {
+			if along := dot3(d, step); along > best_len {
+				best, best_len = face, along
+			}
+		}
+		x, y, z, ahead := light_project(rows[best], at)
+		testing.expectf(t, ahead && abs(x) <= 1 && abs(y) <= 1 && z > 0 && z < 1, "inside its face: %v %v %v", x, y, z)
+	}
 }
 
 @(test)

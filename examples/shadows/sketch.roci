@@ -1,8 +1,9 @@
 // Shadows: `shadows` turns them on for the frame. The first `sun` or `spot` light casts them, and
 // the shapes are dark where it does not reach: here a low sun throws the shadows of a ring of
 // boxes, a sphere and a turning torus across the floor, and each shadow falls on the shapes
-// beside it as well. A point light casts none, so the warm one only lights. The usual sun casts
-// them too, if no light is written. Drag to look round.
+// beside it as well. The first `point` light casts shadows of its own in every direction (see
+// the lamp example), here the warm one at the middle. The usual sun casts them too, if no light is
+// written. Drag to look round.
 window size 760 460 title "shadows"
 
 draw [

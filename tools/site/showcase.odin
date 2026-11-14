@@ -118,6 +118,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"voyage", 7, "A city seen from a ship", 30, 1},
 	{"textured", 7, "Textured solids", 30, 1},
 	{"wireframe", 7, "Wireframe", 30, 1},
+	{"lamp", 7, "Lamp", 30, 1},
 }
 
 // Examples that are not on the site, and why.

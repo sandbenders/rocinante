@@ -19,7 +19,7 @@ Depth_Key :: struct {
 }
 
 scene_gpu_destroy :: proc(r: ^Renderer) {
-	for texture in ([?]^sdl.GPUTexture{r.shadow_map, r.shadow_blank, r.blank_white, r.blank_flat}) {
+	for texture in ([?]^sdl.GPUTexture{r.shadow_map, r.point_map, r.shadow_blank, r.blank_white, r.blank_flat}) {
 		if texture != nil {
 			sdl.ReleaseGPUTexture(r.device, texture)
 		}
@@ -92,7 +92,7 @@ make_scene_pipeline :: proc(r: ^Renderer, key: Pipeline_Key) -> ^sdl.GPUGraphics
 	}
 	vertex := create_shader(r, source.vertex, source.vertex_entry, source.format, .VERTEX, 1, 0)
 	// the scene shader reads the lights and a few numbers for each part, the shadow map and a model's four pictures
-	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 0 if shadow else 2, 0 if shadow else 5)
+	fragment := create_shader(r, source.fragment, source.fragment_entry, source.format, .FRAGMENT, 0 if shadow else 2, 0 if shadow else 6)
 	if vertex == nil || fragment == nil {
 		set_error(r, "creating the 3D shaders")
 		if vertex != nil {sdl.ReleaseGPUShader(r.device, vertex)}
@@ -405,11 +405,14 @@ draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comman
 		return false
 	}
 	lights := scene_lights(&list.scene, canvas)
-	if !ensure_shadow_resources(r, lights.shadow.x > 0) {
+	if !ensure_shadow_resources(r, lights.shadow.x > 0, lights.point_at.w > 0) {
 		return false
 	}
 	if lights.shadow.x > 0 && !draw_shadow_pass(r, commands, lights, runs, groups) {
 		lights.shadow.x = 0 // the scene is drawn without shadows rather than not at all
+	}
+	if lights.point_at.w > 0 && !draw_point_shadow_pass(r, commands, lights, runs, groups) {
+		lights.point_at.w = 0
 	}
 	bg := list.background
 	colour := sdl.GPUColorTargetInfo{
@@ -435,6 +438,9 @@ draw_scene3 :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, list: ^Comman
 	map_bound := r.shadow_map if lights.shadow.x > 0 else r.shadow_blank
 	shadow_binding := sdl.GPUTextureSamplerBinding{texture = map_bound, sampler = r.shadow_sampler}
 	sdl.BindGPUFragmentSamplers(pass, 0, &shadow_binding, 1)
+	point_bound := r.point_map if lights.point_at.w > 0 else r.shadow_blank
+	point_binding := sdl.GPUTextureSamplerBinding{texture = point_bound, sampler = r.shadow_sampler}
+	sdl.BindGPUFragmentSamplers(pass, 5, &point_binding, 1)
 	draw_scene_items(r, commands, pass, runs, groups, true)
 	return true
 }
@@ -444,7 +450,7 @@ SHADOW_FORMAT :: sdl.GPUTextureFormat.R32_FLOAT
 // Makes what shadows need, once: the sampler (nearest, because the shader compares depths
 // itself), a small texture to bind when there are no shadows and the map when there are.
 @(private)
-ensure_shadow_resources :: proc(r: ^Renderer, with_map: bool) -> bool {
+ensure_shadow_resources :: proc(r: ^Renderer, with_map, with_point_map: bool) -> bool {
 	if r.shadow_sampler == nil {
 		r.shadow_sampler = sdl.CreateGPUSampler(r.device, {
 			min_filter     = .NEAREST,
@@ -472,6 +478,51 @@ ensure_shadow_resources :: proc(r: ^Renderer, with_map: bool) -> bool {
 			set_error(r, "creating the shadow map")
 			return false
 		}
+	}
+	if with_point_map && r.point_map == nil {
+		r.point_map = sdl.CreateGPUTexture(r.device, {type = .D2, format = SHADOW_FORMAT, usage = {.COLOR_TARGET, .SAMPLER}, width = POINT_FACE_SIZE * 3, height = POINT_FACE_SIZE * 2, layer_count_or_depth = 1, num_levels = 1})
+		if r.point_map == nil {
+			set_error(r, "creating the shadow map of a point light")
+			return false
+		}
+	}
+	return true
+}
+
+// Draws the scene as a point light sees it in each of six directions, one face of the point map each:
+// the same depths as the other shadow pass, with the viewport moved to the face between draws.
+@(private)
+draw_point_shadow_pass :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, lights: Scene_Lights, runs: []Shape_Run, groups: []Model_Group) -> bool {
+	pipeline := get_pipeline(r, .Shadow3, SHADOW_FORMAT, ._1)
+	depth := depth_texture(r, POINT_FACE_SIZE * 3, POINT_FACE_SIZE * 2, ._1)
+	if pipeline == nil || depth == nil {
+		if depth == nil && pipeline != nil {
+			set_error(r, "creating the depth buffer of the shadow map of a point light")
+		}
+		return false
+	}
+	colour := sdl.GPUColorTargetInfo{
+		texture     = r.point_map,
+		clear_color = sdl.FColor{1, 1, 1, 1},
+		load_op     = .CLEAR,
+		store_op    = .STORE,
+	}
+	depth_target := sdl.GPUDepthStencilTargetInfo{
+		texture          = depth,
+		clear_depth      = 1,
+		load_op          = .CLEAR,
+		store_op         = .DONT_CARE,
+		stencil_load_op  = .DONT_CARE,
+		stencil_store_op = .DONT_CARE,
+	}
+	pass := sdl.BeginGPURenderPass(commands, &colour, 1, &depth_target)
+	defer sdl.EndGPURenderPass(pass)
+	sdl.BindGPUGraphicsPipeline(pass, pipeline)
+	for face in 0 ..< 6 {
+		sdl.SetGPUViewport(pass, {f32(face % 3 * POINT_FACE_SIZE), f32(face / 3 * POINT_FACE_SIZE), POINT_FACE_SIZE, POINT_FACE_SIZE, 0, 1})
+		rows := lights.point_rows[face]
+		sdl.PushGPUVertexUniformData(commands, 0, &rows, size_of(rows))
+		draw_scene_items(r, commands, pass, runs, groups, false)
 	}
 	return true
 }
