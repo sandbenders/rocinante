@@ -9,6 +9,7 @@
 package platform
 
 import "core:sync"
+import "core:time"
 
 Midi_Kind :: enum u8 {
 	Note_Down,
@@ -21,6 +22,7 @@ Midi_Event :: struct {
 	channel: u8, // 1 to 16, as people count them
 	number:  u8, // the note (60 is middle C) or the controller
 	value:   u8, // the velocity or the controller's value, 0 to 127
+	at:      time.Tick, // when it was read from the device (zero for bytes a test gave)
 }
 
 // What a stream of MIDI bytes is in the middle of: MIDI lets a sender leave out the status byte
@@ -74,11 +76,11 @@ midi_parse :: proc(p: ^Midi_Parser, b: u8, out: ^[dynamic]Midi_Event) {
 	channel := p.status & 0x0F + 1
 	switch kind {
 	case 0x90:
-		append(out, Midi_Event{.Note_Down if p.data[1] > 0 else .Note_Up, channel, p.data[0], p.data[1]})
+		append(out, Midi_Event{.Note_Down if p.data[1] > 0 else .Note_Up, channel, p.data[0], p.data[1], {}})
 	case 0x80:
-		append(out, Midi_Event{.Note_Up, channel, p.data[0], p.data[1]})
+		append(out, Midi_Event{.Note_Up, channel, p.data[0], p.data[1], {}})
 	case 0xB0:
-		append(out, Midi_Event{.Control, channel, p.data[0], p.data[1]})
+		append(out, Midi_Event{.Control, channel, p.data[0], p.data[1], {}})
 	}
 }
 
@@ -114,8 +116,13 @@ midi_push :: proc(m: ^Midi_In, events: []Midi_Event) {
 	if len(events) == 0 {
 		return
 	}
+	now := time.tick_now()
 	sync.guard(&m.lock)
-	append(&m.queue, ..events)
+	for e in events {
+		stamped := e
+		stamped.at = now
+		append(&m.queue, stamped)
+	}
 	if over := len(m.queue) - 4096; over > 0 {
 		remove_range(&m.queue, 0, over)
 	}

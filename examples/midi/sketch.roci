@@ -3,8 +3,9 @@
 // 100), and plays the note on an instrument of the sketch's own; `on midi up` lets it go, so
 // chords ring as long as they are held. Each note also leaves a ring above its key, as big as the
 // key was struck, and the keys held light up on the keyboard drawn below. Any knob, fader or wheel
-// turns the colors round (`on midi control` runs for every move, with `midi.value`), and one that
-// sends controller 7, the usual volume, also makes it louder or softer.
+// turns the colors round (`on midi control` runs for every move, with `midi.control` and
+// `midi.value`), and the controller it sends is shown at the top, since each keyboard numbers its
+// knobs its own way; one that sends controller 7, MIDI's volume, also makes it louder or softer.
 window size 720 400 title "midi"
 
 piano = synth triangle
@@ -24,9 +25,11 @@ on midi up [
 ]
 
 turn_colors = 0
+moved = "no knob moved yet"
 
 on midi control [
   turn_colors = midi.value * 3.6
+  moved = "controller " + midi.control + " at " + (round midi.value)
   if midi.control is 7 [ set piano volume midi.value ]
 ]
 
@@ -59,4 +62,5 @@ draw [
   ]
   fill white
   text "play a MIDI keyboard; any knob turns the colors" at 16 16
+  text moved at 16 40 fill (rgb 150 160 200)
 ]

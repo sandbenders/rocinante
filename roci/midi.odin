@@ -9,6 +9,10 @@
 // and values are 0 to 100, as volume is; notes are MIDI's numbers, 60 for middle C.
 package roci
 
+import "core:fmt"
+import "core:os"
+import "core:time"
+
 import "platform"
 
 // A key or a controller, as the language reads it: `midi.note`, `midi.velocity` and the rest.
@@ -25,6 +29,8 @@ Midi_Message :: struct {
 @(thread_local) @(private) midi_fed: [dynamic]platform.Midi_Event // what `feed_midi` gave, for the next frame
 @(thread_local) @(private) midi_feed_parser: platform.Midi_Parser
 @(thread_local) @(private) midi_values: [128]f64 // the latest value of each controller, 0 to 100
+// How long notes waited between being read from the device and reaching the sketch, for ROCI_LATENCY.
+@(thread_local) @(private) midi_waits: [dynamic]f64
 
 // Starts reading every MIDI device, once, in a sketch with a window; a headless sketch and a test
 // read none.
@@ -90,6 +96,9 @@ midi_step :: proc() {
 		switch e.kind {
 		case .Note_Down:
 			kind = .Midi_Down
+			if e.at != {} && measuring_latency() {
+				append(&midi_waits, time.duration_milliseconds(time.tick_since(e.at)))
+			}
 			message.note, message.velocity = f64(e.number), midi_percent(e.value)
 		case .Note_Up:
 			kind = .Midi_Up
@@ -105,9 +114,54 @@ midi_step :: proc() {
 	}
 }
 
+// Whether ROCI_LATENCY is set: then a run says, when it ends, how long a note takes to be heard.
+@(private)
+measuring_latency :: proc() -> bool {
+	return os.get_env("ROCI_LATENCY", context.temp_allocator) != ""
+}
+
+// What ROCI_LATENCY prints: how long notes waited for the sketch's frame, how much sound the
+// speakers keep queued, and the sum, the time from a key going down to its sound leaving the
+// computer (the keyboard's own USB delay and the speakers' are not in it).
+@(private)
+report_latency :: proc() {
+	if !measuring_latency() {
+		return
+	}
+	fmt.println("latency, from a key going down to its sound leaving the computer:")
+	wait_mean, wait_most: f64
+	if len(midi_waits) > 0 {
+		for w in midi_waits {
+			wait_mean += w
+			wait_most = max(wait_most, w)
+		}
+		wait_mean /= f64(len(midi_waits))
+		fmt.printfln("  read from the keyboard until the sketch's frame: %.1f ms on average, %.1f ms at most (%d notes)", wait_mean, wait_most, len(midi_waits))
+	} else {
+		fmt.println("  no notes came from a keyboard")
+	}
+	buffer, chunk: f64
+	if speakers != nil {
+		if speakers.device_rate > 0 {
+			buffer = f64(speakers.device_frames) * 1000 / f64(speakers.device_rate)
+		}
+		chunk = f64(speakers.most_asked) * 1000 / 48000
+		fmt.printfln("  the device's buffer: %d frames at %d a second, %.1f ms", speakers.device_frames, speakers.device_rate, buffer)
+		fmt.printfln("  the most the mixer was asked for at once: %.1f ms, so a note waits up to that for its first frame", chunk)
+	} else {
+		fmt.println("  the speakers never opened: nothing played")
+	}
+	if len(midi_waits) > 0 && speakers != nil {
+		fmt.printfln("  in all: about %.1f ms on average, %.1f ms at most", wait_mean + chunk / 2 + buffer, wait_most + chunk + buffer)
+	}
+}
+
 // Stops reading MIDI and forgets every controller. Called by `shutdown`.
 @(private)
 midi_stop :: proc() {
+	report_latency()
+	delete(midi_waits)
+	midi_waits = nil
 	platform.close_midi(midi_in)
 	midi_in = nil
 	midi_tried = false

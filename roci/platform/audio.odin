@@ -21,6 +21,9 @@ Audio_Out :: struct {
 	user:    rawptr,
 	scratch: [AUDIO_CHUNK * 2]f32,
 	error:   string, // SDL's words when the device would not open
+	device_frames: int, // the device's buffer, in frames at `device_rate`, as SDL reports it
+	device_rate:   int,
+	most_asked:    int, // the most frames one call of the callback was asked for, in frames at `rate`
 }
 
 // Opens the default playback device for frames of two floats at `rate` (SDL converts them to
@@ -40,6 +43,11 @@ open_audio :: proc(rate: int, fill: Audio_Fill, user: rawptr, allocator := conte
 		out.error = string(sdl.GetError())
 		sdl.QuitSubSystem({.AUDIO})
 		return out
+	}
+	device_spec: sdl.AudioSpec
+	frames: c.int
+	if sdl.GetAudioDeviceFormat(sdl.GetAudioStreamDevice(out.stream), &device_spec, &frames) {
+		out.device_frames, out.device_rate = int(frames), int(device_spec.freq)
 	}
 	sdl.ResumeAudioStreamDevice(out.stream)
 	return out
@@ -63,6 +71,7 @@ audio_callback :: proc "c" (userdata: rawptr, stream: ^sdl.AudioStream, addition
 	out := (^Audio_Out)(userdata)
 	// what SDL asks for is in bytes
 	frames := int(additional_amount) / (2 * size_of(f32))
+	out.most_asked = max(out.most_asked, frames)
 	for frames > 0 {
 		n := min(frames, AUDIO_CHUNK)
 		buffer := out.scratch[:n * 2]

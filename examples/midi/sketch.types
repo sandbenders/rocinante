@@ -3,5 +3,6 @@ SHARPS: a list of numbers
 down_notes: a list of numbers
 rings: a list of records with note, size and age
 turn_colors: a number
+moved: text
 sharp: true or false
 lit: true or false

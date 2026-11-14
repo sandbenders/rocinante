@@ -18,9 +18,9 @@ test_midi_notes_and_controls :: proc(t: ^testing.T) {
 	got := parse_all({0x90, 60, 100, 0x80, 60, 64, 0xB3, 7, 127})
 	defer delete(got)
 	testing.expect_value(t, len(got), 3)
-	testing.expect_value(t, got[0], Midi_Event{.Note_Down, 1, 60, 100})
-	testing.expect_value(t, got[1], Midi_Event{.Note_Up, 1, 60, 64})
-	testing.expect_value(t, got[2], Midi_Event{.Control, 4, 7, 127})
+	testing.expect_value(t, got[0], Midi_Event{.Note_Down, 1, 60, 100, {}})
+	testing.expect_value(t, got[1], Midi_Event{.Note_Up, 1, 60, 64, {}})
+	testing.expect_value(t, got[2], Midi_Event{.Control, 4, 7, 127, {}})
 }
 
 // A sender may leave out a repeated status byte, and a keyboard sends a note on of velocity 0 for off.
@@ -29,9 +29,9 @@ test_midi_running_status :: proc(t: ^testing.T) {
 	got := parse_all({0x9F, 60, 90, 64, 80, 60, 0, 64, 0})
 	defer delete(got)
 	testing.expect_value(t, len(got), 4)
-	testing.expect_value(t, got[1], Midi_Event{.Note_Down, 16, 64, 80})
-	testing.expect_value(t, got[2], Midi_Event{.Note_Up, 16, 60, 0})
-	testing.expect_value(t, got[3], Midi_Event{.Note_Up, 16, 64, 0})
+	testing.expect_value(t, got[1], Midi_Event{.Note_Down, 16, 64, 80, {}})
+	testing.expect_value(t, got[2], Midi_Event{.Note_Up, 16, 60, 0, {}})
+	testing.expect_value(t, got[3], Midi_Event{.Note_Up, 16, 64, 0, {}})
 }
 
 // Clock and active sensing can come between the bytes of a message; system exclusive messages,
@@ -48,8 +48,8 @@ test_midi_what_is_passed_over :: proc(t: ^testing.T) {
 	})
 	defer delete(got)
 	testing.expect_value(t, len(got), 2)
-	testing.expect_value(t, got[0], Midi_Event{.Note_Down, 1, 60, 100})
-	testing.expect_value(t, got[1], Midi_Event{.Control, 1, 1, 50})
+	testing.expect_value(t, got[0], Midi_Event{.Note_Down, 1, 60, 100, {}})
+	testing.expect_value(t, got[1], Midi_Event{.Control, 1, 1, 50, {}})
 	// data with no status before it, and after a system message that ends running status, is lost
 	lost := parse_all({60, 100, 0x90, 60, 100, 0xF2, 0, 0, 60, 100})
 	defer delete(lost)
@@ -65,7 +65,7 @@ test_midi_queue :: proc(t: ^testing.T) {
 		free(m)
 	}
 	midi_push(m, nil)
-	midi_push(m, {{.Note_Down, 1, 60, 1}, {.Note_Up, 1, 60, 0}})
+	midi_push(m, {{.Note_Down, 1, 60, 1, {}}, {.Note_Up, 1, 60, 0, {}}})
 	out := make([dynamic]Midi_Event)
 	defer delete(out)
 	midi_take(m, &out)
@@ -75,7 +75,7 @@ test_midi_queue :: proc(t: ^testing.T) {
 	many := make([]Midi_Event, 5000)
 	defer delete(many)
 	for &e, i in many {
-		e = {.Control, 1, u8(i % 128), 0}
+		e = {.Control, 1, u8(i % 128), 0, {}}
 	}
 	midi_push(m, many)
 	testing.expect_value(t, len(m.queue), 4096)
