@@ -130,6 +130,11 @@ test_the_c_outline_gives_the_corners_of_the_solid_part :: proc(t: ^testing.T) {
 
 @(test)
 test_the_c_save_and_record_say_what_goes_wrong :: proc(t: ^testing.T) {
+	// The recording's frames come from a source that never draws: drawing the window would start
+	// SDL's video system on this test thread beside the others, which crashed a Windows run.
+	set_frame_source(solid_frames)
+	defer set_frame_source(nil)
+	os.make_directory("output/tests")
 	begin()
 	defer finish()
 	window(50, 50)
@@ -144,13 +149,16 @@ test_the_c_save_and_record_say_what_goes_wrong :: proc(t: ^testing.T) {
 	step()
 	abi_no_record()
 	abi_no_record() // nothing to end
-	os.make_directory("output/tests")
 	message_count := 0
-	for abi_next_message() != nil {
+	recorded := false
+	for message := abi_next_message(); message != nil; message = abi_next_message() {
 		message_count += 1
-		testing.expect(t, message_count < 20, "the messages end")
+		recorded ||= string(message) == "output/tests/c_clip.apng: recorded 2 frames"
+		if !testing.expect(t, message_count < 20, "the messages end") {
+			break
+		}
 	}
-	testing.expect(t, message_count >= 1, "the recording ended and said so")
+	testing.expect(t, recorded, "the recording ended and said how many frames it has")
 	os.remove("output/tests/c_clip.apng")
 	os.remove("output/tests/c_save_1.svg")
 }
