@@ -54,6 +54,9 @@ register_on :: proc(it: ^Interp, k: ^lang.IR_On) {
 	if strings.has_prefix(k.event, "mouse") || strings.has_prefix(k.event, "touch") {
 		roci.note_mouse_read(h.window if !h.any else 0)
 	}
+	if strings.has_prefix(k.event, "midi") {
+		roci.start_midi()
+	}
 	append(&it.handlers, h)
 }
 
@@ -81,6 +84,9 @@ event_name :: proc(kind: roci.Happening) -> string {
 	case .Move:       return "move"
 	case .Focus:      return "focus"
 	case .Restart:    return ""
+	case .Midi_Down:  return "midi down"
+	case .Midi_Up:    return "midi up"
+	case .Midi_Control: return "midi control"
 	}
 	return ""
 }
@@ -140,8 +146,10 @@ frame_hook :: proc(w: roci.Window) {
 				continue
 			}
 			p.finger = happening.finger
+			p.midi = happening.midi
 			run_block(p, h.body)
 			p.finger = {}
+			p.midi = {}
 		}
 	}
 	for &h in p.handlers {

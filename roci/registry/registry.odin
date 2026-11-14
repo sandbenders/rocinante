@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "false", "finger", "fps", "frame", "height", "key", "mic", "mouse", "pi", "pmouse", "pressed", "tau", "time", "touches", "true", "turtle", "wheel", "width",
+	"anywhere", "false", "finger", "fps", "frame", "height", "key", "mic", "midi", "mouse", "pi", "pmouse", "pressed", "tau", "time", "touches", "true", "turtle", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -98,6 +98,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"height", .Number, 0, "The height of the window the code runs in, in pixels."},
 	{"key", .Text, 0, "The name of the key pressed last."},
 	{"mic", .Sound, 0, "The computer's microphone, as a sound to listen to: `level mic` is how loud it hears and `bands mic` its pitches. The first time a sketch with a window reads it, the microphone opens (the system may ask first); it is not played through the speakers."},
+	{"midi", .Record, 0, "The key or controller an `on midi down`, `on midi up` or `on midi control` block runs for: `midi.note` (60 is middle C) and `midi.velocity` (0 to 100) for a key, `midi.control` and `midi.value` (0 to 100) for a knob or fader, and `midi.channel` (1 to 16)."},
 	{"mouse", .Vector, 2, "Where the mouse is in the window: `mouse.x` and `mouse.y`."},
 	{"pressed", .Boolean, 0, "Whether a mouse button is held down in this window."},
 	{"pi", .Number, 0, "Half a turn in radians, 3.14159…, for sketches that work in radians."},
@@ -212,6 +213,9 @@ EVENTS := []Event{
 	{"mouse up", {.Name}, "Runs when a mouse button comes up; name one to wait for it alone: `on mouse up left`."},
 	{"touch down", {}, "Runs when a finger touches the screen; `finger` is that finger: `finger.pos`, `finger.id`."},
 	{"touch up", {}, "Runs when a finger leaves the screen; `finger` is that finger, where it was last."},
+	{"midi down", {}, "Runs when a key of a MIDI keyboard goes down; `midi` is that key: `midi.note`, `midi.velocity`."},
+	{"midi up", {}, "Runs when a key of a MIDI keyboard comes up; `midi.note` is the key."},
+	{"midi control", {}, "Runs when a knob, fader or wheel of a MIDI controller moves; `midi.control` is which, `midi.value` where it is now, 0 to 100."},
 	{"resize", {}, "Runs when the window changes size."},
 	{"move", {}, "Runs when the window moves."},
 	{"focus", {}, "Runs when the window gains or loses focus."},

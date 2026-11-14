@@ -366,6 +366,7 @@ VERBS := []Verb{
 	{"play", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound once, from where it is, or from its start when it had come to its end: `play click`. `volume` is 0 to 100, `pan` -100 (left) to 100 (right) and `speed` 1 as recorded."},
 	{"loop", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish."},
 	{"pause", {{{{"sound", .Sound}}, {{"note", {.Number}, false}}, .None}}, "Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade out, all of them or one: `pause piano note 60`."},
+	{"midi control", {{{{"number", .Number}}, nil, .Number}}, "The latest value of a MIDI controller, 0 to 100, 0 until it first moves: `midi control 1` is the mod wheel, and the knobs and faders of a controller have numbers of their own (its manual says which, or `on midi control [ print midi.control ]`)."},
 	{"synth", {{{{"wave", .Name}}, nil, .Sound}}, "Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`). `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together."},
 	{"rewind", {{{{"sound", .Sound}}, {{"by", {.Number}, false}}, .None}}, "Puts a sound back to its start, or some seconds back: `rewind rain by 10`. A sound that plays goes on playing."},
 	{"level", {

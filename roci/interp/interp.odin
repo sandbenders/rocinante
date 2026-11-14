@@ -78,6 +78,7 @@ Interp :: struct {
 	msg_now:   int,
 	hook_frame: int,
 	finger:    roci.Touch, // the finger the `on touch` block running now is for
+	midi:      roci.Midi_Message, // the key or controller the `on midi` block running now is for
 	errors:    [dynamic]Runtime_Error,
 	seen:      map[int]bool, // the errors said once: id and place
 	printed:   [dynamic]string,

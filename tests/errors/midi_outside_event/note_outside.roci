@@ -1,0 +1,4 @@
+piano = synth sine
+draw [
+  play piano note midi.note
+]

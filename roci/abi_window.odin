@@ -296,10 +296,11 @@ abi_touch :: proc "c" (index: c.int) -> Abi_Touch {
 // ---- events ----
 
 Abi_Event :: struct {
-	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus
+	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control
 	window: c.int,
 	name:   cstring, // the key's name, or the mouse button's
 	finger: Abi_Touch,
+	midi:   Midi_Message, // five doubles, as roci_midi is
 }
 
 Abi_Event_Fn :: proc "c" (event: ^Abi_Event)
@@ -332,6 +333,9 @@ abi_event_name :: proc(kind: Happening) -> string {
 	case .Move:       return "move"
 	case .Focus:      return "focus"
 	case .Restart:    return ""
+	case .Midi_Down:  return "midi down"
+	case .Midi_Up:    return "midi up"
+	case .Midi_Control: return "midi control"
 	}
 	return ""
 }
@@ -352,7 +356,7 @@ abi_frame_hook :: proc(w: Window) {
 			if h.argument != "" && h.argument != happening.name {
 				continue
 			}
-			event := Abi_Event{kind = c.int(happening.kind), window = c.int(w), name = strings.clone_to_cstring(happening.name, context.temp_allocator), finger = touch_to_abi(happening.finger)}
+			event := Abi_Event{kind = c.int(happening.kind), window = c.int(w), name = strings.clone_to_cstring(happening.name, context.temp_allocator), finger = touch_to_abi(happening.finger), midi = happening.midi}
 			h.fn(&event)
 		}
 	}
@@ -378,7 +382,8 @@ abi_install_hook :: proc() {
 }
 
 // Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key",
-// "mouse down", "mouse up", "touch down", "touch up", "resize", "move" or "focus"; `argument` is the key
+// "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up" or
+// "midi control" (which start reading MIDI); `argument` is the key
 // or the mouse button it is for ("space", "right"), or NULL for any. Any other event name does nothing.
 @(export, link_name = "roci_on")
 abi_on :: proc "c" (window: c.int, event: cstring, argument: cstring, handler: Abi_Event_Fn) {
@@ -395,6 +400,9 @@ abi_on :: proc "c" (window: c.int, event: cstring, argument: cstring, handler: A
 	}
 	if strings.has_prefix(name, "mouse") || strings.has_prefix(name, "touch") {
 		note_mouse_read(Window(window))
+	}
+	if strings.has_prefix(name, "midi") {
+		start_midi()
 	}
 	append(&abi_handlers, Abi_Handler{
 		window = Window(window), any = window == 0, event = strings.clone(name), argument = strings.clone(text_from_abi(argument)), fn = handler,
@@ -471,6 +479,6 @@ abi_window_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_modifier_down", typeid_of(type_of(abi_modifier_down)), "int roci_modifier_down(const char *name)", "1 while \"shift\", \"ctrl\" or \"alt\" is held, on either side."))
 	append(all, abi_entry("roci_touch_count", typeid_of(type_of(abi_touch_count)), "int roci_touch_count(void)", "How many fingers are down in the current window."))
 	append(all, abi_entry("roci_touch", typeid_of(type_of(abi_touch)), "roci_finger roci_touch(int index)", "The finger at a place (from 0) in the order the fingers went down, every field 0 past the last."))
-	append(all, abi_entry("roci_on", typeid_of(type_of(abi_on)), "void roci_on(roci_window_id window, const char *event, const char *argument, roci_event_fn handler)", "Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is \"key\", \"mouse down\", \"mouse up\", \"touch down\", \"touch up\", \"resize\", \"move\" or \"focus\", and `argument` the key or mouse button it is for (\"space\", \"right\"), or NULL for any."))
+	append(all, abi_entry("roci_on", typeid_of(type_of(abi_on)), "void roci_on(roci_window_id window, const char *event, const char *argument, roci_event_fn handler)", "Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is \"key\", \"mouse down\", \"mouse up\", \"touch down\", \"touch up\", \"resize\", \"move\", \"focus\", \"midi down\", \"midi up\" or \"midi control\" (the first MIDI handler starts reading every MIDI device), and `argument` the key or mouse button it is for (\"space\", \"right\"), or NULL for any."))
 	append(all, abi_entry("roci_every", typeid_of(type_of(abi_every)), "void roci_every(double count, const char *unit, roci_draw_fn handler)", "Runs `handler` again and again in the current window, every `count` seconds, or frames when `unit` is \"frames\"."))
 }

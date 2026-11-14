@@ -1691,3 +1691,14 @@ test_instruments_and_notes :: proc(t: ^testing.T) {
 	// and `note` and `pitch` stay free as names
 	expect_errors(t, "note = 60\npitch = 2\npiano = synth sine\nplay piano note note pitch pitch", {})
 }
+
+@(test)
+test_midi_words :: proc(t: ^testing.T) {
+	got, ids := types_of("piano = synth sine\non midi down [ play piano note midi.note volume midi.velocity  c = midi.channel ]\non midi up [ pause piano note midi.note ]\non midi control [ v = midi.value  n = midi.control ]\ndraw [ wheel_now = midi control 1 ]")
+	testing.expectf(t, len(ids) == 0 && strings.contains(got, "v: a number") && strings.contains(got, "wheel_now: a number"), "%s %v", got, ids)
+	expect_errors(t, "x = midi.note", {.Midi_Outside_Event})
+	expect_errors(t, "learn hear [ x = midi.note ]\non midi down [ hear ]", {.Midi_Outside_Event})
+	expect_errors(t, "on midi down [ x = midi.pitch ]", {.Unknown_Field})
+	expect_errors(t, "on midi down 5 [ print 1 ]", {.Missing_Block})
+	expect_errors(t, "x = midi control \"wheel\"", {.Wrong_Argument_Kind})
+}

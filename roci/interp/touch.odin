@@ -57,3 +57,19 @@ turtle_record :: proc(it: ^Interp, type: lang.Type_Id) -> Value {
 	}
 	return r
 }
+
+// `midi`: the key or controller an `on midi` block runs for, as a record of the checker's type.
+midi_record :: proc(it: ^Interp, type: lang.Type_Id, m: roci.Midi_Message) -> Value {
+	shape := lang.shape_of(it.types, type)
+	if shape < 0 {
+		return nil
+	}
+	r := new_record(it, shape)
+	fields := [5]struct{name: string, value: f64}{{"note", m.note}, {"velocity", m.velocity}, {"channel", m.channel}, {"control", m.control}, {"value", m.value}}
+	for f in fields {
+		if at := field_index(it, shape, f.name); at >= 0 {
+			r.fields[at] = f.value
+		}
+	}
+	return r
+}

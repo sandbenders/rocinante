@@ -33,6 +33,7 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 		case "finger":  return finger_record(it, e.type, it.finger)
 		case "touches": return touches_list(it, e.type)
 		case "turtle":  return turtle_record(it, e.type)
+		case "midi":    return midi_record(it, e.type, it.midi)
 		}
 		return builtin_value(it, k.name)
 	case lang.IR_Swizzle:

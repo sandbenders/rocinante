@@ -319,6 +319,7 @@ abi_table_init :: proc "contextless" () {
 	{"roci_rewind", "rewind", 0, typeid_of(type_of(abi_rewind)), "", ""},
 	{"roci_level", "level", 0, typeid_of(type_of(abi_level)), "", ""},
 	{"roci_synth", "synth", 0, typeid_of(type_of(abi_synth)), "", ""},
+	{"roci_midi_control", "midi control", 0, typeid_of(type_of(abi_midi_control)), "", ""},
 	{"roci_level_of", "level", 1, typeid_of(type_of(abi_level_of)), "", ""},
 	{"roci_ray", "", 0, typeid_of(type_of(abi_ray)), "roci_line3 roci_ray(double x, double y)", "The line from the eye of the 3D camera through a pixel of the window: `from` is the eye and `to` is far along the way the pixel looks, in the world."},
 	{"roci_ray_v", "", 0, typeid_of(type_of(abi_ray_v)), "roci_line3 roci_ray_v(roci_vec2 pixel)", "The same for a pixel given as a point, such as the mouse."},
@@ -503,15 +504,22 @@ typedef struct roci_value {
 
 typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
 
-typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS } roci_event_kind;
+typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS,
+	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL } roci_event_kind;
+
+/* A key or controller of a MIDI keyboard: the note (60 is middle C) and its velocity (0 to 100) for a key,
+ * the controller and its value (0 to 100) for a knob or fader, and the channel (1 to 16). */
+typedef struct { double note, velocity, channel, control, value; } roci_midi;
 
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
- * mouse events; valid only while the handler runs) and the finger (for touch events). */
+ * mouse events; valid only while the handler runs), the finger (for touch events) and the key or
+ * controller (for MIDI events). */
 typedef struct {
 	int kind;
 	roci_window_id window;
 	const char *name;
 	roci_finger finger;
+	roci_midi midi;
 } roci_event;
 
 /* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;

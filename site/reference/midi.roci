@@ -1,0 +1,11 @@
+piano = synth triangle
+on midi down [ play piano note midi.note volume midi.velocity ]
+on midi up [ pause piano note midi.note ]
+
+draw [
+  background 20
+  fill (rgb 255 200 80)
+  circle at 200 150 radius (10 + (level piano) * 3)
+  fill white
+  text "play a MIDI keyboard" at 20 20
+]

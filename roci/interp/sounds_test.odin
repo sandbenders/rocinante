@@ -359,3 +359,57 @@ test_the_keys_example_plays_held_keys :: proc(t: ^testing.T) {
 	testing.expect_value(t, as_number(global_named(p, "clicked")), 65)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// A sketch plays an instrument from a MIDI keyboard, and reads a controller.
+@(test)
+test_midi_in_a_sketch :: proc(t: ^testing.T) {
+	text := `piano = synth triangle
+on midi down [ play piano note midi.note volume midi.velocity ]
+on midi up [ pause piano note midi.note ]
+on midi control [ print midi.control  print (round midi.value) ]
+draw [ wheel_now = midi control 1 ]
+`
+	p := run_with_sounds(t, "midi_words", text, "tests/sounds", {})
+	defer finish(p)
+	piano := as_sound(global_named(p, "piano"))
+	roci.feed_midi({0x90, 60, 64, 0x90, 64, 127})
+	roci.step()
+	testing.expect_value(t, roci.sound_notes(piano), 2)
+	testing.expectf(t, abs(roci.sound_state(piano).volume - 100) < 1e-9, "the louder key last: %v", roci.sound_state(piano).volume)
+	roci.feed_midi({0x90, 60, 0, 0xB0, 1, 127})
+	roci.step()
+	testing.expect_value(t, roci.sound_notes(piano), 1)
+	testing.expect_value(t, printed(p), "1\n100")
+	roci.step()
+	testing.expect_value(t, as_number(global_named(p, "wheel_now")), 100)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// The MIDI example: a chord held plays three notes, lights three keys and leaves three rings; the
+// mod wheel turns the colors and controller 7 sets the volume.
+@(test)
+test_the_midi_example_plays_and_draws :: proc(t: ^testing.T) {
+	text, read := os.read_entire_file("examples/midi/sketch.roci", context.temp_allocator)
+	testing.expect(t, read == nil)
+	p := run_with_sounds(t, "midi_example", string(text), "examples/midi", {})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	piano := as_sound(global_named(p, "piano"))
+	roci.feed_midi({0x90, 60, 100, 0x90, 64, 80, 0x90, 67, 60})
+	roci.step()
+	testing.expect_value(t, roci.sound_notes(piano), 3)
+	testing.expect_value(t, len(as_list(global_named(p, "down_notes")).items), 3)
+	testing.expect_value(t, len(as_list(global_named(p, "rings")).items), 3)
+	roci.feed_midi({0x80, 64, 0, 0xB0, 1, 127, 0xB0, 7, 64})
+	roci.step()
+	testing.expect_value(t, roci.sound_notes(piano), 2)
+	testing.expect_value(t, len(as_list(global_named(p, "down_notes")).items), 2)
+	testing.expect_value(t, as_number(global_named(p, "turn_colors")), 360)
+	testing.expectf(t, abs(roci.sound_state(piano).volume - 50.39) < 0.01, "%v", roci.sound_state(piano).volume)
+	// the rings fade away after a hundred frames
+	for _ in 0 ..< 101 {
+		roci.step()
+	}
+	testing.expect_value(t, len(as_list(global_named(p, "rings")).items), 0)
+	testing.expect_value(t, len(p.errors), 0)
+}

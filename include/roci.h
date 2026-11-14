@@ -47,15 +47,22 @@ typedef struct roci_value {
 
 typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
 
-typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS } roci_event_kind;
+typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS,
+	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL } roci_event_kind;
+
+/* A key or controller of a MIDI keyboard: the note (60 is middle C) and its velocity (0 to 100) for a key,
+ * the controller and its value (0 to 100) for a knob or fader, and the channel (1 to 16). */
+typedef struct { double note, velocity, channel, control, value; } roci_midi;
 
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
- * mouse events; valid only while the handler runs) and the finger (for touch events). */
+ * mouse events; valid only while the handler runs), the finger (for touch events) and the key or
+ * controller (for MIDI events). */
 typedef struct {
 	int kind;
 	roci_window_id window;
 	const char *name;
 	roci_finger finger;
+	roci_midi midi;
 } roci_event;
 
 /* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;
@@ -623,6 +630,9 @@ double roci_level(void);
 /* Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`). `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together. */
 roci_sound_id roci_synth(const char *wave);
 
+/* The latest value of a MIDI controller, 0 to 100, 0 until it first moves: `midi control 1` is the mod wheel, and the knobs and faders of a controller have numbers of their own (its manual says which, or `on midi control [ print midi.control ]`). */
+double roci_midi_control(double number);
+
 /* How loud everything that plays is now, 0 (silent) to 100: `circle at 200 200 radius (level * 2)`. `level rain` is one sound, `level mic` the microphone. */
 double roci_level_of(roci_sound_id sound);
 
@@ -779,7 +789,7 @@ int roci_touch_count(void);
 /* The finger at a place (from 0) in the order the fingers went down, every field 0 past the last. */
 roci_finger roci_touch(int index);
 
-/* Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key", "mouse down", "mouse up", "touch down", "touch up", "resize", "move" or "focus", and `argument` the key or mouse button it is for ("space", "right"), or NULL for any. */
+/* Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key", "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up" or "midi control" (the first MIDI handler starts reading every MIDI device), and `argument` the key or mouse button it is for ("space", "right"), or NULL for any. */
 void roci_on(roci_window_id window, const char *event, const char *argument, roci_event_fn handler);
 
 /* Runs `handler` again and again in the current window, every `count` seconds, or frames when `unit` is "frames". */

@@ -20,6 +20,9 @@ Happening :: enum u8 {
 	Move,
 	Focus,
 	Restart, // Ctrl+R or Cmd+R
+	Midi_Down, // a key of a MIDI keyboard
+	Midi_Up,
+	Midi_Control, // a knob, fader or wheel
 }
 
 Happened :: struct {
@@ -27,6 +30,7 @@ Happened :: struct {
 	window: Window,
 	name:   string, // the key's name for Key_Down, the button's for Mouse_Down and Mouse_Up
 	finger: Touch,  // the finger, for Touch_Down and Touch_Up
+	midi:   Midi_Message, // the key or controller, for the Midi_ kinds
 }
 
 // The events of the frame in progress.

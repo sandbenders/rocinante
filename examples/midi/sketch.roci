@@ -1,0 +1,62 @@
+// MIDI: a sketch played from a MIDI keyboard. Plug one in (USB) and play: `on midi down` runs for
+// each key that goes down, with `midi.note` (60 is middle C) and `midi.velocity` (how hard, 0 to
+// 100), and plays the note on an instrument of the sketch's own; `on midi up` lets it go, so
+// chords ring as long as they are held. Each note also leaves a ring above its key, as big as the
+// key was struck, and the keys held light up on the keyboard drawn below. The mod wheel (`midi
+// control 1`) turns the colors round, and a fader that sends controller 7, the usual volume,
+// makes it louder or softer.
+window size 720 400 title "midi"
+
+piano = synth triangle
+SHARPS = [ 1 3 6 8 10 ]
+down_notes = []
+rings = []
+
+on midi down [
+  play piano note midi.note volume midi.velocity
+  add midi.note to down_notes
+  add { note: midi.note, size: midi.velocity, age: 0 } to rings
+]
+
+on midi up [
+  pause piano note midi.note
+  remove midi.note from down_notes
+]
+
+on midi control [
+  if midi.control is 7 [ set piano volume midi.value ]
+]
+
+// Where a key is across the window: 61 keys, from the C two octaves below middle C.
+learn key_x n [ give (n - 36) * 11.6 + 6 ]
+
+// The color of a note: round the color wheel by the note, turned by the mod wheel.
+learn hue_of n [ give (n * 6 + turn_colors) % 255 ]
+
+turn_colors = 0
+
+draw [
+  background (rgb 10 12 26)
+  turn_colors = (midi control 1) * 3.6
+  for each r in rings [
+    r.age = r.age + 1
+    no fill
+    stroke (hsb (hue_of r.note) 190 245 alpha (100 - r.age))
+    thickness 3
+    circle at (key_x r.note) 200 radius (r.size * 0.4 + r.age * 2)
+  ]
+  rings = keep rings [ it.age < 100 ]
+  no stroke
+  for n from 36 to 96 [
+    sharp = (count (keep SHARPS [ it is n % 12 ])) > 0
+    lit = (count (keep down_notes [ it is n ])) > 0
+    if lit [
+      fill (hsb (hue_of n) 190 245)
+    ] else [
+      if sharp [ fill (rgb 40 42 60) ] else [ fill (rgb 225 225 235) ]
+    ]
+    if sharp [ rect at (key_x n) 330 size 10 40 ] else [ rect at (key_x n) 330 size 10 60 ]
+  ]
+  fill white
+  text "play a MIDI keyboard; the mod wheel turns the colors" at 16 16
+]

@@ -1,6 +1,6 @@
 ---
 title: "Sound"
-summary: "Sounds from files and instruments of your own: play, loop and pause them, play notes and chords, and draw with how loud and how high they are."
+summary: "Sounds from files and instruments of your own, played from the keyboard or a MIDI keyboard, and drawing with how loud and how high they are."
 weight: 20
 ---
 
@@ -103,6 +103,25 @@ draw [
 
 `set organ pitch (mouse.x + 100)` slides the notes that sound, and a note played with no `note` or `pitch` takes the instrument's own pitch, which `set` changes. A note comes in and fades out over a few thousandths of a second, so starting and stopping never clicks. A sound from a file can be played at a note too: it is taken to be middle C, and plays faster and higher for a higher note.
 
+## A MIDI keyboard
+
+A MIDI keyboard or controller plugged in (USB) is heard with no setup. `on midi down` runs when a key goes down, and inside it `midi` is that key: `midi.note` is its number, the same numbers `note` takes, and `midi.velocity` how hard it was struck, 0 to 100. `on midi up` runs when it comes up. So an instrument is played by a keyboard in three lines:
+
+```roci
+piano = synth triangle
+on midi down [ play piano note midi.note volume midi.velocity ]
+on midi up [ pause piano note midi.note ]
+```
+
+Knobs, faders and wheels send a controller's number and its value. `midi control 1` is the latest value of controller 1, the mod wheel, from 0 to 100, read anywhere, in `draw` too; a controller that has not moved yet reads 0. `on midi control` runs for each move, with `midi.control` and `midi.value`, which is also the way to find which number a knob sends:
+
+```roci
+on midi control [ print midi.control ]
+draw [ circle at 200 150 radius (10 + midi control 1) ]
+```
+
+`midi.channel` says which of MIDI's 16 channels a message came on, for a controller that sends on more than one. Every device plugged in is heard, and one plugged in while the sketch runs is found within a second.
+
 ## Drawing with sound
 
 `level` is how loud everything that plays is now, from 0 (silent) to 100 (a full-volume tone), and `bands` is how much of each pitch it holds: a list of numbers 0 to 100, the lowest pitches first, 16 of them unless you ask for another number (`bands 32`, up to 256). Both are read in `draw`, every frame:
@@ -143,4 +162,4 @@ While `roci run` is going, a sound file saved again is read again into the same 
 
 ## Not yet
 
-Effects, recording what plays, MIDI and OSC come next.
+Effects, recording what plays, sending MIDI out, and OSC come next.

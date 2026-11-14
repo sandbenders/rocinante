@@ -154,6 +154,7 @@ Checker :: struct {
 	deferred: int,              // how many blocks deep that run later (draw, on, every)
 	instances_open: int,        // how many versions of taught verbs are being checked inside one another
 	in_touch: int,              // how many `on touch down` or `on touch up` blocks deep, where `finger` means something
+	in_midi:  int,              // how many `on midi` blocks deep, where `midi` means something
 	report:   bool,             // false in the first pass, which only settles record shapes
 	sites:    map[int]int,      // where a record is made (its offset) to its shape
 	site_names: map[int][]string, // the fields each place's `{ }` is written with, by its shape
@@ -612,12 +613,19 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 		}
 		result.args = args[:]
 		touch := k.event == "touch down" || k.event == "touch up"
+		midi := strings.has_prefix(k.event, "midi")
 		if touch {
 			c.in_touch += 1
+		}
+		if midi {
+			c.in_midi += 1
 		}
 		result.body = check_block(c, k.body, true)
 		if touch {
 			c.in_touch -= 1
+		}
+		if midi {
+			c.in_midi -= 1
 		}
 		return result
 	}
@@ -907,6 +915,10 @@ check_path :: proc(c: ^Checker, e: ^Expr, path: Path) -> ^IR {
 			note(c, .Finger_Outside_Touch, e.span, word, "", "", fmt.tprintf("on touch down [ %s ]", text_at_line(c, e.span)))
 			return error_ir(c, e.span)
 		}
+		if word == "midi" && c.in_midi == 0 {
+			note(c, .Midi_Outside_Event, e.span, word, "", "", fmt.tprintf("on midi down [ %s ]", text_at_line(c, e.span)))
+			return error_ir(c, e.span)
+		}
 		base = new_ir(c, Span{e.span.file, e.span.start, e.span.start + len(word)}, type_of_value(c, def), IR_Builtin{name = word})
 	} else if colour, is_colour := maths.name_lookup(word); is_colour {
 		base = new_ir(c, Span{e.span.file, e.span.start, e.span.start + len(word)}, T_COLOUR, IR_Colour{value = colour})
@@ -966,6 +978,7 @@ type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
 	case "finger":  return finger_type(c)
 	case "touches": return list_of(c.types, finger_type(c))
 	case "turtle":  return turtle_type(c)
+	case "midi":    return midi_type(c)
 	}
 	if def.kind == .Vector {
 		return vector_of(c.types, def.size)
@@ -1241,12 +1254,29 @@ turtle_type :: proc(c: ^Checker) -> Type_Id {
 	return record_of(c.types, shape)
 }
 
+// The record `midi` is: a key's note and velocity, a controller's number and value, and the
+// channel, one shape for the whole sketch, kept under a place no record is made at.
+@(private)
+midi_type :: proc(c: ^Checker) -> Type_Id {
+	MIDI_SITE :: -3
+	shape, known := c.sites[MIDI_SITE]
+	if !known {
+		shape = new_shape(c.types, c.alloc)
+		c.sites[MIDI_SITE] = shape
+		for field in ([]string{"note", "velocity", "channel", "control", "value"}) {
+			add_field(c.types, shape, field, T_NUMBER)
+		}
+	}
+	return record_of(c.types, shape)
+}
+
 // A check is checked like a taught verb with no parameters that is called by `roci test`: the
 // names it makes are its own, and it sees the sketch's.
 @(private)
 check_check :: proc(c: ^Checker, k: Check) -> IR_Stmt_Kind {
-	saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch := c.locals, c.verb_locals, c.verb, c.walking, c.in_touch
+	saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch, saved_midi := c.locals, c.verb_locals, c.verb, c.walking, c.in_touch, c.in_midi
 	c.in_touch = 0
+	c.in_midi = 0
 	c.locals = make([dynamic]^Symbol, c.alloc)
 	c.verb_locals = make([dynamic]^Symbol, c.alloc)
 	c.walking = make([dynamic]string, c.alloc)
@@ -1255,6 +1285,6 @@ check_check :: proc(c: ^Checker, k: Check) -> IR_Stmt_Kind {
 	c.deferred += 1 // it runs after the sketch has set itself up, so every name has a value
 	body := check_block(c, k.body, false)
 	c.deferred -= 1
-	c.locals, c.verb_locals, c.verb, c.walking, c.in_touch = saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch
+	c.locals, c.verb_locals, c.verb, c.walking, c.in_touch, c.in_midi = saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch, saved_midi
 	return IR_Check{name = k.name, body = body}
 }

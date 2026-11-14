@@ -1,0 +1,8 @@
+── `midi` only works inside on midi down, on midi up or on midi control ─── sketch.roci:3:19
+
+3 │   play piano note midi.note
+  │                   ^^^^^^^^^
+
+`midi` is the key or the knob that has just moved, so it means something only in the block of `on midi down`, `on midi up` or `on midi control`. Everywhere else, `midi control 1` gives a controller's value now.
+
+For example:  on midi down [ play piano note midi.note ]

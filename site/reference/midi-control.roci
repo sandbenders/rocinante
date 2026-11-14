@@ -1,0 +1,8 @@
+draw [
+  background 20
+  wheel_now = midi control 1
+  fill (hsb (wheel_now * 2.5) 180 240)
+  circle at 200 150 radius (20 + wheel_now)
+  fill white
+  text "turn the mod wheel" at 20 20
+]

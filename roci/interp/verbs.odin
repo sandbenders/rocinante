@@ -789,6 +789,8 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 	case .Synth:
 		return roci.synth(as_text(a[0]))
+	case .Midi_Control:
+		return roci.midi_control(n(a, 0))
 	case .Level:
 		if call.shape == 1 {
 			return roci.level_of(as_sound(a[0]))

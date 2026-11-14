@@ -214,6 +214,12 @@ abi_sound_pitch :: proc "c" (sound: c.int) -> f64 {
 	return sound_state(Sound(sound)).pitch
 }
 
+@(export, link_name = "roci_midi_control")
+abi_midi_control :: proc "c" (number: f64) -> f64 {
+	context = abi_context()
+	return midi_control(number)
+}
+
 // The table rows of the functions above that are not a registry shape.
 abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_load_sound", typeid_of(type_of(abi_load_sound)), "roci_sound_id roci_load_sound(const unsigned char *bytes, int length)", "Decodes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A sound is stopped at its start, at volume 100, in the middle and at speed 1."))
