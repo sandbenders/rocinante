@@ -42,7 +42,8 @@ for header in "$odin_root/vendor/miniaudio/src/miniaudio.h" "$odin_root/vendor/s
 done
 cc=${CC:-cc}
 ar=${AR:-ar}
-$cc -c -O2 -fPIC -I"$odin_root/vendor/miniaudio/src" -I"$odin_root/vendor/stb/src" \
+# hidden: the decoders are linked into roci and must not be exported by its shared library
+$cc -c -O2 -fPIC -fvisibility=hidden -I"$odin_root/vendor/miniaudio/src" -I"$odin_root/vendor/stb/src" \
 	-o roci_sound.o "$root/vendor/sound/c/roci_sound.c"
 rm -f libroci_sound.a
 $ar rcs libroci_sound.a roci_sound.o

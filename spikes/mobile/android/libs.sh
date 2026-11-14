@@ -112,7 +112,7 @@ if [ ! -f "$lib/libroci_sound.a" ]; then
   cc="$ndk/toolchains/llvm/prebuilt/$host/bin/aarch64-linux-android$API_LEVEL-clang"
   ar="$ndk/toolchains/llvm/prebuilt/$host/bin/llvm-ar"
   odin_root="$(odin root)"
-  "$cc" -O2 -fPIC -I"$odin_root/vendor/miniaudio/src" -I"$odin_root/vendor/stb/src" \
+  "$cc" -O2 -fPIC -fvisibility=hidden -I"$odin_root/vendor/miniaudio/src" -I"$odin_root/vendor/stb/src" \
     -c "$root/vendor/sound/c/roci_sound.c" -o "$src/roci_sound.o"
   "$ar" rcs "$lib/libroci_sound.a" "$src/roci_sound.o"
 fi
