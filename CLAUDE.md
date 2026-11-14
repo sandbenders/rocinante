@@ -10,7 +10,7 @@ Read `MANIFESTO.md` before starting any work. Every decision below serves it.
 
 - `main` moves between sessions and other work lands without this file being re-read: run `git fetch` and read `git log --oneline origin/main -20` before trusting anything below.
 - Branch first, never commit on `main`, never push (§3). Fabrizio pushes, opens the merge request and merges. When he says a branch is merged, check `git rev-list --count origin/main..<branch>` is 0, fast-forward `main` and delete every merged local branch with `git branch -d`, without waiting to be asked (decided 2026-10-28).
-- Run `odin run build -- ci` before handing a branch over.
+- Run `odin run build -- ci --fast` before handing a branch over; the full `ci` (the `-o:speed` repeat, golden images, the C ABI build) is left to the pipeline (decided 2026-11-14), except that a change to the renderer or a drawing default still needs `odin run tests/golden` by hand.
 - Phases 0 to 4 are closed (§8; Phases 3 and 4 on 2026-11-14): the language exists end to end (front end, checker, interpreter, `roci run`/`check`/`fmt`/`man`/`test`, libraries, input, the turtle, collision, tables, tweens), with text, pictures, pixels, canvases, fills, `blend`, `clip`, shaders and export (§4.3), the widgets with `ui.toml` and screen readers on every desktop (§4.8, §5.8), and 3D with lights, shadows, models, meshes, SVG and collision in space (§4.3, §5.13), all in the C API too; Odin is `dev-2026-11`. The code map below says what each piece does. Phase 5 (sound) started on 2026-11-14 with playing sound files (`load` of a sound, `play`, `loop`, `pause`, `rewind`, `forward` with a sound, `set` and the fields of a sound; §4.6); the phones' checks of Phases 3 and 4 wait for Phase 8.
 
 ## Commands
