@@ -576,7 +576,10 @@ generate :: proc(g: ^Generator) {
 	strings.write_string(w, "// Dear ImGui v1.93.0 (MIT) and its SDL3 and SDL_GPU backends, as Odin. Made by tools/imgui from the\n")
 	strings.write_string(w, "// JSON that dear_bindings v0.26 writes; do not edit it by hand.\n")
 	strings.write_string(w, "package imgui\n\nimport sdl \"vendor:sdl3\"\n\n")
-	strings.write_string(w, "when ODIN_OS == .Darwin || ODIN_OS == .FreeBSD {\n")
+	// Android is Linux to Odin, so it is asked first; its library is built by spikes/mobile/android/libs.sh.
+	strings.write_string(w, "when ODIN_PLATFORM_SUBTARGET == .Android {\n")
+	strings.write_string(w, "\tforeign import lib {\"../../.cache/android/lib/libroci_ui.a\", \"system:c++_static\", \"system:c++abi\", \"system:SDL3\"}\n")
+	strings.write_string(w, "} else when ODIN_OS == .Darwin || ODIN_OS == .FreeBSD {\n")
 	strings.write_string(w, "\tforeign import lib {\"../../.cache/ui/libroci_ui.a\", \"system:c++\", \"system:SDL3\"}\n")
 	strings.write_string(w, "} else when ODIN_OS == .Linux || ODIN_OS == .OpenBSD {\n")
 	strings.write_string(w, "\tforeign import lib {\"../../.cache/ui/libroci_ui.a\", \"system:stdc++\", \"system:SDL3\"}\n")

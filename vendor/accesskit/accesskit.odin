@@ -7,7 +7,10 @@ package accesskit
 
 // Whether the library is there: a build without it (no `sh tools/ui-libs.sh accesskit` yet) gets
 // procedures that do nothing, so everything else still builds and runs.
-when ODIN_OS == .Windows {
+when ODIN_PLATFORM_SUBTARGET == .Android {
+	// its Android adapter is called from the Java side, which is not written yet
+	LIBRARY_PRESENT :: false
+} else when ODIN_OS == .Windows {
 	LIBRARY_PRESENT :: #exists("../../.cache/ui/accesskit/accesskit.lib")
 } else {
 	LIBRARY_PRESENT :: #exists("../../.cache/ui/accesskit/libaccesskit.a")

@@ -65,6 +65,7 @@ odin run spikes/codegen -- check              # Spike 3: interpret, generate Odi
 odin run spikes/codegen -- doctor [host]      # which targets this computer can build, and the toolchain
 odin run spikes/mobile/macos                  # the phones' sketch on the desktop, 5 seconds
 spikes/mobile/android/build.sh --install      # needs SDL_ANDROID_LIB and SDL_ANDROID_JAVA
+SDL_ANDROID_LIB=... SDL_ANDROID_SRC=... spikes/mobile/android/libs.sh   # once: Dear ImGui, SDL3_ttf, shaderc and SPIRV-Cross for arm64 Android into .cache/android/lib (git, cmake, ninja), which build.sh links
 spikes/mobile/ios/build.sh --install          # needs SDL_IOS_LIB, TEAM_ID and DEVICE
 sh tools/ui-libs.sh accesskit                 # fetch accesskit-c into .cache/ui/accesskit (curl and unzip; cargo and cmake where no release library exists); odin run tools/accesskit writes vendor/accesskit again
 spikes/ui/setup.sh                            # Spike 4, once: Dear ImGui, dear_bindings and accesskit-c into .cache/ui (setup-windows.sh with MSVC)

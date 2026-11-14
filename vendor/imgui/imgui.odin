@@ -6,7 +6,9 @@ package imgui
 
 import sdl "vendor:sdl3"
 
-when ODIN_OS == .Darwin || ODIN_OS == .FreeBSD {
+when ODIN_PLATFORM_SUBTARGET == .Android {
+	foreign import lib {"../../.cache/android/lib/libroci_ui.a", "system:c++_static", "system:c++abi", "system:SDL3"}
+} else when ODIN_OS == .Darwin || ODIN_OS == .FreeBSD {
 	foreign import lib {"../../.cache/ui/libroci_ui.a", "system:c++", "system:SDL3"}
 } else when ODIN_OS == .Linux || ODIN_OS == .OpenBSD {
 	foreign import lib {"../../.cache/ui/libroci_ui.a", "system:stdc++", "system:SDL3"}

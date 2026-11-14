@@ -51,9 +51,13 @@ echo "== odin: libmain.so"
 ODIN_ANDROID_SDK="$ANDROID_HOME/" ODIN_ANDROID_NDK="$ndk/" \
 ODIN_ANDROID_NDK_TOOLCHAIN="$ndk/toolchains/llvm/prebuilt/$host/" \
   odin build "$here" -target:linux_arm64 -subtarget:android -build-mode:shared \
-    -out:"$out/lib/arm64-v8a/libmain.so" -extra-linker-flags:"-L$SDL_ANDROID_LIB" \
+    -out:"$out/lib/arm64-v8a/libmain.so" -extra-linker-flags:"-L$SDL_ANDROID_LIB -L$root/.cache/android/lib" \
     -vet -strict-style
 cp "$SDL_ANDROID_LIB/libSDL3.so" "$out/lib/arm64-v8a/"
+# The libraries spikes/mobile/android/libs.sh builds that roci loads beside SDL3.
+for so in libSDL3_ttf.so libshaderc_shared.so libspirv-cross-c-shared.so; do
+  cp "$root/.cache/android/lib/$so" "$out/lib/arm64-v8a/"
+done
 
 echo "== java: SDL glue and the activity"
 javac --release 11 -classpath "$android_jar" -d "$out/classes" \
@@ -67,7 +71,8 @@ echo "== apk"
   -F "$out/spike-unaligned.apk"
 cp "$out/dex/classes.dex" "$out/classes.dex"
 (cd "$out" && "$build_tools/aapt" add spike-unaligned.apk classes.dex \
-  lib/arm64-v8a/libmain.so lib/arm64-v8a/libSDL3.so > /dev/null)
+  lib/arm64-v8a/libmain.so lib/arm64-v8a/libSDL3.so lib/arm64-v8a/libSDL3_ttf.so \
+  lib/arm64-v8a/libshaderc_shared.so lib/arm64-v8a/libspirv-cross-c-shared.so > /dev/null)
 "$build_tools/zipalign" -f -p 4 "$out/spike-unaligned.apk" "$out/spike-aligned.apk"
 
 if [ ! -f "$keystore" ]; then
