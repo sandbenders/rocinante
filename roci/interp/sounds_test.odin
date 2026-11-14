@@ -386,7 +386,7 @@ draw [ wheel_now = midi control 1 ]
 }
 
 // The MIDI example: a chord held plays three notes, lights three keys and leaves three rings; the
-// mod wheel turns the colors and controller 7 sets the volume.
+// knob or wheel turns the colors and controller 7 also sets the volume.
 @(test)
 test_the_midi_example_plays_and_draws :: proc(t: ^testing.T) {
 	text, read := os.read_entire_file("examples/midi/sketch.roci", context.temp_allocator)
@@ -400,11 +400,13 @@ test_the_midi_example_plays_and_draws :: proc(t: ^testing.T) {
 	testing.expect_value(t, roci.sound_notes(piano), 3)
 	testing.expect_value(t, len(as_list(global_named(p, "down_notes")).items), 3)
 	testing.expect_value(t, len(as_list(global_named(p, "rings")).items), 3)
-	roci.feed_midi({0x80, 64, 0, 0xB0, 1, 127, 0xB0, 7, 64})
+	roci.feed_midi({0x80, 64, 0, 0xB0, 70, 127})
 	roci.step()
 	testing.expect_value(t, roci.sound_notes(piano), 2)
 	testing.expect_value(t, len(as_list(global_named(p, "down_notes")).items), 2)
 	testing.expect_value(t, as_number(global_named(p, "turn_colors")), 360)
+	roci.feed_midi({0xB0, 7, 64})
+	roci.step()
 	testing.expectf(t, abs(roci.sound_state(piano).volume - 50.39) < 0.01, "%v", roci.sound_state(piano).volume)
 	// the rings fade away after a hundred frames
 	for _ in 0 ..< 101 {
