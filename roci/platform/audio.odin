@@ -15,6 +15,9 @@ Audio_Fill :: #type proc(user: rawptr, out: []f32)
 // Frames of the buffer each call of the fill writes at most.
 AUDIO_CHUNK :: 1024
 
+// The device buffer asked for: 256 frames is 5.3 thousandths of a second at 48,000 a second.
+AUDIO_DEVICE_FRAMES :: "256"
+
 Audio_Out :: struct {
 	stream:  ^sdl.AudioStream,
 	fill:    Audio_Fill,
@@ -36,6 +39,12 @@ open_audio :: proc(rate: int, fill: Audio_Fill, user: rawptr, allocator := conte
 	if !sdl.InitSubSystem({.AUDIO}) {
 		out.error = string(sdl.GetError())
 		return out
+	}
+	// A small buffer, so a key played is heard within a few thousandths of a second (SDL's own
+	// choice was 1,024 frames, 21 ms, on PipeWire); SDL_AUDIO_DEVICE_SAMPLE_FRAMES in the
+	// environment still decides, for a computer that crackles with this one.
+	if sdl.getenv(sdl.HINT_AUDIO_DEVICE_SAMPLE_FRAMES) == nil {
+		sdl.SetHint(sdl.HINT_AUDIO_DEVICE_SAMPLE_FRAMES, AUDIO_DEVICE_FRAMES)
 	}
 	spec := sdl.AudioSpec{format = .F32, channels = 2, freq = c.int(rate)}
 	out.stream = sdl.OpenAudioDeviceStream(sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, audio_callback, out)
