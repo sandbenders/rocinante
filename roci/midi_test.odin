@@ -116,3 +116,42 @@ test_midi_early :: proc(t: ^testing.T) {
 	testing.expect_value(t, early_runs, 1)
 	testing.expect_value(t, midi_control(4), 100)
 }
+
+// The pacing learns the refresh from the frames, believes a slow build at once and a fast one
+// slowly, and keeps more spare after a frame that missed its refresh, shrinking it back slowly.
+@(test)
+test_pace_learn :: proc(t: ^testing.T) {
+	p := Pacing{period = 1000.0 / 60, margin = PACE_MARGIN_LEAST}
+	for _ in 0 ..< 400 {
+		pace_learn(&p, 1, 10)
+	}
+	testing.expectf(t, abs(p.period - 10) < 0.01, "the refresh is learned: %v", p.period)
+	testing.expectf(t, abs(p.build - 1) < 0.01, "build %v", p.build)
+	pace_learn(&p, 4, 10)
+	testing.expect_value(t, p.build, 4)
+	pace_learn(&p, 1, 10)
+	testing.expectf(t, p.build > 3.8, "a fast frame lowers it slowly: %v", p.build)
+	testing.expect_value(t, p.missed, 0)
+	pace_learn(&p, 1, 20) // twice the refresh: missed
+	testing.expect_value(t, p.missed, 1)
+	testing.expect_value(t, p.margin, PACE_MARGIN_LEAST + PACE_MARGIN_STEP)
+	testing.expectf(t, abs(p.period - 10) < 0.01, "a missed frame does not change the refresh: %v", p.period)
+	for _ in 0 ..< 200 {
+		pace_learn(&p, 1, 10)
+	}
+	testing.expect_value(t, p.margin, PACE_MARGIN_LEAST)
+	// the margin never grows past half a refresh, and a first frame or a very short gap teaches nothing of the refresh
+	for _ in 0 ..< 20 {
+		pace_learn(&p, 1, 50)
+	}
+	testing.expectf(t, p.margin <= p.period / 2, "%v", p.margin)
+	before := p.period
+	pace_learn(&p, 1, 0)
+	pace_learn(&p, 1, 2)
+	testing.expect_value(t, p.period, before)
+	// a headless sketch never paces
+	start_headless(1)
+	defer shutdown()
+	testing.expect(t, !pacing_on())
+	start_late()
+}

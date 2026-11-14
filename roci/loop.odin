@@ -33,10 +33,13 @@ run :: proc(block: proc() = nil, frames := 0) -> bool {
 	events: [dynamic]platform.Event
 	defer delete(events)
 	for !the.quit && len(the.windows) > 0 && (frames <= 0 || the.frame < frames) {
+		start_late()
 		wait_for_screens()
 		clear(&events)
 		platform.poll_events(&events)
+		began := time.tick_now()
 		step(events[:])
+		paced(began)
 	}
 	return true
 }
@@ -147,6 +150,8 @@ show_frame :: proc(w: ^Win) {
 	}
 	with_ui(&the.renderer, w)
 	defer with_ui(&the.renderer, nil)
+	presenting := time.tick_now()
+	defer pace.presenting += time.duration_milliseconds(time.tick_since(presenting))
 	drawn := gfx.render_acquired(&the.renderer, w.handle.handle, &w.acquired, canvas, &w.list, &w.batcher) if w.acquired.commands != nil else gfx.render_window(&the.renderer, w.handle.handle, canvas, &w.list, &w.batcher)
 	if !drawn && the.renderer.failed && !the.render_reported {
 		// Say so once; the sketch keeps running with the last good frame on screen.
@@ -315,5 +320,94 @@ wait_for_screens :: proc() {
 			}
 			time.sleep(500 * time.Microsecond)
 		}
+	}
+}
+
+// Starting frames late, while MIDI is read: the call that hands a frame to the screen waits for
+// the screen to take the one before (on some drivers; on others the acquire waits, which
+// `wait_for_screens` covers), so a frame built at once after the last one waits a whole refresh,
+// and a note read meanwhile waits with it. Instead the loop sleeps after each frame until just
+// before the next refresh, less what building a frame takes and a margin, and runs MIDI blocks
+// the moment their notes are read; the frame is then built and handed over with little to wait
+// for. A frame started too late misses its refresh (the last one is shown twice), and the margin
+// grows; it shrinks back slowly while every frame is on time. Only while the sketch reads MIDI and
+// draws with vsync, so every other sketch is paced exactly as before.
+@(private)
+Pacing :: struct {
+	last:       time.Tick, // when the last frame was handed over: just after the screen took the one before
+	period:     f64,       // milliseconds between refreshes, learned from the frames
+	build:      f64,       // milliseconds a frame takes to build, before it is handed over
+	margin:     f64,       // milliseconds kept spare before the refresh
+	presenting: f64,       // milliseconds the frame in progress spent being handed over
+	missed:     int,       // frames that started too late, for ROCI_LATENCY
+}
+
+@(thread_local) @(private) pace: Pacing
+
+PACE_MARGIN_LEAST :: 1.5 // milliseconds
+PACE_MARGIN_STEP :: 1.0
+
+@(private)
+pacing_on :: proc() -> bool {
+	if the.headless || midi_in == nil || len(the.windows) == 0 {
+		return false
+	}
+	w := the.windows[0]
+	return w.alive && w.handle != nil && w.handle.vsync
+}
+
+// Sleeps until it is time to build the next frame, running MIDI blocks meanwhile.
+@(private)
+start_late :: proc() {
+	pace.presenting = 0
+	if !pacing_on() || pace.last == {} || pace.period <= 0 {
+		return
+	}
+	wait := pace.period - pace.build - pace.margin
+	for time.duration_milliseconds(time.tick_since(pace.last)) < wait {
+		midi_early()
+		time.sleep(250 * time.Microsecond)
+	}
+}
+
+// Learns from the frame just handed over: how long refreshes are apart, how long building takes,
+// and whether it was late.
+@(private)
+paced :: proc(began: time.Tick) {
+	now := time.tick_now()
+	defer pace.last = now
+	if !pacing_on() {
+		pace.last = {}
+		return
+	}
+	if pace.period <= 0 {
+		pace.period = 1000.0 / 60
+		pace.margin = PACE_MARGIN_LEAST + PACE_MARGIN_STEP
+		if w := the.windows[0]; w.handle != nil {
+			if mode := sdl.GetCurrentDisplayMode(sdl.GetDisplayForWindow(w.handle.handle)); mode != nil && mode.refresh_rate > 0 {
+				pace.period = 1000 / f64(mode.refresh_rate)
+			}
+		}
+	}
+	building := max(0, time.duration_milliseconds(time.tick_diff(began, now)) - pace.presenting)
+	between := time.duration_milliseconds(time.tick_diff(pace.last, now)) if pace.last != {} else 0
+	pace_learn(&pace, building, between)
+}
+
+// What a frame teaches the pacing: it took `building` milliseconds to build and was handed over
+// `between` milliseconds after the one before (0 for the first).
+@(private)
+pace_learn :: proc(p: ^Pacing, building, between: f64) {
+	// a slow frame is believed at once, a fast one slowly
+	p.build = building if building > p.build else p.build * 0.95 + building * 0.05
+	switch {
+	case between <= 0:
+	case between > p.period * 1.5:
+		// it missed its refresh: keep more spare from now on
+		p.missed += 1
+		p.margin = min(p.margin + PACE_MARGIN_STEP, p.period / 2)
+	case between > p.period * 0.5:
+		p.period = p.period * 0.95 + between * 0.05
+		p.margin = max(PACE_MARGIN_LEAST, p.margin - 0.01)
 	}
 }

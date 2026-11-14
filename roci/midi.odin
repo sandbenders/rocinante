@@ -206,7 +206,10 @@ report_latency :: proc() {
 		fmt.println("  the speakers never opened: nothing played")
 	}
 	if len(midi_waits) > 0 && speakers != nil {
-		fmt.printfln("  in all: about %.1f ms on average, %.1f ms at most", wait_mean + chunk / 2 + buffer, wait_most + chunk + buffer)
+		if pace.period > 0 {
+		fmt.printfln("  frames started late, %.1f ms apart, built in %.1f ms with %.1f ms spare; %d missed their refresh", pace.period, pace.build, pace.margin, pace.missed)
+	}
+	fmt.printfln("  in all: about %.1f ms on average, %.1f ms at most", wait_mean + chunk / 2 + buffer, wait_most + chunk + buffer)
 	}
 }
 
@@ -217,6 +220,7 @@ midi_stop :: proc() {
 	delete(midi_waits)
 	midi_waits = nil
 	midi_early_count = 0
+	pace = {}
 	platform.close_midi(midi_in)
 	midi_in = nil
 	midi_tried = false
