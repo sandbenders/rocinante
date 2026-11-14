@@ -269,6 +269,9 @@ test_the_music_example_draws_what_it_hears :: proc(t: ^testing.T) {
 	w := first_window()
 	roci.step({key_event(w, sdl.Scancode.M)})
 	testing.expect(t, as_bool(global_named(p, "listening")))
+	testing.expect(t, !sound_of(p, "tune").playing, "the tune pauses")
+	paused_at := sound_of(p, "tune").at
+	roci.step()
 	testing.expect_value(t, as_number(global_named(p, "loud")), 0)
 	clap := make([]f32, 2048, context.temp_allocator)
 	for &v, i in clap {
@@ -277,6 +280,14 @@ test_the_music_example_draws_what_it_hears :: proc(t: ^testing.T) {
 	roci.feed_microphone(clap)
 	roci.step()
 	testing.expectf(t, as_number(global_named(p, "loud")) > 50, "the clap is loud: %v", global_named(p, "loud"))
+	testing.expect_value(t, sound_of(p, "tune").at, paused_at)
+	// M again: the tune goes on from where it paused
+	roci.step({key_event(w, sdl.Scancode.M, false)})
+	roci.step({key_event(w, sdl.Scancode.M)})
+	tune := sound_of(p, "tune")
+	testing.expect(t, !as_bool(global_named(p, "listening")))
+	testing.expect(t, tune.playing && tune.looping, "the tune goes on, looping")
+	testing.expectf(t, tune.at > paused_at && tune.at < paused_at + 0.1, "from where it was: %v after %v", tune.at, paused_at)
 	testing.expect_value(t, len(p.errors), 0)
 }
 
