@@ -36,6 +36,8 @@ FONT_MIN_ATTACK :: 0.003
 FONT_MIN_RELEASE :: 0.02
 
 MAX_VOICES :: 32
+// How long a voice that is taken for another note takes to die away under it, in seconds.
+STEAL_FADE :: 0.005
 // How long a note takes to come in and to fade out, in seconds.
 ATTACK :: 0.005
 RELEASE :: 0.08
@@ -60,13 +62,20 @@ Voice :: struct {
 	step:      f64,
 	age:       f64,
 	fade_from: f64,
+	// what the voice it took the place of was giving when it was cut off, which dies away over a few
+	// thousandths of a second under the new note so the cut makes no click
+	last_l:    f64, // what this voice gave last frame, before the instrument's gain
+	last_r:    f64,
+	ghost_l:   f64,
+	ghost_r:   f64,
+	ghost:     f64, // 1 down to 0
 }
 
 // A new instrument playing a preset of a SoundFont (read by `font_read` with the mixer's
 // allocator, which it now belongs to), silent, at full volume, in the middle.
 add_font_instrument :: proc(m: ^Mixer, font: ^Font, preset: int) -> Sound {
 	sync.guard(&m.lock)
-	append(&m.players, Player{wave = .Font, font = font, preset = clamp(preset, 0, max(0, len(font.presets) - 1)), volume = 1, speed = 1, pitch = A4})
+	append(&m.players, Player{wave = .Font, font = font, preset = clamp(preset, 0, max(0, len(font.presets) - 1)), volume = 1, speed = 1, pitch = A4, attack = -1, decay = -1, sustain = -1, release = -1})
 	return Sound(len(m.players))
 }
 
@@ -89,7 +98,7 @@ hz_note :: proc(hz: f64) -> f64 {
 // A new instrument with a wave, silent, at full volume, in the middle, with the pitch A4.
 add_instrument :: proc(m: ^Mixer, wave: Wave) -> Sound {
 	sync.guard(&m.lock)
-	append(&m.players, Player{wave = wave if wave != .None else .Sine, volume = 1, speed = 1, pitch = A4, noise = 0x9E3779B9})
+	append(&m.players, Player{wave = wave if wave != .None else .Sine, volume = 1, speed = 1, pitch = A4, noise = 0x9E3779B9, attack = -1, decay = -1, sustain = -1, release = -1})
 	return Sound(len(m.players))
 }
 
@@ -187,34 +196,60 @@ start_note :: proc(p: ^Player, hz: f64, seconds: f64) {
 		start_font_note(p, hz, seconds)
 		return
 	}
-	// a free voice, or else the quietest one
-	chosen := 0
-	for v, i in p.voices {
-		if !v.on {
-			chosen = i
-			break
-		}
-		if v.gain < p.voices[chosen].gain || (v.gain == p.voices[chosen].gain && !v.held && p.voices[chosen].held) {
-			chosen = i
-		}
+	chosen := free_voice(p, 0)
+	if chosen < 0 {
+		return
 	}
-	p.voices[chosen] = Voice{on = true, held = true, note = hz_note(hz), hz = hz, left = seconds if seconds > 0 else 0}
+	p.voices[chosen] = new_voice(p, chosen, Voice{on = true, held = true, note = hz_note(hz), hz = hz, left = seconds if seconds > 0 else 0})
 	p.playing = true
 }
 
-// A free voice of an instrument, or else the quietest one, which the new note takes.
+// A free voice of an instrument, or else the one to take for a new note: not one of `claimed` (a bit
+// for each voice the note being started has already taken, so a note of several layers never eats its
+// own), a voice that was let go before one that is held, the quietest of those, and of those the one
+// that has sounded longest. -1 when every voice is claimed.
 @(private)
-free_voice :: proc(p: ^Player) -> int {
-	chosen := 0
+free_voice :: proc(p: ^Player, claimed: u32) -> int {
+	chosen := -1
 	for v, i in p.voices {
+		if claimed & (1 << u32(i)) != 0 {
+			continue
+		}
 		if !v.on {
 			return i
 		}
-		if v.gain < p.voices[chosen].gain || (v.gain == p.voices[chosen].gain && !v.held && p.voices[chosen].held) {
+		if chosen < 0 {
+			chosen = i
+			continue
+		}
+		best := p.voices[chosen]
+		if v.held != best.held {
+			if !v.held {
+				chosen = i
+			}
+		} else if v.gain != best.gain {
+			if v.gain < best.gain {
+				chosen = i
+			}
+		} else if v.age > best.age {
 			chosen = i
 		}
 	}
 	return chosen
+}
+
+// Puts a new voice in the place of voice `at`: when that was sounding, what it was giving dies away under
+// the new one over STEAL_FADE, so being cut off is not a click.
+@(private)
+new_voice :: proc(p: ^Player, at: int, fresh: Voice) -> Voice {
+	out := fresh
+	old := p.voices[at]
+	if old.on {
+		out.ghost_l = old.last_l + old.ghost_l * old.ghost
+		out.ghost_r = old.last_r + old.ghost_r * old.ghost
+		out.ghost = 1
+	}
+	return out
 }
 
 // A SoundFont's note: a voice for each region of the preset whose keys and velocities hold it (the
@@ -228,12 +263,17 @@ start_font_note :: proc(p: ^Player, hz: f64, seconds: f64) {
 	note := hz_note(hz)
 	key := int(math.round(note))
 	velocity := int(math.round(p.volume * 127))
+	claimed: u32
 	for r, i in p.font.presets[p.preset].regions {
 		if key < r.low_key || key > r.high_key || velocity < r.low_velocity || velocity > r.high_velocity {
 			continue
 		}
-		chosen := free_voice(p)
-		p.voices[chosen] = Voice{on = true, held = true, note = note, hz = hz, left = seconds if seconds > 0 else 0, region = i, pos = f64(r.start), step = region_step(r, note)}
+		chosen := free_voice(p, claimed)
+		if chosen < 0 {
+			break // a preset with more layers here than there are voices
+		}
+		claimed |= 1 << u32(chosen)
+		p.voices[chosen] = new_voice(p, chosen, Voice{on = true, held = true, note = note, hz = hz, left = seconds if seconds > 0 else 0, region = i, pos = f64(r.start), step = region_step(r, note)})
 		p.playing = true
 	}
 }
@@ -311,16 +351,17 @@ mix_instrument :: proc(p: ^Player, out: []f32) {
 	frames := len(out) / CHANNELS
 	left := f32(p.volume * min(1, 1 - p.pan))
 	right := f32(p.volume * min(1, 1 + p.pan))
-	attack_step := 1.0 / (ATTACK * RATE)
-	release_step := 1.0 / (RELEASE * RATE)
+	release_step := 1.0 / (envelope_time(p.release, RELEASE) * RATE)
+	ghost_step := 1.0 / (STEAL_FADE * RATE)
 	for i in 0 ..< frames {
 		sum: f64
 		for &v in p.voices {
 			if !v.on {
 				continue
 			}
+			v.age += 1.0 / RATE
 			if v.held {
-				v.gain = min(1, v.gain + attack_step)
+				v.gain = held_level(p, v.age)
 				if v.left > 0 {
 					v.left -= 1.0 / RATE
 					if v.left <= 0 {
@@ -335,7 +376,14 @@ mix_instrument :: proc(p: ^Player, out: []f32) {
 				}
 			}
 			dt := v.hz * p.speed / RATE
-			sum += wave_value(p, p.wave, v.phase, dt) * v.gain
+			own := wave_value(p, p.wave, v.phase, dt) * v.gain
+			v.last_l, v.last_r = own, own
+			sum += own
+			if v.ghost > 0 {
+				// the voice this one took the place of, dying away under it
+				sum += v.ghost_l * v.ghost
+				v.ghost = max(0, v.ghost - ghost_step)
+			}
 			v.phase += dt
 			v.phase -= math.floor(v.phase)
 		}
@@ -353,20 +401,64 @@ mix_instrument :: proc(p: ^Player, out: []f32) {
 // The level of a SoundFont note's envelope while it is held, `age` seconds after it began: up
 // over the attack, held, down over the decay to the sustain level, and there while the key is down.
 @(private)
-envelope_level :: proc(r: Region, age: f64) -> f64 {
-	t := age
-	if t < r.attack {
-		return t / r.attack
+envelope_level :: proc(r: Region, age: f64, p: ^Player = nil) -> f64 {
+	// what the instrument asked for is a floor over the region's own times, and scales its sustain
+	attack, decay, sustain := r.attack, r.decay, r.sustain
+	if p != nil {
+		if p.attack >= 0 {
+			attack = max(attack, p.attack)
+		}
+		if p.decay >= 0 {
+			decay = max(decay, p.decay)
+		}
+		if p.sustain >= 0 {
+			sustain *= p.sustain
+		}
 	}
-	t -= r.attack
+	t := age
+	if t < attack {
+		return t / attack
+	}
+	t -= attack
 	if t < r.hold {
 		return 1
 	}
 	t -= r.hold
-	if r.decay > 0 && t < r.decay {
-		return 1 - (1 - r.sustain) * t / r.decay
+	if sustain < 1 && decay <= 0 {
+		decay = 0.005 // the level has to get down to the sustain somehow
 	}
-	return r.sustain
+	if decay > 0 && t < decay {
+		return 1 - (1 - sustain) * t / decay
+	}
+	return sustain
+}
+
+// How long an instrument's attack, decay or release is, in seconds: its own when it was set (0 or more),
+// otherwise the one given, and never less than a thousandth of a second, which would click.
+@(private)
+envelope_time :: proc(set: f64, otherwise: f64) -> f64 {
+	return max(set if set >= 0 else otherwise, 0.001)
+}
+
+// The level of a wave instrument's note while it is held, `age` seconds after it began: up over the
+// attack, then down over the decay to the sustain level (1, so no decay, unless it was set), and there.
+@(private)
+held_level :: proc(p: ^Player, age: f64) -> f64 {
+	attack := envelope_time(p.attack, ATTACK)
+	if age < attack {
+		return age / attack
+	}
+	sustain := p.sustain if p.sustain >= 0 else 1
+	if sustain >= 1 {
+		return 1
+	}
+	// a sustain below the top needs a decay to get there, or the level would jump
+	decay := max(p.decay if p.decay >= 0 else 0, 0.005)
+	t := age - attack
+	if t < decay {
+		return 1 - (1 - sustain) * t / decay
+	}
+	return sustain
 }
 
 // Adds a SoundFont instrument's notes into `out`: each reads its region's sample between frames
@@ -391,7 +483,7 @@ mix_font :: proc(p: ^Player, out: []f32) {
 			r := regions[v.region]
 			level: f64
 			if v.held {
-				level = envelope_level(r, v.age)
+				level = envelope_level(r, v.age, p)
 				// a note never starts at full level, whatever its region says, so it cannot click
 				level *= min(1, v.age / FONT_MIN_ATTACK)
 				if v.left > 0 {
@@ -403,7 +495,7 @@ mix_font :: proc(p: ^Player, out: []f32) {
 					}
 				}
 			} else {
-				level = v.fade_from * (1 - v.age / max(r.release, FONT_MIN_RELEASE))
+				level = v.fade_from * (1 - v.age / max(r.release, p.release if p.release >= 0 else 0, FONT_MIN_RELEASE))
 				if level <= 0 {
 					v = {}
 					continue
@@ -427,8 +519,15 @@ mix_font :: proc(p: ^Player, out: []f32) {
 			}
 			part := v.pos - f64(whole)
 			value := (f64(samples[whole]) * (1 - part) + f64(samples[next]) * part) * level * r.gain
-			sum_left += value * min(1, 1 - r.pan)
-			sum_right += value * min(1, 1 + r.pan)
+			v.last_l, v.last_r = value * min(1, 1 - r.pan), value * min(1, 1 + r.pan)
+			sum_left += v.last_l
+			sum_right += v.last_r
+			if v.ghost > 0 {
+				// the voice this one took the place of, dying away under it
+				sum_left += v.ghost_l * v.ghost
+				sum_right += v.ghost_r * v.ghost
+				v.ghost = max(0, v.ghost - 1.0 / (STEAL_FADE * RATE))
+			}
 			v.pos += v.step * p.speed
 			v.age += dt
 		}

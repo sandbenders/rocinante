@@ -41,6 +41,13 @@ Player :: struct {
 	effects: [dynamic]^Effect, // what it goes through, in order (effects.odin)
 	tail:    f64,              // seconds its effects still sound after it stopped
 	stream:  ^Stream,         // a long file read as it plays (stream.odin), in place of `samples`
+	// an instrument's envelope: seconds in, down to the sustain, and out, and the level it sits at
+	// (0 to 1); -1 for each is what the instrument does by itself (a wave's own fade, a SoundFont
+	// region's own envelope), and a number set is a floor over a region's
+	attack:  f64,
+	decay:   f64,
+	sustain: f64,
+	release: f64,
 }
 
 Mixer :: struct {
@@ -275,6 +282,11 @@ Change :: struct {
 	pan:     Maybe(f64),
 	speed:   Maybe(f64),
 	looping: Maybe(bool),
+	// an instrument's envelope (seconds, and the sustain level 0 to 1): see Player
+	attack:  Maybe(f64),
+	decay:   Maybe(f64),
+	sustain: Maybe(f64),
+	release: Maybe(f64),
 }
 
 // Volume is kept between 0 and 1, pan between -1 and 1, speed between 0 (held still) and 8.
@@ -293,6 +305,21 @@ change :: proc(m: ^Mixer, s: Sound, c: Change) {
 	}
 	if v, ok := c.speed.?; ok && v == v {
 		p.speed = clamp(v, 0, 8)
+	}
+	// the envelope is an instrument's: a time is kept from a thousandth of a second up to a minute
+	if p.wave != .None {
+		if v, ok := c.attack.?; ok && v == v {
+			p.attack = clamp(v, 0.001, 60)
+		}
+		if v, ok := c.decay.?; ok && v == v {
+			p.decay = clamp(v, 0.001, 60)
+		}
+		if v, ok := c.sustain.?; ok && v == v {
+			p.sustain = clamp(v, 0, 1)
+		}
+		if v, ok := c.release.?; ok && v == v {
+			p.release = clamp(v, 0.001, 60)
+		}
 	}
 	if v, ok := c.looping.?; ok {
 		p.looping = v
