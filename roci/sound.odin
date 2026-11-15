@@ -70,9 +70,19 @@ the_mixer :: proc() -> ^audio.Mixer {
 	return mixer
 }
 
-// Decodes a sound file and keeps it, stopped at its start. False when the bytes are not a
-// sound this reads (or have no sound in them).
+// Keeps the bytes of a sound file as a sound, stopped at its start: decoded whole, or, when it is
+// longer than 30 seconds, read as it plays from a copy of the (compressed) bytes, so the caller may
+// let go of them at once. False when the bytes are not a sound this reads (or have no sound in them).
 add_sound :: proc(bytes: []u8) -> (Sound, bool) {
+	if source, long := open_long_sound_memory(bytes); long {
+		return audio.add_stream(the_mixer(), source), true
+	}
+	return add_sound_whole(bytes)
+}
+
+// Decodes a sound file whole and keeps it, whatever its length.
+@(private)
+add_sound_whole :: proc(bytes: []u8) -> (Sound, bool) {
 	m := the_mixer()
 	samples, ok := sound_files.decode(bytes, audio.CHANNELS, audio.RATE, m.players.allocator)
 	if !ok {
@@ -81,8 +91,17 @@ add_sound :: proc(bytes: []u8) -> (Sound, bool) {
 	return audio.add(m, samples), true
 }
 
-// Decodes a file saved again into the place of a sound, which goes on playing as it was.
+// Puts a file saved again into the place of a sound, which goes on playing as it was (a long one is
+// read as it plays, as in `add_sound`).
 replace_sound :: proc(s: Sound, bytes: []u8) -> bool {
+	if source, long := open_long_sound_memory(bytes); long {
+		return audio.replace_stream(the_mixer(), s, source)
+	}
+	return replace_sound_whole(s, bytes)
+}
+
+@(private)
+replace_sound_whole :: proc(s: Sound, bytes: []u8) -> bool {
 	m := the_mixer()
 	samples, ok := sound_files.decode(bytes, audio.CHANNELS, audio.RATE, m.players.allocator)
 	if !ok {
@@ -519,7 +538,7 @@ add_sound_file :: proc(path: string) -> (Sound, bool) {
 	if err != nil {
 		return 0, false
 	}
-	return add_sound(bytes)
+	return add_sound_whole(bytes)
 }
 
 // Puts a file saved again in the place of a sound, which goes on playing as it was.
@@ -534,5 +553,21 @@ replace_sound_file :: proc(s: Sound, path: string) -> bool {
 	if err != nil {
 		return false
 	}
-	return replace_sound(s, bytes)
+	return replace_sound_whole(s, bytes)
+}
+
+// The same for the bytes of a file already held in memory: they are copied by the decoder, which
+// reads the copy as the sound plays. False for a shorter one, and for bytes that are no sound.
+@(private)
+open_long_sound_memory :: proc(bytes: []u8) -> (audio.Source, bool) {
+	opened, ok := sound_files.stream_open_memory(bytes, audio.CHANNELS, audio.RATE)
+	if !ok {
+		return {}, false
+	}
+	seconds := stream_threshold.? or_else f64(STREAM_MIN_SECONDS)
+	if f64(opened.length) <= seconds * audio.RATE {
+		sound_files.stream_close(opened)
+		return {}, false
+	}
+	return stream_source(opened), true
 }

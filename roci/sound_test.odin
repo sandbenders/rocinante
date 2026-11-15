@@ -473,9 +473,65 @@ test_the_c_function_that_opens_a_file_streams_a_long_one :: proc(t: ^testing.T) 
 	testing.expect(t, id != 0)
 	testing.expect(t, streamed(Sound(id)))
 	testing.expect_value(t, abi_load_sound_file("tests/sounds/missing.wav"), 0)
-	// from bytes it is always decoded whole
+	// from bytes it is the same: a long file is read as it plays from a copy of the bytes
 	data, _ := os.read_entire_file(path, context.temp_allocator)
-	whole := abi_load_sound(raw_data(data), c.int(len(data)))
-	testing.expect(t, whole != 0)
-	testing.expect(t, !streamed(Sound(whole)))
+	from_bytes := abi_load_sound(raw_data(data), c.int(len(data)))
+	testing.expect(t, from_bytes != 0)
+	testing.expect(t, streamed(Sound(from_bytes)))
+}
+
+@(test)
+test_the_bytes_of_a_long_file_are_streamed_from_a_copy :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	path := write_long_wav("long_memory.wav", 8000, 36)
+	data, _ := os.read_entire_file(path, context.allocator)
+	s, ok := add_sound(data)
+	testing.expect(t, ok)
+	testing.expect(t, streamed(s), "bytes of a long file are a stream")
+	testing.expect_value(t, len(mixer.players[int(s) - 1].samples), 0)
+	// the caller lets go of the bytes, even spoils them: the sound has its own copy
+	for &b in data {
+		b = 0
+	}
+	delete(data)
+	testing.expectf(t, abs(sound_state(s).length - 36) < 0.01, "length %v", sound_state(s).length)
+	play(s)
+	for _ in 0 ..< 30 {
+		step(nil, 1.0 / 60)
+	}
+	testing.expectf(t, abs(sound_state(s).at - 0.5) < 0.01, "at %v", sound_state(s).at)
+	// saved again from bytes, longer: the same sound, keeping how it plays
+	again := write_long_wav("long_memory2.wav", 8000, 41)
+	more, _ := os.read_entire_file(again, context.temp_allocator)
+	testing.expect(t, replace_sound(s, more))
+	testing.expect(t, sound_state(s).playing)
+	testing.expectf(t, abs(sound_state(s).length - 41) < 0.01, "length %v", sound_state(s).length)
+	// short bytes are whole, and bytes that are no sound are refused
+	tone_bytes, _ := os.read_entire_file("tests/sounds/tone.mp3", context.temp_allocator)
+	short, short_ok := add_sound(tone_bytes)
+	testing.expect(t, short_ok && !streamed(short))
+	_, junk := add_sound([]u8{1, 2, 3, 4})
+	testing.expect(t, !junk)
+	testing.expect(t, replace_sound(s, tone_bytes))
+	testing.expect(t, !streamed(s))
+	testing.expect(t, !replace_sound(Sound(99), more))
+}
+
+@(test)
+test_every_format_streams_from_memory :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	set_stream_threshold(0)
+	defer set_stream_threshold()
+	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg"}) {
+		data, _ := os.read_entire_file(fmt.tprintf("tests/sounds/%s", name), context.temp_allocator)
+		s, ok := add_sound(data)
+		testing.expectf(t, ok && streamed(s), "%s", name)
+		play(s)
+		for _ in 0 ..< 30 {
+			step(nil, 0.01)
+		}
+		testing.expectf(t, !sound_state(s).playing, "%s ended", name)
+	}
 }

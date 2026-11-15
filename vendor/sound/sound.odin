@@ -27,6 +27,7 @@ foreign lib {
 	// Opens a file to read in order (see roci_stream_open in c/roci_sound.c): the decoder and its length in
 	// frames at `rate`, or nil. Read, seek and close it from one thread at a time.
 	roci_stream_open :: proc(path: cstring, channels: u32, rate: u32, length: ^u64) -> rawptr ---
+	roci_stream_open_memory :: proc(data: rawptr, size: c.size_t, channels: u32, rate: u32, length: ^u64) -> rawptr ---
 	roci_stream_read :: proc(stream: rawptr, out: [^]f32, frames: u64) -> u64 ---
 	roci_stream_seek :: proc(stream: rawptr, frame: u64) -> c.int ---
 	roci_stream_close :: proc(stream: rawptr) ---
@@ -98,4 +99,22 @@ stream_seek :: proc(s: Stream, frame: int) -> bool {
 
 stream_close :: proc(s: Stream) {
 	roci_stream_close(s.handle)
+}
+
+// Opens a sound held in memory to read in order. The bytes are copied, so they may be let go of at
+// once. ok is false for bytes that are no sound and for ones whose length the decoder cannot say.
+stream_open_memory :: proc(data: []byte, channels, rate: int) -> (s: Stream, ok: bool) {
+	if len(data) == 0 || channels <= 0 || rate <= 0 {
+		return {}, false
+	}
+	length: u64
+	handle := roci_stream_open_memory(raw_data(data), c.size_t(len(data)), u32(channels), u32(rate), &length)
+	if handle == nil {
+		return {}, false
+	}
+	if length == 0 {
+		roci_stream_close(handle)
+		return {}, false
+	}
+	return Stream{handle = handle, channels = channels, length = int(length)}, true
 }

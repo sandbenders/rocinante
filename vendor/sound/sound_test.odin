@@ -219,3 +219,55 @@ test_stream_refuses_what_it_cannot_read :: proc(t: ^testing.T) {
 	testing.expect_value(t, stream_read(s, buffer, 0), 0)
 	testing.expect(t, !stream_seek(s, -1))
 }
+
+@(test)
+test_stream_from_memory_reads_what_decode_gives_and_owns_its_bytes :: proc(t: ^testing.T) {
+	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg"}) {
+		path := fmt.tprintf("tests/sounds/%s", name)
+		data, err := os.read_entire_file_from_path(path, context.allocator)
+		testing.expect_value(t, err, nil)
+		whole, _ := decode(data, 2, 48000)
+		defer delete(whole)
+		s, ok := stream_open_memory(data, 2, 48000)
+		if !testing.expectf(t, ok, "%s did not open from memory", name) {
+			delete(data)
+			continue
+		}
+		defer stream_close(s)
+		// the bytes are let go of, and spoiled first: the stream has a copy of its own
+		for &b in data {
+			b = 0
+		}
+		delete(data)
+		streamed := read_all(s, 1000)
+		defer delete(streamed)
+		testing.expectf(t, abs(len(streamed) / 2 - len(whole) / 2) <= 1, "%s: %d frames, decode %d", name, len(streamed) / 2, len(whole) / 2)
+		most: f32
+		for i in 0 ..< min(len(streamed), len(whole)) {
+			most = max(most, abs(streamed[i] - whole[i]))
+		}
+		testing.expectf(t, most < 1e-5, "%s differs by %v", name, most)
+		// and it can be moved
+		testing.expect(t, stream_seek(s, 100))
+		piece := make([]f32, 200)
+		defer delete(piece)
+		testing.expect_value(t, stream_read(s, piece, 100), 100)
+	}
+}
+
+@(test)
+test_stream_from_memory_refuses_what_it_cannot_stream :: proc(t: ^testing.T) {
+	_, ok := stream_open_memory(nil, 2, 48000)
+	testing.expect(t, !ok)
+	_, ok = stream_open_memory([]byte{1, 2, 3}, 2, 48000)
+	testing.expect(t, !ok)
+	wav, _ := os.read_entire_file_from_path("tests/sounds/tone.wav", context.allocator)
+	defer delete(wav)
+	_, ok = stream_open_memory(wav, 0, 48000)
+	testing.expect(t, !ok)
+	_, ok = stream_open_memory(wav, 2, 0)
+	testing.expect(t, !ok)
+	// bytes cut off in the middle of the sound are still a sound, as far as they go
+	_, ok = stream_open_memory(wav[:200], 2, 48000)
+	testing.expect(t, ok)
+}
