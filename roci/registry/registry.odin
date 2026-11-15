@@ -99,7 +99,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"key", .Text, 0, "The name of the key pressed last."},
 	{"mic", .Sound, 0, "The computer's microphone, as a sound to listen to: `level mic` is how loud it hears and `bands mic` its pitches. The first time a sketch with a window reads it, the microphone opens (the system may ask first); it is not played through the speakers."},
 	{"midi", .Record, 0, "The key or controller an `on midi down`, `on midi up` or `on midi control` block runs for: `midi.note` (60 is middle C) and `midi.velocity` (0 to 100) for a key, `midi.control` and `midi.value` (0 to 100) for a knob or fader, and `midi.channel` (1 to 16)."},
-	{"osc", .Record, 0, "The message an `on osc` block runs for: `osc.address` (such as \"/fader/1\"), `osc.value` (the first number it carries, with true as 1 and false as 0, 0 when there is none), `osc.text` (the first text it carries), `osc.args` (every number in order) and `osc.from` (the computer that sent it)."},
+	{"osc", .Record, 0, "The message an `on osc` block runs for: `osc.address` (such as \"/fader/1\"), `osc.value` (the first number it carries, with true as 1 and false as 0, 0 when there is none), `osc.text` (the first text it carries), `osc.args` (everything it carries, in order, a blob of bytes being a list of numbers) and `osc.from` (the computer that sent it)."},
 	{"mouse", .Vector, 2, "Where the mouse is in the window: `mouse.x` and `mouse.y`."},
 	{"pressed", .Boolean, 0, "Whether a mouse button is held down in this window."},
 	{"pi", .Number, 0, "Half a turn in radians, 3.14159…, for sketches that work in radians."},

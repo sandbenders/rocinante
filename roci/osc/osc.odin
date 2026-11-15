@@ -7,8 +7,8 @@
 // packet from outside is never trusted: every length is checked against what is left, and
 // nothing reads past the end.
 //
-// Numbers (int32, int64, float32, float64), text (strings, symbols, characters) and true and
-// false are kept. A blob, a timetag, a MIDI or color argument, nil and infinity are left out and
+// Numbers (int32, int64, float32, float64), text (strings, symbols, characters), true and false
+// and blobs are kept. A timetag, a MIDI or color argument, nil and infinity are left out and
 // counted, so the caller can say so once. Brackets of an array are skipped and what is inside
 // them is kept as if it stood on its own.
 package osc
@@ -17,11 +17,15 @@ import "base:runtime"
 import "core:math"
 import "core:strings"
 
+// A blob: bytes with no meaning to OSC itself (a picture, a device's packet).
+Blob :: distinct []byte
+
 // One argument of a message.
 Arg :: union {
 	f64,
 	bool,
 	string,
+	Blob,
 }
 
 // A message, with every argument its own copy.
@@ -102,13 +106,45 @@ parse_element :: proc(data: []byte, messages: ^[dynamic]Message, depth: int, all
 @(private)
 destroy_message :: proc(m: Message, allocator: runtime.Allocator) {
 	delete(m.address, allocator)
-	for a in m.args {
-		if s, is_text := a.(string); is_text {
-			delete(s, allocator)
+	destroy_args(m.args, allocator)
+	delete(m.dropped, allocator)
+}
+
+// Lets go of the text or the bytes an argument holds.
+@(private)
+destroy_arg :: proc(a: Arg, allocator: runtime.Allocator) {
+	#partial switch v in a {
+	case string:
+		delete(v, allocator)
+	case Blob:
+		delete(v, allocator)
+	}
+}
+
+// Lets go of an argument list made by `parse` (or copied with `copy_args`), and what it holds.
+destroy_args :: proc(args: []Arg, allocator := context.allocator) {
+	for a in args {
+		destroy_arg(a, allocator)
+	}
+	delete(args, allocator)
+}
+
+// A copy of an argument list that shares nothing with the original.
+copy_args :: proc(args: []Arg, allocator := context.allocator) -> []Arg {
+	out := make([]Arg, len(args), allocator)
+	for a, i in args {
+		#partial switch v in a {
+		case string:
+			out[i] = strings.clone(v, allocator)
+		case Blob:
+			copied := make([]byte, len(v), allocator)
+			copy(copied, cast([]byte)v)
+			out[i] = Blob(copied)
+		case:
+			out[i] = a
 		}
 	}
-	delete(m.args, allocator)
-	delete(m.dropped, allocator)
+	return out
 }
 
 // A string padded with zeros to a multiple of four bytes: its text, and what follows it.
@@ -152,9 +188,7 @@ parse_message :: proc(data: []byte, allocator: runtime.Allocator) -> (m: Message
 	dropped := make([dynamic]byte, allocator)
 	defer if !ok {
 		for a in args {
-			if s, is_text := a.(string); is_text {
-				delete(s, allocator)
-			}
+			destroy_arg(a, allocator)
 		}
 		delete(args)
 	}
@@ -240,7 +274,9 @@ parse_message :: proc(data: []byte, allocator: runtime.Allocator) -> (m: Message
 			if size < 0 || (size + 3) / 4 * 4 > len(rest) - 4 {
 				return {}, false
 			}
-			append(&dropped, tag)
+			blob := make([]byte, size, allocator)
+			copy(blob, rest[4:4 + size])
+			append(&args, Blob(blob))
 			rest = rest[4 + (size + 3) / 4 * 4:]
 		case '[', ']':
 		// an array's brackets: its contents are kept as if they stood alone
@@ -277,6 +313,8 @@ encode :: proc(address: string, args: []Arg, allocator := context.allocator) -> 
 			append(&tags, 'T' if v else 'F')
 		case string:
 			append(&tags, 's')
+		case Blob:
+			append(&tags, 'b')
 		}
 	}
 	write_string(&out, string(tags[:]))
@@ -291,6 +329,12 @@ encode :: proc(address: string, args: []Arg, allocator := context.allocator) -> 
 		case bool:
 		case string:
 			write_string(&out, v)
+		case Blob:
+			write_u32(&out, u32(len(v)))
+			append(&out, ..cast([]byte)v)
+			for _ in 0 ..< (4 - len(v) % 4) % 4 {
+				append(&out, 0)
+			}
 		}
 	}
 	return out[:]
@@ -318,9 +362,40 @@ write_string :: proc(out: ^[dynamic]byte, s: string) {
 	}
 }
 
-// Whether `address` is one that `pattern` names. A `*` in the pattern stands for any run of
-// characters within one part of the address (never across a slash) and a `?` for one character;
-// everything else must be the same. The pattern is the handler's, the address the message's.
+// One message to put in a bundle: an address and its arguments.
+Out_Message :: struct {
+	address: string,
+	args:    []Arg,
+}
+
+// The packet for several messages sent together, made with `allocator`: a bundle that is due at
+// once, holding each message in turn. Nil when there are no messages or any address is not one.
+encode_bundle :: proc(messages: []Out_Message, allocator := context.allocator) -> []byte {
+	if len(messages) == 0 {
+		return nil
+	}
+	out := make([dynamic]byte, allocator)
+	append(&out, "#bundle")
+	// the string's zero, then the timetag 1: "immediately", as the protocol says
+	append(&out, 0, 0, 0, 0, 0, 0, 0, 0, 1)
+	for m in messages {
+		packet := encode(m.address, m.args, context.temp_allocator)
+		if packet == nil {
+			delete(out)
+			return nil
+		}
+		write_u32(&out, u32(len(packet)))
+		append(&out, ..packet)
+	}
+	return out[:]
+}
+
+// Whether `address` is one that `pattern` names. In the pattern a `*` stands for any run of
+// characters, a `?` for one character, `[abc]` and `[a-z]` for one character of those (`[!abc]`
+// for one that is not), and `{one,two}` for either word; none of them ever matches a slash, so
+// each works inside one part of the address, and everything else must be the same. A bracket or
+// a brace that is never closed stands for itself. The pattern is the handler's, the address the
+// message's.
 match :: proc(pattern, address: string) -> bool {
 	return match_from(pattern, address)
 }
@@ -346,6 +421,40 @@ match_from :: proc(pattern, address: string) -> bool {
 			if len(a) == 0 || a[0] == '/' {
 				return false
 			}
+		case '[':
+			close := strings.index_byte(p, ']')
+			// a class needs a character in it, so `[]` and a bracket never closed are just a `[`
+			if close > 1 {
+				if len(a) == 0 || a[0] == '/' || !in_class(p[1:close], a[0]) {
+					return false
+				}
+				p, a = p[close + 1:], a[1:]
+				continue
+			}
+			if len(a) == 0 || a[0] != '[' {
+				return false
+			}
+		case '{':
+			close := strings.index_byte(p, '}')
+			if close > 0 {
+				words := p[1:close]
+				after := p[close + 1:]
+				for len(words) >= 0 {
+					comma := strings.index_byte(words, ',')
+					word := words if comma < 0 else words[:comma]
+					if strings.has_prefix(a, word) && !strings.contains_rune(word, '/') && match_from(after, a[len(word):]) {
+						return true
+					}
+					if comma < 0 {
+						break
+					}
+					words = words[comma + 1:]
+				}
+				return false
+			}
+			if len(a) == 0 || a[0] != '{' {
+				return false
+			}
 		case:
 			if len(a) == 0 || a[0] != p[0] {
 				return false
@@ -354,4 +463,29 @@ match_from :: proc(pattern, address: string) -> bool {
 		p, a = p[1:], a[1:]
 	}
 	return len(a) == 0
+}
+
+// Whether a character is in the inside of a `[ ]`: letters, ranges such as `a-z`, and a `!` first
+// to mean none of them.
+@(private)
+in_class :: proc(inside: string, ch: byte) -> bool {
+	set := inside
+	negate := len(set) > 1 && set[0] == '!'
+	if negate {
+		set = set[1:]
+	}
+	found := false
+	for i := 0; i < len(set); i += 1 {
+		if i + 2 < len(set) && set[i + 1] == '-' {
+			low, high := set[i], set[i + 2]
+			if low > high {
+				low, high = high, low
+			}
+			found ||= ch >= low && ch <= high
+			i += 2
+		} else {
+			found ||= ch == set[i]
+		}
+	}
+	return found != negate
 }

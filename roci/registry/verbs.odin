@@ -23,6 +23,12 @@ STYLE_OPTIONS := []Option{
 
 // What a text takes besides the style words: its size in pixels, its font (a name),
 // where its lines sit against the point, and how wide a line may be before it wraps.
+// Where an OSC message goes: a computer's name or number, and a port.
+OSC_SEND_OPTIONS := []Option{
+	{"to", {.Text}, false},
+	{"port", {.Number}, false},
+}
+
 TEXT_OPTIONS := []Option{
 	{"fill", {.Paint}, false},
 	{"stroke", {.Colour}, false},

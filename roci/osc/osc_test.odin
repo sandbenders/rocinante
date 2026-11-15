@@ -33,7 +33,7 @@ test_parse_a_hand_made_message :: proc(t: ^testing.T) {
 
 @(test)
 test_encode_then_parse_gives_the_same_message :: proc(t: ^testing.T) {
-	args := []Arg{f64(3), f64(0.25), f64(-2_000_000_000), f64(3e9), "text", "", true, false, f64(0)}
+	args := []Arg{f64(3), f64(0.25), f64(-2_000_000_000), f64(3e9), "text", "", true, false, f64(0), Blob{1, 2, 3, 4, 5}, Blob{}, Blob{9}}
 	packet := encode("/synth/freq", args)
 	defer delete(packet)
 	testing.expect_value(t, len(packet) % 4, 0)
@@ -51,6 +51,8 @@ test_encode_then_parse_gives_the_same_message :: proc(t: ^testing.T) {
 			testing.expect_value(t, messages[0].args[i].(bool), want)
 		case string:
 			testing.expect_value(t, messages[0].args[i].(string), want)
+		case Blob:
+			testing.expect_value(t, string(cast([]byte)messages[0].args[i].(Blob)), string(cast([]byte)want))
 		}
 	}
 }
@@ -109,8 +111,8 @@ test_other_number_types_text_and_arrays :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_unsupported_arguments_are_counted_and_skipped :: proc(t: ^testing.T) {
-	// ",bNtfI": a blob of 3 bytes (padded to 4), nil, a timetag, a float, infinity
+test_unsupported_arguments_are_counted_and_skipped_and_a_blob_is_kept :: proc(t: ^testing.T) {
+	// ",bNtfI": a blob of 3 bytes (padded to 4, and kept), nil, a timetag, a float, infinity
 	packet := []byte{
 		'/', 'x', 0, 0,
 		',', 'b', 'N', 't', 'f', 'I', 0, 0,
@@ -121,9 +123,10 @@ test_unsupported_arguments_are_counted_and_skipped :: proc(t: ^testing.T) {
 	messages, ok := parse(packet)
 	defer destroy_messages(messages)
 	testing.expect(t, ok)
-	testing.expect_value(t, len(messages[0].args), 1)
-	testing.expect_value(t, messages[0].args[0].(f64), 2)
-	testing.expect_value(t, messages[0].dropped, "bNtI")
+	testing.expect_value(t, len(messages[0].args), 2)
+	testing.expect_value(t, string(cast([]byte)messages[0].args[0].(Blob)), "\x01\x02\x03")
+	testing.expect_value(t, messages[0].args[1].(f64), 2)
+	testing.expect_value(t, messages[0].dropped, "NtI")
 }
 
 @(test)
@@ -316,4 +319,98 @@ test_match_addresses :: proc(t: ^testing.T) {
 	testing.expect(t, match("", ""))
 	testing.expect(t, !match("", "/a"))
 	testing.expect(t, !match("/a", ""))
+}
+
+@(test)
+test_blobs_are_padded_and_a_damaged_one_is_refused :: proc(t: ^testing.T) {
+	for size in 0 ..< 9 {
+		bytes := make([]byte, size)
+		defer delete(bytes)
+		for &b, i in bytes {
+			b = byte(200 + i)
+		}
+		packet := encode("/b", []Arg{Blob(bytes), f64(7)})
+		defer delete(packet)
+		testing.expect_value(t, len(packet) % 4, 0)
+		messages, ok := parse(packet)
+		defer destroy_messages(messages)
+		testing.expect(t, ok)
+		testing.expect_value(t, len(messages[0].args), 2)
+		testing.expect_value(t, string(cast([]byte)messages[0].args[0].(Blob)), string(bytes))
+		testing.expect_value(t, messages[0].args[1].(f64), 7)
+	}
+	// a blob that claims more than the packet holds
+	messages, ok := parse([]byte{'/', 'b', 0, 0, ',', 'b', 0, 0, 0, 0, 0, 9, 1, 2, 3, 4})
+	defer destroy_messages(messages)
+	testing.expect(t, !ok)
+}
+
+@(test)
+test_a_bundle_made_by_encode_is_read_back_in_order :: proc(t: ^testing.T) {
+	out := []Out_Message{{"/a", []Arg{f64(1), "x"}}, {"/b", nil}, {"/c", []Arg{Blob{1, 2}, true}}}
+	packet := encode_bundle(out)
+	defer delete(packet)
+	testing.expect_value(t, len(packet) % 4, 0)
+	testing.expect_value(t, string(packet[:8]), "#bundle\x00")
+	messages, ok := parse(packet)
+	defer destroy_messages(messages)
+	testing.expect(t, ok)
+	testing.expect_value(t, len(messages), 3)
+	testing.expect_value(t, messages[0].address, "/a")
+	testing.expect_value(t, messages[0].args[1].(string), "x")
+	testing.expect_value(t, messages[1].address, "/b")
+	testing.expect_value(t, len(messages[1].args), 0)
+	testing.expect_value(t, messages[2].address, "/c")
+	testing.expect_value(t, messages[2].args[1].(bool), true)
+	// nothing to send, or an address that is not one, makes no packet
+	testing.expect(t, encode_bundle(nil) == nil)
+	testing.expect(t, encode_bundle([]Out_Message{{"/a", nil}, {"b", nil}}) == nil)
+}
+
+@(test)
+test_copy_args_shares_nothing :: proc(t: ^testing.T) {
+	original := []Arg{f64(1), "text", Blob{1, 2, 3}, true}
+	copied := copy_args(original)
+	defer destroy_args(copied)
+	testing.expect_value(t, len(copied), 4)
+	testing.expect_value(t, copied[1].(string), "text")
+	testing.expect(t, raw_data(copied[1].(string)) != raw_data(original[1].(string)))
+	testing.expect(t, raw_data(copied[2].(Blob)) != raw_data(original[2].(Blob)))
+	testing.expect_value(t, string(cast([]byte)copied[2].(Blob)), "\x01\x02\x03")
+}
+
+@(test)
+test_match_classes_and_words :: proc(t: ^testing.T) {
+	// a class is one character of those, a range, or with a bang none of them
+	testing.expect(t, match("/fader/[123]", "/fader/2"))
+	testing.expect(t, !match("/fader/[123]", "/fader/4"))
+	testing.expect(t, match("/fader/[1-3]", "/fader/3"))
+	testing.expect(t, !match("/fader/[1-3]", "/fader/9"))
+	testing.expect(t, match("/fader/[3-1]", "/fader/2")) // a backwards range works too
+	testing.expect(t, match("/fader/[!1-3]", "/fader/9"))
+	testing.expect(t, !match("/fader/[!1-3]", "/fader/2"))
+	testing.expect(t, match("/a[a-cx-z]b", "/ayb"))
+	testing.expect(t, !match("/a[a-c]b", "/a/b")) // never a slash
+	testing.expect(t, !match("/a[a-c]", "/a"))
+	testing.expect(t, match("/x[a-]", "/x-")) // a dash that ends the class is a dash
+	testing.expect(t, match("/x[-a]", "/x-"))
+	// words
+	testing.expect(t, match("/{red,green}/x", "/green/x"))
+	testing.expect(t, match("/{red,green}/x", "/red/x"))
+	testing.expect(t, !match("/{red,green}/x", "/blue/x"))
+	testing.expect(t, match("/c{,s}", "/c")) // an empty word is allowed
+	testing.expect(t, match("/c{,s}", "/cs"))
+	testing.expect(t, match("/{a,ab}c", "/abc")) // the first word that fits the rest
+	testing.expect(t, match("/{a,ab}{c,d}", "/abd"))
+	testing.expect(t, !match("/{a,b}", "/a/b"))
+	testing.expect(t, match("/{one}", "/one"))
+	// mixed with the others
+	testing.expect(t, match("/f?[0-9]{x,y}*", "/fa7yzzz"))
+	testing.expect(t, !match("/f?[0-9]{x,y}*", "/fa7"))
+	// a bracket or brace never closed, or an empty class, is only itself
+	testing.expect(t, match("/a[b", "/a[b"))
+	testing.expect(t, !match("/a[b", "/ab"))
+	testing.expect(t, match("/a{b", "/a{b"))
+	testing.expect(t, match("/a[]b", "/a[]b"))
+	testing.expect(t, match("/a{}b", "/ab")) // an empty brace holds one empty word
 }

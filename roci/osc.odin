@@ -24,13 +24,14 @@ MAX_OSC_ADDRESSES :: 1024
 
 // A message that arrived, as a handler reads it: the address, who sent it, the first number (true
 // counts as 1, false as 0; 0 when there is none), the first text ("" when there is none), every
-// number in order, and the types of the arguments that were left out (blobs and timetags).
+// argument in order (numbers, text, true and false, and blobs), and the types of the arguments that
+// were left out (timetags and the like).
 Osc_Message :: struct {
 	address: string,
 	from:    string,
 	value:   f64,
 	text:    string,
-	args:    []f64,
+	args:    []oscp.Arg,
 	dropped: string,
 }
 
@@ -48,6 +49,7 @@ Osc_Sent :: struct {
 	args:    []oscp.Arg,
 	host:    string,
 	port:    int,
+	bundled: bool, // sent together with others in one bundle
 }
 
 @(thread_local) @(private) osc_in: ^platform.Osc_In
@@ -58,10 +60,10 @@ Osc_Sent :: struct {
 @(thread_local) @(private) osc_values: map[string]f64 // the latest first number of each address
 @(thread_local) @(private) osc_sent: [dynamic]Osc_Sent // what a headless sketch sent
 @(thread_local) @(private) osc_pretend_busy: bool // for tests: every port is taken
-// The text and numbers of the frame's messages: they are read after the frame's own memory is let go of
+// The text and arguments of the frame's messages: they are read after the frame's own memory is let go of
 // (a test reads the log after `step`), so they are kept here until the next frame's messages replace them.
 @(thread_local) @(private) osc_kept_text: [dynamic]string
-@(thread_local) @(private) osc_kept_numbers: [dynamic][]f64
+@(thread_local) @(private) osc_kept_args: [dynamic][]oscp.Arg
 
 @(private)
 osc_allocator :: proc() -> runtime.Allocator {
@@ -152,18 +154,38 @@ osc_send :: proc(address: string, args: []oscp.Arg, host := "127.0.0.1", port :=
 		if osc_sent == nil {
 			osc_sent = make([dynamic]Osc_Sent, allocator)
 		}
-		copied := make([]oscp.Arg, len(args), allocator)
-		for a, i in args {
-			if s, is_text := a.(string); is_text {
-				copied[i] = strings.clone(s, allocator)
-			} else {
-				copied[i] = a
-			}
-		}
-		append(&osc_sent, Osc_Sent{address = strings.clone(address, allocator), args = copied, host = strings.clone(host, allocator), port = port})
+		record_sent(address, args, host, port, false)
 		return .Sent
 	}
-	packet := oscp.encode(address, args, context.temp_allocator)
+	return osc_transmit(oscp.encode(address, args, context.temp_allocator), host, port)
+}
+
+// Sends several messages at once as one bundle, which a program reads as a group: each is an address
+// and its arguments. Nothing is sent when any address does not begin with a slash. A headless sketch
+// keeps them, one by one, for `osc_sent_messages`.
+osc_send_bundle :: proc(messages: []oscp.Out_Message, host := "127.0.0.1", port := DEFAULT_OSC_PORT) -> Osc_Result {
+	if len(messages) == 0 {
+		return .Sent
+	}
+	for m in messages {
+		if len(m.address) == 0 || m.address[0] != '/' {
+			return .Bad_Address
+		}
+	}
+	if strings.has_suffix(host, ".invalid") {
+		return .Host_Unknown
+	}
+	if the.headless || graphics_refused {
+		for m in messages {
+			record_sent(m.address, m.args, host, port, true)
+		}
+		return .Sent
+	}
+	return osc_transmit(oscp.encode_bundle(messages, context.temp_allocator), host, port)
+}
+
+@(private)
+osc_transmit :: proc(packet: []byte, host: string, port: int) -> Osc_Result {
 	if osc_out == nil {
 		osc_out = platform.open_osc_out(osc_allocator())
 	}
@@ -176,6 +198,15 @@ osc_send :: proc(address: string, args: []oscp.Arg, host := "127.0.0.1", port :=
 		return .Not_Sent
 	}
 	return .Not_Sent
+}
+
+@(private)
+record_sent :: proc(address: string, args: []oscp.Arg, host: string, port: int, bundled: bool) {
+	allocator := osc_allocator()
+	if osc_sent == nil {
+		osc_sent = make([dynamic]Osc_Sent, allocator)
+	}
+	append(&osc_sent, Osc_Sent{address = strings.clone(address, allocator), args = oscp.copy_args(args, allocator), host = strings.clone(host, allocator), port = port, bundled = bundled})
 }
 
 // What a headless sketch has sent since `osc_clear_sent`, oldest first.
@@ -194,12 +225,7 @@ osc_clear_sent :: proc() {
 @(private)
 free_sent :: proc(m: Osc_Sent, allocator: runtime.Allocator) {
 	delete(m.address, allocator)
-	for a in m.args {
-		if s, is_text := a.(string); is_text {
-			delete(s, allocator)
-		}
-	}
-	delete(m.args, allocator)
+	oscp.destroy_args(m.args, allocator)
 	delete(m.host, allocator)
 }
 
@@ -212,10 +238,10 @@ osc_forget_frame :: proc() {
 		delete(s, allocator)
 	}
 	clear(&osc_kept_text)
-	for n in osc_kept_numbers {
-		delete(n, allocator)
+	for a in osc_kept_args {
+		oscp.destroy_args(a, allocator)
 	}
-	clear(&osc_kept_numbers)
+	clear(&osc_kept_args)
 }
 
 @(private)
@@ -248,31 +274,30 @@ osc_step :: proc() {
 		messages, _ := oscp.parse(p.data, context.temp_allocator)
 		for m in messages {
 			message := Osc_Message{address = osc_keep(m.address), from = osc_keep(p.from), dropped = osc_keep(m.dropped)}
-			args := make([dynamic]f64, context.temp_allocator)
 			have_value, have_text := false, false
 			for a in m.args {
 				switch v in a {
 				case f64:
-					append(&args, v)
+					if !have_value {
+						message.value, have_value = v, true
+					}
 				case bool:
-					append(&args, f64(1) if v else f64(0))
+					if !have_value {
+						message.value, have_value = f64(1) if v else f64(0), true
+					}
 				case string:
 					if !have_text {
 						message.text, have_text = osc_keep(v), true
 					}
+				case oscp.Blob:
 				}
 			}
-			if len(args) > 0 {
-				kept := make([]f64, len(args), allocator)
-				copy(kept, args[:])
-				if osc_kept_numbers == nil {
-					osc_kept_numbers = make([dynamic][]f64, allocator)
+			if len(m.args) > 0 {
+				if osc_kept_args == nil {
+					osc_kept_args = make([dynamic][]oscp.Arg, allocator)
 				}
-				append(&osc_kept_numbers, kept)
-				message.args = kept
-			}
-			if len(args) > 0 {
-				message.value, have_value = args[0], true
+				message.args = oscp.copy_args(m.args, allocator)
+				append(&osc_kept_args, message.args)
 			}
 			if have_value {
 				if _, known := osc_values[m.address]; known || len(osc_values) < MAX_OSC_ADDRESSES {
@@ -319,8 +344,8 @@ osc_stop :: proc() {
 	osc_values = nil
 	osc_forget_frame()
 	delete(osc_kept_text)
-	delete(osc_kept_numbers)
-	osc_kept_text, osc_kept_numbers = nil, nil
+	delete(osc_kept_args)
+	osc_kept_text, osc_kept_args = nil, nil
 	osc_clear_sent()
 	delete(osc_sent)
 	osc_sent = nil

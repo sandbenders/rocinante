@@ -199,6 +199,8 @@ osc_send :: proc(out: ^Osc_Out, host: string, port: int, data: []byte) -> Osc_Se
 			return .Not_Sent
 		}
 		net.set_blocking(socket, false)
+		// so a message can go to every computer on the network at once ("255.255.255.255")
+		net.set_option(socket, .Broadcast, true)
 		out.socket, out.made = socket, true
 	}
 	_, err := net.send_udp(out.socket, data, net.Endpoint{address = address, port = port})

@@ -1283,8 +1283,8 @@ midi_type :: proc(c: ^Checker) -> Type_Id {
 	return record_of(c.types, shape)
 }
 
-// The record `osc` is: the address and sender of a message, its first number, its first text and every
-// number it carries, one shape for the whole sketch, kept under a place no record is made at.
+// The record `osc` is: the address and sender of a message, its first number, its first text and
+// everything it carries (a list of mixed values), one shape for the whole sketch, kept under a place no record is made at.
 @(private)
 osc_type :: proc(c: ^Checker) -> Type_Id {
 	OSC_SITE :: -4
@@ -1296,7 +1296,7 @@ osc_type :: proc(c: ^Checker) -> Type_Id {
 		add_field(c.types, shape, "from", T_TEXT)
 		add_field(c.types, shape, "text", T_TEXT)
 		add_field(c.types, shape, "value", T_NUMBER)
-		add_field(c.types, shape, "args", list_of(c.types, T_NUMBER))
+		add_field(c.types, shape, "args", list_of(c.types, T_BOXED))
 	}
 	return record_of(c.types, shape)
 }

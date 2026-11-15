@@ -118,7 +118,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"menu", "roci_menu_begin roci_menu_end", ""},
 	{"list", "roci_list", ""},
 	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent roci_set_sound_at roci_set_sound_volume roci_set_sound_pan roci_set_sound_speed roci_set_sound_loop roci_set_sound_pitch roci_play_note", ""},
-	{"osc send", "roci_osc_send", ""},
+	{"osc send", "roci_osc_send roci_osc_send_bundle", ""},
 	{"send", "roci_send roci_send_number roci_send_text roci_send_vec2 roci_send_boolean", ""},
 	{"print", "roci_print", ""},
 	{"held", "roci_held", ""},
@@ -517,9 +517,10 @@ typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, R
 typedef struct { double note, velocity, channel, control, value; } roci_midi;
 
 /* A message that arrived over the network: its address and sender as text, the first text argument (empty when
- * none), the first number argument (0 when none) and every number argument in order (true is 1, false is 0).
- * The text and the numbers are valid only while the handler runs. */
-typedef struct { const char *address, *from, *text; double value; const double *args; int arg_count; } roci_osc;
+ * none), the first number argument (0 when none; true is 1, false is 0) and every argument in order as roci_values:
+ * a number, text, a boolean, or for a blob of bytes a list of numbers. The text and the values are valid only while
+ * the handler runs. */
+typedef struct { const char *address, *from, *text; double value; const roci_value *args; int arg_count; } roci_osc;
 
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
  * mouse events; valid only while the handler runs), the finger (for touch events) and the key or

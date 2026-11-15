@@ -55,9 +55,10 @@ typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, R
 typedef struct { double note, velocity, channel, control, value; } roci_midi;
 
 /* A message that arrived over the network: its address and sender as text, the first text argument (empty when
- * none), the first number argument (0 when none) and every number argument in order (true is 1, false is 0).
- * The text and the numbers are valid only while the handler runs. */
-typedef struct { const char *address, *from, *text; double value; const double *args; int arg_count; } roci_osc;
+ * none), the first number argument (0 when none; true is 1, false is 0) and every argument in order as roci_values:
+ * a number, text, a boolean, or for a blob of bytes a list of numbers. The text and the values are valid only while
+ * the handler runs. */
+typedef struct { const char *address, *from, *text; double value; const roci_value *args; int arg_count; } roci_osc;
 
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
  * mouse events; valid only while the handler runs), the finger (for touch events) and the key or
@@ -1128,8 +1129,11 @@ void roci_default_window_size(double width, double height);
 /* A number that is the same for two frames that look the same, for a window's last frame: what tests compare. */
 unsigned long long roci_frame_hash(roci_window_id window);
 
-/* Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text or a boolean. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it. */
+/* Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text, a boolean, or a list of numbers, which goes as a blob of bytes. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it. */
 int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port);
+
+/* Sends several OSC messages together as one bundle, which the receiver reads as a group: `messages` holds `count` values of kind ROCI_LIST, each a message whose first item is its address (text) and whose other items are its arguments, as for roci_osc_send. Gives 1 when it was sent, and 0 when an address does not begin with a slash, the host is unknown or the system would not send it. */
+int roci_osc_send_bundle(const roci_value *messages, int count, const char *host, int port);
 
 /* Decodes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A sound is stopped at its start, at volume 100, in the middle and at speed 1. */
 roci_sound_id roci_load_sound(const unsigned char *bytes, int length);

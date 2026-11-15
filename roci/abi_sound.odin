@@ -7,6 +7,7 @@
 package roci
 
 import "core:c"
+import "core:math"
 import "core:os"
 
 import oscp "osc"
@@ -281,7 +282,8 @@ abi_no_sound_effect :: proc "c" (sound: c.int, name: cstring) -> c.int {
 
 // The table rows of the functions above that are not a registry shape.
 abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
-	append(all, abi_entry("roci_osc_send", typeid_of(type_of(abi_osc_send)), "int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port)", "Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text or a boolean. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it."))
+	append(all, abi_entry("roci_osc_send", typeid_of(type_of(abi_osc_send)), "int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port)", "Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text, a boolean, or a list of numbers, which goes as a blob of bytes. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it."))
+	append(all, abi_entry("roci_osc_send_bundle", typeid_of(type_of(abi_osc_send_bundle)), "int roci_osc_send_bundle(const roci_value *messages, int count, const char *host, int port)", "Sends several OSC messages together as one bundle, which the receiver reads as a group: `messages` holds `count` values of kind ROCI_LIST, each a message whose first item is its address (text) and whose other items are its arguments, as for roci_osc_send. Gives 1 when it was sent, and 0 when an address does not begin with a slash, the host is unknown or the system would not send it."))
 	append(all, abi_entry("roci_load_sound", typeid_of(type_of(abi_load_sound)), "roci_sound_id roci_load_sound(const unsigned char *bytes, int length)", "Decodes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A sound is stopped at its start, at volume 100, in the middle and at speed 1."))
 	append(all, abi_entry("roci_load_sound_file", typeid_of(type_of(abi_load_sound_file)), "roci_sound_id roci_load_sound_file(const char *path)", "Reads a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when it cannot be read."))
 	append(all, abi_entry("roci_rewind_by", typeid_of(type_of(abi_rewind_by)), "void roci_rewind_by(roci_sound_id sound, double seconds)", "Moves a sound some seconds back, no further than its start."))
@@ -328,26 +330,60 @@ abi_osc_value :: proc "c" (address: cstring) -> f64 {
 	return osc_value(text_from_abi(address))
 }
 
-// Sends an OSC message: `count` values of kind number, text or boolean (any other kind is left out), to a
-// host (NULL or "" for this computer) and a port (0 or less for 9000). Gives 1 when it was sent and 0 when the
-// address does not begin with a slash, the host is unknown or the system would not send it.
-@(export, link_name = "roci_osc_send")
-abi_osc_send :: proc "c" (address: cstring, args: [^]Abi_Value, count: c.int, host: cstring, port: c.int) -> c.int {
-	context = abi_context()
+// The arguments of an OSC message made from C values: numbers, text and booleans, and a list of numbers is
+// a blob of bytes (each number rounded and kept from 0 to 255). Any other kind is left out.
+@(private)
+osc_args_from_abi :: proc(args: [^]Abi_Value, count: c.int) -> []oscp.Arg {
 	values := make([dynamic]oscp.Arg, context.temp_allocator)
 	for i in 0 ..< int(max(count, 0)) {
 		a := args[i]
-		switch a.kind {
+		#partial switch a.kind {
 		case .Number:
 			append(&values, a.number)
 		case .Text:
 			append(&values, text_from_abi(a.text))
 		case .Boolean:
 			append(&values, a.number != 0)
-		case .Vec2, .List:
+		case .List:
+			bytes := make([]byte, int(max(a.count, 0)), context.temp_allocator)
+			for j in 0 ..< len(bytes) {
+				bytes[j] = byte(clamp(math.round(a.items[j].number), 0, 255))
+			}
+			append(&values, oscp.Blob(bytes))
 		}
 	}
+	return values[:]
+}
+
+// Sends an OSC message: `count` values of kind number, text, boolean or list (a list of numbers is a blob of
+// bytes; any other kind is left out), to a host (NULL or "" for this computer) and a port (0 or less for
+// 9000). Gives 1 when it was sent and 0 when the address does not begin with a slash, the host is unknown or
+// the system would not send it.
+@(export, link_name = "roci_osc_send")
+abi_osc_send :: proc "c" (address: cstring, args: [^]Abi_Value, count: c.int, host: cstring, port: c.int) -> c.int {
+	context = abi_context()
+	values := osc_args_from_abi(args, count)
 	target := text_from_abi(host)
 	result := osc_send(text_from_abi(address), values[:], target if target != "" else "127.0.0.1", int(port) if port > 0 else DEFAULT_OSC_PORT)
+	return 1 if result == .Sent else 0
+}
+
+// Sends several OSC messages together as one bundle, which the receiver reads as a group: `messages` holds
+// `count` values of kind list, each a message whose first item is its address (text) and the others its
+// arguments, as for roci_osc_send. Gives 1 when it was sent and 0 when an address does not begin with a slash,
+// the host is unknown or the system would not send it.
+@(export, link_name = "roci_osc_send_bundle")
+abi_osc_send_bundle :: proc "c" (messages: [^]Abi_Value, count: c.int, host: cstring, port: c.int) -> c.int {
+	context = abi_context()
+	out := make([dynamic]oscp.Out_Message, context.temp_allocator)
+	for i in 0 ..< int(max(count, 0)) {
+		m := messages[i]
+		if m.kind != .List || m.count < 1 || m.items[0].kind != .Text {
+			return 0
+		}
+		append(&out, oscp.Out_Message{address = text_from_abi(m.items[0].text), args = osc_args_from_abi(&m.items[1], m.count - 1)})
+	}
+	target := text_from_abi(host)
+	result := osc_send_bundle(out[:], target if target != "" else "127.0.0.1", int(port) if port > 0 else DEFAULT_OSC_PORT)
 	return 1 if result == .Sent else 0
 }

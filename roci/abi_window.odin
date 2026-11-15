@@ -307,14 +307,15 @@ Abi_Event :: struct {
 }
 
 // A message that arrived over the network, as roci_osc is: the address and the sender as text, the first
-// text argument ("" when none), the first number argument (0 when none) and every number argument in order
-// (true counts 1 and false 0). The text and the numbers last until the handler returns.
+// text argument ("" when none), the first number argument (0 when none, true counting 1 and false 0) and
+// every argument in order as roci_values: a number, text, a boolean, or a list of numbers for a blob of bytes.
+// The text and the values last until the handler returns.
 Abi_Osc :: struct {
 	address:   cstring,
 	from:      cstring,
 	text:      cstring,
 	value:     f64,
-	args:      [^]f64,
+	args:      [^]Abi_Value,
 	arg_count: c.int,
 }
 
@@ -354,6 +355,29 @@ abi_event_name :: proc(kind: Happening) -> string {
 	case .Osc:        return "osc"
 	}
 	return ""
+}
+
+// The arguments of a message as C reads them, in the frame's memory.
+@(private)
+osc_values_to_abi :: proc(args: []oscp.Arg) -> []Abi_Value {
+	out := make([]Abi_Value, len(args), context.temp_allocator)
+	for a, i in args {
+		switch v in a {
+		case f64:
+			out[i] = Abi_Value{kind = .Number, number = v}
+		case bool:
+			out[i] = Abi_Value{kind = .Boolean, number = 1 if v else 0}
+		case string:
+			out[i] = Abi_Value{kind = .Text, text = strings.clone_to_cstring(v, context.temp_allocator)}
+		case oscp.Blob:
+			bytes := make([]Abi_Value, len(v), context.temp_allocator)
+			for b, j in v {
+				bytes[j] = Abi_Value{kind = .Number, number = f64(b)}
+			}
+			out[i] = Abi_Value{kind = .List, items = raw_data(bytes), count = c.int(len(bytes))}
+		}
+	}
+	return out
 }
 
 // Runs the handlers C registered, in the middle of each window's frame, as the interpreter runs its own.
@@ -407,7 +431,7 @@ abi_run_handlers :: proc(w: Window, happenings: []Happened) {
 				m := happening.osc
 				event.osc = Abi_Osc{
 					address = strings.clone_to_cstring(m.address, context.temp_allocator), from = strings.clone_to_cstring(m.from, context.temp_allocator),
-					text = strings.clone_to_cstring(m.text, context.temp_allocator), value = m.value, args = raw_data(m.args), arg_count = c.int(len(m.args)),
+					text = strings.clone_to_cstring(m.text, context.temp_allocator), value = m.value, args = raw_data(osc_values_to_abi(m.args)), arg_count = c.int(len(m.args)),
 				}
 			}
 			h.fn(&event)

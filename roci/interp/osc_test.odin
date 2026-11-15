@@ -44,7 +44,7 @@ osc send "/plain" [ ]
 	roci.feed_osc(packet("/other", "word", f64(1), f64(2)))
 	roci.step()
 	testing.expect_value(t, as_number(global_named(p, "total")), 12)
-	testing.expect_value(t, as_text(global_named(p, "got")), "/other|word|2")
+	testing.expect_value(t, as_text(global_named(p, "got")), "/other|word|3")
 	roci.step()
 	testing.expect_value(t, as_number(global_named(p, "seen")), 5)
 	// nothing new comes: nothing runs again
@@ -79,9 +79,9 @@ draw [ background 20 ]
 	testing.expect_value(t, as_text(global_named(p, "address")), "/a/b")
 	testing.expect_value(t, as_text(global_named(p, "sender")), "10.0.0.5")
 	testing.expect_value(t, as_number(global_named(p, "first")), 3)
-	testing.expect_value(t, as_number(global_named(p, "second")), 1)
+	testing.expect_value(t, as_number(global_named(p, "second")), 3)
 	testing.expect_value(t, as_text(global_named(p, "words")), "hello")
-	testing.expect_value(t, as_number(global_named(p, "n")), 2)
+	testing.expect_value(t, as_number(global_named(p, "n")), 3)
 	testing.expect_value(t, len(p.errors), 0)
 }
 
@@ -105,8 +105,8 @@ osc send "/y" [ 1 ] to "nowhere.invalid"
 		append(&ids, e.id == .Osc_Address_Bad ? "address" : e.id == .Osc_Unsupported ? "unsupported" : e.id == .Osc_Host_Unknown ? "host" : "other")
 	}
 	testing.expect_value(t, len(ids), 3)
-	// a blob in a message that arrives is said at the handler, once, and the message still runs it
-	roci.feed_osc([]u8{'/', 'b', 0, 0, ',', 'b', 'f', 0, 0, 0, 0, 3, 1, 2, 3, 0, 0x40, 0, 0, 0})
+	// a timetag in a message that arrives is left out and said at the handler, once, and the message still runs it
+	roci.feed_osc([]u8{'/', 'b', 0, 0, ',', 't', 'f', 0, 0, 0, 0, 0, 0, 0, 0, 1, 0x40, 0, 0, 0})
 	roci.window(100, 100)
 	roci.step()
 	roci.step()
@@ -117,8 +117,8 @@ osc send "/y" [ 1 ] to "nowhere.invalid"
 			said += 1
 		}
 	}
-	testing.expect_value(t, said, 2) // the point, and the blob
-	roci.feed_osc([]u8{'/', 'b', 0, 0, ',', 'b', 'f', 0, 0, 0, 0, 3, 1, 2, 3, 0, 0x40, 0, 0, 0})
+	testing.expect_value(t, said, 2) // the point, and the timetag
+	roci.feed_osc([]u8{'/', 'b', 0, 0, ',', 't', 'f', 0, 0, 0, 0, 0, 0, 0, 0, 1, 0x40, 0, 0, 0})
 	roci.step()
 	said = 0
 	for e in p.errors {
@@ -182,4 +182,50 @@ test_the_osc_example_draws_what_arrives :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, len(as_list(global_named(p, "dots")).items), 0)
 	testing.expect_value(t, len(p.errors), 0)
+}
+
+// Everything a message carries comes in order, a blob as a list of bytes, and goes out the same way;
+// several messages go together as one bundle.
+@(test)
+test_osc_arguments_of_every_kind_and_bundles :: proc(t: ^testing.T) {
+	text := `kinds = ""
+size = 0
+total = 0
+on osc [
+  size = count (item 3 of osc.args)
+  total = (item 2 of osc.args) + (item 1 of (item 3 of osc.args))
+  kinds = item 1 of osc.args
+]
+draw [ background 20 ]
+osc send "/data" [ "a" 7 [ 1 2 300 ] false ]
+osc send [ [ "/one" 1 ] [ "/two" "x" true ] [ "/three" ] ] to "studio.local" port 8000
+osc send [ [ "nope" 1 ] ]
+`
+	p := run_with_sounds(t, "osc_kinds", text, "tests/sounds", {})
+	defer finish(p)
+	defer roci.osc_clear_sent()
+	sent := roci.osc_sent_messages()
+	testing.expect_value(t, len(sent), 4)
+	testing.expect_value(t, string(cast([]byte)sent[0].args[2].(oscp.Blob)), "\x01\x02\xff")
+	testing.expect_value(t, sent[0].args[3].(bool), false)
+	testing.expect(t, !sent[0].bundled)
+	testing.expect_value(t, sent[1].address, "/one")
+	testing.expect(t, sent[1].bundled && sent[2].bundled && sent[3].bundled)
+	testing.expect_value(t, sent[2].args[1].(bool), true)
+	testing.expect_value(t, sent[3].host, "studio.local")
+	testing.expect_value(t, sent[3].port, 8000)
+	// the bundle with a bad address was refused, and said
+	said := 0
+	for e in p.errors {
+		if e.id == .Osc_Address_Bad {
+			said += 1
+		}
+	}
+	testing.expect_value(t, said, 1)
+	roci.feed_osc(packet("/data", "word", f64(10), oscp.Blob{5, 6, 7}))
+	roci.step()
+	testing.expect_value(t, as_text(global_named(p, "kinds")), "word")
+	testing.expect_value(t, as_number(global_named(p, "size")), 3)
+	testing.expect_value(t, as_number(global_named(p, "total")), 15)
+	testing.expect_value(t, len(p.errors), 1)
 }
