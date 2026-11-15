@@ -47,9 +47,12 @@ cc -Wall -Wextra -Werror examples/c/scene.c -Iinclude -Loutput -lroci -lm -o out
 echo "abi-check: examples/c/scene.c builds"
 cc -Wall -Wextra -Werror examples/c/controls.c -Iinclude -Loutput -lroci -o output/c_controls
 echo "abi-check: examples/c/controls.c builds"
+cc -Wall -Wextra -Werror examples/c/player.c -Iinclude -Loutput -lroci -o output/c_player
+echo "abi-check: examples/c/player.c builds"
 if [ "${1:-}" = "--run" ]; then
   LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_circle 2
   LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_scene 2
   LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_controls 2
+  LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_player 2
   echo "abi-check: the C examples ran"
 fi

@@ -185,7 +185,7 @@ odin run examples/shapes              # every shape, a circle follows the mouse
 odin run examples/benchmark -o:speed  # 100,000 circles a frame, with frame rate and timings
 ```
 
-Add `-- 3` to any of these to close the window after three seconds. `examples/c/circle.c` is the same circle through the C API (`include/roci.h`, checked by `tools/abi-check.sh`), and `examples/c/scene.c` is a lit 3D scene with shadows, a picked point on the floor and an SVG badge in C, and `examples/c/controls.c` has widgets, two windows, collision, tweens and events in C. Everything the language does is in the C API, except the list and table verbs, which C has its own arrays and maps for.
+Add `-- 3` to any of these to close the window after three seconds. `examples/c/circle.c` is the same circle through the C API (`include/roci.h`, checked by `tools/abi-check.sh`), and `examples/c/scene.c` is a lit 3D scene with shadows, a picked point on the floor and an SVG badge in C, and `examples/c/controls.c` has widgets, two windows, collision, tweens and events in C, and `examples/c/player.c` is a music player whose songs are read into memory with stdio and streamed from there. Everything the language does is in the C API, except the list and table verbs, which C has its own arrays and maps for.
 
 ## Versions
 
