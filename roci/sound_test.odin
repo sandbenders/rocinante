@@ -2,7 +2,9 @@
 package roci
 
 import "core:c"
+import "core:fmt"
 import "core:os"
+import "core:strings"
 import "core:testing"
 
 @(private = "file")
@@ -336,4 +338,144 @@ test_sound_effects_api_and_abi :: proc(t: ^testing.T) {
 	testing.expect_value(t, abi_sound_effect_word(c.int(s), "filter", "kind", "sideways"), 0)
 	testing.expect_value(t, abi_no_sound_effect(sp, "reverb"), 1)
 	testing.expect_value(t, abi_no_sound_effect(sp, "reverb"), 0)
+}
+
+// ---- long files are read as they play ----
+
+// Writes a mono 16-bit WAV file of `seconds` seconds at `rate` frames a second, a rising line that
+// starts again each second, into output/tests, and gives its path.
+@(private = "file")
+write_long_wav :: proc(name: string, rate, seconds: int) -> string {
+	path := fmt.tprintf("output/tests/%s", name)
+	frames := rate * seconds
+	data := make([dynamic]byte, 0, 44 + frames * 2, context.temp_allocator)
+	put32 :: proc(d: ^[dynamic]byte, v: u32) {
+		append(d, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
+	}
+	put16 :: proc(d: ^[dynamic]byte, v: u16) {
+		append(d, byte(v), byte(v >> 8))
+	}
+	append(&data, "RIFF")
+	put32(&data, u32(36 + frames * 2))
+	append(&data, "WAVEfmt ")
+	put32(&data, 16)
+	put16(&data, 1)
+	put16(&data, 1)
+	put32(&data, u32(rate))
+	put32(&data, u32(rate * 2))
+	put16(&data, 2)
+	put16(&data, 16)
+	append(&data, "data")
+	put32(&data, u32(frames * 2))
+	for i in 0 ..< frames {
+		put16(&data, u16(i16(f64(i % rate) / f64(rate) * 20000)))
+	}
+	_ = os.write_entire_file(path, data[:])
+	return path
+}
+
+@(private = "file")
+streamed :: proc(s: Sound) -> bool {
+	return mixer.players[int(s) - 1].stream != nil
+}
+
+@(test)
+test_a_long_file_is_read_as_it_plays_and_a_short_one_is_decoded_whole :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	long_path := write_long_wav("long_sound.wav", 8000, 35)
+	s, ok := add_sound_file(long_path)
+	testing.expect(t, ok)
+	testing.expect(t, streamed(s), "a file over 30 seconds is a stream")
+	testing.expect_value(t, len(mixer.players[int(s) - 1].samples), 0)
+	st := sound_state(s)
+	testing.expectf(t, abs(st.length - 35) < 0.01, "length %v", st.length)
+	play(s)
+	for _ in 0 ..< 60 {
+		step(nil, 1.0 / 60)
+	}
+	st = sound_state(s)
+	testing.expect(t, st.playing)
+	testing.expectf(t, abs(st.at - 1) < 0.01, "after a second it is at %v", st.at)
+	// moved to the middle, it goes on from there
+	set_sound(s, at = 20)
+	step(nil, 0.5)
+	testing.expectf(t, abs(sound_state(s).at - 20.5) < 0.01, "at %v", sound_state(s).at)
+	// the fixture is far under 30 seconds: whole
+	short, short_ok := add_sound_file("tests/sounds/tone.wav")
+	testing.expect(t, short_ok)
+	testing.expect(t, !streamed(short))
+	testing.expect_value(t, sound_state(short).length, 0.25)
+	// what is no sound, or is not there, is no sound
+	_, missing := add_sound_file("tests/sounds/missing.wav")
+	testing.expect(t, !missing)
+	_, junk := add_sound_file("tests/sounds/tiny.sf2")
+	testing.expect(t, !junk)
+}
+
+@(test)
+test_every_file_can_be_streamed_and_plays_to_its_end :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	set_stream_threshold(0)
+	defer set_stream_threshold()
+	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg"}) {
+		s, ok := add_sound_file(fmt.tprintf("tests/sounds/%s", name))
+		testing.expectf(t, ok, "%s", name)
+		testing.expectf(t, streamed(s), "%s", name)
+		testing.expectf(t, abs(sound_state(s).length - 0.25) < 0.05, "%s is %v long", name, sound_state(s).length)
+		play(s)
+		for _ in 0 ..< 30 {
+			step(nil, 0.01)
+		}
+		testing.expectf(t, !sound_state(s).playing, "%s ended", name)
+		// and plays again from the start
+		play(s)
+		testing.expect(t, sound_state(s).playing)
+		testing.expect_value(t, sound_state(s).at, 0)
+		step(nil, 0.05)
+		testing.expect(t, sound_state(s).at > 0.04)
+	}
+}
+
+@(test)
+test_a_long_file_saved_again_keeps_playing :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	path := write_long_wav("long_replace.wav", 8000, 33)
+	s, _ := add_sound_file(path)
+	loop(s, volume = 50)
+	step(nil, 0.2)
+	// the same sound, a longer file
+	again := write_long_wav("long_replace.wav", 8000, 40)
+	testing.expect_value(t, again, path)
+	testing.expect(t, replace_sound_file(s, path))
+	st := sound_state(s)
+	testing.expect(t, st.playing && st.looping)
+	testing.expect_value(t, st.volume, 50)
+	testing.expectf(t, abs(st.length - 40) < 0.01, "length %v", st.length)
+	// to a short file: whole now
+	testing.expect(t, replace_sound_file(s, "tests/sounds/tone.wav"))
+	testing.expect(t, !streamed(s))
+	testing.expect_value(t, sound_state(s).length, 0.25)
+	// a file that is no sound leaves it as it was
+	testing.expect(t, !replace_sound_file(s, "tests/sounds/tiny.sf2"))
+	testing.expect_value(t, sound_state(s).length, 0.25)
+	testing.expect(t, !replace_sound_file(Sound(99), path))
+}
+
+@(test)
+test_the_c_function_that_opens_a_file_streams_a_long_one :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	path := write_long_wav("long_abi.wav", 8000, 31)
+	id := abi_load_sound_file(strings.clone_to_cstring(path, context.temp_allocator))
+	testing.expect(t, id != 0)
+	testing.expect(t, streamed(Sound(id)))
+	testing.expect_value(t, abi_load_sound_file("tests/sounds/missing.wav"), 0)
+	// from bytes it is always decoded whole
+	data, _ := os.read_entire_file(path, context.temp_allocator)
+	whole := abi_load_sound(raw_data(data), c.int(len(data)))
+	testing.expect(t, whole != 0)
+	testing.expect(t, !streamed(Sound(whole)))
 }

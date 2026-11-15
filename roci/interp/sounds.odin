@@ -65,7 +65,7 @@ load_sound :: proc(it: ^Interp, name: string, span: lang.Span) -> Value {
 			info, err := os.stat(entry.path, context.temp_allocator)
 			if err == nil && info.modification_time != entry.mtime {
 				// saved again: the same sound, with what the file holds now
-				if bytes, read_err := os.read_entire_file(entry.path, context.temp_allocator); read_err == nil && roci.replace_sound(entry.id, bytes) {
+				if roci.replace_sound_file(entry.id, entry.path) {
 					entry.mtime = info.modification_time
 					if done, found := &decoded_sounds[entry.path]; found {
 						done.mtime = entry.mtime
@@ -117,18 +117,13 @@ read_sound :: proc(it: ^Interp, name: string) -> (entry: Sound_Entry) {
 	if done, found := decoded_sounds[entry.path]; found && done.epoch == roci.sound_epoch() {
 		entry.id = done.id
 		if done.mtime != entry.mtime {
-			if bytes, err := os.read_entire_file(entry.path, context.temp_allocator); err == nil && roci.replace_sound(done.id, bytes) {
+			if roci.replace_sound_file(done.id, entry.path) {
 				decoded_sounds[entry.path] = Decoded_Sound{done.id, entry.mtime, done.epoch}
 			}
 		}
 		return
 	}
-	bytes, read_err := os.read_entire_file(entry.path, context.temp_allocator)
-	if read_err != nil {
-		entry.state = .Unreadable
-		return
-	}
-	id, ok := roci.add_sound(bytes)
+	id, ok := roci.add_sound_file(entry.path)
 	if !ok {
 		entry.state = .Unreadable
 		return

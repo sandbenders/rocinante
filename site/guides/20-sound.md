@@ -232,6 +232,18 @@ draw [
 ]
 ```
 
+## Long files
+
+A song can be as long as you like. A file that is shorter than half a minute is loaded into memory whole, which suits sound effects and loops. A longer one is read from the disk as it plays, a little ahead of where it is, so a five-minute song costs a few megabytes and the sketch does not wait for it to load:
+
+```roci
+song = load "song.mp3"
+loop song
+on mouse down [ set song at (mouse.x * song.length / width) ]
+```
+
+Everything works the same: `at`, `length`, `rewind`, `forward`, `speed`, `loop`, `level`, `bands` and the effects. A jump far from where the song is takes a few thousandths of a second to be ready, and the sound waits in that moment instead of skipping. A file that is not at 48,000 frames a second (most MP3s are 44,100) can land a few thousandths of a second from the place you set.
+
 ## Saving the file again
 
 While `roci run` is going, a sound file saved again is read again into the same sound, which goes on playing where it was, louder or softer as it was set, so a sound can be edited while the sketch listens to it. Saving the sketch keeps the sounds playing too: a sound loaded by a line that did not change is the same sound.

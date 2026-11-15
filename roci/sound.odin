@@ -13,6 +13,7 @@
 package roci
 
 import "core:fmt"
+import "core:os"
 import "core:strings"
 
 import "audio"
@@ -42,6 +43,17 @@ Sound_State :: struct {
 @(thread_local) @(private) headless_frames: f64 // the fraction of a frame a headless step did not mix yet
 @(thread_local) @(private) sounds_epoch: int     // raised each time every sound is let go
 
+// How long a file is, in seconds, before it is read as it plays and not decoded whole. Shorter ones
+// (sound effects, loops) are decoded whole, which gives exact positions and costs little memory.
+STREAM_MIN_SECONDS :: 30
+@(thread_local) @(private) stream_threshold: Maybe(f64)
+
+// For tests: how many seconds a file has to be to be streamed (0 streams every file); with no argument
+// the usual 30 again.
+set_stream_threshold :: proc(seconds: Maybe(f64) = nil) {
+	stream_threshold = seconds
+}
+
 // Which sounds exist now: it changes when every sound is let go (`shutdown`), so a number kept
 // from before no longer means what it did.
 sound_epoch :: proc() -> int {
@@ -52,6 +64,8 @@ sound_epoch :: proc() -> int {
 the_mixer :: proc() -> ^audio.Mixer {
 	if mixer == nil {
 		mixer = audio.make_mixer(the.allocator if the.allocator.procedure != nil else context.allocator)
+		// with no device (headless, tests) the mixer reads long files itself, in step with what it mixes
+		audio.set_synchronous(mixer, the.headless || graphics_refused)
 	}
 	return mixer
 }
@@ -462,4 +476,63 @@ sounds_stop :: proc() {
 	headless_frames = 0
 	delete(sound_problem, the.allocator if the.allocator.procedure != nil else context.allocator)
 	sound_problem = ""
+}
+
+// The decoder of a file that is read as it plays, in the form the mixer takes.
+@(private)
+stream_source :: proc(s: sound_files.Stream) -> audio.Source {
+	read :: proc(handle: rawptr, out: []f32, frames: int) -> int {
+		return sound_files.stream_read(sound_files.Stream{handle = handle, channels = audio.CHANNELS}, out, frames)
+	}
+	seek :: proc(handle: rawptr, frame: int) -> bool {
+		return sound_files.stream_seek(sound_files.Stream{handle = handle, channels = audio.CHANNELS}, frame)
+	}
+	close :: proc(handle: rawptr) {
+		sound_files.stream_close(sound_files.Stream{handle = handle, channels = audio.CHANNELS})
+	}
+	return audio.Source{handle = s.handle, read = read, seek = seek, close = close, length = s.length}
+}
+
+// Opens a file to be read as it plays when it is longer than `stream_threshold` seconds; false for a
+// shorter one (decoded whole instead), and for one that is no sound or whose length is not known.
+@(private)
+open_long_sound :: proc(path: string) -> (audio.Source, bool) {
+	opened, ok := sound_files.stream_open(path, audio.CHANNELS, audio.RATE)
+	if !ok {
+		return {}, false
+	}
+	seconds := stream_threshold.? or_else f64(STREAM_MIN_SECONDS)
+	if f64(opened.length) <= seconds * audio.RATE {
+		sound_files.stream_close(opened)
+		return {}, false
+	}
+	return stream_source(opened), true
+}
+
+// Opens a sound file by its path and keeps it, stopped at its start: a long file (over 30 seconds) is
+// read as it plays, a short one decoded whole. False when the file cannot be read or is no sound.
+add_sound_file :: proc(path: string) -> (Sound, bool) {
+	if source, long := open_long_sound(path); long {
+		return audio.add_stream(the_mixer(), source), true
+	}
+	bytes, err := os.read_entire_file(path, context.temp_allocator)
+	if err != nil {
+		return 0, false
+	}
+	return add_sound(bytes)
+}
+
+// Puts a file saved again in the place of a sound, which goes on playing as it was.
+replace_sound_file :: proc(s: Sound, path: string) -> bool {
+	if source, long := open_long_sound(path); long {
+		if !audio.replace_stream(the_mixer(), s, source) {
+			return false
+		}
+		return true
+	}
+	bytes, err := os.read_entire_file(path, context.temp_allocator)
+	if err != nil {
+		return false
+	}
+	return replace_sound(s, bytes)
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package interp
 
+import "core:fmt"
 import "core:os"
 import "core:testing"
 import "../"
@@ -549,5 +550,71 @@ test_the_pedals_example :: proc(t: ^testing.T) {
 	testing.expect_value(t, roci.sound_notes(tone), 1)
 	roci.step({key_event(w, sdl.Scancode.A, false)})
 	testing.expect_value(t, roci.sound_notes(tone), 0)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// A mono 16-bit WAV file of `seconds` seconds at 8,000 frames a second, a rising line that starts
+// again each second, written into output/tests.
+@(private = "file")
+write_long_wav :: proc(name: string, seconds: int) -> string {
+	path := fmt.tprintf("output/tests/%s", name)
+	rate := 8000
+	frames := rate * seconds
+	data := make([dynamic]byte, 0, 44 + frames * 2, context.temp_allocator)
+	put32 :: proc(d: ^[dynamic]byte, v: u32) {
+		append(d, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
+	}
+	put16 :: proc(d: ^[dynamic]byte, v: u16) {
+		append(d, byte(v), byte(v >> 8))
+	}
+	append(&data, "RIFF")
+	put32(&data, u32(36 + frames * 2))
+	append(&data, "WAVEfmt ")
+	put32(&data, 16)
+	put16(&data, 1)
+	put16(&data, 1)
+	put32(&data, u32(rate))
+	put32(&data, u32(rate * 2))
+	put16(&data, 2)
+	put16(&data, 16)
+	append(&data, "data")
+	put32(&data, u32(frames * 2))
+	for i in 0 ..< frames {
+		put16(&data, u16(i16(f64(i % rate) / f64(rate) * 20000)))
+	}
+	_ = os.write_entire_file(path, data[:])
+	return path
+}
+
+// A song longer than half a minute is read as it plays: a sketch loads it, plays it, asks how long it is,
+// moves in it, and saves the file again with another length while it plays.
+@(test)
+test_a_long_song_in_a_sketch_streams_and_survives_a_save :: proc(t: ^testing.T) {
+	write_long_wav("long_song.wav", 40)
+	text := "song = load \"long_song.wav\"\nloop song volume 60\ndraw [ circle at 10 10 radius song.length ]\n"
+	p := run_with_sounds(t, "sound_long", text, "output/tests", {"long_song.wav"})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	s := as_sound(global_named(p, "song"))
+	st := roci.sound_state(s)
+	testing.expect(t, st.playing && st.looping)
+	testing.expectf(t, abs(st.length - 40) < 0.01, "length %v", st.length)
+	for _ in 0 ..< 30 {
+		roci.step()
+	}
+	testing.expect(t, roci.sound_state(s).at > 0.1)
+	// saved again, shorter: the same sound, still playing
+	entry := p.sounds["long_song.wav"]
+	write_long_wav("long_song_new.wav", 32)
+	data, _ := os.read_entire_file("output/tests/long_song_new.wav", context.temp_allocator)
+	testing.expect(t, os.write_entire_file(entry.path, data) == nil)
+	stale := entry
+	stale.mtime._nsec -= 1_000_000_000
+	stale.checked = -1
+	p.sounds["long_song.wav"] = stale
+	testing.expect_value(t, load_sound(p, "long_song.wav", {}), Value(s))
+	st = roci.sound_state(s)
+	testing.expect(t, st.playing && st.looping && abs(st.volume - 60) < 1e-9)
+	testing.expectf(t, abs(st.length - 32) < 0.01, "length %v", st.length)
 	testing.expect_value(t, len(p.errors), 0)
 }

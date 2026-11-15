@@ -6,6 +6,7 @@ package build
 
 import "core:fmt"
 import "core:os"
+import "core:time"
 
 import "../tools/term"
 
@@ -25,11 +26,15 @@ sound_libs :: proc() -> bool {
 }
 
 // Every program that plays a sound links the decoders, and `roci` is one, so the library is
-// built before the packages are checked when it is missing (the pipelines and a clone that has
-// built it before skip this).
+// built before the packages are checked when it is missing or older than its source (the pipelines
+// and a clone that has built it since the source last changed skip this).
 check_sound :: proc() -> bool {
 	if os.exists(SOUND_LIBRARY) {
-		return true
+		library, library_err := os.stat(SOUND_LIBRARY, context.temp_allocator)
+		source, source_err := os.stat("vendor/sound/c/roci_sound.c", context.temp_allocator)
+		if library_err != nil || source_err != nil || time.diff(source.modification_time, library.modification_time) >= 0 {
+			return true
+		}
 	}
 	fmt.printfln("%s", term.out("== building the sound decoders (tools/sound-libs.sh)", .Bold_Cyan))
 	return sound_libs()
