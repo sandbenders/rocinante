@@ -694,3 +694,19 @@ set plain attack 1.5 release 0.25
 	testing.expect_value(t, as_number(global_named(p, "attack")), 7)
 	testing.expect_value(t, as_number(global_named(p, "release")), 8)
 }
+
+// `load "song.wav" buffer 3` keeps three seconds ready, and a save keeps that.
+@(test)
+test_load_buffer_sets_the_seconds_kept_ready :: proc(t: ^testing.T) {
+	write_long_wav("long_buffered.wav", 40)
+	text := "song = load \"long_buffered.wav\" buffer 3\nplain = load \"long_buffered.wav\"\nloop song\ndraw [ circle at 10 10 radius song.length ]\n"
+	p := run_with_sounds(t, "sound_buffer", text, "output/tests", {"long_buffered.wav"})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	song := as_sound(global_named(p, "song"))
+	plain := as_sound(global_named(p, "plain"))
+	// one file by one name is one sound: the first load decided
+	testing.expect_value(t, song, plain)
+	testing.expect_value(t, roci.sound_buffer_seconds(song), 3.0)
+	testing.expect(t, roci.sound_state(song).playing)
+}

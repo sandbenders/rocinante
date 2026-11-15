@@ -110,8 +110,8 @@ add :: proc(m: ^Mixer, samples: []f32) -> Sound {
 // Takes an open source as a new sound that is read as it plays: it is stopped at its start, at full
 // volume, in the middle and at its own speed, like any other. The source is the mixer's from here
 // (closed when the sound is let go of), and the first half second is read before this gives back.
-add_stream :: proc(m: ^Mixer, source: Source) -> Sound {
-	s := stream_create(source, m.players.allocator)
+add_stream :: proc(m: ^Mixer, source: Source, seconds := RING_SECONDS) -> Sound {
+	s := stream_create(source, m.players.allocator, seconds)
 	stream_register(m, s)
 	sync.guard(&m.lock)
 	append(&m.players, Player{stream = s, volume = 1, speed = 1})
@@ -121,8 +121,8 @@ add_stream :: proc(m: ^Mixer, source: Source) -> Sound {
 // Puts a newly opened source in a sound's place (a long file saved again), keeping how it plays; a
 // sound further than its new end is put at the end. A sound that was whole becomes a stream, and a
 // stream may become whole (`replace`).
-replace_stream :: proc(m: ^Mixer, s: Sound, source: Source) -> bool {
-	fresh := stream_create(source, m.players.allocator)
+replace_stream :: proc(m: ^Mixer, s: Sound, source: Source, seconds := RING_SECONDS) -> bool {
+	fresh := stream_create(source, m.players.allocator, seconds)
 	stream_register(m, fresh)
 	sync.lock(&m.lock)
 	p := player(m, s)
@@ -403,7 +403,7 @@ mix_chunk :: proc(m: ^Mixer, out: []f32) {
 				if m.synchronous {
 					// no thread reads for it: read what this chunk will need, and a little more
 					ahead := int(f64(frames) * p.speed) + 8
-					stream_service(p.stream, min(STREAM_AHEAD, (int(p.at) - p.stream.base) + ahead + STREAM_BLOCK))
+					stream_service(p.stream, min(p.stream.ahead, (int(p.at) - p.stream.base) + ahead + STREAM_BLOCK))
 				}
 				mix_stream(&p, own)
 			} else {

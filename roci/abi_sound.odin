@@ -29,6 +29,23 @@ abi_load_sound_file :: proc "c" (path: cstring) -> c.int {
 	return c.int(s) if ok else 0
 }
 
+@(export, link_name = "roci_load_sound_buffered")
+abi_load_sound_buffered :: proc "c" (bytes: [^]u8, length: c.int, seconds: f64) -> c.int {
+	context = abi_context()
+	if bytes == nil || length <= 0 {
+		return 0
+	}
+	s, ok := add_sound(bytes[:length], seconds)
+	return c.int(s) if ok else 0
+}
+
+@(export, link_name = "roci_load_sound_file_buffered")
+abi_load_sound_file_buffered :: proc "c" (path: cstring, seconds: f64) -> c.int {
+	context = abi_context()
+	s, ok := add_sound_file(text_from_abi(path), seconds)
+	return c.int(s) if ok else 0
+}
+
 @(export, link_name = "roci_play")
 abi_play :: proc "c" (sound: c.int) {
 	context = abi_context()
@@ -291,6 +308,8 @@ abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_osc_send", typeid_of(type_of(abi_osc_send)), "int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port)", "Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text, a boolean, or a list of numbers, which goes as a blob of bytes. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it."))
 	append(all, abi_entry("roci_osc_send_bundle", typeid_of(type_of(abi_osc_send_bundle)), "int roci_osc_send_bundle(const roci_value *messages, int count, const char *host, int port)", "Sends several OSC messages together as one bundle, which the receiver reads as a group: `messages` holds `count` values of kind ROCI_LIST, each a message whose first item is its address (text) and whose other items are its arguments, as for roci_osc_send. Gives 1 when it was sent, and 0 when an address does not begin with a slash, the host is unknown or the system would not send it."))
 	append(all, abi_entry("roci_load_sound", typeid_of(type_of(abi_load_sound)), "roci_sound_id roci_load_sound(const unsigned char *bytes, int length)", "Takes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A file shorter than 30 seconds is decoded whole; a longer one is read as it plays from a copy of the bytes, so they may be let go of at once. A sound is stopped at its start, at volume 100, in the middle and at speed 1."))
+	append(all, abi_entry("roci_load_sound_buffered", typeid_of(type_of(abi_load_sound_buffered)), "roci_sound_id roci_load_sound_buffered(const unsigned char *bytes, int length, double seconds)", "The same as roci_load_sound, with `seconds` of a long file kept ready as it plays (from 1 to 60; 8 for roci_load_sound). More rides out a slow disk or a high speed and costs about 400 kilobytes a second."))
+	append(all, abi_entry("roci_load_sound_file_buffered", typeid_of(type_of(abi_load_sound_file_buffered)), "roci_sound_id roci_load_sound_file_buffered(const char *path, double seconds)", "The same as roci_load_sound_file, with `seconds` of a long file kept ready as it plays (from 1 to 60; 8 for roci_load_sound_file)."))
 	append(all, abi_entry("roci_load_sound_file", typeid_of(type_of(abi_load_sound_file)), "roci_sound_id roci_load_sound_file(const char *path)", "Opens a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when it cannot be read. A file longer than 30 seconds is not decoded whole: it is read from the disk as it plays, so a long song costs little memory (roci_load_sound, from the bytes of a file, does the same from a copy of the bytes, which it makes, so they may be let go of at once)."))
 	append(all, abi_entry("roci_rewind_by", typeid_of(type_of(abi_rewind_by)), "void roci_rewind_by(roci_sound_id sound, double seconds)", "Moves a sound some seconds back, no further than its start."))
 	append(all, abi_entry("roci_forward_sound", typeid_of(type_of(abi_forward_sound)), "void roci_forward_sound(roci_sound_id sound, double seconds)", "Moves a sound some seconds ahead; past its end, a sound that does not loop has ended and one that loops goes on from its start."))

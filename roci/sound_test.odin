@@ -7,6 +7,8 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 
+import "audio"
+
 @(private = "file")
 tone :: proc(t: ^testing.T) -> Sound {
 	data, err := os.read_entire_file_from_path("tests/sounds/tone.wav", context.temp_allocator)
@@ -565,4 +567,48 @@ test_an_instruments_envelope_is_set_in_seconds_and_a_percent :: proc(t: ^testing
 		step(nil, 1.0 / 60)
 	}
 	testing.expectf(t, abs(mixer.players[int(s) - 1].voices[0].gain - 0.5) < 0.02, "half way up the attack of 1 s after 0.5 s: %v", mixer.players[int(s) - 1].voices[0].gain)
+}
+
+@(test)
+test_a_long_sound_keeps_the_seconds_it_was_asked_for_ready :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	path := write_long_wav("long_buffer.wav", 8000, 33)
+	seconds := func_ring(t, path, nil)
+	testing.expect_value(t, seconds, 8)
+	testing.expect_value(t, func_ring(t, path, 3.0), 3)
+	testing.expect_value(t, func_ring(t, path, 0.1), 1)
+	testing.expect_value(t, func_ring(t, path, 500.0), 60)
+	// from bytes and through C
+	data, _ := os.read_entire_file(path, context.temp_allocator)
+	s, ok := add_sound(data, 5.0)
+	testing.expect(t, ok)
+	testing.expect_value(t, mixer.players[int(s) - 1].stream.ring_frames, 5 * audio.RATE)
+	id := abi_load_sound_buffered(raw_data(data), c.int(len(data)), 2)
+	testing.expect_value(t, mixer.players[int(id) - 1].stream.ring_frames, 2 * audio.RATE)
+	cpath := strings.clone_to_cstring(path, context.temp_allocator)
+	file_id := abi_load_sound_file_buffered(cpath, 4)
+	testing.expect_value(t, mixer.players[int(file_id) - 1].stream.ring_frames, 4 * audio.RATE)
+	// replaced, the new ring has the size asked for
+	testing.expect(t, replace_sound_file(file_id_sound(file_id), path, 6.0))
+	testing.expect_value(t, mixer.players[int(file_id) - 1].stream.ring_frames, 6 * audio.RATE)
+	// it still plays in a small ring
+	play(s)
+	for _ in 0 ..< 60 {
+		step(nil, 1.0 / 60)
+	}
+	testing.expectf(t, abs(sound_state(s).at - 1) < 0.01, "at %v", sound_state(s).at)
+}
+
+@(private = "file")
+file_id_sound :: proc(id: c.int) -> Sound {
+	return Sound(id)
+}
+
+// The seconds a sound opened with `buffer` keeps ready, from its ring.
+@(private = "file")
+func_ring :: proc(t: ^testing.T, path: string, buffer: Maybe(f64)) -> int {
+	s, ok := add_sound_file(path, buffer)
+	testing.expect(t, ok)
+	return mixer.players[int(s) - 1].stream.ring_frames / audio.RATE
 }

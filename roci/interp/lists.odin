@@ -151,7 +151,11 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 	case .Load:
 		if e.type == lang.T_SOUND {
-			return load_sound(it, as_text(eval(it, call.args[0])), e.span)
+			buffer: Maybe(f64)
+			if v, ok := option_value(it, call.options, "buffer"); ok {
+				buffer = as_number(v)
+			}
+			return load_sound(it, as_text(eval(it, call.args[0])), e.span, buffer)
 		}
 		return load_picture(it, as_text(eval(it, call.args[0])), e.span)
 	case .Count:

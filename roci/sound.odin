@@ -74,9 +74,9 @@ the_mixer :: proc() -> ^audio.Mixer {
 // Keeps the bytes of a sound file as a sound, stopped at its start: decoded whole, or, when it is
 // longer than 30 seconds, read as it plays from a copy of the (compressed) bytes, so the caller may
 // let go of them at once. False when the bytes are not a sound this reads (or have no sound in them).
-add_sound :: proc(bytes: []u8) -> (Sound, bool) {
+add_sound :: proc(bytes: []u8, buffer := Maybe(f64){}) -> (Sound, bool) {
 	if source, long := open_long_sound_memory(bytes); long {
-		return audio.add_stream(the_mixer(), source), true
+		return audio.add_stream(the_mixer(), source, buffer.? or_else audio.RING_SECONDS), true
 	}
 	return add_sound_whole(bytes)
 }
@@ -94,9 +94,9 @@ add_sound_whole :: proc(bytes: []u8) -> (Sound, bool) {
 
 // Puts a file saved again into the place of a sound, which goes on playing as it was (a long one is
 // read as it plays, as in `add_sound`).
-replace_sound :: proc(s: Sound, bytes: []u8) -> bool {
+replace_sound :: proc(s: Sound, bytes: []u8, buffer := Maybe(f64){}) -> bool {
 	if source, long := open_long_sound_memory(bytes); long {
-		return audio.replace_stream(the_mixer(), s, source)
+		return audio.replace_stream(the_mixer(), s, source, buffer.? or_else audio.RING_SECONDS)
 	}
 	return replace_sound_whole(s, bytes)
 }
@@ -337,6 +337,16 @@ set_envelope :: proc(s: Sound, attack := Maybe(f64){}, decay := Maybe(f64){}, su
 	audio.change(the_mixer(), s, c)
 }
 
+// How many seconds of a streamed sound are kept ready, 0 for a sound that is whole or not there.
+sound_buffer_seconds :: proc(s: Sound) -> f64 {
+	m := the_mixer()
+	sync.guard(&m.lock)
+	if s == 0 || int(s) > len(m.players) || m.players[int(s) - 1].stream == nil {
+		return 0
+	}
+	return f64(m.players[int(s) - 1].stream.ring_frames) / audio.RATE
+}
+
 // An instrument's envelope as set: attack, decay and release in seconds and the sustain level 0 to 100,
 // each -1 when it was not set (the instrument's own); all -1 for a sound that is not an instrument.
 sound_envelope :: proc(s: Sound) -> (attack, decay, sustain, release: f64) {
@@ -554,10 +564,11 @@ open_long_sound :: proc(path: string) -> (audio.Source, bool) {
 }
 
 // Opens a sound file by its path and keeps it, stopped at its start: a long file (over 30 seconds) is
-// read as it plays, a short one decoded whole. False when the file cannot be read or is no sound.
-add_sound_file :: proc(path: string) -> (Sound, bool) {
+// read as it plays, keeping `buffer` seconds of it ready (from 1 to 60, 8 when not given), a short one
+// decoded whole. False when the file cannot be read or is no sound.
+add_sound_file :: proc(path: string, buffer := Maybe(f64){}) -> (Sound, bool) {
 	if source, long := open_long_sound(path); long {
-		return audio.add_stream(the_mixer(), source), true
+		return audio.add_stream(the_mixer(), source, buffer.? or_else audio.RING_SECONDS), true
 	}
 	bytes, err := os.read_entire_file(path, context.temp_allocator)
 	if err != nil {
@@ -567,9 +578,9 @@ add_sound_file :: proc(path: string) -> (Sound, bool) {
 }
 
 // Puts a file saved again in the place of a sound, which goes on playing as it was.
-replace_sound_file :: proc(s: Sound, path: string) -> bool {
+replace_sound_file :: proc(s: Sound, path: string, buffer := Maybe(f64){}) -> bool {
 	if source, long := open_long_sound(path); long {
-		if !audio.replace_stream(the_mixer(), s, source) {
+		if !audio.replace_stream(the_mixer(), s, source, buffer.? or_else audio.RING_SECONDS) {
 			return false
 		}
 		return true

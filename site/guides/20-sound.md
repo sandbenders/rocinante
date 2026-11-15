@@ -258,7 +258,7 @@ loop song
 on mouse down [ set song at (mouse.x * song.length / width) ]
 ```
 
-Everything works the same: `at`, `length`, `rewind`, `forward`, `speed`, `loop`, `level`, `bands` and the effects. A jump far from where the song is takes a few thousandths of a second to be ready, and the sound waits in that moment instead of skipping. A file that is not at 48,000 frames a second (most MP3s are 44,100) can land a few thousandths of a second from the place you set.
+Everything works the same: `at`, `length`, `rewind`, `forward`, `speed`, `loop`, `level`, `bands` and the effects. A jump far from where the song is takes a few thousandths of a second to be ready, and the sound waits in that moment instead of skipping. The sketch keeps 8 seconds of a long file ready ahead of where it is; `load "song.mp3" buffer 20` keeps 20 (from 1 to 60), which a slow disk or a high `speed` may want, at about 400 kilobytes a second of memory. A file that is not at 48,000 frames a second (most MP3s are 44,100) can land a few thousandths of a second from the place you set.
 
 ## Saving the file again
 

@@ -31,6 +31,7 @@ Sound_Entry :: struct {
 	checked: int,       // the frame the file's time was last compared with `mtime`
 	others:  string,    // for an ambiguous name, the files that share it, said in words
 	suggest: string,    // and the first of them, as a name that is not ambiguous
+	buffer:  Maybe(f64), // how many seconds of a long file are kept ready (`load "song.mp3" buffer 4`)
 }
 
 // A file that has been decoded, whichever interpreter asked, by its path.
@@ -53,7 +54,7 @@ forget_decoded_sounds :: proc() {
 
 // The sound the file `name` is, or the empty value. `span` is where to say what went wrong.
 @(private)
-load_sound :: proc(it: ^Interp, name: string, span: lang.Span) -> Value {
+load_sound :: proc(it: ^Interp, name: string, span: lang.Span, buffer := Maybe(f64){}) -> Value {
 	entry, known := it.sounds[name]
 	if known && entry.epoch == roci.sound_epoch() {
 		if entry.state == .Loaded {
@@ -65,7 +66,7 @@ load_sound :: proc(it: ^Interp, name: string, span: lang.Span) -> Value {
 			info, err := os.stat(entry.path, context.temp_allocator)
 			if err == nil && info.modification_time != entry.mtime {
 				// saved again: the same sound, with what the file holds now
-				if roci.replace_sound_file(entry.id, entry.path) {
+				if roci.replace_sound_file(entry.id, entry.path, entry.buffer) {
 					entry.mtime = info.modification_time
 					if done, found := &decoded_sounds[entry.path]; found {
 						done.mtime = entry.mtime
@@ -79,7 +80,7 @@ load_sound :: proc(it: ^Interp, name: string, span: lang.Span) -> Value {
 			return nil
 		}
 	}
-	fresh := read_sound(it, name)
+	fresh := read_sound(it, name, buffer)
 	fresh.tried = time.tick_now()
 	fresh.epoch = roci.sound_epoch()
 	fresh.checked = roci.frame_count()
@@ -93,7 +94,8 @@ load_sound :: proc(it: ^Interp, name: string, span: lang.Span) -> Value {
 
 // Finds, reads and decodes the file called `name`.
 @(private)
-read_sound :: proc(it: ^Interp, name: string) -> (entry: Sound_Entry) {
+read_sound :: proc(it: ^Interp, name: string, buffer: Maybe(f64)) -> (entry: Sound_Entry) {
+	entry.buffer = buffer
 	root, _ := assets_root(it)
 	if root == "" {
 		entry.state = .Missing
@@ -117,13 +119,13 @@ read_sound :: proc(it: ^Interp, name: string) -> (entry: Sound_Entry) {
 	if done, found := decoded_sounds[entry.path]; found && done.epoch == roci.sound_epoch() {
 		entry.id = done.id
 		if done.mtime != entry.mtime {
-			if roci.replace_sound_file(done.id, entry.path) {
+			if roci.replace_sound_file(done.id, entry.path, buffer) {
 				decoded_sounds[entry.path] = Decoded_Sound{done.id, entry.mtime, done.epoch}
 			}
 		}
 		return
 	}
-	id, ok := roci.add_sound_file(entry.path)
+	id, ok := roci.add_sound_file(entry.path, buffer)
 	if !ok {
 		entry.state = .Unreadable
 		return

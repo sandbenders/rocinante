@@ -1141,6 +1141,12 @@ int roci_osc_send_bundle(const roci_value *messages, int count, const char *host
 /* Takes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A file shorter than 30 seconds is decoded whole; a longer one is read as it plays from a copy of the bytes, so they may be let go of at once. A sound is stopped at its start, at volume 100, in the middle and at speed 1. */
 roci_sound_id roci_load_sound(const unsigned char *bytes, int length);
 
+/* The same as roci_load_sound, with `seconds` of a long file kept ready as it plays (from 1 to 60; 8 for roci_load_sound). More rides out a slow disk or a high speed and costs about 400 kilobytes a second. */
+roci_sound_id roci_load_sound_buffered(const unsigned char *bytes, int length, double seconds);
+
+/* The same as roci_load_sound_file, with `seconds` of a long file kept ready as it plays (from 1 to 60; 8 for roci_load_sound_file). */
+roci_sound_id roci_load_sound_file_buffered(const char *path, double seconds);
+
 /* Opens a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when it cannot be read. A file longer than 30 seconds is not decoded whole: it is read from the disk as it plays, so a long song costs little memory (roci_load_sound, from the bytes of a file, does the same from a copy of the bytes, which it makes, so they may be let go of at once). */
 roci_sound_id roci_load_sound_file(const char *path);
 

@@ -30,13 +30,13 @@ Source :: struct {
 	length: int, // frames, as the decoder says
 }
 
-// Frames the ring holds: eight seconds, which a speed of 8 eats in one, and which the thread
-// refills a quarter at a time.
-STREAM_RING :: 8 * RATE
+// How many seconds of a sound the ring holds unless the sketch says: eight, which a speed of 8 eats in
+// one, and which the thread refills a quarter at a time. A sketch may ask for from a second to a minute.
+RING_SECONDS :: 8.0
+RING_SECONDS_LEAST :: 1.0
+RING_SECONDS_MOST :: 60.0
 // Frames read at a time.
 STREAM_BLOCK :: 4096
-// How many frames ahead of the sound the thread keeps the ring full to.
-STREAM_AHEAD :: STREAM_RING / 2
 // How many frames are read at once when a sound is added, so it starts at once.
 STREAM_PREFILL :: RATE / 2
 
@@ -44,7 +44,9 @@ Stream :: struct {
 	source:     Source,
 	length:     int, // frames: the decoder's word, until the end has been reached and the true count is known
 	lock:       sync.Mutex,
-	ring:       []f32, // STREAM_RING frames of two floats, used round and round
+	ring:       []f32, // `ring_frames` frames of two floats, used round and round
+	ring_frames: int,
+	ahead:      int, // how many frames ahead of the sound the thread keeps the ring full to
 	start:      int, // the slot of the oldest frame held
 	base:       int, // the timeline frame of the oldest frame held
 	filled:     int, // how many frames are held, from `base`
@@ -61,14 +63,19 @@ Stream :: struct {
 // Makes a stream of an open source (which becomes the stream's, closed with `stream_destroy`) and
 // reads the first half second, so a sound that is played at once has frames. The ring is made with
 // the allocator given.
-stream_create :: proc(source: Source, allocator := context.allocator) -> ^Stream {
+stream_create :: proc(source: Source, allocator := context.allocator, seconds := RING_SECONDS) -> ^Stream {
 	s := new(Stream, allocator)
+	// the ring is kept from one second, which is more than a read and a mix chunk and a seek need, up
+	// to a minute, which is about 23 MB; a number that is not one is the usual
+	length := clamp(seconds if seconds == seconds else RING_SECONDS, RING_SECONDS_LEAST, RING_SECONDS_MOST)
+	s.ring_frames = int(length * RATE)
+	s.ahead = s.ring_frames / 2
 	s.source = source
 	s.length = source.length
-	s.ring = make([]f32, STREAM_RING * CHANNELS, allocator)
+	s.ring = make([]f32, s.ring_frames * CHANNELS, allocator)
 	s.block = make([]f32, STREAM_BLOCK * CHANNELS, allocator)
 	s.want_seek = -1
-	stream_service(s, STREAM_PREFILL)
+	stream_service(s, min(STREAM_PREFILL, s.ahead))
 	return s
 }
 
@@ -98,8 +105,8 @@ stream_service :: proc(s: ^Stream, ahead: int) {
 		if seek >= 0 {
 			s.eof = false
 		}
-		wrap := s.eof && s.looping && s.filled < STREAM_RING
-		space := STREAM_RING - s.filled
+		wrap := s.eof && s.looping && s.filled < s.ring_frames
+		space := s.ring_frames - s.filled
 		have := s.filled
 		eof := s.eof
 		sync.unlock(&s.lock)
@@ -152,7 +159,7 @@ stream_service :: proc(s: ^Stream, ahead: int) {
 @(private)
 stream_append :: proc(s: ^Stream, frames: int) {
 	for i in 0 ..< frames {
-		slot := (s.start + s.filled + i) % STREAM_RING
+		slot := (s.start + s.filled + i) % s.ring_frames
 		s.ring[slot * CHANNELS] = s.block[i * CHANNELS]
 		s.ring[slot * CHANNELS + 1] = s.block[i * CHANNELS + 1]
 	}
@@ -165,7 +172,7 @@ ring_frame :: proc(s: ^Stream, frame: int) -> (left, right: f32, ok: bool) {
 	if frame < s.base || frame >= s.base + s.filled {
 		return 0, 0, false
 	}
-	slot := (s.start + frame - s.base) % STREAM_RING
+	slot := (s.start + frame - s.base) % s.ring_frames
 	return s.ring[slot * CHANNELS], s.ring[slot * CHANNELS + 1], true
 }
 
@@ -176,7 +183,7 @@ stream_drop :: proc(s: ^Stream, frame: int) {
 	if n <= 0 {
 		return
 	}
-	s.start = (s.start + n) % STREAM_RING
+	s.start = (s.start + n) % s.ring_frames
 	s.base += n
 	s.filled -= n
 }
@@ -241,10 +248,10 @@ stream_worker :: proc(data: rawptr) {
 		sync.lock(&m.streams_lock)
 		for s in m.streams {
 			sync.lock(&s.lock)
-			wants := !s.eof && s.filled < STREAM_AHEAD || s.want_seek >= 0 || (s.eof && s.looping && s.filled < STREAM_RING)
+			wants := !s.eof && s.filled < s.ahead || s.want_seek >= 0 || (s.eof && s.looping && s.filled < s.ring_frames)
 			sync.unlock(&s.lock)
 			if wants {
-				stream_service(s, STREAM_AHEAD)
+				stream_service(s, s.ahead)
 				busy = true
 			}
 		}

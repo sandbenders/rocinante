@@ -4,11 +4,12 @@
 // seconds ahead and the left arrow ten seconds back, space pauses, 1 and 2 choose the track, and a
 // click on the bar jumps to that place. The bars below are `bands` of what is playing. Both tracks
 // were made for this example (a slow chord drone and a wash of brown noise), so they are the
-// sketch's own to share.
+// sketch's own to share. The sketch reads a few seconds of each song ahead of where it is, eight
+// by default; `buffer 2` on the second song keeps only two ready, which is enough for a quiet disk.
 window size 640 340 title "player"
 
 drift = load "drift.mp3"
-tide = load "tide.mp3"
+tide = load "tide.mp3" buffer 2
 current = drift
 track_name = "drift"
 loop current volume 70

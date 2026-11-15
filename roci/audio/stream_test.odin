@@ -434,3 +434,98 @@ test_the_thread_is_stopped_before_what_it_reads_is_freed :: proc(t: ^testing.T) 
 		testing.expect_value(t, g.closed, 1)
 	}
 }
+
+@(test)
+test_the_ring_is_the_size_asked_for_between_a_second_and_a_minute :: proc(t: ^testing.T) {
+	for c in ([][2]f64{{0.2, 1}, {1, 1}, {4, 4}, {60, 60}, {1000, 60}}) {
+		f := Fake{total = 2 * RATE}
+		s := stream_create(fake_source(&f), context.allocator, c[0])
+		testing.expect_value(t, s.ring_frames, int(c[1] * RATE))
+		testing.expect_value(t, len(s.ring), int(c[1] * RATE) * CHANNELS)
+		testing.expect_value(t, s.ahead, int(c[1] * RATE) / 2)
+		stream_destroy(s)
+	}
+	// a number that is not one is the usual
+	nan := 0.0
+	nan /= nan
+	f := Fake{total = RATE}
+	s := stream_create(fake_source(&f), context.allocator, nan)
+	testing.expect_value(t, s.ring_frames, int(RING_SECONDS * RATE))
+	stream_destroy(s)
+}
+
+@(test)
+test_a_small_ring_plays_in_order_seeks_and_loops :: proc(t: ^testing.T) {
+	m := synchronous_mixer()
+	defer destroy_mixer(m)
+	// a file twelve times as long as its one-second ring
+	f := Fake{total = 12 * RATE}
+	s := add_stream(m, fake_source(&f), 1)
+	play(m, s, true)
+	out := make([]f32, 1000 * 2)
+	defer delete(out)
+	// through it, in order
+	for k := 0; k < 3 * RATE; k += 1000 {
+		mix(m, out)
+		for i in 0 ..< 1000 {
+			if out[i * 2] != want(k + i, f.total) {
+				testing.expectf(t, false, "frame %d is %v", k + i, out[i * 2])
+				return
+			}
+		}
+	}
+	// a seek far away, one back inside what is held, and one to the very end
+	for second in ([]f64{9, 2.5, 11.99, 0}) {
+		seek(m, s, second)
+		mix(m, out)
+		first := int(second * RATE)
+		testing.expectf(t, abs(out[0] - want(first, f.total)) < 1e-5, "after a seek to %v the first frame is %v", second, out[0])
+	}
+	// and the seam of a loop, with the ring a twelfth of the file
+	pause(m, s)
+	short := Fake{total = 5000}
+	sound := add_stream(m, fake_source(&short), 1)
+	play(m, sound, true)
+	for k := 0; k < 30000; k += 1000 {
+		mix(m, out)
+		for i in 0 ..< 1000 {
+			if out[i * 2] != want(k + i, short.total) {
+				testing.expectf(t, false, "looping: frame %d is %v", k + i, out[i * 2])
+				return
+			}
+		}
+	}
+}
+
+@(test)
+test_a_small_ring_at_a_high_speed_waits_and_never_skips :: proc(t: ^testing.T) {
+	m := make_mixer() // a thread reads, and is slower than a speed of 8 eats a one-second ring
+	defer destroy_mixer(m)
+	f := Fake{total = 8 * RATE}
+	s := add_stream(m, fake_source(&f), 1)
+	change(m, s, {speed = 8})
+	play(m, s, false)
+	out := make([]f32, 512 * 2)
+	defer delete(out)
+	// the value rises along the file, so whatever comes out must rise, whenever it is not silence
+	previous: f32
+	for round in 0 ..< 400 {
+		for &v in out {
+			v = 0
+		}
+		mix(m, out)
+		for i in 0 ..< 512 {
+			v := out[i * 2]
+			if v == 0 {
+				continue
+			}
+			if v < previous {
+				testing.expectf(t, false, "round %d: %v after %v", round, v, previous)
+				return
+			}
+			previous = v
+		}
+		time.sleep(200 * time.Microsecond)
+	}
+	testing.expect(t, previous > 0)
+}
