@@ -1,6 +1,6 @@
 ---
 title: "Guides"
-summary: "Learning rocinante a topic at a time, from the first circle to libraries."
+summary: "Learning rocinante a topic at a time, from the first circle to sound, 3D and libraries."
 weight: 1
 ---
 

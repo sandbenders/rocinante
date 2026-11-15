@@ -1,6 +1,6 @@
 ---
 title: "Sound"
-summary: "Sounds from files and instruments of your own, effects on them, a MIDI keyboard, OSC from other programs, and drawing with how loud and how high they are."
+summary: "Sound files, instruments, effects, MIDI in and out, OSC, drawing with how loud and high a sound is, and recording what plays to a file."
 weight: 20
 ---
 

@@ -101,6 +101,15 @@ These systems were last tried in full before text, shaders, canvases, export and
 - [ ] IME composition (above), clipboard, a real touch screen (`examples/touch` with several fingers, numbered in order, never reused), a stylus if there is one.
 - [ ] `roci/folder`'s tests in a real git clone (they need a repository), and the `roci/movies` tests (they start a process).
 
+**6. Sound** (all five desktop systems, and the phones in Phase 8)
+- [ ] `odin run build -- sound-libs` builds the decoders; `examples/sound` plays and loops, `examples/player` streams a long file and seeks, and a file saved again is read again into the same sound.
+- [ ] The device and its buffer: sound comes out of the default device with no crackle on a loud chord (`examples/soundfont`, `examples/keys`); `SDL_AUDIO_DEVICE_SAMPLE_FRAMES` overrides the 256 frames; `ROCI_LATENCY=1` prints the figures. The microphone asks for permission and `level mic` moves (`examples/music` style sketches).
+- [ ] MIDI in on each system's backend (device files, CoreMIDI, WinMM): notes, controls, bend, program, pressure and a clock into `midi tempo`; hot-plugging a keyboard.
+- [ ] MIDI out on each: `examples/midiout` reaches a synth (a software one, hardware, Windows' GS Wavetable, `snd-virmidi` on Linux); notes, bend, program and a steady clock into a tempo-synced program. FreeBSD and OpenBSD output are unverified until tried.
+- [ ] OSC between two computers (and the firewall), `examples/osc`.
+- [ ] `examples/recorder`: a take of the speakers plays back in another program; `record mic`; an mp3 with ffmpeg installed and the message without it.
+- [ ] `tools/abi-check.sh --run` builds and runs `examples/c/player.c`.
+
 ## Results
 
 | Version | FreeBSD | macOS | OpenBSD | Windows | iOS | Android | Notes |

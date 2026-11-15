@@ -158,6 +158,9 @@ examples_are_in_the_groups_they_belong_to :: proc(t: ^testing.T) {
 	expect_group(t, "shadows", "Space")
 	expect_group(t, "model", "Space")
 	expect_group(t, "turtle3d", "Space")
+	for name in ([]string{"sound", "keys", "music", "player", "soundfont", "pedals", "midi", "midiout", "osc", "recorder"}) {
+		expect_group(t, name, "Sound")
+	}
 	expect_group(t, "checks", "Tools")
 	expect_group(t, "export", "Tools")
 }

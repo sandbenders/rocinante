@@ -18,7 +18,7 @@ The language ships with an interpreter, allowing hot reload. Change it and see i
 
 Because rocinante is meant for professional work, teaching, and debugging, a mistake in the code never closes the window. rocinante shows the mistake over the last good frame, pointing clearly to the line and the error, saying in plain words what is wrong and, in most cases, showing the fix. No cryptic compiler or linker errors.
 
-It's still an alpha, but text, user interfaces, images, shaders, 3D, and much more are fully working!
+It's still an alpha, but text, user interfaces, images, shaders, 3D, sound, MIDI, and much more are fully working!
 
 ## Why not Python, or JavaScript like p5.js?
 

@@ -33,7 +33,7 @@ SHOWCASE_CATEGORIES := [?]Showcase_Category{
 	{"Shaders and effects", "Effects over the whole window and shaders as the fill of shapes, your own and the ones that come with rocinante."},
 	{"Interface and windows", "Widgets and windows: sliders, dials and buttons, and sketches that open more than one window."},
 	{"Space", "Shapes in three dimensions: solids with a depth buffer and a light, drawn under everything flat, with a camera the mouse turns or the sketch places."},
-	{"Sound", "Sounds from files that play, loop, pause and move, louder, softer and from either side as the sketch says."},
+	{"Sound", "Sound files that play, loop and stream, instruments and SoundFonts, effects, a MIDI keyboard in and out, OSC from other programs, drawing with how loud and high a sound is, and recording what plays."},
 	{"Tools", "Checks that test a sketch, saving what it draws, and a benchmark."},
 }
 
@@ -109,14 +109,14 @@ SHOWCASE := [?]Showcase_Entry{
 	{"export", 9, "Saving pictures", 5, 1},
 
 	{"sound", 8, "Sound", 30, 1},
-	{"music", 8, "Music", 60, 1},
 	{"keys", 8, "Keys", 30, 1},
-	{"midi", 8, "MIDI", 5, 1},
-	{"osc", 8, "OSC", 5, 1},
-	{"midiout", 8, "MIDI out", 5, 1},
+	{"music", 8, "Music", 60, 1},
+	{"player", 8, "Player", 10, 1},
 	{"soundfont", 8, "SoundFont", 60, 1},
 	{"pedals", 8, "Pedals", 30, 1},
-	{"player", 8, "Player", 10, 1},
+	{"midi", 8, "MIDI", 5, 1},
+	{"midiout", 8, "MIDI out", 5, 1},
+	{"osc", 8, "OSC", 5, 1},
 	{"recorder", 8, "Recorder", 10, 1},
 
 	{"solids", 7, "Solids", 60, 1},
