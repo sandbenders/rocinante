@@ -241,10 +241,8 @@ shutdown :: proc() {
 
 @(private)
 destroy_win :: proc(w: ^Win) {
-	// a texture acquired and not drawn yet has to be given back by submitting it
-	if w.acquired.commands != nil {
-		gfx.render_acquired(&the.renderer, w.handle.handle if w.handle != nil else nil, &w.acquired, {}, &w.list, &w.batcher)
-	}
+	// a texture acquired and not drawn yet has to be given back by submitting it, undrawn
+	gfx.release_acquired(&w.acquired)
 	access_detach(w)
 	ui.destroy(w.ui)
 	gfx.destroy(&w.list)

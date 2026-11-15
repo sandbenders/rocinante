@@ -247,6 +247,8 @@ close_window :: proc(w: ^Win) {
 	if the.newest == w {the.newest = nil}
 	if the.current == w {the.current = nil}
 	if the.focused == w {the.focused = nil}
+	// its next frame's texture goes back before the window it belongs to is destroyed
+	gfx.release_acquired(&w.acquired)
 	if w.handle != nil {
 		platform.destroy_window(&the.app, w.handle)
 		w.handle = nil

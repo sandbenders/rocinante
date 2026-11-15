@@ -1085,6 +1085,16 @@ acquire_window :: proc(r: ^Renderer, window: ^sdl.Window, wait := false) -> (acq
 	return {commands, swapchain, {width, height}}, true, true
 }
 
+// Gives back a texture `acquire_window` gave without drawing anything, as a window that is closing
+// does: SDL wants an acquired swapchain texture submitted, and drawing a window being torn down
+// would read what is already let go of.
+release_acquired :: proc(acquired: ^Acquired) {
+	if acquired.commands != nil {
+		_ = sdl.SubmitGPUCommandBuffer(acquired.commands)
+	}
+	acquired^ = {}
+}
+
 // Draws a frame into the texture `acquire_window` gave and presents it.
 render_acquired :: proc(r: ^Renderer, window: ^sdl.Window, acquired: ^Acquired, canvas: [2]f32, list: ^Command_List, b: ^Batcher) -> bool {
 	ok := true
