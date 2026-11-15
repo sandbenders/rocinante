@@ -618,3 +618,48 @@ test_a_long_song_in_a_sketch_streams_and_survives_a_save :: proc(t: ^testing.T) 
 	testing.expectf(t, abs(st.length - 32) < 0.01, "length %v", st.length)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// The player example: the arrow keys move a streamed song ten seconds, space pauses and plays, 1 and 2
+// choose the track, and a click on the bar jumps.
+@(test)
+test_the_player_example_seeks_pauses_and_changes_track :: proc(t: ^testing.T) {
+	text, read := os.read_entire_file("examples/player/sketch.roci", context.temp_allocator)
+	testing.expect(t, read == nil)
+	p := run_with_sounds(t, "player_example", string(text), "examples/player/assets/sounds", {"drift.mp3", "tide.mp3"})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	drift := as_sound(global_named(p, "drift"))
+	tide := as_sound(global_named(p, "tide"))
+	// both are over half a minute: read as they play
+	testing.expect(t, roci.sound_state(drift).length > 170 && roci.sound_state(tide).length > 75)
+	testing.expect(t, roci.sound_state(drift).playing && !roci.sound_state(tide).playing)
+	w := roci.open_windows()[0]
+	roci.step()
+	start := roci.sound_state(drift).at
+	roci.step({key_event(w, .RIGHT)})
+	roci.step({key_event(w, .RIGHT, false)})
+	testing.expectf(t, abs(roci.sound_state(drift).at - (start + 10)) < 0.5, "right: %v after %v", roci.sound_state(drift).at, start)
+	roci.step({key_event(w, .LEFT)})
+	roci.step({key_event(w, .LEFT, false)})
+	testing.expectf(t, abs(roci.sound_state(drift).at - start) < 0.6, "left: %v", roci.sound_state(drift).at)
+	// left at the start stays at the start
+	roci.step({key_event(w, .LEFT)})
+	testing.expect(t, roci.sound_state(drift).at < 0.6)
+	// space pauses and plays again
+	roci.step({key_event(w, .SPACE)})
+	testing.expect(t, !roci.sound_state(drift).playing)
+	roci.step({key_event(w, .SPACE, false)})
+	roci.step({key_event(w, .SPACE)})
+	testing.expect(t, roci.sound_state(drift).playing)
+	// 2 is the other track, from its start, and the first stops
+	roci.step({key_event(w, ._2)})
+	testing.expect(t, roci.sound_state(tide).playing && !roci.sound_state(drift).playing)
+	testing.expect(t, roci.sound_state(tide).at < 0.2)
+	roci.step({key_event(w, ._1)})
+	testing.expect(t, roci.sound_state(drift).playing && !roci.sound_state(tide).playing)
+	// a click in the middle of the bar jumps to the middle of the song
+	roci.step({platform.Mouse_Moved{window = platform.Window_Id(w), x = 320, y = 170}, click_event(w, 320, 170)})
+	expected := roci.sound_state(drift).length / 2
+	testing.expectf(t, abs(roci.sound_state(drift).at - expected) < 1, "click: %v, not %v", roci.sound_state(drift).at, expected)
+	testing.expect_value(t, len(p.errors), 0)
+}

@@ -1,0 +1,76 @@
+// Player: long songs read from the disk as they play. A file longer than half a minute is not
+// loaded into memory: the sketch reads it a little ahead of where it is, so a song of any length
+// costs a few megabytes, starts at once, and can be jumped about in. The right arrow goes ten
+// seconds ahead and the left arrow ten seconds back, space pauses, 1 and 2 choose the track, and a
+// click on the bar jumps to that place. The bars below are `bands` of what is playing. Both tracks
+// were made for this example (a slow chord drone and a wash of brown noise), so they are the
+// sketch's own to share.
+window size 640 340 title "player"
+
+drift = load "drift.mp3"
+tide = load "tide.mp3"
+current = drift
+track_name = "drift"
+loop current volume 70
+
+// Seconds as minutes and seconds: 125 is "2:05".
+learn clock seconds [
+  whole = floor seconds
+  minutes = floor (whole / 60)
+  rest = whole % 60
+  pad = ""
+  if rest < 10 [ pad = "0" ]
+  give minutes + ":" + pad + rest
+]
+
+// Stops the other track and plays this one from the start.
+learn choose which name [
+  pause current
+  rewind current
+  current = which
+  track_name = name
+  loop current volume 70
+]
+
+on key "1" [ choose drift "drift" ]
+on key "2" [ choose tide "tide" ]
+on key "right" [ forward current by 10 ]
+on key "left" [ rewind current by 10 ]
+
+on key "space" [
+  if current.playing [ pause current ] else [ play current ]
+]
+
+on mouse down [
+  if mouse.y > 150 and mouse.y < 190 and mouse.x > 40 and mouse.x < 600 [
+    set current at ((mouse.x - 40) / 560 * current.length)
+  ]
+]
+
+draw [
+  background (rgb 14 16 30)
+  fill white
+  text "1 2: track     left right: 10 seconds     space: pause" at 40 24
+  text track_name at 40 56 size 28 fill (rgb 255 200 80)
+  text ((clock current.at) + " / " + (clock current.length)) at 40 96 size 22
+  if current.playing [
+    text "playing" at 520 100 fill (rgb 120 200 140)
+  ] else [
+    text "paused" at 520 100 fill (rgb 220 150 90)
+  ]
+
+  // how far the song is, and the whole length
+  no stroke
+  fill (rgb 40 44 70)
+  rect at 40 150 size 560 40
+  fill (rgb 255 200 80)
+  rect at 40 150 size (560 * current.at / current.length) 40
+
+  // what is playing, pitch by pitch
+  fill (rgb 150 160 200)
+  heard = bands current 32
+  for i from 1 to 32 [
+    h = (item i of heard) * 1.2
+    rect at (40 + (i - 1) * 17.5) (320 - h) size 14 h
+  ]
+]

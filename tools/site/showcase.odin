@@ -115,6 +115,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"osc", 8, "OSC", 5, 1},
 	{"soundfont", 8, "SoundFont", 60, 1},
 	{"pedals", 8, "Pedals", 30, 1},
+	{"player", 8, "Player", 10, 1},
 
 	{"solids", 7, "Solids", 60, 1},
 	{"shapes3d", 7, "Shapes in space", 60, 1},

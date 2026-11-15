@@ -102,6 +102,7 @@ EXAMPLES := [?]Example{
 	{"textured", 30, {1}}, // a board of colored squares made by the sketch, painted over a box, a sphere, a cone, a cylinder, a capsule, a torus, an icosphere and a plane by `fill`
 	{"lamp", 30, {1}}, // a warm point light circling among six pillars, a sphere and a turning torus, every shadow swinging away from it
 	{"pedals", 30, {1}}, // the sixteen switches, overdrive and delay on, and the bars of the chord it starts with
+	{"player", 10, {1}}, // the drift track at its start: its name, 0:00 of 3:03, the empty bar and the bars of what plays (headless nothing has played yet)
 	{"soundfont", 40, {1}}, // the four notes of the chord it starts with, floating up from the piano
 	{"midi", 5, {1}}, // the 61 keys waiting for a MIDI keyboard (the notes come in the interpreter's test)
 	{"osc", 5, {1}}, // three dots waiting where the sketch put them to start, and the line that says nothing has come (the messages come in the interpreter's test)
