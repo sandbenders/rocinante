@@ -11,6 +11,7 @@ package audio
 
 import "core:math"
 import "core:sync"
+import "core:thread"
 
 // Frames a second, of everything the mixer holds and gives.
 RATE :: 48000
@@ -39,6 +40,7 @@ Player :: struct {
 	preset:  int,
 	effects: [dynamic]^Effect, // what it goes through, in order (effects.odin)
 	tail:    f64,              // seconds its effects still sound after it stopped
+	stream:  ^Stream,         // a long file read as it plays (stream.odin), in place of `samples`
 }
 
 Mixer :: struct {
@@ -49,12 +51,19 @@ Mixer :: struct {
 	mic_open: bool, // the microphone gives frames
 	speaker_effects: [dynamic]^Effect, // what the whole mix goes through last
 	scratch:  [MIX_CHUNK * CHANNELS]f32, // one sound's frames, before its effects
+	// long files read as they play (stream.odin)
+	synchronous:  bool, // no thread reads them: a mix reads what it needs itself (a run with no device, tests)
+	streams:      [dynamic]^Stream,
+	streams_lock: sync.Mutex, // held while the thread reads, and to add or take away a stream
+	worker:       ^thread.Thread,
+	worker_stop:  bool,
 }
 
 // Makes a mixer whose players are kept in the allocator given.
 make_mixer :: proc(allocator := context.allocator) -> ^Mixer {
 	m := new(Mixer, allocator)
 	m.players = make([dynamic]Player, allocator)
+	m.streams = make([dynamic]^Stream, allocator)
 	return m
 }
 
@@ -64,8 +73,10 @@ destroy_mixer :: proc(m: ^Mixer) {
 		return
 	}
 	allocator := m.players.allocator
+	stream_worker_stop(m)
 	for p in m.players {
 		delete(p.samples, allocator)
+		stream_destroy(p.stream, allocator)
 		font_destroy(p.font, allocator)
 		for e in p.effects {
 			effect_destroy(e, allocator)
@@ -76,6 +87,7 @@ destroy_mixer :: proc(m: ^Mixer) {
 		effect_destroy(e, allocator)
 	}
 	delete(m.speaker_effects)
+	delete(m.streams)
 	delete(m.players)
 	free(m, allocator)
 }
@@ -88,18 +100,77 @@ add :: proc(m: ^Mixer, samples: []f32) -> Sound {
 	return Sound(len(m.players))
 }
 
+// Takes an open source as a new sound that is read as it plays: it is stopped at its start, at full
+// volume, in the middle and at its own speed, like any other. The source is the mixer's from here
+// (closed when the sound is let go of), and the first half second is read before this gives back.
+add_stream :: proc(m: ^Mixer, source: Source) -> Sound {
+	s := stream_create(source, m.players.allocator)
+	stream_register(m, s)
+	sync.guard(&m.lock)
+	append(&m.players, Player{stream = s, volume = 1, speed = 1})
+	return Sound(len(m.players))
+}
+
+// Puts a newly opened source in a sound's place (a long file saved again), keeping how it plays; a
+// sound further than its new end is put at the end. A sound that was whole becomes a stream, and a
+// stream may become whole (`replace`).
+replace_stream :: proc(m: ^Mixer, s: Sound, source: Source) -> bool {
+	fresh := stream_create(source, m.players.allocator)
+	stream_register(m, fresh)
+	sync.lock(&m.lock)
+	p := player(m, s)
+	if p == nil {
+		sync.unlock(&m.lock)
+		stream_unregister(m, fresh)
+		stream_destroy(fresh, m.players.allocator)
+		return false
+	}
+	old := p.stream
+	delete(p.samples, m.players.allocator)
+	p.samples = nil
+	p.stream = fresh
+	sync.lock(&fresh.lock)
+	fresh.looping = p.looping
+	sync.unlock(&fresh.lock)
+	p.at = min(p.at, f64(frames_of(p^)))
+	stream_reposition(fresh, int(p.at))
+	sync.unlock(&m.lock)
+	if old != nil {
+		stream_unregister(m, old)
+		stream_destroy(old, m.players.allocator)
+	}
+	return true
+}
+
+// Says whether the mixer reads its streams itself, in the chunks it mixes, instead of a thread of its
+// own doing it: for a run with no device, where mixing is not in step with the clock, and the tests.
+// Set it before any stream is added.
+set_synchronous :: proc(m: ^Mixer, synchronous: bool) {
+	sync.guard(&m.lock)
+	m.synchronous = synchronous
+}
+
 // Puts new samples in a sound's place (a file saved again), keeping how it plays; a sound
 // further than its new end is put at the end.
 replace :: proc(m: ^Mixer, s: Sound, samples: []f32) -> bool {
-	sync.guard(&m.lock)
+	sync.lock(&m.lock)
 	p := player(m, s)
 	if p == nil {
+		sync.unlock(&m.lock)
 		delete(samples, m.players.allocator)
 		return false
 	}
+	old := p.stream
+	p.stream = nil
 	delete(p.samples, m.players.allocator)
 	p.samples = samples
 	p.at = min(p.at, f64(frames_of(p^)))
+	sync.unlock(&m.lock)
+	// a long sound that is whole from now on gives up its file; the thread's hold on it is let go first
+	if old != nil {
+		stream_unregister(m, old)
+		stream_destroy(old, m.players.allocator)
+	}
 	return true
 }
 
@@ -113,6 +184,9 @@ player :: proc(m: ^Mixer, s: Sound) -> ^Player {
 
 @(private)
 frames_of :: proc(p: Player) -> int {
+	if p.stream != nil {
+		return sync.atomic_load(&p.stream.length)
+	}
 	return len(p.samples) / CHANNELS
 }
 
@@ -135,6 +209,12 @@ play :: proc(m: ^Mixer, s: Sound, looping: bool) {
 	p.looping = looping
 	p.left = 0
 	p.playing = frames_of(p^) > 0
+	if p.stream != nil {
+		sync.lock(&p.stream.lock)
+		p.stream.looping = looping
+		sync.unlock(&p.stream.lock)
+		stream_reposition(p.stream, int(p.at))
+	}
 }
 
 // The microphone's number: `level mic` and `bands mic` read what it heard. It is no sound of the
@@ -184,6 +264,9 @@ place :: proc(p: ^Player, frame: f64) {
 			p.playing = false
 		}
 	}
+	if p.stream != nil && p.at < end {
+		stream_reposition(p.stream, int(p.at))
+	}
 }
 
 // What can be changed of a sound while it plays; a field left nil stays as it was.
@@ -213,6 +296,10 @@ change :: proc(m: ^Mixer, s: Sound, c: Change) {
 	}
 	if v, ok := c.looping.?; ok {
 		p.looping = v
+		if p.stream != nil {
+			sync.guard(&p.stream.lock)
+			p.stream.looping = v
+		}
 	}
 }
 
@@ -285,6 +372,13 @@ mix_chunk :: proc(m: ^Mixer, out: []f32) {
 		if p.playing {
 			if p.wave != .None {
 				mix_instrument(&p, own)
+			} else if p.stream != nil {
+				if m.synchronous {
+					// no thread reads for it: read what this chunk will need, and a little more
+					ahead := int(f64(frames) * p.speed) + 8
+					stream_service(p.stream, min(STREAM_AHEAD, (int(p.at) - p.stream.base) + ahead + STREAM_BLOCK))
+				}
+				mix_stream(&p, own)
 			} else {
 				mix_samples(&p, own)
 			}
@@ -406,5 +500,70 @@ soft_limit :: proc(out: []f32) {
 			a = LIMIT_KNEE + room * math.tanh((a - LIMIT_KNEE) / room)
 			v = a if v > 0 else -a
 		}
+	}
+}
+
+// Adds a streamed sound into `out` (two floats a frame, written over) and moves it on: the same reading
+// as `mix_samples`, from the frames of the ring. A frame that is not in the ring yet is silence, and the
+// sound waits there instead of going on, so what it plays is never skipped; the next chunk tries again.
+@(private)
+mix_stream :: proc(p: ^Player, out: []f32) {
+	s := p.stream
+	frames := len(out) / CHANNELS
+	left := f32(p.volume * min(1, 1 - p.pan))
+	right := f32(p.volume * min(1, 1 + p.pan))
+	sync.guard(&s.lock)
+	s.looping = p.looping
+	s.stalled = false
+	for i in 0 ..< frames {
+		end := f64(s.length)
+		if p.at >= end {
+			if !p.looping {
+				p.at = end
+				p.playing = false
+				break
+			}
+			length := s.length
+			p.at -= end
+			if p.at >= end {
+				p.at = 0
+			}
+			stream_wrapped(s, length)
+		}
+		whole := int(p.at)
+		part := f32(p.at - f64(whole))
+		l0, r0, here := ring_frame(s, whole)
+		if !here {
+			s.stalled = true
+			break
+		}
+		l1, r1, there := ring_frame(s, whole + 1)
+		if !there {
+			if (whole + 1 >= s.length && !p.looping) || (s.eof && !p.looping) {
+				// nothing comes after the last frame of a sound that does not loop
+				l1, r1 = l0, r0
+			} else {
+				s.stalled = true
+				break
+			}
+		}
+		out[i * 2] += (l0 + (l1 - l0) * part) * left
+		out[i * 2 + 1] += (r0 + (r1 - r0) * part) * right
+		p.at += p.speed
+		// played `for` some seconds: it pauses itself when they are over
+		if p.left > 0 {
+			p.left -= 1.0 / RATE
+			if p.left <= 0 {
+				p.left = 0
+				p.playing = false
+				break
+			}
+		}
+	}
+	// the frames behind it are not needed again
+	stream_drop(s, int(p.at))
+	if p.at >= f64(s.length) && !p.looping {
+		p.at = f64(s.length)
+		p.playing = false
 	}
 }
