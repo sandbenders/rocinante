@@ -64,6 +64,11 @@ Mixer :: struct {
 	streams_lock: sync.Mutex, // held while the thread reads, and to add or take away a stream
 	worker:       ^thread.Thread,
 	worker_stop:  bool,
+	// what is being recorded (capture.odin), and whether the speakers' mix passes the limiter inside `mix`
+	captures:      [dynamic]^Capture,
+	captures_lock: sync.Mutex,
+	limit:         bool,
+	silence:       [MIX_CHUNK * CHANNELS]f32, // zeros, for a recording of a sound that is not playing
 }
 
 // Makes a mixer whose players are kept in the allocator given.
@@ -71,6 +76,7 @@ make_mixer :: proc(allocator := context.allocator) -> ^Mixer {
 	m := new(Mixer, allocator)
 	m.players = make([dynamic]Player, allocator)
 	m.streams = make([dynamic]^Stream, allocator)
+	m.captures = make([dynamic]^Capture, allocator)
 	return m
 }
 
@@ -81,6 +87,10 @@ destroy_mixer :: proc(m: ^Mixer) {
 	}
 	allocator := m.players.allocator
 	stream_worker_stop(m)
+	for len(m.captures) > 0 {
+		capture_stop(m, m.captures[0])
+	}
+	delete(m.captures)
 	for p in m.players {
 		delete(p.samples, allocator)
 		stream_destroy(p.stream, allocator)
@@ -179,6 +189,12 @@ replace :: proc(m: ^Mixer, s: Sound, samples: []f32) -> bool {
 		stream_destroy(old, m.players.allocator)
 	}
 	return true
+}
+
+// Whether a number is a sound the mixer has.
+has_sound :: proc(m: ^Mixer, s: Sound) -> bool {
+	sync.guard(&m.lock)
+	return player(m, s) != nil
 }
 
 @(private)
@@ -369,10 +385,23 @@ any_playing :: proc(m: ^Mixer) -> bool {
 // pitch as a record player does. Pan is a balance: in the middle both sides are at full volume,
 // and towards one side the other one fades.
 mix :: proc(m: ^Mixer, out: []f32) {
-	sync.guard(&m.lock)
+	sync.lock(&m.lock)
 	for at := 0; at < len(out); at += MIX_CHUNK * CHANNELS {
 		mix_chunk(m, out[at:min(len(out), at + MIX_CHUNK * CHANNELS)])
 	}
+	synchronous := m.synchronous
+	sync.unlock(&m.lock)
+	// with no thread of its own, the mixer writes what was recorded as it goes
+	if synchronous && len(m.captures) > 0 {
+		captures_drain(m)
+	}
+}
+
+// Whether the mix passes the limiter before it is given back (and recorded): the speakers' way, which keeps
+// a loud chord inside the range; off, `mix` gives the exact sum, which is what tests and analysis read.
+set_limit :: proc(m: ^Mixer, limit: bool) {
+	sync.guard(&m.lock)
+	m.limit = limit
 }
 
 // Frames mixed at once: each sound is mixed alone into a buffer this long, so its effects can run
@@ -386,10 +415,13 @@ mix_chunk :: proc(m: ^Mixer, out: []f32) {
 	}
 	frames := len(out) / CHANNELS
 	own := m.scratch[:len(out)]
-	for &p in m.players {
+	for &p, place in m.players {
 		if !p.playing && p.tail <= 0 {
 			// a sound that stopped (and whose effects have nothing left to sound) is silent at once
 			ring_clear(&p.heard)
+			if len(m.captures) > 0 {
+				capture_player(m, Sound(place + 1), m.silence[:len(out)])
+			}
 			continue
 		}
 		for &v in own {
@@ -426,6 +458,9 @@ mix_chunk :: proc(m: ^Mixer, out: []f32) {
 		} else {
 			p.tail = 0
 		}
+		if len(m.captures) > 0 {
+			capture_player(m, Sound(place + 1), own)
+		}
 		for i in 0 ..< frames {
 			ring_push(&p.heard, (own[i * 2] + own[i * 2 + 1]) / 2)
 			out[i * 2] += own[i * 2]
@@ -434,6 +469,12 @@ mix_chunk :: proc(m: ^Mixer, out: []f32) {
 	}
 	for e in m.speaker_effects {
 		effect_run(e, out)
+	}
+	if m.limit {
+		soft_limit(out)
+	}
+	if len(m.captures) > 0 {
+		capture_speakers(m, out)
 	}
 	for i in 0 ..< frames {
 		ring_push(&m.heard, (out[i * 2] + out[i * 2 + 1]) / 2)
@@ -499,6 +540,7 @@ feed_mic :: proc(m: ^Mixer, frames: []f32) {
 	for v in frames {
 		ring_push(&m.mic, v)
 	}
+	capture_mic(m, frames)
 }
 
 // Whether the microphone is open; one that closes is silent from then on.

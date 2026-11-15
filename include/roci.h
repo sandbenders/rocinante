@@ -1140,6 +1140,12 @@ void roci_set_sound_envelope(roci_sound_id sound, double attack, double decay, d
 /* Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text, a boolean, or a list of numbers, which goes as a blob of bytes. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it. */
 int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port);
 
+/* Records what plays into a sound file as it plays: a sound, the sound roci_speakers gives for the whole mix (what is heard) or the one roci_mic gives for the microphone. The name ends in .wav (written here: 16-bit, two channels at 48,000) or .mp3, .ogg, .flac or .m4a (made by ffmpeg, which must be installed). The path is used as it is, and its folders are made. Gives 1 when it started and 0 when the name is not one of those, the sound is not there, there is no ffmpeg for the kind or the file cannot be made. The recording ends with roci_no_record_sound or when the program ends. */
+int roci_record_sound(roci_sound_id sound, const char *path);
+
+/* Ends the recording of a sound (or of the speakers or the microphone) and finishes the file; nothing when it is not being recorded. */
+void roci_no_record_sound(roci_sound_id sound);
+
 /* Plays a note through MIDI out: 60 is middle C, `velocity` 0 to 100 (negative for the usual 80), `channel` 1 to 16 (0 for 1) and `seconds` above 0 lets it go after that long (0 holds it until roci_midi_release). Goes to the first MIDI output, or the one roci_midi_to chose. Gives 1 when it was sent and 0 when there is no output or it would not take it. A note still sounding when the program ends is let go. */
 int roci_midi_note(double note, double velocity, double channel, double seconds);
 

@@ -101,6 +101,69 @@ when ODIN_OS != .Windows {
 	}
 
 	@(test)
+	test_a_sound_is_piped_to_ffmpeg_as_floats :: proc(t: ^testing.T) {
+		sync.mutex_guard(&process_lock)
+		folder := "output/tests/movies_sound"
+		_ = os.remove_all(folder)
+		program := make_fake_ffmpeg(folder, FAKE_GOOD)
+		defer delete(program)
+		roci.set_ffmpeg(program)
+		defer roci.set_ffmpeg("")
+		roci.start_headless(1)
+		defer roci.shutdown()
+		piano := roci.synth("sine")
+		out := strings.concatenate({folder, "/take.mp3"})
+		defer delete(out)
+		ok, why := roci.record_sound(roci.SPEAKERS, out)
+		testing.expect(t, ok, why)
+		roci.play(piano, note = 69)
+		for _ in 0 ..< 30 {
+			roci.step(nil, 1.0 / 60) // half a second
+		}
+		roci.no_record_sound(roci.SPEAKERS)
+		results := roci.take_record_results()
+		if !testing.expect_value(t, len(results), 1) {
+			return
+		}
+		testing.expect(t, results[0].ok, results[0].why)
+		data, err := os.read_entire_file(out, context.temp_allocator)
+		testing.expect(t, err == nil)
+		// two float32 channels a frame, as many frames as half a second holds (within a few)
+		testing.expectf(t, abs(len(data) - 24000 * 8) <= 64, "%d bytes", len(data))
+		args, _ := os.read_entire_file(strings.concatenate({out, ".args"}, context.temp_allocator), context.temp_allocator)
+		text := string(args)
+		for part in ([]string{"-f f32le", "-ar 48000", "-ac 2", "-i -", "-vn", "take.mp3"}) {
+			testing.expectf(t, strings.contains(text, part), "%s is not in %s", part, text)
+		}
+	}
+
+	@(test)
+	test_ffmpeg_failing_on_sound_is_said_in_its_own_words :: proc(t: ^testing.T) {
+		sync.mutex_guard(&process_lock)
+		folder := "output/tests/movies_sound_bad"
+		_ = os.remove_all(folder)
+		program := make_fake_ffmpeg(folder, FAKE_BAD)
+		defer delete(program)
+		roci.set_ffmpeg(program)
+		defer roci.set_ffmpeg("")
+		roci.start_headless(1)
+		defer roci.shutdown()
+		_ = roci.synth("sine")
+		out := strings.concatenate({folder, "/take.ogg"})
+		defer delete(out)
+		ok, _ := roci.record_sound(roci.SPEAKERS, out)
+		testing.expect(t, ok)
+		roci.step(nil, 0.1)
+		roci.no_record_sound(roci.SPEAKERS)
+		results := roci.take_record_results()
+		if !testing.expect_value(t, len(results), 1) {
+			return
+		}
+		testing.expect(t, !results[0].ok)
+		testing.expect(t, strings.contains(results[0].why, "ffmpeg said: no such codec"), results[0].why)
+	}
+
+	@(test)
 	test_ffmpeg_failing_is_said_in_its_own_words_and_its_log_is_kept :: proc(t: ^testing.T) {
 		sync.mutex_guard(&process_lock)
 		folder := "output/tests/movies_bad"

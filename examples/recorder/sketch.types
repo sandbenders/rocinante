@@ -1,0 +1,10 @@
+piano: a sound
+LETTERS: a list of text
+NOTES: a list of numbers
+board: a list of records with letter, note and held
+recording: true or false
+began: a number
+seconds: a number
+takes: a number
+now: true or false
+loud: a number

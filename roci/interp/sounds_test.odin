@@ -853,3 +853,44 @@ test_the_midiout_example_sends_notes_and_a_clock :: proc(t: ^testing.T) {
 	testing.expect_value(t, stops, 1)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// The recorder example: R starts a take of the speakers into a file, and again ends it with the length said;
+// playing a key makes the file hold sound.
+@(test)
+test_the_recorder_example_records_the_speakers :: proc(t: ^testing.T) {
+	text, read := os.read_entire_file("examples/recorder/sketch.roci", context.temp_allocator)
+	testing.expect(t, read == nil)
+	root := "output/tests/recorder_example"
+	_ = os.remove_all(root)
+	testing.expect(t, folder.ensure_directory(root))
+	path := concat(root, "/sketch.roci")
+	testing.expect(t, os.write_entire_file(path, text) == nil)
+	roci.start_headless(1)
+	p, loaded := load(path, string(text))
+	testing.expect(t, loaded)
+	watch(p, path)
+	start(p)
+	roci.step()
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	w := first_window()
+	roci.step({key_event(w, sdl.Scancode.R)})
+	roci.step({key_event(w, sdl.Scancode.R, false)})
+	testing.expect(t, roci.is_recording_sound(roci.SPEAKERS))
+	roci.step({key_event(w, sdl.Scancode.A)}, 0.5)
+	for _ in 0 ..< 10 {
+		roci.step(nil, 0.05)
+	}
+	roci.step({key_event(w, sdl.Scancode.R)})
+	testing.expect(t, !roci.is_recording_sound(roci.SPEAKERS))
+	roci.step()
+	data, err := os.read_entire_file(concat(root, "/output/take1.wav"), context.temp_allocator)
+	testing.expect(t, err == nil)
+	testing.expect(t, len(data) > 44 + 48000, "a second of sound")
+	loudest := i16(0)
+	for i in 0 ..< (len(data) - 44) / 4 {
+		loudest = max(loudest, i16(u16(data[44 + i * 4]) | u16(data[44 + i * 4 + 1]) << 8))
+	}
+	testing.expect(t, loudest > 1000, "the note is in the file")
+	testing.expect_value(t, len(p.errors), 0)
+}

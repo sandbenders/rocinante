@@ -22,12 +22,24 @@ record_start :: proc(it: ^Interp, e: ^lang.IR, name: string) {
 	}
 }
 
+@(private)
+record_sound_start :: proc(it: ^Interp, e: ^lang.IR, s: roci.Sound, name: string) {
+	it.record_span = e.span
+	ok, why := roci.record_sound(s, save_path(it, name))
+	if !ok {
+		fail(it, .Record_Failed, e.span, name, why, "", "record speakers \"take.wav\"")
+	}
+}
+
 // Says what became of the recordings that ended since the last frame.
 @(private)
 say_record_results :: proc(it: ^Interp) {
 	for result in roci.take_record_results() {
 		if result.ok {
 			text := fmt.tprintf("recorded %d frames into %s", result.frames, result.path)
+			if result.seconds > 0 {
+				text = fmt.tprintf("recorded %.1f seconds of sound into %s", result.seconds, result.path)
+			}
 			if result.why != "" {
 				text = fmt.tprintf("%s. %s", text, result.why)
 			}

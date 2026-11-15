@@ -107,6 +107,7 @@ EXAMPLES := [?]Example{
 	{"midi", 5, {1}}, // the 61 keys waiting for a MIDI keyboard (the notes come in the interpreter's test)
 	{"midiout", 5, {1}}, // the first ring of the arpeggio, the output chooser at the bottom and the notice that no output was found (a headless run has none)
 	{"osc", 5, {1}}, // three dots waiting where the sketch put them to start, and the line that says nothing has come (the messages come in the interpreter's test)
+	{"recorder", 5, {1}}, // the level bar at rest, the unlit dot and the seconds of a take that has not begun
 	{"keys", 10, {1}}, // the eight keys and the bands of the C major chord it starts with
 	{"music", 60, {1}}, // the bars of a chiptune's pitches a second in, and a ring as big as it is loud
 	{"sound", 30, {1}}, // rain as loud as the mouse is high (headless, the mouse is at the top left), and the bar of where it is

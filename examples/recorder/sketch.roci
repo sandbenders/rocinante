@@ -1,0 +1,54 @@
+// Recorder: record what you play. The keys A to K play the C major scale on an instrument of the
+// sketch's own (`synth triangle`), and R starts and stops `record speakers "take.wav"`, which
+// writes everything that comes out of the speakers into a sound file in the `output` folder, as
+// the sketch's own frames are saved there. The same line works with one sound (`record piano
+// "piano.wav"`) or the microphone (`record mic "voice.wav"`), and a name ending in `.mp3`, `.ogg`,
+// `.flac` or `.m4a` makes that format when ffmpeg is installed. `no record speakers` ends a take,
+// which also ends when the sketch does. The bar is how loud it is, `level`, and the red dot is lit
+// while the take runs, with the seconds it holds.
+window size 640 320 title "recorder"
+
+piano = synth triangle
+LETTERS = [ "a" "s" "d" "f" "g" "h" "j" "k" ]
+NOTES = [ 60 62 64 65 67 69 71 72 ]
+board = []
+for i from 1 to 8 [ add { letter: item i of LETTERS, note: item i of NOTES, held: false } to board ]
+recording = false
+began = 0
+seconds = 0
+takes = 0
+
+on key "r" [
+  if recording [
+    no record speakers
+    recording = false
+  ] else [
+    takes = takes + 1
+    record speakers ("take" + takes + ".wav")
+    recording = true
+    began = time
+  ]
+]
+
+draw [
+  background (rgb 16 18 34)
+  for each k in board [
+    now = held k.letter
+    if now and not k.held [ play piano note k.note ]
+    if k.held and not now [ pause piano note k.note ]
+    k.held = now
+  ]
+  loud = level
+  rect at 40 60 size (loud * 5.6) 24 fill (rgb 90 200 140)
+  if recording [
+    seconds = time - began
+    fill (rgb 235 60 60)
+    circle at 56 140 radius 14
+  ] else [
+    fill (rgb 90 90 110)
+    circle at 56 140 radius 14
+  ]
+  fill (rgb 235 235 240)
+  text ((floor seconds) + " seconds") at 90 130
+  text "A to K play, R starts and stops a take" at 40 240
+]

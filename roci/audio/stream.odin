@@ -256,6 +256,9 @@ stream_worker :: proc(data: rawptr) {
 			}
 		}
 		sync.unlock(&m.streams_lock)
+		if captures_drain(m) {
+			busy = true
+		}
 		if !busy {
 			time.sleep(2 * time.Millisecond)
 		}

@@ -474,6 +474,8 @@ open_speakers :: proc() {
 		return
 	}
 	speakers_tried = true
+	// the speakers' mix passes the limiter inside the mixer, so a recording of it is what is heard
+	audio.set_limit(the_mixer(), true)
 	speakers = platform.open_audio(audio.RATE, speakers_fill, the_mixer(), the.allocator if the.allocator.procedure != nil else context.allocator)
 	if speakers.stream == nil {
 		sound_problem = strings.clone(speakers.error, the.allocator if the.allocator.procedure != nil else context.allocator)
@@ -488,7 +490,6 @@ open_speakers :: proc() {
 @(private)
 speakers_fill :: proc(user: rawptr, out: []f32) {
 	audio.mix((^audio.Mixer)(user), out)
-	audio.soft_limit(out)
 }
 
 // Moves the sounds of a sketch with no speakers on by a frame's time, as the speakers would

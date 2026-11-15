@@ -33,6 +33,7 @@ Record_Result :: struct {
 	frames: int,
 	ok:     bool,
 	why:    string, // what went wrong, or, for a recording that ended well, a note (frames left out)
+	seconds: f64, // for a recording of sound: how long it is (0 for a movie)
 }
 
 @(private)
@@ -133,6 +134,9 @@ record :: proc(path: string) -> (ok: bool, why: string) {
 	if w == nil {
 		return false, "There is no window to record."
 	}
+	if is_sound_record_name(path) {
+		return false, "That is a sound file, and `record` of a window makes movies. To record what plays, say what to record first: `record speakers \"take.wav\"`."
+	}
 	if !is_record_name(path) {
 		return false, "I make `.apng` animations myself and `.mp4`, `.mov`, `.webm`, `.mkv` and `.gif` videos with ffmpeg, so the name has to end in one of those."
 	}
@@ -175,6 +179,7 @@ finish_recordings :: proc() {
 			end_recording(w)
 		}
 	}
+	finish_sound_recordings()
 }
 
 // Whether the current window is being recorded.
@@ -188,7 +193,7 @@ is_recording :: proc() -> bool {
 take_record_results :: proc() -> []Record_Result {
 	out := make([]Record_Result, len(the.record_results), context.temp_allocator)
 	for r, i in the.record_results {
-		out[i] = Record_Result{strings.clone(r.path, context.temp_allocator), r.frames, r.ok, strings.clone(r.why, context.temp_allocator)}
+		out[i] = Record_Result{strings.clone(r.path, context.temp_allocator), r.frames, r.ok, strings.clone(r.why, context.temp_allocator), r.seconds}
 		delete(r.path)
 		delete(r.why)
 	}
@@ -198,7 +203,7 @@ take_record_results :: proc() -> []Record_Result {
 
 @(private)
 note_record :: proc(path: string, frames: int, ok: bool, why: string) {
-	append(&the.record_results, Record_Result{strings.clone(path), frames, ok, strings.clone(why)})
+	append(&the.record_results, Record_Result{path = strings.clone(path), frames = frames, ok = ok, why = strings.clone(why)})
 }
 
 // Adds the window's finished frame to its recording. Its batches are built already.
@@ -440,7 +445,9 @@ write_apng :: proc(rec: ^Recording) -> string {
 @(private)
 print_record_results :: proc() {
 	for r in take_record_results() {
-		if r.ok {
+		if r.ok && r.seconds > 0 {
+			fmt.eprintfln("rocinante: recorded %.1f seconds of sound into %s%s%s", r.seconds, r.path, " " if r.why != "" else "", r.why)
+		} else if r.ok {
 			fmt.eprintfln("rocinante: recorded %d frames into %s%s%s", r.frames, r.path, " " if r.why != "" else "", r.why)
 		} else {
 			fmt.eprintfln("rocinante: could not record into %s: %s", r.path, r.why)

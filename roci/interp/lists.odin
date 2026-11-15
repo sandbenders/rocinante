@@ -68,9 +68,17 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case .Save:
 		save_picture(it, e, as_text(eval(it, call.args[0])))
 	case .Record:
-		record_start(it, e, as_text(eval(it, call.args[0])))
+		if call.shape == 1 {
+			record_sound_start(it, e, as_sound(eval(it, call.args[0])), as_text(eval(it, call.args[1])))
+		} else {
+			record_start(it, e, as_text(eval(it, call.args[0])))
+		}
 	case .No_Record:
-		roci.no_record()
+		if call.shape == 1 {
+			roci.no_record_sound(as_sound(eval(it, call.args[0])))
+		} else {
+			roci.no_record()
+		}
 	case .Effect:
 		if call.shape == 1 {
 			sound_effect_verb(it, e, call)
