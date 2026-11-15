@@ -420,6 +420,7 @@ open_speakers :: proc() {
 @(private)
 speakers_fill :: proc(user: rawptr, out: []f32) {
 	audio.mix((^audio.Mixer)(user), out)
+	audio.soft_limit(out)
 }
 
 // Moves the sounds of a sketch with no speakers on by a frame's time, as the speakers would

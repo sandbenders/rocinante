@@ -29,6 +29,11 @@ WAVE_NAMES := [Wave]string{.None = "", .Sine = "sine", .Triangle = "triangle", .
 // How loud a SoundFont's notes are at full volume: their samples are recorded near full level, so
 // they are halved, which leaves room for a chord.
 FONT_GAIN :: 0.5
+// The shortest a SoundFont note may take to come in and to let go, in seconds: a region that asks
+// for none (SoundFont 2 gives a release of a thousandth of a second when it says nothing) would
+// start and stop with a click.
+FONT_MIN_ATTACK :: 0.003
+FONT_MIN_RELEASE :: 0.02
 
 MAX_VOICES :: 32
 // How long a note takes to come in and to fade out, in seconds.
@@ -387,6 +392,8 @@ mix_font :: proc(p: ^Player, out: []f32) {
 			level: f64
 			if v.held {
 				level = envelope_level(r, v.age)
+				// a note never starts at full level, whatever its region says, so it cannot click
+				level *= min(1, v.age / FONT_MIN_ATTACK)
 				if v.left > 0 {
 					v.left -= dt
 					if v.left <= 0 {
@@ -396,7 +403,7 @@ mix_font :: proc(p: ^Player, out: []f32) {
 					}
 				}
 			} else {
-				level = v.fade_from * (1 - v.age / r.release)
+				level = v.fade_from * (1 - v.age / max(r.release, FONT_MIN_RELEASE))
 				if level <= 0 {
 					v = {}
 					continue

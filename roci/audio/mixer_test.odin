@@ -276,3 +276,46 @@ test_replace_keeps_how_it_plays :: proc(t: ^testing.T) {
 	testing.expect_value(t, st.at, 1)
 	testing.expect_value(t, st.length, 1)
 }
+
+@(test)
+test_soft_limit_leaves_quiet_sound_and_bends_loud_sound :: proc(t: ^testing.T) {
+	out := []f32{0, 0.5, -0.5, LIMIT_KNEE, -LIMIT_KNEE, 1, -1, 3, -3, 100, -100}
+	soft_limit(out)
+	// below the knee nothing changes, and the knee itself is where the bend begins
+	testing.expect_value(t, out[0], 0)
+	testing.expect_value(t, out[1], 0.5)
+	testing.expect_value(t, out[2], -0.5)
+	testing.expect_value(t, out[3], LIMIT_KNEE)
+	testing.expect_value(t, out[4], -LIMIT_KNEE)
+	// above it the sound is bent, smoothly and in order, and never reaches 1 or goes the wrong way
+	testing.expect(t, out[5] > LIMIT_KNEE && out[5] < 1)
+	testing.expect_value(t, out[6], -out[5])
+	testing.expect(t, out[7] > out[5] && out[7] <= 1)
+	testing.expect_value(t, out[8], -out[7])
+	testing.expect(t, out[9] <= 1 && out[10] >= -1)
+}
+
+@(test)
+test_soft_limit_keeps_a_loud_chord_inside_the_range :: proc(t: ^testing.T) {
+	m := make_mixer()
+	defer destroy_mixer(m)
+	// eight square notes in unison add up to 2, far more than the speakers can play
+	s := add_instrument(m, .Square)
+	for _ in 0 ..< 8 {
+		play_note(m, s, note_hz(48), 0)
+	}
+	out := make([]f32, 4800 * 2)
+	defer delete(out)
+	mix(m, out)
+	most_before: f32
+	for v in out {
+		most_before = max(most_before, abs(v))
+	}
+	soft_limit(out)
+	most_after: f32
+	for v in out {
+		most_after = max(most_after, abs(v))
+	}
+	testing.expectf(t, most_before > 1, "the chord is too loud to play as it is: %v", most_before)
+	testing.expectf(t, most_after < 1, "and is inside the range once limited: %v", most_after)
+}

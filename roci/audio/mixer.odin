@@ -9,6 +9,7 @@
 // own may call it at once.
 package audio
 
+import "core:math"
 import "core:sync"
 
 // Frames a second, of everything the mixer holds and gives.
@@ -385,5 +386,25 @@ set_mic_open :: proc(m: ^Mixer, open: bool) {
 	m.mic_open = open
 	if !open {
 		ring_clear(&m.mic)
+	}
+}
+
+// Where the speakers' limiter starts to bend the sound: below it nothing changes.
+LIMIT_KNEE :: 0.8
+
+// Keeps what goes to the speakers inside -1 to 1. A loud chord, or several loud sounds, can add
+// up to more than the device can play, and the device then cuts the tops off hard, which is the
+// crackle of a chord that is too loud. Below `LIMIT_KNEE` a frame is left as it is; above it the
+// sound bends smoothly towards 1 (a tanh with the same slope where the two meet) and never
+// reaches it. `mix` itself is not limited, so what `level` and `bands` hear and what tests read
+// are the true sum.
+soft_limit :: proc(out: []f32) {
+	for &v in out {
+		a := abs(v)
+		if a > LIMIT_KNEE {
+			room := f32(1 - LIMIT_KNEE)
+			a = LIMIT_KNEE + room * math.tanh((a - LIMIT_KNEE) / room)
+			v = a if v > 0 else -a
+		}
 	}
 }

@@ -215,3 +215,25 @@ test_font_read_refuses :: proc(t: ^testing.T) {
 		}
 	}
 }
+
+@(test)
+test_font_note_comes_in_and_lets_go_without_a_click :: proc(t: ^testing.T) {
+	m := make_mixer()
+	defer destroy_mixer(m)
+	font := tiny(t)
+	piano := add_font_instrument(m, font, 0)
+	out := make([]f32, 4800 * 2)
+	defer delete(out)
+	play_note(m, piano, note_hz(69), 0)
+	mix(m, out)
+	// the first frames are nearly silent, however short the region's own attack is
+	testing.expectf(t, abs(out[0]) < 0.01 && abs(out[1]) < 0.01, "the note starts from silence: %v %v", out[0], out[1])
+	// and after the key is let go the sound fades over at least FONT_MIN_RELEASE: no frame jumps
+	release_note(m, piano, nil)
+	mix(m, out)
+	jump: f32
+	for i in 1 ..< 4800 {
+		jump = max(jump, abs(out[i * 2] - out[(i - 1) * 2]))
+	}
+	testing.expectf(t, jump < 0.1, "the fade out has no step: %v", jump)
+}
