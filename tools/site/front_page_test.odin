@@ -177,8 +177,9 @@ the_readme_title_is_drawn_from_the_logo :: proc(t: ^testing.T) {
 }
 
 @(test)
-the_shared_link_picture_is_the_size_those_places_want :: proc(t: ^testing.T) {
-	testing.expect(t, strings.contains(OG_CODE, "window size 1200 630"))
+the_shared_link_picture_is_a_file_of_the_site :: proc(t: ^testing.T) {
 	hugo, _ := read("site/hugo/hugo.toml")
 	testing.expect(t, strings.contains(hugo, `image = "img/og.png"`))
+	picture, has := read("site/hugo/static/img/og.png")
+	testing.expect(t, has && strings.has_prefix(picture, "\x89PNG"))
 }
