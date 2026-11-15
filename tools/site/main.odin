@@ -78,6 +78,7 @@ main :: proc() {
 	ok = write_hello(out) && ok
 	ok = write_front_mistake(out) && ok
 	ok = write_front_sketch(out) && ok
+	ok = write_og(out) && ok
 	ok = write_logo(out) && ok
 	if !ok {
 		fmt.eprintln("site: some pages could not be made; see above")

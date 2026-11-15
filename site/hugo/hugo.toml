@@ -22,7 +22,7 @@ endLevel = 3
 [params]
 # What a page without a summary of its own says it is, and what a link shared elsewhere shows.
 description = "rocinante is a creative coding language and framework: a line makes a picture, mistakes come with a plain explanation, and the running sketch updates as you save."
-image = "img/logo-sketch.png"
+image = "img/og.png"
 release = "alpha"
 repository = "https://github.com/sandbenders/rocinante"
 contact = "fabrizio@fabriziopoltronieri.com"

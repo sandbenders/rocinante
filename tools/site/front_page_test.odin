@@ -134,6 +134,13 @@ the_logo_is_made_from_its_one_drawing :: proc(t: ^testing.T) {
 	page, _ := read("site/hugo/layouts/baseof.html")
 	testing.expect_value(t, strings.count(page, `{{ partial "logo.html" . }}`), 2)
 	testing.expect(t, strings.contains(page, `"favicon.svg" | relURL`))
+	testing.expect(t, strings.contains(page, `"favicon-48.png" | relURL`) && strings.contains(page, `"apple-touch-icon.png" | relURL`))
+	// The icon is square, so a search engine drawing it in a square does not squash it.
+	testing.expect(t, strings.contains(icon, `viewBox="10 -110 1480 1480" width="1480" height="1480"`))
+	for name in ([]string{"favicon-48.png", "apple-touch-icon.png"}) {
+		png, has_png := read(fmt.tprintf("%s/static/%s", out, name))
+		testing.expect(t, has_png && strings.has_prefix(png, "\x89PNG"), name)
+	}
 }
 
 @(test)
@@ -167,4 +174,11 @@ the_readme_title_is_drawn_from_the_logo :: proc(t: ^testing.T) {
 	}
 	readme, _ := read("README.md")
 	testing.expect(t, strings.contains(readme, WORDMARK) && strings.contains(readme, WORDMARK_ON_DARK), "the README shows both")
+}
+
+@(test)
+the_shared_link_picture_is_the_size_those_places_want :: proc(t: ^testing.T) {
+	testing.expect(t, strings.contains(OG_CODE, "window size 1200 630"))
+	hugo, _ := read("site/hugo/hugo.toml")
+	testing.expect(t, strings.contains(hugo, `image = "img/og.png"`))
 }

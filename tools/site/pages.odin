@@ -9,6 +9,7 @@ import "core:slice"
 import "core:strings"
 import "../../roci"
 import "../../roci/registry"
+import sancho "../../vendor/sancho/png_writer"
 
 // ---- the reference ----
 
@@ -608,11 +609,26 @@ write_logo :: proc(out: string) -> bool {
 	icon := logo_recoloured(svg, `class="ink"`, `class="line"`, `class="cut"`)
 	// A tab icon is 16 to 32 pixels wide, where the bubble's thin outline would fade away.
 	icon, _ = strings.replace(icon, `stroke-width="48"`, `stroke-width="80"`, 1, context.temp_allocator)
+	// The logo is wider than tall; an icon is square, so the box is made square round it, or
+	// a search engine that draws the icon in a square would squash it.
+	icon, _ = strings.replace(icon, `viewBox="10 90 1480 1080" width="1480" height="1080"`, `viewBox="10 -110 1480 1480" width="1480" height="1480"`, 1, context.temp_allocator)
 	icon, _ = strings.replace(icon, "<title>", "<style>.ink{fill:#1b1d21}.line{stroke:#1b1d21}.cut{fill:#fff}@media (prefers-color-scheme:dark){.ink{fill:#e8e9e6}.line{stroke:#e8e9e6}.cut{fill:#1b1d21}}</style><title>", 1, context.temp_allocator)
 	inline := logo_recoloured(svg, `fill="currentColor"`, `stroke="currentColor"`, `class="logo-cut"`)
 	inline, _ = strings.replace(inline, `<svg xmlns="http://www.w3.org/2000/svg"`, `<svg class="logo" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"`, 1, context.temp_allocator)
 	inline = without_size_and_title(inline)
-	return write(fmt.tprintf("%s/static/favicon.svg", out), icon) && write(fmt.tprintf("%s/layouts/_partials/logo.html", out), inline)
+	// Search engines and some browsers want a picture file of the icon, in a multiple of 48
+	// pixels, and phones an opaque one for the home screen.
+	small, drew := logo_pixels(svg, 48)
+	if !drew {
+		return false
+	}
+	small_png, err := sancho.encode(small, 48, 48, 4, allocator = context.temp_allocator)
+	if err != nil {
+		return false
+	}
+	_, white, _ := logo_pngs(svg)
+	return write(fmt.tprintf("%s/static/favicon-48.png", out), string(small_png)) && write(fmt.tprintf("%s/static/apple-touch-icon.png", out), string(white)) &&
+		write(fmt.tprintf("%s/static/favicon.svg", out), icon) && write(fmt.tprintf("%s/layouts/_partials/logo.html", out), inline)
 }
 
 logo_recoloured :: proc(svg, ink, line, cut: string) -> string {
@@ -723,4 +739,52 @@ picture_alt :: proc(p: ^Pictures) -> string {
 		return "What these lines draw"
 	}
 	return fmt.tprintf("What the example under “%s” draws", p.heading)
+}
+
+// ---- the picture a shared link shows ----
+
+// What a link to the site shows on a chat or a social page: the logo and the name on
+// the page's paper, 1200 by 630 pixels, the size those places want. It is drawn by
+// rocinante itself, in the built-in font, so it is the same on every computer.
+OG_CODE :: `window size 1200 630 title "rocinante"
+background #f7f7f4
+
+MIDDLE = { 942, 622 }
+RING = { 945, 630 }
+TIP = { 90, 595 }
+MOUTH_TOP = { 461, 595 }
+MOUTH_BOTTOM = { 654, 1018 }
+OUTLINE = 48
+
+push [
+  move 283 315
+  grow 0.2
+  move -750 -630
+  fill #f7f7f4
+  stroke #1f2328
+  thickness OUTLINE
+  circle at RING radius 485
+  quad TIP MOUTH_TOP RING MOUTH_BOTTOM
+  no stroke
+  circle at RING radius (485 - OUTLINE / 2)
+  circle at MIDDLE radius 365 fill #1f2328
+  push [
+    move MIDDLE.x MIDDLE.y
+    repeat 4 [
+      rect at 0 0 size 80 460 as center fill #f7f7f4
+      turn 45
+    ]
+  ]
+]
+text "rocinante" at 473 215 size 128 font "Inter Bold" fill #1f2328
+text "a creative coding language" at 479 370 size 42 font "Inter" fill #5a6068
+`
+
+write_og :: proc(out: string) -> bool {
+	drawn, ok := draw_example(OG_CODE, fmt.tprintf("%s/static/img/og.png", out), 1200, 630, 1, always = true)
+	if !ok || !drawn.picture {
+		fmt.eprintln("site: the shared-link picture does not draw")
+		return false
+	}
+	return true
 }
