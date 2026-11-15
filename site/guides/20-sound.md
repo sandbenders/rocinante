@@ -1,6 +1,6 @@
 ---
 title: "Sound"
-summary: "Sounds from files and instruments of your own, effects on them, a MIDI keyboard, and drawing with how loud and how high they are."
+summary: "Sounds from files and instruments of your own, effects on them, a MIDI keyboard, OSC from other programs, and drawing with how loud and how high they are."
 weight: 20
 ---
 
@@ -168,6 +168,28 @@ draw [ circle at 200 150 radius (10 + midi control 1) ]
 
 `midi.channel` says which of MIDI's 16 channels a message came on, for a controller that sends on more than one. Every device plugged in is heard, and one plugged in while the sketch runs is found within a second.
 
+## OSC, from other programs
+
+OSC (Open Sound Control) is how music software, phone controllers such as TouchOSC, and other sketches send each other numbers over a network, or just inside one computer. A message has an address, a path such as `/fader/1`, and numbers, text or true and false after it. `on osc` runs for each message that arrives, and inside it `osc` is that message: `osc.address`, `osc.value` (the first number it carries, with true as 1 and false as 0), `osc.text` (the first text), `osc.args` (every number, in order) and `osc.from` (the computer that sent it):
+
+```roci
+on osc [ print osc.address ]
+on osc "/fader/1" [ print osc.value ]
+```
+
+Name an address to wait for it alone. A `*` stands for any text and a `?` for any one character, inside one part of the address, so `on osc "/fader/*"` hears `/fader/1` and `/fader/2` but not `/fader/1/x`. The first `on osc` starts listening on port 9000, which is where most programs are told to send; `osc listen 8000` chooses another. If another program has the port, a message says so and the sketch goes on without listening.
+
+A sketch can also ask for the latest number sent to an address, anywhere, in `draw` too: `osc value "/fader/1"` is 0 until one arrives. And `osc send` sends a message:
+
+```roci
+on mouse down [
+  osc send "/click" [ mouse.x mouse.y "left" true ] to "localhost" port 9000
+]
+draw [ circle at 200 150 radius (10 + osc value "/click") ]
+```
+
+The list holds numbers, text and true or false. `to` is the name or number of a computer (`"studio.local"`, `"192.168.0.7"`) and starts as this computer; `port` starts as 9000, so a sketch that sends to itself needs no more than `osc send "/click" [ 1 ]`. A whole number is sent as an integer and any other as a float, which every OSC program reads. Blobs of bytes and timetags that arrive are left out, and said once at the `on osc` that heard them. Messages travel over UDP, which never says whether they arrived, so a lost one is lost.
+
 ## Drawing with sound
 
 `level` is how loud everything that plays is now, from 0 (silent) to 100 (a full-volume tone), and `bands` is how much of each pitch it holds: a list of numbers 0 to 100, the lowest pitches first, 16 of them unless you ask for another number (`bands 32`, up to 256). Both are read in `draw`, every frame:
@@ -208,4 +230,4 @@ While `roci run` is going, a sound file saved again is read again into the same 
 
 ## Not yet
 
-Recording what plays, sending MIDI out, and OSC come next.
+Recording what plays, and sending MIDI out, come next.

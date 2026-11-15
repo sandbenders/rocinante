@@ -1,0 +1,4 @@
+dots: a list of records with pos, size, hue and age
+size_now: a number
+hue_now: a number
+last: text

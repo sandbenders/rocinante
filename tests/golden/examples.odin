@@ -104,6 +104,7 @@ EXAMPLES := [?]Example{
 	{"pedals", 30, {1}}, // the sixteen switches, overdrive and delay on, and the bars of the chord it starts with
 	{"soundfont", 40, {1}}, // the four notes of the chord it starts with, floating up from the piano
 	{"midi", 5, {1}}, // the 61 keys waiting for a MIDI keyboard (the notes come in the interpreter's test)
+	{"osc", 5, {1}}, // three dots waiting where the sketch put them to start, and the line that says nothing has come (the messages come in the interpreter's test)
 	{"keys", 10, {1}}, // the eight keys and the bands of the C major chord it starts with
 	{"music", 60, {1}}, // the bars of a chiptune's pitches a second in, and a ring as big as it is loud
 	{"sound", 30, {1}}, // rain as loud as the mouse is high (headless, the mouse is at the top left), and the bar of where it is

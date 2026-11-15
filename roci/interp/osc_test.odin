@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: 0BSD
 package interp
 
+import "core:os"
 import "core:testing"
+
+import "../platform"
 
 import "../"
 import oscp "../osc"
@@ -141,4 +144,42 @@ test_osc_port_busy_is_said :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, busy, 2) // the implicit start on 9000, and the port asked for
 	testing.expect_value(t, roci.osc_listening(), 0)
+}
+
+// The OSC example: dots are where `/xy` says, sized and colored by `/size` and `/hue`, and a click
+// sends `/xy` to itself.
+@(test)
+test_the_osc_example_draws_what_arrives :: proc(t: ^testing.T) {
+	text, read := os.read_entire_file("examples/osc/sketch.roci", context.temp_allocator)
+	testing.expect(t, read == nil)
+	p := run_with_sounds(t, "osc_example", string(text), "examples/osc", {})
+	defer finish(p)
+	defer roci.osc_clear_sent()
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, len(as_list(global_named(p, "dots")).items), 3)
+	roci.feed_osc(packet("/size", f64(60)))
+	roci.feed_osc(packet("/hue", f64(100)))
+	roci.feed_osc(packet("/xy", f64(10), f64(90)))
+	roci.feed_osc(packet("/xy", f64(10))) // one number is not a place
+	roci.step()
+	testing.expect_value(t, as_number(global_named(p, "size_now")), 60)
+	testing.expectf(t, abs(as_number(global_named(p, "hue_now")) - 255) < 1e-9, "%v", as_number(global_named(p, "hue_now")))
+	dots := as_list(global_named(p, "dots"))
+	testing.expect_value(t, len(dots.items), 4)
+	testing.expect(t, as_text(global_named(p, "last")) != "nothing has come yet")
+	// a click sends the place back to the sketch itself
+	w := roci.open_windows()[0]
+	roci.step({platform.Mouse_Moved{window = platform.Window_Id(w), x = 320, y = 210}, click_event(w, 320, 210)})
+	sent := roci.osc_sent_messages()
+	testing.expect_value(t, len(sent), 1)
+	testing.expect_value(t, sent[0].address, "/xy")
+	testing.expect_value(t, sent[0].host, "localhost")
+	testing.expect_value(t, sent[0].args[0].(f64), 50)
+	testing.expect_value(t, sent[0].args[1].(f64), 50)
+	// the dots fade away
+	for _ in 0 ..< 151 {
+		roci.step()
+	}
+	testing.expect_value(t, len(as_list(global_named(p, "dots")).items), 0)
+	testing.expect_value(t, len(p.errors), 0)
 }

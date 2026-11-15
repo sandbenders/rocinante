@@ -1,0 +1,51 @@
+// OSC: a sketch that listens to other programs. OSC (Open Sound Control) is how music software,
+// phone controllers such as TouchOSC and other sketches send each other numbers over a network.
+// `on osc "/xy"` runs for every message sent to that address, with `osc.args` holding what came
+// with it: here two numbers from 0 to 100 that say where a dot appears. `/size` and `/hue` set
+// how big and what color the next dots are, and `osc.value` is the first number of a message.
+// The sketch listens on port 9000 from the first `on osc`; `osc listen 8000` would choose another.
+// A click sends `/xy` back to this very sketch with `osc send`, so it works with nothing else
+// running; point a phone app at this computer's address and port 9000 and it works with that too.
+window size 640 420 title "osc"
+
+dots = []
+size_now = 24
+hue_now = 40
+
+// Puts a dot where x and y, each 0 to 100, say: across and down the window.
+learn drop x y [
+  add { pos: { x * width / 100, y * height / 100 }, size: size_now, hue: hue_now, age: 0 } to dots
+]
+
+drop 25 40
+drop 50 60
+drop 75 35
+
+on osc "/xy" [
+  if count osc.args >= 2 [ drop (item 1 of osc.args) (item 2 of osc.args) ]
+]
+
+on osc "/size" [ size_now = clamp osc.value 4 120 ]
+
+on osc "/hue" [ hue_now = osc.value * 2.55 ]
+
+on mouse down [
+  osc send "/xy" [ (mouse.x * 100 / width) (mouse.y * 100 / height) ] to "localhost" port 9000
+]
+
+last = "nothing has come yet"
+on osc [ last = osc.address + " from " + osc.from ]
+
+draw [
+  background (rgb 14 16 30)
+  no stroke
+  for each d in dots [
+    d.age = d.age + 1
+    fill (hsb d.hue 190 245 alpha (100 - d.age * 100 / 150))
+    circle at d.pos radius (d.size * (1 + d.age / 150))
+  ]
+  dots = keep dots [ it.age < 150 ]
+  fill white
+  text "click, or send /xy 50 50 to port 9000" at 16 16
+  text last at 16 40 fill (rgb 150 160 200)
+]
