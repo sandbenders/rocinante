@@ -11,6 +11,7 @@ package platform
 
 import "base:runtime"
 import "core:c"
+import "core:strings"
 import "core:sync"
 
 foreign import coremidi {"system:CoreMIDI.framework", "system:CoreFoundation.framework"}
@@ -36,6 +37,17 @@ foreign coremidi {
 	MIDIGetSource :: proc(index: c.ulong) -> MIDIObjectRef ---
 	MIDIPortConnectSource :: proc(port: MIDIObjectRef, source: MIDIObjectRef, connRefCon: rawptr) -> OSStatus ---
 	MIDIPortDisconnectSource :: proc(port: MIDIObjectRef, source: MIDIObjectRef) -> OSStatus ---
+	MIDIOutputPortCreate :: proc(client: MIDIObjectRef, portName: CFStringRef, outPort: ^MIDIObjectRef) -> OSStatus ---
+	MIDIGetNumberOfDestinations :: proc() -> c.ulong ---
+	MIDIGetDestination :: proc(index: c.ulong) -> MIDIObjectRef ---
+	MIDISend :: proc(port: MIDIObjectRef, dest: MIDIObjectRef, list: rawptr) -> OSStatus ---
+	MIDIObjectGetStringProperty :: proc(obj: MIDIObjectRef, propertyID: CFStringRef, str: ^CFStringRef) -> OSStatus ---
+	CFStringGetCString :: proc(str: CFStringRef, buffer: [^]u8, size: c.long, encoding: u32) -> u8 ---
+}
+
+foreign coremidi {
+	// a name's key, for MIDIObjectGetStringProperty
+	kMIDIPropertyName: CFStringRef
 }
 
 Midi_Backend :: struct {
@@ -121,4 +133,84 @@ midi_read :: proc "c" (list: rawptr, readRefCon: rawptr, srcConnRefCon: rawptr) 
 	}
 	sync.unlock(&m.backend.lock)
 	midi_push(m, events[:])
+}
+
+// ---- out ----
+
+Midi_Out_Backend :: struct {
+	client: MIDIObjectRef,
+	port:   MIDIObjectRef,
+}
+
+@(private)
+midi_out_backend_start :: proc(out: ^Midi_Out) {
+	// made when something is first sent, so a sketch that never sends opens nothing
+}
+
+@(private)
+midi_out_backend_stop :: proc(out: ^Midi_Out) {
+	if out.backend.client != 0 {
+		MIDIClientDispose(out.backend.client) // disposes of the port too
+	}
+}
+
+// Makes the client and its output port, once. False when CoreMIDI would not.
+@(private)
+midi_out_ready :: proc(out: ^Midi_Out) -> bool {
+	if out.backend.port != 0 {
+		return true
+	}
+	name := CFStringCreateWithCString(nil, "rocinante out", kCFStringEncodingUTF8)
+	defer CFRelease(name)
+	if MIDIClientCreate(name, nil, nil, &out.backend.client) != 0 {
+		return false
+	}
+	port_name := CFStringCreateWithCString(nil, "rocinante out port", kCFStringEncodingUTF8)
+	defer CFRelease(port_name)
+	return MIDIOutputPortCreate(out.backend.client, port_name, &out.backend.port) == 0
+}
+
+// The name CoreMIDI gives a destination, or "" when it has none.
+@(private)
+midi_destination_name :: proc(destination: MIDIObjectRef, allocator := context.allocator) -> string {
+	text: CFStringRef
+	if MIDIObjectGetStringProperty(destination, kMIDIPropertyName, &text) != 0 || text == nil {
+		return ""
+	}
+	defer CFRelease(text)
+	buffer: [256]u8
+	if CFStringGetCString(text, raw_data(buffer[:]), len(buffer), kCFStringEncodingUTF8) == 0 {
+		return ""
+	}
+	return strings.clone(string(cstring(raw_data(buffer[:]))), allocator)
+}
+
+@(private)
+midi_out_backend_names :: proc(out: ^Midi_Out, allocator := context.allocator) -> []string {
+	count := int(MIDIGetNumberOfDestinations())
+	names := make([]string, count, allocator)
+	for i in 0 ..< count {
+		names[i] = midi_destination_name(MIDIGetDestination(c.ulong(i)), allocator)
+	}
+	return names
+}
+
+@(private)
+midi_out_backend_send :: proc(out: ^Midi_Out, to: string, bytes: []u8) -> Midi_Send_Result {
+	names := midi_out_backend_names(out, context.temp_allocator)
+	at := midi_pick(names, to)
+	if at < 0 {
+		return .No_Device
+	}
+	if !midi_out_ready(out) {
+		return .Not_Sent
+	}
+	// a MIDIPacketList of one packet, laid out as the reader above reads them: the number of packets (u32), then
+	// the packet's time (u64, 0 is now), its length (u16) and its bytes, with the packet starting at 4
+	list: [32]u8
+	(^u32)(&list[0])^ = 1
+	(^u64)(&list[4])^ = 0
+	(^u16)(&list[12])^ = u16(len(bytes))
+	copy(list[14:], bytes)
+	return .Sent if MIDISend(out.backend.port, MIDIGetDestination(c.ulong(at)), &list[0]) == 0 else .Not_Sent
 }

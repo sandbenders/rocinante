@@ -10,6 +10,7 @@
 package platform
 
 import "base:runtime"
+import "core:strings"
 import "core:sync"
 import "core:thread"
 import "core:time"
@@ -30,6 +31,27 @@ foreign winmm {
 	midiInStop :: proc(hmi: HMIDIIN) -> win.UINT ---
 	midiInReset :: proc(hmi: HMIDIIN) -> win.UINT ---
 	midiInClose :: proc(hmi: HMIDIIN) -> win.UINT ---
+	midiOutGetNumDevs :: proc() -> win.UINT ---
+	midiOutGetDevCapsW :: proc(uDeviceID: win.UINT_PTR, pmoc: ^MIDIOUTCAPSW, cbmoc: win.UINT) -> win.UINT ---
+	midiOutOpen :: proc(phmo: ^HMIDIOUT, uDeviceID: win.UINT, dwCallback: win.DWORD_PTR, dwInstance: win.DWORD_PTR, fdwOpen: win.DWORD) -> win.UINT ---
+	midiOutShortMsg :: proc(hmo: HMIDIOUT, dwMsg: win.DWORD) -> win.UINT ---
+	midiOutReset :: proc(hmo: HMIDIOUT) -> win.UINT ---
+	midiOutClose :: proc(hmo: HMIDIOUT) -> win.UINT ---
+}
+
+@(private) HMIDIOUT :: distinct rawptr
+// what midiOutGetDevCaps says of a device; only the name is used
+@(private)
+MIDIOUTCAPSW :: struct {
+	wMid:           u16,
+	wPid:           u16,
+	vDriverVersion: u32,
+	szPname:        [32]u16,
+	wTechnology:    u16,
+	wVoices:        u16,
+	wNotes:         u16,
+	wChannelMask:   u16,
+	dwSupport:      u32,
 }
 
 Midi_Backend :: struct {
@@ -111,8 +133,93 @@ midi_in_proc :: proc "system" (hmi: HMIDIIN, msg: win.UINT, instance: win.DWORD_
 	defer free_all(context.temp_allocator)
 	packed := u32(param1)
 	parser := &m.backend.parsers[place]
-	midi_parse(parser, u8(packed), &events)
-	midi_parse(parser, u8(packed >> 8), &events)
-	midi_parse(parser, u8(packed >> 16), &events)
+	// only the bytes the message has: a clock tick is one, and the others in the number are noise that
+	// would be read as the data of whatever status came before
+	for i in 0 ..< midi_packed_length(u8(packed)) {
+		midi_parse(parser, u8(packed >> u32(8 * i)), &events)
+	}
 	midi_push(m, events[:])
+}
+
+// ---- out ----
+
+Midi_Out_Backend :: struct {
+	handles: [dynamic]HMIDIOUT, // one for each device, opened when a message first goes to it (0 until then)
+	count:   win.UINT, // how many devices there were when they were last counted
+}
+
+@(private)
+midi_out_backend_start :: proc(out: ^Midi_Out) {
+	out.backend.handles = make([dynamic]HMIDIOUT, out.allocator)
+}
+
+@(private)
+midi_out_backend_stop :: proc(out: ^Midi_Out) {
+	midi_out_close_all(out)
+	delete(out.backend.handles)
+}
+
+@(private)
+midi_out_close_all :: proc(out: ^Midi_Out) {
+	for h in out.backend.handles {
+		if h != nil {
+			midiOutReset(h)
+			midiOutClose(h)
+		}
+	}
+	clear(&out.backend.handles)
+}
+
+// Counts the devices; when their number changed (one plugged in or out) every handle is let go of and made
+// again as needed, since the numbers WinMM gives devices can change too.
+@(private)
+midi_out_count :: proc(out: ^Midi_Out) -> int {
+	count := midiOutGetNumDevs()
+	if count != out.backend.count {
+		midi_out_close_all(out)
+		out.backend.count = count
+	}
+	for len(out.backend.handles) < int(count) {
+		append(&out.backend.handles, nil)
+	}
+	return int(count)
+}
+
+@(private)
+midi_out_backend_names :: proc(out: ^Midi_Out, allocator := context.allocator) -> []string {
+	count := midi_out_count(out)
+	names := make([]string, count, allocator)
+	for i in 0 ..< count {
+		caps: MIDIOUTCAPSW
+		if midiOutGetDevCapsW(win.UINT_PTR(i), &caps, size_of(caps)) != 0 {
+			continue
+		}
+		name, err := win.utf16_to_utf8(caps.szPname[:], allocator)
+		if err == nil {
+			names[i] = strings.trim_right_null(name)
+		}
+	}
+	return names
+}
+
+@(private)
+midi_out_backend_send :: proc(out: ^Midi_Out, to: string, bytes: []u8) -> Midi_Send_Result {
+	names := midi_out_backend_names(out, context.temp_allocator)
+	at := midi_pick(names, to)
+	if at < 0 {
+		return .No_Device
+	}
+	if out.backend.handles[at] == nil {
+		h: HMIDIOUT
+		if midiOutOpen(&h, win.UINT(at), 0, 0, 0) != 0 {
+			return .Not_Sent
+		}
+		out.backend.handles[at] = h
+	}
+	// a short message packed into a number: the status, then the two data bytes
+	packed: u32
+	for b, i in bytes {
+		packed |= u32(b) << u32(8 * i)
+	}
+	return .Sent if midiOutShortMsg(out.backend.handles[at], win.DWORD(packed)) == 0 else .Not_Sent
 }

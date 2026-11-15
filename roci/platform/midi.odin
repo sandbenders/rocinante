@@ -15,13 +15,21 @@ Midi_Kind :: enum u8 {
 	Note_Down,
 	Note_Up,
 	Control,
+	Bend, // the pitch wheel
+	Program, // an instrument chosen
+	Pressure, // a key held harder (aftertouch), of one key or of the whole channel
+	Clock, // one of the 24 ticks a beat of a steady clock
+	Start,
+	Continue,
+	Stop,
 }
 
 Midi_Event :: struct {
 	kind:    Midi_Kind,
-	channel: u8, // 1 to 16, as people count them
-	number:  u8, // the note (60 is middle C) or the controller
-	value:   u8, // the velocity or the controller's value, 0 to 127
+	channel: u8, // 1 to 16, as people count them (0 for the clock and start and stop, which have none)
+	number:  u8, // the note (60 is middle C), the controller, the program, or for pressure the key (0 for the whole channel)
+	value:   u8, // the velocity, the controller's value or the pressure, 0 to 127
+	bend:    u16, // the pitch wheel, 0 to 16383, 8192 in the middle
 	at:      time.Tick, // when it was read from the device (zero for bytes a test gave)
 }
 
@@ -35,14 +43,24 @@ Midi_Parser :: struct {
 }
 
 // Reads one byte, and adds to `out` the event it completes. Notes on, notes off (and a note on
-// of velocity 0, which keyboards send for off) and controllers are kept; clock, active sensing
-// and the other real-time bytes can come between any two and are passed over without breaking
-// the message they interrupt; system exclusive messages, pitch bend, aftertouch and program
-// changes are read past.
+// of velocity 0, which keyboards send for off), controllers, pitch bend, program changes and
+// pressure (of one key, or of the whole channel) are kept. The real-time bytes can come between
+// any two others without breaking the message they interrupt: clock, start, continue and stop
+// are kept, active sensing and reset are passed over. System exclusive messages are read past.
 midi_parse :: proc(p: ^Midi_Parser, b: u8, out: ^[dynamic]Midi_Event) {
 	switch {
 	case b >= 0xF8:
-		return // real time
+		switch b {
+		case 0xF8:
+			append(out, Midi_Event{kind = .Clock})
+		case 0xFA:
+			append(out, Midi_Event{kind = .Start})
+		case 0xFB:
+			append(out, Midi_Event{kind = .Continue})
+		case 0xFC:
+			append(out, Midi_Event{kind = .Stop})
+		}
+		return
 	case b == 0xF0:
 		p.sysex = true
 		p.status = 0
@@ -76,12 +94,34 @@ midi_parse :: proc(p: ^Midi_Parser, b: u8, out: ^[dynamic]Midi_Event) {
 	channel := p.status & 0x0F + 1
 	switch kind {
 	case 0x90:
-		append(out, Midi_Event{.Note_Down if p.data[1] > 0 else .Note_Up, channel, p.data[0], p.data[1], {}})
+		append(out, Midi_Event{kind = .Note_Down if p.data[1] > 0 else .Note_Up, channel = channel, number = p.data[0], value = p.data[1]})
 	case 0x80:
-		append(out, Midi_Event{.Note_Up, channel, p.data[0], p.data[1], {}})
+		append(out, Midi_Event{kind = .Note_Up, channel = channel, number = p.data[0], value = p.data[1]})
+	case 0xA0:
+		append(out, Midi_Event{kind = .Pressure, channel = channel, number = p.data[0], value = p.data[1]})
 	case 0xB0:
-		append(out, Midi_Event{.Control, channel, p.data[0], p.data[1], {}})
+		append(out, Midi_Event{kind = .Control, channel = channel, number = p.data[0], value = p.data[1]})
+	case 0xC0:
+		append(out, Midi_Event{kind = .Program, channel = channel, number = p.data[0]})
+	case 0xD0:
+		append(out, Midi_Event{kind = .Pressure, channel = channel, value = p.data[0]})
+	case 0xE0:
+		append(out, Midi_Event{kind = .Bend, channel = channel, bend = u16(p.data[0]) | u16(p.data[1]) << 7})
 	}
+}
+
+// How many bytes of a packed message a device handed over are the message, from its status byte
+// (WinMM packs a short message into a number, and the bytes it does not need are not meant): 3 for a
+// note, controller, aftertouch, bend or song position, 2 for a program, channel pressure, time code or
+// song select, and 1 for the rest.
+midi_packed_length :: proc(status: u8) -> int {
+	switch {
+	case status >= 0x80 && status < 0xC0, status >= 0xE0 && status < 0xF0, status == 0xF2:
+		return 3
+	case status >= 0xC0 && status < 0xE0, status == 0xF1, status == 0xF3:
+		return 2
+	}
+	return 1
 }
 
 // The state every backend shares: the queue the sketch takes from, and the backend's own parts.
