@@ -66,7 +66,7 @@ Verb :: struct {
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
 	"align", "alpha", "angle", "around", "as", "at", "blend", "bordered", "by", "cursor", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "height", "in",
-	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "preset", "radius", "ratio", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "thickness", "tint", "title", "to", "topmost", "tube", "visible", "volume", "width",
+	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "port", "preset", "radius", "ratio", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "thickness", "tint", "title", "to", "topmost", "tube", "visible", "volume", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.
@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "false", "finger", "fps", "frame", "height", "key", "mic", "midi", "mouse", "pi", "pmouse", "pressed", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
+	"anywhere", "false", "finger", "fps", "frame", "height", "key", "mic", "midi", "mouse", "osc", "pi", "pmouse", "pressed", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -99,6 +99,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"key", .Text, 0, "The name of the key pressed last."},
 	{"mic", .Sound, 0, "The computer's microphone, as a sound to listen to: `level mic` is how loud it hears and `bands mic` its pitches. The first time a sketch with a window reads it, the microphone opens (the system may ask first); it is not played through the speakers."},
 	{"midi", .Record, 0, "The key or controller an `on midi down`, `on midi up` or `on midi control` block runs for: `midi.note` (60 is middle C) and `midi.velocity` (0 to 100) for a key, `midi.control` and `midi.value` (0 to 100) for a knob or fader, and `midi.channel` (1 to 16)."},
+	{"osc", .Record, 0, "The message an `on osc` block runs for: `osc.address` (such as \"/fader/1\"), `osc.value` (the first number it carries, with true as 1 and false as 0, 0 when there is none), `osc.text` (the first text it carries), `osc.args` (every number in order) and `osc.from` (the computer that sent it)."},
 	{"mouse", .Vector, 2, "Where the mouse is in the window: `mouse.x` and `mouse.y`."},
 	{"pressed", .Boolean, 0, "Whether a mouse button is held down in this window."},
 	{"pi", .Number, 0, "Half a turn in radians, 3.14159…, for sketches that work in radians."},
@@ -198,7 +199,7 @@ WINDOW_FREE_WORDS := [?]string{
 
 // Words only the settings of a sound use (`play rain volume 40`, `set rain pan -50 speed 1.5`),
 // which stay free as names in the same way: `speed` is a name many sketches have.
-SOUND_FREE_WORDS := [?]string{"note", "pan", "pitch", "preset", "speed", "volume"}
+SOUND_FREE_WORDS := [?]string{"note", "pan", "pitch", "port", "preset", "speed", "volume"}
 
 // An `on` event and what follows its name: `on key "space" [ ... ]`, `on mouse down [ ... ]`.
 // `on w receive msg [ ... ]` is its own form, because a window comes first.
@@ -217,10 +218,16 @@ EVENTS := []Event{
 	{"midi down", {}, "Runs when a key of a MIDI keyboard goes down; `midi` is that key: `midi.note`, `midi.velocity`."},
 	{"midi up", {}, "Runs when a key of a MIDI keyboard comes up; `midi.note` is the key."},
 	{"midi control", {}, "Runs when a knob, fader or wheel of a MIDI controller moves; `midi.control` is which, `midi.value` where it is now, 0 to 100."},
+	{"osc", {.Text}, "Runs when an OSC message arrives over the network, from a phone app, a music program or another sketch; `osc` is that message. Name an address to wait for it alone, and `*` and `?` stand for any text and any one character inside one part of it: `on osc \"/fader/*\"`. The first one starts listening on port 9000, or on the one `osc listen` chose."},
 	{"resize", {}, "Runs when the window changes size."},
 	{"move", {}, "Runs when the window moves."},
 	{"focus", {}, "Runs when the window gains or loses focus."},
 }
+
+// The events whose text may be left out, so a `[` straight after the name starts the block and does
+// not begin a list used as the text: `on osc [ ... ]` runs for every message, `on osc "/fader/*" [ ... ]`
+// for the ones sent to matching addresses.
+EVENTS_WITH_OPTIONAL_TEXT := [?]string{"osc"}
 
 // What `every 2 seconds [ ... ]` and `every 10 frames [ ... ]` count in. The
 // singular is for 1. These are positional, like connecting words: only the word

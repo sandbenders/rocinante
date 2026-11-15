@@ -1,0 +1,8 @@
+── I could not find a computer called `nowhere.invalid` ─── sketch.roci:1:1
+
+1 │ osc send "/note" [ 60 ] to "nowhere.invalid"
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Give its name or its number, such as `localhost`, `studio.local` or `192.168.0.7`. This message was not sent.
+
+For example:  osc send "/note" [ 60 ] to "localhost" port 9000

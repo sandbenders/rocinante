@@ -367,6 +367,8 @@ VERBS := []Verb{
 	{"loop", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish."},
 	{"pause", {{{{"sound", .Sound}}, {{"note", {.Number}, false}}, .None}}, "Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade out, all of them or one: `pause piano note 60`."},
 	{"midi control", {{{{"number", .Number}}, nil, .Number}}, "The latest value of a MIDI controller, 0 to 100, 0 until it first moves: `midi control 1` is the mod wheel, and the knobs and faders of a controller have numbers of their own (its manual says which, or `on midi control [ print midi.control ]`)."},
+	{"osc listen", {{{{"port", .Number}}, nil, .None}}, "Starts listening for OSC messages on a port: `osc listen 8000`. Without it the first `on osc` or `osc value` listens on port 9000. If another program has the port, a message says so and the sketch goes on without listening; asking again for the port in use changes nothing."},
+	{"osc value", {{{{"address", .Text}}, nil, .Number}}, "The latest first number sent to an OSC address, 0 until one arrives: `osc value \"/fader/1\"`. The first call starts listening, as `on osc` does."},
 	{"synth", {
 		{{{"wave", .Name}}, nil, .Sound},
 		{{{"file", .Text}}, {{"preset", {.Any}, false}}, .Sound},

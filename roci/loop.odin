@@ -80,6 +80,7 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 		ui_event(event)
 	}
 	midi_step()
+	osc_step()
 	apply_cursor()
 	// The windows may close while a frame runs, so go by a copy of the list.
 	windows := make([]^Win, len(the.windows), context.temp_allocator)

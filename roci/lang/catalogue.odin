@@ -106,6 +106,11 @@ Message_Id :: enum u8 {
 	It_Outside_Block,
 	Finger_Outside_Touch,
 	Midi_Outside_Event,
+	Osc_Outside_Event,
+	Osc_Port_Busy,
+	Osc_Address_Bad,
+	Osc_Host_Unknown,
+	Osc_Unsupported,
 	Wrong_Item_Kind,
 	Block_Gives_Wrong_Kind,
 	Changed_While_Walking,
@@ -410,6 +415,21 @@ CATALOGUE := [Message_Id]Entry{
 	.Midi_Outside_Event = {.Error, "`midi` only works inside on midi down, on midi up or on midi control",
 		"`midi` is the key or the knob that has just moved, so it means something only in the block of `on midi down`, `on midi up` or `on midi control`. Everywhere else, `midi control 1` gives a controller's value now.",
 		"For example:", "{d}"},
+	.Osc_Outside_Event = {.Error, "`osc` only works inside on osc",
+		"`osc` is the message that has just arrived, so it means something only in the block of `on osc`. Everywhere else, `osc value \"/fader/1\"` gives the latest number sent to an address.",
+		"For example:", "{d}"},
+	.Osc_Port_Busy = {.Error, "Another program is listening on port {a}",
+		"Only one program can listen on a port at a time, so this sketch is not listening and `on osc` hears nothing. Close the other program, or choose another port.",
+		"Choose another port:", "{d}"},
+	.Osc_Address_Bad = {.Error, "An OSC address begins with a slash, and `{a}` does not",
+		"OSC messages go to addresses that look like paths, such as `/fader/1` or `/note`. This message was not sent.",
+		"Begin it with a slash:", "{d}"},
+	.Osc_Host_Unknown = {.Error, "I could not find a computer called `{a}`",
+		"Give its name or its number, such as `localhost`, `studio.local` or `192.168.0.7`. This message was not sent.",
+		"For example:", "{d}"},
+	.Osc_Unsupported = {.Warning, "An OSC message carried {a}, which a sketch cannot use yet",
+		"Numbers, text and true or false are read. What else a message carries is left out, and the message is used without it.",
+		"Read what is there:", "{d}"},
 	.Wrong_Item_Kind = {.Error, "`{a}` needs the same kind of item as the list",
 		"The list holds {b}, but this line gives `{a}` {c}. A list holds one kind of item.",
 		"Write:", "{d}"},
@@ -601,7 +621,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Osc_Port_Busy, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

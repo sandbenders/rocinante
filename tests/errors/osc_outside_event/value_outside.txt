@@ -1,0 +1,8 @@
+── `osc` only works inside on osc ───────────────────── sketch.roci:2:28
+
+2 │   circle at 100 100 radius osc.value
+  │                            ^^^^^^^^^
+
+`osc` is the message that has just arrived, so it means something only in the block of `on osc`. Everywhere else, `osc value "/fader/1"` gives the latest number sent to an address.
+
+For example:  on osc [ circle at 100 100 radius osc.value ]

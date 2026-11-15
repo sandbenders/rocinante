@@ -69,6 +69,7 @@ LANGUAGE_VERBS := []Verb{
 		{{{"index", .Number}}, {{"of", {.List}, true}}, .Any},
 		{{{"text", .Text}}, nil, .Boolean},
 	}, "The item at a place in a list, counting from 1: `item 1 of scores`. In a `menu` of a `ui` block, an entry of the menu that is true on the frame it is chosen: `if item \"save\" [ save \"shot.png\" ]`."},
+	{"osc send", {{{{"address", .Text}, {"args", .List}}, {{"to", {.Text}, false}, {"port", {.Number}, false}}, .None}}, "Sends an OSC message to another program, a phone or another sketch: `osc send \"/note\" [ 60 100 ] to \"localhost\" port 9000`. The address begins with a slash; the list holds numbers, text and true or false (a whole number goes as an integer, any other as a float). `to` is a computer's name or number and starts as this computer, `port` starts as 9000, so `osc send \"/ping\" [ 1 ]` reaches a sketch on this computer."},
 	{"no effect", {{{{"sound", .Sound}, {"name", .Text}}, nil, .None}}, "Takes a sound effect off a sound, or off the speakers: `no effect guitar \"delay\"`."},
 	{"effect", {
 		{{{"shader", .Text}}, {{"by", {.Record}, false}}, .None},

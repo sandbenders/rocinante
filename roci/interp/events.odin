@@ -8,6 +8,7 @@
 package interp
 
 import "../"
+import oscp "../osc"
 import "../lang"
 import "../maths"
 import "core:mem/virtual"
@@ -57,6 +58,11 @@ register_on :: proc(it: ^Interp, k: ^lang.IR_On) {
 	if strings.has_prefix(k.event, "midi") {
 		roci.start_midi()
 	}
+	if k.event == "osc" {
+		if problem := roci.start_osc(); problem != .None {
+			say_osc_problem(it, problem, roci.DEFAULT_OSC_PORT, k.body.span)
+		}
+	}
 	append(&it.handlers, h)
 }
 
@@ -87,6 +93,7 @@ event_name :: proc(kind: roci.Happening) -> string {
 	case .Midi_Down:  return "midi down"
 	case .Midi_Up:    return "midi up"
 	case .Midi_Control: return "midi control"
+	case .Osc:        return "osc"
 	}
 	return ""
 }
@@ -107,9 +114,14 @@ run_event_handlers :: proc(p: ^Interp, w: roci.Window, happenings: []roci.Happen
 			}
 			p.finger = happening.finger
 			p.midi = happening.midi
+			p.osc = happening.osc
+			if happening.osc.dropped != "" {
+				fail(p, .Osc_Unsupported, h.body.span, osc_dropped_words(happening.osc.dropped), "", "", "on osc [ print osc.args ]")
+			}
 			run_block(p, h.body)
 			p.finger = {}
 			p.midi = {}
+			p.osc = {}
 		}
 	}
 }
@@ -188,6 +200,9 @@ event_arg_matches :: proc(p: ^Interp, h: Handler, happening: roci.Happened) -> b
 	p.frame = &frame
 	want := as_text(eval(p, h.args[0]))
 	p.alloc, p.frame = saved_alloc, saved_frame
+	if happening.kind == .Osc {
+		return oscp.match(want, happening.osc.address)
+	}
 	return want == happening.name
 }
 

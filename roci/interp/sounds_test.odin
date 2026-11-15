@@ -10,7 +10,6 @@ import "../platform"
 import sdl "vendor:sdl3"
 
 // Runs a sketch in a folder whose assets/sounds hold copies of the files named, from `from`.
-@(private = "file")
 run_with_sounds :: proc(t: ^testing.T, folder_name, text, from: string, files: []string) -> ^Interp {
 	root := concat("output/tests/", folder_name)
 	_ = os.remove_all(root)

@@ -26,7 +26,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"load", "image", "svg", "tint", "canvas", "draw into", "save", "record", "no record", "pixel", "pixels", "picture", "crop", "resize", "filter", "mask",
 	}},
 	{"Sound", "Sounds loaded from the sketch's assets folder (WAV, FLAC, MP3 and Ogg Vorbis) with `load`, each a player that is where it is, playing or not. Volume is 0 to 100, pan -100 (left) to 100 (right), and times are in seconds. `synth` makes an instrument, a sound of the sketch's own whose notes (`note 60` is middle C, `pitch` is in hertz) sound together. `forward` with a sound moves it ahead, and `set` changes it.", {
-		"play", "loop", "pause", "rewind", "synth", "level", "bands", "mic", "speakers", "no effect", "midi", "midi control",
+		"play", "loop", "pause", "rewind", "synth", "level", "bands", "mic", "speakers", "no effect", "midi", "midi control", "osc", "osc send", "osc listen", "osc value",
 	}},
 	{"Effects", "Shaders of your own that run over the finished picture.", {
 		"effect", "shade",

@@ -1,0 +1,8 @@
+draw [
+  background 20
+  fader = osc value "/fader/1"
+  fill (hsb (fader * 2.5) 180 240)
+  circle at 200 150 radius (20 + fader)
+  fill white
+  text "send /fader/1 a number from 0 to 100" at 20 20
+]

@@ -8,6 +8,8 @@ package roci
 import "core:c"
 import "core:strings"
 
+import oscp "osc"
+
 // ---- windows and their settings ----
 
 @(export, link_name = "roci_open_windows")
@@ -296,11 +298,24 @@ abi_touch :: proc "c" (index: c.int) -> Abi_Touch {
 // ---- events ----
 
 Abi_Event :: struct {
-	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control
+	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc
 	window: c.int,
 	name:   cstring, // the key's name, or the mouse button's
 	finger: Abi_Touch,
 	midi:   Midi_Message, // five doubles, as roci_midi is
+	osc:    Abi_Osc, // the message, for an osc event
+}
+
+// A message that arrived over the network, as roci_osc is: the address and the sender as text, the first
+// text argument ("" when none), the first number argument (0 when none) and every number argument in order
+// (true counts 1 and false 0). The text and the numbers last until the handler returns.
+Abi_Osc :: struct {
+	address:   cstring,
+	from:      cstring,
+	text:      cstring,
+	value:     f64,
+	args:      [^]f64,
+	arg_count: c.int,
 }
 
 Abi_Event_Fn :: proc "c" (event: ^Abi_Event)
@@ -336,6 +351,7 @@ abi_event_name :: proc(kind: Happening) -> string {
 	case .Midi_Down:  return "midi down"
 	case .Midi_Up:    return "midi up"
 	case .Midi_Control: return "midi control"
+	case .Osc:        return "osc"
 	}
 	return ""
 }
@@ -379,10 +395,21 @@ abi_run_handlers :: proc(w: Window, happenings: []Happened) {
 			if h.fn == nil || h.event != name || (!h.any && h.window != w) {
 				continue
 			}
-			if h.argument != "" && h.argument != happening.name {
+			if happening.kind == .Osc {
+				if h.argument != "" && !oscp.match(h.argument, happening.osc.address) {
+					continue
+				}
+			} else if h.argument != "" && h.argument != happening.name {
 				continue
 			}
 			event := Abi_Event{kind = c.int(happening.kind), window = c.int(w), name = strings.clone_to_cstring(happening.name, context.temp_allocator), finger = touch_to_abi(happening.finger), midi = happening.midi}
+			if happening.kind == .Osc {
+				m := happening.osc
+				event.osc = Abi_Osc{
+					address = strings.clone_to_cstring(m.address, context.temp_allocator), from = strings.clone_to_cstring(m.from, context.temp_allocator),
+					text = strings.clone_to_cstring(m.text, context.temp_allocator), value = m.value, args = raw_data(m.args), arg_count = c.int(len(m.args)),
+				}
+			}
 			h.fn(&event)
 		}
 	}
@@ -395,9 +422,10 @@ abi_install_hook :: proc() {
 }
 
 // Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key",
-// "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up" or
-// "midi control" (which start reading MIDI); `argument` is the key
-// or the mouse button it is for ("space", "right"), or NULL for any. Any other event name does nothing.
+// "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up",
+// "midi control" (which start reading MIDI) or "osc" (which starts listening on port 9000, unless roci_osc_listen
+// chose another); `argument` is the key or the mouse button it is for ("space", "right"), or for osc an address
+// that may hold * and ? ("/fader/*"), or NULL for any. Any other event name does nothing.
 @(export, link_name = "roci_on")
 abi_on :: proc "c" (window: c.int, event: cstring, argument: cstring, handler: Abi_Event_Fn) {
 	context = abi_context()
@@ -416,6 +444,9 @@ abi_on :: proc "c" (window: c.int, event: cstring, argument: cstring, handler: A
 	}
 	if strings.has_prefix(name, "midi") {
 		start_midi()
+	}
+	if name == "osc" {
+		start_osc()
 	}
 	append(&abi_handlers, Abi_Handler{
 		window = Window(window), any = window == 0, event = strings.clone(name), argument = strings.clone(text_from_abi(argument)), fn = handler,

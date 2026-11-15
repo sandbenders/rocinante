@@ -23,6 +23,7 @@ Happening :: enum u8 {
 	Midi_Down, // a key of a MIDI keyboard
 	Midi_Up,
 	Midi_Control, // a knob, fader or wheel
+	Osc, // a message that arrived over the network
 }
 
 Happened :: struct {
@@ -31,6 +32,7 @@ Happened :: struct {
 	name:   string, // the key's name for Key_Down, the button's for Mouse_Down and Mouse_Up
 	finger: Touch,  // the finger, for Touch_Down and Touch_Up
 	midi:   Midi_Message, // the key or controller, for the Midi_ kinds
+	osc:    Osc_Message, // the message, for Osc
 }
 
 // The events of the frame in progress.

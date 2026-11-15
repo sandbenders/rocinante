@@ -738,7 +738,7 @@ parse_on :: proc(p: ^Parser) -> Stmt_Kind {
 			if kind == .Name {
 				break // only a word goes there; the block follows
 			}
-			if !is_argument_start(p, cur(p)) {
+			if !is_argument_start(p, cur(p)) || (cur(p).kind == .Open_Square && slice.contains(registry.EVENTS_WITH_OPTIONAL_TEXT[:], event.name)) {
 				break
 			}
 			append(&args, parse_argument(p))

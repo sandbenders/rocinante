@@ -1,0 +1,8 @@
+last = "waiting for an OSC message"
+on osc [ last = osc.address + " " + osc.value ]
+
+draw [
+  background 20
+  fill white
+  text last at 20 20
+]

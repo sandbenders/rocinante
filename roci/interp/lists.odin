@@ -79,6 +79,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 	case .No_Effect:
 		roci.no_sound_effect(as_sound(eval(it, call.args[0])), as_text(eval(it, call.args[1])))
+	case .Osc_Send:
+		osc_send_verb(it, e, call)
 	case .Shade:
 		shade_verb(it, e, call)
 	case .Outline:

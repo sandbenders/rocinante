@@ -1,0 +1,9 @@
+on mouse down [
+  osc send "/click" [ mouse.x mouse.y "hello" true ] to "localhost" port 9000
+]
+
+draw [
+  background 20
+  fill white
+  text "click to send /click to port 9000" at 20 20
+]

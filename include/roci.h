@@ -48,21 +48,27 @@ typedef struct roci_value {
 typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
 
 typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS,
-	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL } roci_event_kind;
+	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC } roci_event_kind;
 
 /* A key or controller of a MIDI keyboard: the note (60 is middle C) and its velocity (0 to 100) for a key,
  * the controller and its value (0 to 100) for a knob or fader, and the channel (1 to 16). */
 typedef struct { double note, velocity, channel, control, value; } roci_midi;
 
+/* A message that arrived over the network: its address and sender as text, the first text argument (empty when
+ * none), the first number argument (0 when none) and every number argument in order (true is 1, false is 0).
+ * The text and the numbers are valid only while the handler runs. */
+typedef struct { const char *address, *from, *text; double value; const double *args; int arg_count; } roci_osc;
+
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
  * mouse events; valid only while the handler runs), the finger (for touch events) and the key or
- * controller (for MIDI events). */
+ * controller (for MIDI events) and the message (for an osc event). */
 typedef struct {
 	int kind;
 	roci_window_id window;
 	const char *name;
 	roci_finger finger;
 	roci_midi midi;
+	roci_osc osc;
 } roci_event;
 
 /* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;
@@ -633,6 +639,12 @@ roci_sound_id roci_synth(const char *wave);
 /* The latest value of a MIDI controller, 0 to 100, 0 until it first moves: `midi control 1` is the mod wheel, and the knobs and faders of a controller have numbers of their own (its manual says which, or `on midi control [ print midi.control ]`). */
 double roci_midi_control(double number);
 
+/* Starts listening for OSC messages on a port: `osc listen 8000`. Without it the first `on osc` or `osc value` listens on port 9000. If another program has the port, a message says so and the sketch goes on without listening; asking again for the port in use changes nothing. */
+void roci_osc_listen(double port);
+
+/* The latest first number sent to an OSC address, 0 until one arrives: `osc value "/fader/1"`. The first call starts listening, as `on osc` does. */
+double roci_osc_value(const char *address);
+
 /* How loud everything that plays is now, 0 (silent) to 100: `circle at 200 200 radius (level * 2)`. `level rain` is one sound, `level mic` the microphone. */
 double roci_level_of(roci_sound_id sound);
 
@@ -1115,6 +1127,9 @@ void roci_default_window_size(double width, double height);
 
 /* A number that is the same for two frames that look the same, for a window's last frame: what tests compare. */
 unsigned long long roci_frame_hash(roci_window_id window);
+
+/* Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text or a boolean. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it. */
+int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port);
 
 /* Decodes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A sound is stopped at its start, at volume 100, in the middle and at speed 1. */
 roci_sound_id roci_load_sound(const unsigned char *bytes, int length);

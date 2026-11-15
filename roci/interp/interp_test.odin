@@ -536,6 +536,9 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 			// The message about missing graphics needs graphics to be missing, on any computer.
 			roci.set_graphics_refused(id == .Pixels_Unavailable)
 			defer roci.set_graphics_refused(false)
+			// and the message about a taken port needs the port to be taken
+			roci.set_osc_port_busy(id == .Osc_Port_Busy)
+			defer roci.set_osc_port_busy(false)
 			p, ok := load("sketch.roci", string(data))
 			testing.expectf(t, ok, "%s.roci has check errors", path)
 			p.path = sketch_path

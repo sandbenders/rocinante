@@ -190,6 +190,7 @@ shutdown :: proc() {
 	finish_recordings()
 	print_record_results()
 	midi_stop() // first: its report reads the speakers
+	osc_stop()
 	sounds_stop()
 	for w in the.windows {
 		destroy_win(w)

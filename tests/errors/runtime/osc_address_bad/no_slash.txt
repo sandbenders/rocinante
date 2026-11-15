@@ -1,0 +1,8 @@
+── An OSC address begins with a slash, and `note` does not ─── sketch.roci:1:1
+
+1 │ osc send "note" [ 60 ]
+  │ ^^^^^^^^^^^^^^^^^^^^^^
+
+OSC messages go to addresses that look like paths, such as `/fader/1` or `/note`. This message was not sent.
+
+Begin it with a slash:  osc send "/note" [ 1 ]

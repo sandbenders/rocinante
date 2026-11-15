@@ -1,0 +1,8 @@
+── Warning: An OSC message carried a point, which a sketch cannot use yet ─── sketch.roci:1:1
+
+1 │ osc send "/note" [ { 1, 2 } ]
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Numbers, text and true or false are read. What else a message carries is left out, and the message is used without it.
+
+Read what is there:  osc send "/note" [ 60 "hi" true ]

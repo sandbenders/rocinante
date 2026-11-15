@@ -1,0 +1,7 @@
+osc listen 8000
+
+draw [
+  background 20
+  fill white
+  text "listening on port 8000" at 20 20
+]
