@@ -24,6 +24,11 @@ Happening :: enum u8 {
 	Midi_Up,
 	Midi_Control, // a knob, fader or wheel
 	Osc, // a message that arrived over the network
+	Midi_Bend, // the pitch wheel of a MIDI keyboard moved
+	Midi_Program, // an instrument was chosen on a MIDI keyboard
+	Midi_Pressure, // a key (or all of them) was pressed harder
+	Midi_Start, // a MIDI sequencer started or went on
+	Midi_Stop, // and stopped
 }
 
 Happened :: struct {

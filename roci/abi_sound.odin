@@ -239,6 +239,93 @@ abi_set_sound_envelope :: proc "c" (sound: c.int, attack, decay, sustain, releas
 	set_envelope(Sound(sound), pick(attack), pick(decay), pick(sustain), pick(release))
 }
 
+// ---- MIDI out ----
+
+@(private)
+midi_result_c :: proc(r: Midi_Out_Result) -> c.int {
+	return 1 if r == .Sent else 0
+}
+
+@(private)
+midi_maybe :: proc(v: f64, off: f64) -> Maybe(f64) {
+	return v if v > off else nil
+}
+
+@(export, link_name = "roci_midi_note")
+abi_midi_note :: proc "c" (note, velocity, channel, seconds: f64) -> c.int {
+	context = abi_context()
+	return midi_result_c(midi_note(note, velocity if velocity >= 0 else nil, channel if channel > 0 else nil, midi_maybe(seconds, 0)))
+}
+
+@(export, link_name = "roci_midi_release")
+abi_midi_release :: proc "c" (note, channel: f64) -> c.int {
+	context = abi_context()
+	return midi_result_c(midi_release(note if note >= 0 else nil, channel if channel > 0 else nil))
+}
+
+@(export, link_name = "roci_midi_set")
+abi_midi_set :: proc "c" (controller, value, channel: f64) -> c.int {
+	context = abi_context()
+	return midi_result_c(midi_set(controller, value, channel if channel > 0 else nil))
+}
+
+@(export, link_name = "roci_midi_bend")
+abi_midi_bend :: proc "c" (amount, channel: f64) -> c.int {
+	context = abi_context()
+	return midi_result_c(midi_bend(amount, channel if channel > 0 else nil))
+}
+
+@(export, link_name = "roci_midi_program")
+abi_midi_program :: proc "c" (number, channel: f64) -> c.int {
+	context = abi_context()
+	return midi_result_c(midi_program(number, channel if channel > 0 else nil))
+}
+
+@(export, link_name = "roci_midi_to")
+abi_midi_to :: proc "c" (name: cstring) {
+	context = abi_context()
+	midi_to(text_from_abi(name))
+}
+
+@(export, link_name = "roci_midi_output_count")
+abi_midi_output_count :: proc "c" () -> c.int {
+	context = abi_context()
+	names := midi_outputs(context.temp_allocator)
+	return c.int(len(names))
+}
+
+@(export, link_name = "roci_midi_output_name")
+abi_midi_output_name :: proc "c" (index: c.int, out: [^]u8, capacity: c.int) -> c.int {
+	context = abi_context()
+	names := midi_outputs(context.temp_allocator)
+	if index < 0 || int(index) >= len(names) || out == nil || capacity <= 0 {
+		return 0
+	}
+	name := names[index]
+	n := min(len(name), int(capacity) - 1)
+	copy(out[:n], name[:n])
+	out[n] = 0
+	return c.int(n)
+}
+
+@(export, link_name = "roci_midi_clock")
+abi_midi_clock :: proc "c" (tempo: f64) -> c.int {
+	context = abi_context()
+	return midi_result_c(midi_clock(tempo))
+}
+
+@(export, link_name = "roci_midi_stop")
+abi_midi_stop :: proc "c" () {
+	context = abi_context()
+	midi_clock_stop()
+}
+
+@(export, link_name = "roci_midi_tempo")
+abi_midi_tempo :: proc "c" () -> f64 {
+	context = abi_context()
+	return midi_tempo()
+}
+
 @(export, link_name = "roci_midi_control")
 abi_midi_control :: proc "c" (number: f64) -> f64 {
 	context = abi_context()
@@ -306,6 +393,16 @@ abi_no_sound_effect :: proc "c" (sound: c.int, name: cstring) -> c.int {
 abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_set_sound_envelope", typeid_of(type_of(abi_set_sound_envelope)), "void roci_set_sound_envelope(roci_sound_id sound, double attack, double decay, double sustain, double release)", "Shapes an instrument's notes: seconds to come in, seconds to fall to the sustain, the level the note sits at while held (0 to 100) and seconds to fade out after it is let go. A negative number leaves that one as it was; a SoundFont instrument's own envelope is the least these can make it."))
 	append(all, abi_entry("roci_osc_send", typeid_of(type_of(abi_osc_send)), "int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port)", "Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text, a boolean, or a list of numbers, which goes as a blob of bytes. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it."))
+	append(all, abi_entry("roci_midi_note", typeid_of(type_of(abi_midi_note)), "int roci_midi_note(double note, double velocity, double channel, double seconds)", "Plays a note through MIDI out: 60 is middle C, `velocity` 0 to 100 (negative for the usual 80), `channel` 1 to 16 (0 for 1) and `seconds` above 0 lets it go after that long (0 holds it until roci_midi_release). Goes to the first MIDI output, or the one roci_midi_to chose. Gives 1 when it was sent and 0 when there is no output or it would not take it. A note still sounding when the program ends is let go."))
+	append(all, abi_entry("roci_midi_release", typeid_of(type_of(abi_midi_release)), "int roci_midi_release(double note, double channel)", "Lets a note go on a channel (0 for 1); a negative note lets every note go that is sounding on it. Gives 1 when it was sent."))
+	append(all, abi_entry("roci_midi_set", typeid_of(type_of(abi_midi_set)), "int roci_midi_set(double controller, double value, double channel)", "Moves a controller (7 is volume, 1 the mod wheel) to a value, 0 to 100, on a channel (0 for 1). Gives 1 when it was sent."))
+	append(all, abi_entry("roci_midi_bend", typeid_of(type_of(abi_midi_bend)), "int roci_midi_bend(double amount, double channel)", "Moves the pitch wheel, -100 to 100, 0 in the middle, on a channel (0 for 1). Gives 1 when it was sent."))
+	append(all, abi_entry("roci_midi_program", typeid_of(type_of(abi_midi_program)), "int roci_midi_program(double number, double channel)", "Chooses an instrument, 0 to 127, on a channel (0 for 1). Gives 1 when it was sent."))
+	append(all, abi_entry("roci_midi_to", typeid_of(type_of(abi_midi_to)), "void roci_midi_to(const char *name)", "Chooses the MIDI output the messages go to by part of its name, in any case; an empty name or NULL is the first output."))
+	append(all, abi_entry("roci_midi_output_count", typeid_of(type_of(abi_midi_output_count)), "int roci_midi_output_count(void)", "How many MIDI outputs there are."))
+	append(all, abi_entry("roci_midi_output_name", typeid_of(type_of(abi_midi_output_name)), "int roci_midi_output_name(int index, char *out, int capacity)", "Copies the name of a MIDI output (counting from 0) into `out`, which holds `capacity` bytes, and gives its length; 0 for an output that is not there."))
+	append(all, abi_entry("roci_midi_clock", typeid_of(type_of(abi_midi_clock)), "int roci_midi_clock(double tempo)", "Starts a steady MIDI clock at some beats a minute (20 to 300): Start, and then 24 ticks a beat from a thread of its own. Called again it changes the tempo. Gives 1 when it started."))
+	append(all, abi_entry("roci_midi_stop", typeid_of(type_of(abi_midi_stop)), "void roci_midi_stop(void)", "Stops the clock roci_midi_clock started, sending Stop."))
 	append(all, abi_entry("roci_osc_send_bundle", typeid_of(type_of(abi_osc_send_bundle)), "int roci_osc_send_bundle(const roci_value *messages, int count, const char *host, int port)", "Sends several OSC messages together as one bundle, which the receiver reads as a group: `messages` holds `count` values of kind ROCI_LIST, each a message whose first item is its address (text) and whose other items are its arguments, as for roci_osc_send. Gives 1 when it was sent, and 0 when an address does not begin with a slash, the host is unknown or the system would not send it."))
 	append(all, abi_entry("roci_load_sound", typeid_of(type_of(abi_load_sound)), "roci_sound_id roci_load_sound(const unsigned char *bytes, int length)", "Takes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A file shorter than 30 seconds is decoded whole; a longer one is read as it plays from a copy of the bytes, so they may be let go of at once. A sound is stopped at its start, at volume 100, in the middle and at speed 1."))
 	append(all, abi_entry("roci_load_sound_buffered", typeid_of(type_of(abi_load_sound_buffered)), "roci_sound_id roci_load_sound_buffered(const unsigned char *bytes, int length, double seconds)", "The same as roci_load_sound, with `seconds` of a long file kept ready as it plays (from 1 to 60; 8 for roci_load_sound). More rides out a slow disk or a high speed and costs about 400 kilobytes a second."))

@@ -1,0 +1,9 @@
+// a steady clock a drum machine can follow: left of the window is slow, right is fast
+on mouse down [ midi clock (60 + mouse.x / width * 120) ]
+on mouse up [ midi stop ]
+
+draw [
+  background 20
+  fill white
+  text "hold the mouse to send a clock" at 20 20
+]

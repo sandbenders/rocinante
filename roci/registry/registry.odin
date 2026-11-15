@@ -65,8 +65,8 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"align", "alpha", "angle", "around", "as", "at", "attack", "blend", "bordered", "buffer", "by", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "height", "in",
-	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "tube", "visible", "volume", "width",
+	"align", "alpha", "angle", "around", "as", "at", "attack", "blend", "bordered", "buffer", "by", "channel", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "height", "in",
+	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "tube", "velocity", "visible", "volume", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.
@@ -98,7 +98,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"height", .Number, 0, "The height of the window the code runs in, in pixels."},
 	{"key", .Text, 0, "The name of the key pressed last."},
 	{"mic", .Sound, 0, "The computer's microphone, as a sound to listen to: `level mic` is how loud it hears and `bands mic` its pitches. The first time a sketch with a window reads it, the microphone opens (the system may ask first); it is not played through the speakers."},
-	{"midi", .Record, 0, "The key or controller an `on midi down`, `on midi up` or `on midi control` block runs for: `midi.note` (60 is middle C) and `midi.velocity` (0 to 100) for a key, `midi.control` and `midi.value` (0 to 100) for a knob or fader, and `midi.channel` (1 to 16)."},
+	{"midi", .Record, 0, "What an `on midi` block runs for: `midi.note` (60 is middle C) and `midi.velocity` (0 to 100) for a key, `midi.control` and `midi.value` (0 to 100) for a knob or fader, `midi.bend` (-100 to 100) for the pitch wheel, `midi.program` (0 to 127) for an instrument chosen, `midi.pressure` (0 to 100, with `midi.note` the key, or 0 for the whole keyboard) for aftertouch, and `midi.channel` (1 to 16) for all of them. A field that does not belong to the message reads 0."},
 	{"osc", .Record, 0, "The message an `on osc` block runs for: `osc.address` (such as \"/fader/1\"), `osc.value` (the first number it carries, with true as 1 and false as 0, 0 when there is none), `osc.text` (the first text it carries), `osc.args` (everything it carries, in order, a blob of bytes being a list of numbers) and `osc.from` (the computer that sent it)."},
 	{"mouse", .Vector, 2, "Where the mouse is in the window: `mouse.x` and `mouse.y`."},
 	{"pressed", .Boolean, 0, "Whether a mouse button is held down in this window."},
@@ -199,7 +199,7 @@ WINDOW_FREE_WORDS := [?]string{
 
 // Words only the settings of a sound use (`play rain volume 40`, `set rain pan -50 speed 1.5`),
 // which stay free as names in the same way: `speed` is a name many sketches have.
-SOUND_FREE_WORDS := [?]string{"attack", "buffer", "decay", "note", "pan", "pitch", "port", "preset", "release", "speed", "sustain", "volume"}
+SOUND_FREE_WORDS := [?]string{"attack", "buffer", "channel", "decay", "note", "pan", "pitch", "port", "preset", "release", "speed", "sustain", "velocity", "volume"}
 
 // An `on` event and what follows its name: `on key "space" [ ... ]`, `on mouse down [ ... ]`.
 // `on w receive msg [ ... ]` is its own form, because a window comes first.
@@ -218,6 +218,11 @@ EVENTS := []Event{
 	{"midi down", {}, "Runs when a key of a MIDI keyboard goes down; `midi` is that key: `midi.note`, `midi.velocity`."},
 	{"midi up", {}, "Runs when a key of a MIDI keyboard comes up; `midi.note` is the key."},
 	{"midi control", {}, "Runs when a knob, fader or wheel of a MIDI controller moves; `midi.control` is which, `midi.value` where it is now, 0 to 100."},
+	{"midi bend", {}, "Runs when the pitch wheel of a MIDI keyboard moves; `midi.bend` is where it is, -100 (all the way down) to 100 (all the way up), 0 in the middle."},
+	{"midi program", {}, "Runs when an instrument is chosen on a MIDI keyboard; `midi.program` is its number, 0 to 127 (0 is a piano in General MIDI)."},
+	{"midi pressure", {}, "Runs when a key of a MIDI keyboard is pressed harder once it is down (aftertouch); `midi.pressure` is how hard, 0 to 100, and `midi.note` the key, or 0 when it is the whole keyboard."},
+	{"midi start", {}, "Runs when a MIDI sequencer or drum machine starts, or goes on after a stop."},
+	{"midi stop", {}, "Runs when a MIDI sequencer or drum machine stops."},
 	{"osc", {.Text}, "Runs when an OSC message arrives over the network, from a phone app, a music program or another sketch; `osc` is that message. Name an address to wait for it alone, and `*` and `?` stand for any text and any one character inside one part of it: `on osc \"/fader/*\"`. The first one starts listening on port 9000, or on the one `osc listen` chose."},
 	{"resize", {}, "Runs when the window changes size."},
 	{"move", {}, "Runs when the window moves."},

@@ -107,6 +107,7 @@ Message_Id :: enum u8 {
 	Finger_Outside_Touch,
 	Midi_Outside_Event,
 	Osc_Outside_Event,
+	Midi_Out_Missing,
 	Osc_Port_Busy,
 	Osc_Address_Bad,
 	Osc_Host_Unknown,
@@ -412,9 +413,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Finger_Outside_Touch = {.Error, "`finger` only works inside on touch down or on touch up",
 		"`finger` is the finger that has just gone down or come up, so it means something only in the block of `on touch down` or `on touch up`. Everywhere else, `touches` holds every finger on the screen now.",
 		"For example:", "{d}"},
-	.Midi_Outside_Event = {.Error, "`midi` only works inside on midi down, on midi up or on midi control",
-		"`midi` is the key or the knob that has just moved, so it means something only in the block of `on midi down`, `on midi up` or `on midi control`. Everywhere else, `midi control 1` gives a controller's value now.",
+	.Midi_Outside_Event = {.Error, "`midi` only works inside an on midi block",
+		"`midi` is the key, knob, wheel or message that has just come in, so it means something only in the block of an `on midi` event: `on midi down`, `on midi up`, `on midi control`, `on midi bend`, `on midi program`, `on midi pressure`, `on midi start` or `on midi stop`. Everywhere else, `midi control 1` gives a controller's value now.",
 		"For example:", "{d}"},
+	.Midi_Out_Missing = {.Error, "There is no MIDI output{a}",
+		"{b} Nothing was sent, and the sketch goes on. `print midi outputs` lists the outputs there are.",
+		"Choose one by part of its name:", "{d}"},
 	.Osc_Outside_Event = {.Error, "`osc` only works inside on osc",
 		"`osc` is the message that has just arrived, so it means something only in the block of `on osc`. Everywhere else, `osc value \"/fader/1\"` gives the latest number sent to an address.",
 		"For example:", "{d}"},
@@ -621,7 +625,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Osc_Port_Busy, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Osc_Port_Busy, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

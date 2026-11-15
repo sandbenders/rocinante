@@ -65,7 +65,7 @@ midi_record :: proc(it: ^Interp, type: lang.Type_Id, m: roci.Midi_Message) -> Va
 		return nil
 	}
 	r := new_record(it, shape)
-	fields := [5]struct{name: string, value: f64}{{"note", m.note}, {"velocity", m.velocity}, {"channel", m.channel}, {"control", m.control}, {"value", m.value}}
+	fields := [8]struct{name: string, value: f64}{{"note", m.note}, {"velocity", m.velocity}, {"channel", m.channel}, {"control", m.control}, {"value", m.value}, {"bend", m.bend}, {"program", m.program}, {"pressure", m.pressure}}
 	for f in fields {
 		if at := field_index(it, shape, f.name); at >= 0 {
 			r.fields[at] = f.value

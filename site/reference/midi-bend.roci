@@ -1,0 +1,6 @@
+draw [
+  background 20
+  midi bend ((mouse.x - width / 2) / width * 200)
+  fill white
+  text "the pitch wheel follows the mouse" at 20 20
+]

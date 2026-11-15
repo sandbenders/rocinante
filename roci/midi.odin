@@ -24,6 +24,9 @@ Midi_Message :: struct {
 	channel:  f64, // 1 to 16
 	control:  f64, // the controller that moved (0 for a key)
 	value:    f64, // where it is now, 0 to 100 (0 for a key)
+	bend:     f64, // the pitch wheel, -100 (all the way down) to 100 (all the way up), 0 in the middle
+	program:  f64, // the instrument chosen, 0 to 127
+	pressure: f64, // how hard a key (or, with `note` 0, the whole channel) is held down, 0 to 100
 }
 
 @(thread_local) @(private) midi_in: ^platform.Midi_In
@@ -34,6 +37,10 @@ Midi_Message :: struct {
 // How long notes waited between being read from the device and reaching the sketch, for ROCI_LATENCY.
 @(thread_local) @(private) midi_waits: [dynamic]f64
 @(thread_local) @(private) midi_early_count: int // how many of them ran while the loop waited for the screen
+// What the clock a keyboard or a sequencer sends says: the time of its last tick, and the tempo worked out
+// from the spacing of ticks (24 a beat), smoothed so a jittery clock does not make a jittery number.
+@(thread_local) @(private) midi_tick_at: time.Tick
+@(thread_local) @(private) midi_tick_tempo: f64
 
 // Starts reading every MIDI device, once, in a sketch with a window; a headless sketch and a test
 // read none.
@@ -45,14 +52,46 @@ start_midi :: proc() {
 	midi_in = platform.open_midi(the.allocator if the.allocator.procedure != nil else context.allocator)
 }
 
-// Gives the sketch MIDI bytes as a device would, for the next frame: for tests.
-feed_midi :: proc(bytes: []u8) {
+// Gives the sketch MIDI bytes as a device would, for the next frame: for tests. `at` is the time they
+// are taken to have been read, which the tempo of a clock is worked out from (nothing when not given).
+feed_midi :: proc(bytes: []u8, at := time.Tick{}) {
 	if midi_fed == nil {
 		midi_fed = make([dynamic]platform.Midi_Event, the.allocator if the.allocator.procedure != nil else context.allocator)
 	}
+	first := len(midi_fed)
 	for b in bytes {
 		platform.midi_parse(&midi_feed_parser, b, &midi_fed)
 	}
+	for i in first ..< len(midi_fed) {
+		midi_fed[i].at = at
+	}
+}
+
+// A tick of an incoming clock, read at `at` (now when it carries no time): the tempo is moved towards what
+// the time since the last tick says. Ticks more than half a second apart start the estimate again.
+@(private)
+midi_tick :: proc(at: time.Tick) {
+	now := at if at != {} else time.tick_now()
+	if midi_tick_at != {} {
+		gap := time.duration_seconds(time.tick_diff(midi_tick_at, now))
+		if gap > 0.0001 && gap < 0.5 {
+			seen := 60 / (gap * 24)
+			midi_tick_tempo = seen if midi_tick_tempo == 0 else midi_tick_tempo * 0.9 + seen * 0.1
+		} else if gap >= 0.5 {
+			midi_tick_tempo = 0
+		}
+	}
+	midi_tick_at = now
+}
+
+// The tempo of the clock a keyboard or sequencer sends, in beats a minute, 0 when there is none (nothing came
+// for a second). The first call starts reading MIDI.
+midi_tempo :: proc() -> f64 {
+	start_midi()
+	if midi_tick_at == {} || time.duration_seconds(time.tick_since(midi_tick_at)) > 1 {
+		return 0
+	}
+	return midi_tick_tempo
 }
 
 // The latest value of a controller (a knob, a fader, the mod wheel is 1), 0 to 100; 0 until it
@@ -63,6 +102,16 @@ midi_control :: proc(number: f64) -> f64 {
 		return 0
 	}
 	return midi_values[int(number)]
+}
+
+// The pitch wheel as the language reads it, -100 to 100: 8192 is the middle, and the top and the bottom are
+// both whole hundreds.
+@(private)
+midi_bend_of :: proc(bend: u16) -> f64 {
+	if bend >= 8192 {
+		return f64(bend - 8192) * 100 / 8191
+	}
+	return -f64(8192 - bend) * 100 / 8192
 }
 
 @(private)
@@ -160,6 +209,23 @@ midi_happenings :: proc(events: []platform.Midi_Event, target: ^Win, early := fa
 			kind = .Midi_Control
 			message.control, message.value = f64(e.number), midi_percent(e.value)
 			midi_values[e.number & 127] = message.value
+		case .Bend:
+			kind = .Midi_Bend
+			message.bend = midi_bend_of(e.bend)
+		case .Program:
+			kind = .Midi_Program
+			message.program = f64(e.number)
+		case .Pressure:
+			kind = .Midi_Pressure
+			message.note, message.pressure = f64(e.number), midi_percent(e.value)
+		case .Start, .Continue:
+			kind = .Midi_Start
+		case .Stop:
+			kind = .Midi_Stop
+		case .Clock:
+			// a tick is not an event: it moves the tempo that `midi tempo` reads
+			midi_tick(e.at)
+			continue
 		}
 		if target != nil {
 			append(&out, Happened{kind = kind, window = target.id, midi = message})
@@ -213,10 +279,12 @@ report_latency :: proc() {
 	}
 }
 
-// Stops reading MIDI and forgets every controller. Called by `shutdown`.
+// Stops reading and sending MIDI and forgets every controller. Called by `shutdown`.
 @(private)
-midi_stop :: proc() {
+midi_shutdown :: proc() {
 	report_latency()
+	midi_out_shutdown()
+	midi_tick_at, midi_tick_tempo = {}, 0
 	delete(midi_waits)
 	midi_waits = nil
 	midi_early_count = 0

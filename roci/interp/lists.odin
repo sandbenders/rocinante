@@ -81,6 +81,10 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.no_sound_effect(as_sound(eval(it, call.args[0])), as_text(eval(it, call.args[1])))
 	case .Osc_Send:
 		osc_send_verb(it, e, call)
+	case .Midi_Note, .Midi_Release, .Midi_Set, .Midi_Bend, .Midi_Program, .Midi_To, .Midi_Clock, .Midi_Stop:
+		midi_out_verb(it, e, call, code)
+	case .Midi_Outputs:
+		return midi_outputs_verb(it)
 	case .Shade:
 		shade_verb(it, e, call)
 	case .Outline:

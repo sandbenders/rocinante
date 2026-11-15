@@ -69,6 +69,18 @@ LANGUAGE_VERBS := []Verb{
 		{{{"index", .Number}}, {{"of", {.List}, true}}, .Any},
 		{{{"text", .Text}}, nil, .Boolean},
 	}, "The item at a place in a list, counting from 1: `item 1 of scores`. In a `menu` of a `ui` block, an entry of the menu that is true on the frame it is chosen: `if item \"save\" [ save \"shot.png\" ]`."},
+	{"midi note", {{{{"note", .Number}}, MIDI_NOTE_OPTIONS, .None}}, "Plays a note on a synthesizer or a program that listens, through MIDI out: `midi note 60 velocity 80 channel 1 for 0.5`. 60 is middle C, `velocity` is 0 to 100 (80 if not written), `channel` 1 to 16 (1 if not written) and `for` lets the note go after that many seconds; without it the note is held until `midi release 60`. The output is the first there is, or the one `midi to` chose. A note that is still sounding when the sketch ends is let go."},
+	{"midi release", {
+		{{}, MIDI_CHANNEL_OPTION, .None},
+		{{{"note", .Number}}, MIDI_CHANNEL_OPTION, .None},
+	}, "Lets a note go that `midi note` played: `midi release 60`, on a channel with `channel`. Without a note it lets every note go that is sounding on the channel."},
+	{"midi set", {{{{"controller", .Number}}, {{"to", {.Number}, true}, {"channel", {.Number}, false}}, .None}}, "Moves a knob, fader or wheel of a synthesizer to a value, 0 to 100: `midi set 7 to 80` (controller 7 is volume, 1 the mod wheel, 10 the pan), on a channel with `channel`."},
+	{"midi bend", {{{{"amount", .Number}}, MIDI_CHANNEL_OPTION, .None}}, "Moves the pitch wheel, from -100 (all the way down) to 100 (all the way up), 0 in the middle: `midi bend (mouse.x - 200) / 2`."},
+	{"midi program", {{{{"number", .Number}}, MIDI_CHANNEL_OPTION, .None}}, "Chooses an instrument on a synthesizer, 0 to 127 (in General MIDI 0 is a piano, 40 a violin, 73 a flute): `midi program 40`, on a channel with `channel`."},
+	{"midi to", {{{{"name", .Text}}, nil, .None}}, "Chooses which MIDI output the messages go to, by a part of its name, in any case: `midi to \"IAC\"`. Without it they go to the first output there is; `midi to \"\"` goes back to that."},
+	{"midi outputs", {{{}, nil, .List}}, "The names of the MIDI outputs there are, a list of text: `print midi outputs`."},
+	{"midi clock", {{{{"tempo", .Number}}, nil, .None}}, "Starts a steady MIDI clock at a tempo in beats a minute, 20 to 300: `midi clock 120` sends Start and then 24 ticks a beat, which a drum machine or a sequencer follows. Saying it again changes the tempo, and `midi stop` ends it."},
+	{"midi stop", {{{}, nil, .None}}, "Stops the clock `midi clock` started, sending Stop."},
 	{"osc send", {
 		{{{"address", .Text}, {"args", .List}}, OSC_SEND_OPTIONS, .None},
 		{{{"messages", .List}}, OSC_SEND_OPTIONS, .None},

@@ -1276,7 +1276,7 @@ midi_type :: proc(c: ^Checker) -> Type_Id {
 	if !known {
 		shape = new_shape(c.types, c.alloc)
 		c.sites[MIDI_SITE] = shape
-		for field in ([]string{"note", "velocity", "channel", "control", "value"}) {
+		for field in ([]string{"note", "velocity", "channel", "control", "value", "bend", "program", "pressure"}) {
 			add_field(c.types, shape, field, T_NUMBER)
 		}
 	}

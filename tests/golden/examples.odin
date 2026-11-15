@@ -105,6 +105,7 @@ EXAMPLES := [?]Example{
 	{"player", 10, {1}}, // the drift track at its start: its name, 0:00 of 3:03, the empty bar and the bars of what plays (headless nothing has played yet)
 	{"soundfont", 40, {1}}, // the four notes of the chord it starts with, floating up from the piano
 	{"midi", 5, {1}}, // the 61 keys waiting for a MIDI keyboard (the notes come in the interpreter's test)
+	{"midiout", 5, {1}}, // the first ring of the arpeggio, the output chooser at the bottom and the notice that no output was found (a headless run has none)
 	{"osc", 5, {1}}, // three dots waiting where the sketch put them to start, and the line that says nothing has come (the messages come in the interpreter's test)
 	{"keys", 10, {1}}, // the eight keys and the bands of the C major chord it starts with
 	{"music", 60, {1}}, // the bars of a chiptune's pitches a second in, and a ring as big as it is loud

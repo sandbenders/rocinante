@@ -119,6 +119,15 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"list", "roci_list", ""},
 	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent roci_set_sound_at roci_set_sound_volume roci_set_sound_pan roci_set_sound_speed roci_set_sound_loop roci_set_sound_pitch roci_play_note", ""},
 	{"osc send", "roci_osc_send roci_osc_send_bundle", ""},
+	{"midi note", "roci_midi_note", ""},
+	{"midi release", "roci_midi_release", ""},
+	{"midi set", "roci_midi_set", ""},
+	{"midi bend", "roci_midi_bend", ""},
+	{"midi program", "roci_midi_program", ""},
+	{"midi to", "roci_midi_to", ""},
+	{"midi outputs", "roci_midi_output_count roci_midi_output_name", ""},
+	{"midi clock", "roci_midi_clock", ""},
+	{"midi stop", "roci_midi_stop", ""},
 	{"send", "roci_send roci_send_number roci_send_text roci_send_vec2 roci_send_boolean", ""},
 	{"print", "roci_print", ""},
 	{"held", "roci_held", ""},
@@ -323,6 +332,7 @@ abi_table_init :: proc "contextless" () {
 	{"roci_level", "level", 0, typeid_of(type_of(abi_level)), "", ""},
 	{"roci_synth", "synth", 0, typeid_of(type_of(abi_synth)), "", ""},
 	{"roci_midi_control", "midi control", 0, typeid_of(type_of(abi_midi_control)), "", ""},
+	{"roci_midi_tempo", "midi tempo", 0, typeid_of(type_of(abi_midi_tempo)), "", ""},
 	{"roci_osc_listen", "osc listen", 0, typeid_of(type_of(abi_osc_listen)), "", ""},
 	{"roci_osc_value", "osc value", 0, typeid_of(type_of(abi_osc_value)), "", ""},
 	{"roci_level_of", "level", 1, typeid_of(type_of(abi_level_of)), "", ""},
@@ -510,11 +520,13 @@ typedef struct roci_value {
 typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
 
 typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS,
-	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC } roci_event_kind;
+	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC, ROCI_MIDI_BEND, ROCI_MIDI_PROGRAM, ROCI_MIDI_PRESSURE, ROCI_MIDI_START, ROCI_MIDI_STOP } roci_event_kind;
 
-/* A key or controller of a MIDI keyboard: the note (60 is middle C) and its velocity (0 to 100) for a key,
- * the controller and its value (0 to 100) for a knob or fader, and the channel (1 to 16). */
-typedef struct { double note, velocity, channel, control, value; } roci_midi;
+/* What a MIDI event says: the note (60 is middle C) and its velocity (0 to 100) for a key, the controller and its
+ * value (0 to 100) for a knob or fader, the pitch wheel (bend, -100 to 100), the instrument chosen (program, 0 to
+ * 127), how hard a key is held (pressure, 0 to 100, with note the key or 0 for the whole keyboard), and the
+ * channel (1 to 16) for all of them. A field that does not belong to the event is 0. */
+typedef struct { double note, velocity, channel, control, value, bend, program, pressure; } roci_midi;
 
 /* A message that arrived over the network: its address and sender as text, the first text argument (empty when
  * none), the first number argument (0 when none; true is 1, false is 0) and every argument in order as roci_values:

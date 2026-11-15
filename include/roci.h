@@ -48,11 +48,13 @@ typedef struct roci_value {
 typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
 
 typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS,
-	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC } roci_event_kind;
+	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC, ROCI_MIDI_BEND, ROCI_MIDI_PROGRAM, ROCI_MIDI_PRESSURE, ROCI_MIDI_START, ROCI_MIDI_STOP } roci_event_kind;
 
-/* A key or controller of a MIDI keyboard: the note (60 is middle C) and its velocity (0 to 100) for a key,
- * the controller and its value (0 to 100) for a knob or fader, and the channel (1 to 16). */
-typedef struct { double note, velocity, channel, control, value; } roci_midi;
+/* What a MIDI event says: the note (60 is middle C) and its velocity (0 to 100) for a key, the controller and its
+ * value (0 to 100) for a knob or fader, the pitch wheel (bend, -100 to 100), the instrument chosen (program, 0 to
+ * 127), how hard a key is held (pressure, 0 to 100, with note the key or 0 for the whole keyboard), and the
+ * channel (1 to 16) for all of them. A field that does not belong to the event is 0. */
+typedef struct { double note, velocity, channel, control, value, bend, program, pressure; } roci_midi;
 
 /* A message that arrived over the network: its address and sender as text, the first text argument (empty when
  * none), the first number argument (0 when none; true is 1, false is 0) and every argument in order as roci_values:
@@ -640,6 +642,9 @@ roci_sound_id roci_synth(const char *wave);
 /* The latest value of a MIDI controller, 0 to 100, 0 until it first moves: `midi control 1` is the mod wheel, and the knobs and faders of a controller have numbers of their own (its manual says which, or `on midi control [ print midi.control ]`). */
 double roci_midi_control(double number);
 
+/* The tempo of the clock a MIDI keyboard or sequencer sends, in beats a minute, 0 when none is coming (nothing for a second). The first call starts reading MIDI. */
+double roci_midi_tempo(void);
+
 /* Starts listening for OSC messages on a port: `osc listen 8000`. Without it the first `on osc` or `osc value` listens on port 9000. If another program has the port, a message says so and the sketch goes on without listening; asking again for the port in use changes nothing. */
 void roci_osc_listen(double port);
 
@@ -1134,6 +1139,36 @@ void roci_set_sound_envelope(roci_sound_id sound, double attack, double decay, d
 
 /* Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text, a boolean, or a list of numbers, which goes as a blob of bytes. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it. */
 int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port);
+
+/* Plays a note through MIDI out: 60 is middle C, `velocity` 0 to 100 (negative for the usual 80), `channel` 1 to 16 (0 for 1) and `seconds` above 0 lets it go after that long (0 holds it until roci_midi_release). Goes to the first MIDI output, or the one roci_midi_to chose. Gives 1 when it was sent and 0 when there is no output or it would not take it. A note still sounding when the program ends is let go. */
+int roci_midi_note(double note, double velocity, double channel, double seconds);
+
+/* Lets a note go on a channel (0 for 1); a negative note lets every note go that is sounding on it. Gives 1 when it was sent. */
+int roci_midi_release(double note, double channel);
+
+/* Moves a controller (7 is volume, 1 the mod wheel) to a value, 0 to 100, on a channel (0 for 1). Gives 1 when it was sent. */
+int roci_midi_set(double controller, double value, double channel);
+
+/* Moves the pitch wheel, -100 to 100, 0 in the middle, on a channel (0 for 1). Gives 1 when it was sent. */
+int roci_midi_bend(double amount, double channel);
+
+/* Chooses an instrument, 0 to 127, on a channel (0 for 1). Gives 1 when it was sent. */
+int roci_midi_program(double number, double channel);
+
+/* Chooses the MIDI output the messages go to by part of its name, in any case; an empty name or NULL is the first output. */
+void roci_midi_to(const char *name);
+
+/* How many MIDI outputs there are. */
+int roci_midi_output_count(void);
+
+/* Copies the name of a MIDI output (counting from 0) into `out`, which holds `capacity` bytes, and gives its length; 0 for an output that is not there. */
+int roci_midi_output_name(int index, char *out, int capacity);
+
+/* Starts a steady MIDI clock at some beats a minute (20 to 300): Start, and then 24 ticks a beat from a thread of its own. Called again it changes the tempo. Gives 1 when it started. */
+int roci_midi_clock(double tempo);
+
+/* Stops the clock roci_midi_clock started, sending Stop. */
+void roci_midi_stop(void);
 
 /* Sends several OSC messages together as one bundle, which the receiver reads as a group: `messages` holds `count` values of kind ROCI_LIST, each a message whose first item is its address (text) and whose other items are its arguments, as for roci_osc_send. Gives 1 when it was sent, and 0 when an address does not begin with a slash, the host is unknown or the system would not send it. */
 int roci_osc_send_bundle(const roci_value *messages, int count, const char *host, int port);

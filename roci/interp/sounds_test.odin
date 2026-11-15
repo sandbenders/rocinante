@@ -710,3 +710,146 @@ test_load_buffer_sets_the_seconds_kept_ready :: proc(t: ^testing.T) {
 	testing.expect_value(t, roci.sound_buffer_seconds(song), 3.0)
 	testing.expect(t, roci.sound_state(song).playing)
 }
+
+// MIDI out in a sketch: every verb, the bytes they send, a note with a length let go by the frames, and what is
+// said when there is no output.
+@(test)
+test_midi_out_verbs_in_a_sketch :: proc(t: ^testing.T) {
+	text := `midi to "piano"
+midi program 40 channel 2
+midi note 60 velocity 100 channel 2 for 0.25
+midi note 64
+midi set 7 to 50
+midi bend 100
+midi clock 100
+names = midi outputs
+draw [ background 20 ]
+`
+	roci.start_headless(1)
+	roci.set_midi_outputs({"IAC Driver", "Piano"})
+	p, ok := load("sketch.roci", text)
+	testing.expect(t, ok)
+	start(p)
+	defer finish(p)
+	defer roci.midi_clear_sent()
+	testing.expect_value(t, len(p.errors), 0)
+	sent := roci.midi_sent_messages()
+	testing.expect_value(t, len(sent), 6)
+	testing.expect_value(t, sent[0].bytes, [3]u8{0xC1, 40, 0}) // program 40 on channel 2
+	testing.expect_value(t, sent[1].bytes, [3]u8{0x91, 60, 127})
+	testing.expect_value(t, sent[2].bytes, [3]u8{0x90, 64, 102})
+	testing.expect_value(t, sent[3].bytes, [3]u8{0xB0, 7, 64})
+	testing.expect_value(t, sent[4].bytes, [3]u8{0xE0, 127, 127})
+	testing.expect_value(t, sent[5].kind, roci.Midi_Sent_Kind.Clock_Start)
+	testing.expect_value(t, sent[5].value, 100)
+	testing.expect_value(t, sent[0].to, "piano")
+	testing.expect_value(t, len(as_list(global_named(p, "names")).items), 2)
+	// the note with a length is let go by the frames
+	roci.step()
+	for _ in 0 ..< 20 {
+		roci.step(nil, 0.02)
+	}
+	sent = roci.midi_sent_messages()
+	testing.expect_value(t, len(sent), 7)
+	testing.expect_value(t, sent[6].kind, roci.Midi_Sent_Kind.Note_Off)
+	testing.expect_value(t, sent[6].number, 60)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// A sketch with nowhere to send says so once, where it tried, and goes on.
+@(test)
+test_midi_out_with_no_output_is_said_and_the_sketch_goes_on :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	roci.set_midi_none(true)
+	p, ok := load("sketch.roci", "on mouse down [ midi note 60 ]\nmidi note 60\nmidi to \"zzz\"\nmidi note 61\ndraw [ background 20 ]\n")
+	testing.expect(t, ok)
+	start(p)
+	defer finish(p)
+	said := 0
+	for e in p.errors {
+		if e.id == .Midi_Out_Missing {
+			said += 1
+		}
+	}
+	testing.expect_value(t, said, 2) // two places, each once; the one in the mouse block has not run
+	testing.expect_value(t, len(roci.midi_sent_messages()), 0)
+}
+
+// The record `midi` has the new fields in the new blocks.
+@(test)
+test_the_other_midi_events_in_a_sketch :: proc(t: ^testing.T) {
+	text := `b = 0
+prog = 0
+press = 0
+started = 0
+stopped = 0
+on midi bend [ b = midi.bend ]
+on midi program [ prog = midi.program ]
+on midi pressure [ press = midi.pressure ]
+on midi start [ started = started + 1 ]
+on midi stop [ stopped = stopped + 1 ]
+tempo_seen = 0
+draw [ tempo_seen = midi tempo ]
+`
+	p := run_with_sounds(t, "midi_other", text, "tests/sounds", {})
+	defer finish(p)
+	roci.feed_midi({0xE0, 127, 127, 0xC0, 33, 0xD0, 64, 0xFA, 0xFB, 0xFC})
+	roci.step()
+	testing.expect_value(t, as_number(global_named(p, "b")), 100)
+	testing.expect_value(t, as_number(global_named(p, "prog")), 33)
+	testing.expectf(t, abs(as_number(global_named(p, "press")) - 50.4) < 0.1, "pressure %v", as_number(global_named(p, "press")))
+	testing.expect_value(t, as_number(global_named(p, "started")), 2)
+	testing.expect_value(t, as_number(global_named(p, "stopped")), 1)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// The MIDI out example: it plays an arpeggio out through MIDI and on its own synth, the C key starts and
+// stops a clock, and the mouse is the pitch wheel.
+@(test)
+test_the_midiout_example_sends_notes_and_a_clock :: proc(t: ^testing.T) {
+	text, read := os.read_entire_file("examples/midiout/sketch.roci", context.temp_allocator)
+	testing.expect(t, read == nil)
+	roci.start_headless(1)
+	roci.set_midi_outputs({"IAC Driver Bus 1"})
+	p, loaded := load("sketch.roci", string(text))
+	testing.expect(t, loaded)
+	start(p)
+	roci.step()
+	defer finish(p)
+	defer roci.midi_clear_sent()
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, len(as_list(global_named(p, "names")).items), 1)
+	testing.expect_value(t, len(as_list(global_named(p, "options")).items), 2) // "first output" and the one found
+	sent := roci.midi_sent_messages()
+	// the first note at the start, and the pitch wheel every frame (the mouse is at the left: all the way down)
+	testing.expect_value(t, sent[0].kind, roci.Midi_Sent_Kind.Note_On)
+	testing.expect_value(t, sent[0].number, 60)
+	testing.expect_value(t, len(as_list(global_named(p, "rings")).items), 1)
+	// the arpeggio goes on, one note every 0.3 s, and each let go after 0.25
+	for _ in 0 ..< 40 {
+		roci.step(nil, 0.02)
+	}
+	notes := 0
+	offs := 0
+	bends := 0
+	for m in roci.midi_sent_messages() {
+		notes += int(m.kind == .Note_On)
+		offs += int(m.kind == .Note_Off)
+		bends += int(m.kind == .Bend)
+	}
+	testing.expectf(t, notes >= 3 && offs >= 2, "notes and their ends: %d notes, %d offs", notes, offs)
+	testing.expect(t, bends >= 40, "the wheel every frame")
+	// C starts the clock, and again stops it
+	w := first_window()
+	roci.step({key_event(w, sdl.Scancode.C)})
+	roci.step({key_event(w, sdl.Scancode.C, false)})
+	roci.step({key_event(w, sdl.Scancode.C)})
+	starts, stops := 0, 0
+	for m in roci.midi_sent_messages() {
+		starts += int(m.kind == .Clock_Start)
+		stops += int(m.kind == .Clock_Stop)
+	}
+	testing.expect_value(t, starts, 1)
+	testing.expect_value(t, stops, 1)
+	testing.expect_value(t, len(p.errors), 0)
+}

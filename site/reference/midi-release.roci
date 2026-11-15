@@ -1,0 +1,9 @@
+on mouse down [ midi note 60 ]
+on mouse up [ midi release 60 ]
+on key "space" [ midi release ]
+
+draw [
+  background 20
+  fill white
+  text "hold the mouse for a note; space lets every note go" at 20 20
+]

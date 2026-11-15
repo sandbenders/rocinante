@@ -184,6 +184,28 @@ draw [ circle at 200 150 radius (10 + midi control 1) ]
 
 `midi.channel` says which of MIDI's 16 channels a message came on, for a controller that sends on more than one. Every device plugged in is heard, and one plugged in while the sketch runs is found within a second.
 
+More of what a keyboard says is read too. `on midi bend` runs when the pitch wheel moves, with `midi.bend` from -100 (all the way down) to 100 (all the way up) and 0 in the middle; `on midi program` when an instrument is chosen, with `midi.program` from 0 to 127; `on midi pressure` when a key is pressed harder after it went down (aftertouch), with `midi.pressure` from 0 to 100 and `midi.note` the key, or 0 when the pressure is of the whole keyboard; and `on midi start` and `on midi stop` when a sequencer or drum machine starts and stops. A clock they send is not an event, since it ticks 24 times a beat: it is the number `midi tempo`, in beats a minute, 0 when none is coming.
+
+```roci
+piano = synth triangle
+on midi down [ play piano note midi.note ]
+on midi up [ pause piano note midi.note ]
+on midi bend [ set piano pitch (440 + midi.bend * 2) ]
+```
+
+## MIDI out
+
+A sketch can play a synthesizer, a drum machine or another program through MIDI as well. `midi note 60` sends a note: 60 is middle C, `velocity` says how hard (0 to 100, 80 if you do not say), `channel` which of the 16 (1 if you do not say), and `for 0.5` lets it go after half a second, while without it the note is held until `midi release 60`:
+
+```roci
+on mouse down [ midi note (48 + floor (mouse.x / 20)) velocity 90 for 0.4 ]
+on key "space" [ midi release ]
+```
+
+`midi release` with no note lets every note go that is sounding. `midi set 7 to 80` moves a controller (7 is volume, 1 the mod wheel, 10 the pan) to a value from 0 to 100, `midi bend 50` moves the pitch wheel from -100 to 100, and `midi program 40` chooses an instrument from 0 to 127 (in General MIDI 0 is a piano, 40 a violin, 73 a flute). `midi clock 120` starts a steady clock at 120 beats a minute, which a drum machine or a sequencer follows, and `midi stop` ends it. A note that is still sounding when the sketch ends is let go.
+
+The messages go to the first MIDI output the computer has. `midi outputs` is the list of their names and `midi to "IAC"` chooses one by a part of its name, in any case. With none, nothing is sent, a message says so once, and the sketch goes on. On a Mac a synthesizer app (GarageBand, SimpleSynth) or the IAC bus is an output; Windows has a General MIDI synth of its own; on Linux, FreeBSD and OpenBSD the raw MIDI devices are the outputs. `examples/midiout` plays an arpeggio out and on the sketch's own synth, and the mouse is its pitch wheel.
+
 ## OSC, from other programs
 
 OSC (Open Sound Control) is how music software, phone controllers such as TouchOSC, and other sketches send each other numbers over a network, or just inside one computer. A message has an address, a path such as `/fader/1`, and numbers, text or true and false after it. `on osc` runs for each message that arrives, and inside it `osc` is that message: `osc.address`, `osc.value` (the first number it carries, with true as 1 and false as 0), `osc.text` (the first text), `osc.args` (everything it carries, in order: numbers, text, true and false, and a blob of bytes as a list of numbers) and `osc.from` (the computer that sent it):
@@ -266,4 +288,4 @@ While `roci run` is going, a sound file saved again is read again into the same 
 
 ## Not yet
 
-Recording what plays, and sending MIDI out, come next.
+Recording what plays comes next.

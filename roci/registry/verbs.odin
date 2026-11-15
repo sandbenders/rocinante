@@ -373,6 +373,7 @@ VERBS := []Verb{
 	{"loop", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish."},
 	{"pause", {{{{"sound", .Sound}}, {{"note", {.Number}, false}}, .None}}, "Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade out, all of them or one: `pause piano note 60`."},
 	{"midi control", {{{{"number", .Number}}, nil, .Number}}, "The latest value of a MIDI controller, 0 to 100, 0 until it first moves: `midi control 1` is the mod wheel, and the knobs and faders of a controller have numbers of their own (its manual says which, or `on midi control [ print midi.control ]`)."},
+	{"midi tempo", {{{}, nil, .Number}}, "The tempo of the clock a MIDI keyboard or sequencer sends, in beats a minute, 0 when none is coming (nothing for a second). The first call starts reading MIDI."},
 	{"osc listen", {{{{"port", .Number}}, nil, .None}}, "Starts listening for OSC messages on a port: `osc listen 8000`. Without it the first `on osc` or `osc value` listens on port 9000. If another program has the port, a message says so and the sketch goes on without listening; asking again for the port in use changes nothing."},
 	{"osc value", {{{{"address", .Text}}, nil, .Number}}, "The latest first number sent to an OSC address, 0 until one arrives: `osc value \"/fader/1\"`. The first call starts listening, as `on osc` does."},
 	{"synth", {
@@ -441,6 +442,18 @@ SOUND_OPTIONS := []Option{
 }
 
 // What `set` changes of a sound: the settings of `play`, where it is and whether it loops.
+// What `midi note` takes after the note.
+MIDI_NOTE_OPTIONS := []Option{
+	{"velocity", {.Number}, false},
+	{"channel", {.Number}, false},
+	{"for", {.Number}, false},
+}
+
+// The channel of a MIDI message, 1 to 16.
+MIDI_CHANNEL_OPTION := []Option{
+	{"channel", {.Number}, false},
+}
+
 // An instrument's envelope: how long a note takes to come in, to fall to its sustain and to fade out
 // after it is let go, in seconds, and the level it sits at while held, 0 to 100.
 ENVELOPE_OPTIONS := []Option{

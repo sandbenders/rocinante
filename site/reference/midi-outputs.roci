@@ -1,0 +1,12 @@
+names = midi outputs
+
+draw [
+  background 20
+  fill white
+  text "MIDI outputs:" at 20 20
+  y = 50
+  for each n in names [
+    text n at 40 y
+    y = y + 20
+  ]
+]

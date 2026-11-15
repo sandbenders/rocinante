@@ -1,0 +1,8 @@
+── There is no MIDI output ───────────────────────────── sketch.roci:1:1
+
+1 │ midi note 60
+  │ ^^^^^^^^^^^^
+
+No MIDI output was found on this computer, so there is nowhere to send to. Nothing was sent, and the sketch goes on. `print midi outputs` lists the outputs there are.
+
+Choose one by part of its name:  midi to ""

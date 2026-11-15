@@ -1,0 +1,69 @@
+// MIDI out: a sketch that plays a synthesizer. A slow arpeggio goes out through `midi note`, to the first
+// MIDI output the computer has or the one chosen below (`midi to` picks one by its name, and `midi outputs`
+// lists them), and the sketch's own `synth` plays the same notes, so there is something to hear when no
+// synthesizer is plugged in. The mouse is the pitch wheel (`midi bend`, -100 to 100, left to right), C
+// starts and stops a steady clock at 100 beats a minute for a drum machine to follow (`midi clock`,
+// `midi stop`), and each note leaves a ring above its key. Without a MIDI output nothing is sent and the
+// sketch carries on. On a Mac a synthesizer app or an IAC bus is an output; Windows has its own GS wavetable
+// synth; on Linux, FreeBSD and OpenBSD the raw MIDI devices are the outputs.
+window size 640 400 title "midiout"
+
+piano = synth triangle
+NOTES = [ 60 64 67 72 67 64 ]
+at_note = 1
+rings = []
+clock_on = false
+
+names = midi outputs
+options = [ "first output" ]
+for each found in names [ add found to options ]
+
+on key "c" [
+  if clock_on [ midi stop ] else [ midi clock 100 ]
+  clock_on = not clock_on
+]
+
+// A note out to MIDI and on the sketch's own synth, with a ring to show it.
+learn sing n [
+  midi note n velocity 80 for 0.25
+  play piano note n for 0.25
+  add { note: n, age: 0 } to rings
+]
+
+sing 60
+
+next_at = 0.3
+
+ui [
+  target = choice "output" options at 16 320
+]
+
+draw [
+  background (rgb 14 16 30)
+  if time > next_at [
+    next_at = next_at + 0.3
+    at_note = at_note % 6 + 1
+    sing (item at_note of NOTES)
+  ]
+  if target is "first output" [ midi to "" ] else [ midi to target ]
+  wheel_now = (mouse.x - width / 2) / width * 200
+  midi bend wheel_now
+  no fill
+  for each r in rings [
+    r.age = r.age + 1
+    stroke (hsb (r.note * 3) 190 245 alpha (100 - r.age * 100 / 60))
+    thickness 3
+    circle at ((r.note - 55) * 24) 250 radius (10 + r.age * 1.5)
+  ]
+  rings = keep rings [ it.age < 60 ]
+  no stroke
+  fill white
+  text "C: clock    mouse: pitch wheel" at 16 16
+  if count names is 0 [
+    text "no MIDI output found: the synth plays alone" at 16 40 fill (rgb 220 150 90)
+  ] else [
+    text ("outputs: " + count names) at 16 40 fill (rgb 150 160 200)
+  ]
+  text ("wheel " + (round wheel_now)) at 16 66 fill (rgb 150 160 200)
+  if clock_on [ text "clock: 100" at 16 92 fill (rgb 120 200 140) ]
+]

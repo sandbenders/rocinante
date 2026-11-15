@@ -1,0 +1,5 @@
+draw [
+  background 20
+  fill white
+  text ("tempo from a MIDI clock: " + (round midi tempo)) at 20 20
+]

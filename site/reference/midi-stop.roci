@@ -1,0 +1,8 @@
+midi clock 120
+on key "space" [ midi stop ]
+
+draw [
+  background 20
+  fill white
+  text "a clock at 120; space stops it" at 20 20
+]

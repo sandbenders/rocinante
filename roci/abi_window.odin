@@ -298,7 +298,7 @@ abi_touch :: proc "c" (index: c.int) -> Abi_Touch {
 // ---- events ----
 
 Abi_Event :: struct {
-	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc
+	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc, 13 midi bend, 14 midi program, 15 midi pressure, 16 midi start, 17 midi stop
 	window: c.int,
 	name:   cstring, // the key's name, or the mouse button's
 	finger: Abi_Touch,
@@ -353,6 +353,11 @@ abi_event_name :: proc(kind: Happening) -> string {
 	case .Midi_Up:    return "midi up"
 	case .Midi_Control: return "midi control"
 	case .Osc:        return "osc"
+	case .Midi_Bend:  return "midi bend"
+	case .Midi_Program: return "midi program"
+	case .Midi_Pressure: return "midi pressure"
+	case .Midi_Start: return "midi start"
+	case .Midi_Stop:  return "midi stop"
 	}
 	return ""
 }

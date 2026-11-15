@@ -1,0 +1,7 @@
+draw [
+  background 20
+  midi set 1 to (mouse.x / width * 100)
+  fill white
+  text "the mod wheel follows the mouse" at 20 20
+  rect at 20 60 size (mouse.x - 20) 20
+]

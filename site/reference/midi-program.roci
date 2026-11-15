@@ -1,0 +1,11 @@
+// the first nine keys choose an instrument: 0 is a piano, 40 a violin, 73 a flute
+on key "1" [ midi program 0 ]
+on key "2" [ midi program 40 ]
+on key "3" [ midi program 73 ]
+on mouse down [ midi note 64 for 1 ]
+
+draw [
+  background 20
+  fill white
+  text "1 2 3: instrument, click: a note" at 20 20
+]

@@ -1,0 +1,10 @@
+// plays a note on the MIDI output when you click: higher up is louder
+on mouse down [
+  midi note (48 + floor (mouse.x / 20)) velocity (100 - mouse.y / 3) for 0.4
+]
+
+draw [
+  background 20
+  fill white
+  text "click: left to right is low to high" at 20 20
+]

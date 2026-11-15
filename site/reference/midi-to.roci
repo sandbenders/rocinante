@@ -1,0 +1,9 @@
+// sends to the output whose name has "IAC" in it, wherever there is one
+midi to "IAC"
+on mouse down [ midi note 60 for 0.5 ]
+
+draw [
+  background 20
+  fill white
+  text "click: a note on the IAC output" at 20 20
+]

@@ -94,6 +94,11 @@ event_name :: proc(kind: roci.Happening) -> string {
 	case .Midi_Up:    return "midi up"
 	case .Midi_Control: return "midi control"
 	case .Osc:        return "osc"
+	case .Midi_Bend:  return "midi bend"
+	case .Midi_Program: return "midi program"
+	case .Midi_Pressure: return "midi pressure"
+	case .Midi_Start: return "midi start"
+	case .Midi_Stop:  return "midi stop"
 	}
 	return ""
 }
