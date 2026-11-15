@@ -1,4 +1,4 @@
-bell = synth sine
+bell = synth sine attack 0.02 release 1.5
 on mouse down [ play bell pitch (100 + mouse.x * 2) for 0.4 ]
 
 draw [

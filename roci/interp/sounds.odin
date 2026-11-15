@@ -209,6 +209,7 @@ set_sound :: proc(it: ^Interp, target: Value, options: []lang.IR_Option) {
 		return
 	}
 	at, volume, pan, speed, note, pitch: Maybe(f64)
+	attack, decay, sustain, release: Maybe(f64)
 	looping: Maybe(bool)
 	for o in options {
 		if len(o.args) == 0 {
@@ -223,9 +224,37 @@ set_sound :: proc(it: ^Interp, target: Value, options: []lang.IR_Option) {
 		case "loop":   looping = as_bool(v)
 		case "note":   note = as_number(v)
 		case "pitch":  pitch = as_number(v)
+		case "attack":  attack = as_number(v)
+		case "decay":   decay = as_number(v)
+		case "sustain": sustain = as_number(v)
+		case "release": release = as_number(v)
 		}
 	}
 	roci.set_sound(s, at, volume, pan, speed, looping, note, pitch)
+	if attack != nil || decay != nil || sustain != nil || release != nil {
+		roci.set_envelope(s, attack, decay, sustain, release)
+	}
+}
+
+// The envelope words after `synth saw` or `synth "file.sf2"`, put on the new instrument.
+@(private)
+envelope_options :: proc(it: ^Interp, options: []lang.IR_Option, s: roci.Sound) {
+	attack, decay, sustain, release: Maybe(f64)
+	if v, ok := option_value(it, options, "attack"); ok {
+		attack = as_number(v)
+	}
+	if v, ok := option_value(it, options, "decay"); ok {
+		decay = as_number(v)
+	}
+	if v, ok := option_value(it, options, "sustain"); ok {
+		sustain = as_number(v)
+	}
+	if v, ok := option_value(it, options, "release"); ok {
+		release = as_number(v)
+	}
+	if attack != nil || decay != nil || sustain != nil || release != nil {
+		roci.set_envelope(s, attack, decay, sustain, release)
+	}
 }
 
 // The settings `play` and `loop` take, and the note, pitch and seconds of what they play.

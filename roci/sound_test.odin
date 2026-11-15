@@ -535,3 +535,34 @@ test_every_format_streams_from_memory :: proc(t: ^testing.T) {
 		testing.expectf(t, !sound_state(s).playing, "%s ended", name)
 	}
 }
+
+@(test)
+test_an_instruments_envelope_is_set_in_seconds_and_a_percent :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	s := synth("saw")
+	a, d, su, r := sound_envelope(s)
+	testing.expect_value(t, [4]f64{a, d, su, r}, [4]f64{-1, -1, -1, -1}) // its own until set
+	set_envelope(s, attack = 0.5, sustain = 40, release = 2)
+	a, d, su, r = sound_envelope(s)
+	testing.expect_value(t, [4]f64{a, d, su, r}, [4]f64{0.5, -1, 40, 2}) // left as it was where not given
+	set_envelope(s, decay = 0.25)
+	a, d, su, r = sound_envelope(s)
+	testing.expect_value(t, [4]f64{a, d, su, r}, [4]f64{0.5, 0.25, 40, 2})
+	// the C function: a negative number leaves that one alone
+	abi_set_sound_envelope(c.int(s), 1, -1, 100, -1)
+	a, d, su, r = sound_envelope(s)
+	testing.expect_value(t, [4]f64{a, d, su, r}, [4]f64{1, 0.25, 100, 2})
+	// a sound from a file has none, and neither has a sound that is not there
+	whole := tone(t)
+	a, d, su, r = sound_envelope(whole)
+	testing.expect_value(t, [4]f64{a, d, su, r}, [4]f64{-1, -1, -1, -1})
+	a, d, su, r = sound_envelope(Sound(99))
+	testing.expect_value(t, [4]f64{a, d, su, r}, [4]f64{-1, -1, -1, -1})
+	// and a note with it comes in over that time
+	play(s, note = 60)
+	for _ in 0 ..< 30 {
+		step(nil, 1.0 / 60)
+	}
+	testing.expectf(t, abs(mixer.players[int(s) - 1].voices[0].gain - 0.5) < 0.02, "half way up the attack of 1 s after 0.5 s: %v", mixer.players[int(s) - 1].voices[0].gain)
+}

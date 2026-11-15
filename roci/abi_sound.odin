@@ -213,6 +213,15 @@ abi_sound_pitch :: proc "c" (sound: c.int) -> f64 {
 	return sound_state(Sound(sound)).pitch
 }
 
+@(export, link_name = "roci_set_sound_envelope")
+abi_set_sound_envelope :: proc "c" (sound: c.int, attack, decay, sustain, release: f64) {
+	context = abi_context()
+	pick :: proc(v: f64) -> Maybe(f64) {
+		return v if v >= 0 else nil
+	}
+	set_envelope(Sound(sound), pick(attack), pick(decay), pick(sustain), pick(release))
+}
+
 @(export, link_name = "roci_midi_control")
 abi_midi_control :: proc "c" (number: f64) -> f64 {
 	context = abi_context()
@@ -278,6 +287,7 @@ abi_no_sound_effect :: proc "c" (sound: c.int, name: cstring) -> c.int {
 
 // The table rows of the functions above that are not a registry shape.
 abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
+	append(all, abi_entry("roci_set_sound_envelope", typeid_of(type_of(abi_set_sound_envelope)), "void roci_set_sound_envelope(roci_sound_id sound, double attack, double decay, double sustain, double release)", "Shapes an instrument's notes: seconds to come in, seconds to fall to the sustain, the level the note sits at while held (0 to 100) and seconds to fade out after it is let go. A negative number leaves that one as it was; a SoundFont instrument's own envelope is the least these can make it."))
 	append(all, abi_entry("roci_osc_send", typeid_of(type_of(abi_osc_send)), "int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port)", "Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text, a boolean, or a list of numbers, which goes as a blob of bytes. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it."))
 	append(all, abi_entry("roci_osc_send_bundle", typeid_of(type_of(abi_osc_send_bundle)), "int roci_osc_send_bundle(const roci_value *messages, int count, const char *host, int port)", "Sends several OSC messages together as one bundle, which the receiver reads as a group: `messages` holds `count` values of kind ROCI_LIST, each a message whose first item is its address (text) and whose other items are its arguments, as for roci_osc_send. Gives 1 when it was sent, and 0 when an address does not begin with a slash, the host is unknown or the system would not send it."))
 	append(all, abi_entry("roci_load_sound", typeid_of(type_of(abi_load_sound)), "roci_sound_id roci_load_sound(const unsigned char *bytes, int length)", "Takes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A file shorter than 30 seconds is decoded whole; a longer one is read as it plays from a copy of the bytes, so they may be let go of at once. A sound is stopped at its start, at volume 100, in the middle and at speed 1."))

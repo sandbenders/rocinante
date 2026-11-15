@@ -634,7 +634,7 @@ void roci_rewind(roci_sound_id sound);
 /* How loud everything that plays is now, 0 (silent) to 100: `circle at 200 200 radius (level * 2)`. `level rain` is one sound, `level mic` the microphone. */
 double roci_level(void);
 
-/* Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`), or from a SoundFont in the assets, `piano = synth "upright.sf2"`, with `preset` naming one of its instruments by number (General MIDI's 0 is a piano, 48 strings) or by name. `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together. */
+/* Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`), or from a SoundFont in the assets, `piano = synth "upright.sf2"`, with `preset` naming one of its instruments by number (General MIDI's 0 is a piano, 48 strings) or by name. `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together. `attack`, `decay`, `sustain` and `release` shape each note: seconds to come in, seconds to fall to the sustain, the level it sits at while held (0 to 100) and seconds to fade out after it is let go, as in `synth saw attack 0.5 release 2` or later `set pad attack 3`; a SoundFont's own envelope is the least they can be. */
 roci_sound_id roci_synth(const char *wave);
 
 /* The latest value of a MIDI controller, 0 to 100, 0 until it first moves: `midi control 1` is the mod wheel, and the knobs and faders of a controller have numbers of their own (its manual says which, or `on midi control [ print midi.control ]`). */
@@ -1128,6 +1128,9 @@ void roci_default_window_size(double width, double height);
 
 /* A number that is the same for two frames that look the same, for a window's last frame: what tests compare. */
 unsigned long long roci_frame_hash(roci_window_id window);
+
+/* Shapes an instrument's notes: seconds to come in, seconds to fall to the sustain, the level the note sits at while held (0 to 100) and seconds to fade out after it is let go. A negative number leaves that one as it was; a SoundFont instrument's own envelope is the least these can make it. */
+void roci_set_sound_envelope(roci_sound_id sound, double attack, double decay, double sustain, double release);
 
 /* Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text, a boolean, or a list of numbers, which goes as a blob of bytes. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it. */
 int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port);

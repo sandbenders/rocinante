@@ -376,9 +376,9 @@ VERBS := []Verb{
 	{"osc listen", {{{{"port", .Number}}, nil, .None}}, "Starts listening for OSC messages on a port: `osc listen 8000`. Without it the first `on osc` or `osc value` listens on port 9000. If another program has the port, a message says so and the sketch goes on without listening; asking again for the port in use changes nothing."},
 	{"osc value", {{{{"address", .Text}}, nil, .Number}}, "The latest first number sent to an OSC address, 0 until one arrives: `osc value \"/fader/1\"`. The first call starts listening, as `on osc` does."},
 	{"synth", {
-		{{{"wave", .Name}}, nil, .Sound},
-		{{{"file", .Text}}, {{"preset", {.Any}, false}}, .Sound},
-	}, "Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`), or from a SoundFont in the assets, `piano = synth \"upright.sf2\"`, with `preset` naming one of its instruments by number (General MIDI's 0 is a piano, 48 strings) or by name. `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together."},
+		{{{"wave", .Name}}, ENVELOPE_OPTIONS, .Sound},
+		{{{"file", .Text}}, SOUNDFONT_OPTIONS, .Sound},
+	}, "Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`), or from a SoundFont in the assets, `piano = synth \"upright.sf2\"`, with `preset` naming one of its instruments by number (General MIDI's 0 is a piano, 48 strings) or by name. `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together. `attack`, `decay`, `sustain` and `release` shape each note: seconds to come in, seconds to fall to the sustain, the level it sits at while held (0 to 100) and seconds to fade out after it is let go, as in `synth saw attack 0.5 release 2` or later `set pad attack 3`; a SoundFont's own envelope is the least they can be."},
 	{"rewind", {{{{"sound", .Sound}}, {{"by", {.Number}, false}}, .None}}, "Puts a sound back to its start, or some seconds back: `rewind rain by 10`. A sound that plays goes on playing."},
 	{"level", {
 		{{}, nil, .Number},
@@ -441,6 +441,23 @@ SOUND_OPTIONS := []Option{
 }
 
 // What `set` changes of a sound: the settings of `play`, where it is and whether it loops.
+// An instrument's envelope: how long a note takes to come in, to fall to its sustain and to fade out
+// after it is let go, in seconds, and the level it sits at while held, 0 to 100.
+ENVELOPE_OPTIONS := []Option{
+	{"attack", {.Number}, false},
+	{"decay", {.Number}, false},
+	{"sustain", {.Number}, false},
+	{"release", {.Number}, false},
+}
+
+SOUNDFONT_OPTIONS := []Option{
+	{"preset", {.Any}, false},
+	{"attack", {.Number}, false},
+	{"decay", {.Number}, false},
+	{"sustain", {.Number}, false},
+	{"release", {.Number}, false},
+}
+
 SOUND_SET_OPTIONS := []Option{
 	{"at", {.Number}, false},
 	{"volume", {.Number}, false},
@@ -449,4 +466,8 @@ SOUND_SET_OPTIONS := []Option{
 	{"loop", {.Boolean}, false},
 	{"note", {.Number}, false},
 	{"pitch", {.Number}, false},
+	{"attack", {.Number}, false},
+	{"decay", {.Number}, false},
+	{"sustain", {.Number}, false},
+	{"release", {.Number}, false},
 }

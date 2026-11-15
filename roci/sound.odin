@@ -15,6 +15,7 @@ package roci
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:sync"
 
 import "audio"
 import "platform"
@@ -322,6 +323,30 @@ synth :: proc(wave: string) -> Sound {
 		}
 	}
 	return audio.add_instrument(the_mixer(), chosen)
+}
+
+// Shapes an instrument's notes: how long one takes to come in, to fall to its sustain and to fade out
+// after it is let go, in seconds, and the level it sits at while held, 0 to 100. A field left nil stays
+// as it was. A SoundFont instrument's own envelope is the least these can make it.
+set_envelope :: proc(s: Sound, attack := Maybe(f64){}, decay := Maybe(f64){}, sustain := Maybe(f64){}, release := Maybe(f64){}) {
+	c: audio.Change
+	c.attack, c.decay, c.release = attack, decay, release
+	if v, ok := sustain.?; ok {
+		c.sustain = v / 100
+	}
+	audio.change(the_mixer(), s, c)
+}
+
+// An instrument's envelope as set: attack, decay and release in seconds and the sustain level 0 to 100,
+// each -1 when it was not set (the instrument's own); all -1 for a sound that is not an instrument.
+sound_envelope :: proc(s: Sound) -> (attack, decay, sustain, release: f64) {
+	m := the_mixer()
+	sync.guard(&m.lock)
+	if s == 0 || int(s) > len(m.players) || m.players[int(s) - 1].wave == .None {
+		return -1, -1, -1, -1
+	}
+	p := m.players[int(s) - 1]
+	return p.attack, p.decay, p.sustain * 100 if p.sustain >= 0 else -1, p.release
 }
 
 // Puts a sound back to its start, or `by` seconds back.

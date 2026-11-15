@@ -3,8 +3,12 @@
 // 60` starts middle C and `pause piano note 60` lets it go, so notes held together sound together
 // as a chord. A click on a key plays it too. The bars above the keys are the instrument's `bands`,
 // its pitches from low to high, and they move to the right as the notes go up. It starts with a
-// chord of C major for a second (`for 1`), which lets itself go.
-window size 640 300 title "keys"
+// chord of C major for a second (`for 1`), which lets itself go. Three sliders shape what it plays:
+// `attack` is how long a note takes to come in and `release` how long it takes to fade after the key
+// is let go, both set on the instrument with `set piano attack ... release ...` (or when it is made:
+// `synth triangle attack 0.5`), and `cutoff` is the filter `effect piano "filter"` puts over it, a low
+// pass that lets only the pitches below it through. Slow the attack and the release for a pad.
+window size 640 380 title "keys"
 
 piano = synth triangle
 for each n in [ 60 64 67 ] [ play piano note n for 1 ]
@@ -22,6 +26,14 @@ for i from 1 to 8 [
   } to board
 ]
 clicked = 0
+
+ui [
+  row [
+    attack_now = slider "attack" 0.01 2 start 0.01 width 130
+    release_now = slider "release" 0.05 3 start 0.08 width 130
+    cutoff_now = slider "cutoff" 200 8000 start 8000 width 130
+  ] at 16 310 width 608
+]
 
 on mouse down [
   for each k in board [
@@ -41,6 +53,8 @@ on mouse up [
 
 draw [
   background (rgb 16 18 34)
+  set piano attack attack_now release release_now
+  effect piano "filter" by { kind: "low", cutoff: cutoff_now }
   heard = bands piano 48
   for i from 1 to 48 [
     high = (item i of heard) * 0.9

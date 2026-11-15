@@ -103,6 +103,22 @@ draw [
 
 `set organ pitch (mouse.x + 100)` slides the notes that sound, and a note played with no `note` or `pitch` takes the instrument's own pitch, which `set` changes. A note comes in and fades out over a few thousandths of a second, so starting and stopping never clicks. A sound from a file can be played at a note too: it is taken to be middle C, and plays faster and higher for a higher note.
 
+### The shape of a note
+
+By default a note comes in over 5 thousandths of a second and fades out over 80. Four words change that, in seconds, for each note an instrument plays: `attack` is how long a note takes to come in, `decay` how long it takes to fall from its top to the `sustain` level, `sustain` the level it sits at while the key is held (0 to 100, the top if you do not say) and `release` how long it takes to fade out once the key is let go. Give them when the instrument is made, or change them later with `set`:
+
+```roci
+pad = synth saw attack 1.5 release 3
+strings = synth triangle attack 0.2 decay 0.5 sustain 60 release 0.8
+draw [
+  set pad release (mouse.x / 100)
+]
+```
+
+A pad with a slow attack swells in, and a long release lets a chord ring on after the keys are up. A SoundFont instrument keeps the envelope its recording has, and these words can only make it longer, so a piano with `release 3` rings on. For a filter on an instrument, put the filter effect on it: `effect pad "filter" by { cutoff: 800 }` lets only the pitches below 800 hertz through, and the cutoff can follow the mouse. `examples/keys` has a slider for each of the three.
+
+When more notes sound at once than an instrument has voices (32), the oldest quiet one is taken for the new note and dies away under it, so nothing clicks.
+
 ## Recorded instruments: SoundFonts
 
 A SoundFont (a `.sf2` file) is a bank of recorded instruments: a piano, strings, drums, each a set of recordings and the keys and strengths each one covers. Put one in `assets/` and `synth` makes an instrument of it, played exactly as the waves are:

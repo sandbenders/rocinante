@@ -65,8 +65,8 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"align", "alpha", "angle", "around", "as", "at", "blend", "bordered", "by", "cursor", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "height", "in",
-	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "port", "preset", "radius", "ratio", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "thickness", "tint", "title", "to", "topmost", "tube", "visible", "volume", "width",
+	"align", "alpha", "angle", "around", "as", "at", "attack", "blend", "bordered", "by", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "height", "in",
+	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "tube", "visible", "volume", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.
@@ -199,7 +199,7 @@ WINDOW_FREE_WORDS := [?]string{
 
 // Words only the settings of a sound use (`play rain volume 40`, `set rain pan -50 speed 1.5`),
 // which stay free as names in the same way: `speed` is a name many sketches have.
-SOUND_FREE_WORDS := [?]string{"note", "pan", "pitch", "port", "preset", "speed", "volume"}
+SOUND_FREE_WORDS := [?]string{"attack", "decay", "note", "pan", "pitch", "port", "preset", "release", "speed", "sustain", "volume"}
 
 // An `on` event and what follows its name: `on key "space" [ ... ]`, `on mouse down [ ... ]`.
 // `on w receive msg [ ... ]` is its own form, because a window comes first.

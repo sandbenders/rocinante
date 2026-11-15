@@ -357,6 +357,10 @@ test_the_keys_example_plays_held_keys :: proc(t: ^testing.T) {
 	roci.step({platform.Mouse_Moved{window = platform.Window_Id(w), x = 260, y = 200}, click_event(w, 260, 200)})
 	roci.step()
 	testing.expect_value(t, as_number(global_named(p, "clicked")), 65)
+	// the sliders shape the instrument: their start values are its envelope, and the filter is on it
+	attack, _, _, release := roci.sound_envelope(piano)
+	testing.expect(t, abs(attack - 0.01) < 1e-6 && abs(release - 0.08) < 1e-6, "the sliders' start values")
+	testing.expect_value(t, as_number(global_named(p, "cutoff_now")), 8000)
 	testing.expect_value(t, len(p.errors), 0)
 }
 
@@ -662,4 +666,31 @@ test_the_player_example_seeks_pauses_and_changes_track :: proc(t: ^testing.T) {
 	expected := roci.sound_state(drift).length / 2
 	testing.expectf(t, abs(roci.sound_state(drift).at - expected) < 1, "click: %v, not %v", roci.sound_state(drift).at, expected)
 	testing.expect_value(t, len(p.errors), 0)
+}
+
+// The envelope words: given to `synth`, changed with `set`, on a wave instrument and a SoundFont.
+@(test)
+test_the_envelope_words_of_an_instrument :: proc(t: ^testing.T) {
+	text := `pad = synth saw attack 0.5 decay 0.2 sustain 40 release 2
+ding = synth "tiny.sf2" preset 0 attack 0.3
+plain = synth sine
+attack = 7
+release = 8
+set plain attack 1.5 release 0.25
+`
+	p := run_with_sounds(t, "envelope_words", text, "tests/sounds", {"tiny.sf2"})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	pad := as_sound(global_named(p, "pad"))
+	ding := as_sound(global_named(p, "ding"))
+	plain := as_sound(global_named(p, "plain"))
+	a, d, s, r := roci.sound_envelope(pad)
+	testing.expect_value(t, [4]f64{a, d, s, r}, [4]f64{0.5, 0.2, 40, 2})
+	a, d, s, r = roci.sound_envelope(ding)
+	testing.expect_value(t, [4]f64{a, d, s, r}, [4]f64{0.3, -1, -1, -1})
+	a, d, s, r = roci.sound_envelope(plain)
+	testing.expect_value(t, [4]f64{a, d, s, r}, [4]f64{1.5, -1, -1, 0.25})
+	// the words stay free as names
+	testing.expect_value(t, as_number(global_named(p, "attack")), 7)
+	testing.expect_value(t, as_number(global_named(p, "release")), 8)
 }

@@ -4,6 +4,9 @@ LABELS: a list of text
 NOTES: a list of numbers
 board: a list of records with letter, label, note, down and x
 clicked: a number
+attack_now: a number
+release_now: a number
+cutoff_now: a number
 heard: a list of numbers
 high: a number
 now: true or false
