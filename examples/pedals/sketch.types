@@ -1,0 +1,9 @@
+tone: a sound
+NAMES: a list of text
+pedals: a list of records with name, wanted and on
+LETTERS: a list of text
+NOTES: a list of numbers
+board: a list of records with letter, note and down
+now: true or false
+heard: a list of numbers
+high: a number

@@ -1179,6 +1179,21 @@ roci_sound_id roci_soundfont(const char *path, int preset);
 /* The same, the preset found by its name in any case (the first one when no preset has it). */
 roci_sound_id roci_soundfont_named(const char *path, const char *preset);
 
+/* The whole mix, as a sound for roci_sound_effect (its effects run over everything that plays, last) and roci_level_of. */
+roci_sound_id roci_speakers(void);
+
+/* Puts a sound effect on a sound or the speakers ("overdrive", "fuzz", "delay", "reverb", "chorus", "flanger", "phaser", "tremolo", "compressor", "eq", "rotary", "filter", "bitcrush", "ring", "wah" or "limiter"), at the end of its effects, with its start values; 1 when it is on, 0 for a name no effect has or no sound. */
+int roci_sound_effect(roci_sound_id sound, const char *name);
+
+/* Sets a setting of a sound's effect, putting the effect on first if it has none: amounts 0 to 100, times in seconds, rates in times a second, pitches in hertz, eq bands -100 to 100. 0 for a setting the effect has not. */
+int roci_sound_effect_set(roci_sound_id sound, const char *name, const char *setting, double value);
+
+/* The same for a setting that is a word: the filter's kind, "low", "high" or "band". */
+int roci_sound_effect_word(roci_sound_id sound, const char *name, const char *setting, const char *word);
+
+/* Takes a sound effect off a sound or the speakers; 0 when it had none of that name. */
+int roci_no_sound_effect(roci_sound_id sound, const char *name);
+
 /* The microphone, as a sound for roci_level_of and roci_bands_of. The first call in a program with a window opens the computer's default recording device (the system may ask first). Playing it does nothing. */
 roci_sound_id roci_mic(void);
 

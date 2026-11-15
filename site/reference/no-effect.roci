@@ -1,0 +1,10 @@
+tone = synth saw
+effect tone "delay" by { time: 0.25, feedback: 50, mix: 50 }
+on mouse down [ play tone note 60 for 0.1 ]
+on key "space" [ no effect tone "delay" ]
+
+draw [
+  background 20
+  fill white
+  text "click for a note and its echoes; space takes the delay off" at 20 20
+]

@@ -12,6 +12,7 @@
 // times are in seconds.
 package roci
 
+import "core:fmt"
 import "core:strings"
 
 import "audio"
@@ -170,6 +171,109 @@ soundfont_presets :: proc(s: Sound) -> []string {
 	return audio.font_preset_names(the_mixer(), s, context.temp_allocator)
 }
 
+// The whole mix, as a sound for `sound_effect` (its effects run over everything that plays, last)
+// and for `level` (everything). Playing it does nothing.
+SPEAKERS :: audio.SPEAKERS
+
+the_speakers :: proc() -> Sound {
+	the_mixer()
+	return SPEAKERS
+}
+
+// A setting of a sound effect, by its name: a number, or a word for the filter's `kind`.
+Sound_Setting :: struct {
+	name:   string,
+	number: f64,
+	word:   string, // when it is a word rather than a number
+}
+
+Sound_Effect_Problem :: enum u8 {
+	None,
+	Unknown_Effect, // no effect has that name (`sound_effect_names` lists them)
+	No_Sound,       // the number is no sound
+}
+
+// Puts an effect on a sound, or on the speakers, or changes the settings of the one it has (which
+// keeps its place, and its echoes); settings not given keep the values they had, at first those of
+// the effect. `unknown` holds the settings that are not the effect's (or a word it does not take),
+// in the frame's memory, for a message; they are left out.
+sound_effect :: proc(s: Sound, name: string, settings: []Sound_Setting = nil) -> (unknown: []string, problem: Sound_Effect_Problem) {
+	kind, known := audio.effect_kind(name)
+	if !known {
+		return nil, .Unknown_Effect
+	}
+	values := make([dynamic]audio.Effect_Value, context.temp_allocator)
+	wrong := make([dynamic]string, context.temp_allocator)
+	for setting in settings {
+		index := audio.setting_index(kind, setting.name)
+		if index < 0 {
+			append(&wrong, setting.name)
+			continue
+		}
+		value := setting.number
+		if setting.word != "" || (kind == .Filter && setting.name == "kind") {
+			// the filter's kind is a word: its place among the kinds
+			found := false
+			for k, i in audio.FILTER_KINDS {
+				if k == setting.word {
+					value, found = f64(i), true
+				}
+			}
+			if !found {
+				append(&wrong, fmt.tprintf("%s: \"%s\"", setting.name, setting.word))
+				continue
+			}
+		}
+		append(&values, audio.Effect_Value{index, value})
+	}
+	if !audio.effect_put(the_mixer(), s, kind, values[:]) {
+		return wrong[:], .No_Sound
+	}
+	return wrong[:], .None
+}
+
+// Takes an effect off a sound or the speakers; false when it had none of that name.
+no_sound_effect :: proc(s: Sound, name: string) -> bool {
+	kind, known := audio.effect_kind(name)
+	return known && audio.effect_take_off(the_mixer(), s, kind)
+}
+
+// The value a setting of a sound effect starts at (0 for one it has not).
+sound_effect_default :: proc(name, setting: string) -> f64 {
+	kind, known := audio.effect_kind(name)
+	if !known {
+		return 0
+	}
+	if i := audio.setting_index(kind, setting); i >= 0 {
+		return audio.EFFECTS[kind].defaults[i]
+	}
+	return 0
+}
+
+// The names of every sound effect, in order.
+sound_effect_names :: proc(allocator := context.temp_allocator) -> []string {
+	out := make([]string, len(audio.Effect_Kind), allocator)
+	for info, kind in audio.EFFECTS {
+		out[int(kind)] = info.name
+	}
+	return out
+}
+
+// The settings of a sound effect, by its name; nil for a name that is no effect.
+sound_effect_settings :: proc(name: string, allocator := context.temp_allocator) -> []string {
+	kind, known := audio.effect_kind(name)
+	if !known {
+		return nil
+	}
+	out := make([dynamic]string, allocator)
+	for setting in audio.EFFECTS[kind].settings {
+		if setting != "" {
+			append(&out, setting)
+		}
+	}
+	return out[:]
+}
+
 // How many notes of an instrument are held now, not yet let go (0 for a sound from a file).
 sound_notes :: proc(s: Sound) -> int {
 	return audio.held_notes(the_mixer(), s)
@@ -219,6 +323,9 @@ sound_state :: proc(s: Sound) -> Sound_State {
 	if s == MIC {
 		m := the_mixer()
 		return {playing = m.mic_open, volume = 100, speed = 1}
+	}
+	if s == SPEAKERS {
+		return {playing = speakers != nil, volume = 100, speed = 1}
 	}
 	st := audio.state(the_mixer(), s)
 	note := audio.hz_note(st.pitch) if st.pitch > 0 else 0

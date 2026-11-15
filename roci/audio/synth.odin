@@ -337,7 +337,6 @@ mix_instrument :: proc(p: ^Player, out: []f32) {
 		value := f32(sum * NOTE_GAIN)
 		out[i * 2] += value * left
 		out[i * 2 + 1] += value * right
-		ring_push(&p.heard, value * (left + right) / 2)
 	}
 	still := false
 	for v in p.voices {
@@ -430,7 +429,6 @@ mix_font :: proc(p: ^Player, out: []f32) {
 		rr := f32(sum_right * FONT_GAIN * p.volume * min(1, 1 + p.pan))
 		out[i * 2] += l
 		out[i * 2 + 1] += rr
-		ring_push(&p.heard, (l + rr) / 2)
 	}
 	still := false
 	for v in p.voices {

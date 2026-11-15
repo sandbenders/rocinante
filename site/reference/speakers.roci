@@ -1,0 +1,12 @@
+tune = synth triangle
+effect speakers "reverb" by { size: 80, mix: 30 }
+effect speakers "limiter"
+on mouse down [ play tune note (48 + mouse.x / 20) for 0.3 ]
+
+draw [
+  background 20
+  fill (rgb 120 180 255)
+  circle at 200 150 radius (10 + (level speakers) * 3)
+  fill white
+  text "click: every note rings through the speakers' reverb" at 20 20
+]

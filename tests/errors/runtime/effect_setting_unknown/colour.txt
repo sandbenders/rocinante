@@ -1,0 +1,8 @@
+── Warning: `delay` has no setting `colour` ──────────── sketch.roci:2:1
+
+2 │ effect tone "delay" by { colour: 3 }
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Its settings are time, feedback and mix. The effect leaves it out and uses the others.
+
+Use its settings:  effect tone "delay" by { time: 0.3 }

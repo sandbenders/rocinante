@@ -1,0 +1,3 @@
+tone = synth saw
+effect tone "wobble"
+play tone note 60

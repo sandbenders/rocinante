@@ -1,0 +1,8 @@
+── Warning: `filter` has no setting `kind: "sideways"` ─── sketch.roci:2:1
+
+2 │ effect tone "filter" by { kind: "sideways" }
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Its settings are cutoff, resonance and kind, and its kind is "low", "high" or "band". The effect leaves it out and uses the others.
+
+Use its settings:  effect tone "filter" by { kind: "low" }

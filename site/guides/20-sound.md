@@ -1,6 +1,6 @@
 ---
 title: "Sound"
-summary: "Sounds from files and instruments of your own, played from the keyboard or a MIDI keyboard, and drawing with how loud and how high they are."
+summary: "Sounds from files and instruments of your own, effects on them, a MIDI keyboard, and drawing with how loud and how high they are."
 weight: 20
 ---
 
@@ -114,6 +114,41 @@ play piano note 60 for 1
 
 A file with many instruments, such as a General MIDI set, numbers them: `preset 0` is a piano, `preset 48` strings, `preset 56` a trumpet. `preset` also takes the instrument's name, `preset "Trumpet"`. Without it the first instrument plays, and a preset the file does not have says which ones it has. The instrument's volume picks the recordings made at that strength, so `volume midi.velocity` plays the keyboard's touch. The files can be large, a General MIDI set over a hundred megabytes; small ones of a single instrument are a few megabytes.
 
+## Effects
+
+`effect` with a sound first puts a sound effect on it: what a guitarist's pedals and a studio's rack do. The record after `by` gives its settings, and saying it again with new ones changes them while it plays, so a setting can follow the mouse:
+
+```roci
+guitar = synth saw
+effect guitar "overdrive" by { drive: 60 }
+effect guitar "delay" by { time: 0.3, feedback: 40, mix: 30 }
+on mouse down [ play guitar note 52 for 0.4 ]
+draw [ effect guitar "delay" by { time: mouse.x / width } ]
+```
+
+A sound goes through its effects in the order they were first put on it, and `no effect guitar "delay"` takes one off. `speakers` is the whole mix: its effects run over everything that plays, after each sound's own, `effect speakers "reverb"` for a shared room and `effect speakers "limiter"` to keep many sounds from crackling.
+
+| effect | what it does | settings, and where they start |
+|---|---|---|
+| `overdrive` | warm, rounded grit | `drive` 50, `tone` 50, `level` 70 |
+| `fuzz` | hard, buzzing clip | `drive` 70, `tone` 40, `level` 60 |
+| `delay` | echoes | `time` 0.3, `feedback` 40, `mix` 30 |
+| `reverb` | a room around it | `size` 60, `damping` 50, `mix` 25 |
+| `chorus` | many voices at once | `rate` 0.8, `depth` 50, `mix` 50 |
+| `flanger` | a jet's swoosh | `rate` 0.25, `depth` 70, `feedback` 50, `mix` 50 |
+| `phaser` | a swirling sweep | `rate` 0.5, `depth` 70, `feedback` 40, `mix` 50 |
+| `tremolo` | the volume pulsing | `rate` 5, `depth` 50 |
+| `compressor` | loud parts held down | `threshold` 50, `ratio` 4, `attack` 0.01, `release` 0.2, `level` 100 |
+| `eq` | more or less bass, middle, treble | `low` 0, `mid` 0, `high` 0 |
+| `rotary` | a spinning speaker | `rate` 0.8, `depth` 60, `mix` 100 |
+| `filter` | only the low, high or middle pitches | `cutoff` 1000, `resonance` 20, `kind` `"low"` (or `"high"`, `"band"`) |
+| `bitcrush` | an old console's grit | `bits` 8, `rate` 11025, `mix` 100 |
+| `ring` | metallic, robot voices | `pitch` 300, `mix` 100 |
+| `wah` | a filter that follows how loud it is | `sensitivity` 50, `resonance` 60, `mix` 100 |
+| `limiter` | never past a ceiling | `ceiling` 95, `release` 0.1 |
+
+Amounts are 0 to 100, as volume is; `time`, `attack` and `release` are seconds; `rate` is times a second; `cutoff` and `pitch` are hertz; the `eq` bands go from -100 (12 decibels softer) to 100 (12 louder). An echo or a reverb goes on sounding after the sound has stopped, and `level` and `bands` hear a sound after its effects.
+
 ## A MIDI keyboard
 
 A MIDI keyboard or controller plugged in (USB) is heard with no setup. `on midi down` runs when a key goes down, and inside it `midi` is that key: `midi.note` is its number, the same numbers `note` takes, and `midi.velocity` how hard it was struck, 0 to 100. `on midi up` runs when it comes up. So an instrument is played by a keyboard in three lines:
@@ -173,4 +208,4 @@ While `roci run` is going, a sound file saved again is read again into the same 
 
 ## Not yet
 
-Effects, recording what plays, sending MIDI out, and OSC come next.
+Recording what plays, sending MIDI out, and OSC come next.

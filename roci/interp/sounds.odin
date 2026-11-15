@@ -14,6 +14,7 @@ import "../"
 import "../folder"
 import "../lang"
 import "../maths"
+import "../registry"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -326,4 +327,83 @@ load_soundfont :: proc(it: ^Interp, name: string, preset: Value, span: lang.Span
 		fail(it, .Preset_Missing, span, name, asked, strings.join(presets, ", ", context.temp_allocator), strings.concatenate({"piano = synth \"", name, "\" preset ", first[:strings.index_byte(first, ' ')] if strings.index_byte(first, ' ') > 0 else first}, context.temp_allocator))
 	}
 	return s
+}
+
+// `effect guitar "delay" by { time: 0.3, mix: 30 }`: a sound effect put on a sound, or the settings of
+// the one it has changed. A name no effect has is said once; so is a setting the effect has not,
+// which is left out.
+@(private)
+sound_effect_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) {
+	s := as_sound(eval(it, call.args[0]))
+	name := as_text(eval(it, call.args[1]))
+	settings := make([dynamic]roci.Sound_Setting, context.temp_allocator)
+	if record, ok := option_or_nil(it, call.options, "by").(^Record); ok && record != nil {
+		for f, i in it.types.shapes[record.shape].fields {
+			value := Value(nil)
+			if i < len(record.fields) {
+				value = record.fields[i]
+			}
+			setting := roci.Sound_Setting{name = f.name}
+			#partial switch x in value {
+			case f64:    setting.number = x
+			case bool:   setting.number = 1 if x else 0
+			case string: setting.word = x
+			}
+			append(&settings, setting)
+		}
+	}
+	unknown, problem := roci.sound_effect(s, name, settings[:])
+	switch problem {
+	case .Unknown_Effect:
+		names := roci.sound_effect_names()
+		fail(it, .Sound_Effect_Missing, e.span, name, words_list(names), "", fmt.tprintf("effect %s \"%s\"", text_of_arg(it, call.args[0]), nearest_name(name, names)))
+		return
+	case .No_Sound, .None:
+	}
+	if len(unknown) > 0 {
+		known := roci.sound_effect_settings(name)
+		help := fmt.tprintf("Its settings are %s.", words_list(known))
+		if name == "filter" {
+			help = fmt.tprintf("Its settings are %s, and its kind is \"low\", \"high\" or \"band\".", words_list(known))
+		}
+		example := fmt.tprintf("%s: %v", known[0], roci.sound_effect_default(name, known[0]))
+		if strings.has_prefix(unknown[0], "kind:") {
+			example = "kind: \"low\""
+		}
+		fail(it, .Effect_Setting_Unknown, e.span, name, unknown[0], help, fmt.tprintf("effect %s \"%s\" by %s %s %s", text_of_arg(it, call.args[0]), name, "{", example, "}"))
+	}
+}
+
+// Words joined for a message: "a, b and c".
+@(private)
+words_list :: proc(words: []string) -> string {
+	switch len(words) {
+	case 0: return ""
+	case 1: return words[0]
+	}
+	return strings.concatenate({strings.join(words[:len(words) - 1], ", ", context.temp_allocator), " and ", words[len(words) - 1]}, context.temp_allocator)
+}
+
+// The name among `names` nearest to `name` (by how many letters differ), or the first.
+@(private)
+nearest_name :: proc(name: string, names: []string) -> string {
+	best, found := 1 << 30, names[0] if len(names) > 0 else name
+	for n in names {
+		if d := registry.edit_distance(name, n); d < best {
+			best, found = d, n
+		}
+	}
+	return found
+}
+
+// What a sketch wrote for an argument, for a message's example (the sound's name, mostly).
+@(private)
+text_of_arg :: proc(it: ^Interp, arg: ^lang.IR) -> string {
+	if load, ok := arg.kind.(lang.IR_Load); ok && load.symbol != nil {
+		return load.symbol.name
+	}
+	if b, ok := arg.kind.(lang.IR_Builtin); ok {
+		return b.name
+	}
+	return "sound"
 }

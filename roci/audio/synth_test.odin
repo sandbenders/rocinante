@@ -188,7 +188,11 @@ test_every_wave_sounds_and_noise_repeats :: proc(t: ^testing.T) {
 			defer delete(out)
 			p := player(m, s)
 			mix_instrument(p, out)
-			testing.expectf(t, level_of(p.heard.data[:]) > 5, "%v sounds", wave)
+			mono := make([]f32, 2400, context.temp_allocator)
+			for i in 0 ..< 2400 {
+				mono[i] = out[i * 2]
+			}
+			testing.expectf(t, level_of(mono) > 5, "%v sounds", wave)
 			for i in 0 ..< 64 {
 				v := out[(2000 + i) * 2]
 				if run == 0 {

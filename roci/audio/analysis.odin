@@ -43,7 +43,7 @@ ring_copy :: proc(r: ^Ring, out: ^[HISTORY]f32) {
 history_of :: proc(m: ^Mixer, s: Sound, everything: bool, out: ^[HISTORY]f32) {
 	sync.guard(&m.lock)
 	switch {
-	case everything:
+	case everything, s == SPEAKERS:
 		ring_copy(&m.heard, out)
 	case s == MIC:
 		ring_copy(&m.mic, out)

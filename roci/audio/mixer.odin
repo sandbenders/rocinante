@@ -36,6 +36,8 @@ Player :: struct {
 	noise:   u32,
 	font:    ^Font, // a SoundFont instrument's font, the player's own
 	preset:  int,
+	effects: [dynamic]^Effect, // what it goes through, in order (effects.odin)
+	tail:    f64,              // seconds its effects still sound after it stopped
 }
 
 Mixer :: struct {
@@ -44,6 +46,8 @@ Mixer :: struct {
 	heard:    Ring, // what the mix gave last: everything that played
 	mic:      Ring, // what the microphone heard last
 	mic_open: bool, // the microphone gives frames
+	speaker_effects: [dynamic]^Effect, // what the whole mix goes through last
+	scratch:  [MIX_CHUNK * CHANNELS]f32, // one sound's frames, before its effects
 }
 
 // Makes a mixer whose players are kept in the allocator given.
@@ -62,7 +66,15 @@ destroy_mixer :: proc(m: ^Mixer) {
 	for p in m.players {
 		delete(p.samples, allocator)
 		font_destroy(p.font, allocator)
+		for e in p.effects {
+			effect_destroy(e, allocator)
+		}
+		delete(p.effects)
 	}
+	for e in m.speaker_effects {
+		effect_destroy(e, allocator)
+	}
+	delete(m.speaker_effects)
 	delete(m.players)
 	free(m, allocator)
 }
@@ -243,76 +255,118 @@ any_playing :: proc(m: ^Mixer) -> bool {
 // and towards one side the other one fades.
 mix :: proc(m: ^Mixer, out: []f32) {
 	sync.guard(&m.lock)
+	for at := 0; at < len(out); at += MIX_CHUNK * CHANNELS {
+		mix_chunk(m, out[at:min(len(out), at + MIX_CHUNK * CHANNELS)])
+	}
+}
+
+// Frames mixed at once: each sound is mixed alone into a buffer this long, so its effects can run
+// over it before it joins the others.
+MIX_CHUNK :: 1024
+
+@(private)
+mix_chunk :: proc(m: ^Mixer, out: []f32) {
 	for &v in out {
 		v = 0
 	}
 	frames := len(out) / CHANNELS
+	own := m.scratch[:len(out)]
 	for &p in m.players {
-		if !p.playing {
-			// a sound that stopped is silent at once
+		if !p.playing && p.tail <= 0 {
+			// a sound that stopped (and whose effects have nothing left to sound) is silent at once
 			ring_clear(&p.heard)
 			continue
 		}
-		if p.wave != .None {
-			mix_instrument(&p, out)
-			continue
+		for &v in own {
+			v = 0
 		}
-		count := frames_of(p)
-		if count == 0 {
-			p.playing = false
-			continue
+		was_playing := p.playing
+		if p.playing {
+			if p.wave != .None {
+				mix_instrument(&p, own)
+			} else {
+				mix_samples(&p, own)
+			}
 		}
-		played := 0
-		left := f32(p.volume * min(1, 1 - p.pan))
-		right := f32(p.volume * min(1, 1 + p.pan))
-		end := f64(count)
+		if len(p.effects) > 0 {
+			for e in p.effects {
+				effect_run(e, own)
+			}
+			// what the effects still have to sound once the sound stops
+			if was_playing {
+				p.tail = 0
+				for e in p.effects {
+					p.tail = max(p.tail, effect_tail(e))
+				}
+			} else {
+				p.tail -= f64(frames) / RATE
+			}
+		} else {
+			p.tail = 0
+		}
 		for i in 0 ..< frames {
-			if p.at >= end {
-				if !p.looping {
-					p.at = end
-					p.playing = false
-					break
-				}
-				p.at -= end
-				if p.at >= end {
-					p.at = 0
-				}
-			}
-			whole := int(p.at)
-			part := f32(p.at - f64(whole))
-			next := whole + 1
-			if next >= count {
-				next = 0 if p.looping else whole
-			}
-			l := p.samples[whole * 2] + (p.samples[next * 2] - p.samples[whole * 2]) * part
-			r := p.samples[whole * 2 + 1] + (p.samples[next * 2 + 1] - p.samples[whole * 2 + 1]) * part
-			out[i * 2] += l * left
-			out[i * 2 + 1] += r * right
-			ring_push(&p.heard, (l * left + r * right) / 2)
-			played += 1
-			p.at += p.speed
-			// played `for` some seconds: it pauses itself when they are over
-			if p.left > 0 {
-				p.left -= 1.0 / RATE
-				if p.left <= 0 {
-					p.left = 0
-					p.playing = false
-					break
-				}
-			}
+			ring_push(&p.heard, (own[i * 2] + own[i * 2 + 1]) / 2)
+			out[i * 2] += own[i * 2]
+			out[i * 2 + 1] += own[i * 2 + 1]
 		}
-		// what is left of the buffer after its end is silence
-		for _ in played ..< frames {
-			ring_push(&p.heard, 0)
-		}
-		// the last frame read may have reached the end exactly
-		if p.at >= end && !p.looping {
-			p.at = end
-			p.playing = false
-		}
+	}
+	for e in m.speaker_effects {
+		effect_run(e, out)
 	}
 	for i in 0 ..< frames {
 		ring_push(&m.heard, (out[i * 2] + out[i * 2 + 1]) / 2)
+	}
+}
+
+// Adds a sound from a file into `out` (two floats a frame, written over) and moves it on.
+@(private)
+mix_samples :: proc(p: ^Player, out: []f32) {
+	frames := len(out) / CHANNELS
+	count := frames_of(p^)
+	if count == 0 {
+		p.playing = false
+		return
+	}
+	left := f32(p.volume * min(1, 1 - p.pan))
+	right := f32(p.volume * min(1, 1 + p.pan))
+	end := f64(count)
+	for i in 0 ..< frames {
+		if p.at >= end {
+			if !p.looping {
+				p.at = end
+				p.playing = false
+				break
+			}
+			p.at -= end
+			if p.at >= end {
+				p.at = 0
+			}
+		}
+		whole := int(p.at)
+		part := f32(p.at - f64(whole))
+		next := whole + 1
+		if next >= count {
+			next = 0 if p.looping else whole
+		}
+		l := p.samples[whole * 2] + (p.samples[next * 2] - p.samples[whole * 2]) * part
+		r := p.samples[whole * 2 + 1] + (p.samples[next * 2 + 1] - p.samples[whole * 2 + 1]) * part
+		out[i * 2] += l * left
+		out[i * 2 + 1] += r * right
+		p.at += p.speed
+		// played `for` some seconds: it pauses itself when they are over
+		if p.left > 0 {
+			p.left -= 1.0 / RATE
+			if p.left <= 0 {
+				p.left = 0
+				p.playing = false
+				break
+			}
+		}
+	}
+	// the last frame read may have reached the end exactly
+	if p.at >= end && !p.looping {
+		p.at = end
+		p.playing = false
 	}
 }
 

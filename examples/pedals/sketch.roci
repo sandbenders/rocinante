@@ -1,0 +1,70 @@
+// Pedals: sixteen sound effects on one instrument, switched on and off like a guitarist's
+// pedalboard. `effect tone "delay" by { ... }` puts an effect on a sound, and `no effect tone
+// "delay"` takes it off; the sound goes through them in the order they were switched on. Play the
+// keys A to K, or a MIDI keyboard, and try the switches: overdrive and fuzz for grit, delay and
+// reverb for space, chorus, flanger, phaser, tremolo and rotary to make it move, and the rest to
+// shape it. The bars are the instrument's pitches after its effects.
+window size 720 640 title "pedals"
+
+tone = synth saw
+NAMES = [
+  "overdrive"
+  "fuzz"
+  "delay"
+  "reverb"
+  "chorus"
+  "flanger"
+  "phaser"
+  "tremolo"
+  "compressor"
+  "eq"
+  "rotary"
+  "filter"
+  "bitcrush"
+  "ring"
+  "wah"
+  "limiter"
+]
+pedals = []
+for each name in NAMES [
+  add { name: name, wanted: false, on: false } to pedals
+]
+LETTERS = [ "a" "s" "d" "f" "g" "h" "j" "k" ]
+NOTES = [ 48 50 52 53 55 57 59 60 ]
+board = []
+for i from 1 to 8 [ add { letter: item i of LETTERS, note: item i of NOTES, down: false } to board ]
+
+on midi down [ play tone note midi.note volume midi.velocity ]
+on midi up [ pause tone note midi.note ]
+
+for each n in [ 48 55 60 ] [ play tone note n for 1.5 ]
+
+ui [
+  panel "pedals" [
+    for each p in pedals [
+      p.wanted = toggle p.name start (p.name is "overdrive" or p.name is "delay")
+    ]
+  ]
+]
+
+draw [
+  background (rgb 16 14 26)
+  for each p in pedals [
+    if p.wanted and not p.on [ effect tone p.name ]
+    if p.on and not p.wanted [ no effect tone p.name ]
+    p.on = p.wanted
+  ]
+  for each k in board [
+    now = held k.letter
+    if now and not k.down [ play tone note k.note volume 60 ]
+    if k.down and not now [ pause tone note k.note ]
+    k.down = now
+  ]
+  heard = bands tone 48
+  for i from 1 to 48 [
+    high = (item i of heard) * 3
+    rect at (200 + i * 10) (620 - high) size 8 high fill (hsb (i * 5) 170 240)
+  ]
+  fill white
+  text "play the keys A to K, or a MIDI keyboard" at 220 16
+]

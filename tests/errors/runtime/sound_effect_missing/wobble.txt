@@ -1,0 +1,8 @@
+── There is no sound effect called `wobble` ──────────── sketch.roci:2:1
+
+2 │ effect tone "wobble"
+  │ ^^^^^^^^^^^^^^^^^^^^
+
+The sound effects are overdrive, fuzz, delay, reverb, chorus, flanger, phaser, tremolo, compressor, eq, rotary, filter, bitcrush, ring, wah and limiter. The sound plays without it, and the sketch carries on.
+
+Use one of them:  effect tone "rotary"

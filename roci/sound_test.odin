@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package roci
 
+import "core:c"
 import "core:os"
 import "core:testing"
 
@@ -298,4 +299,41 @@ test_sound_soundfonts :: proc(t: ^testing.T) {
 	testing.expect_value(t, abi_soundfont("tests/sounds/none.sf2", 0), 0)
 	testing.expect_value(t, abi_soundfont_named("tests/sounds/tone.wav", "x"), 0)
 	testing.expect_value(t, abi_soundfont_named("tests/sounds/none.sf2", "x"), 0)
+}
+
+@(test)
+test_sound_effects_api_and_abi :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	s := synth("sine")
+	unknown, problem := sound_effect(s, "delay", {{name = "time", number = 0.2}, {name = "colour", number = 1}})
+	testing.expect_value(t, problem, Sound_Effect_Problem.None)
+	testing.expect(t, len(unknown) == 1 && unknown[0] == "colour")
+	_, problem = sound_effect(s, "wobble")
+	testing.expect_value(t, problem, Sound_Effect_Problem.Unknown_Effect)
+	_, problem = sound_effect(Sound(999), "delay")
+	testing.expect_value(t, problem, Sound_Effect_Problem.No_Sound)
+	unknown, _ = sound_effect(s, "filter", {{name = "kind", word = "band"}, {name = "kind", word = "upside"}})
+	testing.expect(t, len(unknown) == 1 && unknown[0] == "kind: \"upside\"")
+	testing.expect(t, no_sound_effect(s, "delay"))
+	testing.expect(t, !no_sound_effect(s, "delay"))
+	testing.expect(t, !no_sound_effect(s, "wobble"))
+	testing.expect_value(t, len(sound_effect_names()), 16)
+	testing.expect_value(t, len(sound_effect_settings("delay")), 3)
+	testing.expect_value(t, len(sound_effect_settings("wobble")), 0)
+	testing.expect_value(t, sound_effect_default("delay", "time"), 0.3)
+	testing.expect_value(t, sound_effect_default("delay", "colour"), 0)
+	testing.expect_value(t, sound_effect_default("wobble", "time"), 0)
+	testing.expect_value(t, the_speakers(), SPEAKERS)
+	testing.expect(t, !sound_state(SPEAKERS).playing, "headless: no speakers")
+	// in C
+	sp := abi_speakers()
+	testing.expect_value(t, abi_sound_effect(sp, "reverb"), 1)
+	testing.expect_value(t, abi_sound_effect(sp, "wobble"), 0)
+	testing.expect_value(t, abi_sound_effect_set(c.int(s), "chorus", "rate", 2), 1)
+	testing.expect_value(t, abi_sound_effect_set(c.int(s), "chorus", "colour", 2), 0)
+	testing.expect_value(t, abi_sound_effect_word(c.int(s), "filter", "kind", "high"), 1)
+	testing.expect_value(t, abi_sound_effect_word(c.int(s), "filter", "kind", "sideways"), 0)
+	testing.expect_value(t, abi_no_sound_effect(sp, "reverb"), 1)
+	testing.expect_value(t, abi_no_sound_effect(sp, "reverb"), 0)
 }

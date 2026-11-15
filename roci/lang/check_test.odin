@@ -1502,7 +1502,12 @@ test_effect_takes_a_shader_name_and_a_record_of_values :: proc(t: ^testing.T) {
 	expect_errors(t, "effect 5", {.Wrong_Argument_Kind})
 	expect_errors(t, "effect", {.Wrong_Argument_Count})
 	expect_errors(t, "effect \"wave.hlsl\" by 5", {.Wrong_Argument_Kind})
-	expect_errors(t, "effect \"wave.hlsl\" at 1 2", {.Unexpected_Token})
+	// with a sound first, `effect` takes a second value, so `at` is read where one is still due
+	expect_errors(t, "effect \"wave.hlsl\" at 1 2", {.Reserved_Name, .Unexpected_Token})
+	// and a sound effect: a sound, a name and a record
+	expect_errors(t, "tone = synth saw\neffect tone \"delay\" by { time: 0.3 }\nno effect tone \"delay\"\neffect speakers \"reverb\"", {})
+	expect_errors(t, "tone = synth saw\neffect tone 5", {.Wrong_Argument_Kind})
+	expect_errors(t, "no effect \"delay\"", {.Wrong_Argument_Count})
 }
 
 @(test)

@@ -186,6 +186,8 @@ builtin_value :: proc(it: ^Interp, name: string) -> Value {
 		return vec2(roci.wheel())
 	case "mic":
 		return roci.mic()
+	case "speakers":
+		return roci.the_speakers()
 	case "pmouse":
 		return vec2(roci.pmouse())
 	case "time":

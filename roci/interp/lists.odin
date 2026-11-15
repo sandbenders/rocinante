@@ -72,7 +72,13 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case .No_Record:
 		roci.no_record()
 	case .Effect:
-		effect_verb(it, e, call)
+		if call.shape == 1 {
+			sound_effect_verb(it, e, call)
+		} else {
+			effect_verb(it, e, call)
+		}
+	case .No_Effect:
+		roci.no_sound_effect(as_sound(eval(it, call.args[0])), as_text(eval(it, call.args[1])))
 	case .Shade:
 		shade_verb(it, e, call)
 	case .Outline:

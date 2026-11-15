@@ -1,0 +1,3 @@
+tone = synth saw
+effect tone "delay" by { colour: 3 }
+play tone note 60

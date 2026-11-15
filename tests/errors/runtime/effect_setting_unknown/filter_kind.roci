@@ -1,0 +1,3 @@
+tone = synth saw
+effect tone "filter" by { kind: "sideways" }
+play tone note 60

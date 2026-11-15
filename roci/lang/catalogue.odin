@@ -132,6 +132,8 @@ Message_Id :: enum u8 {
 	Sound_Unreadable,
 	Soundfont_Unreadable,
 	Preset_Missing,
+	Sound_Effect_Missing,
+	Effect_Setting_Unknown,
 	Model_Missing,
 	Model_Unreadable,
 	Model_Texture,
@@ -471,6 +473,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Preset_Missing = {.Warning, "`{a}` has no preset {b}",
 		"The presets in it are: {c}. The first one plays instead.",
 		"Ask for one that is there:", "{d}"},
+	.Sound_Effect_Missing = {.Error, "There is no sound effect called `{a}`",
+		"The sound effects are {b}. The sound plays without it, and the sketch carries on.",
+		"Use one of them:", "{d}"},
+	.Effect_Setting_Unknown = {.Warning, "`{a}` has no setting `{b}`",
+		"{c} The effect leaves it out and uses the others.",
+		"Use its settings:", "{d}"},
 	.Model_Missing = {.Error, "I could not find a model called `{a}`",
 		"{b} The model draws nothing, and the sketch carries on.",
 		"Draw one that is there:", "{d}"},
@@ -593,7 +601,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

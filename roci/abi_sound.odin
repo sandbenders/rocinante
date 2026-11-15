@@ -242,6 +242,41 @@ abi_soundfont_named :: proc "c" (path: cstring, preset: cstring) -> c.int {
 	return c.int(s) if ok else 0
 }
 
+@(export, link_name = "roci_speakers")
+abi_speakers :: proc "c" () -> c.int {
+	context = abi_context()
+	return c.int(u32(the_speakers()))
+}
+
+@(export, link_name = "roci_sound_effect")
+abi_sound_effect :: proc "c" (sound: c.int, name: cstring) -> c.int {
+	context = abi_context()
+	_, problem := sound_effect(Sound(u32(sound)), text_from_abi(name))
+	return 1 if problem == .None else 0
+}
+
+@(export, link_name = "roci_sound_effect_set")
+abi_sound_effect_set :: proc "c" (sound: c.int, name: cstring, setting: cstring, value: f64) -> c.int {
+	context = abi_context()
+	settings := []Sound_Setting{{name = text_from_abi(setting), number = value}}
+	unknown, problem := sound_effect(Sound(u32(sound)), text_from_abi(name), settings)
+	return 1 if problem == .None && len(unknown) == 0 else 0
+}
+
+@(export, link_name = "roci_sound_effect_word")
+abi_sound_effect_word :: proc "c" (sound: c.int, name: cstring, setting: cstring, word: cstring) -> c.int {
+	context = abi_context()
+	settings := []Sound_Setting{{name = text_from_abi(setting), word = text_from_abi(word)}}
+	unknown, problem := sound_effect(Sound(u32(sound)), text_from_abi(name), settings)
+	return 1 if problem == .None && len(unknown) == 0 else 0
+}
+
+@(export, link_name = "roci_no_sound_effect")
+abi_no_sound_effect :: proc "c" (sound: c.int, name: cstring) -> c.int {
+	context = abi_context()
+	return 1 if no_sound_effect(Sound(u32(sound)), text_from_abi(name)) else 0
+}
+
 // The table rows of the functions above that are not a registry shape.
 abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_load_sound", typeid_of(type_of(abi_load_sound)), "roci_sound_id roci_load_sound(const unsigned char *bytes, int length)", "Decodes the bytes of a sound file (WAV, FLAC, MP3 or Ogg Vorbis) and gives its number, or 0 when they are not a sound. A sound is stopped at its start, at volume 100, in the middle and at speed 1."))
@@ -265,6 +300,11 @@ abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_sound_pitch", typeid_of(type_of(abi_sound_pitch)), "double roci_sound_pitch(roci_sound_id sound)", "An instrument's pitch in hertz, or middle C at the speed of a sound from a file."))
 	append(all, abi_entry("roci_soundfont", typeid_of(type_of(abi_soundfont)), "roci_sound_id roci_soundfont(const char *path, int preset)", "Reads a SoundFont (.sf2) and makes an instrument of one of its presets, by number (General MIDI's 0 is a piano), or the first one for -1 or a number it does not have; 0 when the file cannot be read. Its notes are played with roci_play_note."))
 	append(all, abi_entry("roci_soundfont_named", typeid_of(type_of(abi_soundfont_named)), "roci_sound_id roci_soundfont_named(const char *path, const char *preset)", "The same, the preset found by its name in any case (the first one when no preset has it)."))
+	append(all, abi_entry("roci_speakers", typeid_of(type_of(abi_speakers)), "roci_sound_id roci_speakers(void)", "The whole mix, as a sound for roci_sound_effect (its effects run over everything that plays, last) and roci_level_of."))
+	append(all, abi_entry("roci_sound_effect", typeid_of(type_of(abi_sound_effect)), "int roci_sound_effect(roci_sound_id sound, const char *name)", "Puts a sound effect on a sound or the speakers (\"overdrive\", \"fuzz\", \"delay\", \"reverb\", \"chorus\", \"flanger\", \"phaser\", \"tremolo\", \"compressor\", \"eq\", \"rotary\", \"filter\", \"bitcrush\", \"ring\", \"wah\" or \"limiter\"), at the end of its effects, with its start values; 1 when it is on, 0 for a name no effect has or no sound."))
+	append(all, abi_entry("roci_sound_effect_set", typeid_of(type_of(abi_sound_effect_set)), "int roci_sound_effect_set(roci_sound_id sound, const char *name, const char *setting, double value)", "Sets a setting of a sound's effect, putting the effect on first if it has none: amounts 0 to 100, times in seconds, rates in times a second, pitches in hertz, eq bands -100 to 100. 0 for a setting the effect has not."))
+	append(all, abi_entry("roci_sound_effect_word", typeid_of(type_of(abi_sound_effect_word)), "int roci_sound_effect_word(roci_sound_id sound, const char *name, const char *setting, const char *word)", "The same for a setting that is a word: the filter's kind, \"low\", \"high\" or \"band\"."))
+	append(all, abi_entry("roci_no_sound_effect", typeid_of(type_of(abi_no_sound_effect)), "int roci_no_sound_effect(roci_sound_id sound, const char *name)", "Takes a sound effect off a sound or the speakers; 0 when it had none of that name."))
 	append(all, abi_entry("roci_mic", typeid_of(type_of(abi_mic)), "roci_sound_id roci_mic(void)", "The microphone, as a sound for roci_level_of and roci_bands_of. The first call in a program with a window opens the computer's default recording device (the system may ask first). Playing it does nothing."))
 	append(all, abi_entry("roci_bands", typeid_of(type_of(abi_bands)), "int roci_bands(int count, double *out)", "How much of each pitch everything that plays holds now: writes `count` numbers 0 to 100 (at most 256), the lowest pitches first, into `out`, and gives how many it wrote."))
 	append(all, abi_entry("roci_bands_of", typeid_of(type_of(abi_bands_of)), "int roci_bands_of(roci_sound_id sound, int count, double *out)", "The same for one sound, or the microphone (roci_mic)."))

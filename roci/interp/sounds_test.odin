@@ -495,3 +495,60 @@ draw [ background 20 ]
 	testing.expect_value(t, roci.frame_hash(w), plain)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// Sound effects in a sketch: put on, changed, taken off, on a sound and on the speakers.
+@(test)
+test_sound_effects_in_a_sketch :: proc(t: ^testing.T) {
+	text := `tone = synth saw
+effect tone "overdrive" by { drive: 80 }
+effect tone "filter" by { kind: "high", cutoff: 2000, resonance: 30 }
+effect tone "delay" by { time: 0.1 }
+effect tone "delay" by { mix: 60 }
+effect speakers "limiter" by { ceiling: 50 }
+no effect tone "filter"
+no effect tone "chorus"
+play tone note 48 for 0.2
+print (speakers.playing)
+`
+	p := run_with_sounds(t, "effect_words", text, "tests/sounds", {})
+	defer finish(p)
+	for _ in 0 ..< 10 {
+		roci.step()
+	}
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, printed(p), "false")
+	tone := as_sound(global_named(p, "tone"))
+	testing.expect(t, roci.level(tone) > 10, "the effects let it through")
+	// a peak held at half is at most a square wave's loudness at half, 70.7
+	testing.expectf(t, roci.level(roci.SPEAKERS) <= 71, "the limiter holds the speakers at half: %v", roci.level(roci.SPEAKERS))
+}
+
+// The pedals example: overdrive and delay are on from its switches; the keys play.
+@(test)
+test_the_pedals_example :: proc(t: ^testing.T) {
+	text, read := os.read_entire_file("examples/pedals/sketch.roci", context.temp_allocator)
+	testing.expect(t, read == nil)
+	p := run_with_sounds(t, "pedals_example", string(text), "examples/pedals", {})
+	defer finish(p)
+	for _ in 0 ..< 4 {
+		roci.step() // the widgets' panel shows from its third frame
+	}
+	testing.expect_value(t, len(p.errors), 0)
+	on := 0
+	for pedal in as_list(global_named(p, "pedals")).items {
+		if as_bool(read_field(p, pedal, "on")) {
+			on += 1
+		}
+	}
+	testing.expect_value(t, on, 2)
+	tone := as_sound(global_named(p, "tone"))
+	for _ in 0 ..< 120 {
+		roci.step() // the chord ends, and its delay with it
+	}
+	w := first_window()
+	roci.step({key_event(w, sdl.Scancode.A)})
+	testing.expect_value(t, roci.sound_notes(tone), 1)
+	roci.step({key_event(w, sdl.Scancode.A, false)})
+	testing.expect_value(t, roci.sound_notes(tone), 0)
+	testing.expect_value(t, len(p.errors), 0)
+}
