@@ -6,12 +6,18 @@
 package sound
 
 import "core:c"
+import "core:os"
 import "core:strings"
 
 when ODIN_PLATFORM_SUBTARGET == .Android {
-	foreign import lib {"../../.cache/android/lib/libroci_sound.a", "system:m"}
+	// AAC is read by MediaCodec, which is part of the system
+	foreign import lib {"../../.cache/android/lib/libroci_sound.a", "system:m", "system:mediandk"}
 } else when ODIN_OS == .Windows {
-	foreign import lib "../../.cache/sound/roci_sound.lib"
+	// AAC is read by Media Foundation, which is part of Windows
+	foreign import lib {"../../.cache/sound/roci_sound.lib", "system:mfplat.lib", "system:mfreadwrite.lib", "system:mfuuid.lib", "system:shlwapi.lib", "system:ole32.lib", "system:propsys.lib"}
+} else when ODIN_OS == .Darwin {
+	// AAC is read by AudioToolbox, which is part of the system
+	foreign import lib {"../../.cache/sound/libroci_sound.a", "system:m", "system:AudioToolbox.framework", "system:CoreFoundation.framework"}
 } else {
 	foreign import lib {"../../.cache/sound/libroci_sound.a", "system:m"}
 }
@@ -43,6 +49,10 @@ decode :: proc(data: []byte, channels, rate: int, allocator := context.allocator
 	frames: [^]f32
 	count: u64
 	if roci_sound_decode(raw_data(data), c.size_t(len(data)), u32(channels), u32(rate), &frames, &count) != 0 {
+		// an AAC file no decoder of the system's could read, or a system with none: ffmpeg, when it is installed
+		if looks_like_aac(data[:min(len(data), 12)]) {
+			return ffmpeg_decode_bytes(data, channels, rate, allocator)
+		}
 		return nil, false
 	}
 	defer roci_sound_free(frames)
@@ -59,6 +69,21 @@ Stream :: struct {
 	handle:   rawptr,
 	channels: int,
 	length:   int, // in frames; what the decoder says, which for a resampled file may be a frame or two off
+	memory:   bool, // a sound decoded whole by ffmpeg, which `handle` points to (a Memory_Stream), not a decoder
+}
+
+// A sound already decoded into memory, read in order like a file (what ffmpeg gives for AAC).
+Memory_Stream :: struct {
+	samples:  []f32,
+	channels: int,
+	at:       int, // the next frame
+}
+
+// A stream over frames already in memory, which it owns from now on.
+memory_stream :: proc(samples: []f32, channels: int) -> Stream {
+	m := new(Memory_Stream)
+	m^ = {samples = samples, channels = channels}
+	return Stream{handle = m, channels = channels, length = len(samples) / channels, memory = true}
 }
 
 // Opens a file to read in order. ok is false for a file that is no sound, one that cannot be opened,
@@ -71,6 +96,17 @@ stream_open :: proc(path: string, channels, rate: int) -> (s: Stream, ok: bool) 
 	length: u64
 	handle := roci_stream_open(cpath, u32(channels), u32(rate), &length)
 	if handle == nil {
+		// AAC that no decoder of the system's reads: ffmpeg decodes it whole
+		head: [12]byte
+		if file, err := os.open(path); err == nil {
+			got, _ := os.read(file, head[:])
+			os.close(file)
+			if looks_like_aac(head[:got]) {
+				if samples, decoded := ffmpeg_decode_file(path, channels, rate); decoded {
+					return memory_stream(samples, channels), true
+				}
+			}
+		}
 		return {}, false
 	}
 	if length == 0 {
@@ -86,6 +122,13 @@ stream_read :: proc(s: Stream, out: []f32, frames: int) -> int {
 	if s.handle == nil || frames <= 0 || len(out) < frames * s.channels {
 		return 0
 	}
+	if s.memory {
+		m := (^Memory_Stream)(s.handle)
+		count := min(frames, len(m.samples) / m.channels - m.at)
+		copy(out[:count * m.channels], m.samples[m.at * m.channels:(m.at + count) * m.channels])
+		m.at += count
+		return count
+	}
 	return int(roci_stream_read(s.handle, raw_data(out), u64(frames)))
 }
 
@@ -94,10 +137,24 @@ stream_seek :: proc(s: Stream, frame: int) -> bool {
 	if s.handle == nil || frame < 0 {
 		return false
 	}
+	if s.memory {
+		m := (^Memory_Stream)(s.handle)
+		if frame > len(m.samples) / m.channels {
+			return false
+		}
+		m.at = frame
+		return true
+	}
 	return roci_stream_seek(s.handle, u64(frame)) != 0
 }
 
 stream_close :: proc(s: Stream) {
+	if s.memory {
+		m := (^Memory_Stream)(s.handle)
+		delete(m.samples)
+		free(m)
+		return
+	}
 	roci_stream_close(s.handle)
 }
 
@@ -110,6 +167,11 @@ stream_open_memory :: proc(data: []byte, channels, rate: int) -> (s: Stream, ok:
 	length: u64
 	handle := roci_stream_open_memory(raw_data(data), c.size_t(len(data)), u32(channels), u32(rate), &length)
 	if handle == nil {
+		if looks_like_aac(data[:min(len(data), 12)]) {
+			if samples, decoded := ffmpeg_decode_bytes(data, channels, rate); decoded {
+				return memory_stream(samples, channels), true
+			}
+		}
 		return {}, false
 	}
 	if length == 0 {

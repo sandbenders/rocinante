@@ -100,12 +100,25 @@ if [ ! -f "$lib/libroci_ui.a" ]; then
   ar rcs "$lib/libroci_ui.a" "$obj"/*.o
 fi
 
-# The sound file decoders: miniaudio's and stb_vorbis, from the vendor folder of the Odin on the PATH.
+# The sound file decoders: miniaudio's and stb_vorbis, from the vendor folder of the Odin on the PATH, and
+# libopus, fetched by tools/fetch-opus.sh. AAC is read by AudioToolbox, which is part of iOS.
 if [ ! -f "$lib/libroci_sound.a" ]; then
   odin_root="$(odin root)"
-  xcrun --sdk iphoneos clang -target "arm64-apple-ios$MIN_IOS" -isysroot "$sdk" -O2 -fvisibility=hidden \
-    -I"$odin_root/vendor/miniaudio/src" -I"$odin_root/vendor/stb/src" \
-    -c "$root/vendor/sound/c/roci_sound.c" -o "$src/roci_sound.o"
-  ar rcs "$lib/libroci_sound.a" "$src/roci_sound.o"
+  opus="$("$root/tools/fetch-opus.sh")"
+  compile() { # file object [flags...]
+    f="$1"; o="$2"; shift 2
+    xcrun --sdk iphoneos clang -target "arm64-apple-ios$MIN_IOS" -isysroot "$sdk" -O2 -fvisibility=hidden "$@" -c "$f" -o "$o"
+  }
+  compile "$root/vendor/sound/c/roci_sound.c" "$src/roci_sound.o" -I"$odin_root/vendor/miniaudio/src" -I"$odin_root/vendor/stb/src" -I"$opus/include"
+  objs="$src/roci_sound.o"
+  while read -r file; do
+    case "$file" in "#"* | "") continue ;; esac
+    obj="$src/opus_$(basename "$file" .c).o"
+    compile "$opus/$file" "$obj" -DOPUS_BUILD -DUSE_ALLOCA -DHAVE_LRINTF -DPACKAGE_VERSION='"1.6.1"' \
+      -I"$opus/include" -I"$opus/celt" -I"$opus/silk" -I"$opus"
+    objs="$objs $obj"
+  done < "$root/vendor/sound/c/opus_files.txt"
+  rm -f "$lib/libroci_sound.a"
+  ar rcs "$lib/libroci_sound.a" $objs
 fi
 echo "built into $lib"

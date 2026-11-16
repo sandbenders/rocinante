@@ -10,6 +10,7 @@ package movies
 
 @(require) import "../"
 import "../gfx"
+import sound_files "../../vendor/sound"
 @(require) import "core:os"
 @(require) import "core:strings"
 @(require) import "core:sync"
@@ -161,6 +162,80 @@ when ODIN_OS != .Windows {
 		}
 		testing.expect(t, !results[0].ok)
 		testing.expect(t, strings.contains(results[0].why, "ffmpeg said: no such codec"), results[0].why)
+	}
+
+	// An AAC file the system's decoder cannot read goes to ffmpeg, here a script that gives the floats of a
+	// file of tests/sounds, so the arguments it is given and what comes back can be checked.
+	FAKE_FLOATS :: "#!/bin/sh\necho \"$@\" > \"$0.args\"\ncat tests/sounds/tone-opus.f32\n"
+
+	@(test)
+	test_aac_the_system_cannot_read_is_decoded_by_ffmpeg :: proc(t: ^testing.T) {
+		sync.mutex_guard(&process_lock)
+		folder := "output/tests/movies_aac"
+		_ = os.remove_all(folder)
+		program := make_fake_ffmpeg(folder, FAKE_FLOATS)
+		defer delete(program)
+		sound_files.ffmpeg_override = program
+		defer sound_files.ffmpeg_override = ""
+		// the head of an M4A and nothing the system's decoder can use
+		junk := make([]byte, 64)
+		defer delete(junk)
+		copy(junk[4:], "ftypM4A ")
+		samples, ok := sound_files.decode(junk, 1, 48000)
+		defer delete(samples)
+		testing.expect(t, ok)
+		testing.expect_value(t, len(samples), 12000)
+		reference, _ := os.read_entire_file("tests/sounds/tone-opus.f32", context.temp_allocator)
+		testing.expect(t, string((cast([^]byte)raw_data(samples))[:len(samples) * 4]) == string(reference))
+		args, _ := os.read_entire_file(strings.concatenate({program, ".args"}, context.temp_allocator), context.temp_allocator)
+		for part in ([]string{"-f f32le", "-ar 48000", "-ac 1", "pipe:1", "-vn"}) {
+			testing.expectf(t, strings.contains(string(args), part), "%s is not in %s", part, string(args))
+		}
+		// from a path, a stream of the decoded frames: read in pieces, and seeking
+		path := strings.concatenate({folder, "/song.m4a"}, context.temp_allocator)
+		testing.expect(t, os.write_entire_file(path, junk) == nil)
+		s, opened := sound_files.stream_open(path, 1, 48000)
+		if !testing.expect(t, opened) {
+			return
+		}
+		defer sound_files.stream_close(s)
+		testing.expect_value(t, s.length, 12000)
+		out := make([]f32, 5000)
+		defer delete(out)
+		testing.expect_value(t, sound_files.stream_read(s, out, 5000), 5000)
+		testing.expect_value(t, out[100], samples[100])
+		testing.expect(t, sound_files.stream_seek(s, 11000))
+		testing.expect_value(t, sound_files.stream_read(s, out, 5000), 1000)
+		testing.expect_value(t, out[0], samples[11000])
+		testing.expect(t, !sound_files.stream_seek(s, 12001))
+		// a stream from memory the same
+		m, memory_ok := sound_files.stream_open_memory(junk, 1, 48000)
+		testing.expect(t, memory_ok)
+		testing.expect_value(t, m.length, 12000)
+		sound_files.stream_close(m)
+	}
+
+	@(test)
+	test_aac_without_ffmpeg_is_a_file_that_cannot_be_read :: proc(t: ^testing.T) {
+		sync.mutex_guard(&process_lock)
+		sound_files.ffmpeg_override = "output/tests/movies_aac/there-is-no-ffmpeg"
+		defer sound_files.ffmpeg_override = ""
+		junk := make([]byte, 64)
+		defer delete(junk)
+		copy(junk[4:], "ftypM4A ")
+		_, ok := sound_files.decode(junk, 2, 48000)
+		testing.expect(t, !ok)
+		_, stream_ok := sound_files.stream_open_memory(junk, 2, 48000)
+		testing.expect(t, !stream_ok)
+		// and what is not AAC never asks ffmpeg at all
+		other := make([]byte, 64)
+		defer delete(other)
+		_, other_ok := sound_files.decode(other, 2, 48000)
+		testing.expect(t, !other_ok)
+		testing.expect(t, sound_files.looks_like_aac({0, 0, 0, 0, 'f', 't', 'y', 'p', 'M', '4', 'A', ' '}))
+		testing.expect(t, sound_files.looks_like_aac({0xFF, 0xF1, 0x50, 0x80, 0, 0, 0}))
+		testing.expect(t, !sound_files.looks_like_aac({0xFF, 0xFB, 0x90, 0x64, 0, 0, 0}), "an MP3 frame is not AAC")
+		testing.expect(t, !sound_files.looks_like_aac({'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'A', 'V', 'E'}))
 	}
 
 	@(test)

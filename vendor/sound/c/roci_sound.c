@@ -24,14 +24,37 @@
 
 #include <math.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "roci_aiff.h"
 #include "roci_opus.h"
+#include "roci_aac.h"
+#ifdef __APPLE__
+#include "roci_apple.h"
+#endif
+#ifdef __ANDROID__
+#include "roci_android.h"
+#endif
+#ifdef _WIN32
+#include "roci_windows.h"
+#endif
 
 // The kinds of file miniaudio does not read, as decoding backends of our own; the decoder tries them
 // before its own, and each says no at once to a file that is not its kind.
-static ma_decoding_backend_vtable *roci_backends[] = {&roci_aiff_backend, &roci_opus_backend};
+static ma_decoding_backend_vtable *roci_backends[] = {
+	&roci_aiff_backend,
+	&roci_opus_backend,
+#ifdef __APPLE__
+	&roci_apple_backend,
+#endif
+#ifdef __ANDROID__
+	&roci_android_backend,
+#endif
+#ifdef _WIN32
+	&roci_windows_backend,
+#endif
+};
 
 static ma_decoder_config roci_config(uint32_t channels, uint32_t rate) {
 	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, channels, rate);

@@ -48,6 +48,9 @@ CLICK_WAV :: #load("../../../examples/sound/assets/sounds/click.wav")
 RAIN_OGG :: #load("../../../examples/sound/assets/sounds/rain.ogg")
 DRIFT_MP3 :: #load("../../../examples/player/assets/sounds/drift.mp3")
 UPRIGHT_SF2 :: #load("../../../examples/soundfont/assets/sounds/upright.sf2")
+TONE_AIFF :: #load("../../../tests/sounds/tone24.aiff")
+TONE_OPUS :: #load("../../../tests/sounds/tone-stereo.opus")
+TONE_AAC :: #load("../../../tests/sounds/tone.m4a")
 NOTES :: [8]f64{60, 62, 64, 65, 67, 69, 71, 72}
 
 wave: roci.Sound      // the synth the buttons play
@@ -55,7 +58,8 @@ piano: roci.Sound     // the SoundFont's upright
 click: roci.Sound
 rain: roci.Sound
 song: roci.Sound      // three minutes, so read as it plays
-sound_ok: [5]bool     // each of the above made
+sound_ok: [8]bool     // each of the above made, then the three formats
+aiff, opus, aac: roci.Sound // a quarter of a second each, in a format of its own
 use_piano: bool
 reverb: bool
 delay: bool
@@ -104,6 +108,9 @@ set_up :: proc() {
 	click, sound_ok[2] = roci.add_sound(CLICK_WAV)
 	rain, sound_ok[3] = roci.add_sound(RAIN_OGG)
 	song, sound_ok[4] = roci.add_sound(DRIFT_MP3)
+	aiff, sound_ok[5] = roci.add_sound(TONE_AIFF)
+	opus, sound_ok[6] = roci.add_sound(TONE_OPUS)
+	aac, sound_ok[7] = roci.add_sound(TONE_AAC)
 }
 
 widgets :: proc() {
@@ -141,10 +148,17 @@ sound_widgets :: proc() {
 	if roci.ui_button("song") && sound_ok[4] {
 		if roci.sound_state(song).playing {roci.pause(song)} else {roci.play(song)}
 	}
+	if roci.ui_button("aiff") && sound_ok[5] {roci.play(aiff)}
+	if roci.ui_button("opus") && sound_ok[6] {roci.play(opus)}
+	if roci.ui_button("aac") && sound_ok[7] {roci.play(aac)}
 	if roci.ui_button("+30 s") && sound_ok[4] {
 		roci.set_sound(song, at = roci.sound_state(song).at + 30)
 	}
 	roci.ui_end(.Row, o)
+	bend := roci.ui_slider_value("pitch wheel", -100, 100, 0)
+	vibrato := roci.ui_slider_value("modulation wheel", 0, 100, 0)
+	roci.set_wheels(wave, bend, vibrato)
+	roci.set_wheels(piano, bend, vibrato)
 	rev := roci.ui_toggle_value("reverb on the speakers", false)
 	if rev != reverb {
 		reverb = rev
@@ -182,7 +196,7 @@ draw_sound :: proc() {
 	roci.fill(roci.named("tomato"))
 	roci.rect(16, floor + 8, loud * (w - 32) / 100, 16)
 
-	names := [5]string{"synth", "SoundFont", "click", "rain", "song"}
+	names := [8]string{"synth", "SoundFont", "click", "rain", "song", "aiff", "opus", "aac"}
 	all_ok := true
 	missing := ""
 	for name, i in names {
@@ -192,7 +206,7 @@ draw_sound :: proc() {
 		}
 	}
 	if all_ok {
-		roci.text("all five sounds made", 16, floor + 36, {fill = roci.named("lightgreen"), size = 20})
+		roci.text("all eight sounds made", 16, floor + 36, {fill = roci.named("lightgreen"), size = 20})
 	} else {
 		roci.text(fmt.tprintf("NOT MADE:%s", missing), 16, floor + 36, {fill = roci.named("tomato"), size = 20})
 	}

@@ -414,3 +414,42 @@ test_opus_seeks_exactly_and_refuses_damage :: proc(t: ^testing.T) {
 		delete(bad)
 	}
 }
+
+// AAC, read by the system's own decoder where there is one (macOS and iOS: AudioToolbox): the M4A and the
+// bare ADTS stream are the 440 Hz tone, a quarter of a second long within the codec's padding.
+when ODIN_OS == .Darwin {
+	@(test)
+	test_aac_is_the_tone_the_system_decodes :: proc(t: ^testing.T) {
+		for name in ([]string{"tone.m4a", "tone.aac"}) {
+			path := fmt.tprintf("tests/sounds/%s", name)
+			data, _ := os.read_entire_file_from_path(path, context.allocator)
+			defer delete(data)
+			samples, ok := decode(data, 2, 48000)
+			defer delete(samples)
+			testing.expectf(t, ok, "%s did not decode", name)
+			frames := len(samples) / 2
+			testing.expectf(t, abs(frames - 12000) < 2400, "%s gave %d frames", name, frames)
+			ups, loudest: f32
+			for i in 1 ..< frames {
+				ups += 1 if samples[(i - 1) * 2] < 0 && samples[i * 2] >= 0 else 0
+				loudest = max(loudest, abs(samples[i * 2]))
+			}
+			testing.expectf(t, abs(ups * 48000 / f32(frames) - 440) < 12, "%s is %v Hz", name, ups * 48000 / f32(frames))
+			testing.expectf(t, loudest > 0.08 && loudest < 0.2, "%s peaks at %v", name, loudest)
+			// read from a path, in pieces, and seeking: what decode gave
+			s, opened := stream_open(path, 2, 48000)
+			if !testing.expectf(t, opened, "%s did not open", name) {
+				continue
+			}
+			defer stream_close(s)
+			testing.expect(t, stream_seek(s, 0))
+			streamed := read_all(s, 1000)
+			defer delete(streamed)
+			testing.expectf(t, abs(len(streamed) / 2 - frames) <= 2, "%s: %d frames streamed, %d decoded", name, len(streamed) / 2, frames)
+			testing.expect(t, stream_seek(s, 6000))
+			rest := read_all(s, 333)
+			defer delete(rest)
+			testing.expectf(t, abs(len(rest) / 2 - (frames - 6000)) <= 2, "%s: %d frames after a seek", name, len(rest) / 2)
+		}
+	}
+}

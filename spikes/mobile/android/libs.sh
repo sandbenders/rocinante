@@ -25,7 +25,7 @@ case "$(uname -s)" in
 esac
 ANDROID_HOME="${ANDROID_HOME:-$default_home}"
 NDK_VERSION="${NDK_VERSION:-29.0.14206865}"
-API_LEVEL="${API_LEVEL:-24}"
+API_LEVEL="${API_LEVEL:-28}"
 : "${SDL_ANDROID_LIB:?set SDL_ANDROID_LIB to the folder with libSDL3.so}"
 : "${SDL_ANDROID_SRC:?set SDL_ANDROID_SRC to the folder with the SDL source}"
 ndk="$ANDROID_HOME/ndk/$NDK_VERSION"
@@ -107,14 +107,26 @@ if [ ! -f "$lib/libroci_ui.a" ]; then
   "$ar" rcs "$lib/libroci_ui.a" "$obj"/*.o
 fi
 
-# The sound file decoders: miniaudio's and stb_vorbis, from the vendor folder of the Odin on the PATH.
+# The sound file decoders: miniaudio's and stb_vorbis, from the vendor folder of the Odin on the PATH, and
+# libopus, fetched by tools/fetch-opus.sh. They are built for Android 9 (API level 28), the first with
+# AMediaDataSource, which the AAC decoder (MediaCodec) reads a file through.
 if [ ! -f "$lib/libroci_sound.a" ]; then
-  cc="$ndk/toolchains/llvm/prebuilt/$host/bin/aarch64-linux-android$API_LEVEL-clang"
+  cc="$ndk/toolchains/llvm/prebuilt/$host/bin/aarch64-linux-android28-clang"
   ar="$ndk/toolchains/llvm/prebuilt/$host/bin/llvm-ar"
   odin_root="$(odin root)"
-  "$cc" -O2 -fPIC -fvisibility=hidden -I"$odin_root/vendor/miniaudio/src" -I"$odin_root/vendor/stb/src" \
+  opus="$("$root/tools/fetch-opus.sh")"
+  "$cc" -O2 -fPIC -fvisibility=hidden -I"$odin_root/vendor/miniaudio/src" -I"$odin_root/vendor/stb/src" -I"$opus/include" \
     -c "$root/vendor/sound/c/roci_sound.c" -o "$src/roci_sound.o"
-  "$ar" rcs "$lib/libroci_sound.a" "$src/roci_sound.o"
+  objs="$src/roci_sound.o"
+  while read -r file; do
+    case "$file" in "#"* | "") continue ;; esac
+    obj="$src/opus_$(basename "$file" .c).o"
+    "$cc" -c -O2 -fPIC -fvisibility=hidden -DOPUS_BUILD -DUSE_ALLOCA -DHAVE_LRINTF -DPACKAGE_VERSION='"1.6.1"' \
+      -I"$opus/include" -I"$opus/celt" -I"$opus/silk" -I"$opus" -o "$obj" "$opus/$file"
+    objs="$objs $obj"
+  done < "$root/vendor/sound/c/opus_files.txt"
+  rm -f "$lib/libroci_sound.a"
+  "$ar" rcs "$lib/libroci_sound.a" $objs
 fi
 
 # The C++ runtime the libraries above were built against, linked statically into libmain.so.

@@ -934,3 +934,20 @@ e = load "tone-sowt.aifc"
 		testing.expectf(t, abs(length - 0.25) < 0.01, "%s is %v seconds", name, length)
 	}
 }
+
+// AAC files are sounds for `load` where the system has a decoder (macOS and iOS: AudioToolbox) or ffmpeg is installed.
+when ODIN_OS == .Darwin {
+	@(test)
+	test_aac_files_load_as_sounds_with_the_systems_decoder :: proc(t: ^testing.T) {
+		text := `a = load "tone.m4a"
+b = load "tone.aac"
+`
+		p := run_with_sounds(t, "sound_aac", text, "tests/sounds", {"tone.m4a", "tone.aac"})
+		defer finish(p)
+		testing.expect_value(t, len(p.errors), 0)
+		for name in ([]string{"a", "b"}) {
+			length := roci.sound_state(as_sound(global_named(p, name))).length
+			testing.expectf(t, abs(length - 0.25) < 0.06, "%s is %v seconds", name, length)
+		}
+	}
+}
