@@ -18,9 +18,11 @@ learn titlescreen [
   text "80 · 160 diving" at 215 356
   text "50 · 100 diving" at 215 406
   align center
-  if (frame / 30) % 2 >= 1 [ text "press space" at 240 500 ]
+  if (frame / 30) % 2 >= 1 [ text "press space or the gamepad's bottom button" at 240 500 ]
   fill (rgb 140 150 190)
-  text "arrows or A D to move · space to fire · P to pause" at 240 590
+  font "Inter" size 16
+  text "arrows, A D, the stick or the d-pad to move" at 240 572
+  text "space or the bottom button to fire · P or start to pause" at 240 596
   align left
 ]
 
@@ -68,7 +70,7 @@ learn messages [
     text "GAME OVER" at 240 280
     fill white
     font "Inter" size 18
-    if (frame / 30) % 2 >= 1 [ text "press space to play again" at 240 340 ]
+    if (frame / 30) % 2 >= 1 [ text "press space or the bottom button to play again" at 240 340 ]
   ]
   align left
 ]

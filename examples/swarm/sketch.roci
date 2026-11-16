@@ -2,7 +2,9 @@
 // into formation and swings from side to side, then its members break away one or two at
 // a time and dive at you, firing as they come. Clear the swarm to reach the next stage.
 //
-// Left and right arrows (or A and D) move, space fires (two shots at a time), P pauses.
+// Left and right arrows (or A and D, or a gamepad's stick or d-pad) move, space (or a gamepad's
+// bottom button) fires, two shots at a time, and P (or start) pauses. A gamepad shakes when you fire
+// and when your ship is hit.
 //
 // Everything is made by the sketch itself: the sprites are lists of palette numbers turned
 // into pictures with `picture from` and enlarged with sharp pixels, and every sound is a
@@ -68,12 +70,22 @@ paused = false
 dive_wait = 120
 arrived = false
 
-on key "space" [
+// What the player does, and the keys and the gamepad buttons that do it.
+bind "move" to "keys w a s d"
+bind "move" to "keys up left down right"
+bind "move" to "pad leftstick"
+bind "move" to "pad dpad"
+bind "fire" to "key space"
+bind "fire" to "pad bottom"
+bind "pause" to "key p"
+bind "pause" to "pad start"
+
+on press "fire" [
   if mode is "play" and ship.alive and not paused [ fire ]
   if mode is "title" or mode is "over" [ restart ]
 ]
 
-on key "p" [
+on press "pause" [
   if mode is "play" [ paused = not paused ]
 ]
 

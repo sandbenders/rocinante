@@ -8,16 +8,18 @@ learn fire [
   if (count shots) < MOST_SHOTS [
     add { pos: ship.pos + { 15, -6 }, size: { 3, 12 }, vel: { 0, -11 }, done: false } to shots
     pew
+    rumble 25 for 0.05
   ]
 ]
 
-// Moves the ship with the keys, or counts down to the next one after a crash. With no ships
+// Moves the ship with the keys or a gamepad, or counts down to the next one after a crash. With no ships
 // left, the game is over.
 learn fly [
   if ship.alive [
-    go = 0
-    if held "left" or held "a" [ go = go - SPEED ]
-    if held "right" or held "d" [ go = go + SPEED ]
+    // The arrows, A and D, the stick and the d-pad all steer: only left and right count here, and a stick
+    // that is pushed half way moves the ship half as fast.
+    heading = direction "move"
+    go = heading.x * SPEED
     ship.pos.x = clamp (ship.pos.x + go) 8 (width - 41)
     // Leans up to 15 degrees into a turn, and eases back level when the keys are let go.
     ship.tilt = ship.tilt + (go * 3 - ship.tilt) * 0.2
@@ -44,6 +46,7 @@ learn crashship [
   burst wreckage white 40
   burst wreckage (rgb 255 150 30) 30
   wreck
+  rumble 90 for 0.5
   ship.alive = false
   ship.wait = 150
   lives = lives - 1
