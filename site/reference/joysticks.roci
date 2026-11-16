@@ -1,7 +1,7 @@
 draw [
   background 20
   fill white
-  text "joysticks: {count joysticks}" at 20 20
+  text ("joysticks: " + count joysticks) at 20 20
   y = 60
   for each stick in joysticks [
     fill white
