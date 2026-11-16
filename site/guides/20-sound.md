@@ -313,7 +313,3 @@ A plain name goes in the sketch's `output` folder. A `.wav` file is written by r
 ## Saving the file again
 
 While `roci run` is going, a sound file saved again is read again into the same sound, which goes on playing where it was, louder or softer as it was set, so a sound can be edited while the sketch listens to it. Saving the sketch keeps the sounds playing too: a sound loaded by a line that did not change is the same sound.
-
-## Not yet
-
-A few things are still to come: sound and MIDI on the phones' own devices (the sounds themselves play there), HE-AAC files (plain AAC reads on every system with a decoder), the SoundFont reverb and chorus sends (the effects do those) and the links of its stereo pairs.
