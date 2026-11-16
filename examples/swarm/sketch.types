@@ -1,0 +1,48 @@
+SHIP_ROWS: a list of numbers
+BUG_UP: a list of numbers
+BUG_DOWN: a list of numbers
+MOTH_UP: a list of numbers
+MOTH_DOWN: a list of numbers
+BOSS_UP: a list of numbers
+BOSS_DOWN: a list of numbers
+SCALE: a number
+CLEAR: a color
+COLORS: a list of colors
+HURT: a list of colors
+SHIP_Y: a number
+SPEED: a number
+MOST_SHOTS: a number
+STAR_COLORS: a list of colors
+TUNE: a list of numbers
+LOSE: a list of numbers
+ship_look: a picture
+life_look: a picture
+bug_looks: a list of pictures
+moth_looks: a list of pictures
+boss_looks: a list of pictures
+hurt_looks: a list of pictures
+zap: a sound
+boom: a sound
+whistle: a sound
+crash: a sound
+chime: a sound
+zap_slide: a number
+whistle_slide: a number
+crash_slide: a number
+tune_at: a number
+playing_tune: a list of numbers
+stars: a list of records with pos, speed, tint and phase
+ship: a record with pos, size, alive, wait, shield and tilt
+shots: a list of records with pos, size, vel and done
+bombs: a list of records with pos, size, vel and done
+swarm: a list of records with pos, size, kind, hp, tier, col, across, state, t, speed, launch, bend1, bend2 and shots_left
+bits: a list of records with pos, vel, life and tint
+mode: text
+score: a number
+best: a number
+lives: a number
+stage: a number
+banner: a number
+paused: true or false
+dive_wait: a number
+arrived: true or false

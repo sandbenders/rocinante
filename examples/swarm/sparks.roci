@@ -1,0 +1,28 @@
+// Explosions: bursts of sparks that fly apart, slow down and fade.
+
+learn burst middle paint many [
+  repeat many [
+    a = random 360
+    v = random from 1 to 5
+    add { pos: middle, vel: { v * cos a, v * sin a }, life: 30 + random 25, tint: paint } to bits
+  ]
+]
+
+learn fade [
+  for each p in bits [
+    p.pos = p.pos + p.vel
+    p.vel = p.vel * 0.94
+    p.life = p.life - 1
+  ]
+  bits = keep bits [ it.life > 0 ]
+]
+
+learn drawsparks [
+  no stroke
+  for each p in bits [
+    fill p.tint
+    alpha (p.life * 3)
+    rect at p.pos size 3 3
+  ]
+  alpha 100
+]

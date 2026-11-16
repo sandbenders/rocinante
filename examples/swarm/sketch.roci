@@ -1,0 +1,91 @@
+// swarm: a shooter in the style of the early-80s arcade games. A swarm flies in, settles
+// into formation and swings from side to side, then its members break away one or two at
+// a time and dive at you, firing as they come. Clear the swarm to reach the next stage.
+//
+// Left and right arrows (or A and D) move, space fires (two shots at a time), P pauses.
+//
+// Everything is made by the sketch itself: the sprites are lists of palette numbers turned
+// into pictures with `picture from` and enlarged with sharp pixels, and every sound is a
+// `synth` whose pitch slides from frame to frame.
+//
+// Every .roci file in this folder is part of the game. This one holds what runs: the
+// window, the values the game keeps, the keys and the frame. The others teach the verbs:
+//
+//   palette.roci   the colors and the size of a pixel
+//   grids.roci     the sprites, as grids of palette numbers
+//   sprites.roci   grids into pictures, and which picture an enemy shows
+//   sounds.roci    the laser, explosions, dive whistle, crash and tunes
+//   sky.roci       the starfield
+//   ship.roci      moving, leaning, firing and crashing
+//   swarm.roci     the formation, flying in, diving and their curves
+//   combat.roci    what hits what, and the points
+//   sparks.roci    explosions
+//   screens.roci   the title, the score and the messages
+//   game.roci      starting over and one step of play
+window size 480 640 title "swarm" resizable false cursor none
+
+// the pictures
+ship_look = sprite SHIP_ROWS 11 COLORS
+life_look = resize ship_look size 22 0 as nearest
+bug_looks = [ (sprite BUG_UP 9 COLORS) (sprite BUG_DOWN 9 COLORS) ]
+moth_looks = [ (sprite MOTH_UP 9 COLORS) (sprite MOTH_DOWN 9 COLORS) ]
+boss_looks = [ (sprite BOSS_UP 11 COLORS) (sprite BOSS_DOWN 11 COLORS) ]
+hurt_looks = [ (sprite BOSS_UP 11 HURT) (sprite BOSS_DOWN 11 HURT) ]
+
+// the instruments, and how far each one's slide has to go
+zap = synth square
+effect zap "bitcrush" by { bits: 6, rate: 16000, mix: 50 }
+boom = synth noise
+effect boom "bitcrush" by { bits: 4, rate: 6000, mix: 100 }
+whistle = synth sine
+crash = synth saw
+effect crash "overdrive" by { drive: 70, tone: 40, level: 60 }
+chime = synth triangle
+effect speakers "reverb" by { size: 35, mix: 12 }
+zap_slide = 0
+whistle_slide = 0
+crash_slide = 0
+tune_at = 0
+playing_tune = TUNE
+
+// the sky
+stars = []
+scatter 90
+
+// the game
+ship = { pos: { 223, SHIP_Y }, size: { 33, 33 }, alive: true, wait: 0, shield: 0, tilt: 0 }
+shots = []
+bombs = []
+swarm = []
+bits = []
+mode = "title"
+score = 0
+best = 0
+lives = 3
+stage = 1
+banner = 0
+paused = false
+dive_wait = 120
+arrived = false
+
+on key "space" [
+  if mode is "play" and ship.alive and not paused [ fire ]
+  if mode is "title" or mode is "over" [ restart ]
+]
+
+on key "p" [
+  if mode is "play" [ paused = not paused ]
+]
+
+draw [
+  background (rgb 4 4 16)
+  sky
+  tend
+  if mode is "title" [ titlescreen ]
+  if mode is "play" or mode is "over" [
+    if not paused [ advance ]
+    drawplay
+    hud
+    messages
+  ]
+]

@@ -1,0 +1,63 @@
+// The player's ship: moving and leaning, firing, being hit and coming back.
+
+SHIP_Y = 584
+SPEED = 5
+MOST_SHOTS = 2
+
+learn fire [
+  if (count shots) < MOST_SHOTS [
+    add { pos: ship.pos + { 15, -6 }, size: { 3, 12 }, vel: { 0, -11 }, done: false } to shots
+    pew
+  ]
+]
+
+// Moves the ship with the keys, or counts down to the next one after a crash. With no ships
+// left, the game is over.
+learn fly [
+  if ship.alive [
+    go = 0
+    if held "left" or held "a" [ go = go - SPEED ]
+    if held "right" or held "d" [ go = go + SPEED ]
+    ship.pos.x = clamp (ship.pos.x + go) 8 (width - 41)
+    // Leans up to 15 degrees into a turn, and eases back level when the keys are let go.
+    ship.tilt = ship.tilt + (go * 3 - ship.tilt) * 0.2
+    if ship.shield > 0 [ ship.shield = ship.shield - 1 ]
+  ] else [
+    ship.wait = ship.wait - 1
+    if ship.wait is 0 [
+      if lives > 0 [
+        ship.alive = true
+        ship.shield = 120
+        ship.pos.x = 223
+        ship.tilt = 0
+      ] else [
+        mode = "over"
+        if score > best [ best = score ]
+        jingle LOSE
+      ]
+    ]
+  ]
+]
+
+learn crashship [
+  wreckage = ship.pos + { 16, 16 }
+  burst wreckage white 40
+  burst wreckage (rgb 255 150 30) 30
+  wreck
+  ship.alive = false
+  ship.wait = 150
+  lives = lives - 1
+]
+
+// Blinks while the ship is shielded after coming back. It is turned about its middle, and a
+// little narrower the more it leans, as a wing dips away.
+learn drawship [
+  if ship.alive and (ship.shield is 0 or (frame / 4) % 2 >= 1) [
+    narrow = 33 * (1 - abs ship.tilt / 60)
+    push [
+      move (ship.pos + { 16.5, 16.5 })
+      turn ship.tilt
+      image ship_look at (0 - narrow / 2) -16.5 size narrow 33
+    ]
+  ]
+]

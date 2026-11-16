@@ -1,0 +1,74 @@
+// Everything written on the screen: the title, the score and what is left, and the
+// messages for a new stage, a pause and the end of the game.
+
+learn titlescreen [
+  fill white
+  align center
+  font "Inter Bold" size 64
+  text "SWARM" at 240 150
+  font "Inter" size 18
+  fill (rgb 255 220 40)
+  text "a shooter made in rocinante" at 240 235
+  image (item 1 of boss_looks) at 160 300
+  image (item 1 of moth_looks) at 163 350
+  image (item 1 of bug_looks) at 163 400
+  fill white
+  align left
+  text "150 · 400 diving" at 215 306
+  text "80 · 160 diving" at 215 356
+  text "50 · 100 diving" at 215 406
+  align center
+  if (frame / 30) % 2 >= 1 [ text "press space" at 240 500 ]
+  fill (rgb 140 150 190)
+  text "arrows or A D to move · space to fire · P to pause" at 240 590
+  align left
+]
+
+// The score and the best, the ships still waiting at the bottom left and a flag for each
+// stage at the bottom right.
+learn hud [
+  fill (rgb 235 50 60)
+  font "Inter Bold" size 16
+  text "SCORE" at 16 12
+  text "BEST" at 210 12
+  fill white
+  text ("" + score) at 16 32
+  top = best
+  if score > top [ top = score ]
+  text ("" + top) at 210 32
+  spare = lives - 1
+  if not ship.alive [ spare = lives ]
+  // `for` counts down when the end is smaller, so with no spare ships it must not run at all.
+  if spare > 0 [
+    for i from 1 to spare [ image life_look at (i * 28 - 16) 612 ]
+  ]
+  for i from 1 to stage [
+    fill (rgb 235 50 60)
+    triangle { width - i * 14, 612 } { width - i * 14, 624 } { width - i * 14 + 10, 618 }
+    fill white
+    rect at (width - i * 14) 612 size 2 18
+  ]
+]
+
+learn messages [
+  align center
+  if banner > 0 [
+    fill (rgb 80 230 240)
+    font "Inter Bold" size 32
+    text ("STAGE " + stage) at 240 300
+  ]
+  if paused [
+    fill white
+    font "Inter Bold" size 32
+    text "PAUSED" at 240 300
+  ]
+  if mode is "over" [
+    fill (rgb 235 50 60)
+    font "Inter Bold" size 44
+    text "GAME OVER" at 240 280
+    fill white
+    font "Inter" size 18
+    if (frame / 30) % 2 >= 1 [ text "press space to play again" at 240 340 ]
+  ]
+  align left
+]

@@ -1,0 +1,27 @@
+// The starfield behind the game: stars of four colors falling at their own speeds, the
+// faster ones bigger, each twinkling in its own time.
+
+STAR_COLORS = [ white (rgb 255 220 120) (rgb 140 190 255) (rgb 255 120 150) ]
+
+learn scatter many [
+  repeat many [
+    add {
+      pos: { random width, random height }
+      speed: random from 0.4 to 2.2
+      tint: pick STAR_COLORS
+      phase: random 360
+    } to stars
+  ]
+]
+
+learn sky [
+  no stroke
+  for each s in stars [
+    s.pos.y = s.pos.y + s.speed
+    if s.pos.y > height [ s.pos = { random width, 0 } ]
+    fill s.tint
+    alpha (55 + 45 * sin (time * 200 + s.phase))
+    rect at s.pos size (s.speed + 0.6) (s.speed + 0.6)
+  ]
+  alpha 100
+]

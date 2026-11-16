@@ -161,6 +161,7 @@ examples_are_in_the_groups_they_belong_to :: proc(t: ^testing.T) {
 	for name in ([]string{"sound", "keys", "music", "player", "soundfont", "pedals", "midi", "midiout", "osc", "recorder"}) {
 		expect_group(t, name, "Sound")
 	}
+	expect_group(t, "swarm", "Games")
 	expect_group(t, "checks", "Tools")
 	expect_group(t, "export", "Tools")
 }

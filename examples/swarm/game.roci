@@ -1,0 +1,37 @@
+// The game as a whole: starting over, one step of play, and drawing what is in play.
+
+learn restart [
+  score = 0
+  lives = 3
+  stage = 1
+  shots = []
+  bombs = []
+  bits = []
+  ship.pos = { 223, SHIP_Y }
+  ship.alive = true
+  ship.shield = 90
+  mode = "play"
+  hatchall
+]
+
+// One frame of play: the ship, the swarm, every shot, the sparks, and a new stage when the
+// swarm is gone.
+learn advance [
+  fly
+  command
+  shots_fly
+  ship_hits
+  if mode is "play" and (count swarm) is 0 and ship.alive [
+    stage = stage + 1
+    hatchall
+  ]
+  fade
+  if banner > 0 [ banner = banner - 1 ]
+]
+
+learn drawplay [
+  for each e in swarm [ image (look e) at e.pos ]
+  drawshots
+  drawsparks
+  drawship
+]

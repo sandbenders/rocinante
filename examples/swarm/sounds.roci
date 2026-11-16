@@ -1,0 +1,52 @@
+// Every sound of the game. The instruments are made in sketch.roci; these verbs play them,
+// and `tend` slides their pitches a little each frame, which is what makes a laser zap and
+// a dive whistle fall.
+
+TUNE = [ 72 76 79 84 79 84 88 91 ]
+LOSE = [ 67 64 60 55 ]
+
+learn pew [
+  play zap pitch 1600 for 0.12 volume 30
+  zap_slide = 8
+]
+
+learn blast size [
+  play boom note (20 + random 20) for (0.12 + size * 0.1) volume (35 + size * 15)
+]
+
+learn whoosh [
+  play whistle pitch 2000 for 0.7 volume 14
+  whistle_slide = 40
+]
+
+learn wreck [
+  play crash note 52 for 1.2 volume 45
+  play boom note 20 for 0.6 volume 70
+  crash_slide = 70
+]
+
+learn jingle notes [
+  playing_tune = notes
+  tune_at = 1
+]
+
+// Slides the pitches of the sounds still playing, and plays the next note of a tune.
+learn tend [
+  if zap_slide > 0 [
+    set zap pitch (250 + zap_slide * 170)
+    zap_slide = zap_slide - 1
+  ]
+  if whistle_slide > 0 [
+    set whistle pitch (500 + whistle_slide * 38)
+    whistle_slide = whistle_slide - 1
+  ]
+  if crash_slide > 0 [
+    set crash pitch (40 + crash_slide * 2)
+    crash_slide = crash_slide - 1
+  ]
+  if tune_at > 0 and frame % 7 is 0 [
+    play chime note (item tune_at of playing_tune) for 0.16 volume 30
+    tune_at = tune_at + 1
+    if tune_at > (count playing_tune) [ tune_at = 0 ]
+  ]
+]

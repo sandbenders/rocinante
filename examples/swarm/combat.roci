@@ -1,0 +1,71 @@
+// What hits what: the ship's shots against the swarm, the swarm's shots and divers against
+// the ship, and the points each member is worth.
+
+// Points for a member: more for a moth or a boss, double when it is shot in a dive, and a
+// diving boss worth 400.
+learn worth e [
+  points = 50
+  if e.kind is 2 [ points = 80 ]
+  if e.kind is 3 [ points = 150 ]
+  if e.state is "dive" [ points = points * 2 ]
+  if e.state is "dive" and e.kind is 3 [ points = points + 100 ]
+  give points
+]
+
+// Moves the ship's shots. A shot that reaches the swarm hurts the first member it touches
+// and is spent.
+learn shots_fly [
+  for each s in shots [
+    s.pos = s.pos + s.vel
+    if s.pos.y < -20 [ s.done = true ]
+    for each e in (hits s swarm) [
+      if not s.done [
+        s.done = true
+        e.hp = e.hp - 1
+        mid = e.pos + e.size / 2
+        if e.hp > 0 [
+          burst mid (rgb 170 70 230) 8
+          blast 0
+        ] else [
+          score = score + worth e
+          burst mid (pick [ (rgb 255 220 40) (rgb 235 50 60) (rgb 80 230 240) ]) 22
+          burst mid white 10
+          blast 1
+          remove e from swarm
+        ]
+      ]
+    ]
+  ]
+  shots = keep shots [ not it.done ]
+]
+
+// Moves the swarm's shots, and wrecks the ship when one of them, or a diver, reaches it
+// while it has no shield.
+learn ship_hits [
+  for each b in bombs [
+    b.pos = b.pos + b.vel
+    if b.pos.y > height [ b.done = true ]
+    if ship.alive and ship.shield is 0 and touching b ship [
+      b.done = true
+      crashship
+    ]
+  ]
+  bombs = keep bombs [ not it.done ]
+  if ship.alive and ship.shield is 0 [
+    for each e in (hits ship swarm) [
+      if ship.alive [
+        burst (e.pos + e.size / 2) (rgb 255 220 40) 20
+        remove e from swarm
+        crashship
+      ]
+    ]
+  ]
+]
+
+learn drawshots [
+  no stroke
+  fill (rgb 255 240 200)
+  for each s in shots [ rect at s.pos size s.size ]
+  fill (rgb 255 90 90)
+  for each b in bombs [ rect at b.pos size b.size ]
+]

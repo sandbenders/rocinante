@@ -1,0 +1,131 @@
+// The swarm: where each member sits in the formation, how it flies in, when one breaks away
+// to dive, and the curves they all fly along.
+
+// Where a member of the swarm sits in the formation, which swings and breathes.
+learn spot e [
+  sway = 34 * sin (time * 40)
+  wide = 1
+  if arrived [ wide = 1 + 0.12 * (0.5 + 0.5 * sin (time * 90)) ]
+  x = 240 + (e.col - (e.across - 1) / 2) * 38 * wide + sway - e.size.x / 2
+  y = 90 + e.tier * 38 * wide
+  give { x, y }
+]
+
+// A point along a curve from a to d that leans towards b and c, t from 0 to 1.
+learn curve a b c d t [
+  u = 1 - t
+  give a * (u * u * u) + b * (3 * u * u * t) + c * (3 * u * t * t) + d * (t * t * t)
+]
+
+// How many hits a member of the swarm takes: two for the boss.
+learn lives_of kind [
+  if kind is 3 [ give 2 ]
+  give 1
+]
+
+// One member of the swarm: kind 1 a bug, 2 a moth, 3 the boss. The top rows fly in from
+// above, the others from low at the sides; `delay` spaces them out along the same curve.
+learn hatch kind tier col across delay side [
+  wide = 27
+  if kind is 3 [ wide = 33 ]
+  origin = { 240 + side * 300, 420 }
+  if tier < 2 [ origin = { 240 + side * 160, -40 } ]
+  add {
+    pos: origin
+    size: { wide, 24 }
+    kind: kind
+    hp: lives_of kind
+    tier: tier
+    col: col
+    across: across
+    state: "enter"
+    t: 0 - delay
+    speed: 0.012
+    launch: origin
+    bend1: { 240 - side * 40, 260 }
+    bend2: { 240 + side * 180, 160 }
+    shots_left: 0
+  } to swarm
+]
+
+// A whole new swarm: four bosses, sixteen moths and twenty bugs.
+learn hatchall [
+  swarm = []
+  arrived = false
+  for c from 0 to 3 [ hatch 3 0 c 4 (c * 0.06) -1 ]
+  for c from 0 to 7 [ hatch 2 1 c 8 (0.35 + c * 0.06) 1 ]
+  for c from 0 to 7 [ hatch 2 2 c 8 (0.9 + c * 0.06) -1 ]
+  for c from 0 to 9 [ hatch 1 3 c 10 (1.45 + c * 0.06) 1 ]
+  for c from 0 to 9 [ hatch 1 4 c 10 (2 + c * 0.06) -1 ]
+  banner = 120
+  dive_wait = 360
+  jingle TUNE
+]
+
+// Sends one member down at the ship: a loop up and away, then a swoop towards where the ship
+// is now. Later stages dive faster and fire more.
+learn dive e [
+  side = 1
+  if e.pos.x > 240 [ side = -1 ]
+  e.state = "dive"
+  e.t = 0
+  e.speed = 0.0065 + stage * 0.0007
+  e.launch = e.pos
+  e.bend1 = e.pos + { side * 110, -120 }
+  e.bend2 = { ship.pos.x + random from -60 to 60, 420 }
+  e.shots_left = 1
+  if stage > 2 [ e.shots_left = 2 ]
+  if e.kind is 3 [ e.shots_left = e.shots_left + 1 ]
+  whoosh
+]
+
+// A shot from a diving member, aimed a little towards the ship.
+learn shoot e [
+  aim = normalize (ship.pos + { 16, 0 } - e.pos)
+  add {
+    pos: e.pos + { e.size.x / 2, e.size.y }
+    size: { 4, 10 }
+    vel: { aim.x * 2, 4.5 + stage * 0.3 }
+    done: false
+  } to bombs
+]
+
+// Moves one member of the swarm along its curve, or keeps it in its place.
+learn steer e [
+  place = spot e
+  if e.state is "enter" [
+    e.t = e.t + e.speed
+    if e.t > 0 [ e.pos = curve e.launch e.bend1 e.bend2 place (clamp e.t 0 1) ]
+    if e.t >= 1 [ e.state = "home" ]
+  ]
+  if e.state is "home" [ e.pos = place ]
+  if e.state is "dive" [
+    e.t = e.t + e.speed
+    e.pos = curve e.launch e.bend1 e.bend2 { e.bend2.x + 40, height + 60 } (clamp e.t 0 1)
+    if e.shots_left > 0 and e.pos.y > 220 and random 100 < 3 [
+      shoot e
+      e.shots_left = e.shots_left - 1
+    ]
+    if e.t >= 1 [
+      // Off the bottom: back in from the top, straight down to its place.
+      e.state = "enter"
+      e.t = 0
+      e.speed = 0.02
+      e.launch = { place.x, -40 }
+      e.bend1 = { place.x, 20 }
+      e.bend2 = { place.x, place.y - 40 }
+    ]
+  ]
+]
+
+// Moves the whole swarm, and now and then sends one of those waiting in the formation down.
+learn command [
+  for each e in swarm [ steer e ]
+  if not arrived [ arrived = (count (keep swarm [ it.state is "enter" ])) is 0 ]
+  if dive_wait > 0 [ dive_wait = dive_wait - 1 ]
+  if dive_wait <= 0 and ship.alive and mode is "play" [
+    waiting = keep swarm [ it.state is "home" ]
+    if (count waiting) > 0 [ dive (pick waiting) ]
+    dive_wait = clamp (round (110 - stage * 12 + random 60)) 25 400
+  ]
+]

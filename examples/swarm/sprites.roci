@@ -1,0 +1,22 @@
+// Turning the grids (grids.roci) into pictures, and choosing which picture a member of the
+// swarm shows this frame.
+
+// A list of palette numbers, so many to a row, as a picture SCALE times bigger with sharp pixels.
+learn sprite rows wide palette [
+  dots = collect rows [ item (it + 1) of palette ]
+  small = picture from dots size wide ((count rows) / wide)
+  give resize small size (wide * SCALE) 0 as nearest
+]
+
+// Wings up or down: they beat slowly in the formation and fast in a dive. A boss that has
+// been hit once shows its hurt colors.
+learn look e [
+  wing = 1 + (frame / 20) % 2 >= 1
+  if e.state is "dive" [ wing = 1 + (frame / 6) % 2 >= 1 ]
+  step = 1
+  if wing [ step = 2 ]
+  if e.kind is 1 [ give item step of bug_looks ]
+  if e.kind is 2 [ give item step of moth_looks ]
+  if e.hp is 1 [ give item step of hurt_looks ]
+  give item step of boss_looks
+]

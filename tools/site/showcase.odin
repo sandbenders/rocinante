@@ -34,6 +34,7 @@ SHOWCASE_CATEGORIES := [?]Showcase_Category{
 	{"Interface and windows", "Widgets and windows: sliders, dials and buttons, and sketches that open more than one window."},
 	{"Space", "Shapes in three dimensions: solids with a depth buffer and a light, drawn under everything flat, with a camera the mouse turns or the sketch places."},
 	{"Sound", "Sound files that play, loop and stream, instruments and SoundFonts, effects, a MIDI keyboard in and out, OSC from other programs, drawing with how loud and high a sound is, and recording what plays."},
+	{"Games", "A whole game made of several files: sprites drawn from grids of numbers, sounds made by instruments, collision and a score."},
 	{"Tools", "Checks that test a sketch, saving what it draws, and a benchmark."},
 }
 
@@ -105,8 +106,10 @@ SHOWCASE := [?]Showcase_Entry{
 	{"two_windows", 6, "Two windows", 30, 2},
 	{"garden", 6, "Garden", 30, 2},
 
-	{"checks", 9, "Checks", 3, 1},
-	{"export", 9, "Saving pictures", 5, 1},
+	{"swarm", 9, "Swarm", 40, 1},
+
+	{"checks", 10, "Checks", 3, 1},
+	{"export", 10, "Saving pictures", 5, 1},
 
 	{"sound", 8, "Sound", 30, 1},
 	{"keys", 8, "Keys", 30, 1},

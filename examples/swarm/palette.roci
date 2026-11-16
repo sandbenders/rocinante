@@ -1,0 +1,27 @@
+// The colors every sprite is painted with, and how much bigger than its grid a sprite is drawn.
+// Definitions only: what runs is written in sketch.roci.
+SCALE = 3
+CLEAR = rgb 0 0 0 alpha 0
+// 0 see-through, 1 white, 2 red, 3 blue, 4 yellow, 5 green, 6 purple, 7 cyan, 8 orange
+COLORS = [
+  CLEAR
+  white
+  (rgb 235 50 60)
+  (rgb 60 110 255)
+  (rgb 255 220 40)
+  (rgb 40 200 90)
+  (rgb 170 70 230)
+  (rgb 80 230 240)
+  (rgb 255 150 30)
+]
+HURT = [
+  CLEAR
+  white
+  (rgb 235 50 60)
+  (rgb 60 110 255)
+  (rgb 255 220 40)
+  (rgb 170 70 230)
+  (rgb 170 70 230)
+  (rgb 80 230 240)
+  (rgb 255 150 30)
+]
