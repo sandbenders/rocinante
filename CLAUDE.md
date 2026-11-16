@@ -341,16 +341,21 @@ Each phase ends with a demo sketch, a green Linux pipeline (§11), the release-c
 
 What each one built, its measurements and findings, and how it met its exit are in `docs/phases.md`.
 
-**Still open from the earlier phases** (Phase 5's are in its summary above): IME on Linux, FreeBSD and OpenBSD (checked by hand only; no test can compose text); `vendor:sdl3` or our own bindings (decide the first time a newer function is needed); the trademark search; the unchecked dependency platform lists; offers to make upstream (Odin's `for x in m[key]` crash on a missing key, its `os.Walker` leaving a folder open on Windows, `SDL_main` as an import in `vendor:sdl3`, the bindings gaps). From Phase 3: video and webcam fills (with Phase 6's video), shaped clips and masks beyond `mask by`, named styles holding a picture, the `ui` accent, font and size verbs, and custom widgets. From Phase 4: nodes, `wireframe` on the solids and models, per-corner colors and textures on a mesh and indexed meshes, a shape's alpha in 3D, a gradient on a solid, 3D inside `draw into`, reading the space turtle, an extruded `svg` and text as outlines. The phones' parts of both are in Phase 8. `spikes/` is throwaway; the packages in §4.2 are created as phases need them.
+**Still open from the earlier phases** (Phase 5's are in its summary above): `vendor:sdl3` or our own bindings (decide the first time a newer function is needed); the trademark search; the unchecked dependency platform lists; offers to make upstream (Odin's `for x in m[key]` crash on a missing key, its `os.Walker` leaving a folder open on Windows, `SDL_main` as an import in `vendor:sdl3`, the bindings gaps). From Phase 3: video and webcam fills (with Phase 6's video), shaped clips and masks beyond `mask by`, named styles holding a picture, the `ui` accent, font and size verbs, and custom widgets. From Phase 4: nodes, `wireframe` on the solids and models, per-corner colors and textures on a mesh and indexed meshes, a shape's alpha in 3D, a gradient on a solid, 3D inside `draw into`, reading the space turtle, an extruded `svg` and text as outlines. The phones' parts of both are in Phase 8. `spikes/` is throwaway; the packages in §4.2 are created as phases need them.
 
 ### Phase 5: Sound (closed)
 
 **Phase 5, sound** (done 2026-11-15): sound files decoded whole or, past 30 seconds, streamed from the disk or memory with a buffer size per sound; `level`, `bands` and `mic`; instruments (`synth`) with an envelope and SoundFonts; sixteen effects; MIDI in and out (our own backends on every desktop system); OSC; and recording what plays to a file (`record speakers "take.wav"`, WAV by rocinante, the other formats through the user's ffmpeg); all in the C API too. Exit met: a MIDI controller drives an audio-visual sketch, about 8.7 ms from a key to its sound on Linux (measured, in `docs/phases.md`). All of it is our own code over miniaudio's decoders; `vendor:portmidi` was turned down. Carried on: MIDI, the microphone and recording on the phones (Phase 8; their sound plays), and checking by hand what could not be run here (WinMM and the BSDs' MIDI out, the Windows AAC decoder). Afterwards (2026-11-16): AIFF, Opus and AAC files and the whole SoundFont filter, LFO and modulator set.
 
 ### Phase 6: The world outside
-- Files and data formats, dialogs, network, serial and Firmata, webcam, video playback and recording (§4.11), sensors, gamepads, joysticks, actions and the `controls` widget (§5.12), video recording.
-- 2D physics on Box2D v3 worlds (§5.13).
-- Machine learning (§4.10): LiteRT bindings, `predict`, the built-in tasks and their chosen models, `roci add` conversion, `roci doctor ml`.
+Taken in this order (decided 2026-11-16):
+1. Gamepads, joysticks, actions and the `controls` widget (§5.12): they sit on SDL3, which we already use, and they feed the exit game sketch.
+2. Files and data formats, dialogs, network.
+3. Webcam, video playback and recording (§4.11).
+4. Serial and Firmata, sensors.
+5. 2D physics on Box2D v3 worlds (§5.13).
+6. The LiteRT spike (open question 1).
+7. Machine learning (§4.10): LiteRT bindings, `predict`, the built-in tasks and their chosen models, `roci add` conversion, `roci doctor ml`.
 - **Exit**: an installation-style sketch (camera in, OSC out, UI control window, runs for 24 hours without leaks); a webcam sketch driven by `hands` at full frame rate on all seven platforms; a game-style sketch played with two different gamepads, remapped by a player through `controls`.
 
 ### Phase 7: The compiler
@@ -543,7 +548,7 @@ Ideas that are wanted but not planned for the first stable release live in the R
 
 Decide these with Fabrizio; move each to "Decided" with the date.
 
-1. Machine learning on FreeBSD and OpenBSD: LiteRT's C runtime built there, or ONNX Runtime as the fallback (§4.10). Settled by the LiteRT spike at the start of Phase 6.
+1. Machine learning on FreeBSD and OpenBSD: LiteRT's C runtime built there, or ONNX Runtime as the fallback (§4.10). Settled by the LiteRT spike, sixth in Phase 6's order, after the physics.
 2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
 3. Choices inherited from the sections they point to: HE-AAC where the system has no decoder (§4.6); MIDI and the microphone on iOS and Android (§4.6, Phase 8); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision, once it has releases and covers the phones (§5.13).
 4. The accessible canvas (planned for Phase 3 and not done there; still to be placed): scene descriptions built from the command records (§4.3), a `describe "…"` verb, a live region that updates only when the scene changes, and colour-contrast checks, extending §4.8 from widgets to the canvas (p5.js does this with `describe` and `textOutput`, §12).
