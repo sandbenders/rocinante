@@ -1,6 +1,6 @@
 ---
 title: "Mouse, keys and fingers"
-summary: "Reading the mouse and the keyboard, waiting for something to happen, the wheel and touch."
+summary: "Reading the mouse and the keyboard, waiting for something to happen, the wheel, touch, gamepads and joysticks."
 weight: 5
 ---
 
@@ -81,3 +81,40 @@ draw [
 ```
 
 A finger also moves `mouse` and runs `on mouse down left`, and on a computer the left mouse button counts as one finger, so a sketch for a touch screen can be tried with a mouse.
+
+## Gamepads and joysticks
+
+`gamepad` is the first gamepad that is plugged in, and `gamepads` is every one of them, the first first. A pad plugged in or out while the sketch runs is found at once, and with none plugged in `gamepad` is a pad at rest whose `connected` is false, so a sketch needs no check before it reads one.
+
+```roci picture
+pos = { 200, 150 }
+draw [
+  background 20
+  pos = pos + gamepad.leftstick * 4
+  fill white
+  if gamepad.bottom [ fill gold ]
+  circle at pos radius (20 + gamepad.righttrigger * 30)
+  fill white
+  if not gamepad.connected [ text "plug in a gamepad" at 20 20 ]
+]
+```
+
+The buttons are named by where they are on the pad, not by the letter printed on them, because the same place says A on one pad and a cross on another: `bottom`, `right`, `left` and `top` are the four on the right hand, `leftshoulder` and `rightshoulder` the ones on top, `start`, `back` and `home` the ones in the middle, and `leftstickpress` and `rightstickpress` what pressing a stick in does. Each is true while it is held. The two sticks and the `dpad` are vectors, each of `x` and `y` from -1 to 1, with up negative as on the screen, so `pos + gamepad.leftstick * 4` moves a shape the way the stick leans. A stick at rest is exactly 0. `lefttrigger` and `righttrigger` go from 0 to 1, and `extra` is a list of the other buttons a pad may have (paddles, the touchpad press).
+
+Most pads are known by name. A device that is not a gamepad (a flight stick, a wheel, an arcade panel) is in `joysticks` instead, each with its `name`, `axes`, a list of numbers from -1 to 1, and `buttons`, a list of true and false, with four more after the real ones for each hat on it: up, right, down and left.
+
+```roci
+for each stick in joysticks [
+  print stick.name
+  print (item 1 of stick.axes)
+]
+```
+
+`rumble` shakes a gamepad: `rumble 80 for 0.5` is 80 out of 100 for half a second, and `player 2` after it shakes the second pad instead of the first. It does nothing, and says nothing, for a pad that cannot shake or when there is no pad.
+
+```roci
+on key "space" [ rumble 80 for 0.4 ]
+on key "2" [ rumble 80 for 0.4 player 2 ]
+```
+
+What shakes depends on the pad and on the system. On a Mac the PlayStation 4 and 5 pads shake, the Logitech Dual Action has no motors, and the Xbox Series X pad did not shake when this was tried (it is not known yet whether it does on the other systems).
