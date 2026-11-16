@@ -76,6 +76,7 @@ Record :: struct {
 }
 
 State :: struct {
+	inset: [2]f32, // how far the screen is covered at the left and the top (a notch, rounded corners), in logical pixels: the panel keeps clear of it
 	ctx:            ^imgui.Context,
 	theme:          Theme,
 	size:           [2]f32,
@@ -301,6 +302,11 @@ apply_theme :: proc(s: ^State) {
 	style.item_spacing = {10, 8}
 	style.font_size_base = BASE_FONT_SIZE
 	s.themed = true
+}
+
+// Says how far in from the window's left and top edges it is safe to draw widgets.
+set_inset :: proc(s: ^State, inset: [2]f32) {
+	s.inset = inset
 }
 
 set_theme :: proc(s: ^State, theme: Theme) {

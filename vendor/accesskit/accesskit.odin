@@ -10,6 +10,9 @@ package accesskit
 when ODIN_PLATFORM_SUBTARGET == .Android {
 	// its Android adapter is called from the Java side, which is not written yet
 	LIBRARY_PRESENT :: false
+} else when ODIN_PLATFORM_SUBTARGET == .iPhone {
+	// the phone's adapter is not written yet, and the library in the cache is the Mac's
+	LIBRARY_PRESENT :: false
 } else when ODIN_OS == .Windows {
 	LIBRARY_PRESENT :: #exists("../../.cache/ui/accesskit/accesskit.lib")
 } else {

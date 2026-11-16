@@ -276,6 +276,18 @@ window_metrics :: proc(window: ^Window) -> Metrics {
 	return metrics_from(int(w), int(h), int(pw), int(ph), sdl.GetWindowDisplayScale(window.handle), WINDOW_IS_IN_PIXELS)
 }
 
+// How far in from the window's left and top edges the screen is free of what covers it (a phone's
+// notch and rounded corners, its status bar), in logical pixels; 0 where nothing does, which is
+// every desktop window.
+safe_inset :: proc(window: ^Window) -> [2]f32 {
+	area: sdl.Rect
+	if !sdl.GetWindowSafeArea(window.handle, &area) {
+		return {}
+	}
+	scale := f32(input_scale(window))
+	return {max(f32(area.x) / scale, 0), max(f32(area.y) / scale, 0)}
+}
+
 // Asks the system for typed text (and an input method's), which then arrives as `Text_Input`
 // events, with the input method's window beside the box at `x`, `y`, `width` and `height` in logical
 // pixels; or stops asking. SDL says a window gets typed text only after this.

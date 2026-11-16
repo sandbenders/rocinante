@@ -27,7 +27,7 @@ ensure_panel :: proc(s: ^State) {
 	if s.panel_open {
 		return
 	}
-	imgui.set_next_window_pos({PANEL_MARGIN, PANEL_MARGIN})
+	imgui.set_next_window_pos({PANEL_MARGIN + s.inset.x, PANEL_MARGIN + s.inset.y})
 	s.panel_count += 1
 	s.panel_visible = imgui.begin("rocinante", nil, PANEL_FLAGS)
 	s.panel_open = true

@@ -35,14 +35,17 @@ odin build "$here" -target:darwin_arm64 -subtarget:iphone -build-mode:lib \
 # Odin links the executable itself, but it puts Homebrew's macOS libSDL3 ahead
 # of ours, so the final link is done here.
 echo "== link"
+# What roci links beside SDL3, built for the phone by spikes/mobile/ios/libs.sh.
+lib="$root/.cache/ios/lib"
+libs="$lib/libroci_ui.a $lib/libroci_sound.a $lib/libSDL3_ttf.a $(ls "$lib"/libfreetype*.a "$lib"/libharfbuzz*.a) $lib/libshaderc_combined.a $(ls "$lib"/libspirv-cross-*.a)"
 xcrun --sdk iphoneos clang -target "arm64-apple-ios$MIN_IOS" -isysroot "$sdk" \
-  "$out/libspike.a" "$SDL_IOS_LIB/libSDL3.a" \
+  "$out/libspike.a" "$SDL_IOS_LIB/libSDL3.a" $libs \
   -framework CoreMedia -framework CoreVideo -framework CoreAudio \
   -framework AudioToolbox -framework AVFoundation -framework CoreBluetooth \
-  -framework CoreGraphics -framework CoreMotion -framework Foundation \
+  -framework CoreGraphics -framework CoreText -framework CoreFoundation -framework CoreMIDI -framework CoreMotion -framework Foundation \
   -framework GameController -framework Metal -framework OpenGLES \
   -framework QuartzCore -framework UIKit -weak_framework CoreHaptics \
-  -lm -lpthread -o "$out/proj/spike"
+  -lc++ -lm -lpthread -o "$out/proj/spike"
 cp "$here/Info.plist" "$out/proj/Info.plist"
 
 echo "== xcode: wrap, sign"

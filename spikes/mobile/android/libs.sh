@@ -27,7 +27,7 @@ ANDROID_HOME="${ANDROID_HOME:-$default_home}"
 NDK_VERSION="${NDK_VERSION:-29.0.14206865}"
 API_LEVEL="${API_LEVEL:-24}"
 : "${SDL_ANDROID_LIB:?set SDL_ANDROID_LIB to the folder with libSDL3.so}"
-: "${SDL_ANDROID_SRC:?set SDL_ANDROID_SRC to SDL's source folder}"
+: "${SDL_ANDROID_SRC:?set SDL_ANDROID_SRC to the folder with the SDL source}"
 ndk="$ANDROID_HOME/ndk/$NDK_VERSION"
 
 # The versions the desktop builds use.

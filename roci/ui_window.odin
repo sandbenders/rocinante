@@ -22,9 +22,12 @@ ui_frame :: proc() -> ^ui.State {
 	w := current_win()
 	ensure_ui(w)
 	density := HEADLESS_UI_DENSITY
+	inset: [2]f32
 	if w.handle != nil {
 		density = platform.window_metrics(w.handle).density
+		inset = platform.safe_inset(w.handle)
 	}
+	ui.set_inset(w.ui, inset)
 	ui.set_theme(w.ui, theme_of(w))
 	ui.ensure_frame(w.ui, {f32(w.width), f32(w.height)}, density, f32(max(the.delta, 1.0 / 1000)))
 	return w.ui

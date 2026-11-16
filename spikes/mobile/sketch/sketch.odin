@@ -13,6 +13,10 @@
 //   built-in effect translated from HLSL on the phone itself.
 // - Phase 4: a lit 3D scene with a sun's and a point light's shadows, solids, a mesh
 //   drawn as a wireframe and the OBJ ship of examples/model with its picture.
+// - Phase 5: sound, the page the phones start on so something is heard at once. A synth
+//   played by buttons, a SoundFont piano, a short sound and a looping one decoded from bytes,
+//   a three-minute song read as it plays from a copy of its bytes, effects on the speakers,
+//   and `level` and `bands` drawn from what comes out.
 package mobile_sketch
 
 import "core:fmt"
@@ -20,8 +24,8 @@ import "core:math"
 import "../../../roci"
 import "../../../roci/gfx"
 
-Page :: enum {Shapes, Pictures, Space}
-page: Page
+Page :: enum {Sound, Shapes, Pictures, Space}
+page: Page // Sound, the first, is the phones' start
 
 // The frame rate shown, worked out every half second from the frames drawn in it,
 // so the number holds still long enough to read.
@@ -38,6 +42,23 @@ ship: roci.Model
 ship_error: gfx.Gltf_Error
 glow: bool
 size: f64
+
+// Phase 5: the sounds, made when the sketch starts. The files are carried inside the program, as the ship is.
+CLICK_WAV :: #load("../../../examples/sound/assets/sounds/click.wav")
+RAIN_OGG :: #load("../../../examples/sound/assets/sounds/rain.ogg")
+DRIFT_MP3 :: #load("../../../examples/player/assets/sounds/drift.mp3")
+UPRIGHT_SF2 :: #load("../../../examples/soundfont/assets/sounds/upright.sf2")
+NOTES :: [8]f64{60, 62, 64, 65, 67, 69, 71, 72}
+
+wave: roci.Sound      // the synth the buttons play
+piano: roci.Sound     // the SoundFont's upright
+click: roci.Sound
+rain: roci.Sound
+song: roci.Sound      // three minutes, so read as it plays
+sound_ok: [5]bool     // each of the above made
+use_piano: bool
+reverb: bool
+delay: bool
 
 // The ship of examples/model (Quaternius's CC0 `striker.obj`), its materials and its painted picture,
 // carried inside the program: a file in the app's package has no path a phone's program can open.
@@ -76,10 +97,18 @@ set_up :: proc() {
 		vignette_message = "no built-in vignette"
 	}
 	ship, ship_error = roci.add_model("striker.obj", 1, STRIKER, striker_file)
+	wave = roci.synth("triangle")
+	roci.set_envelope(wave, attack = 0.01, release = 0.4)
+	sound_ok[0] = true
+	piano, _, sound_ok[1] = roci.add_soundfont(UPRIGHT_SF2, 0)
+	click, sound_ok[2] = roci.add_sound(CLICK_WAV)
+	rain, sound_ok[3] = roci.add_sound(RAIN_OGG)
+	song, sound_ok[4] = roci.add_sound(DRIFT_MP3)
 }
 
 widgets :: proc() {
 	o := roci.ui_begin(.Row)
+	if roci.ui_button("phase 5") {page = .Sound}
 	if roci.ui_button("phase 1") {page = .Shapes}
 	if roci.ui_button("phase 3") {page = .Pictures}
 	if roci.ui_button("phase 4") {page = .Space}
@@ -88,16 +117,101 @@ widgets :: proc() {
 		size = roci.ui_slider_value("size", 20, 120, 60)
 		glow = roci.ui_toggle_value("vignette", false)
 	}
+	if page == .Sound {
+		sound_widgets()
+	}
+}
+
+// The sound page's controls, big enough for a finger: the notes, then what plays and the effects.
+sound_widgets :: proc() {
+	use_piano = roci.ui_toggle_value("piano (SoundFont)", false)
+	o := roci.ui_begin(.Row)
+	for note, i in NOTES {
+		if roci.ui_button(fmt.tprintf("%d", i + 1)) {
+			instrument := piano if use_piano && sound_ok[1] else wave
+			roci.play(instrument, note = note, seconds = 0.7)
+		}
+	}
+	roci.ui_end(.Row, o)
+	o = roci.ui_begin(.Row)
+	if roci.ui_button("click") && sound_ok[2] {roci.play(click)}
+	if roci.ui_button("rain") && sound_ok[3] {
+		if roci.sound_state(rain).playing {roci.pause(rain)} else {roci.loop(rain, volume = 60)}
+	}
+	if roci.ui_button("song") && sound_ok[4] {
+		if roci.sound_state(song).playing {roci.pause(song)} else {roci.play(song)}
+	}
+	if roci.ui_button("+30 s") && sound_ok[4] {
+		roci.set_sound(song, at = roci.sound_state(song).at + 30)
+	}
+	roci.ui_end(.Row, o)
+	rev := roci.ui_toggle_value("reverb on the speakers", false)
+	if rev != reverb {
+		reverb = rev
+		if reverb {
+			roci.sound_effect(roci.SPEAKERS, "reverb", {{name = "mix", number = 40}})
+		} else {
+			roci.no_sound_effect(roci.SPEAKERS, "reverb")
+		}
+	}
+	del := roci.ui_toggle_value("delay on the synth", false)
+	if del != delay {
+		delay = del
+		if delay {
+			roci.sound_effect(wave, "delay", {{name = "time", number = 0.25}, {name = "mix", number = 40}})
+		} else {
+			roci.no_sound_effect(wave, "delay")
+		}
+	}
+}
+
+draw_sound :: proc() {
+	roci.background_grey(20)
+	w, h := roci.width(), roci.height()
+
+	// What comes out: how loud, and how much of each pitch, laid out from the bottom up so it fits any phone.
+	loud := roci.level()
+	heard := roci.bands(32)
+	roci.no_stroke()
+	floor := h - 190
+	for v, i in heard {
+		roci.fill(roci.hsb(f64(i * 8), 180, 255))
+		bar := v * 2
+		roci.rect(16 + f64(i) * (w - 32) / 32, floor - bar, (w - 32) / 32 - 3, bar)
+	}
+	roci.fill(roci.named("tomato"))
+	roci.rect(16, floor + 8, loud * (w - 32) / 100, 16)
+
+	names := [5]string{"synth", "SoundFont", "click", "rain", "song"}
+	all_ok := true
+	missing := ""
+	for name, i in names {
+		if !sound_ok[i] {
+			all_ok = false
+			missing = fmt.tprintf("%s %s", missing, name)
+		}
+	}
+	if all_ok {
+		roci.text("all five sounds made", 16, floor + 36, {fill = roci.named("lightgreen"), size = 20})
+	} else {
+		roci.text(fmt.tprintf("NOT MADE:%s", missing), 16, floor + 36, {fill = roci.named("tomato"), size = 20})
+	}
+	state := roci.sound_state(song)
+	roci.text(fmt.tprintf("song %.1f of %.1f s, %s", state.at, state.length, "playing" if state.playing else "paused"), 16, floor + 66, {fill = roci.grey(230), size = 20})
+	if roci.sound_problem != "" {
+		roci.text(fmt.tprintf("audio: %s", roci.sound_problem), 16, floor + 94, {fill = roci.named("tomato"), size = 18}, w - 32)
+	}
 }
 
 draw :: proc() {
 	count_frames()
 	switch page {
+	case .Sound:    draw_sound()
 	case .Shapes:   draw_shapes()
 	case .Pictures: draw_pictures()
 	case .Space:    draw_space()
 	}
-	roci.text(fmt.tprintf("%.1f fps", shown_fps), 16, roci.height() - 60, {fill = roci.grey(230), size = 32})
+	roci.text(fmt.tprintf("%.1f fps", shown_fps), 16, roci.height() - 40, {fill = roci.grey(230), size = 28})
 }
 
 draw_shapes :: proc() {

@@ -369,3 +369,18 @@ test_a_range_that_is_the_only_widget_runs_for_many_frames :: proc(t: ^testing.T)
 	}
 	testing.expect_value(t, len(records(s)), 1)
 }
+
+// A phone's notch and status bar cover the top of the screen, so the panel starts below what covers it.
+@(test)
+test_the_panel_keeps_clear_of_what_covers_the_edge_of_the_screen :: proc(t: ^testing.T) {
+	s := create(gfx.INTER_REGULAR)
+	defer destroy(s)
+	set_inset(s, {10, 60})
+	placed_frames(s, proc(s: ^State) {
+		_ = button(s, "near")
+	})
+	near, _ := record_named(s, "near")
+	testing.expect(t, near.rect.min.y >= 60, "below the status bar")
+	testing.expect(t, near.rect.min.x >= 10, "right of what covers the left")
+	testing.expect(t, near.rect.min.y < 100 && near.rect.min.x < 50, "and still near the corner")
+}
