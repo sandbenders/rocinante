@@ -497,10 +497,37 @@ list_text :: proc(p: ^Printer, e: ^Expr, k: List_Lit, level: int, column: int) -
 	}
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_string(&b, "[\n")
-	for part in parts {
-		strings.write_string(&b, indent_text(level + 1))
-		strings.write_string(&b, part)
-		strings.write_string(&b, "\n")
+	// A list written in rows (a grid of numbers, a table of names) keeps its rows: the items that
+	// shared a line in the source still do, when the list was written over lines and any line held
+	// more than one. Otherwise (a long list written on one line) it is one item to a line.
+	rows := make([dynamic][dynamic]string, context.temp_allocator)
+	widest := 0
+	last := -1
+	for item, i in k.items {
+		line := src_line(p, item.span.start)
+		if line != last || len(rows) == 0 {
+			append(&rows, make([dynamic]string, context.temp_allocator))
+			last = line
+		}
+		append(&rows[len(rows) - 1], parts[i])
+		widest = max(widest, len(rows[len(rows) - 1]))
+	}
+	rowed := widest > 1 && spans_lines(p, e.span)
+	for row in rows {
+		if rowed {
+			line := strings.join(row[:], " ", context.temp_allocator)
+			if !strings.contains_rune(line, '\n') {
+				strings.write_string(&b, indent_text(level + 1))
+				strings.write_string(&b, line)
+				strings.write_string(&b, "\n")
+				continue
+			}
+		}
+		for part in row {
+			strings.write_string(&b, indent_text(level + 1))
+			strings.write_string(&b, part)
+			strings.write_string(&b, "\n")
+		}
 	}
 	strings.write_string(&b, indent_text(level))
 	strings.write_string(&b, "]")

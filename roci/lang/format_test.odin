@@ -367,3 +367,18 @@ test_effect_is_written_with_its_values_after_by :: proc(t: ^testing.T) {
 test_shade_is_written_with_its_values_after_by :: proc(t: ^testing.T) {
 	expect_formatted(t, "shade   \"a.hlsl\"   by   { arms:3 }\n", "shade \"a.hlsl\" by { arms: 3 }\n")
 }
+
+// A grid of numbers keeps its rows, as written, however many rows or items there are; a list written
+// one item to a line stays that way, and a list that was one line stays one line.
+@(test)
+test_a_list_written_in_rows_keeps_its_rows :: proc(t: ^testing.T) {
+	grid := "GRID = [\n  0 1 0\n  1 1 1\n  0 1 0\n]\n"
+	expect_formatted(t, grid, grid)
+	expect_formatted(t, "GRID = [\n   0   1 0\n 1 1    1\n]\n", "GRID = [\n  0 1 0\n  1 1 1\n]\n")
+	column := "NAMES = [\n  \"a\"\n  \"b\"\n]\n"
+	expect_formatted(t, column, column)
+	// rows of different lengths are rows too
+	uneven := "ROWS = [\n  1 2 3\n  4\n  5 6\n]\n"
+	expect_formatted(t, uneven, uneven)
+	expect_formatted(t, "ONE = [ 1 2 3 ]\n", "ONE = [ 1 2 3 ]\n")
+}

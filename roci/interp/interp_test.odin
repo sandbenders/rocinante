@@ -2689,3 +2689,17 @@ draw [
 		testing.expect(t, items[0].texture == items[2].texture, "the same picture")
 	}
 }
+
+// A line printed in a frame from a text joined there is kept whole: the text lives in the frame's memory,
+// which is freed (and in tests overwritten) when the frame ends.
+@(test)
+test_a_printed_text_made_in_a_frame_survives_the_frame :: proc(t: ^testing.T) {
+	p := run_text(t, `draw [ print ("frame " + frame) ]`, 3)
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	if testing.expect(t, len(p.printed) >= 3, "it printed") {
+		testing.expect_value(t, p.printed[0], "frame 0")
+		testing.expect_value(t, p.printed[1], "frame 1")
+		testing.expect_value(t, p.printed[2], "frame 2")
+	}
+}
