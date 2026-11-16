@@ -228,8 +228,8 @@ Odin has no package manager and no workspace file: a package is a directory, and
 rocinante/
   CLAUDE.md            rules, plan, tool, testing, git and CI (this file)
   MANIFESTO.md
-  README.md            what rocinante is, project status, how to contribute (§11)
-  CONTRIBUTING.md      a pointer to README's Contributing section, for GitHub and GitLab to show
+  README.md            what rocinante is and where its documentation is: a short page that links, never lists (§11)
+  CONTRIBUTING.md      a pointer to README's Building and contributing section, for GitHub and GitLab to show
   CODE_OF_CONDUCT.md   the Contributor Covenant 2.1 as published (CC BY 4.0, credited in the file), reports to Fabrizio's address
   CHANGELOG.md         a pointer to the releases page; release notes live on the tags (§11)
   LICENSE              0BSD text (§10)
@@ -259,6 +259,7 @@ rocinante/
                        logo/rocinante-logo.svg (the logo: the one drawing its copies are made from),
                        grammar.ebnf (the language's grammar, written in Phase 2, §5.14),
                        phases.md (the history of the closed phases; not imported),
+                       building.md (what to install on each system, and the commands for trying rocinante),
                        release checklist and contributor docs
   ODIN_VERSION         the pinned Odin release, read by the build script and both pipelines
   .gitlab-ci.yml       GitLab pipeline (§11)
