@@ -10,7 +10,7 @@ package movies
 
 @(require) import "../"
 import "../gfx"
-import sound_files "../../vendor/sound"
+@(require) import sound_files "../../vendor/sound"
 @(require) import "core:os"
 @(require) import "core:strings"
 @(require) import "core:sync"
