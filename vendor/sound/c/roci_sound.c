@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: 0BSD
 //
 // The sound file decoders rocinante uses: miniaudio's (WAV, FLAC and MP3) and stb_vorbis
-// (Ogg Vorbis), both from Odin's own vendor folder, built with nothing but decoding, so no
+// (Ogg Vorbis), both from Odin's own vendor folder, and our own backends for the kinds they do not
+// read (AIFF, here; roci_aiff.h), built with nothing but decoding, so no
 // audio device, thread or engine code comes with them (SDL plays the sound).
 #define MA_NO_DEVICE_IO
 #define MA_NO_THREADING
@@ -24,11 +25,24 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "roci_aiff.h"
+
+// The kinds of file miniaudio does not read, as decoding backends of our own; the decoder tries them
+// before its own, and each says no at once to a file that is not its kind.
+static ma_decoding_backend_vtable *roci_backends[] = {&roci_aiff_backend};
+
+static ma_decoder_config roci_config(uint32_t channels, uint32_t rate) {
+	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, channels, rate);
+	config.ppCustomBackendVTables = roci_backends;
+	config.customBackendCount = sizeof(roci_backends) / sizeof(roci_backends[0]);
+	return config;
+}
+
 // Decodes a whole file held in memory into frames of `channels` 32-bit floats at `rate`
 // frames a second, resampling and mixing channels as needed. Gives 0 and the frames, which
 // are freed with roci_sound_free, or miniaudio's (negative) result.
 int roci_sound_decode(const void *data, size_t size, uint32_t channels, uint32_t rate, float **frames, uint64_t *count) {
-	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, channels, rate);
+	ma_decoder_config config = roci_config(channels, rate);
 	void *out = NULL;
 	ma_uint64 got = 0;
 	ma_result result = ma_decode_memory(data, size, &config, &got, &out);
@@ -75,7 +89,7 @@ void *roci_stream_open(const char *path, uint32_t channels, uint32_t rate, uint6
 	if (stream == NULL) {
 		return NULL;
 	}
-	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, channels, rate);
+	ma_decoder_config config = roci_config(channels, rate);
 	config.seekPointCount = 2048;
 	if (ma_decoder_init_file(path, &config, &stream->decoder) != MA_SUCCESS) {
 		ma_free(stream, NULL);
@@ -100,7 +114,7 @@ void *roci_stream_open_memory(const void *data, size_t size, uint32_t channels, 
 		return NULL;
 	}
 	memcpy(stream->bytes, data, size);
-	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, channels, rate);
+	ma_decoder_config config = roci_config(channels, rate);
 	config.seekPointCount = 2048;
 	if (ma_decoder_init_memory(stream->bytes, size, &config, &stream->decoder) != MA_SUCCESS) {
 		ma_free(stream->bytes, NULL);

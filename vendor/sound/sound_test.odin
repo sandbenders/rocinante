@@ -10,7 +10,7 @@ import "core:testing"
 // channel, in every format the decoders read (made with ffmpeg's sine source).
 @(test)
 test_decode_every_format :: proc(t: ^testing.T) {
-	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg"}) {
+	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg", "tone.aiff", "tone24.aiff", "tone-sowt.aifc", "tone-f32.aifc"}) {
 		data, err := os.read_entire_file_from_path(fmt.tprintf("tests/sounds/%s", name), context.allocator)
 		defer delete(data)
 		testing.expect_value(t, err, nil)
@@ -83,7 +83,7 @@ read_all :: proc(s: Stream, piece: int) -> []f32 {
 
 @(test)
 test_stream_every_format_reads_what_decode_gives :: proc(t: ^testing.T) {
-	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg"}) {
+	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg", "tone.aiff", "tone24.aiff", "tone-sowt.aifc", "tone-f32.aifc"}) {
 		path := fmt.tprintf("tests/sounds/%s", name)
 		data, err := os.read_entire_file_from_path(path, context.allocator)
 		defer delete(data)
@@ -140,7 +140,7 @@ test_stream_seeks_to_a_frame_and_reads_from_there :: proc(t: ^testing.T) {
 // does not hear; the sound after the seek is still the tone.
 @(test)
 test_stream_seek_in_a_resampled_file_is_close_and_still_the_tone :: proc(t: ^testing.T) {
-	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg"}) {
+	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg", "tone.aiff", "tone24.aiff", "tone-sowt.aifc", "tone-f32.aifc"}) {
 		s, ok := stream_open(fmt.tprintf("tests/sounds/%s", name), 2, 48000)
 		testing.expect(t, ok)
 		defer stream_close(s)
@@ -222,7 +222,7 @@ test_stream_refuses_what_it_cannot_read :: proc(t: ^testing.T) {
 
 @(test)
 test_stream_from_memory_reads_what_decode_gives_and_owns_its_bytes :: proc(t: ^testing.T) {
-	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg"}) {
+	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg", "tone.aiff", "tone24.aiff", "tone-sowt.aifc", "tone-f32.aifc"}) {
 		path := fmt.tprintf("tests/sounds/%s", name)
 		data, err := os.read_entire_file_from_path(path, context.allocator)
 		testing.expect_value(t, err, nil)
@@ -270,4 +270,58 @@ test_stream_from_memory_refuses_what_it_cannot_stream :: proc(t: ^testing.T) {
 	// bytes cut off in the middle of the sound are still a sound, as far as they go
 	_, ok = stream_open_memory(wav[:200], 2, 48000)
 	testing.expect(t, ok)
+}
+
+// AIFF is read by a backend of our own: the 16-bit file is the WAV's samples exactly, and 24-bit
+// integers and 32-bit floats, big-endian or little ("sowt"), are the same tone.
+@(test)
+test_aiff_in_every_sample_kind_is_the_wav_tone :: proc(t: ^testing.T) {
+	wav_data, _ := os.read_entire_file_from_path("tests/sounds/tone.wav", context.allocator)
+	defer delete(wav_data)
+	want, wav_ok := decode(wav_data, 1, 44100)
+	defer delete(want)
+	testing.expect(t, wav_ok)
+	for name in ([]string{"tone.aiff", "tone24.aiff", "tone-sowt.aifc", "tone-f32.aifc"}) {
+		data, _ := os.read_entire_file_from_path(fmt.tprintf("tests/sounds/%s", name), context.allocator)
+		defer delete(data)
+		got, ok := decode(data, 1, 44100)
+		defer delete(got)
+		testing.expectf(t, ok, "%s did not decode", name)
+		testing.expect_value(t, len(got), len(want))
+		most: f32
+		for i in 0 ..< min(len(got), len(want)) {
+			most = max(most, abs(got[i] - want[i]))
+		}
+		limit: f32 = 1e-6 if name == "tone.aiff" || name == "tone-sowt.aifc" else 1e-4
+		testing.expectf(t, most <= limit, "%s differs from the WAV by %v", name, most)
+	}
+}
+
+// What is not AIFF, or is damaged, is refused and never read past its end.
+@(test)
+test_aiff_refuses_what_is_not_aiff_and_survives_damage :: proc(t: ^testing.T) {
+	data, _ := os.read_entire_file_from_path("tests/sounds/tone.aiff", context.allocator)
+	defer delete(data)
+	// a RIFF header on an AIFF body, and a FORM that says nothing of AIFF
+	notyet := make([]byte, len(data))
+	defer delete(notyet)
+	copy(notyet, data)
+	copy(notyet[8:12], "WAVE")
+	_, ok := decode(notyet, 2, 48000)
+	testing.expect(t, !ok)
+	// cut at every length from nothing to the whole: a short file is a file with fewer frames or none
+	for n in 0 ..< len(data) {
+		samples, got := decode(data[:n], 2, 48000)
+		delete(samples)
+		testing.expectf(t, n >= 56 || !got, "%d bytes decoded", n)
+	}
+	// every byte of the head changed to 255 in turn
+	for i in 0 ..< 80 {
+		bad := make([]byte, len(data))
+		copy(bad, data)
+		bad[i] = 255
+		samples, _ := decode(bad, 2, 48000)
+		delete(samples)
+		delete(bad)
+	}
 }

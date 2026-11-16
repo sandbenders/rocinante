@@ -6,6 +6,7 @@ package build
 
 import "core:fmt"
 import "core:os"
+import "core:strings"
 import "core:time"
 
 import "../tools/term"
@@ -31,8 +32,21 @@ sound_libs :: proc() -> bool {
 check_sound :: proc() -> bool {
 	if os.exists(SOUND_LIBRARY) {
 		library, library_err := os.stat(SOUND_LIBRARY, context.temp_allocator)
-		source, source_err := os.stat("vendor/sound/c/roci_sound.c", context.temp_allocator)
-		if library_err != nil || source_err != nil || time.diff(source.modification_time, library.modification_time) >= 0 {
+		// the C source and the headers it includes: the library is stale when any of them is newer
+		fresh := library_err == nil
+		for name in ([]string{"roci_sound.c", "roci_aiff.h", "roci_opus.h"}) {
+			source, source_err := os.stat(strings.concatenate({"vendor/sound/c/", name}, context.temp_allocator), context.temp_allocator)
+			if source_err != nil {
+				if name == "roci_sound.c" {
+					fresh = false
+				}
+				continue
+			}
+			if time.diff(source.modification_time, library.modification_time) < 0 {
+				fresh = false
+			}
+		}
+		if fresh {
 			return true
 		}
 	}

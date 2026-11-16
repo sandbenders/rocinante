@@ -24,7 +24,7 @@ GITIGNORE :: "output/\n.roci/\n.DS_Store\n"
 // The large binary files that go to Git LFS when it is chosen: audio, video, 3D
 // models, machine-learning models and big pictures.
 LFS_PATTERNS := [?]string{
-	"*.wav", "*.aiff", "*.flac", "*.mp3", "*.ogg",
+	"*.wav", "*.aiff", "*.aif", "*.aifc", "*.flac", "*.mp3", "*.ogg",
 	"*.mp4", "*.mov", "*.webm", "*.mkv",
 	"*.glb", "*.fbx",
 	"*.tflite", "*.litertlm",
