@@ -57,6 +57,7 @@ EXAMPLES := [?]Example{
 	{"windows", 5, {1, 2}}, // the map of both windows and the lamps of their settings
 	{"shapes", 30, {1}}, // every basic shape, as the Odin example draws them
 	{"touch", 5, {1}}, // the two rings it starts with; fingers come from a touch screen or the mouse
+	{"gamepad", 2, {1}}, // the invitation to plug a gamepad in (a headless run has none; the panels come in the interpreter's test)
 	{"particles", 60, {1}}, // the fountain a second after it starts: 10,000 records
 	{"logo", 3, {1}}, // rocinante's logo, drawn from its SVG's own numbers
 	{"circle", 3, {1}}, // the smallest sketch: one line, one circle

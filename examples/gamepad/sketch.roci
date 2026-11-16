@@ -1,0 +1,75 @@
+// Gamepads: every gamepad that is plugged in gets a panel that follows it. `gamepads` is the list, the
+// first pad first, and a pad plugged in or out while the sketch runs is added or taken away at once.
+// The buttons are named by where they are on the pad (`bottom` is the one an Xbox pad calls A and a
+// PlayStation pad a cross), the sticks and the d-pad are vectors from -1 to 1 with up negative like the
+// screen's y, and the triggers go from 0 to 1. Pressing the bottom button also shakes that pad with
+// `rumble`, where the pad can shake.
+window size 1000 340 title "gamepad"
+
+was_down = []
+
+// A round button that lights up while it is held.
+learn lamp where lit [
+  fill gray
+  if lit [ fill gold ]
+  circle at where radius 8
+]
+
+// A stick or the d-pad: a ring with a dot where the lever is.
+learn lever center lean [
+  stroke gray
+  thickness 2
+  no fill
+  circle at center radius 36
+  no stroke
+  fill gold
+  circle at (center + lean * 30) radius 9
+]
+
+draw [
+  background 25
+  fill white
+  if count gamepads is 0 [
+    text "plug in a gamepad (or two, or four)" at 20 20
+    text "its sticks, buttons and triggers will show here" at 20 48 fill gray
+  ]
+  now = []
+  n = 0
+  for each pad in gamepads [
+    n = n + 1
+    x = 20 + 245 * (n - 1)
+    fill white
+    text pad.name at x 16 size 14
+    // the shoulders on top, then the left stick, the middle buttons and the four on the right
+    fill gray
+    if pad.leftshoulder [ fill gold ]
+    rect at x 52 size 90 8
+    fill gray
+    if pad.rightshoulder [ fill gold ]
+    rect at (x + 130) 52 size 90 8
+    lever { x + 45, 125 } pad.leftstick
+    lamp { x + 97, 125 } pad.back
+    lamp { x + 114, 125 } pad.home
+    lamp { x + 131, 125 } pad.start
+    lamp { x + 175, 145 } pad.bottom
+    lamp { x + 195, 125 } pad.right
+    lamp { x + 155, 125 } pad.left
+    lamp { x + 175, 105 } pad.top
+    // the d-pad and the right stick
+    lever { x + 45, 230 } pad.dpad
+    lever { x + 175, 230 } pad.rightstick
+    // the triggers
+    fill gray
+    rect at x 290 size 90 10
+    rect at (x + 130) 290 size 90 10
+    fill gold
+    rect at x 290 size (90 * pad.lefttrigger) 10
+    rect at (x + 130) 290 size (90 * pad.righttrigger) 10
+    // the bottom button shakes the pad once for each press
+    if pad.bottom [
+      add pad.id to now
+      if count (keep was_down [ it is pad.id ]) is 0 [ rumble 60 for 0.3 player n ]
+    ]
+  ]
+  was_down = now
+]

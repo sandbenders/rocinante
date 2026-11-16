@@ -2,6 +2,7 @@
 package interp
 
 import "../"
+import "../folder"
 import "core:testing"
 import sdl "vendor:sdl3"
 
@@ -104,5 +105,41 @@ test_rumble_in_a_sketch :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, got[0], roci.Rumble_Request{3, 80, 0.5})
 	testing.expect_value(t, got[1], roci.Rumble_Request{5, 40, 2})
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// The gamepad example: with no pad it asks for one; each pad plugged in gets a panel, and the bottom
+// button of a pad shakes it once for each press, not once a frame.
+@(test)
+test_the_gamepad_example_follows_the_pads :: proc(t: ^testing.T) {
+	program, problem := folder.read_program("examples/gamepad/sketch.roci")
+	testing.expect_value(t, problem, "")
+	roci.start_headless(1)
+	defer roci.shutdown()
+	p, ok := load_files(program.files)
+	defer destroy(p)
+	if !testing.expect(t, ok, "the example has errors") {
+		return
+	}
+	start(p)
+	roci.step()
+	testing.expect_value(t, len(roci.rumble_requests()), 0)
+	roci.feed_pads({{id = 4, name = "One", bottom = true}, {id = 6, name = "Two"}})
+	roci.step()
+	roci.step()
+	roci.step()
+	got := roci.rumble_requests()
+	testing.expect_value(t, len(got), 1) // held for three frames, shaken once
+	testing.expect_value(t, got[0], roci.Rumble_Request{4, 60, 0.3})
+	// let go and press again, and the second pad's button shakes the second pad
+	roci.feed_pads({{id = 4, name = "One"}, {id = 6, name = "Two", bottom = true}})
+	roci.step()
+	roci.feed_pads({{id = 4, name = "One", bottom = true}, {id = 6, name = "Two", bottom = true}})
+	roci.step()
+	roci.step()
+	got = roci.rumble_requests()
+	testing.expect_value(t, len(got), 3)
+	testing.expect_value(t, got[1], roci.Rumble_Request{6, 60, 0.3})
+	testing.expect_value(t, got[2], roci.Rumble_Request{4, 60, 0.3})
 	testing.expect_value(t, len(p.errors), 0)
 }

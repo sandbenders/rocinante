@@ -26,7 +26,7 @@ Showcase_Category :: struct {
 // The groups of the index, in the order they are shown.
 SHOWCASE_CATEGORIES := [?]Showcase_Category{
 	{"Basics", "The smallest sketches: a circle, every shape, how a shape can look, words, and the colors of a wheel."},
-	{"Motion", "Things that move: a ball, a wave, easing and noise, and what answers the mouse and a finger."},
+	{"Motion", "Things that move: a ball, a wave, easing and noise, and what answers the mouse, a finger and a gamepad."},
 	{"Simulate", "Many things at once: lists of records that follow a rule, with collision and sorting."},
 	{"Generative", "Drawings that grow from a rule: the turtle, verbs that call themselves, noise and fractals."},
 	{"Pictures and canvases", "Pictures from files, pictures made of pixels, pictures that paint, and canvases that keep what is drawn on them."},
@@ -63,6 +63,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"rope", 1, "Rope", 150, 1},
 	{"mouse", 1, "Mouse", 5, 1},
 	{"touch", 1, "Touch", 5, 1},
+	{"gamepad", 1, "Gamepad", 2, 1},
 
 	{"flocking", 2, "Flocking", 100, 1},
 	{"life", 2, "Game of life", 120, 1},
