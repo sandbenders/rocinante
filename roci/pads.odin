@@ -45,6 +45,14 @@ Joystick_State :: struct {
 @(thread_local) @(private) pads_in: ^platform.Pads
 @(thread_local) @(private) pads_tried: bool
 @(thread_local) @(private) pads_fed: bool // `feed_pads` was called: what it gave is what is plugged in
+// What `rumble` asked of pads that `feed_pads` made, since there is no device to shake: for tests.
+Rumble_Request :: struct {
+	id:       u32,
+	strength: f64, // 0 to 100
+	seconds:  f64,
+}
+
+@(thread_local) @(private) pads_rumbled: [dynamic]Rumble_Request
 @(thread_local) @(private) pads_list: [dynamic]Pad_State
 @(thread_local) @(private) joysticks_list: [dynamic]Joystick_State
 
@@ -106,18 +114,33 @@ joysticks :: proc() -> []Joystick_State {
 	return joysticks_list[:]
 }
 
-// Shakes a gamepad (the first when `pad` is 0, the nth otherwise, from 1): `strength` 0 to 1 for
+// Shakes a gamepad (the first when `pad` is 0, the nth otherwise, from 1): `strength` 0 to 100 for
 // `seconds`, as far as the pad can. Says whether there was a pad to shake.
 rumble :: proc(strength, seconds: f64, pad := 0) -> bool {
 	start_pads()
-	if pads_in == nil || len(pads_list) == 0 {
+	if len(pads_list) == 0 {
 		return false
 	}
 	at := max(pad, 1) - 1
 	if at >= len(pads_list) {
 		return false
 	}
-	return platform.rumble_pad(pads_in, pads_list[at].id, f32(strength), f32(seconds))
+	if pads_in == nil {
+		if pads_fed {
+			if pads_rumbled == nil {
+				pads_rumbled = make([dynamic]Rumble_Request, pads_allocator())
+			}
+			append(&pads_rumbled, Rumble_Request{pads_list[at].id, strength, seconds})
+			return true
+		}
+		return false
+	}
+	return platform.rumble_pad(pads_in, pads_list[at].id, f32(strength / 100), f32(seconds))
+}
+
+// What `rumble` asked of the pads `feed_pads` made, in order: for tests.
+rumble_requests :: proc() -> []Rumble_Request {
+	return pads_rumbled[:]
 }
 
 // Reads the devices again: once a frame, called by `step`.
@@ -197,6 +220,8 @@ pads_shutdown :: proc() {
 	delete(pads_list)
 	delete(joysticks_list)
 	pads_list, joysticks_list = nil, nil
+	delete(pads_rumbled)
+	pads_rumbled = nil
 	platform.close_pads(pads_in)
 	pads_in = nil
 	pads_tried = false

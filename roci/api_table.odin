@@ -88,6 +88,7 @@ API_NAMES := [?]Api_Entry{
 	{"level", "level"},
 	{"bands", "bands"},
 	{"synth", "synth"},
+	{"rumble", "rumble"},
 	{"midi control", "midi_control"},
 	{"midi tempo", "midi_tempo"},
 	{"osc listen", "osc_listen"},

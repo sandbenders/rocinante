@@ -77,3 +77,21 @@ test_feeding_replaces_and_shutdown_forgets :: proc(t: ^testing.T) {
 	defer shutdown()
 	testing.expect_value(t, len(gamepads()), 0)
 }
+
+// Rumble goes to the pad asked for, the first when none is said, and to no pad when there is none.
+@(test)
+test_rumble_goes_to_the_pad_asked_for :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	testing.expect(t, !rumble(50, 1), "no pads, nothing to shake")
+	feed_pads({{id = 7, name = "One"}, {id = 9, name = "Two"}})
+	testing.expect(t, rumble(80, 0.5))
+	testing.expect(t, rumble(30, 2, 2))
+	testing.expect(t, !rumble(30, 2, 3), "there is no third pad")
+	testing.expect(t, rumble(10, 1, 0), "pad 0 is the first")
+	got := rumble_requests()
+	testing.expect_value(t, len(got), 3)
+	testing.expect_value(t, got[0], Rumble_Request{7, 80, 0.5})
+	testing.expect_value(t, got[1], Rumble_Request{9, 30, 2})
+	testing.expect_value(t, got[2], Rumble_Request{7, 10, 1})
+}

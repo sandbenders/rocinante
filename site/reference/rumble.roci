@@ -1,0 +1,7 @@
+draw [
+  background 20
+  fill white
+  text "press space to shake the gamepad" at 20 20
+]
+
+on key "space" [ rumble 80 for 0.4 ]

@@ -47,6 +47,21 @@ typedef struct roci_value {
 
 typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
 
+/* One gamepad: its buttons are 1 while held and named by where they are on the pad. leftstick, rightstick and dpad are
+ * vectors from -1 to 1 with up negative, lefttrigger and righttrigger go from 0 to 1, and extra holds the other buttons
+ * (MISC1 to MISC6, four paddles and the touchpad press). connected is 0 for a pad that is not there. */
+typedef struct {
+	int id;
+	const char *name;
+	int connected;
+	int bottom, right, left, top;
+	roci_vec2 leftstick, rightstick, dpad;
+	double lefttrigger, righttrigger;
+	int leftstickpress, rightstickpress, leftshoulder, rightshoulder;
+	int start, back, home;
+	int extra[11];
+} roci_gamepad;
+
 typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS,
 	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC, ROCI_MIDI_BEND, ROCI_MIDI_PROGRAM, ROCI_MIDI_PRESSURE, ROCI_MIDI_START, ROCI_MIDI_STOP } roci_event_kind;
 
@@ -1277,6 +1292,33 @@ int roci_bands_of(roci_sound_id sound, int count, double *out);
 
 /* How fast a sound plays, 1 as recorded. */
 double roci_sound_speed(roci_sound_id sound);
+
+/* How many gamepads are plugged in. The first call starts reading the pads; one plugged in or out while the program runs is noticed on the next frame. */
+int roci_gamepad_count(void);
+
+/* The gamepad at a place (from 0), the first plugged in first: its buttons by where they are on the pad (`bottom` is the one an Xbox pad calls A and a PlayStation pad a cross), sticks and the d-pad as vectors from -1 to 1 with up negative, triggers from 0 to 1. Past the last it is a pad at rest with `connected` 0. The name stays valid until the next function that gives text back. */
+roci_gamepad roci_gamepad_at(int index);
+
+/* How many joysticks are plugged in that are not gamepads (a flight stick, a wheel, an arcade panel). */
+int roci_joystick_count(void);
+
+/* The name of a joystick (counting from 0), or an empty text past the last. The text stays valid until the next function that gives text back. */
+const char *roci_joystick_name(int index);
+
+/* How many axes a joystick has; 0 for one that is not there. */
+int roci_joystick_axis_count(int index);
+
+/* Where an axis of a joystick is, -1 to 1; 0 for one that is not there. */
+double roci_joystick_axis(int index, int axis);
+
+/* How many buttons a joystick has, counting four for each hat after the real buttons (up, right, down, left); 0 for one that is not there. */
+int roci_joystick_button_count(int index);
+
+/* 1 while a button of a joystick is held; 0 for one that is not there. */
+int roci_joystick_button(int index, int button);
+
+/* Shakes a gamepad as far as it can: `strength` 0 to 100, for `seconds`, on the pad at a place counting from 1 (0 for the first). Gives 1 when there was a pad to shake and 0 when there was none, or it cannot shake. */
+int roci_rumble(double strength, double seconds, int pad);
 
 #ifdef __cplusplus
 }

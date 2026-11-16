@@ -89,6 +89,15 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.no_sound_effect(as_sound(eval(it, call.args[0])), as_text(eval(it, call.args[1])))
 	case .Osc_Send:
 		osc_send_verb(it, e, call)
+	case .Rumble:
+		seconds, pad := 0.5, 1.0
+		if v, ok := option_value(it, call.options, "for"); ok {
+			seconds = as_number(v)
+		}
+		if v, ok := option_value(it, call.options, "player"); ok {
+			pad = as_number(v)
+		}
+		roci.rumble(as_number(eval(it, call.args[0])), seconds, int(pad))
 	case .Midi_Note, .Midi_Release, .Midi_Set, .Midi_Bend, .Midi_Program, .Midi_To, .Midi_Clock, .Midi_Stop:
 		midi_out_verb(it, e, call, code)
 	case .Midi_Outputs:

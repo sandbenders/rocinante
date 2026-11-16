@@ -48,7 +48,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"draw", "every", "on", "if", "repeat", "while", "for", "for each",
 	}},
 	{"Input", "The mouse, the keyboard, fingers, gamepads and joysticks, as values a sketch reads.", {
-		"mouse", "pmouse", "pressed", "wheel", "key", "held", "finger", "touches", "gamepad", "gamepads", "joysticks",
+		"mouse", "pmouse", "pressed", "wheel", "key", "held", "finger", "touches", "gamepad", "gamepads", "joysticks", "rumble",
 	}},
 	{"Time and animation", "Time, frames, and values that move smoothly from one place to another.", {
 		"time", "frame", "fps", "tween", "ease",

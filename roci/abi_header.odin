@@ -119,6 +119,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"list", "roci_list", ""},
 	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent roci_set_sound_at roci_set_sound_volume roci_set_sound_pan roci_set_sound_speed roci_set_sound_loop roci_set_sound_pitch roci_set_sound_wheels roci_play_note", ""},
 	{"osc send", "roci_osc_send roci_osc_send_bundle", ""},
+	{"rumble", "roci_rumble", ""},
 	{"midi note", "roci_midi_note", ""},
 	{"midi release", "roci_midi_release", ""},
 	{"midi set", "roci_midi_set", ""},
@@ -363,6 +364,7 @@ abi_table_init :: proc "contextless" () {
 	abi_ui_group(&all)
 	abi_misc_group(&all)
 	abi_sound_group(&all)
+	abi_pads_group(&all)
 	ABI_TABLE = all[:]
 }
 
@@ -518,6 +520,21 @@ typedef struct roci_value {
 } roci_value;
 
 typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
+
+/* One gamepad: its buttons are 1 while held and named by where they are on the pad. leftstick, rightstick and dpad are
+ * vectors from -1 to 1 with up negative, lefttrigger and righttrigger go from 0 to 1, and extra holds the other buttons
+ * (MISC1 to MISC6, four paddles and the touchpad press). connected is 0 for a pad that is not there. */
+typedef struct {
+	int id;
+	const char *name;
+	int connected;
+	int bottom, right, left, top;
+	roci_vec2 leftstick, rightstick, dpad;
+	double lefttrigger, righttrigger;
+	int leftstickpress, rightstickpress, leftshoulder, rightshoulder;
+	int start, back, home;
+	int extra[11];
+} roci_gamepad;
 
 typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS,
 	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC, ROCI_MIDI_BEND, ROCI_MIDI_PROGRAM, ROCI_MIDI_PRESSURE, ROCI_MIDI_START, ROCI_MIDI_STOP } roci_event_kind;

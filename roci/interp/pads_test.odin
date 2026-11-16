@@ -3,6 +3,7 @@ package interp
 
 import "../"
 import "core:testing"
+import sdl "vendor:sdl3"
 
 // With nothing plugged in `gamepad` is a pad at rest that says so, and both lists are empty.
 @(test)
@@ -78,5 +79,30 @@ draw [
 	roci.step()
 	testing.expect_value(t, as_bool(global_named(p, "first_on")), false)
 	testing.expect_value(t, as_text(global_named(p, "first_name")), "")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// `rumble` shakes the first pad for half a second unless told otherwise, and a sketch with no pad
+// goes on without a word.
+@(test)
+test_rumble_in_a_sketch :: proc(t: ^testing.T) {
+	p := run_text(t, "on key \"a\" [ rumble 80 ]\non key \"b\" [ rumble 40 for 2 player 2 ]\ndraw [ circle at 10 10 radius 5 ]\n", 1)
+	defer finish(p)
+	w := first_window()
+	roci.step({key_event(w, sdl.Scancode.A)})
+	roci.step({key_event(w, sdl.Scancode.A, false)})
+	testing.expect_value(t, len(roci.rumble_requests()), 0)
+	testing.expect_value(t, len(p.errors), 0)
+	roci.feed_pads({{id = 3, name = "One"}, {id = 5, name = "Two"}})
+	roci.step({key_event(w, sdl.Scancode.A)})
+	roci.step({key_event(w, sdl.Scancode.A, false)})
+	roci.step({key_event(w, sdl.Scancode.B)})
+	roci.step({key_event(w, sdl.Scancode.B, false)})
+	got := roci.rumble_requests()
+	if !testing.expectf(t, len(got) == 2, "requests: %v, errors: %v, window %v", got, p.errors, w) {
+		return
+	}
+	testing.expect_value(t, got[0], roci.Rumble_Request{3, 80, 0.5})
+	testing.expect_value(t, got[1], roci.Rumble_Request{5, 40, 2})
 	testing.expect_value(t, len(p.errors), 0)
 }

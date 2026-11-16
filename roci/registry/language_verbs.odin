@@ -69,6 +69,7 @@ LANGUAGE_VERBS := []Verb{
 		{{{"index", .Number}}, {{"of", {.List}, true}}, .Any},
 		{{{"text", .Text}}, nil, .Boolean},
 	}, "The item at a place in a list, counting from 1: `item 1 of scores`. In a `menu` of a `ui` block, an entry of the menu that is true on the frame it is chosen: `if item \"save\" [ save \"shot.png\" ]`."},
+	{"rumble", {{{{"strength", .Number}}, {{"for", {.Number}, false}, {"player", {.Number}, false}}, .None}}, "Shakes a gamepad, as far as it can: `rumble 80 for 0.5`. The strength is 0 to 100, `for` is how many seconds (a half second if not written), and `player` says which gamepad, counting from 1 (the first if not written). A pad that cannot shake, or no pad at all, is not a mistake: nothing happens."},
 	{"midi note", {{{{"note", .Number}}, MIDI_NOTE_OPTIONS, .None}}, "Plays a note on a synthesizer or a program that listens, through MIDI out: `midi note 60 velocity 80 channel 1 for 0.5`. 60 is middle C, `velocity` is 0 to 100 (80 if not written), `channel` 1 to 16 (1 if not written) and `for` lets the note go after that many seconds; without it the note is held until `midi release 60`. The output is the first there is, or the one `midi to` chose. A note that is still sounding when the sketch ends is let go."},
 	{"midi release", {
 		{{}, MIDI_CHANNEL_OPTION, .None},
