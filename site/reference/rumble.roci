@@ -1,7 +1,8 @@
 draw [
   background 20
   fill white
-  text "press space to shake the gamepad" at 20 20
+  text "space shakes the first gamepad, 2 the second" at 20 20
 ]
 
 on key "space" [ rumble 80 for 0.4 ]
+on key "2" [ rumble 80 for 0.4 player 2 ]
