@@ -168,7 +168,7 @@ SOUND_PROPERTIES := [?]Property_Def{
 }
 
 // The file names `load` reads as sounds, by what they end with (in any case); every other name is a picture.
-SOUND_EXTENSIONS := [?]string{".wav", ".flac", ".mp3", ".ogg", ".aiff", ".aif", ".aifc"}
+SOUND_EXTENSIONS := [?]string{".wav", ".flac", ".mp3", ".ogg", ".aiff", ".aif", ".aifc", ".opus"}
 
 // What a property gives, in words: "a number", "a vector of 2 numbers".
 property_words :: proc(def: Property_Def) -> string {

@@ -2,7 +2,7 @@
 //
 // The sound file decoders rocinante uses: miniaudio's (WAV, FLAC and MP3) and stb_vorbis
 // (Ogg Vorbis), both from Odin's own vendor folder, and our own backends for the kinds they do not
-// read (AIFF, here; roci_aiff.h), built with nothing but decoding, so no
+// read (AIFF, roci_aiff.h; Opus, roci_opus.h, over libopus), built with nothing but decoding, so no
 // audio device, thread or engine code comes with them (SDL plays the sound).
 #define MA_NO_DEVICE_IO
 #define MA_NO_THREADING
@@ -22,14 +22,16 @@
 #undef STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.c"
 
+#include <math.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "roci_aiff.h"
+#include "roci_opus.h"
 
 // The kinds of file miniaudio does not read, as decoding backends of our own; the decoder tries them
 // before its own, and each says no at once to a file that is not its kind.
-static ma_decoding_backend_vtable *roci_backends[] = {&roci_aiff_backend};
+static ma_decoding_backend_vtable *roci_backends[] = {&roci_aiff_backend, &roci_opus_backend};
 
 static ma_decoder_config roci_config(uint32_t channels, uint32_t rate) {
 	ma_decoder_config config = ma_decoder_config_init(ma_format_f32, channels, rate);

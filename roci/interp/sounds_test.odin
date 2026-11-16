@@ -916,3 +916,21 @@ test_the_recorder_example_records_the_speakers :: proc(t: ^testing.T) {
 	testing.expect(t, loudest > 1000, "the note is in the file")
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// AIFF and Opus files are sounds for `load`, whole or read from the disk as a long file is, by their names.
+@(test)
+test_aiff_and_opus_files_load_as_sounds :: proc(t: ^testing.T) {
+	text := `a = load "tone.aiff"
+b = load "tone24.aiff"
+c = load "tone.opus"
+d = load "tone-stereo.opus"
+e = load "tone-sowt.aifc"
+`
+	p := run_with_sounds(t, "sound_formats", text, "tests/sounds", {"tone.aiff", "tone24.aiff", "tone.opus", "tone-stereo.opus", "tone-sowt.aifc"})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	for name in ([]string{"a", "b", "c", "d", "e"}) {
+		length := roci.sound_state(as_sound(global_named(p, name))).length
+		testing.expectf(t, abs(length - 0.25) < 0.01, "%s is %v seconds", name, length)
+	}
+}

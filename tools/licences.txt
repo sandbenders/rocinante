@@ -28,7 +28,8 @@ vendor:stb      Public-Domain
 # PortMidi: licence.txt is MIT-style, with non-binding requests.
 vendor:portmidi MIT
 # The sound decoders: vendor/sound/c/roci_sound.c (ours, 0BSD) built with miniaudio's decoders (MIT-0 or public domain) and
-# stb_vorbis (MIT or public domain) from Odin's own vendor folder (vendor:miniaudio and vendor:stb above).
+# stb_vorbis (MIT or public domain) from Odin's own vendor folder (vendor:miniaudio and vendor:stb above), and libopus 1.6.1
+# (Xiph.Org, BSD-3-Clause by its COPYING, checked 2026-11-16), fetched by tools/sound-libs.sh and built into the same library.
 vendor/sound    MIT-0
 # sancho: rocinante's own PNG writer and deflate, published on their own; its LICENSE is 0BSD (checked 2026-10-30).
 vendor/sancho   0BSD

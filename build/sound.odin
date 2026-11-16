@@ -34,7 +34,7 @@ check_sound :: proc() -> bool {
 		library, library_err := os.stat(SOUND_LIBRARY, context.temp_allocator)
 		// the C source and the headers it includes: the library is stale when any of them is newer
 		fresh := library_err == nil
-		for name in ([]string{"roci_sound.c", "roci_aiff.h", "roci_opus.h"}) {
+		for name in ([]string{"roci_sound.c", "roci_aiff.h", "roci_opus.h", "opus_files.txt"}) {
 			source, source_err := os.stat(strings.concatenate({"vendor/sound/c/", name}, context.temp_allocator), context.temp_allocator)
 			if source_err != nil {
 				if name == "roci_sound.c" {

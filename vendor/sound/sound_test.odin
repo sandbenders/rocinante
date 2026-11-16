@@ -10,7 +10,7 @@ import "core:testing"
 // channel, in every format the decoders read (made with ffmpeg's sine source).
 @(test)
 test_decode_every_format :: proc(t: ^testing.T) {
-	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg", "tone.aiff", "tone24.aiff", "tone-sowt.aifc", "tone-f32.aifc"}) {
+	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg", "tone.aiff", "tone24.aiff", "tone-sowt.aifc", "tone-f32.aifc", "tone.opus"}) {
 		data, err := os.read_entire_file_from_path(fmt.tprintf("tests/sounds/%s", name), context.allocator)
 		defer delete(data)
 		testing.expect_value(t, err, nil)
@@ -83,7 +83,7 @@ read_all :: proc(s: Stream, piece: int) -> []f32 {
 
 @(test)
 test_stream_every_format_reads_what_decode_gives :: proc(t: ^testing.T) {
-	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg", "tone.aiff", "tone24.aiff", "tone-sowt.aifc", "tone-f32.aifc"}) {
+	for name in ([]string{"tone.wav", "tone.flac", "tone.mp3", "tone.ogg", "tone.aiff", "tone24.aiff", "tone-sowt.aifc", "tone-f32.aifc", "tone.opus"}) {
 		path := fmt.tprintf("tests/sounds/%s", name)
 		data, err := os.read_entire_file_from_path(path, context.allocator)
 		defer delete(data)
@@ -320,6 +320,95 @@ test_aiff_refuses_what_is_not_aiff_and_survives_damage :: proc(t: ^testing.T) {
 		bad := make([]byte, len(data))
 		copy(bad, data)
 		bad[i] = 255
+		samples, _ := decode(bad, 2, 48000)
+		delete(samples)
+		delete(bad)
+	}
+}
+
+// Opus is read by libopus behind our own Ogg reader: the tone is what libopus makes of the file (the
+// reference was decoded by ffmpeg's libopus), exactly a quarter of a second long, and a stereo file keeps
+// its two channels apart.
+@(test)
+test_opus_is_the_tone_libopus_makes :: proc(t: ^testing.T) {
+	data, _ := os.read_entire_file_from_path("tests/sounds/tone.opus", context.allocator)
+	defer delete(data)
+	got, ok := decode(data, 1, 48000)
+	defer delete(got)
+	testing.expect(t, ok)
+	reference, _ := os.read_entire_file_from_path("tests/sounds/tone-opus.f32", context.allocator)
+	defer delete(reference)
+	want := (cast([^]f32)raw_data(reference))[:len(reference) / 4]
+	testing.expect_value(t, len(got), len(want))
+	most: f32
+	for i in 0 ..< min(len(got), len(want)) {
+		most = max(most, abs(got[i] - want[i]))
+	}
+	testing.expectf(t, most < 1e-4, "differs from libopus's own decode by %v", most)
+	// two channels: a 440 Hz tone on the left and a 660 Hz tone on the right
+	stereo_data, _ := os.read_entire_file_from_path("tests/sounds/tone-stereo.opus", context.allocator)
+	defer delete(stereo_data)
+	stereo, stereo_ok := decode(stereo_data, 2, 48000)
+	defer delete(stereo)
+	testing.expect(t, stereo_ok)
+	testing.expect_value(t, len(stereo), 24000)
+	left, right := 0, 0
+	for i in 2 ..< len(stereo) / 2 - 1 {
+		left += int(stereo[(i - 1) * 2] < 0 && stereo[i * 2] >= 0)
+		right += int(stereo[(i - 1) * 2 + 1] < 0 && stereo[i * 2 + 1] >= 0)
+	}
+	// about 110 and 165 upward crossings in a quarter of a second
+	testing.expectf(t, abs(left - 110) < 6 && abs(right - 165) < 8, "%d and %d crossings", left, right)
+	// a different rate and the mix to mono come from the decoder as for any file
+	mono, mono_ok := decode(data, 2, 44100)
+	defer delete(mono)
+	testing.expect(t, mono_ok)
+	testing.expectf(t, abs(len(mono) / 2 - 11025) <= 2, "%d frames at 44,100", len(mono) / 2)
+}
+
+// Seeking in an Opus file lands on the frame (the decoder runs up from a few packets before) and what is read
+// from there is what the whole decode holds; a file that is Ogg Vorbis, damaged or cut short is no Opus file.
+@(test)
+test_opus_seeks_exactly_and_refuses_damage :: proc(t: ^testing.T) {
+	data, _ := os.read_entire_file_from_path("tests/sounds/tone-stereo.opus", context.allocator)
+	defer delete(data)
+	whole, whole_ok := decode(data, 2, 48000)
+	defer delete(whole)
+	testing.expect(t, whole_ok)
+	s, ok := stream_open("tests/sounds/tone-stereo.opus", 2, 48000)
+	if !testing.expect(t, ok) {
+		return
+	}
+	defer stream_close(s)
+	testing.expect_value(t, s.length, 12000)
+	for frame in ([]int{0, 1, 959, 960, 5000, 11999}) {
+		testing.expect(t, stream_seek(s, frame))
+		got := read_all(s, 777)
+		defer delete(got)
+		testing.expect_value(t, len(got) / 2, 12000 - frame)
+		most: f32
+		for i in 0 ..< min(len(got), len(whole) - frame * 2) {
+			most = max(most, abs(got[i] - whole[frame * 2 + i]))
+		}
+		// the decoder is run up from a quarter of a second before, which is within a few thousandths (0 from the start)
+		testing.expectf(t, most <= (0 if frame < 11000 else 0.005), "from frame %d it differs by %v", frame, most)
+	}
+	// Ogg Vorbis is not Opus
+	vorbis, _ := os.read_entire_file_from_path("tests/sounds/tone.ogg", context.allocator)
+	defer delete(vorbis)
+	vorbis_samples, vorbis_ok := decode(vorbis, 2, 48000)
+	delete(vorbis_samples)
+	testing.expect(t, vorbis_ok, "Vorbis still decodes, by the decoder that reads it")
+	// cut at every length from nothing to a hundred bytes past the headers, and bytes of the head changed in turn
+	for n in 0 ..< min(len(data), 400) {
+		samples, got := decode(data[:n], 2, 48000)
+		delete(samples)
+		testing.expectf(t, n >= 300 || !got, "%d bytes decoded", n)
+	}
+	for i in 0 ..< 120 {
+		bad := make([]byte, len(data))
+		copy(bad, data)
+		bad[i] = ~bad[i]
 		samples, _ := decode(bad, 2, 48000)
 		delete(samples)
 		delete(bad)
