@@ -382,8 +382,11 @@ test_two_streams_and_a_short_sound_mix_together :: proc(t: ^testing.T) {
 }
 
 // With a thread of its own the mixer reads ahead without being asked. The audio thread of a device
-// is stood in for by a loop that mixes a chunk of the time it would take and sleeps for the rest;
-// whatever comes out is the file in order, with gaps only as silence that does not move it.
+// is stood in for by a loop that mixes a chunk every half millisecond by the clock, ten times as
+// fast as a device asks; whatever comes out is the file in order, with gaps only as silence that
+// does not move it. The rounds are timed from the start, not by sleeping half a millisecond each:
+// `time.sleep` on Windows is whole milliseconds, so it does not wait at all there, and the loop
+// asked for the whole 3.2 seconds in a few dozen milliseconds, before the thread was even running.
 @(test)
 test_a_stream_read_by_the_mixers_thread_plays_in_order :: proc(t: ^testing.T) {
 	m := make_mixer()
@@ -395,6 +398,7 @@ test_a_stream_read_by_the_mixers_thread_plays_in_order :: proc(t: ^testing.T) {
 	defer delete(out)
 	next := 0 // the frame the sound should be giving next
 	played := 0
+	started := time.tick_now()
 	for round in 0 ..< 600 {
 		for &v in out {
 			v = 0
@@ -412,7 +416,9 @@ test_a_stream_read_by_the_mixers_thread_plays_in_order :: proc(t: ^testing.T) {
 			next += 1
 			played += 1
 		}
-		time.sleep(500 * time.Microsecond)
+		if wait := time.Duration(round + 1) * 500 * time.Microsecond - time.tick_since(started); wait > 0 {
+			time.accurate_sleep(wait)
+		}
 	}
 	testing.expectf(t, played > 256 * 300, "only %d frames came out of %d asked for", played, 256 * 600)
 }
