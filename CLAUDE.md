@@ -12,7 +12,7 @@ Read `MANIFESTO.md` before starting any work. Every decision below serves it.
 - Branch first, never commit on `main`, never push (§3). Fabrizio pushes, opens the merge request and merges. When he says a branch is merged, check `git rev-list --count origin/main..<branch>` is 0, fast-forward `main` and delete every merged local branch with `git branch -d`, without waiting to be asked (decided 2026-10-28).
 - Run `odin run build -- ci --fast` before handing a branch over; the full `ci` (the `-o:speed` repeat, golden images, the C ABI build) is left to the pipeline (decided 2026-11-14), except that a change to the renderer or a drawing default still needs `odin run tests/golden` by hand.
 - Phases 0 to 5 are closed (§8; `docs/phases.md` has what each built and measured); the code map is `§4.13` in `docs/design.md`, and Odin is `dev-2026-11`.
-- **Known unverified**, so do not call them done on this Mac's say-so: MIDI out on FreeBSD and OpenBSD, and the phones' MIDI, microphone, recording, on-screen keyboard and screen readers (Phase 8). The release checklist lists the hand checks.
+- **Known unverified**, so do not call them done on this Mac's say-so: the phones' MIDI, microphone, recording, on-screen keyboard and screen readers (Phase 8). The release checklist lists the hand checks.
 - To run one test, `odin test <dir> -define:ODIN_TEST_NAMES=<package>.<test_name> -out:output/tests/<name>`: the package name is the one on the test file's `package` line, which is not always the folder (`cli` is `main`).
 
 ## Commands
@@ -545,7 +545,7 @@ Decide these with Fabrizio; move each to "Decided" with the date.
 
 1. Machine learning on FreeBSD and OpenBSD: LiteRT's C runtime built there, or ONNX Runtime as the fallback (§4.10). Settled by the LiteRT spike at the start of Phase 6.
 2. ExecuTorch as a second runtime for PyTorch's own `.pte` files, so PyTorch models skip conversion. It is C++ only, so it would need our own C wrapper, and a second runtime is a second behaviour to keep equal (§4.10).
-3. Choices inherited from the sections they point to: HE-AAC where the system has no decoder (§4.6); MIDI and the microphone on iOS and Android (§4.6, Phase 8); MIDI out on FreeBSD and OpenBSD, built but unverified (§4.6); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision, once it has releases and covers the phones (§5.13).
+3. Choices inherited from the sections they point to: HE-AAC where the system has no decoder (§4.6); MIDI and the microphone on iOS and Android (§4.6, Phase 8); mobile multi-window behaviour (§4.5, Phase 8); video encoder libraries (§4.11, Phase 6); the name of `roci check --why-slow` (§5.3, Phase 2); Box3D for 3D collision, once it has releases and covers the phones (§5.13).
 4. The accessible canvas (planned for Phase 3 and not done there; still to be placed): scene descriptions built from the command records (§4.3), a `describe "…"` verb, a live region that updates only when the scene changes, and colour-contrast checks, extending §4.8 from widgets to the canvas (p5.js does this with `describe` and `textOutput`, §12).
 5. Libraries and `sketch.toml` (Phase 9): whether a library keeps its version in the same file, so `roci update` can say "flocking 1.2.0 to 1.3.0" (§4.9).
 6. Teaching profiles (Phase 9): lint settings over one stable language, not Hedy-style levels where commands change.
