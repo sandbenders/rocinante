@@ -80,6 +80,7 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 		ui_event(event)
 	}
 	midi_step()
+	pads_step()
 	osc_step()
 	midi_out_step()
 	apply_cursor()
