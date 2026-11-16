@@ -46,6 +46,18 @@ Colour_Lit :: struct {
 	text: string, // as written, with the hash
 }
 
+// Text with values in curly brackets: `"you have {lives} left"`. Each part is either the text between
+// the holes (`expr` nil) or the value of a hole (`literal` empty). The checker turns it into the same
+// as joining the parts with `+`.
+Text_Part :: struct {
+	literal: string, // unescaped
+	expr:    ^Expr,
+}
+
+Text_Interp :: struct {
+	parts: []Text_Part,
+}
+
 // A name or a dotted path: `size`, `p.pos.x`, `physics.push`. The checker decides
 // which of a variable, a field, a swizzle and a library name each part is.
 Path :: struct {
@@ -115,6 +127,7 @@ Error_Expr :: struct {}
 Expr_Kind :: union {
 	Number_Lit,
 	Text_Lit,
+	Text_Interp,
 	Colour_Lit,
 	Path,
 	Group,

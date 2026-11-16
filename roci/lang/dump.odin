@@ -196,6 +196,17 @@ dump_expr :: proc(b: ^strings.Builder, src: Source, e: ^Expr) {
 		fmt.sbprintf(b, "(num %s)", span_text(src, e.span))
 	case Text_Lit:
 		fmt.sbprintf(b, "(text %q)", k.value)
+	case Text_Interp:
+		fmt.sbprintf(b, "(text-with")
+		for part in k.parts {
+			if part.expr == nil {
+				fmt.sbprintf(b, " %q", part.literal)
+			} else {
+				strings.write_byte(b, ' ')
+				dump_expr(b, src, part.expr)
+			}
+		}
+		strings.write_byte(b, ')')
 	case Colour_Lit:
 		fmt.sbprintf(b, "(colour %s)", k.text)
 	case Path:

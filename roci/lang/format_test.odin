@@ -382,3 +382,10 @@ test_a_list_written_in_rows_keeps_its_rows :: proc(t: ^testing.T) {
 	expect_formatted(t, uneven, uneven)
 	expect_formatted(t, "ONE = [ 1 2 3 ]\n", "ONE = [ 1 2 3 ]\n")
 }
+
+// Text with holes is kept as it was written, braces and all, and formatting it again changes nothing.
+@(test)
+test_text_with_holes_is_kept_as_written :: proc(t: ^testing.T) {
+	expect_formatted(t, "n = 3\ntitle   \"you have {n} left, {n + 1}\"\n", "n = 3\ntitle \"you have {n} left, {n + 1}\"\n")
+	expect_formatted(t, "title \"\\{plain\\}\"\n", "title \"\\{plain\\}\"\n")
+}

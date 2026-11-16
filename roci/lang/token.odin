@@ -52,6 +52,7 @@ Token :: struct {
 Lex_Problem_Kind :: enum u8 {
 	Unknown_Character,
 	Unterminated_Text,
+	Unclosed_Brace, // a `{` in text with no `}` before the end of the line
 	Bad_Escape,
 	Bad_Number,
 	Bad_Colour,

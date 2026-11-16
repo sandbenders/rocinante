@@ -2703,3 +2703,22 @@ test_a_printed_text_made_in_a_frame_survives_the_frame :: proc(t: ^testing.T) {
 		testing.expect_value(t, p.printed[2], "frame 2")
 	}
 }
+
+// Values in curly brackets inside text are put into it, as if joined with `+`: numbers, names,
+// calculations and calls, at the start, the middle and the end, and a bracket with a backslash is plain.
+@(test)
+test_values_in_curly_brackets_are_put_into_text :: proc(t: ^testing.T) {
+	p := run_text(t, "n = 3\nname = \"ada\"\nprint \"you have {n} left, {name}!\"\nprint \"{n}\"\nprint \"{n + 1} then {round (n * 1.5)} \\{plain\\}\"\nprint \"{count [ 1 2 3 ]} items\"\nprint \"{name}{name}\"\n", 1)
+	defer finish(p)
+	testing.expect_value(t, printed(p), "you have 3 left, ada!\n3\n4 then 5 {plain}\n3 items\nadaada")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// A hole in text that is drawn follows the value it holds from frame to frame.
+@(test)
+test_a_hole_in_drawn_text_follows_its_value :: proc(t: ^testing.T) {
+	p := run_text(t, "caption = \"\"\ndraw [\n  caption = \"frame {frame}\"\n]\n", 3)
+	defer finish(p)
+	testing.expect_value(t, as_text(global_named(p, "caption")), "frame 2")
+	testing.expect_value(t, len(p.errors), 0)
+}

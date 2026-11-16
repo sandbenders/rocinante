@@ -1111,3 +1111,25 @@ test_a_habit_says_the_word_to_write_and_the_line_that_works :: proc(t: ^testing.
 		testing.expect_value(t, d.args[3], c.spoken)
 	}
 }
+
+// Text with holes is text parts and the values of the holes, in order; each hole is any value.
+@(test)
+test_text_with_holes_parses_to_parts_and_values :: proc(t: ^testing.T) {
+	expect_tree(t, `title "a {n} b {n + 1}"`, `(call title (text-with "a " (name n) " b " (+ (name n) (num 1))))`)
+	expect_tree(t, `title "{n}"`, `(call title (text-with (name n)))`)
+	expect_tree(t, `title "plain"`, `(call title (text "plain"))`)
+	expect_tree(t, `title "\{n\}"`, `(call title (text "{n}"))`)
+	expect_tree(t, `title "x {n} \{y\}"`, `(call title (text-with "x " (name n) " {y}"))`)
+	expect_tree(t, `title "{count scores} left"`, `(call title (text-with (call count (name scores)) " left"))`)
+}
+
+@(test)
+test_a_hole_that_is_wrong_says_so_where_it_is :: proc(t: ^testing.T) {
+	expect_ids(t, `title "a {n"`, {.Unclosed_Brace})
+	expect_ids(t, `title "a {} b"`, {.Empty_Hole})
+	expect_ids(t, `title "a {1 2} b"`, {.Hole_Extra})
+	got := parse_text(`title "a {1 2} b"`)
+	if len(got.result.diagnostics) == 1 {
+		testing.expect_value(t, span_text(got.src, got.result.diagnostics[0].span), "2")
+	}
+}

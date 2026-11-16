@@ -18,6 +18,8 @@ check_expr :: proc(c: ^Checker, e: ^Expr, as_stmt: bool) -> ^IR {
 		return new_ir(c, e.span, T_NUMBER, IR_Number{value = k.value})
 	case Text_Lit:
 		return new_ir(c, e.span, T_TEXT, IR_Text{value = k.value})
+	case Text_Interp:
+		return check_text_interp(c, e, k)
 	case Colour_Lit:
 		colour, ok := maths.hex_parse(k.text)
 		if !ok {
@@ -680,4 +682,33 @@ is_sound_file :: proc(arg: ^IR) -> bool {
 		}
 	}
 	return false
+}
+
+// Text with holes is the same as its parts joined with `+`: the first part is text (an empty one
+// when the text starts with a hole), so each number, true or false that follows becomes text.
+@(private)
+check_text_interp :: proc(c: ^Checker, e: ^Expr, k: Text_Interp) -> ^IR {
+	joined: ^Expr
+	for part in k.parts {
+		piece := part.expr
+		if piece == nil {
+			piece = new(Expr, c.alloc)
+			piece^ = Expr{span = e.span, kind = Text_Lit{value = part.literal}}
+		} else if joined == nil {
+			start := new(Expr, c.alloc)
+			start^ = Expr{span = Span{e.span.file, e.span.start, e.span.start}, kind = Text_Lit{value = ""}}
+			joined = start
+		}
+		if joined == nil {
+			joined = piece
+			continue
+		}
+		sum := new(Expr, c.alloc)
+		sum^ = Expr{span = e.span, kind = Binary{op = .Add, lhs = joined, rhs = piece}}
+		joined = sum
+	}
+	if joined == nil {
+		return new_ir(c, e.span, T_TEXT, IR_Text{value = ""})
+	}
+	return check_expr(c, joined, false)
 }

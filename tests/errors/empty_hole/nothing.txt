@@ -1,0 +1,8 @@
+── There is nothing between these curly brackets ────── sketch.roci:1:15
+
+1 │ title "score: {} points"
+  │               ^^
+
+Inside text, curly brackets hold a value to put there, such as a name or a sum, and it is written in the place of the brackets. For a curly bracket on its own, put a backslash before it.
+
+Put a value in:  title "score: {score} points"

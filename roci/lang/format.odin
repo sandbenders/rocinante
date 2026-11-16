@@ -408,7 +408,7 @@ OPERATORS := [Binary_Op]string{
 @(private)
 expr_text :: proc(p: ^Printer, e: ^Expr, level: int, column: int) -> string {
 	switch k in e.kind {
-	case Number_Lit, Text_Lit:
+	case Number_Lit, Text_Lit, Text_Interp:
 		return span_text(p.src, e.span)
 	case Colour_Lit:
 		return k.text

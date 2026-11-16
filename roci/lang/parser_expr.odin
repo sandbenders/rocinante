@@ -559,7 +559,7 @@ parse_argument :: proc(p: ^Parser, expect_block := false, plain := false, expr_b
 		return new_expr(p, t.span, Number_Lit{value = value})
 	case .Text:
 		advance(p)
-		return new_expr(p, t.span, Text_Lit{value = unescape(text_of(p, t), p.alloc)})
+		return parse_text_literal(p, t)
 	case .Colour:
 		advance(p)
 		return new_expr(p, t.span, Colour_Lit{text = text_of(p, t)})
@@ -1044,4 +1044,97 @@ flush_wraps :: proc(p: ^Parser, mark: int) {
 	}
 	resize(&p.wraps, mark)
 	report(p, .Needs_Brackets, first, text_of_span(p, first), strings.trim_space(strings.to_string(b)))
+}
+
+// A text literal: plain text, or text with holes, which are expressions in curly brackets. Each hole
+// is lexed and parsed on its own from where it stands in the file, so its errors point at the
+// right place in the line.
+@(private)
+parse_text_literal :: proc(p: ^Parser, t: Token) -> ^Expr {
+	text := text_of(p, t)
+	closed := len(text) >= 2 && text[len(text) - 1] == '"' && !ends_in_escaped_quote(text)
+	body_end := len(text) - 1 if closed else len(text)
+	if !has_hole(text[:body_end]) {
+		return new_expr(p, t.span, Text_Lit{value = unescape(text, p.alloc)})
+	}
+	parts := make([dynamic]Text_Part, p.alloc)
+	literal_start := 1
+	i := 1
+	for i < body_end {
+		switch text[i] {
+		case '\\':
+			i += 2
+			continue
+		case '{':
+			close := hole_end(text[:body_end], i)
+			if close < 0 {
+				// the lexer said so already
+				return new_expr(p, t.span, Error_Expr{})
+			}
+			if i > literal_start {
+				append(&parts, Text_Part{literal = unescape(text[literal_start:i], p.alloc)})
+			}
+			base := t.span.start
+			append(&parts, Text_Part{expr = parse_hole(p, base + i + 1, base + close, Span{t.span.file, base + i, base + close + 1})})
+			i = close + 1
+			literal_start = i
+			continue
+		}
+		i += 1
+	}
+	if body_end > literal_start {
+		append(&parts, Text_Part{literal = unescape(text[literal_start:body_end], p.alloc)})
+	}
+	return new_expr(p, t.span, Text_Interp{parts = parts[:]})
+}
+
+// Whether text (without its quotes) has a hole: a curly bracket no backslash escapes.
+@(private)
+has_hole :: proc(body: string) -> bool {
+	for i := 1; i < len(body); i += 1 {
+		switch body[i] {
+		case '\\':
+			i += 1
+		case '{':
+			return true
+		}
+	}
+	return false
+}
+
+// The expression between the curly brackets of a hole, from offset `from` to `to` of the file.
+@(private)
+parse_hole :: proc(p: ^Parser, from, to: int, hole: Span) -> ^Expr {
+	l := Lexer{src = p.src, text = p.src.text[:to], at = from, line_empty = false}
+	l.tokens = make([dynamic]Token, p.alloc)
+	l.comments = make([dynamic]Comment, p.alloc)
+	l.problems = make([dynamic]Lex_Problem, p.alloc)
+	for l.at < to {
+		lex_one(&l)
+	}
+	if len(l.tokens) == 0 {
+		report(p, .Empty_Hole, hole, "", line_with(p, hole, "{score}"))
+		return new_expr(p, hole, Error_Expr{})
+	}
+	append(&l.tokens, Token{kind = .End_Of_File, span = Span{p.src.file, to, to}})
+	sub := Parser{
+		src    = p.src,
+		tokens = l.tokens[:],
+		verbs  = p.verbs,
+		taught = p.taught,
+		alloc  = p.alloc,
+		diags  = make([dynamic]Diagnostic, p.alloc),
+		groups = make([dynamic]Group_Kind, p.alloc),
+		wraps  = make([dynamic]Span, p.alloc),
+	}
+	report_lexer_problems(&sub, Lexed{tokens = l.tokens[:], comments = l.comments[:], problems = l.problems[:]})
+	e := parse_expression(&sub)
+	if rest := cur(&sub); rest.kind != .End_Of_File {
+		extra := text_of_span(&sub, Span{p.src.file, rest.span.start, to})
+		first := text_of_span(&sub, e.span)
+		two := fmt.aprintf("{{%s}} {{%s}}", first, extra, allocator = p.alloc)
+		report(&sub, .Hole_Extra, Span{p.src.file, rest.span.start, to}, extra, first, line_with(p, hole, two))
+	}
+	append(&p.diags, ..sub.diags[:])
+	return e
 }

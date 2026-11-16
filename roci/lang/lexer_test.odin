@@ -474,3 +474,50 @@ test_a_single_ampersand_or_bar_is_still_an_unknown_character_and_text_and_commen
 		testing.expectf(t, len(lexed.problems) == 0, "`%s` should be fine", text)
 	}
 }
+
+// Curly brackets in text are values to put into it: the whole text is still one token, whatever the
+// holes hold (brackets, and text of their own).
+@(test)
+test_text_with_holes_is_one_token :: proc(t: ^testing.T) {
+	expect_kinds(t, "\"you have {n} left\"", {.Text, .End_Of_File})
+	expect_kinds(t, "\"{a}{b}\"", {.Text, .End_Of_File})
+	expect_kinds(t, "\"{count [ 1 2 ]} items\"", {.Text, .End_Of_File})
+	expect_kinds(t, "\"{ { x: 1 } }\"", {.Text, .End_Of_File})
+	expect_kinds(t, "\"a {name + \"}\"} b\"", {.Text, .End_Of_File}) // a closing bracket inside text inside a hole
+	_, lexed, _ := kinds_of("\"a {n} b {n + 1}\"")
+	testing.expect_value(t, len(lexed.problems), 0)
+}
+
+// A curly bracket with a backslash before it is a plain one, and a lone closing bracket is plain too.
+@(test)
+test_escaped_and_lone_brackets_are_plain_text :: proc(t: ^testing.T) {
+	_, lexed, _ := kinds_of("\"a \\{b\\} c } d\"")
+	testing.expect_value(t, len(lexed.problems), 0)
+	testing.expect_value(t, unescape("\"a \\{b\\} c } d\"", context.temp_allocator), "a {b} c } d")
+}
+
+@(test)
+test_an_opening_bracket_with_no_closing_one_is_a_problem_at_the_bracket :: proc(t: ^testing.T) {
+	got, lexed, src := kinds_of("title \"a {n\"\ncircle 1 2 3", true)
+	testing.expect_value(t, got[1], Token_Kind.Invalid)
+	testing.expect_value(t, got[2], Token_Kind.Newline)
+	if testing.expect_value(t, len(lexed.problems), 1) {
+		testing.expect_value(t, lexed.problems[0].kind, Lex_Problem_Kind.Unclosed_Brace)
+		testing.expect_value(t, span_text(src, lexed.problems[0].span), "{")
+	}
+	// the hole may not run over the end of the line, and text inside it must close
+	_, nested, _ := kinds_of("\"{a + \"b}\"")
+	testing.expect_value(t, nested.problems[0].kind, Lex_Problem_Kind.Unclosed_Brace)
+}
+
+@(test)
+test_hole_end_finds_the_matching_bracket :: proc(t: ^testing.T) {
+	testing.expect_value(t, hole_end("{a}", 0), 2)
+	testing.expect_value(t, hole_end("x {a} {b}", 2), 4)
+	testing.expect_value(t, hole_end("{ { x: 1 } }", 0), 11)
+	testing.expect_value(t, hole_end("{\"}\"}", 0), 4) // a bracket in text inside the hole
+	testing.expect_value(t, hole_end("{\"a\\\"}\"}", 0), 7) // an escaped quote inside it
+	testing.expect_value(t, hole_end("{a", 0), -1)
+	testing.expect_value(t, hole_end("{a\nb}", 0), -1)
+	testing.expect_value(t, hole_end("{\"a}", 0), -1)
+}

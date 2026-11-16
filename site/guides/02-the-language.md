@@ -49,6 +49,15 @@ x = x + SPEED
 | record        | `{ pos: { 10, 20 },`<br>`life: 1 }`  | named fields; `ball.pos`, `ball.life`                         |
 | list          | `[ 1 2 3 ]`,<br>`[ red gold teal ]`  | many values in order, no commas between them                  |
 
+A value between curly brackets goes into text where it stands, so `"score: {score}"` is `"score: " + score`. Any value works, a calculation too, and a text can hold as many as it likes: `"{lives + 1} left, {name}"`. To write a curly bracket itself, put a backslash before it: `"\{"`.
+
+```roci picture
+background 250
+fill 30
+score = 12
+text "score: {score}, double: {score * 2}" at 30 40
+```
+
 A vector has commas and curly brackets; a list has square brackets and no commas. They look alike, and mixing them up is the commonest early mistake.
 
 ```roci picture

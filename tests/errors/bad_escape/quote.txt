@@ -3,6 +3,6 @@
 1 │ title "a\qb"
   │         ^^
 
-Inside text a backslash starts an escape. I know a quote (backslash and a quote), a backslash (two of them), a new line (backslash n) and a tab (backslash t).
+Inside text a backslash starts an escape. I know a quote (backslash and a quote), a backslash (two of them), a new line (backslash n), a tab (backslash t) and the two curly brackets (a backslash before each).
 
 To write the backslash itself:  title "a\\qb"

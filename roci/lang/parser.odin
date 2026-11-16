@@ -122,6 +122,9 @@ report_lexer_problems :: proc(p: ^Parser, lexed: Lexed) {
 			report(p, .Unknown_Character, problem.span, text, line_with(p, problem.span, ""))
 		case .Unterminated_Text:
 			report(p, .Unterminated_Text, problem.span, "", insertion(p, problem.span.end, "\""))
+		case .Unclosed_Brace:
+			// Writing it with a backslash makes it a plain bracket.
+			report(p, .Unclosed_Brace, problem.span, "", line_with(p, problem.span, "\\{"))
 		case .Bad_Escape:
 			// Doubling the backslash writes it as itself.
 			report(p, .Bad_Escape, problem.span, text, insertion(p, problem.span.start, "\\"))

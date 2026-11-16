@@ -1707,3 +1707,11 @@ test_midi_words :: proc(t: ^testing.T) {
 	expect_errors(t, "on midi down 5 [ print 1 ]", {.Missing_Block})
 	expect_errors(t, "x = midi control \"wheel\"", {.Wrong_Argument_Kind})
 }
+
+// A hole is the same as joining with `+`: numbers become text, and the whole is text.
+@(test)
+test_text_with_holes_is_text :: proc(t: ^testing.T) {
+	expect_types(t, "n = 3\nmessage = \"you have {n} left\"\nstarts = \"{n} left\"\n", "n: a number\nmessage: text\nstarts: text")
+	expect_errors(t, "message = \"you have {nope} left\"\n", {.Unknown_Name})
+	expect_errors(t, "message = \"a {1 2}\"\n", {.Hole_Extra})
+}

@@ -1,0 +1,8 @@
+── I can't read `b` inside the curly brackets ───────── sketch.roci:3:16
+
+3 │ title "sum: {a b}"
+  │                ^
+
+The curly brackets of a text hold one value, and I read `a` as that value. What follows it is not part of it. Two values go in two pairs of curly brackets, and a calculation in one pair with a plus sign or round brackets.
+
+Two values, two pairs:  title "sum: {a} {b}"

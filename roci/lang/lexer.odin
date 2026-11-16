@@ -347,9 +347,23 @@ lex_text :: proc(l: ^Lexer) {
 		case '"':
 			emit(l, .Text, start, end + 1)
 			return
+		case '{':
+			// A hole: an expression up to its closing brace, which may hold braces and text of its own.
+			close := hole_end(l.text, end)
+			if close < 0 {
+				stop := end
+				for stop < len(l.text) && l.text[stop] != '\n' && l.text[stop] != '\r' {
+					stop += 1
+				}
+				problem(l, .Unclosed_Brace, end, end + 1)
+				emit(l, .Invalid, start, stop)
+				return
+			}
+			end = close + 1
+			continue
 		case '\\':
 			next := end + 1
-			if next < len(l.text) && strings.contains_rune("\"\\nt", rune(l.text[next])) {
+			if next < len(l.text) && strings.contains_rune("\"\\nt{}", rune(l.text[next])) {
 				end += 2
 				continue
 			}
@@ -367,8 +381,37 @@ lex_text :: proc(l: ^Lexer) {
 	}
 }
 
+// Where the hole that opens at `open` (a `{` in text) closes: the matching `}`, counting braces and
+// skipping text inside the hole. -1 when the line ends first.
+hole_end :: proc(text: string, open: int) -> int {
+	depth := 0
+	i := open
+	for i < len(text) && text[i] != '\n' && text[i] != '\r' {
+		switch text[i] {
+		case '{':
+			depth += 1
+		case '}':
+			depth -= 1
+			if depth == 0 {
+				return i
+			}
+		case '"':
+			// text inside the hole
+			i += 1
+			for i < len(text) && text[i] != '"' && text[i] != '\n' && text[i] != '\r' {
+				i += 2 if text[i] == '\\' else 1
+			}
+			if i >= len(text) || text[i] != '"' {
+				return -1
+			}
+		}
+		i += 1
+	}
+	return -1
+}
+
 // The characters of a Text token: the quotes dropped and the escapes (`\"`, `\\`,
-// `\n`, `\t`) replaced. A bad escape stays as written. The caller frees the result.
+// `\n`, `\t`, `\{`, `\}`) replaced. A bad escape stays as written. The caller frees the result.
 unescape :: proc(raw: string, allocator := context.allocator) -> string {
 	body := raw
 	if len(body) > 0 && body[0] == '"' {
@@ -385,6 +428,8 @@ unescape :: proc(raw: string, allocator := context.allocator) -> string {
 			case '\\': strings.write_byte(&b, '\\')
 			case 'n':  strings.write_byte(&b, '\n')
 			case 't':  strings.write_byte(&b, '\t')
+			case '{':  strings.write_byte(&b, '{')
+			case '}':  strings.write_byte(&b, '}')
 			case:
 				strings.write_byte(&b, '\\')
 				continue
