@@ -1,0 +1,12 @@
+draw [
+  background 20
+  fill white
+  text "gamepads: {count gamepads}" at 20 20
+  x = 60
+  for each pad in gamepads [
+    fill gray
+    if pad.bottom [ fill gold ]
+    circle at x 150 radius 25
+    x = x + 70
+  ]
+]

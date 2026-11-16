@@ -1,0 +1,16 @@
+draw [
+  background 20
+  fill white
+  text "joysticks: {count joysticks}" at 20 20
+  y = 60
+  for each stick in joysticks [
+    fill white
+    text stick.name at 20 y
+    for each value in stick.axes [
+      y = y + 20
+      fill skyblue
+      rect at 20 y size (abs value * 100) 12
+    ]
+    y = y + 30
+  ]
+]

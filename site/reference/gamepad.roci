@@ -1,0 +1,12 @@
+pos = { 200, 150 }
+
+draw [
+  background 20
+  pos = pos + gamepad.leftstick * 4
+  fill white
+  if gamepad.bottom [ fill gold ]
+  circle at pos radius (20 + gamepad.righttrigger * 30)
+  fill white
+  if gamepad.connected [ text gamepad.name at 20 20 ]
+  if not gamepad.connected [ text "plug in a gamepad" at 20 20 ]
+]
