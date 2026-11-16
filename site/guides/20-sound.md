@@ -198,6 +198,8 @@ draw [ circle at 200 150 radius (10 + midi control 1) ]
 
 `midi.channel` says which of MIDI's 16 channels a message came on, for a controller that sends on more than one. Every device plugged in is heard, and one plugged in while the sketch runs is found within a second.
 
+On OpenBSD a keyboard plugged in is heard only by users in the `_sndiop` group, which owns the MIDI devices, and a sketch whose user is not in it hears nothing and says nothing. Add yourself once with `doas usermod -G _sndiop your-name` and log in again.
+
 More of what a keyboard says is read too. `on midi bend` runs when the pitch wheel moves, with `midi.bend` from -100 (all the way down) to 100 (all the way up) and 0 in the middle; `on midi program` when an instrument is chosen, with `midi.program` from 0 to 127; `on midi pressure` when a key is pressed harder after it went down (aftertouch), with `midi.pressure` from 0 to 100 and `midi.note` the key, or 0 when the pressure is of the whole keyboard; and `on midi start` and `on midi stop` when a sequencer or drum machine starts and stops. A clock they send is not an event, since it ticks 24 times a beat: it is the number `midi tempo`, in beats a minute, 0 when none is coming.
 
 ```roci
