@@ -48,6 +48,10 @@ Player :: struct {
 	decay:   f64,
 	sustain: f64,
 	release: f64,
+	// an instrument's pitch wheel (-1 to 1, two semitones each way) and modulation wheel (0 to 1,
+	// which swells a SoundFont's vibrato), live: the notes sounding follow them
+	bend:    f64,
+	vibrato: f64,
 }
 
 Mixer :: struct {
@@ -303,6 +307,9 @@ Change :: struct {
 	decay:   Maybe(f64),
 	sustain: Maybe(f64),
 	release: Maybe(f64),
+	// an instrument's wheels: the bend -1 to 1 and the vibrato 0 to 1
+	bend:    Maybe(f64),
+	vibrato: Maybe(f64),
 }
 
 // Volume is kept between 0 and 1, pan between -1 and 1, speed between 0 (held still) and 8.
@@ -335,6 +342,14 @@ change :: proc(m: ^Mixer, s: Sound, c: Change) {
 		}
 		if v, ok := c.release.?; ok && v == v {
 			p.release = clamp(v, 0.001, 60)
+		}
+	}
+	if p.wave != .None {
+		if v, ok := c.bend.?; ok && v == v {
+			p.bend = clamp(v, -1, 1)
+		}
+		if v, ok := c.vibrato.?; ok && v == v {
+			p.vibrato = clamp(v, 0, 1)
 		}
 	}
 	if v, ok := c.looping.?; ok {

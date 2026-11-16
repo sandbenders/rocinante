@@ -29,6 +29,13 @@ Out_Zone :: struct {
 	release:                     f64, // seconds, 0 for the reader's own
 	scale_tuning:                int, // 100 for a semitone a key, -1 to leave it
 	coarse_tune:                 int,
+	gens:                        [][2]int, // more generators, by number and amount, written before the sample
+	mods:                        []Out_Mod,
+}
+
+// A modulator, as the file holds it.
+Out_Mod :: struct {
+	source, destination, amount, scale_source, transform: int,
 }
 
 Out_Instrument :: struct {
@@ -42,6 +49,8 @@ Out_Preset :: struct {
 	bank:       int,
 	instrument: int,
 	coarse_tune: int, // added to the instrument's, by the preset's zone
+	gens:        [][2]int, // more generators of the preset's zone (they add to the instrument's)
+	mods:        []Out_Mod, // modulators of the preset's zone
 }
 
 @(private = "file")
@@ -94,6 +103,18 @@ put_gen :: proc(b: ^bytes.Buffer, oper, amount: int) {
 	put_u16(b, amount & 0xFFFF)
 }
 
+// The modulators of a zone: ten bytes each.
+@(private = "file")
+put_mods :: proc(b: ^bytes.Buffer, mods: []Out_Mod) {
+	for m in mods {
+		put_u16(b, m.source)
+		put_u16(b, m.destination)
+		put_u16(b, m.amount & 0xFFFF)
+		put_u16(b, m.scale_source)
+		put_u16(b, m.transform)
+	}
+}
+
 // The generators of a zone, in the order the specification asks for; how many there are.
 @(private = "file")
 put_zone :: proc(b: ^bytes.Buffer, z: Out_Zone) -> (count: int) {
@@ -118,6 +139,10 @@ put_zone :: proc(b: ^bytes.Buffer, z: Out_Zone) -> (count: int) {
 	}
 	if z.coarse_tune != 0 {
 		put_gen(b, 51, z.coarse_tune)
+		count += 1
+	}
+	for g in z.gens {
+		put_gen(b, g[0], g[1])
 		count += 1
 	}
 	if z.sample >= 0 {
@@ -175,26 +200,28 @@ write_font :: proc(name, comment: string, samples: []Out_Sample, instruments: []
 	}
 
 	// instruments: their zones and generators
-	bag, gen := 0, 0
+	bag, gen, mod := 0, 0, 0
 	for instrument in instruments {
 		put_name(&inst, instrument.name)
 		put_u16(&inst, bag)
 		for z in instrument.zones {
 			put_u16(&ibag, gen)
-			put_u16(&ibag, 0)
+			put_u16(&ibag, mod)
 			gen += put_zone(&igen, z)
+			put_mods(&imod, z.mods)
+			mod += len(z.mods)
 			bag += 1
 		}
 	}
 	put_name(&inst, "EOI")
 	put_u16(&inst, bag)
 	put_u16(&ibag, gen)
-	put_u16(&ibag, 0)
+	put_u16(&ibag, mod)
 	put_gen(&igen, 0, 0)
 	bytes.buffer_write(&imod, make([]u8, 10, context.temp_allocator))
 
 	// presets: one zone each, naming its instrument
-	bag, gen = 0, 0
+	bag, gen, mod = 0, 0, 0
 	for p in presets {
 		put_name(&phdr, p.name)
 		put_u16(&phdr, p.number)
@@ -204,13 +231,19 @@ write_font :: proc(name, comment: string, samples: []Out_Sample, instruments: []
 		put_u32(&phdr, 0)
 		put_u32(&phdr, 0)
 		put_u16(&pbag, gen)
-		put_u16(&pbag, 0)
+		put_u16(&pbag, mod)
 		if p.coarse_tune != 0 {
 			put_gen(&pgen, 51, p.coarse_tune)
 			gen += 1
 		}
+		for g in p.gens {
+			put_gen(&pgen, g[0], g[1])
+			gen += 1
+		}
 		put_gen(&pgen, 41, p.instrument)
 		gen += 1
+		put_mods(&pmod, p.mods)
+		mod += len(p.mods)
 		bag += 1
 	}
 	put_name(&phdr, "EOP")
@@ -221,7 +254,7 @@ write_font :: proc(name, comment: string, samples: []Out_Sample, instruments: []
 		bytes.buffer_write_byte(&phdr, 0)
 	}
 	put_u16(&pbag, gen)
-	put_u16(&pbag, 0)
+	put_u16(&pbag, mod)
 	put_gen(&pgen, 0, 0)
 	bytes.buffer_write(&pmod, make([]u8, 10, context.temp_allocator))
 

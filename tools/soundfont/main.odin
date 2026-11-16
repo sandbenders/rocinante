@@ -4,6 +4,8 @@
 //
 //     odin run tools/soundfont -- dump <file.sf2>     the presets and regions a file holds
 //     odin run tools/soundfont -- tiny                writes tests/sounds/tiny.sf2, the tests' font
+//     odin run tools/soundfont -- modulated           writes tests/sounds/modulated.sf2, the font of the filter, LFO,
+//         modulation envelope, modulator and exclusive class tests
 //     odin run tools/soundfont -- cut <in.sf2> <out.sf2>
 //         cuts FreePats' CC0 Upright Piano KW (small) down for examples/soundfont: every other
 //         sample, at half the rate, the first three seconds of each with a fade, so it is about a
@@ -27,10 +29,12 @@ main :: proc() {
 		os.exit(0 if dump(args[1]) else 1)
 	case len(args) == 1 && args[0] == "tiny":
 		os.exit(0 if write_file(TINY_PATH, tiny_font()) else 1)
+	case len(args) == 1 && args[0] == "modulated":
+		os.exit(0 if write_file(MODULATED_PATH, modulated_font()) else 1)
 	case len(args) == 3 && args[0] == "cut":
 		os.exit(0 if cut(args[1], args[2]) else 1)
 	}
-	fmt.eprintln("usage: odin run tools/soundfont -- dump <file.sf2> | tiny | cut <in.sf2> <out.sf2>")
+	fmt.eprintln("usage: odin run tools/soundfont -- dump <file.sf2> | tiny | modulated | cut <in.sf2> <out.sf2>")
 	os.exit(2)
 }
 
@@ -57,6 +61,7 @@ dump :: proc(path: string) -> bool {
 }
 
 TINY_PATH :: "tests/sounds/tiny.sf2"
+MODULATED_PATH :: "tests/sounds/modulated.sf2"
 
 write_file :: proc(path: string, data: []u8) -> bool {
 	if err := os.write_entire_file(path, data); err != nil {
@@ -101,6 +106,46 @@ tiny_font :: proc() -> []u8 {
 		{name = "Drums", number = 0, bank = 128, instrument = 2},
 	}
 	return write_font("rocinante tiny", "Made by rocinante's tools/soundfont for its tests (0BSD).", samples, instruments, presets)
+}
+
+// The font of the filter, LFO, modulation envelope, modulator and exclusive class tests: one looping 440 Hz
+// sine at key 69, in six presets that differ only in what their zones say, so a test hears what a generator does.
+//   0 Plain       nothing: the control
+//   1 Dark        a low-pass at 4800 absolute cents (131 Hz) with no resonance
+//   2 Opening     the same filter, which the modulation envelope opens by 6000 cents over a second
+//   3 Vibrato     the vibrato LFO moves the pitch by an octave each way, five times a second
+//   4 Velocity    an instrument modulator takes the soft notes' loudness down by 100 centibels at most, and
+//                 a preset modulator of the same kind adds 100 more
+//   5 Hats        two keys of one exclusive class, and one of none
+modulated_font :: proc() -> []u8 {
+	samples := []Out_Sample{
+		{name = "sine", frames = sine_frames(100, 10, 0.5), rate = 44000, root = 69, loop_start = 0, loop_end = 1000},
+	}
+	whole :: proc(gens: [][2]int, mods: []Out_Mod = nil) -> []Out_Zone {
+		zones := make([]Out_Zone, 1, context.temp_allocator)
+		zones[0] = Out_Zone{low_key = 0, high_key = 127, low_velocity = 0, high_velocity = 127, sample = 0, looping = true, scale_tuning = -1, gens = gens, mods = mods}
+		return zones
+	}
+	plain := whole(nil)
+	dark := whole({{8, 4800}})
+	opening := whole({{8, 4800}, {11, 6000}, {26, 0}, {29, 0}}) // attack of a second, sustain full
+	vibrato := whole({{6, 1200}, {24, -850}})
+	velocity := whole(nil, {{source = 0x0502, destination = 48, amount = 100}})
+	hats := []Out_Zone{
+		{low_key = 42, high_key = 42, low_velocity = 0, high_velocity = 127, sample = 0, looping = true, scale_tuning = -1, gens = {{57, 1}}},
+		{low_key = 46, high_key = 46, low_velocity = 0, high_velocity = 127, sample = 0, looping = true, scale_tuning = -1, gens = {{57, 1}}},
+		{low_key = 50, high_key = 50, low_velocity = 0, high_velocity = 127, sample = 0, looping = true, scale_tuning = -1},
+	}
+	instruments := []Out_Instrument{{"Plain", plain}, {"Dark", dark}, {"Opening", opening}, {"Vibrato", vibrato}, {"Velocity", velocity}, {"Hats", hats}}
+	presets := []Out_Preset{
+		{name = "Plain", number = 0, instrument = 0},
+		{name = "Dark", number = 1, instrument = 1},
+		{name = "Opening", number = 2, instrument = 2},
+		{name = "Vibrato", number = 3, instrument = 3},
+		{name = "Velocity", number = 4, instrument = 4, mods = {{source = 0x0502, destination = 48, amount = 100}}},
+		{name = "Hats", number = 5, instrument = 5},
+	}
+	return write_font("rocinante modulated", "Made by rocinante's tools/soundfont for its tests (0BSD).", samples, instruments, presets)
 }
 
 // The piano cut down: every other region of its one preset, each now covering the keys up to the

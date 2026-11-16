@@ -239,6 +239,16 @@ abi_set_sound_envelope :: proc "c" (sound: c.int, attack, decay, sustain, releas
 	set_envelope(Sound(sound), pick(attack), pick(decay), pick(sustain), pick(release))
 }
 
+@(export, link_name = "roci_set_sound_wheels")
+abi_set_sound_wheels :: proc "c" (sound: c.int, bend, vibrato: f64) {
+	context = abi_context()
+	// a number that is not 0 to 100 (or -100 to 100 for the bend) is left out, as the envelope's are: NaN
+	pick :: proc(v: f64) -> Maybe(f64) {
+		return v if v == v else nil
+	}
+	set_wheels(Sound(sound), pick(bend), pick(vibrato))
+}
+
 // ---- MIDI out ----
 
 @(private)
@@ -405,6 +415,7 @@ abi_no_sound_effect :: proc "c" (sound: c.int, name: cstring) -> c.int {
 // The table rows of the functions above that are not a registry shape.
 abi_sound_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_set_sound_envelope", typeid_of(type_of(abi_set_sound_envelope)), "void roci_set_sound_envelope(roci_sound_id sound, double attack, double decay, double sustain, double release)", "Shapes an instrument's notes: seconds to come in, seconds to fall to the sustain, the level the note sits at while held (0 to 100) and seconds to fade out after it is let go. A negative number leaves that one as it was; a SoundFont instrument's own envelope is the least these can make it."))
+	append(all, abi_entry("roci_set_sound_wheels", typeid_of(type_of(abi_set_sound_wheels)), "void roci_set_sound_wheels(roci_sound_id sound, double bend, double vibrato)", "Moves an instrument's wheels: the pitch wheel from -100 (two semitones down) to 100 (two up) and the modulation wheel from 0 to 100, which swells a SoundFont's vibrato. The notes sounding follow them. A number that is NaN leaves that wheel as it was."))
 	append(all, abi_entry("roci_osc_send", typeid_of(type_of(abi_osc_send)), "int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port)", "Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text, a boolean, or a list of numbers, which goes as a blob of bytes. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it."))
 	append(all, abi_entry("roci_record_sound", typeid_of(type_of(abi_record_sound)), "int roci_record_sound(roci_sound_id sound, const char *path)", "Records what plays into a sound file as it plays: a sound, the sound roci_speakers gives for the whole mix (what is heard) or the one roci_mic gives for the microphone. The name ends in .wav (written here: 16-bit, two channels at 48,000) or .mp3, .ogg, .flac or .m4a (made by ffmpeg, which must be installed). The path is used as it is, and its folders are made. Gives 1 when it started and 0 when the name is not one of those, the sound is not there, there is no ffmpeg for the kind or the file cannot be made. The recording ends with roci_no_record_sound or when the program ends."))
 	append(all, abi_entry("roci_no_record_sound", typeid_of(type_of(abi_no_record_sound)), "void roci_no_record_sound(roci_sound_id sound)", "Ends the recording of a sound (or of the speakers or the microphone) and finishes the file; nothing when it is not being recorded."))

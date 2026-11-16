@@ -117,7 +117,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"tab", "roci_tab_begin roci_tab_end", ""},
 	{"menu", "roci_menu_begin roci_menu_end", ""},
 	{"list", "roci_list", ""},
-	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent roci_set_sound_at roci_set_sound_volume roci_set_sound_pan roci_set_sound_speed roci_set_sound_loop roci_set_sound_pitch roci_play_note", ""},
+	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent roci_set_sound_at roci_set_sound_volume roci_set_sound_pan roci_set_sound_speed roci_set_sound_loop roci_set_sound_pitch roci_set_sound_wheels roci_play_note", ""},
 	{"osc send", "roci_osc_send roci_osc_send_bundle", ""},
 	{"midi note", "roci_midi_note", ""},
 	{"midi release", "roci_midi_release", ""},

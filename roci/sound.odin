@@ -337,6 +337,30 @@ set_envelope :: proc(s: Sound, attack := Maybe(f64){}, decay := Maybe(f64){}, su
 	audio.change(the_mixer(), s, c)
 }
 
+// Moves an instrument's wheels: the pitch wheel, -100 (two semitones down) to 100 (two up), and the modulation
+// wheel, 0 to 100, which swells a SoundFont's vibrato; the notes sounding follow them. A nil one stays as it was.
+set_wheels :: proc(s: Sound, bend := Maybe(f64){}, vibrato := Maybe(f64){}) {
+	c: audio.Change
+	if v, ok := bend.?; ok {
+		c.bend = v / 100
+	}
+	if v, ok := vibrato.?; ok {
+		c.vibrato = v / 100
+	}
+	audio.change(the_mixer(), s, c)
+}
+
+// An instrument's wheels as `set_wheels` put them: the bend -100 to 100 and the vibrato 0 to 100 (0 for any other sound).
+sound_wheels :: proc(s: Sound) -> (bend, vibrato: f64) {
+	m := the_mixer()
+	sync.guard(&m.lock)
+	if s == 0 || int(s) > len(m.players) {
+		return 0, 0
+	}
+	p := m.players[int(s) - 1]
+	return p.bend * 100, p.vibrato * 100
+}
+
 // How many seconds of a streamed sound are kept ready, 0 for a sound that is whole or not there.
 sound_buffer_seconds :: proc(s: Sound) -> f64 {
 	m := the_mixer()

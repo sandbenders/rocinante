@@ -695,6 +695,28 @@ set plain attack 1.5 release 0.25
 	testing.expect_value(t, as_number(global_named(p, "release")), 8)
 }
 
+// The wheels: `set piano bend 50 vibrato 30` moves the pitch wheel and the modulation wheel, kept in range, and
+// both words stay free as names.
+@(test)
+test_the_wheel_words_of_an_instrument :: proc(t: ^testing.T) {
+	text := `piano = synth saw
+bend = 3
+vibrato = 4
+set piano bend 50 vibrato 30
+echo = synth sine
+set echo bend -250
+`
+	p := run_with_sounds(t, "wheel_words", text, "tests/sounds", {})
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	bend, vibrato := roci.sound_wheels(as_sound(global_named(p, "piano")))
+	testing.expect_value(t, [2]f64{bend, vibrato}, [2]f64{50, 30})
+	bend, vibrato = roci.sound_wheels(as_sound(global_named(p, "echo")))
+	testing.expect_value(t, [2]f64{bend, vibrato}, [2]f64{-100, 0})
+	testing.expect_value(t, as_number(global_named(p, "bend")), 3)
+	testing.expect_value(t, as_number(global_named(p, "vibrato")), 4)
+}
+
 // `load "song.wav" buffer 3` keeps three seconds ready, and a save keeps that.
 @(test)
 test_load_buffer_sets_the_seconds_kept_ready :: proc(t: ^testing.T) {

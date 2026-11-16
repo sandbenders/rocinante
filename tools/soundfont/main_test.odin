@@ -31,3 +31,14 @@ test_written_font_reads_back :: proc(t: ^testing.T) {
 	testing.expect_value(t, font.presets[0].regions[0].loop_end - font.presets[0].regions[0].loop_start, 1000)
 	free_all(context.temp_allocator)
 }
+
+// The same for the modulated font of roci/audio's tests: `odin run tools/soundfont -- modulated`.
+@(test)
+test_modulated_font_is_up_to_date :: proc(t: ^testing.T) {
+	made := modulated_font()
+	defer delete(made)
+	stored, err := os.read_entire_file(MODULATED_PATH, context.temp_allocator)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, string(made) == string(stored), "tests/sounds/modulated.sf2 is out of date: odin run tools/soundfont -- modulated")
+	free_all(context.temp_allocator)
+}

@@ -9,10 +9,16 @@
 // note is finding the regions that cover its key and velocity. What is read follows the
 // SoundFont 2.04 specification: the generators of ranges, samples, tuning, loops, attenuation, pan
 // and the volume envelope, with an instrument's global zone giving its defaults and a preset's
-// zones adding to them; modulators, filters, the modulation envelope, LFOs, reverb and chorus are
-// not read, and 24-bit samples (`sm24`) are read as their 16 bits.
+// zones adding to them. Also read: the low-pass filter (cutoff and resonance), the modulation
+// envelope and the two LFOs (what they do to pitch, cutoff and volume), the key's effect on the
+// envelopes' hold and decay, a fixed key or velocity, exclusive classes (a closed hi-hat cuts an open
+// one), and modulators (the tables `imod` and `pmod`, with the default ones for velocity and the two
+// wheels); a modulator is worked out when a note starts, from its velocity and key and the
+// instrument's bend and vibrato. Reverb and chorus (an effect does those), the sample links of
+// stereo pairs and 24-bit samples (`sm24`, read as their 16 bits) are not read.
 package audio
 
+import "base:runtime"
 import "core:math"
 import "core:strings"
 
@@ -42,10 +48,41 @@ Region :: struct {
 	pan: f64,                    // -1 to 1
 	attack, hold, decay, release: f64, // seconds
 	sustain: f64,                // the level the decay falls to, 0 to 1
+	// the filter: a low pass whose cutoff is `cutoff` in absolute cents (13500 is wide open, no filter)
+	// and whose peak at the cutoff is `resonance` centibels
+	cutoff, resonance: f64,
+	// the modulation envelope, which moves the pitch and the cutoff by these cents at its top
+	mod_env: Envelope,
+	mod_env_pitch, mod_env_cutoff: f64,
+	// the modulation LFO (pitch in cents, cutoff in cents and volume in centibels, at the peak of its
+	// swing) and the vibrato LFO (pitch in cents): its delay in seconds and its frequency in hertz
+	mod_lfo_delay, mod_lfo_hertz, mod_lfo_pitch, mod_lfo_cutoff, mod_lfo_volume: f64,
+	vib_lfo_delay, vib_lfo_hertz, vib_lfo_pitch: f64,
+	// timecents more (or less) of hold and decay for each key above the middle one, for the volume
+	// envelope and the modulation envelope
+	key_hold, key_decay, key_mod_hold, key_mod_decay: f64,
+	fixed_key, fixed_velocity: int, // a key or velocity that stands in for the note's own, or -1
+	exclusive: int,              // 0, or a class of notes that cut one another off
+	mods: []Modulator,           // what moves the generators above while it plays
+}
+
+// An envelope of the modulation kind: times in seconds, and the level the decay falls to (0 to 1).
+Envelope :: struct {
+	delay, attack, hold, decay, release: f64,
+	sustain: f64,
+}
+
+// A modulator of SoundFont 2: a source (and a second source that scales the first) moves a generator
+// by an amount. The sources and the generator are the specification's numbers.
+Modulator :: struct {
+	source, destination: u16,
+	amount:              i16,
+	scale_source:        u16,
+	transform:           u16,
 }
 
 // The generators read, by their numbers in the specification.
-@(private = "file")
+@(private)
 Gen :: enum u16 {
 	Start_Offset = 0, End_Offset = 1, Loop_Start_Offset = 2, Loop_End_Offset = 3,
 	Start_Coarse = 4, End_Coarse = 12, Pan = 17,
@@ -53,9 +90,15 @@ Gen :: enum u16 {
 	Instrument = 41, Key_Range = 43, Velocity_Range = 44, Loop_Start_Coarse = 45, Attenuation = 48,
 	Loop_End_Coarse = 50, Coarse_Tune = 51, Fine_Tune = 52, Sample_Id = 53, Sample_Modes = 54,
 	Scale_Tuning = 56, Root_Key = 58,
+	Mod_Lfo_To_Pitch = 5, Vib_Lfo_To_Pitch = 6, Mod_Env_To_Pitch = 7, Filter_Cutoff = 8, Filter_Q = 9,
+	Mod_Lfo_To_Cutoff = 10, Mod_Env_To_Cutoff = 11, Mod_Lfo_To_Volume = 13,
+	Delay_Mod_Lfo = 21, Freq_Mod_Lfo = 22, Delay_Vib_Lfo = 23, Freq_Vib_Lfo = 24,
+	Delay_Mod_Env = 25, Attack_Mod_Env = 26, Hold_Mod_Env = 27, Decay_Mod_Env = 28, Sustain_Mod_Env = 29, Release_Mod_Env = 30,
+	Key_To_Mod_Hold = 31, Key_To_Mod_Decay = 32, Key_To_Vol_Hold = 39, Key_To_Vol_Decay = 40,
+	Key_Number = 46, Velocity = 47, Exclusive_Class = 57,
 }
 
-@(private = "file")
+@(private)
 GEN_COUNT :: 61
 
 // The generators of a zone: whether each is set, and its amount (ranges as low and high bytes).
@@ -63,6 +106,7 @@ GEN_COUNT :: 61
 Zone :: struct {
 	set:    [GEN_COUNT]bool,
 	amount: [GEN_COUNT]i16,
+	mods:   []Modulator,
 }
 
 @(private = "file")
@@ -158,9 +202,11 @@ font_read :: proc(data: []u8, allocator := context.allocator) -> (font: ^Font, o
 	phdr := find_chunk(pdta[:], "phdr") or_return
 	pbag := find_chunk(pdta[:], "pbag") or_return
 	pgen := find_chunk(pdta[:], "pgen") or_return
+	pmod, _ := find_chunk(pdta[:], "pmod") // a file with no modulator tables just has none
 	inst := find_chunk(pdta[:], "inst") or_return
 	ibag := find_chunk(pdta[:], "ibag") or_return
 	igen := find_chunk(pdta[:], "igen") or_return
+	imod, _ := find_chunk(pdta[:], "imod")
 	shdr := find_chunk(pdta[:], "shdr") or_return
 	// each table ends with a record that only marks its end
 	if len(phdr.data) < 2 * 38 || len(pbag.data) < 4 || len(inst.data) < 2 * 22 || len(ibag.data) < 4 || len(shdr.data) < 2 * 46 {
@@ -185,7 +231,7 @@ font_read :: proc(data: []u8, allocator := context.allocator) -> (font: ^Font, o
 	}
 
 	// the zones of a bag range, each with its generators
-	zones_of :: proc(bags, gens: []u8, bag_count, gen_count, first, last: int) -> (out: [dynamic]Zone, ok: bool) {
+	zones_of :: proc(bags, gens, mods: []u8, bag_count, gen_count, first, last: int) -> (out: [dynamic]Zone, ok: bool) {
 		out = make([dynamic]Zone, context.temp_allocator)
 		if first < 0 || last > bag_count - 1 || first > last {
 			return out, false
@@ -193,10 +239,21 @@ font_read :: proc(data: []u8, allocator := context.allocator) -> (font: ^Font, o
 		for b in first ..< last {
 			g0 := int(u16_at(bags, b * 4))
 			g1 := int(u16_at(bags, (b + 1) * 4))
+			m0 := int(u16_at(bags, b * 4 + 2))
+			m1 := int(u16_at(bags, (b + 1) * 4 + 2))
 			if g0 > g1 || g1 > gen_count {
 				return out, false
 			}
 			z: Zone
+			// the modulators of the zone, when the table holds them (a bad index means none, not a bad file)
+			if m0 <= m1 && m1 * 10 <= len(mods) {
+				list := make([]Modulator, m1 - m0, context.temp_allocator)
+				for m in m0 ..< m1 {
+					at := m * 10
+					list[m - m0] = Modulator{u16_at(mods, at), u16_at(mods, at + 2), i16(u16_at(mods, at + 4)), u16_at(mods, at + 6), u16_at(mods, at + 8)}
+				}
+				z.mods = list
+			}
 			for g in g0 ..< g1 {
 				oper := int(u16_at(gens, g * 4))
 				if oper < GEN_COUNT {
@@ -221,7 +278,7 @@ font_read :: proc(data: []u8, allocator := context.allocator) -> (font: ^Font, o
 		rec := phdr.data[p * 38:]
 		append(&presets, Font_Preset{name = strings.clone(name_of(rec[:20]), allocator), number = int(u16_at(rec, 20)), bank = int(u16_at(rec, 22))})
 		regions = make([dynamic]Region, allocator)
-		pzones := zones_of(pbag.data, pgen.data, pbag_count, pgen_count, int(u16_at(rec, 24)), int(u16_at(phdr.data[(p + 1) * 38:], 24))) or_return
+		pzones := zones_of(pbag.data, pgen.data, pmod.data, pbag_count, pgen_count, int(u16_at(rec, 24)), int(u16_at(phdr.data[(p + 1) * 38:], 24))) or_return
 		// a preset's first zone with no instrument is its global zone
 		pglobal: Zone
 		for pz, n in pzones {
@@ -237,7 +294,7 @@ font_read :: proc(data: []u8, allocator := context.allocator) -> (font: ^Font, o
 				continue
 			}
 			irec := inst.data[i * 22:]
-			izones := zones_of(ibag.data, igen.data, ibag_count, igen_count, int(u16_at(irec, 20)), int(u16_at(inst.data[(i + 1) * 22:], 20))) or_return
+			izones := zones_of(ibag.data, igen.data, imod.data, ibag_count, igen_count, int(u16_at(irec, 20)), int(u16_at(inst.data[(i + 1) * 22:], 20))) or_return
 			iglobal: Zone
 			for iz, m in izones {
 				sample_id, has_sample := zone_get(iz, .Sample_Id)
@@ -251,7 +308,7 @@ font_read :: proc(data: []u8, allocator := context.allocator) -> (font: ^Font, o
 				if s >= sample_count {
 					continue
 				}
-				if r, made := make_region(font, shdr.data[s * 46:], iglobal, iz, pglobal, pz); made {
+				if r, made := make_region(font, shdr.data[s * 46:], iglobal, iz, pglobal, pz, allocator); made {
 					append(&regions, r)
 				}
 			}
@@ -267,7 +324,7 @@ font_read :: proc(data: []u8, allocator := context.allocator) -> (font: ^Font, o
 // global zone) gives each generator, and the preset's zone (or else its global zone) adds to the
 // ones that may be added to; key and velocity ranges are where both zones' ranges meet.
 @(private = "file")
-make_region :: proc(font: ^Font, sample: []u8, iglobal, izone, pglobal, pzone: Zone) -> (r: Region, ok: bool) {
+make_region :: proc(font: ^Font, sample: []u8, iglobal, izone, pglobal, pzone: Zone, allocator: runtime.Allocator) -> (r: Region, ok: bool) {
 	inst :: proc(g: Gen, iglobal, izone: Zone, default: i16) -> i16 {
 		if v, set := zone_get(izone, g); set {
 			return v
@@ -351,6 +408,48 @@ make_region :: proc(font: ^Font, sample: []u8, iglobal, izone, pglobal, pzone: Z
 	r.release = max(time(.Release_Env, iglobal, izone, pglobal, pzone), RELEASE)
 	sustain := clamp(both(.Sustain_Env, iglobal, izone, pglobal, pzone, 0), 0, 1440) // centibels below full
 	r.sustain = math.pow(10, -sustain / 200)
+
+	// the filter, the modulation envelope, the two LFOs and the rest
+	amount :: proc(g: Gen, default: f64, iglobal, izone, pglobal, pzone: Zone) -> f64 {
+		return both(g, iglobal, izone, pglobal, pzone, i16(default))
+	}
+	r.cutoff = clamp(amount(.Filter_Cutoff, 13500, iglobal, izone, pglobal, pzone), 1500, 13500)
+	r.resonance = clamp(amount(.Filter_Q, 0, iglobal, izone, pglobal, pzone), 0, 960)
+	r.mod_env = Envelope{
+		delay   = time(.Delay_Mod_Env, iglobal, izone, pglobal, pzone),
+		attack  = time(.Attack_Mod_Env, iglobal, izone, pglobal, pzone),
+		hold    = time(.Hold_Mod_Env, iglobal, izone, pglobal, pzone),
+		decay   = time(.Decay_Mod_Env, iglobal, izone, pglobal, pzone),
+		release = max(time(.Release_Mod_Env, iglobal, izone, pglobal, pzone), RELEASE),
+		sustain = 1 - clamp(amount(.Sustain_Mod_Env, 0, iglobal, izone, pglobal, pzone), 0, 1000) / 1000,
+	}
+	r.mod_env_pitch = clamp(amount(.Mod_Env_To_Pitch, 0, iglobal, izone, pglobal, pzone), -12000, 12000)
+	r.mod_env_cutoff = clamp(amount(.Mod_Env_To_Cutoff, 0, iglobal, izone, pglobal, pzone), -12000, 12000)
+	hertz :: proc(g: Gen, iglobal, izone, pglobal, pzone: Zone) -> f64 {
+		return 8.176 * math.pow(2, clamp(both(g, iglobal, izone, pglobal, pzone, 0), -16000, 4500) / 1200)
+	}
+	r.mod_lfo_delay = time(.Delay_Mod_Lfo, iglobal, izone, pglobal, pzone)
+	r.mod_lfo_hertz = hertz(.Freq_Mod_Lfo, iglobal, izone, pglobal, pzone)
+	r.mod_lfo_pitch = clamp(amount(.Mod_Lfo_To_Pitch, 0, iglobal, izone, pglobal, pzone), -12000, 12000)
+	r.mod_lfo_cutoff = clamp(amount(.Mod_Lfo_To_Cutoff, 0, iglobal, izone, pglobal, pzone), -12000, 12000)
+	r.mod_lfo_volume = clamp(amount(.Mod_Lfo_To_Volume, 0, iglobal, izone, pglobal, pzone), -960, 960)
+	r.vib_lfo_delay = time(.Delay_Vib_Lfo, iglobal, izone, pglobal, pzone)
+	r.vib_lfo_hertz = hertz(.Freq_Vib_Lfo, iglobal, izone, pglobal, pzone)
+	r.vib_lfo_pitch = clamp(amount(.Vib_Lfo_To_Pitch, 0, iglobal, izone, pglobal, pzone), -12000, 12000)
+	r.key_hold = clamp(amount(.Key_To_Vol_Hold, 0, iglobal, izone, pglobal, pzone), -1200, 1200)
+	r.key_decay = clamp(amount(.Key_To_Vol_Decay, 0, iglobal, izone, pglobal, pzone), -1200, 1200)
+	r.key_mod_hold = clamp(amount(.Key_To_Mod_Hold, 0, iglobal, izone, pglobal, pzone), -1200, 1200)
+	r.key_mod_decay = clamp(amount(.Key_To_Mod_Decay, 0, iglobal, izone, pglobal, pzone), -1200, 1200)
+	// a fixed key or velocity is the instrument's own, never added to by a preset
+	r.fixed_key, r.fixed_velocity = -1, -1
+	if v := inst(.Key_Number, iglobal, izone, -1); v >= 0 && v <= 127 {
+		r.fixed_key = int(v)
+	}
+	if v := inst(.Velocity, iglobal, izone, -1); v >= 0 && v <= 127 {
+		r.fixed_velocity = int(v)
+	}
+	r.exclusive = max(int(inst(.Exclusive_Class, iglobal, izone, 0)), 0)
+	r.mods = combine_modulators(iglobal.mods, izone.mods, pglobal.mods, pzone.mods, allocator)
 	return r, true
 }
 
@@ -361,6 +460,9 @@ font_destroy :: proc(font: ^Font, allocator := context.allocator) {
 	}
 	for p in font.presets {
 		delete(p.name, allocator)
+		for r in p.regions {
+			delete(r.mods, allocator)
+		}
 		delete(p.regions, allocator)
 	}
 	delete(font.presets, allocator)

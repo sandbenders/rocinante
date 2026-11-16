@@ -69,7 +69,24 @@ Voice :: struct {
 	ghost_l:   f64,
 	ghost_r:   f64,
 	ghost:     f64, // 1 down to 0
+	// a SoundFont's note, beyond the above: what its modulators added to each generator when it began,
+	// its pan, the multipliers the key gave its envelopes' hold and decay, the modulation envelope's level
+	// when it was let go, the phases of its two LFOs, and where it is in a control step (the pitch, the
+	// filter and the LFOs are worked out every CONTROL_FRAMES frames and held between)
+	mods:      [GEN_COUNT]f32,
+	pan:       f64,
+	hold_k, decay_k, mod_hold_k, mod_decay_k: f64,
+	mod_fade:  f64,
+	mod_phase, vib_phase: f64,
+	tick:      int,
+	rate:      f64, // the pitch's multiplier from the wheels, envelope and LFOs
+	volume_k:  f64, // the modulation LFO's tremolo
+	filtered:  bool, // the filter is in use (once it is, it stays, so its state is never cut)
+	b0, b1, b2, a1, a2, z1, z2: f64,
 }
+
+// How many frames a SoundFont note's pitch, filter and LFOs are held between steps.
+CONTROL_FRAMES :: 32
 
 // A new instrument playing a preset of a SoundFont (read by `font_read` with the mixer's
 // allocator, which it now belongs to), silent, at full volume, in the middle.
@@ -82,7 +99,8 @@ add_font_instrument :: proc(m: ^Mixer, font: ^Font, preset: int) -> Sound {
 // How far a region's sample moves a frame of the mixer for a note.
 @(private)
 region_step :: proc(r: Region, note: f64) -> f64 {
-	return r.rate / RATE * math.pow(2, (note - r.root) * r.key_scale / 12)
+	played := note if r.fixed_key < 0 else f64(r.fixed_key)
+	return r.rate / RATE * math.pow(2, (played - r.root) * r.key_scale / 12)
 }
 
 // The pitch of a note number in hertz: 69 is the A at 440, and each step is a semitone.
@@ -273,7 +291,22 @@ start_font_note :: proc(p: ^Player, hz: f64, seconds: f64) {
 			break // a preset with more layers here than there are voices
 		}
 		claimed |= 1 << u32(chosen)
-		p.voices[chosen] = new_voice(p, chosen, Voice{on = true, held = true, note = note, hz = hz, left = seconds if seconds > 0 else 0, region = i, pos = f64(r.start), step = region_step(r, note)})
+		if r.exclusive != 0 {
+			cut_class(p, r.exclusive, chosen)
+		}
+		fresh := Voice{on = true, held = true, note = note, hz = hz, left = seconds if seconds > 0 else 0, region = i, pos = f64(r.start), step = region_step(r, note), rate = 1, volume_k = 1}
+		// what the region's modulators make of this note, and what its key does to the envelopes' times
+		mods := modulation(r, Mod_Context{velocity = velocity, key = key, bend = p.bend, vibrato = p.vibrato})
+		for g in 0 ..< GEN_COUNT {
+			fresh.mods[g] = f32(mods[g])
+		}
+		fresh.pan = clamp(r.pan + mods[int(Gen.Pan)] / 500, -1, 1)
+		per_key :: proc(timecents: f64, key: int) -> f64 {
+			return math.pow(2, f64(60 - key) * timecents / 1200)
+		}
+		fresh.hold_k, fresh.decay_k = per_key(r.key_hold, key), per_key(r.key_decay, key)
+		fresh.mod_hold_k, fresh.mod_decay_k = per_key(r.key_mod_hold, key), per_key(r.key_mod_decay, key)
+		p.voices[chosen] = new_voice(p, chosen, fresh)
 		p.playing = true
 	}
 }
@@ -288,9 +321,7 @@ release_notes :: proc(p: ^Player, note: Maybe(f64)) {
 			continue
 		}
 		if v.held && p.wave == .Font {
-			// a SoundFont's note fades from where its envelope is, over its region's release
-			v.fade_from = v.gain
-			v.age = 0
+			let_go_font_voice(p, &v, v.gain)
 		}
 		v.held = false
 	}
@@ -353,6 +384,7 @@ mix_instrument :: proc(p: ^Player, out: []f32) {
 	right := f32(p.volume * min(1, 1 + p.pan))
 	release_step := 1.0 / (envelope_time(p.release, RELEASE) * RATE)
 	ghost_step := 1.0 / (STEAL_FADE * RATE)
+	bend_k := 1.0 if p.bend == 0 else math.pow(2, p.bend * 2 / 12) // the pitch wheel: two semitones each way
 	for i in 0 ..< frames {
 		sum: f64
 		for &v in p.voices {
@@ -375,7 +407,7 @@ mix_instrument :: proc(p: ^Player, out: []f32) {
 					continue
 				}
 			}
-			dt := v.hz * p.speed / RATE
+			dt := v.hz * p.speed * bend_k / RATE
 			own := wave_value(p, p.wave, v.phase, dt) * v.gain
 			v.last_l, v.last_r = own, own
 			sum += own
@@ -401,7 +433,7 @@ mix_instrument :: proc(p: ^Player, out: []f32) {
 // The level of a SoundFont note's envelope while it is held, `age` seconds after it began: up
 // over the attack, held, down over the decay to the sustain level, and there while the key is down.
 @(private)
-envelope_level :: proc(r: Region, age: f64, p: ^Player = nil) -> f64 {
+envelope_level :: proc(r: Region, age: f64, p: ^Player = nil, hold_k := 1.0, decay_k := 1.0) -> f64 {
 	// what the instrument asked for is a floor over the region's own times, and scales its sustain
 	attack, decay, sustain := r.attack, r.decay, r.sustain
 	if p != nil {
@@ -420,10 +452,11 @@ envelope_level :: proc(r: Region, age: f64, p: ^Player = nil) -> f64 {
 		return t / attack
 	}
 	t -= attack
-	if t < r.hold {
+	if t < r.hold * hold_k {
 		return 1
 	}
-	t -= r.hold
+	t -= r.hold * hold_k
+	decay *= decay_k
 	if sustain < 1 && decay <= 0 {
 		decay = 0.005 // the level has to get down to the sustain somehow
 	}
@@ -461,9 +494,119 @@ held_level :: proc(p: ^Player, age: f64) -> f64 {
 	return sustain
 }
 
+// The level 0 to 1 of a region's modulation envelope: up after its delay over the attack, held,
+// down over the decay to its sustain; once the note is let go, from where it was (`fade_from`) down
+// over the release.
+@(private)
+mod_env_level :: proc(e: Envelope, hold_k, decay_k, age: f64, held: bool, fade_from: f64) -> f64 {
+	if !held {
+		return fade_from * max(0, 1 - age / max(e.release, 0.001))
+	}
+	t := age - e.delay
+	if t <= 0 {
+		return 0
+	}
+	if t < e.attack {
+		return t / e.attack
+	}
+	t -= e.attack
+	if t < e.hold * hold_k {
+		return 1
+	}
+	t -= e.hold * hold_k
+	decay := e.decay * decay_k
+	if e.sustain < 1 && decay <= 0 {
+		decay = 0.005
+	}
+	if decay > 0 && t < decay {
+		return 1 - (1 - e.sustain) * t / decay
+	}
+	return e.sustain
+}
+
+// A SoundFont note let go: it fades from `level` over its region's release, and its modulation
+// envelope from where it is, so what the envelope moves (the cutoff, say) closes as the note dies.
+@(private)
+let_go_font_voice :: proc(p: ^Player, v: ^Voice, level: f64) {
+	if p.font != nil && p.preset < len(p.font.presets) && v.region < len(p.font.presets[p.preset].regions) {
+		r := p.font.presets[p.preset].regions[v.region]
+		v.mod_fade = mod_env_level(r.mod_env, v.mod_hold_k, v.mod_decay_k, v.age, true, 0)
+	}
+	v.fade_from = level
+	v.age = 0
+}
+
+// Lets go the other notes of an exclusive class (a closed hi-hat cuts an open one), but the one at `except`.
+@(private)
+cut_class :: proc(p: ^Player, class: int, except: int) {
+	regions := p.font.presets[p.preset].regions
+	for &v, i in p.voices {
+		if i == except || !v.on || !v.held || v.region >= len(regions) || regions[v.region].exclusive != class {
+			continue
+		}
+		let_go_font_voice(p, &v, v.gain)
+		v.held = false
+	}
+}
+
+// Works out, for a SoundFont note, what changes slowly: the pitch from the wheels, the modulation
+// envelope and the LFOs, the filter's coefficients and the tremolo.
+@(private)
+font_control :: proc(p: ^Player, v: ^Voice, r: Region) {
+	m := &v.mods
+	// the modulation envelope and the LFOs (a triangle swing from -1 to 1, after its delay)
+	envelope := mod_env_level(r.mod_env, v.mod_hold_k, v.mod_decay_k, v.age, v.held, v.mod_fade)
+	step := f64(CONTROL_FRAMES) / f64(RATE)
+	swing :: proc(phase: f64) -> f64 {
+		return 1 - 4 * abs(phase - 0.5)
+	}
+	mod_lfo, vib_lfo: f64
+	if v.held && v.age >= r.mod_lfo_delay || !v.held {
+		mod_lfo = swing(v.mod_phase)
+		v.mod_phase += r.mod_lfo_hertz * step
+		v.mod_phase -= math.floor(v.mod_phase)
+	}
+	if v.held && v.age >= r.vib_lfo_delay || !v.held {
+		vib_lfo = swing(v.vib_phase)
+		v.vib_phase += r.vib_lfo_hertz * step
+		v.vib_phase -= math.floor(v.vib_phase)
+	}
+	// pitch, in cents: the modulators', the pitch wheel (two semitones each way), and what the
+	// envelope and LFOs move it by, the vibrato LFO deeper as the modulation wheel goes up
+	cents := f64(m[int(Gen.Coarse_Tune)]) * 100 + f64(m[int(Gen.Fine_Tune)]) + p.bend * 200
+	cents += envelope * (r.mod_env_pitch + f64(m[int(Gen.Mod_Env_To_Pitch)]))
+	cents += mod_lfo * (r.mod_lfo_pitch + f64(m[int(Gen.Mod_Lfo_To_Pitch)]))
+	cents += vib_lfo * (r.vib_lfo_pitch + f64(m[int(Gen.Vib_Lfo_To_Pitch)]) + 50 * p.vibrato)
+	v.rate = 1 if cents == 0 else math.pow(2, cents / 1200)
+	v.volume_k = 1
+	if volume := r.mod_lfo_volume + f64(m[int(Gen.Mod_Lfo_To_Volume)]); volume != 0 {
+		v.volume_k = math.pow(10, mod_lfo * volume / 200)
+	}
+	// the low-pass filter
+	cutoff := r.cutoff + f64(m[int(Gen.Filter_Cutoff)])
+	cutoff += envelope * (r.mod_env_cutoff + f64(m[int(Gen.Mod_Env_To_Cutoff)]))
+	cutoff += mod_lfo * (r.mod_lfo_cutoff + f64(m[int(Gen.Mod_Lfo_To_Cutoff)]))
+	cutoff = clamp(cutoff, 1500, 13500)
+	if cutoff < 13500 {
+		v.filtered = true
+	}
+	if v.filtered {
+		hertz := min(8.176 * math.pow(2, cutoff / 1200), 0.45 * RATE)
+		// the resonance is a peak in decibels at the cutoff; the biquad's Q is that less 3 dB, which
+		// is the flat response at 0
+		q := max(math.pow(10, (clamp(r.resonance + f64(m[int(Gen.Filter_Q)]), 0, 960) / 10 - 3.01) / 20), 0.5)
+		w := 2 * math.PI * hertz / RATE
+		alpha := math.sin(w) / (2 * q)
+		c := math.cos(w)
+		a0 := 1 + alpha
+		v.b0, v.b1, v.b2 = (1 - c) / 2 / a0, (1 - c) / a0, (1 - c) / 2 / a0
+		v.a1, v.a2 = -2 * c / a0, (1 - alpha) / a0
+	}
+}
+
 // Adds a SoundFont instrument's notes into `out`: each reads its region's sample between frames
-// by a straight line, loops where the region loops while the note sounds, and ends at the sample's
-// end or when its fade out is over.
+// by a straight line, loops where the region loops while the note sounds, goes through the region's
+// filter, and ends at the sample's end or when its fade out is over.
 @(private)
 mix_font :: proc(p: ^Player, out: []f32) {
 	frames := len(out) / CHANNELS
@@ -483,15 +626,14 @@ mix_font :: proc(p: ^Player, out: []f32) {
 			r := regions[v.region]
 			level: f64
 			if v.held {
-				level = envelope_level(r, v.age, p)
+				level = envelope_level(r, v.age, p, v.hold_k, v.decay_k)
 				// a note never starts at full level, whatever its region says, so it cannot click
 				level *= min(1, v.age / FONT_MIN_ATTACK)
 				if v.left > 0 {
 					v.left -= dt
 					if v.left <= 0 {
+						let_go_font_voice(p, &v, level)
 						v.held = false
-						v.fade_from = level
-						v.age = 0
 					}
 				}
 			} else {
@@ -502,6 +644,10 @@ mix_font :: proc(p: ^Player, out: []f32) {
 				}
 			}
 			v.gain = level
+			if v.tick == 0 {
+				font_control(p, &v, r)
+			}
+			v.tick = (v.tick + 1) % CONTROL_FRAMES
 			// a looping sample goes back to its loop's start; the loop's end is the first frame after it
 			if r.looping {
 				for v.pos >= f64(r.loop_end) {
@@ -518,8 +664,16 @@ mix_font :: proc(p: ^Player, out: []f32) {
 				continue
 			}
 			part := v.pos - f64(whole)
-			value := (f64(samples[whole]) * (1 - part) + f64(samples[next]) * part) * level * r.gain
-			v.last_l, v.last_r = value * min(1, 1 - r.pan), value * min(1, 1 + r.pan)
+			sample := f64(samples[whole]) * (1 - part) + f64(samples[next]) * part
+			if v.filtered {
+				filtered := v.b0 * sample + v.z1
+				v.z1 = v.b1 * sample - v.a1 * filtered + v.z2
+				v.z2 = v.b2 * sample - v.a2 * filtered
+				sample = filtered
+			}
+			attenuation := math.pow(10, -f64(v.mods[int(Gen.Attenuation)]) / 200) if v.mods[int(Gen.Attenuation)] != 0 else 1.0
+			value := sample * level * r.gain * attenuation * v.volume_k
+			v.last_l, v.last_r = value * min(1, 1 - v.pan), value * min(1, 1 + v.pan)
 			sum_left += v.last_l
 			sum_right += v.last_r
 			if v.ghost > 0 {
@@ -528,7 +682,7 @@ mix_font :: proc(p: ^Player, out: []f32) {
 				sum_right += v.ghost_r * v.ghost
 				v.ghost = max(0, v.ghost - 1.0 / (STEAL_FADE * RATE))
 			}
-			v.pos += v.step * p.speed
+			v.pos += v.step * v.rate * p.speed
 			v.age += dt
 		}
 		l := f32(sum_left * FONT_GAIN * p.volume * min(1, 1 - p.pan))

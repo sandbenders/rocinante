@@ -213,6 +213,7 @@ set_sound :: proc(it: ^Interp, target: Value, options: []lang.IR_Option) {
 	at, volume, pan, speed, note, pitch: Maybe(f64)
 	attack, decay, sustain, release: Maybe(f64)
 	looping: Maybe(bool)
+	bend, vibrato: Maybe(f64)
 	for o in options {
 		if len(o.args) == 0 {
 			continue
@@ -230,9 +231,14 @@ set_sound :: proc(it: ^Interp, target: Value, options: []lang.IR_Option) {
 		case "decay":   decay = as_number(v)
 		case "sustain": sustain = as_number(v)
 		case "release": release = as_number(v)
+		case "bend":    bend = as_number(v)
+		case "vibrato": vibrato = as_number(v)
 		}
 	}
 	roci.set_sound(s, at, volume, pan, speed, looping, note, pitch)
+	if bend != nil || vibrato != nil {
+		roci.set_wheels(s, bend, vibrato)
+	}
 	if attack != nil || decay != nil || sustain != nil || release != nil {
 		roci.set_envelope(s, attack, decay, sustain, release)
 	}

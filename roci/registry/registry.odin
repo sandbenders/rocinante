@@ -65,8 +65,8 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"align", "alpha", "angle", "around", "as", "at", "attack", "blend", "bordered", "buffer", "by", "channel", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "height", "in",
-	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "tube", "velocity", "visible", "volume", "width",
+	"align", "alpha", "angle", "around", "as", "at", "attack", "bend", "blend", "bordered", "buffer", "by", "channel", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "height", "in",
+	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "size", "smallest", "speed", "start", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "tube", "velocity", "vibrato", "visible", "volume", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.
@@ -168,7 +168,7 @@ SOUND_PROPERTIES := [?]Property_Def{
 }
 
 // The file names `load` reads as sounds, by what they end with (in any case); every other name is a picture.
-SOUND_EXTENSIONS := [?]string{".wav", ".flac", ".mp3", ".ogg"}
+SOUND_EXTENSIONS := [?]string{".wav", ".flac", ".mp3", ".ogg", ".aiff", ".aif", ".aifc"}
 
 // What a property gives, in words: "a number", "a vector of 2 numbers".
 property_words :: proc(def: Property_Def) -> string {
@@ -199,7 +199,7 @@ WINDOW_FREE_WORDS := [?]string{
 
 // Words only the settings of a sound use (`play rain volume 40`, `set rain pan -50 speed 1.5`),
 // which stay free as names in the same way: `speed` is a name many sketches have.
-SOUND_FREE_WORDS := [?]string{"attack", "buffer", "channel", "decay", "note", "pan", "pitch", "port", "preset", "release", "speed", "sustain", "velocity", "volume"}
+SOUND_FREE_WORDS := [?]string{"attack", "bend", "buffer", "channel", "decay", "note", "pan", "pitch", "port", "preset", "release", "speed", "sustain", "velocity", "vibrato", "volume"}
 
 // An `on` event and what follows its name: `on key "space" [ ... ]`, `on mouse down [ ... ]`.
 // `on w receive msg [ ... ]` is its own form, because a window comes first.

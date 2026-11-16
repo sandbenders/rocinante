@@ -483,4 +483,6 @@ SOUND_SET_OPTIONS := []Option{
 	{"decay", {.Number}, false},
 	{"sustain", {.Number}, false},
 	{"release", {.Number}, false},
+	{"bend", {.Number}, false},
+	{"vibrato", {.Number}, false},
 }

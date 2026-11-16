@@ -1137,6 +1137,9 @@ unsigned long long roci_frame_hash(roci_window_id window);
 /* Shapes an instrument's notes: seconds to come in, seconds to fall to the sustain, the level the note sits at while held (0 to 100) and seconds to fade out after it is let go. A negative number leaves that one as it was; a SoundFont instrument's own envelope is the least these can make it. */
 void roci_set_sound_envelope(roci_sound_id sound, double attack, double decay, double sustain, double release);
 
+/* Moves an instrument's wheels: the pitch wheel from -100 (two semitones down) to 100 (two up) and the modulation wheel from 0 to 100, which swells a SoundFont's vibrato. The notes sounding follow them. A number that is NaN leaves that wheel as it was. */
+void roci_set_sound_wheels(roci_sound_id sound, double bend, double vibrato);
+
 /* Sends an OSC message to another program, a phone or another sketch: `args` holds `count` values, each a number (a whole number goes as an integer, any other as a float), text, a boolean, or a list of numbers, which goes as a blob of bytes. `host` is a name or an address (NULL for this computer) and `port` the port (0 for 9000). Gives 1 when it was sent, and 0 when the address does not begin with a slash, the host is unknown or the system would not send it. */
 int roci_osc_send(const char *address, const roci_value *args, int count, const char *host, int port);
 
