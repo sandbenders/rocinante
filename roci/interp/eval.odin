@@ -35,6 +35,9 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 		case "turtle":  return turtle_record(it, e.type)
 		case "midi":    return midi_record(it, e.type, it.midi)
 		case "osc":     return osc_record(it, e.type, it.osc)
+		case "gamepad": return gamepad_value(it, e.type)
+		case "gamepads": return gamepads_list(it, e.type)
+		case "joysticks": return joysticks_list(it, e.type)
 		}
 		return builtin_value(it, k.name)
 	case lang.IR_Swizzle:

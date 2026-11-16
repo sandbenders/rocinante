@@ -5,6 +5,8 @@
 // the one shape the checker gives fingers: `id`, `pos`, `start` and `pressure`.
 package interp
 
+import "core:strings"
+
 import "../"
 import "../lang"
 
@@ -72,4 +74,97 @@ midi_record :: proc(it: ^Interp, type: lang.Type_Id, m: roci.Midi_Message) -> Va
 		}
 	}
 	return r
+}
+
+// A gamepad as a record of the checker's gamepad type; `pad` is nil for no pad, which gives a pad at
+// rest that says it is not connected.
+pad_record :: proc(it: ^Interp, type: lang.Type_Id, pad: ^roci.Pad_State) -> Value {
+	shape := lang.shape_of(it.types, type)
+	if shape < 0 {
+		return nil
+	}
+	p := pad^ if pad != nil else roci.Pad_State{}
+	r := new_record(it, shape)
+	set :: proc(it: ^Interp, r: ^Record, shape: int, name: string, v: Value) {
+		if at := field_index(it, shape, name); at >= 0 {
+			r.fields[at] = v
+		}
+	}
+	set(it, r, shape, "id", f64(p.id))
+	set(it, r, shape, "name", strings.clone(p.name, it.alloc))
+	set(it, r, shape, "connected", pad != nil)
+	set(it, r, shape, "bottom", p.bottom)
+	set(it, r, shape, "right", p.right)
+	set(it, r, shape, "left", p.left)
+	set(it, r, shape, "top", p.top)
+	set(it, r, shape, "leftstick", vec2(p.left_stick))
+	set(it, r, shape, "rightstick", vec2(p.right_stick))
+	set(it, r, shape, "dpad", vec2(p.dpad))
+	set(it, r, shape, "lefttrigger", p.left_trigger)
+	set(it, r, shape, "righttrigger", p.right_trigger)
+	set(it, r, shape, "leftstickpress", p.left_stick_press)
+	set(it, r, shape, "rightstickpress", p.right_stick_press)
+	set(it, r, shape, "leftshoulder", p.left_shoulder)
+	set(it, r, shape, "rightshoulder", p.right_shoulder)
+	set(it, r, shape, "start", p.start)
+	set(it, r, shape, "back", p.back)
+	set(it, r, shape, "home", p.home)
+	extra := new_list(it)
+	for on in p.extra {
+		append(&extra.items, on)
+	}
+	set(it, r, shape, "extra", extra)
+	return r
+}
+
+// `gamepad`: the first pad that is plugged in.
+gamepad_value :: proc(it: ^Interp, type: lang.Type_Id) -> Value {
+	pad, ok := roci.gamepad()
+	return pad_record(it, type, &pad if ok else nil)
+}
+
+// `gamepads`: every pad, as a list of the checker's gamepad type.
+gamepads_list :: proc(it: ^Interp, type: lang.Type_Id) -> Value {
+	out := new_list(it)
+	item := lang.Type_Id(it.types.items[lang.resolve(it.types, type)].a)
+	all := roci.gamepads()
+	for i in 0 ..< len(all) {
+		append(&out.items, pad_record(it, item, &all[i]))
+	}
+	return out
+}
+
+// `joysticks`: every joystick that is not a gamepad, as a list of the checker's joystick type.
+joysticks_list :: proc(it: ^Interp, type: lang.Type_Id) -> Value {
+	out := new_list(it)
+	item := lang.Type_Id(it.types.items[lang.resolve(it.types, type)].a)
+	shape := lang.shape_of(it.types, item)
+	if shape < 0 {
+		return out
+	}
+	for j in roci.joysticks() {
+		r := new_record(it, shape)
+		if at := field_index(it, shape, "id"); at >= 0 {
+			r.fields[at] = f64(j.id)
+		}
+		if at := field_index(it, shape, "name"); at >= 0 {
+			r.fields[at] = strings.clone(j.name, it.alloc)
+		}
+		axes := new_list(it)
+		for a in j.axes {
+			append(&axes.items, a)
+		}
+		if at := field_index(it, shape, "axes"); at >= 0 {
+			r.fields[at] = axes
+		}
+		buttons := new_list(it)
+		for b in j.buttons {
+			append(&buttons.items, b)
+		}
+		if at := field_index(it, shape, "buttons"); at >= 0 {
+			r.fields[at] = buttons
+		}
+		append(&out.items, r)
+	}
+	return out
 }

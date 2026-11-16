@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "false", "finger", "fps", "frame", "height", "key", "mic", "midi", "mouse", "osc", "pi", "pmouse", "pressed", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
+	"anywhere", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "pi", "pmouse", "pressed", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -95,7 +95,10 @@ VALUE_DEFS := [?]Value_Def{
 	{"finger", .Record, 0, "The finger an `on touch down` or `on touch up` block runs for: a record with `id`, `pos`, `start` and `pressure`."},
 	{"fps", .Number, 0, "How many frames a second the sketch is drawing."},
 	{"frame", .Number, 0, "How many frames the sketch has drawn, counting from 0."},
+	{"gamepad", .Record, 0, "The first gamepad that is plugged in, or one at rest when there is none: a record with `connected`, `name`, the face buttons `bottom`, `right`, `left` and `top` (true while held, named by where they are, since the same place says A on one pad and a cross on another), the sticks `leftstick` and `rightstick` and the d-pad `dpad` (vectors, each of x and y from -1 to 1, up negative like the screen's y), `lefttrigger` and `righttrigger` (0 to 1), `leftstickpress`, `rightstickpress`, `leftshoulder`, `rightshoulder`, `start`, `back` and `home` (true while held) and `extra`, a list of the other buttons."},
+	{"gamepads", .List, 0, "Every gamepad that is plugged in, the first one first, each a record like `gamepad`; a pad plugged in or out while the sketch runs is added or taken away at once."},
 	{"height", .Number, 0, "The height of the window the code runs in, in pixels."},
+	{"joysticks", .List, 0, "Every joystick that is plugged in and is not a gamepad (a flight stick, a wheel, an arcade panel), each a record with `name`, `axes` (a list of numbers from -1 to 1) and `buttons` (a list of true and false, with four more after the real ones for each hat: up, right, down, left)."},
 	{"key", .Text, 0, "The name of the key pressed last."},
 	{"mic", .Sound, 0, "The computer's microphone, as a sound to listen to: `level mic` is how loud it hears and `bands mic` its pitches. The first time a sketch with a window reads it, the microphone opens (the system may ask first); it is not played through the speakers."},
 	{"midi", .Record, 0, "What an `on midi` block runs for: `midi.note` (60 is middle C) and `midi.velocity` (0 to 100) for a key, `midi.control` and `midi.value` (0 to 100) for a knob or fader, `midi.bend` (-100 to 100) for the pitch wheel, `midi.program` (0 to 127) for an instrument chosen, `midi.pressure` (0 to 100, with `midi.note` the key, or 0 for the whole keyboard) for aftertouch, and `midi.channel` (1 to 16) for all of them. A field that does not belong to the message reads 0."},

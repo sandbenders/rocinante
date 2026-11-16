@@ -992,6 +992,9 @@ type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
 	case "turtle":  return turtle_type(c)
 	case "midi":    return midi_type(c)
 	case "osc":     return osc_type(c)
+	case "gamepad": return gamepad_type(c)
+	case "gamepads": return list_of(c.types, gamepad_type(c))
+	case "joysticks": return list_of(c.types, joystick_type(c))
 	}
 	if def.kind == .Vector {
 		return vector_of(c.types, def.size)
@@ -1279,6 +1282,50 @@ midi_type :: proc(c: ^Checker) -> Type_Id {
 		for field in ([]string{"note", "velocity", "channel", "control", "value", "bend", "program", "pressure"}) {
 			add_field(c.types, shape, field, T_NUMBER)
 		}
+	}
+	return record_of(c.types, shape)
+}
+
+// The record a gamepad is (`gamepad`, an item of `gamepads`): the same fields for every pad, one
+// shape for the whole sketch, kept under a place no record is made at.
+@(private)
+gamepad_type :: proc(c: ^Checker) -> Type_Id {
+	PAD_SITE :: -5
+	shape, known := c.sites[PAD_SITE]
+	if !known {
+		shape = new_shape(c.types, c.alloc)
+		c.sites[PAD_SITE] = shape
+		add_field(c.types, shape, "id", T_NUMBER)
+		add_field(c.types, shape, "name", T_TEXT)
+		add_field(c.types, shape, "connected", T_BOOLEAN)
+		for field in ([]string{"bottom", "right", "left", "top"}) {
+			add_field(c.types, shape, field, T_BOOLEAN)
+		}
+		for field in ([]string{"leftstick", "rightstick", "dpad"}) {
+			add_field(c.types, shape, field, vector_of(c.types, 2))
+		}
+		add_field(c.types, shape, "lefttrigger", T_NUMBER)
+		add_field(c.types, shape, "righttrigger", T_NUMBER)
+		for field in ([]string{"leftstickpress", "rightstickpress", "leftshoulder", "rightshoulder", "start", "back", "home"}) {
+			add_field(c.types, shape, field, T_BOOLEAN)
+		}
+		add_field(c.types, shape, "extra", list_of(c.types, T_BOOLEAN))
+	}
+	return record_of(c.types, shape)
+}
+
+// The record a joystick is (an item of `joysticks`): its name and its lists of axes and buttons.
+@(private)
+joystick_type :: proc(c: ^Checker) -> Type_Id {
+	JOYSTICK_SITE :: -6
+	shape, known := c.sites[JOYSTICK_SITE]
+	if !known {
+		shape = new_shape(c.types, c.alloc)
+		c.sites[JOYSTICK_SITE] = shape
+		add_field(c.types, shape, "id", T_NUMBER)
+		add_field(c.types, shape, "name", T_TEXT)
+		add_field(c.types, shape, "axes", list_of(c.types, T_NUMBER))
+		add_field(c.types, shape, "buttons", list_of(c.types, T_BOOLEAN))
 	}
 	return record_of(c.types, shape)
 }
