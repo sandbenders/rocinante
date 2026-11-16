@@ -1,0 +1,49 @@
+// Actions: a sketch that asks what the player does, not which button they press. `bind` makes one
+// action of any number of inputs (a key, four keys that make a vector, a mouse button, a gamepad's
+// button, trigger, stick or d-pad), and then the sketch uses only the action's name: `direction
+// "move"` is where the ship is steered (WASD, the arrow keys, the left stick and the d-pad all
+// count, added up and kept to a length of one), `held "boost"` is true while any boost input is
+// held, and `on press "fire"` runs once for each press, whichever of space, the bottom button or
+// the mouse did it. A gamepad shakes a little for each shot. Plug a gamepad in to try it with one.
+window size 640 400 title "actions"
+
+bind "move" to "keys w a s d"
+bind "move" to "keys up left down right"
+bind "move" to "pad leftstick"
+bind "move" to "pad dpad"
+bind "fire" to "key space"
+bind "fire" to "pad bottom"
+bind "fire" to "mouse left"
+bind "boost" to "key shift"
+bind "boost" to "pad righttrigger"
+
+ship = { 320, 300 }
+shots = []
+fired = 0
+
+on press "fire" [
+  add { x: ship.x, y: ship.y - 20 } to shots
+  fired = fired + 1
+  rumble 40 for 0.1
+]
+
+draw [
+  background 20
+  speed = 3
+  if held "boost" [ speed = 6 ]
+  ship = ship + direction "move" * speed
+  ship = { clamp ship.x 20 620, clamp ship.y 40 380 }
+  for each s in shots [ s.y = s.y - 8 ]
+  shots = keep shots [ it.y > -10 ]
+  no stroke
+  fill white
+  for each s in shots [ circle at s.x s.y radius 4 ]
+  fill skyblue
+  if held "boost" [ fill gold ]
+  circle at ship radius 16
+  fill (rgb 20 20 20)
+  circle at ship.x (ship.y - 6) radius 5
+  fill gray
+  text "move: WASD, arrows, stick, d-pad    fire: space, mouse, bottom button    boost: shift, right trigger" at 20 20 size 13
+  text ("shots: " + fired) at 20 44 size 13
+]

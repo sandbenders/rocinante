@@ -2,6 +2,7 @@
 package interp
 
 import "../"
+import "../folder"
 import "core:testing"
 import sdl "vendor:sdl3"
 
@@ -99,4 +100,59 @@ test_bindings_start_again_with_the_sketch :: proc(t: ^testing.T) {
 	_ = next
 	testing.expect(t, roci.action_known("fire"), "bound again from its first line")
 	testing.expect_value(t, len(roci.action_inputs("fire")), 1)
+}
+
+// The actions example: the keys, the stick and the d-pad steer the ship together, the three inputs of
+// `fire` shoot once each, and holding a boost input doubles the speed.
+@(test)
+test_the_actions_example_steers_and_fires :: proc(t: ^testing.T) {
+	program, problem := folder.read_program("examples/actions/sketch.roci")
+	testing.expect_value(t, problem, "")
+	roci.start_headless(1)
+	defer roci.shutdown()
+	p, ok := load_files(program.files)
+	defer destroy(p)
+	if !testing.expect(t, ok, "the example has errors") {
+		return
+	}
+	start(p)
+	roci.step()
+	w := first_window()
+	start_x := as_pair(global_named(p, "ship")).x
+	// holding D moves the ship right three pixels a frame
+	roci.step({key_event(w, sdl.Scancode.D)})
+	for _ in 0 ..< 10 {
+		roci.step()
+	}
+	roci.step({key_event(w, sdl.Scancode.D, false)})
+	testing.expect_value(t, as_pair(global_named(p, "ship")).x, start_x + 33)
+	// with the left stick as well, the sum is cut to one length: no faster than one input
+	here := as_pair(global_named(p, "ship"))
+	roci.feed_pads({{id = 1, name = "Pad", left_stick = {1, 0}}})
+	roci.step({key_event(w, sdl.Scancode.D)})
+	roci.step()
+	testing.expect_value(t, as_pair(global_named(p, "ship")).x, here.x + 6)
+	roci.step({key_event(w, sdl.Scancode.D, false)})
+	roci.feed_pads({{id = 1, name = "Pad"}})
+	roci.step()
+	// boost doubles the speed
+	here = as_pair(global_named(p, "ship"))
+	roci.step({key_event(w, sdl.Scancode.LSHIFT), key_event(w, sdl.Scancode.A)})
+	roci.step()
+	testing.expect_value(t, as_pair(global_named(p, "ship")).x, here.x - 12)
+	roci.step({key_event(w, sdl.Scancode.LSHIFT, false), key_event(w, sdl.Scancode.A, false)})
+	// each way to fire shoots once for each press
+	roci.step({key_event(w, sdl.Scancode.SPACE)})
+	roci.step({key_event(w, sdl.Scancode.SPACE, false)})
+	roci.feed_pads({{id = 1, name = "Pad", bottom = true}})
+	roci.step()
+	roci.step()
+	roci.feed_pads({{id = 1, name = "Pad"}})
+	roci.step()
+	roci.step({click_event(w, 5, 5)})
+	testing.expect_value(t, as_number(global_named(p, "fired")), 3)
+	testing.expect_value(t, len(as_list(global_named(p, "shots")).items), 3)
+	// the pad is plugged in for all three shots, and each shakes it
+	testing.expect_value(t, len(roci.rumble_requests()), 3)
+	testing.expect_value(t, len(p.errors), 0)
 }

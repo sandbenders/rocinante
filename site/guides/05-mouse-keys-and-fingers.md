@@ -1,6 +1,6 @@
 ---
 title: "Mouse, keys and fingers"
-summary: "Reading the mouse and the keyboard, waiting for something to happen, the wheel, touch, gamepads and joysticks."
+summary: "Reading the mouse and the keyboard, waiting for something to happen, the wheel, touch, gamepads and joysticks, and actions that any of them can do."
 weight: 5
 ---
 
@@ -118,3 +118,43 @@ on key "2" [ rumble 80 for 0.4 player 2 ]
 ```
 
 What shakes depends on the pad and on the system. On a Mac the PlayStation 4 and 5 pads shake, the Logitech Dual Action has no motors, and the Xbox Series X pad did not shake when this was tried (it is not known yet whether it does on the other systems).
+
+## Actions
+
+A game that asks `held "space"` works with a keyboard and no other way. `bind` names what the player does and says which inputs do it, so the rest of the sketch asks only for the name:
+
+```roci picture
+bind "jump" to "key space"
+bind "jump" to "pad bottom"
+y = 200
+
+on press "jump" [ y = 80 ]
+
+draw [
+  background 20
+  y = clamp (y + 4) 0 200
+  fill white
+  if held "jump" [ fill gold ]
+  circle at 200 y radius 20
+]
+```
+
+An input is text: `"key space"` (a key, by the names `on key` uses), `"mouse left"`, `"pad bottom"` (any button, trigger, stick or the d-pad of a gamepad, on whichever pad has it, and `"pad 2 bottom"` only on the second), `"keys w a s d"` (four keys that make a vector, in the order up, left, down, right) and `"joystick 1 button 3"` or `"joystick 1 axis 2"` for a device that is not a gamepad. An action can have as many inputs as you like, and `held` says whether any of them is held. A trigger counts as held when it is more than half way, and so does a stick that is more than half way out.
+
+`on press` runs once each time an action goes down, whichever input did it, and `on release` once when the last input that held it comes up, so pressing the key while the pad's button is still held is not a second press. `direction` is where an action points, a vector with x and y from -1 to 1 and up negative: the sticks, the d-pad, the four-key inputs and the axes bound to it, added together and kept to a length of 1, so a diagonal is no faster than a straight line:
+
+```roci picture
+bind "move" to "keys w a s d"
+bind "move" to "pad leftstick"
+bind "move" to "pad dpad"
+pos = { 200, 150 }
+
+draw [
+  background 20
+  pos = pos + direction "move" * 4
+  fill white
+  circle at pos radius 20
+]
+```
+
+A name `held` is given is an action when something was bound to it, and otherwise a key, as before. An input that is not one (`"pad bottm"`) is said once with the nearest names, and the sketch goes on without it. `examples/actions` is a ship that moves and fires with all of this.

@@ -1,0 +1,4 @@
+ship: a vector of 2 numbers
+shots: a list of records with x and y
+fired: a number
+speed: a number

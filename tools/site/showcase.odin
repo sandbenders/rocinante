@@ -64,6 +64,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"mouse", 1, "Mouse", 5, 1},
 	{"touch", 1, "Touch", 5, 1},
 	{"gamepad", 1, "Gamepad", 2, 1},
+	{"actions", 1, "Actions", 2, 1},
 
 	{"flocking", 2, "Flocking", 100, 1},
 	{"life", 2, "Game of life", 120, 1},
