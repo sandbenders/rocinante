@@ -22,11 +22,13 @@ MINGW* | MSYS* | CYGWIN*)
 		echo "sound-libs: $tool is not on the PATH; in a plain cmd window run the Build Tools' vcvars64.bat, then start Git Bash in it" >&2
 		exit 1
 	done
+	# fetched before path conversion is turned off below, which would hand curl and tar
+	# paths such as /c/Users/... that they cannot write to
+	opus=$("$root/tools/fetch-opus.sh") || exit 1
 	export MSYS2_ARG_CONV_EXCL='*'
 	odin_root=$(cygpath -m "$(odin root)")
 	m=$(cygpath -m "$cache")
 	src=$(cygpath -m "$root/vendor/sound/c/roci_sound.c")
-	opus=$("$root/tools/fetch-opus.sh") || exit 1
 	opus_m=$(cygpath -m "$opus")
 	# the static C runtime (-MT), which Odin links
 	cl -nologo -O2 -MT -I"$odin_root/vendor/miniaudio/src" -I"$odin_root/vendor/stb/src" -I"$opus_m/include" \
