@@ -4,7 +4,7 @@ summary: "Sound files, instruments, effects, MIDI in and out, OSC, drawing with 
 weight: 20
 ---
 
-A sound comes from a file in the sketch's `assets` folder, a WAV, FLAC, MP3 or Ogg Vorbis file, found by its name like a picture. `load` gives a sound when the name ends in one of those, and `play` plays it:
+A sound comes from a file in the sketch's `assets` folder, a WAV, FLAC, MP3, Ogg Vorbis, Opus, AIFF or AAC file, found by its name like a picture. `load` gives a sound when the name ends in one of those, and `play` plays it:
 
 ```roci
 click = load "click.wav"
@@ -36,6 +36,10 @@ on key "home" [ rewind rain ]
 ```
 
 A sound that plays goes on playing from where it was moved to. Past its end, a sound that loops goes on from its start and one that does not has ended.
+
+## Which files
+
+WAV, FLAC, MP3, Ogg Vorbis, Opus (`.opus`) and AIFF (`.aiff`, `.aif`, `.aifc`) are read by rocinante itself, the same on every system. AAC (`.m4a` and `.aac`, the sound of most phones' recordings and downloads) is read by the system's own decoder on macOS, iOS, Windows and Android; on Linux, FreeBSD and OpenBSD, which have none, it is read with `ffmpeg` when that is installed, as a whole file before it plays (a long one is not read as it goes), and without it the sketch says how to get it. Every kind can be as long as you like and is read as it plays when it is past half a minute, except AAC through `ffmpeg`.
 
 ## Louder, softer, faster
 
@@ -129,6 +133,16 @@ play piano note 60 for 1
 ```
 
 A file with many instruments, such as a General MIDI set, numbers them: `preset 0` is a piano, `preset 48` strings, `preset 56` a trumpet. `preset` also takes the instrument's name, `preset "Trumpet"`. Without it the first instrument plays, and a preset the file does not have says which ones it has. The instrument's volume picks the recordings made at that strength, so `volume midi.velocity` plays the keyboard's touch. The files can be large, a General MIDI set over a hundred megabytes; small ones of a single instrument are a few megabytes.
+
+A SoundFont plays all it says, not only its recordings: its low-pass filter (a soft note is darker, as on a real instrument), its envelope that opens or closes the filter, its two slow oscillators that make vibrato and tremolo, its exclusive classes (a closed hi-hat cuts an open one off) and the modulators that tie these to how hard and how high a note is played.
+
+Two wheels move the notes that sound, as on a keyboard. `set piano bend 50` is the pitch wheel, from -100 (two semitones down) to 100 (two up), and `vibrato 60` the modulation wheel, from 0 to 100, which swells the vibrato of a SoundFont (a bend works on every instrument, a wave as well):
+
+```roci
+piano = synth "upright.sf2"
+on midi down [ play piano note midi.note volume midi.velocity ]
+draw [ set piano bend ((mouse.x - width / 2) / width * 200) vibrato (100 - mouse.y / height * 100) ]
+```
 
 ## Effects
 
@@ -302,4 +316,4 @@ While `roci run` is going, a sound file saved again is read again into the same 
 
 ## Not yet
 
-A few things are still to come: sound files in AIFF, Opus and AAC, the SoundFont features that are left out (modulators and the filter inside a recording), and sound and MIDI on the phones.
+A few things are still to come: sound and MIDI on the phones' own devices (the sounds themselves play there), HE-AAC files (plain AAC reads on every system with a decoder), the SoundFont reverb and chorus sends (the effects do those) and the links of its stereo pairs.

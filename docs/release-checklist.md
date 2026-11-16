@@ -108,6 +108,8 @@ These systems were last tried in full before text, shaders, canvases, export and
 - [ ] MIDI out on each: `examples/midiout` reaches a synth (a software one, hardware, Windows' GS Wavetable, `snd-virmidi` on Linux); notes, bend, program and a steady clock into a tempo-synced program. FreeBSD and OpenBSD output are unverified until tried.
 - [ ] OSC between two computers (and the firewall), `examples/osc`.
 - [ ] `examples/recorder`: a take of the speakers plays back in another program; `record mic`; an mp3 with ffmpeg installed and the message without it.
+- [ ] File formats: `tests/sounds/tone.*` (WAV, FLAC, MP3, Ogg, Opus, AIFF, AIFC and the 24-bit and float ones) load as sounds; AAC (`tone.m4a` and `tone.aac`) reads on macOS, iOS, **Windows (Media Foundation, `roci_windows.h` has never been compiled: build `sound-libs` there first)** and **Android (MediaCodec)**, and on Linux, FreeBSD and OpenBSD reads with ffmpeg installed and says how to get it without; `tools/fetch-opus.sh` fetches and builds libopus on each system (`cc`, or `cl` on Windows).
+- [ ] The SoundFont features: `examples/soundfont` with `set piano bend` and `vibrato` (pitch and modulation wheels), and a General MIDI font (FluidR3) for the filter, LFOs and exclusive classes (hi-hats).
 - [ ] `tools/abi-check.sh --run` builds and runs `examples/c/player.c`.
 
 ## Results

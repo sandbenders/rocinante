@@ -67,7 +67,7 @@ The same sketch file runs on FreeBSD, Linux, macOS, OpenBSD, Windows, iOS and An
 These are wanted, but not planned for the first stable release:
 
 - **A rocinante shader dialect.** Shaders are written in HLSL for now. Later, a small shader language in rocinante's own style will compile to HLSL.
-- **More kinds of sound file** (AIFF, Opus and AAC), the parts of SoundFonts that are left out, and sound and MIDI on the phones.
+- **Sound and MIDI on the phones' own devices** (the sounds play there, MIDI and the microphone are not done), and HE-AAC files.
 - **A web target**, so sketches can be shared in a browser.
 - **More processors on the desktop.** The first stable release runs on x86-64 computers with FreeBSD, Linux, OpenBSD or Windows, and on Macs with Apple silicon. Later: arm64 FreeBSD, Linux, OpenBSD and Windows computers, and Intel Macs.
 - **3D physics** (gravity, joints and stacking in 3D). Collision detection works in 2D and 3D, and physics simulation in 2D.

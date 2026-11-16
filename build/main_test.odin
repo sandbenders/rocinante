@@ -86,6 +86,7 @@ test_the_optimised_tests_are_built_for_speed :: proc(t: ^testing.T) {
 test_hugo_versions_are_matched_exactly :: proc(t: ^testing.T) {
 	testing.expect(t, hugo_version_matches("hugo v0.169.0-6ba4366d+extended+withdeploy linux/amd64 BuildDate=2026-10-27", "0.169.0"))
 	testing.expect(t, hugo_version_matches("hugo v0.169.0 darwin/arm64", "0.169.0"))
+	testing.expect(t, hugo_version_matches("hugo v0.170.0+withdeploy darwin/arm64 BuildDate=2026-11-13", "0.170.0"), "Homebrew's has a plus and no hyphen")
 	testing.expect(t, !hugo_version_matches("hugo v0.169.10-abc linux/amd64", "0.169.1"))
 	testing.expect(t, !hugo_version_matches("hugo v0.168.0-abc linux/amd64", "0.169.0"))
 }

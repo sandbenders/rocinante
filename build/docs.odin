@@ -89,7 +89,13 @@ check_hugo :: proc() -> bool {
 	return true
 }
 
-// `hugo v0.169.0-6ba4366+extended linux/amd64 ...` is version 0.169.0.
+// `hugo v0.170.0-6ba4366+extended linux/amd64 ...` and Homebrew's `hugo v0.170.0+withdeploy darwin/arm64 ...`
+// are version 0.170.0.
 hugo_version_matches :: proc(output, pinned: string) -> bool {
-	return strings.contains(output, fmt.tprintf("v%s-", pinned)) || strings.contains(output, fmt.tprintf("v%s ", pinned))
+	for end in ([]string{"-", " ", "+"}) {
+		if strings.contains(output, fmt.tprintf("v%s%s", pinned, end)) {
+			return true
+		}
+	}
+	return false
 }
