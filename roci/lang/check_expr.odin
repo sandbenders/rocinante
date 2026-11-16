@@ -345,6 +345,8 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 	if shape.gives == .Vector {
 		if verb.name == "world point" {
 			type = vector_of(c.types, 3)
+		} else if verb.name == "direction" {
+			type = vector_of(c.types, 2)
 		} else if (verb.name == "normalize" || verb.name == "limit") && len(args) > 0 && kind_of(c.types, args[0].type) == .Vector {
 			type = args[0].type
 		}

@@ -281,9 +281,24 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		} else {
 			set_window(it, target, call.options)
 		}
+	case .Bind:
+		action := as_text(eval(it, call.args[0]))
+		input, _ := option_value(it, call.options, "to")
+		written := as_text(input)
+		if roci.bind(action, written) == .Unknown_Input {
+			near := roci.nearest_inputs(written)
+			words := strings.join(near, ", ", context.temp_allocator)
+			fix := fmt.tprintf("bind %q to %q", action, near[0]) if len(near) > 0 else "bind \"jump\" to \"pad bottom\""
+			fail(it, .Input_Unknown, e.span, written, fmt.tprintf("The nearest are %s.", words) if len(near) > 0 else "", "", fix)
+		}
+	case .Direction:
+		return vec2(roci.action_direction(as_text(eval(it, call.args[0]))))
 	case .Held:
-		// "mouse right" is a button held down in this window, anything else a key.
+		// A name `bind` made is an action. "mouse right" is a button held down in this window, anything else a key.
 		name := as_text(eval(it, call.args[0]))
+		if roci.action_known(name) {
+			return roci.action_held(name)
+		}
 		if strings.has_prefix(name, "mouse ") {
 			button, known := roci.mouse_button_by_name(name[len("mouse "):])
 			return known && roci.mouse_down(button)

@@ -207,6 +207,9 @@ abi_print :: proc "c" (text: cstring) {
 abi_held :: proc "c" (name: cstring) -> c.int {
 	context = abi_context()
 	word := text_from_abi(name)
+	if action_known(word) {
+		return 1 if action_held(word) else 0
+	}
 	if strings.has_prefix(word, "mouse ") {
 		button, known := mouse_button_by_name(word[len("mouse "):])
 		return 1 if known && mouse_down(button) else 0
@@ -338,7 +341,7 @@ abi_misc_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_pick_index", typeid_of(type_of(abi_pick_index)), "int roci_pick_index(int count)", "A random place in a list of `count` items, from 0, by the sketch's own random numbers (so a seed repeats it); -1 for an empty list."))
 	append(all, abi_entry("roci_shuffle", typeid_of(type_of(abi_shuffle)), "void roci_shuffle(void *items, int count, size_t size)", "Mixes the `count` items of an array, each `size` bytes, by the sketch's own random numbers, so a seed repeats it."))
 	append(all, abi_entry("roci_print", typeid_of(type_of(abi_print)), "void roci_print(const char *text)", "Writes a line to the console."))
-	append(all, abi_entry("roci_held", typeid_of(type_of(abi_held)), "int roci_held(const char *name)", "1 while a key is held, by its name (\"space\", \"a\", \"left\"), or a mouse button of the current window, as \"mouse right\"."))
+	append(all, abi_entry("roci_held", typeid_of(type_of(abi_held)), "int roci_held(const char *name)", "1 while an action made with roci_bind is held, or a key, by its name (\"space\", \"a\", \"left\"), or a mouse button of the current window, as \"mouse right\"."))
 	append(all, abi_entry("roci_push_style", typeid_of(type_of(abi_push_style)), "void roci_push_style(void)", "Saves the style (fill, stroke, thickness, font and the rest, not the transform) until the matching roci_pop_style: what is set in between is for the shapes in between only, as the language's `with` is."))
 	append(all, abi_entry("roci_pop_style", typeid_of(type_of(abi_pop_style)), "int roci_pop_style(void)", "Puts back the style roci_push_style saved. Gives 0 for a pop without a push."))
 	append(all, abi_entry("roci_origin", typeid_of(type_of(abi_origin)), "void roci_origin(const char *word)", "Says what the position of the next shape means: \"center\" or \"corner\" (\"default\" for the shape's usual), as the language's `as center` and `as corner`. It is for the next circle, ellipse, rectangle, square, arc or picture only."))

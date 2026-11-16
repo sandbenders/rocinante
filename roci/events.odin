@@ -29,6 +29,8 @@ Happening :: enum u8 {
 	Midi_Pressure, // a key (or all of them) was pressed harder
 	Midi_Start, // a MIDI sequencer started or went on
 	Midi_Stop, // and stopped
+	Action_Press, // an action went down: any input bound to it did
+	Action_Release, // and every input bound to it is up
 }
 
 Happened :: struct {

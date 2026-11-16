@@ -138,6 +138,10 @@ abi_rumble :: proc "c" (strength, seconds: f64, pad: c.int) -> c.int {
 }
 
 abi_pads_group :: proc(all: ^[dynamic]Abi_Entry) {
+	append(all, abi_entry("roci_bind", typeid_of(type_of(abi_bind)), "int roci_bind(const char *action, const char *input)", "Makes an input one of the ways to do an action, so a program asks what the player does and not which button they press. `input` is text: \"key space\", \"mouse left\", \"pad bottom\" (a gamepad button, trigger, stick or d-pad on any pad; \"pad 2 bottom\" for the second), \"keys w a s d\" (four keys that make a vector: up, left, down, right) or \"joystick 1 button 3\" and \"joystick 1 axis 2\". Several inputs make one action. Gives 1 when it was bound, and 0 when the input is not one or the action has no name."))
+	append(all, abi_entry("roci_action_held", typeid_of(type_of(abi_action_held)), "int roci_action_held(const char *action)", "1 while any input bound to the action is held: a button or key down, a trigger or axis more than half way, a stick more than half way out. 0 for an action nothing was bound to. Press and release are events: roci_on with \"press\" or \"release\" and the action's name."))
+	append(all, abi_entry("roci_action_direction", typeid_of(type_of(abi_action_direction)), "roci_vec2 roci_action_direction(const char *action)", "Where an action points now: the sticks, the d-pad, the four-key inputs and the axes bound to it added together as x and y from -1 to 1 (up negative) and shortened to a length of 1 if they are longer. { 0, 0 } for an action nothing was bound to."))
+	append(all, abi_entry("roci_unbind_all", typeid_of(type_of(abi_unbind_all)), "void roci_unbind_all(void)", "Forgets every binding of roci_bind."))
 	append(all, abi_entry("roci_gamepad_count", typeid_of(type_of(abi_gamepad_count)), "int roci_gamepad_count(void)", "How many gamepads are plugged in. The first call starts reading the pads; one plugged in or out while the program runs is noticed on the next frame."))
 	append(all, abi_entry("roci_gamepad_at", typeid_of(type_of(abi_gamepad_at)), "roci_gamepad roci_gamepad_at(int index)", "The gamepad at a place (from 0), the first plugged in first: its buttons by where they are on the pad (`bottom` is the one an Xbox pad calls A and a PlayStation pad a cross), sticks and the d-pad as vectors from -1 to 1 with up negative, triggers from 0 to 1. Past the last it is a pad at rest with `connected` 0. The name stays valid until the next function that gives text back."))
 	append(all, abi_entry("roci_joystick_count", typeid_of(type_of(abi_joystick_count)), "int roci_joystick_count(void)", "How many joysticks are plugged in that are not gamepads (a flight stick, a wheel, an arcade panel)."))
@@ -147,4 +151,35 @@ abi_pads_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_joystick_button_count", typeid_of(type_of(abi_joystick_button_count)), "int roci_joystick_button_count(int index)", "How many buttons a joystick has, counting four for each hat after the real buttons (up, right, down, left); 0 for one that is not there."))
 	append(all, abi_entry("roci_joystick_button", typeid_of(type_of(abi_joystick_button)), "int roci_joystick_button(int index, int button)", "1 while a button of a joystick is held; 0 for one that is not there."))
 	append(all, abi_entry("roci_rumble", typeid_of(type_of(abi_rumble)), "int roci_rumble(double strength, double seconds, int pad)", "Shakes a gamepad as far as it can: `strength` 0 to 100, for `seconds`, on the pad at a place counting from 1 (0 for the first). Gives 1 when there was a pad to shake and 0 when there was none, or it cannot shake."))
+}
+
+// Makes an input one of the ways to do an action: `input` is text such as "key space", "mouse left",
+// "pad bottom", "keys w a s d" or "joystick 1 button 3". Gives 1 when it was bound, 0 when the input is not
+// one or the action has no name.
+@(export, link_name = "roci_bind")
+abi_bind :: proc "c" (action, input: cstring) -> c.int {
+	context = abi_context()
+	return 1 if bind(text_from_abi(action), text_from_abi(input)) == .Bound else 0
+}
+
+// 1 while any input bound to the action is held.
+@(export, link_name = "roci_action_held")
+abi_action_held :: proc "c" (action: cstring) -> c.int {
+	context = abi_context()
+	return 1 if action_held(text_from_abi(action)) else 0
+}
+
+// Where the action points now: the vectors of its inputs added and shortened to a length of 1.
+@(export, link_name = "roci_action_direction")
+abi_action_direction :: proc "c" (action: cstring) -> Abi_Vec2 {
+	context = abi_context()
+	v := action_direction(text_from_abi(action))
+	return {v.x, v.y}
+}
+
+// Forgets every binding.
+@(export, link_name = "roci_unbind_all")
+abi_unbind_all :: proc "c" () {
+	context = abi_context()
+	actions_clear()
 }

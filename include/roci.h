@@ -63,7 +63,8 @@ typedef struct {
 } roci_gamepad;
 
 typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS,
-	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC, ROCI_MIDI_BEND, ROCI_MIDI_PROGRAM, ROCI_MIDI_PRESSURE, ROCI_MIDI_START, ROCI_MIDI_STOP } roci_event_kind;
+	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC, ROCI_MIDI_BEND, ROCI_MIDI_PROGRAM, ROCI_MIDI_PRESSURE, ROCI_MIDI_START, ROCI_MIDI_STOP,
+	ROCI_ACTION_PRESS, ROCI_ACTION_RELEASE } roci_event_kind;
 
 /* What a MIDI event says: the note (60 is middle C) and its velocity (0 to 100) for a key, the controller and its
  * value (0 to 100) for a knob or fader, the pitch wheel (bend, -100 to 100), the instrument chosen (program, 0 to
@@ -822,7 +823,7 @@ int roci_touch_count(void);
 /* The finger at a place (from 0) in the order the fingers went down, every field 0 past the last. */
 roci_finger roci_touch(int index);
 
-/* Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key", "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up" or "midi control" (the first MIDI handler starts reading every MIDI device), and `argument` the key or mouse button it is for ("space", "right"), or NULL for any. */
+/* Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key", "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up", "midi control", "press" or "release" (the first MIDI handler starts reading every MIDI device; the last two are for an action made with roci_bind), and `argument` the key or mouse button it is for ("space", "right") or the action's name, or NULL for any. */
 void roci_on(roci_window_id window, const char *event, const char *argument, roci_event_fn handler);
 
 /* Runs `handler` again and again in the current window, every `count` seconds, or frames when `unit` is "frames". */
@@ -1110,7 +1111,7 @@ void roci_shuffle(void *items, int count, size_t size);
 /* Writes a line to the console. */
 void roci_print(const char *text);
 
-/* 1 while a key is held, by its name ("space", "a", "left"), or a mouse button of the current window, as "mouse right". */
+/* 1 while an action made with roci_bind is held, or a key, by its name ("space", "a", "left"), or a mouse button of the current window, as "mouse right". */
 int roci_held(const char *name);
 
 /* Saves the style (fill, stroke, thickness, font and the rest, not the transform) until the matching roci_pop_style: what is set in between is for the shapes in between only, as the language's `with` is. */
@@ -1292,6 +1293,18 @@ int roci_bands_of(roci_sound_id sound, int count, double *out);
 
 /* How fast a sound plays, 1 as recorded. */
 double roci_sound_speed(roci_sound_id sound);
+
+/* Makes an input one of the ways to do an action, so a program asks what the player does and not which button they press. `input` is text: "key space", "mouse left", "pad bottom" (a gamepad button, trigger, stick or d-pad on any pad; "pad 2 bottom" for the second), "keys w a s d" (four keys that make a vector: up, left, down, right) or "joystick 1 button 3" and "joystick 1 axis 2". Several inputs make one action. Gives 1 when it was bound, and 0 when the input is not one or the action has no name. */
+int roci_bind(const char *action, const char *input);
+
+/* 1 while any input bound to the action is held: a button or key down, a trigger or axis more than half way, a stick more than half way out. 0 for an action nothing was bound to. Press and release are events: roci_on with "press" or "release" and the action's name. */
+int roci_action_held(const char *action);
+
+/* Where an action points now: the sticks, the d-pad, the four-key inputs and the axes bound to it added together as x and y from -1 to 1 (up negative) and shortened to a length of 1 if they are longer. { 0, 0 } for an action nothing was bound to. */
+roci_vec2 roci_action_direction(const char *action);
+
+/* Forgets every binding of roci_bind. */
+void roci_unbind_all(void);
 
 /* How many gamepads are plugged in. The first call starts reading the pads; one plugged in or out while the program runs is noticed on the next frame. */
 int roci_gamepad_count(void);

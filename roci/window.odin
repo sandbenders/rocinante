@@ -245,6 +245,7 @@ open_windows :: proc(allocator := context.temp_allocator) -> []Window {
 // left over with `end_restart`.
 begin_restart :: proc() {
 	clear(&the.reuse)
+	actions_clear() // the sketch binds its actions again from its first line
 	first := true
 	for w in the.windows {
 		if !w.alive {

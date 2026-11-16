@@ -1,0 +1,11 @@
+bind "move" to "keys w a s d"
+bind "move" to "pad leftstick"
+bind "move" to "pad dpad"
+pos = { 200, 150 }
+
+draw [
+  background 20
+  pos = pos + direction "move" * 4
+  fill white
+  circle at pos radius 20
+]

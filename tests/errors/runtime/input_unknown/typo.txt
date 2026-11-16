@@ -1,0 +1,8 @@
+── I do not know an input called `pad bottm` ─────────── sketch.roci:1:1
+
+1 │ bind "jump" to "pad bottm"
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+An input is written as text: a key (`key space`), a mouse button (`mouse left`), a gamepad button, trigger, stick or the d-pad (`pad bottom`, `pad 2 lefttrigger`, `pad leftstick`, `pad dpad`), four keys that make a vector (`keys w a s d`: up, left, down, right) or a joystick's button or axis (`joystick 1 button 3`, `joystick 1 axis 2`). The nearest are pad bottom, pad left, pad top. The action does not get this input, and the sketch carries on.
+
+Use one of those:  bind "jump" to "pad bottom"

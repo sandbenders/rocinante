@@ -227,6 +227,8 @@ EVENTS := []Event{
 	{"midi start", {}, "Runs when a MIDI sequencer or drum machine starts, or goes on after a stop."},
 	{"midi stop", {}, "Runs when a MIDI sequencer or drum machine stops."},
 	{"osc", {.Text}, "Runs when an OSC message arrives over the network, from a phone app, a music program or another sketch; `osc` is that message. Name an address to wait for it alone, and `*` and `?` stand for any text and any one character inside one part of it: `on osc \"/fader/*\"`. The first one starts listening on port 9000, or on the one `osc listen` chose."},
+	{"press", {.Text}, "Runs when an action that `bind` made goes down, once for each press, whichever input did it: `on press \"jump\" [ ... ]`."},
+	{"release", {.Text}, "Runs when an action that `bind` made comes up, which is when every input bound to it is up: `on release \"fire\" [ ... ]`."},
 	{"resize", {}, "Runs when the window changes size."},
 	{"move", {}, "Runs when the window moves."},
 	{"focus", {}, "Runs when the window gains or loses focus."},

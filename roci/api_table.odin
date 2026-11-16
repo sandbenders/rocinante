@@ -89,6 +89,8 @@ API_NAMES := [?]Api_Entry{
 	{"bands", "bands"},
 	{"synth", "synth"},
 	{"rumble", "rumble"},
+	{"bind", "bind"},
+	{"direction", "action_direction"},
 	{"midi control", "midi_control"},
 	{"midi tempo", "midi_tempo"},
 	{"osc listen", "osc_listen"},
