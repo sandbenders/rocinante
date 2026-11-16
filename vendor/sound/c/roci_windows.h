@@ -27,6 +27,7 @@ typedef struct {
 	ma_uint64 pending_count, pending_at;
 	ma_uint64 pending_start; // the frame of the sound pending[0] is
 	int started;           // MFStartup succeeded
+	int adts;              // a bare AAC stream, not an MP4 or M4A file
 	int ended;
 } roci_windows;
 
@@ -131,7 +132,11 @@ static ma_result roci_windows_seek(ma_data_source *source, ma_uint64 frame) {
 	PROPVARIANT position;
 	PropVariantInit(&position);
 	position.vt = VT_I8;
-	position.hVal.QuadPart = (LONGLONG)((double)frame * 1e7 / a->rate);
+	// A bare AAC stream has no index: Media Foundation starts it again at the next frame after the
+	// place but stamps that sample with the time asked for, so every time after it is off by up to a
+	// frame. It goes back to the start instead, where the times are true, and the run-up is dropped
+	// by roci_windows_read like any other.
+	position.hVal.QuadPart = a->adts ? 0 : (LONGLONG)((double)frame * 1e7 / a->rate);
 	HRESULT hr = IMFSourceReader_SetCurrentPosition(a->reader, &GUID_NULL, &position);
 	PropVariantClear(&position);
 	if (FAILED(hr)) {
@@ -176,7 +181,9 @@ static void roci_windows_free(roci_windows *a, const ma_allocation_callbacks *al
 		IMFByteStream_Release(a->byte_stream);
 	}
 	if (a->stream != NULL) {
-		IStream_Release(a->stream);
+		// through its table: miniaudio included windows.h before COBJMACROS was defined, so
+		// IStream has no C macros here
+		a->stream->lpVtbl->Release(a->stream);
 	}
 	free(a->pending);
 	ma_free(a->bytes, allocation);
@@ -219,6 +226,7 @@ static ma_result roci_windows_init(void *user_data, ma_read_proc on_read, ma_see
 		return MA_OUT_OF_MEMORY;
 	}
 	a->bytes = bytes;
+	a->adts = !(size >= 12 && memcmp(bytes + 4, "ftyp", 4) == 0);
 	// Media Foundation, and COM on this thread (which may already have it, in another mode: that is fine)
 	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if (FAILED(MFStartup(MF_VERSION, MFSTARTUP_LITE))) {

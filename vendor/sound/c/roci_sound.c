@@ -21,6 +21,11 @@
 // stb_vorbis's implementation has to come after miniaudio's
 #undef STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.c"
+// it leaves its channel names defined, which break any header after it that has a field named R
+// (Media Foundation's mfapi.h does)
+#undef L
+#undef C
+#undef R
 
 #include <math.h>
 #include <stdint.h>
@@ -92,7 +97,65 @@ void roci_sound_free(float *frames) {
 typedef struct {
 	ma_decoder decoder;
 	void *bytes;
+#ifdef _WIN32
+	ma_default_vfs vfs; // the decoder keeps a pointer to it
+#endif
 } roci_stream;
+
+#ifdef _WIN32
+// miniaudio's own Windows files share only reading and take the path in the ANSI code page, so a song
+// being streamed could not be saved again (by an audio editor, or a sketch's live reload) and a path
+// with letters outside that page did not open. Its default file system with this one opener in place
+// of its own: the path is UTF-8 made UTF-16, and the file shares reading, writing and deletion.
+static ma_result roci_vfs_open(ma_vfs *vfs, const char *path, ma_uint32 mode, ma_vfs_file *file) {
+	(void)vfs;
+	if ((mode & MA_OPEN_MODE_WRITE) != 0) {
+		return MA_NOT_IMPLEMENTED;
+	}
+	// what miniaudio's own opener does first: it finds SetFilePointerEx, which its seek uses
+	ma_win32_fileio_init();
+	int n = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, NULL, 0);
+	if (n <= 0) {
+		return MA_INVALID_ARGS;
+	}
+	wchar_t *wide = (wchar_t *)ma_malloc((size_t)n * sizeof(wchar_t), NULL);
+	if (wide == NULL) {
+		return MA_OUT_OF_MEMORY;
+	}
+	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, wide, n);
+	HANDLE h = CreateFileW(wide, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
+		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	ma_free(wide, NULL);
+	if (h == INVALID_HANDLE_VALUE) {
+		return MA_DOES_NOT_EXIST;
+	}
+	*file = (ma_vfs_file)h;
+	return MA_SUCCESS;
+}
+
+void *roci_stream_open_memory(const void *data, size_t size, uint32_t channels, uint32_t rate, uint64_t *length);
+
+// A file read whole through roci_vfs_open, then streamed from its bytes; NULL when it cannot be read.
+static void *roci_stream_open_whole(const char *path, uint32_t channels, uint32_t rate, uint64_t *length) {
+	ma_vfs_file file = NULL;
+	if (roci_vfs_open(NULL, path, MA_OPEN_MODE_READ, &file) != MA_SUCCESS) {
+		return NULL;
+	}
+	LARGE_INTEGER size;
+	void *bytes = NULL;
+	DWORD got = 0;
+	if (GetFileSizeEx((HANDLE)file, &size) && size.QuadPart > 0 && size.QuadPart < 0x7FFFFFFF) {
+		bytes = ma_malloc((size_t)size.QuadPart, NULL);
+		if (bytes != NULL && !ReadFile((HANDLE)file, bytes, (DWORD)size.QuadPart, &got, NULL)) {
+			got = 0;
+		}
+	}
+	CloseHandle((HANDLE)file);
+	void *stream = got > 0 ? roci_stream_open_memory(bytes, got, channels, rate, length) : NULL;
+	ma_free(bytes, NULL);
+	return stream;
+}
+#endif
 
 // Finishes opening: the decoder is ready, and this says how long the sound is.
 static void *roci_stream_ready(roci_stream *stream, uint64_t *length) {
@@ -116,7 +179,26 @@ void *roci_stream_open(const char *path, uint32_t channels, uint32_t rate, uint6
 	}
 	ma_decoder_config config = roci_config(channels, rate);
 	config.seekPointCount = 2048;
-	if (ma_decoder_init_file(path, &config, &stream->decoder) != MA_SUCCESS) {
+#ifdef _WIN32
+	ma_default_vfs_init(&stream->vfs, NULL);
+	stream->vfs.cb.onOpen = roci_vfs_open;
+	ma_result opened = ma_decoder_init_vfs(&stream->vfs, path, &config, &stream->decoder);
+	ma_uint64 frames = 0;
+	if (opened == MA_SUCCESS && (ma_decoder_get_length_in_pcm_frames(&stream->decoder, &frames) != MA_SUCCESS || frames == 0)) {
+		ma_decoder_uninit(&stream->decoder);
+		opened = MA_ERROR;
+	}
+	if (opened != MA_SUCCESS) {
+		// Ogg Vorbis read through a file system cannot say its length (stb_vorbis has only its pushing
+		// interface for that), so such a file is read whole, through the same shared opener, and
+		// streamed from its bytes, which for a compressed file are a few megabytes
+		ma_free(stream, NULL);
+		return roci_stream_open_whole(path, channels, rate, length);
+	}
+#else
+	ma_result opened = ma_decoder_init_file(path, &config, &stream->decoder);
+#endif
+	if (opened != MA_SUCCESS) {
 		ma_free(stream, NULL);
 		return NULL;
 	}

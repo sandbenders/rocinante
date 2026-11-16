@@ -65,6 +65,31 @@ test_decode_refuses :: proc(t: ^testing.T) {
 	testing.expect(t, !ok && samples == nil)
 }
 
+// A file streamed from a folder whose name has a letter outside ASCII opens, and can be saved again
+// while it is open, as an audio editor or a sketch's reload does (Windows refused both until the
+// decoders opened files themselves).
+@(test)
+test_a_streamed_file_is_shared_and_its_path_may_be_any_text :: proc(t: ^testing.T) {
+	folder :: "output/tests/sound_çé"
+	_ = os.remove_all(folder)
+	testing.expect(t, os.make_directory_all(folder) == nil)
+	defer os.remove_all(folder)
+	data, _ := os.read_entire_file_from_path("tests/sounds/tone.wav", context.allocator)
+	defer delete(data)
+	path := folder + "/tone.wav"
+	testing.expect(t, os.write_entire_file(path, data) == nil)
+	s, opened := stream_open(path, 1, 44100)
+	if !testing.expect(t, opened, "the file did not open") {
+		return
+	}
+	defer stream_close(s)
+	testing.expect(t, os.write_entire_file(path, data) == nil, "the file could not be saved while it streams")
+	testing.expect(t, stream_seek(s, 0))
+	samples := read_all(s, 1000)
+	defer delete(samples)
+	testing.expectf(t, abs(len(samples) - 11025) <= 2, "%d frames", len(samples))
+}
+
 // Reads a whole stream, `piece` frames at a time.
 @(private = "file")
 read_all :: proc(s: Stream, piece: int) -> []f32 {
@@ -415,9 +440,10 @@ test_opus_seeks_exactly_and_refuses_damage :: proc(t: ^testing.T) {
 	}
 }
 
-// AAC, read by the system's own decoder where there is one (macOS and iOS: AudioToolbox): the M4A and the
-// bare ADTS stream are the 440 Hz tone, a quarter of a second long within the codec's padding.
-when ODIN_OS == .Darwin {
+// AAC, read by the system's own decoder where there is one (macOS and iOS: AudioToolbox; Windows: Media
+// Foundation): the M4A and the bare ADTS stream are the 440 Hz tone, a quarter of a second long within the
+// codec's padding.
+when ODIN_OS == .Darwin || ODIN_OS == .Windows {
 	@(test)
 	test_aac_is_the_tone_the_system_decodes :: proc(t: ^testing.T) {
 		for name in ([]string{"tone.m4a", "tone.aac"}) {
