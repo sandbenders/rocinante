@@ -421,7 +421,7 @@ test_the_wrong_number_of_arguments_names_what_the_verb_takes :: proc(t: ^testing
 	testing.expect_value(t, d.id, Message_Id.Wrong_Argument_Count)
 	testing.expect_value(t, d.args[1], "4 values (x1, y1, x2 and y2) or 2 values (a and b)")
 	testing.expect_value(t, d.args[2], "1 value")
-	testing.expect_value(t, d.args[3], "dist 1 b")
+	testing.expect_value(t, d.args[3], "") // a number is not the vector the nearest shape starts with
 	expect_errors(t, "background", {.Wrong_Argument_Count})
 	expect_errors(t, "x = random", {.Missing_Required_Word, .Missing_Required_Word})
 }
@@ -479,7 +479,8 @@ test_a_verb_taught_with_learn_is_not_checked_yet_but_its_calls_are_counted :: pr
 	expect_errors(t, "learn star size [ ]\nstar 100 200", {.Unexpected_Token})
 	got := check_text("learn star size [ ]\nstar")
 	testing.expect_value(t, got.checked.diagnostics[0].id, Message_Id.Wrong_Argument_Count)
-	testing.expect_value(t, got.checked.diagnostics[0].args[3], "star size")
+	// what is missing has no known kind, so there is no example that would be real code
+	testing.expect_value(t, got.checked.diagnostics[0].args[3], "")
 }
 
 // ---- parse errors do not cascade ----
@@ -764,7 +765,7 @@ test_a_call_with_the_wrong_number_of_values_names_the_parameters :: proc(t: ^tes
 	got := check_text("learn move_by dx dy [ move dx dy ]\nmove_by 5")
 	d := got.checked.diagnostics[0]
 	testing.expect_value(t, d.id, Message_Id.Wrong_Argument_Count)
-	testing.expect_value(t, d.args[3], "move_by 5 dy")
+	testing.expect_value(t, d.args[3], "")
 }
 
 @(test)
@@ -1759,4 +1760,32 @@ test_a_word_a_verb_takes_stays_a_word_when_the_sketch_has_a_variable_of_that_nam
 	expect_errors(t, "z = 5\nturn 10 around z", {})
 	// a name that is not one of the words is still the variable, and still wrong there
 	expect_errors(t, "w = 5\nturn 10 around w", {.Wrong_Argument_Kind})
+}
+
+@(test)
+test_a_call_that_is_too_short_has_an_example_only_when_the_values_given_are_the_first_ones :: proc(t: ^testing.T) {
+	// `range` is `range "text" low high`: two numbers are not its first two values, so there is no example
+	got := check_text("x = range 1 4")
+	testing.expect_value(t, got.checked.diagnostics[0].id, Message_Id.Wrong_Argument_Count)
+	testing.expect_value(t, got.checked.diagnostics[0].args[3], "")
+	// too many values have no example either
+	long := check_text("x = abs 1 2")
+	testing.expect_value(t, long.checked.diagnostics[0].args[3], "")
+}
+
+@(test)
+test_a_name_that_is_a_word_of_the_language_is_said_once :: proc(t: ^testing.T) {
+	// one mistake, one message: the later uses read as calls of the verb and say nothing
+	expect_errors(t, "limit = 100000\nx = limit + 1\ny = limit * 2\nprint limit\nz = limit - 3", {.Reserved_Name})
+}
+
+@(test)
+test_a_wrong_kind_has_an_example_only_when_the_writer_wrote_a_value_out :: proc(t: ^testing.T) {
+	// text where a list goes: the sample would replace their own name, so the message stands alone
+	named := check_text("t = \"abc\"\nn = count t")
+	testing.expect_value(t, named.checked.diagnostics[0].id, Message_Id.Wrong_Argument_Kind)
+	testing.expect_value(t, named.checked.diagnostics[0].args[3], "")
+	// a value written out is replaced by another of the right kind
+	written := check_text("n = count \"abc\"")
+	testing.expect_value(t, written.checked.diagnostics[0].args[3], "n = count [ 1 2 3 ]")
 }

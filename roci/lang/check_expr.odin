@@ -309,7 +309,7 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 	case .Ambiguous:
 		index = first_fitting(verb, kinds[:])
 	case .Wrong_Count:
-		report_count(c, e, k, verb)
+		report_count(c, e, k, verb, kinds[:])
 		return error_ir(c, e.span)
 	case .Wrong_Kinds:
 		report_kinds(c, e, k, verb, args[:], kinds[:])
@@ -403,15 +403,35 @@ check_options_only :: proc(c: ^Checker, e: ^Expr, k: Call, args: []^IR) -> ^IR {
 }
 
 @(private)
-report_count :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Verb) {
-	// The example keeps the values the writer gave and names the ones still missing.
+report_count :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Verb, kinds: []registry.Kind) {
+	// The example keeps the values the writer gave and adds a value of the right kind for each one still
+	// missing, and only when the ones the writer gave are the first of the shape: a call that is too long, or
+	// whose values are for other places, has no example that would be the writer's own line made right.
 	nearest := verb.shapes[nearest_shape(verb.shapes, len(k.args))]
-	words := make([dynamic]string, context.temp_allocator)
-	append(&words, verb.name)
-	for param, i in nearest.params {
-		append(&words, text_at(c, k.args[i].span) if i < len(k.args) else param.name)
+	example := ""
+	fits := len(k.args) < len(nearest.params)
+	for i in 0 ..< min(len(k.args), len(nearest.params)) {
+		fits &&= registry.accepts(nearest.params[i].kind, kinds[i])
 	}
-	note(c, .Wrong_Argument_Count, e.span, verb.name, takes_words(verb.shapes), count_words(len(k.args)), fix(c, e.span, strings.join(words[:], " ", context.temp_allocator)))
+	if fits {
+		words := make([dynamic]string, context.temp_allocator)
+		append(&words, verb.name)
+		for param, i in nearest.params {
+			append(&words, text_at(c, k.args[i].span) if i < len(k.args) else sample_for_kind(param.kind))
+		}
+		example = fix(c, e.span, strings.join(words[:], " ", context.temp_allocator))
+	}
+	note(c, .Wrong_Argument_Count, e.span, verb.name, takes_words(verb.shapes), count_words(len(k.args)), example)
+}
+
+// Whether an argument is a value written out, which an example may replace with another value of the right kind.
+@(private)
+is_written_value :: proc(e: ^Expr) -> bool {
+	#partial switch _ in e.kind {
+	case Number_Lit, Text_Lit, Colour_Lit:
+		return true
+	}
+	return false
 }
 
 @(private)
@@ -438,7 +458,10 @@ report_kinds :: proc(c: ^Checker, e: ^Expr, k: Call, verb: ^registry.Verb, args:
 			if words := registry.word_choices(verb.name, param.name); param.kind == .Name && len(words) > 0 {
 				example = words[0] // `caps butt`, not a word another verb takes
 			}
-			note(c, .Wrong_Argument_Kind, k.args[j].span, verb.name, need, describe(c.types, args[j].type), fix(c, k.args[j].span, example))
+			// A sample put where the writer's own name or sum was is not their line made right: only a value
+			// written out (a number, text, a color) is replaced, and for anything else the message stands alone.
+			shown := fix(c, k.args[j].span, example) if is_written_value(k.args[j]) else ""
+			note(c, .Wrong_Argument_Kind, k.args[j].span, verb.name, need, describe(c.types, args[j].type), shown)
 			return
 		}
 	}
@@ -528,7 +551,7 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 				if words := registry.word_choices(choices_for, o.word); def.kinds[i] == .Name && len(words) > 0 {
 					example = words[0] // `cursor arrow`, not a word another verb takes
 				}
-				note(c, .Wrong_Argument_Kind, a.span, verb.name, need, describe(c.types, ir.type), fix(c, a.span, example))
+				note(c, .Wrong_Argument_Kind, a.span, verb.name, need, describe(c.types, ir.type), fix(c, a.span, example) if is_written_value(a) else "")
 			}
 			append(&args, ir)
 		}

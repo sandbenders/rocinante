@@ -5,4 +5,4 @@
 
 This line gives `mix` 2 values.
 
-For example:  x = mix 1 2 amount
+For example:  x = mix 1 2 0

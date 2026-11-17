@@ -99,7 +99,21 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 			append(&cut_lines, position_of(src, d.span.start).line)
 		}
 	}
+	// A name that is a word of the language is said once, where it is made. Every later use reads as a call
+	// of the verb of that name, which is not what was meant, so what the line says about the call is an echo.
+	taken := make([dynamic]string, context.temp_allocator)
 	for d in all {
+		if d.id == .Reserved_Name {
+			append(&taken, d.args[0])
+		}
+	}
+	for d in all {
+		if len(taken) > 0 && slice.contains(taken[:], d.args[0]) {
+			#partial switch d.id {
+			case .Wrong_Argument_Count, .Wrong_Argument_Kind, .Needs_Brackets, .Value_Of_Nothing, .Missing_Required_Word:
+				continue
+			}
+		}
 		if len(cut_lines) > 0 && slice.contains(cut_lines[:], position_of(src, d.span.start).line) && d.id != .Word_Outside_Brackets && d.id != .Title_Of_Window {
 			continue
 		}

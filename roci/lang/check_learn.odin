@@ -297,11 +297,17 @@ check_taught_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR 
 	if len(k.args) != len(k.taught.params) {
 		names := make([dynamic]string, context.temp_allocator)
 		takes := fmt.tprintf("%s (%s)", count_words(len(k.taught.params)), names_words(k.taught.params)) if len(k.taught.params) > 0 else "no values"
-		append(&names, k.taught.name)
-		for param, i in k.taught.params {
-			append(&names, text_at(c, k.args[i].span) if i < len(k.args) else param)
+		// Too many values: the example is the call with the first ones. Too few: the kind of what is missing is
+		// not known, so there is no example that would be real code.
+		example := ""
+		if len(k.args) > len(k.taught.params) {
+			append(&names, k.taught.name)
+			for _, i in k.taught.params {
+				append(&names, text_at(c, k.args[i].span))
+			}
+			example = fix(c, e.span, strings.join(names[:], " ", context.temp_allocator))
 		}
-		note(c, .Wrong_Argument_Count, e.span, k.taught.name, takes, count_words(len(k.args)), fix(c, e.span, strings.join(names[:], " ", context.temp_allocator)))
+		note(c, .Wrong_Argument_Count, e.span, k.taught.name, takes, count_words(len(k.args)), example)
 		return error_ir(c, e.span)
 	}
 	for a in args {
