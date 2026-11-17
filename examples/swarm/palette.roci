@@ -25,15 +25,15 @@ HURT = [
   (rgb 80 230 240)
   (rgb 255 150 30)
 ]
-// the second player's ship: the blue is green and the red yellow
+// the second player's ship, in colors of its own: a gold body, green wings and a magenta cockpit
 COLORS_TWO = [
   CLEAR
-  white
-  (rgb 255 220 40)
-  (rgb 40 200 90)
-  (rgb 255 220 40)
+  (rgb 255 205 60)
   (rgb 40 200 90)
   (rgb 170 70 230)
-  (rgb 80 230 240)
-  (rgb 255 150 30)
+  (rgb 255 205 60)
+  (rgb 40 200 90)
+  (rgb 170 70 230)
+  (rgb 255 90 200)
+  white
 ]
