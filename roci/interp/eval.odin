@@ -296,6 +296,14 @@ read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
 			return r.fields[at]
 		}
 	}
+	// A vector or a color whose type the checker could not settle when it read this line (a list that starts
+	// empty and is filled in a verb that is written further down) is read by its parts, as a vector is.
+	#partial switch _ in base {
+	case Vec, maths.Colour:
+		if len(name) == 1 {
+			return swizzle(base, name)
+		}
+	}
 	return nil
 }
 

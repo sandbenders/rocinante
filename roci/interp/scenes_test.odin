@@ -311,3 +311,25 @@ test_scenes_may_be_written_in_other_files_of_the_sketch :: proc(t: ^testing.T) {
 	testing.expect_value(t, current_scene_name(p), "title")
 	testing.expect_value(t, printed(p), "title")
 }
+
+// A list that starts empty and is filled by a verb written further down gives its items' type late, so a
+// verb that reads the list and was set up first sees them untyped: the parts of a vector still read.
+@(test)
+test_the_parts_of_a_vector_read_when_the_type_of_a_list_was_not_known_yet :: proc(t: ^testing.T) {
+	p := run_text(t, `
+shots = []
+learn fly [
+  for each s in shots [
+    s.pos = s.pos + s.vel
+    print "x {s.pos.x} y {s.pos.y}"
+    q = s.pos
+    print "q {q.y}"
+  ]
+]
+draw [ fly ]
+learn fire [ add { pos: { 5, 50 }, vel: { 1, -11 }, done: false } to shots ]
+fire
+`, 1)
+	defer finish(p)
+	testing.expect_value(t, printed(p), "x 6 y 39\nq 39")
+}

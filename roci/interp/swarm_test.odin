@@ -127,3 +127,39 @@ test_the_swarm_example_plays_with_a_gamepad :: proc(t: ^testing.T) {
 	testing.expect_value(t, current_scene_name(p), "play")
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// A shot flies off the top of the screen and is gone, so the ship can fire again: the shots of the
+// ship leave the list once they are off the screen.
+@(test)
+test_a_shot_of_the_swarm_example_leaves_when_it_is_off_the_screen :: proc(t: ^testing.T) {
+	program, problem := folder.read_program("examples/swarm/sketch.roci")
+	testing.expect_value(t, problem, "")
+	roci.start_headless(1)
+	defer roci.shutdown()
+	p, ok := load_files(program.files)
+	defer destroy(p)
+	if !testing.expect(t, ok, "the example has errors") {
+		return
+	}
+	start(p)
+	roci.step()
+	w := first_window()
+	roci.step({key_event(w, sdl.Scancode.SPACE)})
+	roci.step({key_event(w, sdl.Scancode.SPACE, false)})
+	roci.step({key_event(w, sdl.Scancode.SPACE)})
+	roci.step({key_event(w, sdl.Scancode.SPACE, false)})
+	testing.expect_value(t, len(as_list(global_named(p, "shots")).items), 1)
+	for _ in 0 ..< 100 {
+		roci.step()
+	}
+	testing.expect_value(t, len(as_list(global_named(p, "shots")).items), 0)
+	// and it fires again, as many times as it is asked, one after the other
+	for _ in 0 ..< 5 {
+		roci.step({key_event(w, sdl.Scancode.SPACE)})
+		roci.step({key_event(w, sdl.Scancode.SPACE, false)})
+		for _ in 0 ..< 70 {
+			roci.step()
+		}
+		testing.expect_value(t, len(as_list(global_named(p, "shots")).items), 0)
+	}
+}
