@@ -39,7 +39,7 @@ palettes = [
 chooser = window size 320 220 at 60 120 title "palette"
 garden = window size 800 600 at 420 80 title "garden"
 
-chosen = 1
+picked = 1
 wind = 0.5
 dragging = false
 calm = 1
@@ -75,7 +75,7 @@ draw chooser [
   for i from 1 to 3 [
     x = 16 + (i - 1) * (SWATCH + 20)
     p = item i of palettes
-    if i is chosen [
+    if i is picked [
       rect at x 44 size SWATCH SWATCH fill (gradient p.sky angle 90) stroke white thickness 3
     ] else [
       rect at x 44 size SWATCH SWATCH fill (gradient p.sky angle 90)
@@ -105,7 +105,7 @@ on chooser key "3" [ send garden { palette: 3 } ]
 // ---- the garden ----
 
 on garden receive message [
-  if message.palette > 0 [ chosen = message.palette ]
+  if message.palette > 0 [ picked = message.palette ]
   if message.wind > 0 [ wind = message.wind ]
 ]
 
@@ -128,7 +128,7 @@ learn draw_flower flower look [
 ]
 
 draw garden [
-  p = item chosen of palettes
+  p = item picked of palettes
   if held "space" [ calm = 0.15 ] else [ calm = 1 ]
   background (gradient p.sky angle 90)
 

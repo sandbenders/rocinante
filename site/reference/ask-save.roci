@@ -1,0 +1,16 @@
+where = "not saved yet"
+
+ui [
+  if button "save the numbers" [
+    ask save "numbers.json" [
+      save [ 1 2 3 ] chosen
+      where = chosen
+    ]
+  ]
+]
+
+draw [
+  background 20
+  fill white
+  text where at 20 40 size 16
+]

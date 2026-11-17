@@ -1,0 +1,8 @@
+── I cannot read the file `notes.txt` ────────────────── sketch.roci:2:9
+
+2 │ notes = read "notes.txt"
+  │         ^^^^^^^^^^^^^^^^
+
+There is no file of that name in the assets folder, and it is not one the player chose. The sketch carries on with empty text.
+
+Name a file of the assets folder, or use a path an `ask file` gave:  x = read "notes.txt"

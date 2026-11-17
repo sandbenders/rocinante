@@ -1,0 +1,11 @@
+ui [
+  if button "paste" [ words = clipboard ]
+]
+
+words = "copy something, then press paste"
+
+draw [
+  background 20
+  fill white
+  text words at 20 40 size 16
+]

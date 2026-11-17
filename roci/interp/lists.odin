@@ -69,6 +69,14 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return lines_of(it, as_text(eval(it, call.args[0])))
 	case .Files:
 		return files_in(it, as_text(option_or_nil(it, call.options, "in")))
+	case .Ask_File, .Ask_Folder, .Ask_Save:
+		ask_verb(it, call, code)
+	case .Read:
+		return read_text(it, as_text(eval(it, call.args[0])), e.span)
+	case .Open:
+		open_verb(it, as_text(eval(it, call.args[0])), e.span)
+	case .Copy_To_Clipboard:
+		roci.set_clipboard(as_text(eval(it, call.args[0])))
 	case .Save:
 		if call.shape == 1 {
 			save_data(it, e, eval(it, call.args[0]), as_text(eval(it, call.args[1])))

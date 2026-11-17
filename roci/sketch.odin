@@ -255,6 +255,7 @@ shutdown :: proc() {
 	}
 	delete(the.canvas_reads)
 	gfx.images_stop()
+	clipboard_stop()
 	gfx.models_stop()
 	svgs_stop()
 	abi_stop()

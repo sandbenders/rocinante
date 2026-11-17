@@ -1,0 +1,13 @@
+last = "nothing yet"
+
+ui [
+  if button "choose a file" [
+    ask file [ last = chosen ]
+  ]
+]
+
+draw [
+  background 20
+  fill white
+  text ("you chose " + last) at 20 40 size 16
+]

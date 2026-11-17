@@ -157,6 +157,8 @@ Message_Id :: enum u8 {
 	Key_Unknown,
 	Data_File_Missing,
 	Data_File_Unreadable,
+	File_Not_Read,
+	Open_Failed,
 	Memory_Name_Not_Text,
 	Memory_Kinds_Differ,
 	Memory_Never_Kept,
@@ -579,6 +581,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Data_File_Unreadable = {.Error, "I cannot read the data file `{a}`",
 		"The file is not written the way its kind of file is, on line {b}: {c}. The sketch carries on without it.",
 		"Fix the file, or load another:", "{d}"},
+	.File_Not_Read = {.Error, "I cannot read the file `{a}`",
+		"{b} The sketch carries on with empty text.",
+		"Name a file of the assets folder, or use a path an `ask file` gave:", "{d}"},
+	.Open_Failed = {.Error, "I could not open `{a}`",
+		"{b} The sketch carries on.",
+		"Open a web address, or a file of the assets folder:", "{d}"},
 	.Memory_Name_Not_Text = {.Error, "`{a}` needs the name of its value written as text",
 		"The sketch is read before it runs, so a name that is worked out while it runs, such as `\"level \" + n`, cannot be matched with the `remember` and `recall` lines that use it. Write the name in double quotes.",
 		"Write the name out:", "{d}"},
@@ -701,7 +709,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

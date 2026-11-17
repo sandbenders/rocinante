@@ -3,7 +3,7 @@ SWATCH: a number
 palettes: a list of records with name, sky, hill, grass, petals and moon
 chooser: a window
 garden: a window
-chosen: a number
+picked: a number
 wind: a number
 dragging: true or false
 calm: a number

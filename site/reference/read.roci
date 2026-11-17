@@ -1,0 +1,13 @@
+notes = "choose a text file"
+
+ui [
+  if button "open a text file" [
+    ask file "txt md" [ notes = read chosen ]
+  ]
+]
+
+draw [
+  background 20
+  fill white
+  text notes at 20 40 size 16
+]

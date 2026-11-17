@@ -1,0 +1,8 @@
+── I could not open `page.html` ──────────────────────── sketch.roci:2:1
+
+2 │ open "page.html"
+  │ ^^^^^^^^^^^^^^^^
+
+It is not a web address, and there is no file of that name in the assets folder. The sketch carries on.
+
+Open a web address, or a file of the assets folder:  open "https://rocinante-lang.org"

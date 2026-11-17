@@ -113,6 +113,14 @@ assets_root :: proc(it: ^Interp) -> (root: string, found: bool) {
 @(private)
 read_picture :: proc(it: ^Interp, name: string) -> (entry: Picture_Entry) {
 	root, _ := assets_root(it)
+	if is_chosen(it, name) {
+		// a file the player chose: it is read where it is
+		entry.path = strings.clone(name)
+		if info, err := os.stat(name, context.temp_allocator); err == nil {
+			entry.mtime = info.modification_time
+		}
+		return read_picture_file(entry)
+	}
 	if root == "" {
 		entry.state = .Missing
 		return
@@ -132,6 +140,13 @@ read_picture :: proc(it: ^Interp, name: string) -> (entry: Picture_Entry) {
 	if info, err := os.stat(entry.path, context.temp_allocator); err == nil {
 		entry.mtime = info.modification_time
 	}
+	return read_picture_file(entry)
+}
+
+// Decodes the file an entry points at, once for each time the file changes.
+@(private)
+read_picture_file :: proc(found: Picture_Entry) -> (entry: Picture_Entry) {
+	entry = found
 	if done, found := decoded_files[entry.path]; found && done.epoch == roci.image_epoch() && done.mtime == entry.mtime {
 		entry.id = done.id
 		return

@@ -158,3 +158,12 @@ test_a_spreadsheet_gives_its_columns_as_fields_and_a_sheet_can_be_named :: proc(
 	letter := check_text("x = load \"letter.odt\"")
 	testing.expect(t, strings.contains(describe_names(letter.checked, context.temp_allocator), "x: text"))
 }
+
+@(test)
+test_the_dialogs_the_clipboard_and_open_check_clean :: proc(t: ^testing.T) {
+	expect_ids(t, "ask file \"png jpg\" [ photo = load chosen ]", {})
+	expect_ids(t, "ask file [ x = chosen ]", {})
+	expect_ids(t, "ask folder [ x = chosen ]", {})
+	expect_ids(t, "ask save \"scores.csv\" [ save [ 1 2 ] chosen ]", {})
+	expect_ids(t, "notes = read \"notes.txt\"\nopen \"https://rocinante-lang.org\"\ncopy to clipboard notes\nn = clipboard", {})
+}

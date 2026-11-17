@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "pi", "pmouse", "pressed", "scene", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
+	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "pi", "pmouse", "pressed", "scene", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -91,6 +91,8 @@ Value_Def :: struct {
 
 VALUE_DEFS := [?]Value_Def{
 	{"anywhere", .Vector, 2, "A random point in the window, different each time it is read."},
+	{"chosen", .Text, 0, "The path the player chose, inside the block of an `ask file`, `ask folder` or `ask save`: the whole path, with the folders it is in. It is empty text anywhere else."},
+	{"clipboard", .Text, 0, "The text on the computer's clipboard, empty when there is none or when it holds something that is not text: `pasted = clipboard`. `copy to clipboard` puts text there."},
 	{"false", .Boolean, 0, "The value of a condition that does not hold."},
 	{"finger", .Record, 0, "The finger an `on touch down` or `on touch up` block runs for: a record with `id`, `pos`, `start` and `pressure`."},
 	{"fps", .Number, 0, "How many frames a second the sketch is drawing."},

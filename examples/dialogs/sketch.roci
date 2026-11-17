@@ -1,0 +1,44 @@
+// The system's own dialogs, the clipboard and opening an address. A dialog never makes the sketch wait: `ask file`
+// shows it and goes on, and its block runs when the player has chosen, with `chosen` the path they picked. A
+// picture a player chose is read with `load chosen`, a text with `read chosen`, and `save` writes to a path
+// `ask save` gave. Close a dialog without choosing and nothing runs.
+window size 640 360 title "dialogs"
+photo = load "ship.png"
+path = "ship.png (from the assets folder)"
+note = "choose a picture, then save its path or copy it"
+pasted = ""
+
+ui [
+  if button "choose a picture" [
+    ask file "png jpg" [
+      photo = load chosen
+      path = chosen
+      note = "chosen"
+    ]
+  ]
+  if button "save its path" [
+    ask save "path.txt" [
+      save path chosen
+      note = "saved in " + chosen
+    ]
+  ]
+  if button "copy its path" [
+    copy to clipboard path
+    note = "copied"
+  ]
+  if button "paste" [
+    pasted = clipboard
+    note = "pasted"
+  ]
+  if button "open the guides" [ open "https://rocinante-lang.org" ]
+]
+
+draw [
+  background 24
+  image photo at 320 150 width 200 as center
+  fill white
+  text path at 20 290 size 14
+  text note at 20 314 size 14
+  fill 160
+  text ("clipboard: " + pasted) at 20 338 size 14
+]

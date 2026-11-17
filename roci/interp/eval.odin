@@ -209,6 +209,10 @@ builtin_value :: proc(it: ^Interp, name: string) -> Value {
 		return vec2(roci.anywhere())
 	case "key":
 		return roci.last_key()
+	case "chosen":
+		return strings.clone(it.chosen, it.alloc)
+	case "clipboard":
+		return roci.clipboard(it.alloc)
 	case "pressed":
 		return roci.pressed()
 	case "true":

@@ -78,15 +78,15 @@ learn reroll [
 // the new one fades in, and the size moves to what fits the new words.
 learn swap [
   k = floor (random 5) + 1
-  chosen = item k of poem
+  picked = item k of poem
   fresh = word_for k
-  while fresh is chosen.word [ fresh = word_for k ]
-  chosen.previous = chosen.word
-  chosen.previous_color = chosen.color
-  chosen.word = fresh
-  chosen.color = deep_color
-  chosen.mix = 0
-  tween chosen.mix to 1 over FADE as smooth
+  while fresh is picked.word [ fresh = word_for k ]
+  picked.previous = picked.word
+  picked.previous_color = picked.color
+  picked.word = fresh
+  picked.color = deep_color
+  picked.mix = 0
+  tween picked.mix to 1 over FADE as smooth
   tween big to fit_size over FADE as smooth
   schedule
 ]

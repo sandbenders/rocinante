@@ -1,0 +1,5 @@
+ui [
+  if button "read the guides" [ open "https://rocinante-lang.org" ]
+]
+
+draw [ background 20 ]

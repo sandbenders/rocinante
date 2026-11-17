@@ -1417,6 +1417,21 @@ int roci_file_count(const char *folder);
 /* The name of a file of a folder, counting from 0 in the order of the names, or NULL past the last. The text stays valid until the next function that gives text back. */
 const char *roci_file_name(const char *folder, int index);
 
+/* Shows the system's dialog for choosing a file ("file"), a folder ("folder") or a place to save ("save"), over the current window, and gives the number of the request, or 0 for a kind it does not know. `types` is the extensions to show, such as "png jpg" ("" for all), and `place` the folder or file name to start at. The dialog does not wait: ask for the answer with roci_answer. */
+int roci_ask(const char *kind, const char *types, const char *place);
+
+/* What the player chose for a request of roci_ask: NULL while the dialog is still open, an empty text when it was closed without a choice, and the path chosen otherwise. A request is answered once; after that it is forgotten. The text stays valid until the next function that gives text back. */
+const char *roci_answer(int request);
+
+/* The text on the system's clipboard, empty when there is none. The text stays valid until the next function that gives text back. */
+const char *roci_clipboard(void);
+
+/* Puts text on the system's clipboard and gives 1 when it was taken. */
+int roci_set_clipboard(const char *text);
+
+/* Opens an address ("https://...", "mailto:...") or a file or folder ("file:///...") in the program the system keeps for it, and gives 1 when the system could. */
+int roci_open(const char *address);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,5 @@
+ui [
+  if button "copy a color" [ copy to clipboard "#ff8800" ]
+]
+
+draw [ background 20 ]

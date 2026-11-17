@@ -80,6 +80,12 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"save", "roci_save roci_write_file", ""},
 	{"lines", "", "a text is a C string: C splits its own"},
 	{"files", "roci_file_count roci_file_name", ""},
+	{"ask file", "roci_ask roci_answer", ""},
+	{"ask folder", "roci_ask roci_answer", ""},
+	{"ask save", "roci_ask roci_answer", ""},
+	{"read", "roci_read_file", ""},
+	{"open", "roci_open", ""},
+	{"copy to clipboard", "roci_set_clipboard", ""},
 	{"record", "roci_record roci_record_sound roci_no_record", ""},
 	{"no record", "roci_no_record roci_no_record_sound", ""},
 	{"load", "roci_load_image roci_load_image_file roci_load_model roci_load_svg roci_load_sound roci_load_sound_file", ""},
@@ -378,6 +384,7 @@ abi_table_init :: proc "contextless" () {
 	abi_pads_group(&all)
 	abi_memory_group(&all)
 	abi_files_group(&all)
+	abi_dialogs_group(&all)
 	ABI_TABLE = all[:]
 }
 

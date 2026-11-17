@@ -33,8 +33,8 @@ learn anyalive [
 learn target [
   flying = keep ships [ it.alive ]
   if (count flying) is 0 [ give { 223, SHIP_Y } ]
-  chosen = pick flying
-  give chosen.pos
+  picked = pick flying
+  give picked.pos
 ]
 
 // Each ship fires two shots at a time. With one player either fire button fires the ship.

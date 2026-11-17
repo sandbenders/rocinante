@@ -1,0 +1,13 @@
+name = "nothing chosen yet"
+
+ui [
+  if button "choose a picture" [
+    ask file "png jpg" [ name = chosen ]
+  ]
+]
+
+draw [
+  background 20
+  fill white
+  text name at 20 40 size 16
+]

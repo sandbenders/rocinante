@@ -74,6 +74,9 @@ Interp :: struct {
 	block_depth:  int,                        // blocks the app loop asked for that are running (a `draw`, `ui` or event), 0 while setting up
 	widget_sites: map[int]int,                // how many widgets each call has made this frame, by its place in the source
 	handlers:  [dynamic]Handler,
+	asks:      [dynamic]Ask,     // the dialogs that are open, with the block each runs when answered
+	allowed:   map[string]bool,  // the paths players chose in dialogs, which `load`, `read` and `open` may take
+	chosen:    string,           // the path the block of the dialog running now was answered with
 	inbox:     [2][dynamic]Message, // [msg_now] is what arrives this frame, the other what is sent now
 	msg_arenas: [2]virtual.Arena, // the memory of each inbox
 	msg_now:   int,
@@ -209,6 +212,7 @@ destroy :: proc(p: ^Interp) {
 		virtual.arena_destroy(&p.msg_arenas[i])
 	}
 	delete(p.handlers)
+	drop_asks(p)
 	delete(p.scenes)
 	delete(p.scene_stack)
 	delete(p.items)
