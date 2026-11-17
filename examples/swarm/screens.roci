@@ -24,6 +24,8 @@ learn titlescreen [
   ]
   fill (rgb 140 150 190)
   font "Inter" size 16
+  // so a player can see that the pads are there: each one steers and fires its own ship
+  text ("gamepads connected: " + (count gamepads)) at 240 452
   text "arrows, A D, the stick or the d-pad to move" at 240 560
   text "space or the bottom button to fire · P or start to pause" at 240 584
   text "two players: A D and space, arrows and enter" at 240 608

@@ -240,3 +240,74 @@ test_the_swarm_example_plays_with_two_players :: proc(t: ^testing.T) {
 	testing.expect_value(t, as_number(global_named(p, "lives")), 0)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// Two players with two gamepads and no keyboard: the second pad's bottom button starts the game for two, each
+// pad steers and fires its own ship, and each pad shakes only for its own ship.
+@(test)
+test_the_swarm_example_plays_with_two_gamepads :: proc(t: ^testing.T) {
+	program, problem := folder.read_program("examples/swarm/sketch.roci")
+	testing.expect_value(t, problem, "")
+	roci.start_headless(1)
+	defer roci.shutdown()
+	p, ok := load_files(program.files)
+	defer destroy(p)
+	if !testing.expect(t, ok, "the example has errors") {
+		return
+	}
+	start(p)
+	roci.step()
+	both := proc(one, two: roci.Pad_State) {
+		roci.feed_pads({one, two})
+	}
+	idle_one := roci.Pad_State{id = 1, name = "One"}
+	idle_two := roci.Pad_State{id = 2, name = "Two"}
+	// the first pad's bottom button is one player; the second pad's is two
+	both(idle_one, {id = 2, name = "Two", bottom = true})
+	roci.step()
+	both(idle_one, idle_two)
+	roci.step()
+	testing.expect_value(t, current_scene_name(p), "play")
+	testing.expect_value(t, as_number(global_named(p, "players")), 2)
+	testing.expect_value(t, len(as_list(global_named(p, "ships")).items), 2)
+	for _ in 0 ..< 400 {
+		roci.step()
+	}
+	first, second := ship_x(p, 0), ship_x(p, 1)
+	// each stick moves its own ship, and the d-pad does too
+	both({id = 1, name = "One", left_stick = {1, 0}}, idle_two)
+	for _ in 0 ..< 4 {
+		roci.step()
+	}
+	testing.expect(t, ship_x(p, 0) > first && ship_x(p, 1) == second, "the first pad moves the first ship only")
+	both(idle_one, {id = 2, name = "Two", dpad = {-1, 0}})
+	for _ in 0 ..< 4 {
+		roci.step()
+	}
+	testing.expect(t, ship_x(p, 1) < second, "the second pad moves the second ship")
+	both(idle_one, idle_two)
+	roci.step()
+	// each bottom button fires its own ship, and shakes its own pad
+	before := len(roci.rumble_requests())
+	for _ in 0 ..< 3 {
+		both({id = 1, name = "One", bottom = true}, idle_two)
+		roci.step()
+		both(idle_one, idle_two)
+		roci.step()
+	}
+	testing.expect_value(t, len(as_list(global_named(p, "shots")).items), 2)
+	for _ in 0 ..< 3 {
+		both(idle_one, {id = 2, name = "Two", bottom = true})
+		roci.step()
+		both(idle_one, idle_two)
+		roci.step()
+	}
+	testing.expect_value(t, len(as_list(global_named(p, "shots")).items), 4)
+	requests := roci.rumble_requests()
+	testing.expect_value(t, len(requests) - before, 4)
+	testing.expect(t, requests[before].id == 1 && requests[len(requests) - 1].id == 2, "each pad shakes for its own ship")
+	// start on either pad pauses
+	both(idle_one, {id = 2, name = "Two", start = true})
+	roci.step()
+	testing.expect_value(t, current_scene_name(p), "paused")
+	testing.expect_value(t, len(p.errors), 0)
+}
