@@ -18,11 +18,15 @@ learn titlescreen [
   text "80 · 160 diving" at 215 356
   text "50 · 100 diving" at 215 406
   align center
-  if (frame / 30) % 2 >= 1 [ text "press space or the gamepad's bottom button" at 240 500 ]
+  if (frame / 30) % 2 >= 1 [
+    text "space or the bottom button: one player" at 240 480
+    text "enter or the second pad's bottom button: two" at 240 510
+  ]
   fill (rgb 140 150 190)
   font "Inter" size 16
-  text "arrows, A D, the stick or the d-pad to move" at 240 572
-  text "space or the bottom button to fire · P or start to pause" at 240 596
+  text "arrows, A D, the stick or the d-pad to move" at 240 560
+  text "space or the bottom button to fire · P or start to pause" at 240 584
+  text "two players: A D and space, arrows and enter" at 240 608
   align left
 ]
 
@@ -38,8 +42,8 @@ learn hud [
   top = best
   if score > top [ top = score ]
   text ("" + top) at 210 32
-  spare = lives - 1
-  if not ship.alive [ spare = lives ]
+  // the ships that are still to come: all the lives but the ones flying now
+  spare = lives - (count (keep ships [ it.alive ]))
   // `for` counts down when the end is smaller, so with no spare ships it must not run at all.
   if spare > 0 [
     for i from 1 to spare [ image life_look at (i * 28 - 16) 612 ]
@@ -75,6 +79,6 @@ learn overtext [
   text "GAME OVER" at 240 280
   fill white
   font "Inter" size 18
-  if (frame / 30) % 2 >= 1 [ text "press space or the bottom button to play again" at 240 340 ]
+  if (frame / 30) % 2 >= 1 [ text "press space or enter to play again" at 240 340 ]
   align left
 ]

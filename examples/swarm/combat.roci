@@ -39,24 +39,28 @@ learn shots_fly [
   shots = keep shots [ not it.done ]
 ]
 
-// Moves the swarm's shots, and wrecks the ship when one of them, or a diver, reaches it
+// Moves the swarm's shots, and wrecks a ship when one of them, or a diver, reaches it
 // while it has no shield.
 learn ship_hits [
   for each b in bombs [
     b.pos = b.pos + b.vel
     if b.pos.y > height [ b.done = true ]
-    if ship.alive and ship.shield is 0 and touching b ship [
-      b.done = true
-      crashship
+    for each s in ships [
+      if s.alive and s.shield is 0 and not b.done and touching b s [
+        b.done = true
+        crashship s
+      ]
     ]
   ]
   bombs = keep bombs [ not it.done ]
-  if ship.alive and ship.shield is 0 [
-    for each e in (hits ship swarm) [
-      if ship.alive [
-        burst (e.pos + e.size / 2) (rgb 255 220 40) 20
-        remove e from swarm
-        crashship
+  for each s in ships [
+    if s.alive and s.shield is 0 [
+      for each e in (hits s swarm) [
+        if s.alive [
+          burst (e.pos + e.size / 2) (rgb 255 220 40) 20
+          remove e from swarm
+          crashship s
+        ]
       ]
     ]
   ]

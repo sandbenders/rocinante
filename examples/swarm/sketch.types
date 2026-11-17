@@ -9,6 +9,7 @@ SCALE: a number
 CLEAR: a color
 COLORS: a list of colors
 HURT: a list of colors
+COLORS_TWO: a list of colors
 SHIP_Y: a number
 SPEED: a number
 MOST_SHOTS: a number
@@ -16,6 +17,7 @@ STAR_COLORS: a list of colors
 TUNE: a list of numbers
 LOSE: a list of numbers
 ship_look: a picture
+ship_two_look: a picture
 life_look: a picture
 bug_looks: a list of pictures
 moth_looks: a list of pictures
@@ -32,8 +34,9 @@ crash_slide: a number
 tune_at: a number
 playing_tune: a list of numbers
 stars: a list of records with pos, speed, tint and phase
-ship: a record with pos, size, alive, wait, shield and tilt
-shots: a list of records with pos, size, vel and done
+ships: a list of records with pos, size, alive, wait, shield, tilt and who
+players: a number
+shots: a list of records with pos, size, vel, done and who
 bombs: a list of records with pos, size, vel and done
 swarm: a list of records with pos, size, kind, hp, tier, col, across, state, t, speed, launch, bend1, bend2 and shots_left
 bits: a list of records with pos, vel, life and tint

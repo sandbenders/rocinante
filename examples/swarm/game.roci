@@ -7,9 +7,12 @@ learn restart [
   shots = []
   bombs = []
   bits = []
-  ship.pos = { 223, SHIP_Y }
-  ship.alive = true
-  ship.shield = 90
+  ships = []
+  add (newship 1) to ships
+  if players is 2 [
+    add (newship 2) to ships
+    lives = 5
+  ]
   hatchall
 ]
 
@@ -20,7 +23,7 @@ learn advance [
   command
   shots_fly
   ship_hits
-  if scene.name is "play" and (count swarm) is 0 and ship.alive [
+  if scene.name is "play" and (count swarm) is 0 and anyalive [
     stage = stage + 1
     hatchall
   ]
@@ -31,5 +34,5 @@ learn drawplay [
   for each e in swarm [ image (look e) at e.pos ]
   drawshots
   drawsparks
-  drawship
+  drawships
 ]

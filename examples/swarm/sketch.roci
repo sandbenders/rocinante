@@ -2,9 +2,11 @@
 // into formation and swings from side to side, then its members break away one or two at
 // a time and dive at you, firing as they come. Clear the swarm to reach the next stage.
 //
-// Left and right arrows (or A and D, or a gamepad's stick or d-pad) move, space (or a gamepad's
-// bottom button) fires, two shots at a time, and P (or start) pauses. A gamepad shakes when you fire
-// and when your ship is hit.
+// One player: the arrows or A and D (or a gamepad's stick or d-pad) move, space (or the bottom
+// button) fires, two shots at a time, and P (or start) pauses. Two players, started with enter (or
+// the second gamepad's bottom button) on the title screen: the first has A and D, space and the first
+// gamepad, the second the arrows, enter and the second gamepad, and the ships share the score and
+// the spare ships. A gamepad shakes when you fire and when your ship is hit.
 //
 // Everything is made by the sketch itself: the sprites are lists of palette numbers turned
 // into pictures with `picture from` and enlarged with sharp pixels, and every sound is a
@@ -18,7 +20,7 @@
 //   sprites.roci   grids into pictures, and which picture an enemy shows
 //   sounds.roci    the laser, explosions, dive whistle, crash and tunes
 //   sky.roci       the starfield
-//   ship.roci      moving, leaning, firing and crashing
+//   ship.roci      the ships: moving, leaning, firing and crashing
 //   swarm.roci     the formation, flying in, diving and their curves
 //   combat.roci    what hits what, and the points
 //   sparks.roci    explosions
@@ -28,6 +30,7 @@ window size 480 640 title "swarm" resizable false cursor none
 
 // the pictures
 ship_look = sprite SHIP_ROWS 11 COLORS
+ship_two_look = sprite SHIP_ROWS 11 COLORS_TWO
 life_look = resize ship_look size 22 0 as nearest
 bug_looks = [ (sprite BUG_UP 9 COLORS) (sprite BUG_DOWN 9 COLORS) ]
 moth_looks = [ (sprite MOTH_UP 9 COLORS) (sprite MOTH_DOWN 9 COLORS) ]
@@ -55,7 +58,8 @@ stars = []
 scatter 90
 
 // the game
-ship = { pos: { 223, SHIP_Y }, size: { 33, 33 }, alive: true, wait: 0, shield: 0, tilt: 0 }
+ships = []
+players = 1
 shots = []
 bombs = []
 swarm = []
@@ -69,12 +73,16 @@ dive_wait = 120
 arrived = false
 
 // What the player does, and the keys and the gamepad buttons that do it.
-bind "move" to "keys w a s d"
-bind "move" to "keys up left down right"
-bind "move" to "pad leftstick"
-bind "move" to "pad dpad"
-bind "fire" to "key space"
-bind "fire" to "pad bottom"
+bind "p1_move" to "keys w a s d"
+bind "p1_move" to "pad 1 leftstick"
+bind "p1_move" to "pad 1 dpad"
+bind "p2_move" to "keys up left down right"
+bind "p2_move" to "pad 2 leftstick"
+bind "p2_move" to "pad 2 dpad"
+bind "p1_fire" to "key space"
+bind "p1_fire" to "pad 1 bottom"
+bind "p2_fire" to "key enter"
+bind "p2_fire" to "pad 2 bottom"
 bind "pause" to "key p"
 bind "pause" to "pad start"
 
@@ -87,7 +95,14 @@ draw [
 
 scene "title" [
   draw [ titlescreen ]
-  on press "fire" [ go "play" ]
+  on press "p1_fire" [
+    players = 1
+    go "play"
+  ]
+  on press "p2_fire" [
+    players = 2
+    go "play"
+  ]
 ]
 
 scene "play" [
@@ -101,9 +116,8 @@ scene "play" [
     if scene.time - stage_began < 2 [ stagetext ]
   ]
 
-  on press "fire" [
-    if ship.alive [ fire ]
-  ]
+  on press "p1_fire" [ trigger 1 ]
+  on press "p2_fire" [ trigger 2 ]
 
   on press "pause" [ visit "paused" ]
 ]
@@ -127,5 +141,6 @@ scene "over" [
     overtext
   ]
 
-  on press "fire" [ go "play" ]
+  on press "p1_fire" [ go "play" ]
+  on press "p2_fire" [ go "play" ]
 ]

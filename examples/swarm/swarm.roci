@@ -62,7 +62,7 @@ learn hatchall [
   jingle TUNE
 ]
 
-// Sends one member down at the ship: a loop up and away, then a swoop towards where the ship
+// Sends one member down at a ship: a loop up and away, then a swoop towards where the ship
 // is now. Later stages dive faster and fire more.
 learn dive e [
   side = 1
@@ -72,16 +72,18 @@ learn dive e [
   e.speed = 0.0065 + stage * 0.0007
   e.launch = e.pos
   e.bend1 = e.pos + { side * 110, -120 }
-  e.bend2 = { ship.pos.x + random from -60 to 60, 420 }
+  goal = target
+  e.bend2 = { goal.x + random from -60 to 60, 420 }
   e.shots_left = 1
   if stage > 2 [ e.shots_left = 2 ]
   if e.kind is 3 [ e.shots_left = e.shots_left + 1 ]
   whoosh
 ]
 
-// A shot from a diving member, aimed a little towards the ship.
+// A shot from a diving member, aimed a little towards a ship.
 learn shoot e [
-  aim = normalize (ship.pos + { 16, 0 } - e.pos)
+  goal = target
+  aim = normalize (goal + { 16, 0 } - e.pos)
   add {
     pos: e.pos + { e.size.x / 2, e.size.y }
     size: { 4, 10 }
@@ -123,7 +125,7 @@ learn command [
   for each e in swarm [ steer e ]
   if not arrived [ arrived = (count (keep swarm [ it.state is "enter" ])) is 0 ]
   if dive_wait > 0 [ dive_wait = dive_wait - 1 ]
-  if dive_wait <= 0 and ship.alive and scene.name is "play" [
+  if dive_wait <= 0 and anyalive and scene.name is "play" [
     waiting = keep swarm [ it.state is "home" ]
     if (count waiting) > 0 [ dive (pick waiting) ]
     dive_wait = clamp (round (110 - stage * 12 + random 60)) 25 400

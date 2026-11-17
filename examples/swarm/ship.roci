@@ -1,64 +1,121 @@
-// The player's ship: moving and leaning, firing, being hit and coming back.
+// The players' ships: moving and leaning, firing, being hit and coming back. `ships` holds one
+// ship in a game for one player and two in a game for two, and `players` says which.
 
 SHIP_Y = 584
 SPEED = 5
 MOST_SHOTS = 2
 
-learn fire [
-  if (count shots) < MOST_SHOTS [
-    add { pos: ship.pos + { 15, -6 }, size: { 3, 12 }, vel: { 0, -11 }, done: false } to shots
+// One new ship for player `who`: alone it is in the middle, and with a friend on each side.
+learn newship who [
+  give {
+    pos: { home_x who, SHIP_Y }
+    size: { 33, 33 }
+    alive: true
+    wait: 0
+    shield: 90
+    tilt: 0
+    who: who
+  }
+]
+
+learn home_x who [
+  if players is 1 [ give 223 ]
+  if who is 1 [ give 150 ]
+  give 296
+]
+
+// Whether any ship is still flying.
+learn anyalive [
+  give (count (keep ships [ it.alive ])) > 0
+]
+
+// Where the swarm aims: one of the ships still flying, or the middle if there are none.
+learn target [
+  flying = keep ships [ it.alive ]
+  if (count flying) is 0 [ give { 223, SHIP_Y } ]
+  chosen = pick flying
+  give chosen.pos
+]
+
+// Each ship fires two shots at a time. With one player either fire button fires the ship.
+learn fire s [
+  mine = keep shots [ it.who is s.who ]
+  if (count mine) < MOST_SHOTS [
+    add { pos: s.pos + { 15, -6 }, size: { 3, 12 }, vel: { 0, -11 }, done: false, who: s.who } to shots
     pew
-    rumble 25 for 0.05
+    rumble 25 for 0.05 player s.who
   ]
 ]
 
-// Moves the ship with the keys or a gamepad, or counts down to the next one after a crash. With no ships
-// left, the game is over.
+learn trigger who [
+  for each s in ships [
+    if s.alive and (players is 1 or s.who is who) [ fire s ]
+  ]
+]
+
+// Where a ship is steered: the arrows, A and D, the stick and the d-pad of its own player, and with one
+// player of both. Only left and right count here, and a stick that is pushed half way moves half as fast.
+learn steering s [
+  if players is 1 [
+    both = (direction "p1_move") + (direction "p2_move")
+    across = clamp both.x -1 1
+    give { across, 0 }
+  ]
+  if s.who is 1 [ give direction "p1_move" ]
+  give direction "p2_move"
+]
+
+// Moves the ships, or counts down to the next one after a crash. When no ship is left and no spare is
+// coming, the game is over.
 learn fly [
-  if ship.alive [
-    // The arrows, A and D, the stick and the d-pad all steer: only left and right count here, and a stick
-    // that is pushed half way moves the ship half as fast.
-    heading = direction "move"
-    step_x = heading.x * SPEED
-    ship.pos.x = clamp (ship.pos.x + step_x) 8 (width - 41)
-    // Leans up to 15 degrees into a turn, and eases back level when the keys are let go.
-    ship.tilt = ship.tilt + (step_x * 3 - ship.tilt) * 0.2
-    if ship.shield > 0 [ ship.shield = ship.shield - 1 ]
-  ] else [
-    ship.wait = ship.wait - 1
-    if ship.wait is 0 [
-      if lives > 0 [
-        ship.alive = true
-        ship.shield = 120
-        ship.pos.x = 223
-        ship.tilt = 0
-      ] else [
-        go "over"
+  for each s in ships [
+    if s.alive [
+      heading = steering s
+      step_x = heading.x * SPEED
+      s.pos.x = clamp (s.pos.x + step_x) 8 (width - 41)
+      // Leans up to 15 degrees into a turn, and eases back level when the keys are let go.
+      s.tilt = s.tilt + (step_x * 3 - s.tilt) * 0.2
+      if s.shield > 0 [ s.shield = s.shield - 1 ]
+    ] else [
+      s.wait = s.wait - 1
+      if s.wait is 0 and lives > 0 [
+        s.alive = true
+        s.shield = 120
+        s.pos.x = home_x s.who
+        s.tilt = 0
       ]
     ]
   ]
+  waiting = keep ships [ it.alive or it.wait > 0 ]
+  if lives <= 0 and (count waiting) is 0 [ go "over" ]
 ]
 
-learn crashship [
-  wreckage = ship.pos + { 16, 16 }
+learn crashship s [
+  wreckage = s.pos + { 16, 16 }
   burst wreckage white 40
   burst wreckage (rgb 255 150 30) 30
   wreck
-  rumble 90 for 0.5
-  ship.alive = false
-  ship.wait = 150
+  rumble 90 for 0.5 player s.who
+  s.alive = false
+  s.wait = 150
   lives = lives - 1
+  // two ships can be wrecked in one frame with one spare left
+  if lives < 0 [ lives = 0 ]
 ]
 
-// Blinks while the ship is shielded after coming back. It is turned about its middle, and a
+// Blinks while a ship is shielded after coming back. It is turned about its middle, and a
 // little narrower the more it leans, as a wing dips away.
-learn drawship [
-  if ship.alive and (ship.shield is 0 or (frame / 4) % 2 >= 1) [
-    narrow = 33 * (1 - abs ship.tilt / 60)
-    push [
-      move (ship.pos + { 16.5, 16.5 })
-      turn ship.tilt
-      image ship_look at (0 - narrow / 2) -16.5 size narrow 33
+learn drawships [
+  for each s in ships [
+    if s.alive and (s.shield is 0 or (frame / 4) % 2 >= 1) [
+      narrow = 33 * (1 - abs s.tilt / 60)
+      skin = ship_look
+      if s.who is 2 [ skin = ship_two_look ]
+      push [
+        move (s.pos + { 16.5, 16.5 })
+        turn s.tilt
+        image skin at (0 - narrow / 2) -16.5 size narrow 33
+      ]
     ]
   ]
 ]
