@@ -24,6 +24,7 @@ Token_Kind :: enum u8 {
 	Star,
 	Slash,
 	Percent,
+	Caret,
 	Less,
 	Less_Equal,
 	Greater,

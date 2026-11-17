@@ -2738,3 +2738,37 @@ test_polygon_draws_one_filled_path_through_its_corners :: proc(t: ^testing.T) {
 	testing.expect_value(t, [4]f32{commands[0].args[0], commands[0].args[1], commands[0].args[2], commands[0].args[3]}, [4]f32{5, 10, 85, 80})
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_a_power_binds_tighter_than_a_product_and_groups_to_the_right :: proc(t: ^testing.T) {
+	p := run_text(t, "a = 2 ^ 10\nb = 2 ^ 3 ^ 2\nc = 3 * 2 ^ 2\nd = -2 ^ 2\ne = 2 ^ -1\nf = 9 ^ 0.5\ng = (0 - 8) ^ 0.5\nh = 0 ^ -1\ni = 10 ^ 2 + 1")
+	defer finish(p)
+	testing.expect_value(t, as_number(global_named(p, "a")), 1024)
+	testing.expect_value(t, as_number(global_named(p, "b")), 512)
+	testing.expect_value(t, as_number(global_named(p, "c")), 12)
+	testing.expect_value(t, as_number(global_named(p, "d")), -4)
+	testing.expect_value(t, as_number(global_named(p, "e")), 0.5)
+	testing.expect_value(t, as_number(global_named(p, "f")), 3)
+	// no value in a sketch is ever not a number
+	testing.expect_value(t, as_number(global_named(p, "g")), 0)
+	testing.expect_value(t, as_number(global_named(p, "h")), 0)
+	testing.expect_value(t, as_number(global_named(p, "i")), 101)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_a_power_works_in_a_perspective_sum_and_on_a_loop_variable :: proc(t: ^testing.T) {
+	p := run_text(t, "total = 0\nfor n from 1 to 4 [ total = total + n ^ 2 ]\nsize = 100 / (1 + 0.5) ^ 2")
+	defer finish(p)
+	testing.expect_value(t, as_number(global_named(p, "total")), 30)
+	testing.expect(t, abs(as_number(global_named(p, "size")) - 44.4444444) < 0.001)
+}
+
+@(test)
+test_the_wing_flap_in_a_sketch_reads_a_whole_number_before_the_remainder :: proc(t: ^testing.T) {
+	// `floor (frame / 20) % 2 is 1` is the flap that changes every twenty frames
+	p := run_text(t, "frame_count = 25\nwing = floor (frame_count / 20) % 2 is 1\nother = floor (10 / 20) % 2 is 1")
+	defer finish(p)
+	testing.expect_value(t, as_bool(global_named(p, "wing")), true)
+	testing.expect_value(t, as_bool(global_named(p, "other")), false)
+}

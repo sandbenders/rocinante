@@ -475,6 +475,7 @@ GRAMMAR_RULES := [?]struct{rule, parser: string}{
 	{"comparison", "parse_comparison"},
 	{"sum", "parse_sum"},
 	{"product", "parse_product"},
+	{"power", "parse_power"},
 	{"unary", "parse_unary"},
 	{"operand", "parse_unary"},
 }

@@ -272,7 +272,7 @@ dump_expr :: proc(b: ^strings.Builder, src: Source, e: ^Expr) {
 
 @(private)
 BINARY_NAMES := [Binary_Op]string{
-	.Add = "+", .Subtract = "-", .Multiply = "*", .Divide = "/", .Modulo = "%",
+	.Add = "+", .Subtract = "-", .Multiply = "*", .Divide = "/", .Modulo = "%", .Power = "^",
 	.Less = "<", .Less_Equal = "<=", .Greater = ">", .Greater_Equal = ">=",
 	.Is = "is", .Is_Not = "is-not", .And = "and", .Or = "or",
 }

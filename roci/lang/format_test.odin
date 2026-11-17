@@ -389,3 +389,9 @@ test_text_with_holes_is_kept_as_written :: proc(t: ^testing.T) {
 	expect_formatted(t, "n = 3\ntitle   \"you have {n} left, {n + 1}\"\n", "n = 3\ntitle \"you have {n} left, {n + 1}\"\n")
 	expect_formatted(t, "title \"\\{plain\\}\"\n", "title \"\\{plain\\}\"\n")
 }
+
+@(test)
+test_a_power_is_written_with_spaces_and_keeps_its_brackets :: proc(t: ^testing.T) {
+	expect_formatted(t, "x = 2^3\n", "x = 2 ^ 3\n")
+	expect_formatted(t, "x = (a + 1)^2 * 3\n", "x = (a + 1) ^ 2 * 3\n")
+}

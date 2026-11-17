@@ -196,7 +196,7 @@ binary_type :: proc(c: ^Checker, op: Binary_Op, l, r: Type_Id) -> (Type_Id, bool
 		return T_BOOLEAN, unify(c.types, l, r)
 	case .Less, .Less_Equal, .Greater, .Greater_Equal:
 		return T_BOOLEAN, unify(c.types, l, T_NUMBER) && unify(c.types, r, T_NUMBER)
-	case .Modulo:
+	case .Modulo, .Power:
 		return T_NUMBER, unify(c.types, l, T_NUMBER) && unify(c.types, r, T_NUMBER)
 	case .Add, .Subtract, .Multiply, .Divide:
 	}

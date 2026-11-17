@@ -217,7 +217,7 @@ sure_number :: proc(e: ^IR) -> bool {
 		return true
 	case IR_Binary:
 		#partial switch k.op {
-		case .Add, .Subtract, .Multiply, .Divide, .Modulo:
+		case .Add, .Subtract, .Multiply, .Divide, .Modulo, .Power:
 			return is_number(k.lhs.fast) && is_number(k.rhs.fast)
 		}
 	case IR_Unary:

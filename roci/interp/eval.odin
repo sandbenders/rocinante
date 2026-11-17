@@ -407,7 +407,7 @@ binary :: proc(it: ^Interp, e: ^lang.IR, k: lang.IR_Binary) -> Value {
 	// their typed paths, which finish these without coming back here.
 	numbers := lang.is_number(k.lhs.fast) && lang.is_number(k.rhs.fast)
 	#partial switch k.op {
-	case .Add, .Subtract, .Multiply, .Divide, .Modulo:
+	case .Add, .Subtract, .Multiply, .Divide, .Modulo, .Power:
 		if numbers && lang.is_number(e.fast) {
 			return eval_number(it, e)
 		}
@@ -437,7 +437,7 @@ binary :: proc(it: ^Interp, e: ^lang.IR, k: lang.IR_Binary) -> Value {
 	}
 	switch k.op {
 	case .Is, .Is_Not, .Less, .Less_Equal, .Greater, .Greater_Equal, .And, .Or:
-	case .Add, .Subtract, .Multiply, .Divide, .Modulo:
+	case .Add, .Subtract, .Multiply, .Divide, .Modulo, .Power:
 	}
 	if k.op == .Add {
 		_, left_text := left.(string)
@@ -468,6 +468,8 @@ binary :: proc(it: ^Interp, e: ^lang.IR, k: lang.IR_Binary) -> Value {
 				return 0
 			}
 			return a - b * maths.floor(a / b)
+		case .Power:
+			return power(a, b)
 		case .Is, .Is_Not, .Less, .Less_Equal, .Greater, .Greater_Equal, .And, .Or:
 		}
 		return 0
@@ -557,4 +559,14 @@ compare_values :: proc(op: lang.Binary_Op, left, right: Value) -> bool {
 		return as_number(left) >= as_number(right)
 	}
 	return false
+}
+
+// `a ^ b`. A power that is not a number (a negative number to a fraction, zero to a negative) is 0, as a
+// division by zero is, so no value is ever not-a-number in a sketch.
+power :: proc(a, b: f64) -> f64 {
+	result := math.pow(a, b)
+	if result != result || math.is_inf(result) {
+		return 0
+	}
+	return result
 }

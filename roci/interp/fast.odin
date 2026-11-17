@@ -52,6 +52,8 @@ eval_number :: proc(it: ^Interp, e: ^lang.IR) -> f64 {
 				return 0
 			}
 			return a - b * maths.floor(a / b)
+		case .Power:
+			return power(a, b)
 		case .Is, .Is_Not, .Less, .Less_Equal, .Greater, .Greater_Equal, .And, .Or:
 		}
 	case lang.IR_Unary:

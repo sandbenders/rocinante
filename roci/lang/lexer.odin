@@ -216,6 +216,7 @@ lex_one :: proc(l: ^Lexer) {
 	case '*': one(l, .Star, i)
 	case '/': one(l, .Slash, i)
 	case '%': one(l, .Percent, i)
+	case '^': one(l, .Caret, i)
 	case '<': two_if_equals(l, .Less, .Less_Equal, i)
 	case '>': two_if_equals(l, .Greater, .Greater_Equal, i)
 	case '-':

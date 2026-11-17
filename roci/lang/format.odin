@@ -405,7 +405,7 @@ block_text :: proc(p: ^Printer, block: Block, level: int, column: int) -> string
 
 @(private)
 OPERATORS := [Binary_Op]string{
-	.Add = "+", .Subtract = "-", .Multiply = "*", .Divide = "/", .Modulo = "%",
+	.Add = "+", .Subtract = "-", .Multiply = "*", .Divide = "/", .Modulo = "%", .Power = "^",
 	.Less = "<", .Less_Equal = "<=", .Greater = ">", .Greater_Equal = ">=",
 	.Is = "is", .Is_Not = "is not", .And = "and", .Or = "or",
 }

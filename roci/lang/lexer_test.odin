@@ -521,3 +521,9 @@ test_hole_end_finds_the_matching_bracket :: proc(t: ^testing.T) {
 	testing.expect_value(t, hole_end("{a\nb}", 0), -1)
 	testing.expect_value(t, hole_end("{\"a}", 0), -1)
 }
+
+@(test)
+test_a_caret_is_the_power_operator :: proc(t: ^testing.T) {
+	expect_kinds(t, "a ^ b", {.Name, .Caret, .Name, .End_Of_File})
+	expect_kinds(t, "2^3", {.Number, .Caret, .Number, .End_Of_File})
+}

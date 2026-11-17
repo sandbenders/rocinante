@@ -128,7 +128,7 @@ is_literal :: proc(e: ^lang.IR) -> bool {
 
 @(private)
 COMPARISON_WORDS := [lang.Binary_Op]string {
-	.Add = "+", .Subtract = "-", .Multiply = "*", .Divide = "/", .Modulo = "%",
+	.Add = "+", .Subtract = "-", .Multiply = "*", .Divide = "/", .Modulo = "%", .Power = "^",
 	.Less = "<", .Less_Equal = "<=", .Greater = ">", .Greater_Equal = ">=",
 	.Is = "is", .Is_Not = "is not", .And = "and", .Or = "or",
 }

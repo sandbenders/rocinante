@@ -224,7 +224,7 @@ is_argument_start :: proc(p: ^Parser, t: Token) -> bool {
 @(private)
 is_binary_operator :: proc(kind: Token_Kind) -> bool {
 	#partial switch kind {
-	case .Plus, .Minus, .Star, .Slash, .Percent, .Less, .Less_Equal, .Greater, .Greater_Equal:
+	case .Plus, .Minus, .Star, .Slash, .Percent, .Caret, .Less, .Less_Equal, .Greater, .Greater_Equal:
 		return true
 	}
 	return false
@@ -238,6 +238,7 @@ binary_op_of :: proc(kind: Token_Kind) -> Binary_Op {
 	case .Star:          return .Multiply
 	case .Slash:         return .Divide
 	case .Percent:       return .Modulo
+	case .Caret:         return .Power
 	case .Less:          return .Less
 	case .Less_Equal:    return .Less_Equal
 	case .Greater:       return .Greater
@@ -901,13 +902,13 @@ parse_sum :: proc(p: ^Parser) -> ^Expr {
 
 @(private)
 parse_product :: proc(p: ^Parser) -> ^Expr {
-	lhs := parse_unary(p)
+	lhs := parse_power(p)
 	for {
 		t := cur(p)
 		#partial switch t.kind {
 		case .Star, .Slash, .Percent:
 			advance(p)
-			rhs := parse_unary(p)
+			rhs := parse_power(p)
 			lhs = new_expr(p, span_join(lhs.span, rhs.span), Binary{op = binary_op_of(t.kind), lhs = lhs, rhs = rhs})
 		case:
 			return lhs
@@ -915,12 +916,26 @@ parse_product :: proc(p: ^Parser) -> ^Expr {
 	}
 }
 
+// `a ^ b`: the power, which binds tighter than a product and groups to the right, so `2 ^ 3 ^ 2` is
+// `2 ^ (3 ^ 2)`; a sign in front is taken after it, as in mathematics, so `-2 ^ 2` is -4.
+@(private)
+parse_power :: proc(p: ^Parser) -> ^Expr {
+	lhs := parse_unary(p)
+	if cur(p).kind == .Caret {
+		t := cur(p)
+		advance(p)
+		rhs := parse_power(p)
+		return new_expr(p, span_join(lhs.span, rhs.span), Binary{op = binary_op_of(t.kind), lhs = lhs, rhs = rhs})
+	}
+	return lhs
+}
+
 @(private)
 parse_unary :: proc(p: ^Parser) -> ^Expr {
 	t := cur(p)
 	if t.kind == .Minus_Prefix {
 		advance(p)
-		operand := parse_unary(p)
+		operand := parse_power(p)
 		return new_expr(p, span_join(t.span, operand.span), Unary{op = .Negate, operand = operand})
 	}
 	if is_word(p, t, "not") {

@@ -24,6 +24,7 @@ Binary_Op :: enum u8 {
 	Multiply,
 	Divide,
 	Modulo,
+	Power,
 	Less,
 	Less_Equal,
 	Greater,

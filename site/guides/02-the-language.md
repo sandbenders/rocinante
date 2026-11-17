@@ -82,6 +82,8 @@ pos = pos + vel * 10
 circle at pos radius 10 fill tomato
 ```
 
+`^` raises a number to a power, tighter than `*` and from the right, so `2 ^ 3 ^ 2` is 512 and `3 * 2 ^ 2` is 12; it is how a perspective shrinks things with distance (`100 / (1 + z) ^ 2`). A power that is not a number, such as the square root of a negative, is 0.
+
 Comparisons are `<`, `<=`, `>`, `>=`, `is` and `is not` (a single `=` gives a name a value, it never compares). `and`, `or` and `not` join them.
 
 ## The one rule about round brackets
