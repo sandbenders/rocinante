@@ -15,6 +15,7 @@
 package site_tool
 
 import "core:fmt"
+import "core:mem/virtual"
 import "core:os"
 import "core:slice"
 import "core:strings"
@@ -330,6 +331,12 @@ draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := E
 		printed[i] = strings.clone(line, context.temp_allocator)
 	}
 	drawn.printed = printed
+	// The picture's bytes and what the encoder makes are in this memory, which goes when the picture is written:
+	// the temporary memory of the program is never emptied, and hundreds of pictures filled a computer.
+	scratch: virtual.Arena
+	_ = virtual.arena_init_growing(&scratch)
+	defer virtual.arena_destroy(&scratch)
+	context.temp_allocator = virtual.arena_allocator(&scratch)
 	windows := roci.open_windows()
 	if len(windows) <= window || (len(roci.recorded(windows[window])) == 0 && len(roci.scene_items(windows[window])) == 0 && !roci.ui_drawn(windows[window]) && !always) {
 		return drawn, true

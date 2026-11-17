@@ -10,6 +10,7 @@ package site_tool
 
 import "core:fmt"
 import "core:math"
+import "core:mem/virtual"
 import "../../roci"
 import "../../roci/gfx"
 import "../../roci/interp"
@@ -24,6 +25,12 @@ STEPS_PER_FRAME :: 2   // the sketch runs at 60 steps a second
 // for windows shown at half their size. Gives whether it moved.
 record_example :: proc(code, apng_path: string, width, height: int, halve: bool, dir := "", window := 0, seconds := ANIMATION_SECONDS, rate := ANIMATION_RATE) -> (moved: bool, ok: bool) {
 	per_frame := 60 / rate // the sketch runs at 60 steps a second
+	// What this example makes in the temporary memory (the movie's bytes are several megabytes) goes when it is
+	// done: the temporary memory of the program is never emptied, and hundreds of pictures filled a computer.
+	scratch: virtual.Arena
+	_ = virtual.arena_init_growing(&scratch)
+	defer virtual.arena_destroy(&scratch)
+	context.temp_allocator = virtual.arena_allocator(&scratch)
 	roci.start_headless(1)
 	defer roci.shutdown()
 	roci.set_default_window_size(width, height)
