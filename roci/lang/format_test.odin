@@ -395,3 +395,19 @@ test_a_power_is_written_with_spaces_and_keeps_its_brackets :: proc(t: ^testing.T
 	expect_formatted(t, "x = 2^3\n", "x = 2 ^ 3\n")
 	expect_formatted(t, "x = (a + 1)^2 * 3\n", "x = (a + 1) ^ 2 * 3\n")
 }
+
+@(test)
+test_a_table_of_records_stays_one_record_a_row_up_to_120_columns :: proc(t: ^testing.T) {
+	// the second and third rows are 101 and 103 columns, past the 100 of a plain line
+	table := "stages = [\n  { name: \"alpha stage\", speed: 12, power: 30, color: red, label: \"first of the six stages here\" }\n  { name: \"beta stage\", speed: 14, power: 35, color: green, label: \"second of the six stages here\" }\n  { name: \"gamma stage\", speed: 16, power: 40, color: blue, label: \"third of the six stages here ok\" }\n]\n"
+	expect_formatted(t, table, table)
+}
+
+@(test)
+test_a_row_past_120_columns_and_records_of_different_fields_break_at_the_old_limit :: proc(t: ^testing.T) {
+	long := "stages = [\n  { name: \"a\", note: \"a very long note that goes on that goes on that goes on that goes on that goes on that goes on that goes on that goes on that goes on that goes on\" }\n  { name: \"b\", note: \"short\" }\n]\n"
+	expect_formatted(t, long, "stages = [\n  {\n    name: \"a\"\n    note: \"a very long note that goes on that goes on that goes on that goes on that goes on that goes on that goes on that goes on that goes on that goes on\"\n  }\n  { name: \"b\", note: \"short\" }\n]\n")
+	// not a table: the fields differ, so the rows keep the old limit of 100
+	mixed := "things = [\n  { name: \"alpha stage\", speed: 12, power: 30, color: red, label: \"first of the six stages here\" }\n  { name: \"beta stage\", other: 14, power: 35, color: green, label: \"second of the six stages here and more\" }\n]\n"
+	expect_formatted(t, mixed, "things = [\n  { name: \"alpha stage\", speed: 12, power: 30, color: red, label: \"first of the six stages here\" }\n  {\n    name: \"beta stage\"\n    other: 14\n    power: 35\n    color: green\n    label: \"second of the six stages here and more\"\n  }\n]\n")
+}

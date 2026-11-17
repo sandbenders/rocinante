@@ -22,6 +22,10 @@ import "core:strings"
 // longest a block that stays on one line may make its line.
 FORMAT_WIDTH :: 100
 
+// The longest a record may make its line when it is one row of a table: a list whose items are all records of the
+// same fields, which is easier to read across than down.
+TABLE_WIDTH :: 120
+
 Format_Result :: struct {
 	text:        string, // the formatted sketch, when `ok`
 	ok:          bool,
@@ -35,6 +39,7 @@ Printer :: struct {
 	src:      Source,
 	comments: []Comment,
 	next:     int, // the next comment not yet written
+	table:    bool, // the records being written are the rows of a table, and may be wider
 }
 
 // Formats `text`. Gives `ok` false, with the messages, when the sketch has mistakes
@@ -455,8 +460,32 @@ expr_text :: proc(p: ^Printer, e: ^Expr, level: int, column: int) -> string {
 }
 
 @(private)
-too_wide :: proc(column: int, inline: string) -> bool {
-	return strings.contains_rune(inline, '\n') || column + len(inline) > FORMAT_WIDTH
+too_wide :: proc(p: ^Printer, column: int, inline: string) -> bool {
+	return strings.contains_rune(inline, '\n') || column + len(inline) > (TABLE_WIDTH if p.table else FORMAT_WIDTH)
+}
+
+// Whether the items of a list are records of the same fields, in the same order: a table, one record a row.
+@(private)
+is_table :: proc(items: []^Expr) -> bool {
+	if len(items) < 2 {
+		return false
+	}
+	first, is_record := items[0].kind.(Record_Lit)
+	if !is_record || len(first.fields) == 0 {
+		return false
+	}
+	for item in items[1:] {
+		record, same := item.kind.(Record_Lit)
+		if !same || len(record.fields) != len(first.fields) {
+			return false
+		}
+		for f, i in record.fields {
+			if f.name != first.fields[i].name {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // `{ a: 1, b: 2 }` on one line, or one field to a line without commas when it was
@@ -471,7 +500,7 @@ record_text :: proc(p: ^Printer, e: ^Expr, k: Record_Lit, level: int, column: in
 		append(&parts, strings.concatenate({f.name, ": ", expr_text(p, f.value, level + 1, (level + 1) * 2 + len(f.name) + 2)}, context.temp_allocator))
 	}
 	inline := strings.concatenate({"{ ", strings.join(parts[:], ", ", context.temp_allocator), " }"}, context.temp_allocator)
-	if !spans_lines(p, e.span) && !too_wide(column, inline) {
+	if !spans_lines(p, e.span) && !too_wide(p, column, inline) {
 		return inline
 	}
 	b := strings.builder_make(context.temp_allocator)
@@ -493,11 +522,15 @@ list_text :: proc(p: ^Printer, e: ^Expr, k: List_Lit, level: int, column: int) -
 		return "[]"
 	}
 	parts := make([dynamic]string, context.temp_allocator)
+	// the rows of a table keep to one line each up to a wider limit, so a table of six stages stays six lines
+	saved := p.table
+	p.table = is_table(k.items)
 	for item in k.items {
 		append(&parts, expr_text(p, item, level + 1, (level + 1) * 2))
 	}
+	p.table = saved
 	inline := strings.concatenate({"[ ", strings.join(parts[:], " ", context.temp_allocator), " ]"}, context.temp_allocator)
-	if !spans_lines(p, e.span) && !too_wide(column, inline) {
+	if !spans_lines(p, e.span) && !too_wide(p, column, inline) {
 		return inline
 	}
 	b := strings.builder_make(context.temp_allocator)
