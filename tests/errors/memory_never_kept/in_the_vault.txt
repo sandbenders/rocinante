@@ -1,0 +1,8 @@
+── Nothing keeps a value under `level` ──────────────── sketch.roci:2:15
+
+2 │ best = recall "level" in vault
+  │               ^^^^^^^
+
+`recall` gives the kind of value that `remember` keeps under the same name, so the sketch needs a `remember` line for it, or a `start` that says what kind it is.
+
+Say what it is with a start:  best = recall "level" start 0 in vault

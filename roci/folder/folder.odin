@@ -20,7 +20,7 @@ STARTING_SKETCH :: "circle at 100 100 radius 50\n"
 // What git leaves out: what the sketch writes (its output, and what it remembers: a high score is not
 // source, and a file committed on purpose is a starting state), roci's own cache, and the files a Mac
 // scatters.
-GITIGNORE :: "output/\nmemory.toml\n.roci/\n.DS_Store\n"
+GITIGNORE :: "output/\nmemory.toml\nvault.key\nvault.bin\nvault.bin.bak\nvault.bin.bad\n.roci/\n.DS_Store\n"
 
 // The large binary files that go to Git LFS when it is chosen: audio, video, 3D
 // models, machine-learning models and big pictures.

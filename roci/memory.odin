@@ -63,19 +63,23 @@ memory_put :: proc(key: string, value: toml.Value) {
 
 // Forgets one key.
 memory_forget :: proc(key: string) {
-	table := toml.find_table(&the.memory_doc, "")
-	if table == nil {
-		return
+	if table := toml.find_table(&the.memory_doc, ""); table != nil && drop_entry(table, key) {
+		memory_touch()
 	}
+}
+
+// Takes a key out of a table and frees it, and says whether it was there.
+@(private)
+drop_entry :: proc(table: ^toml.Table, key: string) -> bool {
 	for entry, i in table.entries {
 		if entry.key == key {
 			delete(entry.key)
 			toml.free_value(entry.value)
 			ordered_remove(&table.entries, i)
-			memory_touch()
-			return
+			return true
 		}
 	}
+	return false
 }
 
 // Forgets everything.
@@ -150,5 +154,53 @@ memory_flush :: proc() {
 background_flush :: proc "c" () {
 	context = abi_context()
 	memory_flush()
+	vault_flush()
 	ui_flush()
+}
+
+// Where a value is kept: `memory.toml`, which anyone may read and edit, or the vault, which is sealed.
+Place :: enum {
+	Memory,
+	Vault,
+}
+
+store_get :: proc(place: Place, key: string) -> (toml.Value, bool) {
+	if place == .Vault {
+		return vault_get(key)
+	}
+	return memory_get(key)
+}
+
+store_put :: proc(place: Place, key: string, value: toml.Value) {
+	if place == .Vault {
+		vault_put(key, value)
+	} else {
+		memory_put(key, value)
+	}
+}
+
+store_forget :: proc(place: Place, key: string) {
+	if place == .Vault {
+		vault_forget(key)
+	} else {
+		memory_forget(key)
+	}
+}
+
+store_forget_all :: proc(place: Place) {
+	if place == .Vault {
+		vault_forget_all()
+	} else {
+		memory_forget_all()
+	}
+}
+
+// Keeps what `remember` keeps in a sketch folder: `memory.toml` and the sealed `vault.bin`, whose key
+// is `vault.key` (made when the run may write and there is none). A run that may not write reads
+// what is there and makes nothing.
+keep_beside :: proc(folder: string, writes := true) {
+	memory_persist(fmt.tprintf("%s/memory.toml", folder), writes)
+	if key, ok := vault_key_for(folder, writes); ok {
+		vault_persist(fmt.tprintf("%s/vault.bin", folder), key, writes)
+	}
 }

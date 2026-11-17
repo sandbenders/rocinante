@@ -141,7 +141,7 @@ run_files :: proc(
 	roci.start_headless(seed)
 	defer roci.shutdown()
 	if len(files) > 0 && is_sketch_file(files[0].name) {
-		roci.memory_persist(fmt.tprintf("%s/memory.toml", folder.root_of(files[0].name)), false)
+		roci.keep_beside(folder.root_of(files[0].name), false)
 	}
 	p, ok := interp.load_files(files)
 	defer interp.destroy(p)
@@ -296,7 +296,7 @@ run_windows :: proc(name: string, files: []lang.File_Text, json: bool, out, err:
 	// The values of the widgets are remembered in the ui.toml of a sketch folder, and nowhere for a lone file.
 	if is_sketch_file(name) {
 		roci.ui_persist(fmt.tprintf("%s/ui.toml", folder.root_of(name)))
-		roci.memory_persist(fmt.tprintf("%s/memory.toml", folder.root_of(name)))
+		roci.keep_beside(folder.root_of(name))
 	}
 	interp.start(p)
 	defer interp.shutdown()

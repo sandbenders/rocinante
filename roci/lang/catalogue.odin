@@ -576,7 +576,7 @@ CATALOGUE := [Message_Id]Entry{
 		"A file holds numbers, text, true or false, vectors, colors, and lists and records of those. A window, a picture, a sound or a gradient is made while the sketch runs and is not written down.",
 		"Keep something it is made from instead:", "{d}"},
 	.Memory_Mismatch = {.Error, "The file keeps a different kind of value under `{a}`",
-		"`memory.toml` holds {b} under this name, and the sketch uses {c}, so the file was changed by hand or by an older version of the sketch. The `start` value is used and the file is left alone until the sketch remembers something new.",
+		"What is kept under this name is {b}, and the sketch uses {c}, so the file was changed by hand or by an older version of the sketch. The `start` value is used and the file is left alone until the sketch remembers something new.",
 		"Check the line in the file, or forget it:", "{d}"},
 	.Input_Unknown = {.Error, "I do not know an input called `{a}`",
 		"An input is written as text: a key (`key space`), a mouse button (`mouse left`), a gamepad button, trigger, stick or the d-pad (`pad bottom`, `pad 2 lefttrigger`, `pad leftstick`, `pad dpad`), four keys that make a vector (`keys w a s d`: up, left, down, right) or a joystick's button or axis (`joystick 1 button 3`, `joystick 1 axis 2`). {b} The action does not get this input, and the sketch carries on.",

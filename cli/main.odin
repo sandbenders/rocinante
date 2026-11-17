@@ -24,6 +24,7 @@ COMMANDS :: `roci, a small language for sketches.
   roci test [folder]   run the checks of a sketch and compare its picture with the stored one
   roci fmt [file]      write a sketch in the house style
   roci man [word]      how a verb or statement is written
+  roci vault show     look into what a sketch keeps in its vault, or change it
 
 More commands arrive as the language does.`
 
@@ -63,6 +64,8 @@ main :: proc() {
 		code = run_test(os.args[2:], &out, &err)
 	case "man":
 		code = run_man(os.args[2:], &out, &err)
+	case "vault":
+		code = run_vault(os.args[2:], &out, &err)
 	case "help", "--help", "-h":
 		fmt.println(COMMANDS)
 		code = 0

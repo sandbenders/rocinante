@@ -49,19 +49,38 @@ memory_key :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, ir: ^IR) -> (key
 	return "", false
 }
 
+// The places names are kept in are separate: `\"best\"` in `memory.toml` and in the vault are two names.
+@(private)
+place_prefix :: proc(options: []IR_Option) -> string {
+	for o in options {
+		if o.word == "in" && len(o.args) > 0 {
+			if word, is_word := o.args[0].kind.(IR_Word); is_word && word.word == "vault" {
+				return "vault:"
+			}
+		}
+	}
+	return ""
+}
+
+@(private)
+in_vault_words :: proc(prefix: string) -> string {
+	return " in vault" if prefix != "" else ""
+}
+
 // Notes the kind kept under a name. Two kinds under one name are said where the second is written.
 @(private)
-record_memory :: proc(c: ^Checker, key: string, type: Type_Id, span: Span, e: ^Expr) {
+record_memory :: proc(c: ^Checker, prefix, key: string, type: Type_Id, span: Span, e: ^Expr) {
 	if type == T_ERROR {
 		return
 	}
-	existing, found := c.mem_types[key]
+	slot := fmt.tprintf("%s%s", prefix, key)
+	existing, found := c.mem_types[slot]
 	if !found {
-		c.mem_types[key] = type
+		c.mem_types[strings.clone(slot, c.alloc)] = type
 		return
 	}
 	if !unify(c.types, existing, type) {
-		note(c, .Memory_Kinds_Differ, span, key, describe(c.types, existing), describe(c.types, type), fix(c, e.span, fmt.tprintf("remember \"%s 2\" %s", key, sample_of(c, type))))
+		note(c, .Memory_Kinds_Differ, span, key, describe(c.types, existing), describe(c.types, type), fix(c, e.span, fmt.tprintf("remember \"%s 2\" %s%s", key, sample_of(c, type), in_vault_words(prefix))))
 	}
 }
 
@@ -74,15 +93,16 @@ memory_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, a
 		return T_NONE // forget memory
 	}
 	key, ok := memory_key(c, verb, e, args[0])
+	prefix := place_prefix(options)
 	switch verb.name {
 	case "remember":
 		if ok && len(args) == 2 {
 			if !keepable(c, args[1].type) {
 				text := describe(c.types, args[1].type)
-				note(c, .Memory_Kind_Unsupported, args[1].span, fmt.tprintf("%s%s", strings.to_upper(text[:1], context.temp_allocator), text[1:]), "", "", fix(c, e.span, fmt.tprintf("remember \"%s\" 0", key)))
+				note(c, .Memory_Kind_Unsupported, args[1].span, fmt.tprintf("%s%s", strings.to_upper(text[:1], context.temp_allocator), text[1:]), "", "", fix(c, e.span, fmt.tprintf("remember \"%s\" 0%s", key, in_vault_words(prefix))))
 				return T_NONE
 			}
-			record_memory(c, key, args[1].type, args[1].span, e)
+			record_memory(c, prefix, key, args[1].type, args[1].span, e)
 		}
 		return T_NONE
 	case "recall":
@@ -91,16 +111,21 @@ memory_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, a
 		}
 		for o in options {
 			if o.word == "start" && len(o.args) > 0 {
-				record_memory(c, key, o.args[0].type, o.args[0].span, e)
+				record_memory(c, prefix, key, o.args[0].type, o.args[0].span, e)
 			}
 		}
-		if type, known := c.mem_types[key]; known {
+		if type, known := c.mem_types[fmt.tprintf("%s%s", prefix, key)]; known {
 			return type
 		}
 		hint := ""
 		best := min(len(key) / 3, 3) + 1
 		near := ""
-		for name in c.mem_types {
+		for slot in c.mem_types {
+			in_vault := strings.has_prefix(slot, "vault:")
+			if in_vault != (prefix != "") {
+				continue
+			}
+			name := slot[len(prefix):]
 			if d := registry.edit_distance(key, name); d < best {
 				best, near = d, name
 			}
@@ -108,7 +133,7 @@ memory_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, a
 		if near != "" {
 			hint = fmt.tprintf("Did you mean \"%s\"?", near)
 		}
-		note(c, .Memory_Never_Kept, args[0].span, key, hint, "", fix(c, e.span, fmt.tprintf("recall \"%s\" start 0", key)))
+		note(c, .Memory_Never_Kept, args[0].span, key, hint, "", fix(c, e.span, fmt.tprintf("recall \"%s\" start 0%s", key, in_vault_words(prefix))))
 		return T_ERROR
 	}
 	return T_NONE // forget "key"

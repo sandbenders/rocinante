@@ -132,6 +132,14 @@ Sketch :: struct {
 	memory_dirty:   bool,          // something changed that the file does not have yet
 	memory_changed: time.Tick,     // when it last did
 	memory_warned:  bool,          // the file being large has been said
+	vault_file:     string,        // where the sealed vault is kept, "" for nowhere (vault.odin)
+	vault_key:      [32]byte,      // what it is sealed with
+	vault_has_key:  bool,
+	vault_doc:      toml.Document, // what it holds, in the table named ""
+	vault_writes:   bool,          // this run may write the file
+	vault_dirty:    bool,
+	vault_changed:  time.Tick,
+	vault_random:   proc(dst: []byte), // where a nonce comes from; nil is the system's random numbers (tests set their own)
 	shot_ready:   bool,
 	cursor_shown: Cursor, // what the one cursor of the program is now
 	canvases:     [dynamic]Image, // every canvas made, for drawing their rounds before the windows
@@ -196,6 +204,8 @@ shutdown :: proc() {
 	ui_forget_file()
 	memory_flush()
 	memory_forget_file()
+	vault_flush()
+	vault_forget_file()
 	finish_recordings()
 	print_record_results()
 	midi_shutdown() // first: its report reads the speakers

@@ -59,6 +59,31 @@ Say what it is with a start:  best = recall "best scor" start 0
 
 A file edited by hand can hold another kind of value than the sketch uses. The sketch does not stop: `recall` gives the `start` value and the screen shows a message about the line.
 
+## A vault for what players must not edit
+
+`memory.toml` is plain text, so anyone can open it and change a level or a score. For a game, add `in vault` to any of the three verbs and the value is kept in `vault.bin` instead, a file that shows no values and is noticed if a single byte of it changes:
+
+```roci
+stage = recall "level" start 1 in vault
+
+on key "space" [
+  stage = stage + 1
+  remember "level" stage in vault
+]
+
+draw [
+  background 20
+  fill white
+  text "level {stage}" at 20 40
+]
+```
+
+The names in the vault are separate from the names in `memory.toml`: `"level"` in one has nothing to do with `"level"` in the other, and `forget vault` empties the vault as `forget memory` empties the file. A vault file that was changed, cut short or made by another game is moved aside to `vault.bin.bad` and the game starts from the beginning with an empty vault; it says so once and carries on.
+
+The file is sealed with the key in `vault.key`, which `roci run` makes the first time a sketch uses the vault and `.gitignore` keeps out of git. Keep that file safe: without it the vault cannot be opened. To look inside, or to try a late level without playing to it, use `roci vault show` and `roci vault set level 12`.
+
+Be honest with yourself about what this does. It stops a player from editing a number in a text editor, which is most cheating. It cannot stop someone who takes the game apart, because the key has to travel inside the game, and it cannot stop a player from putting an old copy of the file back. A score that must be trusted belongs on a server.
+
 ## Forgetting
 
 `forget "visits"` takes one value away, and `forget memory` takes every one away. The next `recall` gives its `start` again.

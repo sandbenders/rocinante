@@ -57,7 +57,8 @@ UI_START_PAIR := []Option{{"start", {.Number, .Number}, false}, UI_AT, UI_WIDTH}
 UI_IMAGE_BUTTON_OPTIONS := []Option{{"size", {.Number, .Number}, false}, UI_AT}
 UI_TEXTBOX_OPTIONS := []Option{{"start", {.Text}, false}, {"lines", {.Number}, false}, UI_AT, UI_WIDTH}
 UI_ITEMS := []Param{{"text", .Text}, {"items", .List}}
-RECALL_OPTIONS := []Option{{"start", {.Any}, false}}
+KEEP_PLACE := []Option{{"in", {.Name}, false}}
+RECALL_OPTIONS := []Option{{"start", {.Any}, false}, {"in", {.Name}, false}}
 
 LANGUAGE_VERBS := []Verb{
 	{"add", {{LIST_ITEM, {{"to", {.List}, true}}, .None}}, "Puts an item at the end of a list: `add p to particles`."},
@@ -132,12 +133,12 @@ LANGUAGE_VERBS := []Verb{
 	{"ui show", {{{}, nil, .None}}, "Shows the window's widgets again after `ui hide`, with keyboard focus on the first one, so someone using only the keyboard or a screen reader reaches them in one press."},
 	{"ui key", {{{{"name", .Text}}, nil, .None}}, "Changes the key that hides and shows the window's widgets, which is the backtick to start with: `ui key \"f1\"`. The key is read by where it is on the keyboard, with the names of `on key`, and is left alone while a text box is waiting for typing. On a touch screen, three fingers tapping together do the same."},
 	{"ui theme", {{{{"look", .Name}}, nil, .None}}, "Chooses the colors of the window's widgets: `ui theme dark` or `ui theme light` keeps them so whatever the computer is set to, and `ui theme system` follows its light or dark setting again, which is how they start."},
-	{"remember", {{{{"key", .Text}, {"value", .Any}}, nil, .None}}, "Keeps a value under a name, in `memory.toml` beside the sketch, so the next run can read it back with `recall`: `remember \"best score\" score`. The name is written as text in the sketch, and a name always keeps one kind of value: numbers, text, true or false, vectors, colors, lists and records of those. It is cheap to call every frame: the file is written after a pause in the changes and when the sketch ends."},
-	{"recall", {{{{"key", .Text}}, RECALL_OPTIONS, .Any}}, "The value kept under a name, or the `start` value (0, empty text, or an empty list when none is given) when nothing is kept yet: `best = recall \"best score\" start 0`. The name must be kept somewhere in the sketch with `remember`, or have a `start` that tells what kind it is."},
+	{"remember", {{{{"key", .Text}, {"value", .Any}}, KEEP_PLACE, .None}}, "Keeps a value under a name, in `memory.toml` beside the sketch, so the next run can read it back with `recall`: `remember \"best score\" score`. Add `in vault` to keep it where a player cannot edit it with a text editor: `remember \"level\" level in vault`. The name is written as text in the sketch, and a name always keeps one kind of value: numbers, text, true or false, vectors, colors, lists and records of those. It is cheap to call every frame: the file is written after a pause in the changes and when the sketch ends."},
+	{"recall", {{{{"key", .Text}}, RECALL_OPTIONS, .Any}}, "The value kept under a name (add `in vault` for the sealed vault), or the `start` value (0, empty text, or an empty list when none is given) when nothing is kept yet: `best = recall \"best score\" start 0`. The name must be kept somewhere in the sketch with `remember`, or have a `start` that tells what kind it is."},
 	{"forget", {
-		{{{"key", .Text}}, nil, .None},
+		{{{"key", .Text}}, KEEP_PLACE, .None},
 		{{{"place", .Name}}, nil, .None},
-	}, "Takes a kept value away: `forget \"visits\"` one of them, `forget memory` every one. The next `recall` gives its `start` again."},
+	}, "Takes a kept value away: `forget \"visits\"` one of them, `forget memory` every one in `memory.toml`, `forget vault` every one in the vault. A value kept `in vault` is forgotten with `forget \"visits\" in vault`. The next `recall` gives its `start` again."},
 	{"forget ui", {{{}, nil, .None}}, "Puts every widget of the window back to its start: sliders, check boxes, number and text boxes and lists go back to the value they start with (`start`, or the low end, off, empty or the first item), as if the sketch had just begun. A widget keeps its value while the sketch runs and reloads, so this is how a button resets them: `if button \"reset\" [ forget ui ]`."},
 	{"panel", {{{{"text", .Text}, {"body", .Block}}, UI_PLACE, .None}}, "A titled group in a `ui` block that folds up when its title is clicked, and starts open: `panel \"shape\" [ ... ]`. The widgets inside are made only while it is open, and a widget inside keeps its own value apart from one with the same text in another panel."},
 	{"row", {{{{"body", .Block}}, UI_PLACE, .None}}, "Puts the widgets of its block side by side in a `ui` block: `row [ if button \"play\" [ ... ]  if button \"stop\" [ ... ] ]`."},

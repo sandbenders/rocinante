@@ -19,14 +19,28 @@ import "core:strings"
 @(private)
 MEMORY_DEPTH :: 8
 
+// Where a call keeps its value: the vault when it says `in vault`, `memory.toml` otherwise.
+@(private)
+place_of :: proc(options: []lang.IR_Option) -> roci.Place {
+	for o in options {
+		if o.word == "in" && len(o.args) > 0 {
+			if word, is_word := o.args[0].kind.(lang.IR_Word); is_word && word.word == "vault" {
+				return .Vault
+			}
+		}
+	}
+	return .Memory
+}
+
 @(private)
 memory_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Code) -> Value {
+	place := place_of(call.options)
 	#partial switch code {
 	case .Remember:
 		key := as_text(eval(it, call.args[0]))
 		stored, ok := to_stored(it, eval(it, call.args[1]), 0)
 		if ok {
-			roci.memory_put(key, stored)
+			roci.store_put(place, key, stored)
 		}
 	case .Recall:
 		key := as_text(eval(it, call.args[0]))
@@ -34,21 +48,25 @@ memory_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Cod
 		if !has_start {
 			fallback = zero_value(it, e.type, 0)
 		}
-		stored, found := roci.memory_get(key)
+		stored, found := roci.store_get(place, key)
 		if !found {
 			return fallback
 		}
 		value, ok := from_stored(it, stored, e.type, 0)
 		if !ok {
-			fail(it, .Memory_Mismatch, e.span, key, stored_kind(stored), lang.describe(it.types, e.type), fmt.tprintf("forget \"%s\"", key))
+			fail(it, .Memory_Mismatch, e.span, key, stored_kind(stored), lang.describe(it.types, e.type), fmt.tprintf("forget \"%s\"%s", key, " in vault" if place == .Vault else ""))
 			return fallback
 		}
 		return value
 	case .Forget:
 		if _, is_word := call.args[0].kind.(lang.IR_Word); is_word {
-			roci.memory_forget_all()
+			if word, _ := call.args[0].kind.(lang.IR_Word); word.word == "vault" {
+				roci.vault_forget_all()
+			} else {
+				roci.memory_forget_all()
+			}
 		} else {
-			roci.memory_forget(as_text(eval(it, call.args[0])))
+			roci.store_forget(place, as_text(eval(it, call.args[0])))
 		}
 	}
 	return nil

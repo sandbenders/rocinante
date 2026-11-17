@@ -1363,6 +1363,39 @@ void roci_forget(const char *key);
 /* Takes every kept value away. */
 void roci_forget_memory(void);
 
+/* Opens the vault: a file at `path` whose values are sealed with a key of 32 bytes. Values kept with the roci_vault_ functions are written there, in a form a text editor shows nothing of and that notices any change to it. A file that does not open (changed, cut short or sealed with another key) is moved aside to `path`.bad and the vault starts empty. Gives 1 when it was opened. The key must be the same on every run and must travel inside the program: it keeps honest players honest, and nothing more. */
+int roci_vault_set_key(const char *path, const unsigned char *key);
+
+/* Keeps a number under a name in the vault. */
+void roci_vault_remember_number(const char *key, double value);
+
+/* Keeps text under a name in the vault. */
+void roci_vault_remember_text(const char *key, const char *value);
+
+/* Keeps true (1) or false (0) under a name in the vault. */
+void roci_vault_remember_bool(const char *key, int value);
+
+/* Keeps a list of numbers under a name in the vault. */
+void roci_vault_remember_numbers(const char *key, const double *values, int count);
+
+/* The number the vault keeps under a name, or `start`. */
+double roci_vault_recall_number(const char *key, double start);
+
+/* The text the vault keeps under a name, or `start`. The text stays valid until the next function that gives text back. */
+const char *roci_vault_recall_text(const char *key, const char *start);
+
+/* The true (1) or false (0) the vault keeps under a name, or `start`. */
+int roci_vault_recall_bool(const char *key, int start);
+
+/* Writes the list of numbers the vault keeps under a name into `out`, at most `capacity`, and gives how many are kept. */
+int roci_vault_recall_numbers(const char *key, double *out, int capacity);
+
+/* Takes a value out of the vault. */
+void roci_vault_forget(const char *key);
+
+/* Takes everything out of the vault. */
+void roci_vault_forget_all(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,39 @@
+// Vault: progress in a game that a player should not be able to edit. `remember "level" level in
+// vault` keeps a value like `memory.toml` does, but in a sealed file, vault.bin, that shows no value in
+// a text editor and is noticed if even one byte of it changes: a file changed by hand is moved aside to
+// vault.bin.bad and the game starts from the beginning. Press space to clear a level, and close the
+// sketch and run it again: the level and the coins come back. `roci vault show` prints what the file
+// holds, and `roci vault set level 12` changes it, which is how its maker tries a late level. It keeps
+// honest players honest: the key is vault.key, and it has to travel inside the game.
+window size 640 400 title "vault"
+
+stage = recall "level" start 1 in vault
+coins = recall "coins" start 0 in vault
+
+on key "space" [
+  stage = stage + 1
+  coins = coins + stage * 5
+  remember "level" stage in vault
+  remember "coins" coins in vault
+]
+
+on key "x" [
+  forget vault
+  stage = 1
+  coins = 0
+]
+
+draw [
+  background 20
+  no stroke
+  fill gray
+  rect at 40 250 size 560 18
+  fill gold
+  rect at 40 250 size (clamp (stage * 28) 0 560) 18
+  fill white
+  text "level {stage}" at 40 40 size 28
+  text "coins {coins}" at 40 80 size 28
+  fill gray
+  text "space: clear a level    x: start again" at 40 340 size 14
+  text "run it again: the level and the coins are still here, in a file nobody can edit" at 40 364 size 14
+]

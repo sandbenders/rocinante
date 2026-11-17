@@ -59,6 +59,7 @@ EXAMPLES := [?]Example{
 	{"touch", 5, {1}}, // the two rings it starts with; fingers come from a touch screen or the mouse
 	{"actions", 2, {1}}, // the ship waiting at the bottom with the three lines of how to steer, fire and boost it (the keys and pads come in the interpreter's test)
 	{"memory", 2, {1}}, // the bar, the circle and the three numbers a first run starts with (what it keeps comes in the interpreter's test)
+	{"vault", 2, {1}}, // the level and the coins a first run starts with (what the vault keeps comes in the interpreter's test)
 	{"gamepad", 2, {1}}, // the invitation to plug a gamepad in (a headless run has none; the panels come in the interpreter's test)
 	{"particles", 60, {1}}, // the fountain a second after it starts: 10,000 records
 	{"logo", 3, {1}}, // rocinante's logo, drawn from its SVG's own numbers
