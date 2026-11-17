@@ -1,0 +1,4 @@
+scene "play" [
+  on enter [ return ]
+  draw [ background 20 ]
+]

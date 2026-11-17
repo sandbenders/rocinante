@@ -10,7 +10,6 @@ learn restart [
   ship.pos = { 223, SHIP_Y }
   ship.alive = true
   ship.shield = 90
-  mode = "play"
   hatchall
 ]
 
@@ -21,12 +20,11 @@ learn advance [
   command
   shots_fly
   ship_hits
-  if mode is "play" and (count swarm) is 0 and ship.alive [
+  if scene.name is "play" and (count swarm) is 0 and ship.alive [
     stage = stage + 1
     hatchall
   ]
   fade
-  if banner > 0 [ banner = banner - 1 ]
 ]
 
 learn drawplay [

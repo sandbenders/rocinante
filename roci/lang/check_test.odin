@@ -1258,8 +1258,8 @@ test_a_tween_needs_a_place_that_lasts_and_a_value_of_its_kind :: proc(t: ^testin
 	expect_errors(t, "p = { 1, 2 }\ntween p.x to 3 over 1", {})
 	expect_errors(t, "c = red\ntween c to blue over 1", {})
 	expect_errors(t, "balls = [ { pos: { 1, 2 } } ]\nfor each b in balls [ tween b.pos to { 0, 0 } over 1 ]", {})
-	expect_errors(t, "learn go [\n  n = 5\n  tween n to 1 over 1\n]", {.Tween_Place})
-	expect_errors(t, "learn go v [\n  tween v.x to 1 over 1\n]\ngo { 1, 2 }", {.Tween_Place})
+	expect_errors(t, "learn stroll [\n  n = 5\n  tween n to 1 over 1\n]", {.Tween_Place})
+	expect_errors(t, "learn stroll v [\n  tween v.x to 1 over 1\n]\nstroll { 1, 2 }", {.Tween_Place})
 	expect_errors(t, "SPEED = 1\ntween SPEED to 2 over 1", {.Constant_Changed})
 	expect_errors(t, "name = \"a\"\ntween name to \"b\" over 1", {.Tween_Place})
 	expect_errors(t, "tween (1 + 2) to 3 over 1", {.Tween_Place})
@@ -1679,7 +1679,7 @@ test_a_sounds_words_fields_and_set :: proc(t: ^testing.T) {
 @(test)
 test_the_words_of_a_sound_stay_free_as_names :: proc(t: ^testing.T) {
 	expect_errors(t, "speed = 3\nvolume = 2\npan = speed + volume\nrain = load \"rain.wav\"\nplay rain speed speed volume volume pan pan", {})
-	expect_errors(t, "learn go speed [ print speed ]\ngo 2", {})
+	expect_errors(t, "learn stroll speed [ print speed ]\nstroll 2", {})
 	expect_errors(t, "loop = 3", {.Reserved_Name})
 }
 

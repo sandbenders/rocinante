@@ -467,3 +467,31 @@ test_a_list_can_be_rewound_to_a_mark :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(list.commands), 2)
 }
 
+
+@(test)
+test_a_held_frame_goes_on_from_what_was_drawn_before_the_hold :: proc(t: ^testing.T) {
+	list := fresh()
+	defer destroy(&list)
+	background(&list, maths.grey(10))
+	circle(&list, 1, 2, 3)
+	marks := hold(&list)
+	testing.expect_value(t, marks.commands, 1)
+	// what a scene on top draws, every frame
+	for _ in 0 ..< 3 {
+		begin_frame_from(&list, marks)
+		set_fill(&list, maths.rgb(1, 2, 3))
+		move(&list, 5, 5)
+		circle(&list, 4, 5, 6)
+		circle(&list, 7, 8, 9)
+		testing.expect_value(t, len(list.commands), 3)
+	}
+	begin_frame_from(&list, marks)
+	testing.expect_value(t, len(list.commands), 1)
+	testing.expect_value(t, list.background, maths.grey(10))
+	testing.expect_value(t, list.style, DEFAULT_STYLE)
+	testing.expect_value(t, list.transform, IDENTITY)
+	// a hold taken of an empty frame, or longer than what is there, never reads past it
+	begin_frame(&list)
+	begin_frame_from(&list, Hold_Marks{commands = 5, text = 9})
+	testing.expect_value(t, len(list.commands), 0)
+}

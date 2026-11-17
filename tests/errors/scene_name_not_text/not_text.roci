@@ -1,0 +1,3 @@
+where = "play"
+scene "play" [ draw [ background 20 ] ]
+on key "space" [ go where ]

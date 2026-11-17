@@ -19,10 +19,10 @@ learn fly [
     // The arrows, A and D, the stick and the d-pad all steer: only left and right count here, and a stick
     // that is pushed half way moves the ship half as fast.
     heading = direction "move"
-    go = heading.x * SPEED
-    ship.pos.x = clamp (ship.pos.x + go) 8 (width - 41)
+    step_x = heading.x * SPEED
+    ship.pos.x = clamp (ship.pos.x + step_x) 8 (width - 41)
     // Leans up to 15 degrees into a turn, and eases back level when the keys are let go.
-    ship.tilt = ship.tilt + (go * 3 - ship.tilt) * 0.2
+    ship.tilt = ship.tilt + (step_x * 3 - ship.tilt) * 0.2
     if ship.shield > 0 [ ship.shield = ship.shield - 1 ]
   ] else [
     ship.wait = ship.wait - 1
@@ -33,9 +33,7 @@ learn fly [
         ship.pos.x = 223
         ship.tilt = 0
       ] else [
-        mode = "over"
-        if score > best [ best = score ]
-        jingle LOSE
+        go "over"
       ]
     ]
   ]

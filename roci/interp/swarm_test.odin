@@ -21,12 +21,12 @@ test_the_swarm_example_plays_from_the_title_to_the_end :: proc(t: ^testing.T) {
 	}
 	start(p)
 	roci.step()
-	testing.expect_value(t, as_text(global_named(p, "mode")), "title")
+	testing.expect_value(t, current_scene_name(p), "title")
 	w := first_window()
 	// space on the title screen starts the game
 	roci.step({key_event(w, sdl.Scancode.SPACE)})
 	roci.step({key_event(w, sdl.Scancode.SPACE, false)})
-	testing.expect_value(t, as_text(global_named(p, "mode")), "play")
+	testing.expect_value(t, current_scene_name(p), "play")
 	testing.expect_value(t, len(as_list(global_named(p, "swarm")).items), 40)
 	// the swarm flies in and settles
 	for _ in 0 ..< 400 {
@@ -49,20 +49,20 @@ test_the_swarm_example_plays_from_the_title_to_the_end :: proc(t: ^testing.T) {
 	testing.expect(t, as_record(ship).fields[0].(Vec).v[0] > 400, "the ship went right")
 	// P pauses: the swarm stays where it is
 	roci.step({key_event(w, sdl.Scancode.P)})
-	testing.expect(t, as_bool(global_named(p, "paused")))
+	testing.expect_value(t, current_scene_name(p), "paused")
 	roci.step({key_event(w, sdl.Scancode.P, false)})
-	testing.expect(t, as_bool(global_named(p, "paused")), "letting the key go does not unpause")
+	testing.expect_value(t, current_scene_name(p), "paused") // letting the key go does not unpause
 	roci.step({key_event(w, sdl.Scancode.P)})
-	testing.expect(t, !as_bool(global_named(p, "paused")))
+	testing.expect_value(t, current_scene_name(p), "play")
 	roci.step({key_event(w, sdl.Scancode.P, false)})
 	// left alone, the swarm dives and fires, and the ship is wrecked until the game is over
 	for _ in 0 ..< 20000 {
 		roci.step()
-		if as_text(global_named(p, "mode")) == "over" {
+		if current_scene_name(p) == "over" {
 			break
 		}
 	}
-	testing.expect_value(t, as_text(global_named(p, "mode")), "over")
+	testing.expect_value(t, current_scene_name(p), "over")
 	testing.expect_value(t, as_number(global_named(p, "lives")), 0)
 	testing.expect_value(t, len(p.errors), 0)
 }
@@ -82,13 +82,13 @@ test_the_swarm_example_plays_with_a_gamepad :: proc(t: ^testing.T) {
 	}
 	start(p)
 	roci.step()
-	testing.expect_value(t, as_text(global_named(p, "mode")), "title")
+	testing.expect_value(t, current_scene_name(p), "title")
 	// the bottom button starts the game
 	roci.feed_pads({{id = 1, name = "Pad", bottom = true}})
 	roci.step()
 	roci.feed_pads({{id = 1, name = "Pad"}})
 	roci.step()
-	testing.expect_value(t, as_text(global_named(p, "mode")), "play")
+	testing.expect_value(t, current_scene_name(p), "play")
 	for _ in 0 ..< 400 {
 		roci.step()
 	}
@@ -119,11 +119,11 @@ test_the_swarm_example_plays_with_a_gamepad :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(roci.rumble_requests()), 1)
 	roci.feed_pads({{id = 1, name = "Pad", start = true}})
 	roci.step()
-	testing.expect(t, as_bool(global_named(p, "paused")))
+	testing.expect_value(t, current_scene_name(p), "paused")
 	roci.feed_pads({{id = 1, name = "Pad"}})
 	roci.step()
 	roci.feed_pads({{id = 1, name = "Pad", start = true}})
 	roci.step()
-	testing.expect(t, !as_bool(global_named(p, "paused")))
+	testing.expect_value(t, current_scene_name(p), "play")
 	testing.expect_value(t, len(p.errors), 0)
 }

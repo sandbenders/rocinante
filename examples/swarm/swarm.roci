@@ -57,7 +57,7 @@ learn hatchall [
   for c from 0 to 7 [ hatch 2 2 c 8 (0.9 + c * 0.06) -1 ]
   for c from 0 to 9 [ hatch 1 3 c 10 (1.45 + c * 0.06) 1 ]
   for c from 0 to 9 [ hatch 1 4 c 10 (2 + c * 0.06) -1 ]
-  banner = 120
+  stage_began = scene.time
   dive_wait = 360
   jingle TUNE
 ]
@@ -123,7 +123,7 @@ learn command [
   for each e in swarm [ steer e ]
   if not arrived [ arrived = (count (keep swarm [ it.state is "enter" ])) is 0 ]
   if dive_wait > 0 [ dive_wait = dive_wait - 1 ]
-  if dive_wait <= 0 and ship.alive and mode is "play" [
+  if dive_wait <= 0 and ship.alive and scene.name is "play" [
     waiting = keep swarm [ it.state is "home" ]
     if (count waiting) > 0 [ dive (pick waiting) ]
     dive_wait = clamp (round (110 - stage * 12 + random 60)) 25 400

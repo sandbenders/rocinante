@@ -238,6 +238,13 @@ IR_Draw :: struct {
 	ui:     bool, // `ui [ ... ]`: makes the window's widgets instead of drawing
 }
 
+// `scene "play" [ ... ]`: the interpreter does not run its block where it stands; it notes the scene's `draw`, `on`,
+// `every` and `ui` blocks so they run only while the scene does.
+IR_Scene :: struct {
+	name: string,
+	body: IR_Block,
+}
+
 // A `learn` or `use`: nothing runs where it stands. A taught verb runs through its
 // instances (below).
 IR_Unchecked :: struct {}
@@ -297,6 +304,7 @@ IR_Stmt_Kind :: union {
 	IR_Every,
 	IR_On,
 	IR_Draw,
+	IR_Scene,
 	IR_Check,
 	IR_Expect,
 	IR_Unchecked,

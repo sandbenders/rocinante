@@ -125,7 +125,7 @@ is_effect :: proc(s: ^lang.IR_Stmt) -> bool {
 	#partial switch k in s.kind {
 	case lang.IR_Assign:
 		return len(k.fields) > 0 || makes_window(k.value)
-	case lang.IR_Draw, lang.IR_On, lang.IR_Every, lang.IR_Check, lang.IR_Unchecked, lang.IR_Error_Stmt:
+	case lang.IR_Scene, lang.IR_Draw, lang.IR_On, lang.IR_Every, lang.IR_Check, lang.IR_Unchecked, lang.IR_Error_Stmt:
 		return false
 	}
 	return true
@@ -436,6 +436,8 @@ reload_files :: proc(p: ^Interp, files: []lang.File_Text, restart := false) -> (
 		}
 	}
 	n.frame = nil
+	scene_carry(n, p)
+	scene_apply(n)
 	message := fmt.tprintf("reloaded: %d values kept", kept)
 	if len(again) > 0 {
 		message = fmt.tprintf("%s, started again from their lines: %s", message, strings.join(again[:], ", ", context.temp_allocator))

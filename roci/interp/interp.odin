@@ -103,6 +103,12 @@ Interp :: struct {
 	has_errors: bool, // the sketch has check errors and does not run
 	writes:    u64, // counts changes to lists and records, to tell when a list's shapes changed
 	shape_cache: [SHAPE_CACHE_SIZE]Shape_Cache, // box trees of the lists the collision verbs asked about most recently
+	scenes:    [dynamic]string, // the scenes, in the order they are first written (scenes.odin)
+	scene_draws: map[Scene_Slot]^lang.IR_Block, // the `draw` blocks of the scenes
+	scene_uis:   map[Scene_Slot]^lang.IR_Block, // and their `ui` blocks
+	scene_stack: [dynamic]Scene_Frame, // the scene that is running last; one visited over waits under it
+	scene_pending: Scene_Pending, // the change the frame asked for
+	registering: int, // while a `scene` statement sets itself up: its place
 	tweens:    [dynamic]Tween, // the places being moved a little each frame (tween.odin)
 	checks:    [dynamic]Check_Result, // what `run_checks` found, one for each check (checks.odin)
 	check_at:  int, // the check being run, counting from 1; 0 when none is
@@ -175,6 +181,8 @@ load_files :: proc(files: []lang.File_Text) -> (p: ^Interp, ok: bool) {
 	}
 	p.globals = make([]Global, len(p.checked.program.symbols), p.program_memory)
 	p.draws = make(map[roci.Window]^lang.IR_Block, 4, p.program_memory)
+	p.scene_draws = make(map[Scene_Slot]^lang.IR_Block, 4, p.program_memory)
+	p.scene_uis = make(map[Scene_Slot]^lang.IR_Block, 4, p.program_memory)
 	p.uis = make(map[roci.Window]^lang.IR_Block, 4, p.program_memory)
 	p.widget_sites = make(map[int]int, 16, p.program_memory)
 	p.seen = make(map[int]bool, 8, p.program_memory)
@@ -194,6 +202,8 @@ destroy :: proc(p: ^Interp) {
 		virtual.arena_destroy(&p.msg_arenas[i])
 	}
 	delete(p.handlers)
+	delete(p.scenes)
+	delete(p.scene_stack)
 	delete(p.items)
 	delete(p.notices)
 	delete(p.results)
@@ -229,6 +239,7 @@ start :: proc(p: ^Interp) {
 	current = p
 	roci.set_frame_hook(frame_hook)
 	roci.set_early_hook(early_hook)
+	roci.set_end_hook(end_hook)
 	if p.has_errors {
 		// It does not run, but the file is still watched, and the overlay says why.
 		set_problem(p, p)
@@ -242,6 +253,7 @@ start :: proc(p: ^Interp) {
 	begin_block(p)
 	exec_stmts(p, p.checked.program.stmts)
 	p.frame = nil
+	scene_start(p)
 }
 
 // The frame's hook: the app loop calls this for a window that has a `draw` block.
@@ -250,12 +262,17 @@ draw_trampoline :: proc() {
 	if p == nil {
 		return
 	}
-	block, found := p.draws[roci.current_window()]
-	if !found {
-		return
-	}
 	clear(&p.widget_sites)
-	run_block(p, block)
+	// what is written outside every scene comes first, unless a scene is visited over another: the one
+	// underneath, with it, is already on the screen
+	if block, found := p.draws[roci.current_window()]; found && len(p.scene_stack) < 2 {
+		run_block(p, block)
+	}
+	if place := active_scene(p); place != 0 {
+		if block, found := p.scene_draws[Scene_Slot{place, roci.current_window()}]; found {
+			run_block(p, block)
+		}
+	}
 }
 
 // The frame's hook for a window that has a `ui` block.
@@ -264,12 +281,15 @@ ui_trampoline :: proc() {
 	if p == nil {
 		return
 	}
-	block, found := p.uis[roci.current_window()]
-	if !found {
-		return
-	}
 	clear(&p.widget_sites)
-	run_block(p, block)
+	if block, found := p.uis[roci.current_window()]; found {
+		run_block(p, block)
+	}
+	if place := active_scene(p); place != 0 {
+		if block, found := p.scene_uis[Scene_Slot{place, roci.current_window()}]; found {
+			run_block(p, block)
+		}
+	}
 }
 
 // Runs one block the app loop asked for (a `draw` block, later an event) with its

@@ -1,0 +1,5 @@
+scene "play" [ draw [ background 20 ] ]
+scene "over" [
+  on leave [ go "play" ]
+  draw [ background 40 ]
+]

@@ -1,0 +1,22 @@
+draw [
+  background 20
+]
+
+scene "title" [
+  draw [
+    fill white
+    text "press space" at 20 40
+  ]
+
+  on key "space" [ go "play" ]
+]
+
+scene "play" [
+  draw [
+    fill gold
+    circle at 100 100 radius 30
+    text "scene {scene.name}, {floor scene.time} seconds" at 20 40
+  ]
+
+  on key "space" [ go "title" ]
+]

@@ -686,3 +686,49 @@ typeset :: proc(list: ^Command_List, text: string, x, y: f32, wrap: f32 = 0) -> 
 	append(&list.text, text)
 	return record(list, .Typeset, .Corner, {x, y, max(wrap, 0), w, h, f32(offset), f32(len(text)), 0}, hash.fnv64a(transmute([]u8)text))
 }
+
+// ---- keeping a finished frame on the screen ----
+
+// How much of a finished frame there is, so that a later frame can start from it: what the commands of
+// a scene that was visited over drew stays, and what a scene on top draws is taken away again each frame.
+Hold_Marks :: struct {
+	commands, looks, gradients, text, points, effects, effect_values, items, lights: int,
+}
+
+// Notes how much of the finished frame there is now.
+hold :: proc(list: ^Command_List) -> Hold_Marks {
+	return Hold_Marks{
+		commands      = len(list.commands),
+		looks         = len(list.looks),
+		gradients     = len(list.gradients),
+		text          = len(list.text),
+		points        = len(list.points),
+		effects       = len(list.effects),
+		effect_values = len(list.effect_values),
+		items         = len(list.scene.items),
+		lights        = len(list.scene.lights),
+	}
+}
+
+// Starts a frame that goes on from the held one: whatever was recorded after `marks` is forgotten,
+// the style and the transform go back to the defaults, and the background and the camera stay.
+begin_frame_from :: proc(list: ^Command_List, marks: Hold_Marks) {
+	resize(&list.commands, min(marks.commands, len(list.commands)))
+	resize(&list.looks, min(marks.looks, len(list.looks)))
+	resize(&list.gradients, min(marks.gradients, len(list.gradients)))
+	resize(&list.gradient_hashes, min(marks.gradients, len(list.gradient_hashes)))
+	resize(&list.text, min(marks.text, len(list.text)))
+	resize(&list.points, min(marks.points, len(list.points)))
+	resize(&list.effects, min(marks.effects, len(list.effects)))
+	resize(&list.effect_values, min(marks.effect_values, len(list.effect_values)))
+	resize(&list.scene.items, min(marks.items, len(list.scene.items)))
+	resize(&list.scene.lights, min(marks.lights, len(list.scene.lights)))
+	clear(&list.saved)
+	list.style = DEFAULT_STYLE
+	list.transform = IDENTITY
+	list.look_changed = true
+	list.span = {}
+	list.turtle = {}
+	list.scene.turtle = {}
+	list.scene.model = {}
+}

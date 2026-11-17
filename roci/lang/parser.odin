@@ -455,6 +455,7 @@ GRAMMAR_RULES := [?]struct{rule, parser: string}{
 	{"style_words", "parse_with"},
 	{"every_statement", "parse_every"},
 	{"draw_statement", "parse_draw"},
+	{"scene_statement", "parse_scene"},
 	{"use_statement", "parse_use"},
 	{"check_statement", "parse_check"},
 	{"expect_statement", "parse_expect"},

@@ -1,0 +1,17 @@
+scene "play" [
+  draw [
+    fill gold
+    circle at (100 + 50 * sin (frame * 3)) 100 radius 30
+  ]
+
+  on key "p" [ visit "paused" ]
+]
+
+scene "paused" [
+  draw [
+    fill white
+    text "paused: press p" at 20 40
+  ]
+
+  on key "p" [ return ]
+]

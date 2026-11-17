@@ -1,0 +1,8 @@
+── A scene holds `draw`, `on`, `every` and `ui` blocks ─── sketch.roci:2:3
+
+2 │   background 20
+  │   ^^^^^^^^^^^^^
+
+What a scene does is written in those blocks: a `draw` for what it shows, `on` for what it answers, `every` for what it repeats, and `ui` for its widgets. Anything else goes above the scenes, where it runs once before the first one starts, or inside one of those blocks.
+
+Put it in a block:  draw [ background 20 ]

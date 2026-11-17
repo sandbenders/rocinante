@@ -37,12 +37,10 @@ shots: a list of records with pos, size, vel and done
 bombs: a list of records with pos, size, vel and done
 swarm: a list of records with pos, size, kind, hp, tier, col, across, state, t, speed, launch, bend1, bend2 and shots_left
 bits: a list of records with pos, vel, life and tint
-mode: text
 score: a number
 best: a number
+stage_began: a number
 lives: a number
 stage: a number
-banner: a number
-paused: true or false
 dive_wait: a number
 arrived: true or false

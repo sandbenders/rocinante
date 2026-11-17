@@ -35,7 +35,7 @@ program        = { statement } ;
 statement      = [ NEWLINE ] ( assignment | if_statement | repeat_statement
                | while_statement | for_statement | for_each_statement
                | learn_statement | give_statement | stop_statement | with_statement
-               | every_statement | on_statement | draw_statement | use_statement
+               | every_statement | on_statement | draw_statement | scene_statement | use_statement
                | check_statement | expect_statement
                | call ) NEWLINE ;
 
@@ -63,6 +63,8 @@ style_words     = option { option } ;
 (* Section 5.5 and 5.8; the unit is one of the registry's EVERY_UNITS. *)
 every_statement = "every" argument 'unit' block ;
 draw_statement  = ( "draw" | "ui" ) [ argument ] block ;
+(* A named part of the sketch, written at the left edge. Its block holds draw, ui, every and on blocks (and on enter, on leave). The name is TEXT. `scene` followed by a dot is a value, not this. *)
+scene_statement = "scene" TEXT block ;
 (* At the top of a file, outside every block. The name is a folder of libs/, or a git URL that ends in one. *)
 use_statement   = "use" TEXT ;
 (* A test for the verbs written above it. `roci run` skips it; `roci test` runs it. Outside every block, like `use`. The name is TEXT. *)

@@ -1,0 +1,9 @@
+scene "play" [
+  draw [ circle at 100 100 radius 30 ]
+  on key "p" [ visit "paused" ]
+]
+
+scene "paused" [
+  draw [ text "paused" at 20 40 ]
+  on key "p" [ return ]
+]

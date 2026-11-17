@@ -1333,3 +1333,39 @@ test_a_step_frees_what_the_frame_made_and_leaves_what_the_caller_made :: proc(t:
 test_poisoning_is_on_in_tests_and_can_be_switched_off :: proc(t: ^testing.T) {
 	testing.expect(t, poison_frames, "tests poison the memory a frame frees")
 }
+
+@(thread_local)
+held_passes: int
+
+@(test)
+test_held_frames_keep_the_finished_frame_and_draw_over_it_and_end_hook_runs_after_every_window :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	w := window(100, 100)
+	draw_window(w, proc() {
+		held_passes += 1
+		rect(10, 10, 20, 20)
+	})
+	step()
+	testing.expect_value(t, len(win_for(w).list.commands), 1)
+	hold_frames(true)
+	for _ in 0 ..< 4 {
+		step()
+		// the first rect stays, and the one drawn now is the only other one
+		testing.expect_value(t, len(win_for(w).list.commands), 2)
+	}
+	hold_frames(false)
+	step()
+	testing.expect_value(t, len(win_for(w).list.commands), 1)
+	testing.expect_value(t, held_passes, 6)
+	// the end hook runs once for each frame, after the windows have drawn
+	@(static) hooked: int
+	hooked = 0
+	set_end_hook(proc() {
+		hooked += 1
+	})
+	defer set_end_hook(nil)
+	step()
+	step()
+	testing.expect_value(t, hooked, 2)
+}

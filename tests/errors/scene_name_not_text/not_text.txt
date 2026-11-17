@@ -1,0 +1,8 @@
+── `go` needs the name of a scene written as text ───── sketch.roci:3:21
+
+3 │ on key "space" [ go where ]
+  │                     ^^^^^
+
+The sketch is read before it runs, so the name of a scene has to be written in double quotes where `go` uses it, to be matched with the scenes.
+
+Write the name out:  on key "space" [ go "play" ]

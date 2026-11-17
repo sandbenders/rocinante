@@ -211,6 +211,9 @@ Verb_Code :: enum u8 {
 	Remember,
 	Recall,
 	Forget,
+	Go,
+	Visit,
+	Return,
 }
 
 // The registry's name of each code. A test fails when the registry gains a verb
@@ -416,6 +419,9 @@ VERB_CODE_NAMES := [Verb_Code]string{
 	.Remember = "remember",
 	.Recall = "recall",
 	.Forget = "forget",
+	.Go = "go",
+	.Visit = "visit",
+	.Return = "return",
 }
 
 // The code of each verb of `registry.ALL_VERBS`, by its place there.

@@ -47,6 +47,9 @@ REFERENCE_SECTIONS := []Reference_Section{
 	{"Running", "When the lines of a sketch run: once, every frame, again and again, or when something happens.", {
 		"draw", "every", "on", "if", "repeat", "while", "for", "for each",
 	}},
+	{"Scenes", "The parts of a sketch (a title, the play, a pause, the end) that each have their own drawing, events and timers.", {
+		"scene", "go", "visit", "return",
+	}},
 	{"Input", "The mouse, the keyboard, fingers, gamepads and joysticks, as values a sketch reads.", {
 		"mouse", "pmouse", "pressed", "wheel", "key", "held", "finger", "touches", "gamepad", "gamepads", "joysticks", "rumble", "bind", "direction",
 	}},

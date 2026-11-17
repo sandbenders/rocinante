@@ -1,0 +1,8 @@
+── The sketch has no scene called `plya` ────────────── sketch.roci:2:21
+
+2 │ on key "space" [ go "plya" ]
+  │                     ^^^^^^
+
+Did you mean "play"? The name after `go` or `visit` is written as text, and has to be the name of a `scene` somewhere in the sketch, so a slip is found before it runs.
+
+Use the name of one of the scenes:  on key "space" [ go "play" ]

@@ -1,0 +1,11 @@
+── A scene is written outside every block ────────────── sketch.roci:2:3
+
+2 │   scene "play" [ draw [ background 20 ] ]
+  │   ^^^^^
+
+The scenes are the parts of the whole sketch, so a scene stands at the left edge, never inside another scene or a block. A scene cannot hold another scene.
+
+Write it on its own:
+    scene "play" [
+      ...
+    ]

@@ -161,6 +161,13 @@ Message_Id :: enum u8 {
 	Memory_Kind_Unsupported,
 	Memory_Mismatch,
 	Level_Without_Sound,
+	Scene_Unknown,
+	Scene_Twice,
+	Scene_Not_Top,
+	Scene_Body,
+	Scene_Name_Not_Text,
+	Go_In_Leave,
+	Return_Nothing,
 	Input_Unknown,
 	Too_Many_Lights,
 	Turtle_Flat,
@@ -576,6 +583,27 @@ CATALOGUE := [Message_Id]Entry{
 	.Memory_Kind_Unsupported = {.Error, "{a} cannot be kept between runs",
 		"A file holds numbers, text, true or false, vectors, colors, and lists and records of those. A window, a picture, a sound or a gradient is made while the sketch runs and is not written down.",
 		"Keep something it is made from instead:", "{d}"},
+	.Scene_Unknown = {.Error, "The sketch has no scene called `{a}`",
+		"{b} The name after `go` or `visit` is written as text, and has to be the name of a `scene` somewhere in the sketch, so a slip is found before it runs.",
+		"Use the name of one of the scenes:", "{d}"},
+	.Scene_Twice = {.Error, "There are two scenes called `{a}`",
+		"A scene is found by its name, so each one needs a name of its own. The second one is left out.",
+		"Give it another name:", "{d}"},
+	.Scene_Not_Top = {.Error, "A scene is written outside every block",
+		"The scenes are the parts of the whole sketch, so a scene stands at the left edge, never inside another scene or a block. A scene cannot hold another scene.",
+		"Write it on its own:", "{d}"},
+	.Scene_Body = {.Error, "A scene holds `draw`, `on`, `every` and `ui` blocks",
+		"What a scene does is written in those blocks: a `draw` for what it shows, `on` for what it answers, `every` for what it repeats, and `ui` for its widgets. Anything else goes above the scenes, where it runs once before the first one starts, or inside one of those blocks.",
+		"Put it in a block:", "{d}"},
+	.Scene_Name_Not_Text = {.Error, "`{a}` needs the name of a scene written as text",
+		"The sketch is read before it runs, so the name of a scene has to be written in double quotes where `{a}` uses it, to be matched with the scenes.",
+		"Write the name out:", "{d}"},
+	.Go_In_Leave = {.Error, "`{a}` cannot be written in an `on leave` block",
+		"`on leave` runs while a scene is ending, so switching scene from it would start another ending, again and again. Change scene before, where the scene decides to end.",
+		"Switch from the block that decides:", "{d}"},
+	.Return_Nothing = {.Error, "`return` has no scene to go back to",
+		"`return` ends a scene that `visit` put on top, and nothing was visited, so the sketch stays where it is and carries on.",
+		"Use `go` to move to another scene, or `visit` first:", "{d}"},
 	.Level_Without_Sound = {.Warning, "`{a}` measures sound, and this sketch makes none",
 		"`{a}` is a word of the language: written alone it gives how loud everything playing is (`bands` splits it by pitch), and nothing in this sketch plays a sound, loads one or listens to the microphone, so it is always 0. If you meant a name of your own, `{a}` is already taken, so pick another one for it.",
 		"A name of your own:", "{d}"},
@@ -665,7 +693,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

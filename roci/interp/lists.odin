@@ -122,6 +122,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.ui_forget()
 	case .Remember, .Recall, .Forget:
 		return memory_verb(it, e, call, code)
+	case .Go, .Visit, .Return:
+		scene_verb(it, e, call, code)
 	case .Ui_Hide:
 		roci.ui_hide()
 	case .Ui_Show:

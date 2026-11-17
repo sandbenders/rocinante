@@ -7,6 +7,7 @@
 // frame starts and before its `draw` block, so what they draw lands in that frame.
 package roci
 
+import "gfx"
 import "platform"
 import sdl "vendor:sdl3"
 
@@ -56,6 +57,23 @@ last_key :: proc() -> string {
 // before its `draw` block. One hook per sketch; nil removes it.
 set_frame_hook :: proc(hook: proc(w: Window)) {
 	the.hook = hook
+}
+
+// Runs `hook` once at the end of each frame, after every window has finished it. One hook per sketch;
+// nil removes it.
+set_end_hook :: proc(hook: proc()) {
+	the.end_hook = hook
+}
+
+// Keeps the frame just finished on the screen, as it is, under what the next frames draw (`on`), or lets
+// the windows draw their own frames again (off). A scene that is visited over stays on the screen so.
+hold_frames :: proc(on: bool) {
+	for w in the.windows {
+		w.held = on && w.draw != nil
+		if w.held {
+			w.marks = gfx.hold(&w.list)
+		}
+	}
 }
 
 // Runs `hook` with MIDI happenings as soon as they are read while the loop waits for the screen,

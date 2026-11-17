@@ -220,7 +220,7 @@ test_every_example_of_the_manual_is_a_sketch_that_checks :: proc(t: ^testing.T) 
 	for &verb in registry.ALL_VERBS {
 		for entry in registry.manual_page(&verb).entries {
 			// The examples name a window `w`, a number `x`, a picture `photo` and a sound `rain`, so they are made first.
-			text := fmt.tprintf("w = window size 100 100\nx = 0\nphoto = load \"cat.png\"\nrain = load \"rain.wav\"\nremember \"hello\" 100\n%s\n", entry.example)
+			text := fmt.tprintf("w = window size 100 100\nx = 0\nphoto = load \"cat.png\"\nrain = load \"rain.wav\"\nremember \"hello\" 100\nscene \"hello\" [ draw [ background 0 ] ]\n%s\n", entry.example)
 			parsed := check_text(text)
 			for d in parsed.checked.diagnostics {
 				testing.expectf(t, severity_of(d) != .Error, "`%s`: %v", entry.example, d.id)

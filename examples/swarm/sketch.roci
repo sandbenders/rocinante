@@ -60,13 +60,11 @@ shots = []
 bombs = []
 swarm = []
 bits = []
-mode = "title"
 score = 0
 best = 0
+stage_began = 0
 lives = 3
 stage = 1
-banner = 0
-paused = false
 dive_wait = 120
 arrived = false
 
@@ -80,24 +78,54 @@ bind "fire" to "pad bottom"
 bind "pause" to "key p"
 bind "pause" to "pad start"
 
-on press "fire" [
-  if mode is "play" and ship.alive and not paused [ fire ]
-  if mode is "title" or mode is "over" [ restart ]
-]
-
-on press "pause" [
-  if mode is "play" [ paused = not paused ]
-]
-
+// What every scene has: the sky, and the stars that tend themselves.
 draw [
   background (rgb 4 4 16)
   sky
   tend
-  if mode is "title" [ titlescreen ]
-  if mode is "play" or mode is "over" [
-    if not paused [ advance ]
+]
+
+scene "title" [
+  draw [ titlescreen ]
+  on press "fire" [ go "play" ]
+]
+
+scene "play" [
+  on enter [ restart ]
+
+  draw [
+    advance
     drawplay
     hud
-    messages
+    // a banner for the first two seconds of each stage
+    if scene.time - stage_began < 2 [ stagetext ]
   ]
+
+  on press "fire" [
+    if ship.alive [ fire ]
+  ]
+
+  on press "pause" [ visit "paused" ]
+]
+
+// Visited over play: play stays on the screen as it was, stopped, and `return` lets it go on.
+scene "paused" [
+  draw [ pausetext ]
+  on press "pause" [ return ]
+]
+
+scene "over" [
+  on enter [
+    if score > best [ best = score ]
+    jingle LOSE
+  ]
+
+  draw [
+    advance
+    drawplay
+    hud
+    overtext
+  ]
+
+  on press "fire" [ go "play" ]
 ]

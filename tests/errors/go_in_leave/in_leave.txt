@@ -1,0 +1,8 @@
+── `go` cannot be written in an `on leave` block ────── sketch.roci:3:14
+
+3 │   on leave [ go "play" ]
+  │              ^^^^^^^^^
+
+`on leave` runs while a scene is ending, so switching scene from it would start another ending, again and again. Change scene before, where the scene decides to end.
+
+Switch from the block that decides:  on key "space" [ go "play" ]

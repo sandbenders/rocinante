@@ -1,0 +1,2 @@
+scene "play" [ draw [ background 20 ] ]
+scene "play" [ draw [ background 40 ] ]

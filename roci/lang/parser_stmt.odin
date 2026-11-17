@@ -66,6 +66,11 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 				}
 			}
 			return parse_draw(p)
+		case "scene":
+			// `scene "play" [ ... ]` is a block; `scene.name` and `scene.time` are values.
+			if p.at + 1 < len(p.tokens) && p.tokens[p.at + 1].kind == .Text {
+				return parse_scene(p)
+			}
 		case "use":    return parse_use(p)
 		case "check":  return parse_check(p)
 		case "expect": return parse_expect(p)
@@ -656,6 +661,21 @@ parse_draw :: proc(p: ^Parser) -> Stmt_Kind {
 		return Error_Stmt{}
 	}
 	return Draw{window = window, body = body, ui = is_ui}
+}
+
+@(private)
+parse_scene :: proc(p: ^Parser) -> Stmt_Kind {
+	scene_token := advance(p)
+	if len(p.groups) > 0 {
+		report(p, .Scene_Not_Top, scene_token.span, "", "", "", "scene \"play\" [\n  ...\n]")
+	}
+	name := cur(p)
+	advance(p)
+	body, ok := parse_block_after(p, "scene")
+	if !ok {
+		return Error_Stmt{}
+	}
+	return Scene{name = unescape(text_of(p, name), p.alloc), name_span = name.span, body = body}
 }
 
 @(private)

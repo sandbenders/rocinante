@@ -31,6 +31,7 @@ Handler :: struct {
 	every:   f64,   // the interval, in seconds or frames
 	frames:  bool,
 	next:    f64,   // when it runs next: a time, or a frame number
+	scene:   int,   // the scene whose block it is, from 1, or 0 for one outside every scene
 }
 
 // A message on its way to a window.
@@ -41,7 +42,7 @@ Message :: struct {
 
 // Notes an `on` or `every` statement so the frame hook can run it.
 register_on :: proc(it: ^Interp, k: ^lang.IR_On) {
-	h := Handler{body = &k.body, event = k.event, args = k.args}
+	h := Handler{body = &k.body, event = k.event, args = k.args, scene = it.registering}
 	if k.event == "" {
 		h.kind, h.message = .Receive, k.message
 	}
@@ -72,7 +73,7 @@ register_every :: proc(it: ^Interp, k: ^lang.IR_Every) {
 		return
 	}
 	frames := k.unit == "frame" || k.unit == "frames"
-	h := Handler{kind = .Every, body = &k.body, window = roci.current_window(), every = n, frames = frames}
+	h := Handler{kind = .Every, body = &k.body, window = roci.current_window(), every = n, frames = frames, scene = it.registering}
 	h.next = n + (f64(roci.frame_count()) if frames else roci.time_now())
 	append(&it.handlers, h)
 }
@@ -113,6 +114,9 @@ run_event_handlers :: proc(p: ^Interp, w: roci.Window, happenings: []roci.Happen
 			continue
 		}
 		for &h in p.handlers {
+			if !takes_part(p, h.scene) {
+				continue
+			}
 			if h.kind != .Event || h.event != event_name(happening.kind) || (!h.any && h.window != w) {
 				continue
 			}
@@ -176,7 +180,7 @@ frame_hook :: proc(w: roci.Window) {
 		}
 	}
 	for &h in p.handlers {
-		if h.kind == .Receive && h.window == w {
+		if h.kind == .Receive && h.window == w && takes_part(p, h.scene) {
 			for m in p.inbox[p.msg_now] {
 				if m.to == w {
 					run_block(p, h.body, h.message, m.value)
@@ -186,7 +190,7 @@ frame_hook :: proc(w: roci.Window) {
 	}
 	run_event_handlers(p, w, roci.happened())
 	for &h in p.handlers {
-		if h.kind != .Every || h.window != w {
+		if h.kind != .Every || h.window != w || !takes_part(p, h.scene) {
 			continue
 		}
 		now := f64(roci.frame_count()) if h.frames else roci.time_now()

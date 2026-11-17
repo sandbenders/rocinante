@@ -1,0 +1,8 @@
+── `return` has no scene to go back to ──────────────── sketch.roci:2:14
+
+2 │   on enter [ return ]
+  │              ^^^^^^
+
+`return` ends a scene that `visit` put on top, and nothing was visited, so the sketch stays where it is and carries on.
+
+Use `go` to move to another scene, or `visit` first:  visit "paused"

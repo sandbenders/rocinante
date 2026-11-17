@@ -45,6 +45,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		msg_types   = make(map[string]Type_Id, 8, allocator),
 		msg_mixed   = make(map[string]bool, 8, allocator),
 		mem_types   = make(map[string]Type_Id, 8, allocator),
+		scenes      = make(map[string]Span, 8, allocator),
 	}
 	// Two passes. A field assigned anywhere in the sketch belongs to the shape of the
 	// record, even to a line above it, so the first pass only settles
@@ -171,6 +172,8 @@ Checker :: struct {
 	msg_types:     map[string]Type_Id,     // what is sent to each window, by the name that is sent to (check_messages.odin)
 	msg_mixed:     map[string]bool,        // windows that are sent different kinds of value
 	mem_types:     map[string]Type_Id,     // the kind of value kept under each name of `remember` (check_memory.odin)
+	scenes:        map[string]Span,        // every scene of the sketch, by name, and where it is written (check_scene.odin)
+	in_leave:      int,                    // inside an `on leave` block
 	sound_source:  bool,                   // the sketch plays, loads or listens to a sound somewhere: `level` and `bands` then have something to measure
 }
 
@@ -247,6 +250,8 @@ collect_assignments :: proc(c: ^Checker, stmts: []^Stmt, bound: []string = nil) 
 		case On:
 			collect_assignments(c, k.body.stmts, bound)
 		case Draw:
+			collect_assignments(c, k.body.stmts, bound)
+		case Scene:
 			collect_assignments(c, k.body.stmts, bound)
 		case Expr_Stmt:
 			// A verb that runs a block (`push [ ... ]`, `draw into c [ ... ]`) makes names like any other block.
@@ -563,6 +568,8 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 		out.kind = IR_Every{count = count, unit = k.unit, body = check_block(c, k.body, true)}
 	case On:
 		out.kind = check_on(c, k)
+	case Scene:
+		out.kind = check_scene(c, k)
 	case Draw:
 		window: ^IR
 		if k.window != nil {
@@ -628,6 +635,10 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 		if osc {
 			c.in_osc += 1
 		}
+		leaving := k.event == "leave"
+		if leaving {
+			c.in_leave += 1
+		}
 		result.body = check_block(c, k.body, true)
 		if touch {
 			c.in_touch -= 1
@@ -637,6 +648,9 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 		}
 		if osc {
 			c.in_osc -= 1
+		}
+		if leaving {
+			c.in_leave -= 1
 		}
 		return result
 	}
@@ -997,6 +1011,7 @@ type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
 	case "touches": return list_of(c.types, finger_type(c))
 	case "turtle":  return turtle_type(c)
 	case "midi":    return midi_type(c)
+	case "scene":   return scene_type(c)
 	case "osc":     return osc_type(c)
 	case "gamepad": return gamepad_type(c)
 	case "gamepads": return list_of(c.types, gamepad_type(c))
@@ -1204,7 +1219,7 @@ check_definitions_only :: proc(c: ^Checker, stmts: []^Stmt) {
 		}
 		allowed := false
 		#partial switch k in s.kind {
-		case Learn, Use, Check, Error_Stmt:
+		case Learn, Use, Check, Scene, Error_Stmt:
 			allowed = true
 		case Assign:
 			allowed = len(k.target.parts) == 1 && is_constant_name(k.target.parts[0])

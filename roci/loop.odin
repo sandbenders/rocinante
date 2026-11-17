@@ -95,7 +95,11 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 		the.current = w
 		deliver_messages(w)
 		if w.draw != nil && !w.begun {
-			gfx.begin_frame(&w.list)
+			if w.held {
+				gfx.begin_frame_from(&w.list, w.marks)
+			} else {
+				gfx.begin_frame(&w.list)
+			}
 		}
 		w.begun = false
 		if the.hook != nil {
@@ -113,6 +117,9 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 		ui_finish(w)
 		the.current = nil
 		show_frame(w)
+	}
+	if the.end_hook != nil {
+		the.end_hook()
 	}
 	ui_autosave()
 	memory_autosave()

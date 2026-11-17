@@ -1,0 +1,8 @@
+── There are two scenes called `play` ────────────────── sketch.roci:2:7
+
+2 │ scene "play" [ draw [ background 40 ] ]
+  │       ^^^^^^
+
+A scene is found by its name, so each one needs a name of its own. The second one is left out.
+
+Give it another name:  scene "play 2" [

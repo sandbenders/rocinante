@@ -52,25 +52,29 @@ learn hud [
   ]
 ]
 
-learn messages [
+learn stagetext [
   align center
-  if banner > 0 [
-    fill (rgb 80 230 240)
-    font "Inter Bold" size 32
-    text ("STAGE " + stage) at 240 300
-  ]
-  if paused [
-    fill white
-    font "Inter Bold" size 32
-    text "PAUSED" at 240 300
-  ]
-  if mode is "over" [
-    fill (rgb 235 50 60)
-    font "Inter Bold" size 44
-    text "GAME OVER" at 240 280
-    fill white
-    font "Inter" size 18
-    if (frame / 30) % 2 >= 1 [ text "press space or the bottom button to play again" at 240 340 ]
-  ]
+  fill (rgb 80 230 240)
+  font "Inter Bold" size 32
+  text ("STAGE " + stage) at 240 300
+  align left
+]
+
+learn pausetext [
+  align center
+  fill white
+  font "Inter Bold" size 32
+  text "PAUSED" at 240 300
+  align left
+]
+
+learn overtext [
+  align center
+  fill (rgb 235 50 60)
+  font "Inter Bold" size 44
+  text "GAME OVER" at 240 280
+  fill white
+  font "Inter" size 18
+  if (frame / 30) % 2 >= 1 [ text "press space or the bottom button to play again" at 240 340 ]
   align left
 ]

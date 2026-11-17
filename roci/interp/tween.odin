@@ -22,6 +22,7 @@ Tween :: struct {
 	start:    f64, // the sketch's clock when it began
 	duration: f64,
 	curve:    maths.Ease,
+	scene:    int, // the scene that was current when it began: it ends with that scene, and waits while one is visited over it
 }
 
 // `tween place to value over seconds as curve`.
@@ -85,6 +86,7 @@ start_tween :: proc(it: ^Interp, call: lang.IR_Call) {
 			break
 		}
 	}
+	tw.scene = active_scene(it)
 	append(&it.tweens, tw)
 }
 
@@ -143,6 +145,10 @@ step_tweens :: proc(it: ^Interp) {
 	now := roci.time_now()
 	for i := 0; i < len(it.tweens); {
 		t := &it.tweens[i]
+		if !takes_part(it, t.scene) {
+			i += 1 // it belongs to a scene that waits
+			continue
+		}
 		amount := (now - t.start) / t.duration if t.duration > 0 else 1
 		if amount >= 1 {
 			write_place(it, t^, t.to)

@@ -245,6 +245,14 @@ Draw :: struct {
 	ui:     bool, // `ui [ ... ]`: the same shape, a block that makes the window's widgets
 }
 
+// `scene "play" [ ... ]`: a named part of the sketch (title, play, paused, game over) with its own `draw`, `on`,
+// `every` and `ui` blocks. A `draw` or `on` outside every scene runs in all of them.
+Scene :: struct {
+	name:      string, // what the text says, unquoted
+	name_span: Span,
+	body:      Block,
+}
+
 // `check "name" [ expect ... ]`: a test of the verbs above it. It never runs in a sketch.
 Check :: struct {
 	name: string, // what the text says, unquoted
@@ -280,6 +288,7 @@ Stmt_Kind :: union {
 	Every,
 	On,
 	Draw,
+	Scene,
 	Use,
 	Check,
 	Expect,

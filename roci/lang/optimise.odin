@@ -119,6 +119,8 @@ walk_stmt :: proc(o: ^Optimiser, s: ^IR_Stmt) {
 	case IR_Draw:
 		walk_expr(o, k.window)
 		walk_block(o, k.body)
+	case IR_Scene:
+		walk_block(o, k.body)
 	case IR_Give:
 		walk_expr(o, k.value)
 	case IR_Unchecked, IR_Stop, IR_Error_Stmt:

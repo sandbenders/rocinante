@@ -1,0 +1,4 @@
+scene "play" [
+  background 20
+  draw [ circle at 100 100 radius 30 ]
+]

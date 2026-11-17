@@ -222,7 +222,7 @@ stmts_text :: proc(p: ^Printer, stmts: []^Stmt, level: int, end: int) -> string 
 @(private)
 is_spaced_kind :: proc(s: ^Stmt) -> bool {
 	#partial switch _ in s.kind {
-	case Learn, Draw, On, Every, Check:
+	case Learn, Draw, On, Every, Scene, Check:
 		return true
 	}
 	return false
@@ -340,6 +340,11 @@ stmt_text :: proc(p: ^Printer, s: ^Stmt, level: int) -> string {
 		}
 		strings.write_string(&b, " ")
 		strings.write_string(&b, block_text(p, k.body, level, level * 2 + 24))
+	case Scene:
+		head := strings.concatenate({"scene \"", k.name, "\""}, context.temp_allocator)
+		strings.write_string(&b, head)
+		strings.write_string(&b, " ")
+		strings.write_string(&b, block_text(p, k.body, level, column(level, head) + 1))
 	case Draw:
 		strings.write_string(&b, "ui" if k.ui else "draw")
 		if k.window != nil {

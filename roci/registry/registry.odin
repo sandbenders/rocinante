@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "pi", "pmouse", "pressed", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
+	"anywhere", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "pi", "pmouse", "pressed", "scene", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -107,6 +107,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"pressed", .Boolean, 0, "Whether a mouse button is held down in this window."},
 	{"pi", .Number, 0, "Half a turn in radians, 3.14159…, for sketches that work in radians."},
 	{"pmouse", .Vector, 2, "Where the mouse was a frame ago."},
+	{"scene", .Record, 0, "The scene the sketch is in: `scene.name`, its name as text (empty in a sketch with no scenes), `scene.time`, the seconds since it began, and `scene.frame`, the frames since. A scene that is visited over stops counting until it comes back."},
 	{"speakers", .Sound, 0, "The whole mix, as a sound: `effect speakers \"reverb\" by { mix: 20 }` puts an effect on everything that plays, after each sound's own, and `level speakers` is how loud everything is."},
 	{"tau", .Number, 0, "A whole turn in radians, 6.28318…"},
 	{"time", .Number, 0, "Seconds since the sketch started."},
@@ -229,6 +230,8 @@ EVENTS := []Event{
 	{"osc", {.Text}, "Runs when an OSC message arrives over the network, from a phone app, a music program or another sketch; `osc` is that message. Name an address to wait for it alone, and `*` and `?` stand for any text and any one character inside one part of it: `on osc \"/fader/*\"`. The first one starts listening on port 9000, or on the one `osc listen` chose."},
 	{"press", {.Text}, "Runs when an action that `bind` made goes down, once for each press, whichever input did it: `on press \"jump\" [ ... ]`."},
 	{"release", {.Text}, "Runs when an action that `bind` made comes up, which is when every input bound to it is up: `on release \"fire\" [ ... ]`."},
+	{"enter", {}, "Runs when the scene it is written in begins, after the one before it has left: `scene \"play\" [ on enter [ restart ] ]`. Outside every scene it runs each time any scene begins."},
+	{"leave", {}, "Runs when the scene it is written in ends, before the next one begins: a place to tidy up. It cannot change scene itself."},
 	{"resize", {}, "Runs when the window changes size."},
 	{"move", {}, "Runs when the window moves."},
 	{"focus", {}, "Runs when the window gains or loses focus."},

@@ -87,9 +87,14 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 			}
 		}
 		if draw, is_draw := &s.kind.(lang.IR_Draw); is_draw {
-			if k.ui {
+			switch {
+			case it.registering != 0 && k.ui:
+				it.scene_uis[Scene_Slot{it.registering, window}] = &draw.body
+			case it.registering != 0:
+				it.scene_draws[Scene_Slot{it.registering, window}] = &draw.body
+			case k.ui:
 				it.uis[window] = &draw.body
-			} else {
+			case:
 				it.draws[window] = &draw.body
 			}
 		}
@@ -97,6 +102,10 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 			roci.ui_window(window, ui_trampoline)
 		} else {
 			roci.draw_window(window, draw_trampoline)
+		}
+	case lang.IR_Scene:
+		if scene, is_scene := &s.kind.(lang.IR_Scene); is_scene {
+			register_scene(it, scene)
 		}
 	case lang.IR_On:
 		if on, is_on := &s.kind.(lang.IR_On); is_on {

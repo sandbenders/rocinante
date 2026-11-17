@@ -41,6 +41,8 @@ Win :: struct {
 	ui_draw:      proc(),           // runs after `draw`, when set, and makes the window's widgets
 	access:       ^Access,          // the screen-reader bridge of this window's interface (access.odin)
 	in_draw:      bool,             // the window's `draw` is running, so a widget's `at` is in canvas coordinates
+	held:         bool,             // the last finished frame stays on the screen under what is drawn now (`hold_frames`)
+	marks:        gfx.Hold_Marks,   // how much of that frame there is
 	on_receive:   proc(value: Value),
 	inbox:        [dynamic]Value,   // messages sent to this window, delivered on the next frame
 	saves:        [dynamic]string,  // picture files asked for this frame, written once it is drawn (save.odin)
@@ -115,6 +117,7 @@ Sketch :: struct {
 	last_key:     string,
 	hook:         proc(w: Window), // run for each window in each frame
 	early_hook:   proc(w: Window, happenings: []Happened), // runs MIDI blocks while the loop waits for the screen
+	end_hook:     proc(),          // run once when every window has finished its frame (a scene change waits for it)
 	save_problems: [dynamic]Save_Problem, // files that could not be written, for the language to say (save.odin)
 	record_results: [dynamic]Record_Result, // recordings that ended, for the language to say (record.odin)
 	overlay_title: string, // what the error overlay says, or "" for none
