@@ -65,6 +65,9 @@ REFERENCE_SECTIONS := []Reference_Section{
 	{"Tables", "Text names with a value each, in the order they were put.", {
 		"table", "put", "get", "keys",
 	}},
+	{"Memory", "Values a sketch keeps between runs, in a file beside it.", {
+		"remember", "recall", "forget",
+	}},
 	{"Collision", "Whether shapes touch, where, and what a line meets. Shapes are plain records.", {
 		"touching", "contact", "hits", "inside", "cast", "ray", "triangles", "outline",
 	}},

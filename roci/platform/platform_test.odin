@@ -365,3 +365,25 @@ test_typed_text_becomes_an_event_cut_at_a_whole_character :: proc(t: ^testing.T)
 	_, ok = translate(e)
 	testing.expect(t, !ok)
 }
+
+// A watch is called for the events SDL gives only to watches, and a program with none set ignores them.
+@(test)
+test_the_background_watch_is_called_for_the_events_that_go_only_to_watches :: proc(t: ^testing.T) {
+	@(static) calls: int
+	calls = 0
+	set_background_watch(proc "c" () {
+		calls += 1
+	})
+	defer set_background_watch(nil)
+	for type in ([]sdl.EventType{.WILL_ENTER_BACKGROUND, .DID_ENTER_BACKGROUND, .TERMINATING}) {
+		event := sdl.Event{type = type}
+		testing.expect(t, background_filter(nil, &event))
+	}
+	other := sdl.Event{type = .LOW_MEMORY}
+	testing.expect(t, background_filter(nil, &other))
+	testing.expect_value(t, calls, 3)
+	set_background_watch(nil)
+	event := sdl.Event{type = .TERMINATING}
+	testing.expect(t, background_filter(nil, &event))
+	testing.expect_value(t, calls, 3)
+}

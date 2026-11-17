@@ -59,6 +59,7 @@ release_hold :: proc(count: ^int) -> (last: bool) {
 @(private)
 quit_sdl :: proc() {
 	if release_hold(&apps_running) {
+		sdl.RemoveEventWatch(background_filter, nil)
 		// The unit tests run in parallel in one process, with threads starting SDL and its
 		// lazy setup beside each one that quits: SDL 3.4.20 then waits forever in its own
 		// init state (seen in a sample of the hung test program). A program that is not a
@@ -71,6 +72,28 @@ quit_sdl :: proc() {
 	} else {
 		sdl.QuitSubSystem({.VIDEO})
 	}
+}
+
+// What to do when the program is about to go to the background or is being ended by the system, where
+// it may never get another turn: a phone does not send a quit first. Set by the program that starts the
+// app, before it starts it; it runs on the thread that pumps events.
+@(private)
+background_watch: proc "c" ()
+
+set_background_watch :: proc "contextless" (watch: proc "c" ()) {
+	background_watch = watch
+}
+
+// SDL says these three only to a watch, never to the event queue.
+@(private)
+background_filter :: proc "c" (userdata: rawptr, event: ^sdl.Event) -> bool {
+	#partial switch event.type {
+	case .WILL_ENTER_BACKGROUND, .DID_ENTER_BACKGROUND, .TERMINATING:
+		if background_watch != nil {
+			background_watch()
+		}
+	}
+	return true
 }
 
 // Starts SDL and the GPU device. On failure `app.error` says why and nothing is
@@ -115,7 +138,9 @@ init_once :: proc(app: ^App) -> (ok: bool, was_wayland: bool) {
 	if !sdl.Init({.VIDEO}) {
 		return fail(app, "SDL_Init"), false
 	}
-	intrinsics.atomic_add(&apps_running, 1)
+	if intrinsics.atomic_add(&apps_running, 1) == 0 {
+		_ = sdl.AddEventWatch(background_filter, nil)
+	}
 	app.video = strings.clone_from_cstring(sdl.GetCurrentVideoDriver())
 	props := sdl.CreateProperties()
 	defer sdl.DestroyProperties(props)

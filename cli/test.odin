@@ -281,6 +281,7 @@ test_sketch :: proc(file: string, files: []lang.File_Text, args: Test_Args, only
 	}
 	roci.start_headless(seed)
 	defer roci.shutdown()
+	roci.memory_persist(fmt.tprintf("%s/memory.toml", root), false)
 	p, ok := interp.load_files(files)
 	defer interp.destroy(p)
 	checks := 0

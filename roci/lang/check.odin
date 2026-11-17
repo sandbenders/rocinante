@@ -44,6 +44,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		learn_order = make([dynamic]string, allocator),
 		msg_types   = make(map[string]Type_Id, 8, allocator),
 		msg_mixed   = make(map[string]bool, 8, allocator),
+		mem_types   = make(map[string]Type_Id, 8, allocator),
 	}
 	// Two passes. A field assigned anywhere in the sketch belongs to the shape of the
 	// record, even to a line above it, so the first pass only settles
@@ -169,6 +170,7 @@ Checker :: struct {
 	aliases:       [dynamic]Alias,         // `b = a` of a list or record: two names, one value
 	msg_types:     map[string]Type_Id,     // what is sent to each window, by the name that is sent to (check_messages.odin)
 	msg_mixed:     map[string]bool,        // windows that are sent different kinds of value
+	mem_types:     map[string]Type_Id,     // the kind of value kept under each name of `remember` (check_memory.odin)
 }
 
 @(private)

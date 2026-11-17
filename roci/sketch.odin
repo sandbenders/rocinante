@@ -126,6 +126,12 @@ Sketch :: struct {
 	ui_doc:       toml.Document,    // what that file said, with the tables of windows that are not open
 	ui_dirty:     bool,             // a value changed that the file does not have yet
 	ui_changed:   time.Tick,        // when it last did
+	memory_file:    string,        // where `remember` keeps its values, "" for nowhere (memory.odin)
+	memory_doc:     toml.Document, // what is remembered, in the table named ""
+	memory_writes:  bool,          // this run may write the file
+	memory_dirty:   bool,          // something changed that the file does not have yet
+	memory_changed: time.Tick,     // when it last did
+	memory_warned:  bool,          // the file being large has been said
 	shot_ready:   bool,
 	cursor_shown: Cursor, // what the one cursor of the program is now
 	canvases:     [dynamic]Image, // every canvas made, for drawing their rounds before the windows
@@ -166,6 +172,7 @@ start :: proc() -> bool {
 	if !the.seed_chosen {
 		set_seed(u64(time.to_unix_nanoseconds(time.now())))
 	}
+	platform.set_background_watch(background_flush)
 	if !platform.init(&the.app) {
 		the.failed, the.headless = true, true
 		the.error = strings.clone(the.app.error)
@@ -187,6 +194,8 @@ last_error :: proc() -> string {
 shutdown :: proc() {
 	ui_flush()
 	ui_forget_file()
+	memory_flush()
+	memory_forget_file()
 	finish_recordings()
 	print_record_results()
 	midi_shutdown() // first: its report reads the speakers

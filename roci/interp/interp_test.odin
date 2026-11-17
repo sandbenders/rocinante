@@ -540,6 +540,9 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 			roci.set_osc_port_busy(id == .Osc_Port_Busy)
 			defer roci.set_osc_port_busy(false)
 			roci.set_midi_none(id == .Midi_Out_Missing)
+			if id == .Memory_Mismatch {
+				roci.memory_put("best", "lots") // what a file edited by hand might hold
+			}
 			p, ok := load("sketch.roci", string(data))
 			testing.expectf(t, ok, "%s.roci has check errors", path)
 			p.path = sketch_path

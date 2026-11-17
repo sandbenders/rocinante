@@ -1333,6 +1333,36 @@ int roci_joystick_button(int index, int button);
 /* Shakes a gamepad as far as it can: `strength` 0 to 100, for `seconds`, on the pad at a place counting from 1 (0 for the first). Gives 1 when there was a pad to shake and 0 when there was none, or it cannot shake. */
 int roci_rumble(double strength, double seconds, int pad);
 
+/* Keeps a number under a name, in memory.toml beside the program, for the next run to read with roci_recall_number. The file is written after a pause in the changes and when the program ends, so this may be called every frame. */
+void roci_remember_number(const char *key, double value);
+
+/* Keeps text under a name. */
+void roci_remember_text(const char *key, const char *value);
+
+/* Keeps true (1) or false (0) under a name. */
+void roci_remember_bool(const char *key, int value);
+
+/* Keeps a list of numbers under a name, which is how a vector is kept too. */
+void roci_remember_numbers(const char *key, const double *values, int count);
+
+/* The number kept under a name, or `start` when nothing is kept or it is not a number. */
+double roci_recall_number(const char *key, double start);
+
+/* The text kept under a name, or `start` when nothing is kept or it is not text. The text stays valid until the next function that gives text back. */
+const char *roci_recall_text(const char *key, const char *start);
+
+/* The true (1) or false (0) kept under a name, or `start` when nothing is kept or it is not true or false. */
+int roci_recall_bool(const char *key, int start);
+
+/* Writes the list of numbers kept under a name into `out`, at most `capacity` of them, and gives how many are kept (0 when nothing is kept or it is not a list of numbers), which may be more than were written. */
+int roci_recall_numbers(const char *key, double *out, int capacity);
+
+/* Takes the value kept under a name away. */
+void roci_forget(const char *key);
+
+/* Takes every kept value away. */
+void roci_forget_memory(void);
+
 #ifdef __cplusplus
 }
 #endif

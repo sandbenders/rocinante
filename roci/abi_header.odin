@@ -121,6 +121,9 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"osc send", "roci_osc_send roci_osc_send_bundle", ""},
 	{"rumble", "roci_rumble", ""},
 	{"bind", "roci_bind", ""},
+	{"remember", "roci_remember_number roci_remember_text roci_remember_bool roci_remember_numbers", ""},
+	{"recall", "roci_recall_number roci_recall_text roci_recall_bool roci_recall_numbers", ""},
+	{"forget", "roci_forget roci_forget_memory", ""},
 	{"direction", "roci_action_direction", ""},
 	{"midi note", "roci_midi_note", ""},
 	{"midi release", "roci_midi_release", ""},
@@ -367,6 +370,7 @@ abi_table_init :: proc "contextless" () {
 	abi_misc_group(&all)
 	abi_sound_group(&all)
 	abi_pads_group(&all)
+	abi_memory_group(&all)
 	ABI_TABLE = all[:]
 }
 

@@ -21,3 +21,4 @@ playground/
 examples/*/assets/fonts/
 # The values the widgets of an example keep, which a hand run of it writes
 examples/*/ui.toml
+examples/*/memory.toml

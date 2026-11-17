@@ -1,0 +1,15 @@
+remember "taps" 0
+
+on key "space" [
+  taps = recall "taps" start 0
+  remember "taps" (taps + 1)
+]
+
+on key "r" [ forget "taps" ]
+on key "x" [ forget memory ]
+
+draw [
+  background 20
+  fill white
+  text "taps {recall "taps" start 0}" at 20 40
+]

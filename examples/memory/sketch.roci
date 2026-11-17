@@ -1,0 +1,47 @@
+// Memory: a sketch that keeps what it learned. `remember "best score" best` writes a value under a
+// name into memory.toml beside the sketch, and `recall "best score" start 0` reads it back the next
+// time the sketch runs (`start` is what it gives before anything is kept). Press space to score,
+// R to start over, and X to forget everything. Close the sketch and run it again: the best score and
+// the number of visits are still there. Open memory.toml to see them, and change them if you like
+// while the sketch is not running.
+window size 640 400 title "memory"
+
+best = recall "best score" start 0
+visits = (recall "visits" start 0) + 1
+remember "visits" visits
+score = 0
+
+on key "space" [
+  score = score + 10
+  if score > best [
+    best = score
+    remember "best score" best
+  ]
+]
+
+on key "r" [ score = 0 ]
+
+on key "x" [
+  forget memory
+  best = 0
+  visits = 1
+  remember "visits" visits
+]
+
+draw [
+  background 20
+  no stroke
+  fill gray
+  rect at 40 250 size 560 18
+  fill skyblue
+  rect at 40 250 size (clamp (score * 4) 0 560) 18
+  if score >= best and score > 0 [ fill gold ]
+  circle at 320 140 radius (40 + score / 4)
+  fill white
+  text "score {score}" at 40 40 size 28
+  text "best {best}" at 40 80 size 28
+  text "visits {visits}" at 40 120 size 28
+  fill gray
+  text "space: score    r: start over    x: forget everything" at 40 340 size 14
+  text "close it and run it again: the best score is still here" at 40 364 size 14
+]

@@ -1,0 +1,8 @@
+── `best` is kept as two different kinds of value ───── sketch.roci:2:17
+
+2 │ remember "best" "a lot"
+  │                 ^^^^^^^
+
+A name keeps one kind of value, so that `recall` always knows what it gives. Here it is a number, and elsewhere in the sketch it is text.
+
+Keep the other one under a name of its own:  remember "best 2" "hello"

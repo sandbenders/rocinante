@@ -1,0 +1,17 @@
+best = recall "best score" start 0
+score = 0
+
+on key "space" [
+  score = score + 10
+  if score > best [
+    best = score
+    remember "best score" best
+  ]
+]
+
+draw [
+  background 20
+  fill white
+  text "score {score}" at 20 40
+  text "best {best}" at 20 70
+]

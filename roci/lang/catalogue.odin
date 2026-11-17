@@ -155,6 +155,11 @@ Message_Id :: enum u8 {
 	Widget_Twice,
 	Tab_Outside_Tabs,
 	Key_Unknown,
+	Memory_Name_Not_Text,
+	Memory_Kinds_Differ,
+	Memory_Never_Kept,
+	Memory_Kind_Unsupported,
+	Memory_Mismatch,
 	Input_Unknown,
 	Too_Many_Lights,
 	Turtle_Flat,
@@ -558,6 +563,21 @@ CATALOGUE := [Message_Id]Entry{
 	.Key_Unknown = {.Error, "I do not know a key called `{a}`",
 		"Keys are named as `on key` names them: a letter or digit, `space`, `backtick`, `enter`, `escape`, `tab`, `backspace`, `left`, `right`, `up`, `down`, `shift`, `ctrl`, `alt`, or `f1` to `f12`. The key stays as it was, and the sketch carries on.",
 		"Use one of those:", "{d}"},
+	.Memory_Name_Not_Text = {.Error, "`{a}` needs the name of its value written as text",
+		"The sketch is read before it runs, so a name that is worked out while it runs, such as `\"level \" + n`, cannot be matched with the `remember` and `recall` lines that use it. Write the name in double quotes.",
+		"Write the name out:", "{d}"},
+	.Memory_Kinds_Differ = {.Error, "`{a}` is kept as two different kinds of value",
+		"A name keeps one kind of value, so that `recall` always knows what it gives. Here it is {b}, and elsewhere in the sketch it is {c}.",
+		"Keep the other one under a name of its own:", "{d}"},
+	.Memory_Never_Kept = {.Error, "Nothing keeps a value under `{a}`",
+		"`recall` gives the kind of value that `remember` keeps under the same name, so the sketch needs a `remember` line for it, or a `start` that says what kind it is. {b}",
+		"Say what it is with a start:", "{d}"},
+	.Memory_Kind_Unsupported = {.Error, "{a} cannot be kept between runs",
+		"A file holds numbers, text, true or false, vectors, colors, and lists and records of those. A window, a picture, a sound or a gradient is made while the sketch runs and is not written down.",
+		"Keep something it is made from instead:", "{d}"},
+	.Memory_Mismatch = {.Error, "The file keeps a different kind of value under `{a}`",
+		"`memory.toml` holds {b} under this name, and the sketch uses {c}, so the file was changed by hand or by an older version of the sketch. The `start` value is used and the file is left alone until the sketch remembers something new.",
+		"Check the line in the file, or forget it:", "{d}"},
 	.Input_Unknown = {.Error, "I do not know an input called `{a}`",
 		"An input is written as text: a key (`key space`), a mouse button (`mouse left`), a gamepad button, trigger, stick or the d-pad (`pad bottom`, `pad 2 lefttrigger`, `pad leftstick`, `pad dpad`), four keys that make a vector (`keys w a s d`: up, left, down, right) or a joystick's button or axis (`joystick 1 button 3`, `joystick 1 axis 2`). {b} The action does not get this input, and the sketch carries on.",
 		"Use one of those:", "{d}"},
@@ -641,7 +661,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

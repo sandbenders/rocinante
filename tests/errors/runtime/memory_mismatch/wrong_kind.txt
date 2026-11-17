@@ -1,0 +1,8 @@
+── The file keeps a different kind of value under `best` ─── sketch.roci:1:8
+
+1 │ best = recall "best" start 0
+  │        ^^^^^^^^^^^^^^^^^^^^^
+
+`memory.toml` holds text under this name, and the sketch uses a number, so the file was changed by hand or by an older version of the sketch. The `start` value is used and the file is left alone until the sketch remembers something new.
+
+Check the line in the file, or forget it:  forget "best"

@@ -1,0 +1,8 @@
+visits = (recall "visits" start 0) + 1
+remember "visits" visits
+
+draw [
+  background 20
+  fill white
+  text "you have been here {visits} times" at 20 40
+]

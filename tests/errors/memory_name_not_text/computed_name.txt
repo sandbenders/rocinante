@@ -1,0 +1,8 @@
+── `remember` needs the name of its value written as text ─── sketch.roci:2:10
+
+2 │ remember slot 1
+  │          ^^^^
+
+The sketch is read before it runs, so a name that is worked out while it runs, such as `"level " + n`, cannot be matched with the `remember` and `recall` lines that use it. Write the name in double quotes.
+
+Write the name out:  remember "name" score

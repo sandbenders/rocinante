@@ -17,9 +17,10 @@ ASSET_FOLDERS := [?]string{"images", "sounds", "videos", "fonts", "3d-models", "
 // What a new sketch starts with: the smallest program.
 STARTING_SKETCH :: "circle at 100 100 radius 50\n"
 
-// What git leaves out: what the sketch writes, roci's own cache, and the files a
-// Mac scatters.
-GITIGNORE :: "output/\n.roci/\n.DS_Store\n"
+// What git leaves out: what the sketch writes (its output, and what it remembers: a high score is not
+// source, and a file committed on purpose is a starting state), roci's own cache, and the files a Mac
+// scatters.
+GITIGNORE :: "output/\nmemory.toml\n.roci/\n.DS_Store\n"
 
 // The large binary files that go to Git LFS when it is chosen: audio, video, 3D
 // models, machine-learning models and big pictures.

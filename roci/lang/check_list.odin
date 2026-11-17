@@ -164,6 +164,8 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 		return ray_type(c, e), true
 	case "pixels":
 		return list_of(c.types, T_COLOUR), true
+	case "remember", "recall", "forget":
+		return memory_verb_type(c, verb, e, k, args, options), true
 	case "send":
 		if len(args) == 2 {
 			record_send(c, window_key(k.args[0]), args[1].type)

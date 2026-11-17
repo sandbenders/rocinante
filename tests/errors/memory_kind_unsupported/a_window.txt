@@ -1,0 +1,8 @@
+── A window cannot be kept between runs ─────────────── sketch.roci:2:14
+
+2 │ remember "w" w
+  │              ^
+
+A file holds numbers, text, true or false, vectors, colors, and lists and records of those. A window, a picture, a sound or a gradient is made while the sketch runs and is not written down.
+
+Keep something it is made from instead:  remember "w" 0
