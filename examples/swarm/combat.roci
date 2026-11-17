@@ -70,7 +70,7 @@ learn drawshots [
   no stroke
   // each player's shots are the color of their ship
   for each s in shots [
-    fill (rgb 255 240 200)
+    fill (rgb 255 150 205)
     if s.who is 2 [ fill (rgb 255 205 60) ]
     rect at s.pos size s.size
   ]

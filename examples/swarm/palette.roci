@@ -37,3 +37,15 @@ COLORS_TWO = [
   (rgb 255 90 200)
   white
 ]
+// the first player's ship: the classic one with a pink body where the enemies have white
+COLORS_ONE = [
+  CLEAR
+  (rgb 255 130 195)
+  (rgb 235 50 60)
+  (rgb 60 110 255)
+  (rgb 255 220 40)
+  (rgb 40 200 90)
+  (rgb 170 70 230)
+  (rgb 80 230 240)
+  (rgb 255 150 30)
+]

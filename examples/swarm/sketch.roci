@@ -29,7 +29,7 @@
 window size 480 640 title "swarm" resizable false cursor none
 
 // the pictures
-ship_look = sprite SHIP_ROWS 11 COLORS
+ship_look = sprite SHIP_ROWS 11 COLORS_ONE
 ship_two_look = sprite SHIP_ROWS 11 COLORS_TWO
 life_look = resize ship_look size 22 0 as nearest
 bug_looks = [ (sprite BUG_UP 9 COLORS) (sprite BUG_DOWN 9 COLORS) ]

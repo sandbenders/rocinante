@@ -10,6 +10,7 @@ CLEAR: a color
 COLORS: a list of colors
 HURT: a list of colors
 COLORS_TWO: a list of colors
+COLORS_ONE: a list of colors
 SHIP_Y: a number
 SPEED: a number
 MOST_SHOTS: a number
