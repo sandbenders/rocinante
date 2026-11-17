@@ -171,6 +171,7 @@ Checker :: struct {
 	msg_types:     map[string]Type_Id,     // what is sent to each window, by the name that is sent to (check_messages.odin)
 	msg_mixed:     map[string]bool,        // windows that are sent different kinds of value
 	mem_types:     map[string]Type_Id,     // the kind of value kept under each name of `remember` (check_memory.odin)
+	sound_source:  bool,                   // the sketch plays, loads or listens to a sound somewhere: `level` and `bands` then have something to measure
 }
 
 @(private)
@@ -934,6 +935,9 @@ check_path :: proc(c: ^Checker, e: ^Expr, path: Path) -> ^IR {
 			return error_ir(c, e.span)
 		}
 		base = new_ir(c, Span{e.span.file, e.span.start, e.span.start + len(word)}, type_of_value(c, def), IR_Builtin{name = word})
+		if word == "mic" || word == "speakers" {
+			c.sound_source = true
+		}
 	} else if colour, is_colour := maths.name_lookup(word); is_colour {
 		base = new_ir(c, Span{e.span.file, e.span.start, e.span.start + len(word)}, T_COLOUR, IR_Colour{value = colour})
 	} else if word == "it" || word == "result" {

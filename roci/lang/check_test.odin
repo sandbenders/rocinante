@@ -1715,3 +1715,18 @@ test_text_with_holes_is_text :: proc(t: ^testing.T) {
 	expect_errors(t, "message = \"you have {nope} left\"\n", {.Unknown_Name})
 	expect_errors(t, "message = \"a {1 2}\"\n", {.Hole_Extra})
 }
+
+@(test)
+test_level_and_bands_alone_warn_only_in_a_sketch_that_makes_no_sound :: proc(t: ^testing.T) {
+	expect_errors(t, "x = level\nprint x", {.Level_Without_Sound})
+	expect_errors(t, "b = bands\nprint b", {.Level_Without_Sound})
+	// a sound anywhere in the sketch, above or below, gives them something to measure
+	expect_errors(t, "x = level\nrain = load \"rain.wav\"\nplay rain", {})
+	expect_errors(t, "x = level\nrain = load \"rain.wav\"", {})
+	expect_errors(t, "piano = synth triangle\nx = level", {})
+	expect_errors(t, "x = level mic", {})
+	expect_errors(t, "b = bands speakers", {})
+	expect_errors(t, "loud = level speakers\nprint loud", {})
+	// a picture is not a sound
+	expect_errors(t, "photo = load \"cat.png\"\nx = level", {.Level_Without_Sound})
+}

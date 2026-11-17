@@ -343,6 +343,7 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 	if verb.name == "load" && len(args) == 1 && is_sound_file(args[0]) {
 		type = T_SOUND
 	}
+	sound_use(c, verb, e, k, args[:])
 	// a vector the verb gives is as long as the one it was given (normalize and limit), or three long (a point of the 3D floor)
 	if shape.gives == .Vector {
 		if verb.name == "world point" {

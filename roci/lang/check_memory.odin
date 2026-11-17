@@ -138,3 +138,23 @@ memory_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, a
 	}
 	return T_NONE // forget "key"
 }
+
+// `level` and `bands` written alone measure the sound a sketch makes. In a sketch that makes none they are
+// always 0, which is what a writer sees who meant a name of their own (the word is taken, so nothing
+// else says so). Says it where the word is written, once the first pass has seen every place a sound can
+// come from.
+@(private)
+sound_use :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, args: []^IR) {
+	switch verb.name {
+	case "synth", "play", "loop":
+		c.sound_source = true
+	case "load":
+		if len(args) == 1 && is_sound_file(args[0]) {
+			c.sound_source = true
+		}
+	case "level", "bands":
+		if len(args) == 0 && len(k.options) == 0 && !c.sound_source {
+			note(c, .Level_Without_Sound, e.span, verb.name, "", "", fix(c, e.span, fmt.tprintf("my%s", verb.name)))
+		}
+	}
+}

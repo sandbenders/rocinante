@@ -801,6 +801,8 @@ The rules below fill the gaps the 2026-10-24 review found. Where they touch anot
 - **Mixed 2D and 3D** (§4.3). In one `draw`, a 2D verb after a 3D verb draws in screen space on top of the 3D scene. The default mouse orbit steps aside while the mouse is over a widget or when the sketch reads the mouse.
 
 
+- **`level` and `bands` written alone, in a sketch that makes no sound** (nothing plays, loads a sound file, makes a `synth` or reads `mic` or `speakers`) is the warning `Level_Without_Sound`: both words are taken, so a writer who meant a name of their own gets a silent 0 and no other message (found 2026-11-17, when `remember "level" level` stored 0). The first pass of `check` records where a sound can come from (`sound_source`), the second says it.
+
 ### 5.16 Checks and snapshots (decided 2026-11-02)
 
 Tests are optional and light, because classic unit testing is a hard sell to artists and making it compulsory would go against the manifesto. Two groups gain from them: library authors (the index asks that a library passes `roci check`, §5.10, which proves only that it has no errors, not that it works) and anyone whose sketch must keep looking the same (installations, commissioned work, teaching examples). The design is one keyword and one verb for behaviour, one stored picture for looks, and one command for both. Pyret's `where:` and `check:` blocks, which sit beside the code so a test reads like an example of use, are the model.

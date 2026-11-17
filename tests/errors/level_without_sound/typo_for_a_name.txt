@@ -1,0 +1,8 @@
+── Warning: `level` measures sound, and this sketch makes none ─── sketch.roci:2:19
+
+2 │ remember "level" (level) in vault
+  │                   ^^^^^
+
+`level` is a word of the language: written alone it gives how loud everything playing is (`bands` splits it by pitch), and nothing in this sketch plays a sound, loads one or listens to the microphone, so it is always 0. If you meant a name of your own, `level` is already taken, so pick another one for it.
+
+A name of your own:  remember "level" (mylevel) in vault

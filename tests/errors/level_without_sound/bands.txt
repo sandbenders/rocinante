@@ -1,0 +1,8 @@
+── Warning: `bands` measures sound, and this sketch makes none ─── sketch.roci:1:7
+
+1 │ bar = bands
+  │       ^^^^^
+
+`bands` is a word of the language: written alone it gives how loud everything playing is (`bands` splits it by pitch), and nothing in this sketch plays a sound, loads one or listens to the microphone, so it is always 0. If you meant a name of your own, `bands` is already taken, so pick another one for it.
+
+A name of your own:  bar = mybands
