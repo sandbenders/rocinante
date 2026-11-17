@@ -248,12 +248,15 @@ is_word_slot :: proc(verb: ^registry.Verb, given, index: int) -> bool {
 
 // A bare word that is not a name of the sketch, where a call takes a word.
 @(private)
-as_word :: proc(c: ^Checker, e: ^Expr) -> (word: string, ok: bool) {
+as_word :: proc(c: ^Checker, e: ^Expr, words: []string = nil) -> (word: string, ok: bool) {
 	path, is_path := e.kind.(Path)
 	if !is_path || len(path.parts) != 1 {
 		return
 	}
-	if lookup(c, path.parts[0]) != nil {
+	// Where a verb takes one of a few words (`around z`), a name that is one of them is the
+	// word even when the sketch has a variable of that name, so the line means the same
+	// wherever the variable is written.
+	if lookup(c, path.parts[0]) != nil && !slice_contains(words, path.parts[0]) {
 		return
 	}
 	return path.parts[0], true
@@ -280,7 +283,7 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 			continue
 		}
 		if is_word_slot(verb, len(k.args), i) {
-			if word, ok := as_word(c, a); ok {
+			if word, ok := as_word(c, a, registry.word_choices(verb.name, word_param_name(verb, len(k.args), i))); ok {
 				check_choice(c, verb.name, verb.name, word_param_name(verb, len(k.args), i), word, a.span)
 				append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
 				append(&kinds, registry.Kind.Name)
@@ -494,7 +497,7 @@ check_options :: proc(c: ^Checker, call_span: Span, k: Call, verb: ^registry.Ver
 				}
 			}
 			if i < len(def.kinds) && def.kinds[i] == .Name {
-				if word, ok := as_word(c, a); ok {
+				if word, ok := as_word(c, a, registry.word_choices(choices_for, o.word)); ok {
 					check_choice(c, choices_for, o.word, o.word, word, a.span)
 					append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
 					continue
@@ -600,7 +603,7 @@ check_paint_words :: proc(c: ^Checker, o: Option_Use, value: ^IR, may_reroute: b
 				break
 			}
 			if def.kinds[i] == .Name {
-				if word, ok := as_word(c, a); ok {
+				if word, ok := as_word(c, a, registry.word_choices(choices_for, w.word)); ok {
 					check_choice(c, choices_for, w.word, w.word, word, a.span)
 					append(&args, new_ir(c, a.span, T_TEXT, IR_Word{word = word}))
 					continue

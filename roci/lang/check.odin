@@ -52,6 +52,12 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 	// the shapes and reports nothing; the second is the one that counts.
 	stmts: [dynamic]^IR_Stmt
 	for pass in 0 ..< 2 {
+		if pass == 1 {
+			c.settled = make(map[string]Type_Id, len(c.order), allocator)
+			for s in c.order {
+				c.settled[s.name] = s.type
+			}
+		}
 		c.report = pass == 1
 		c.globals = make(map[string]^Symbol, 16, allocator)
 		c.order = make([dynamic]^Symbol, allocator)
@@ -148,6 +154,7 @@ Checker :: struct {
 	alloc:    mem.Allocator,
 	types:    ^Types,
 	globals:  map[string]^Symbol,
+	settled:  map[string]Type_Id, // the types of the names after the first pass
 	order:    [dynamic]^Symbol,
 	locals:   [dynamic]^Symbol, // loop variables and message names, innermost last
 	frames:   [dynamic]Frame,   // the blocks being checked, for what each captures
@@ -283,7 +290,7 @@ declare_global :: proc(c: ^Checker, name: string, span: Span) -> ^Symbol {
 		}
 	}
 	s := new(Symbol, c.alloc)
-	s^ = Symbol{name = name, kind = .Constant if is_constant_name(name) else .Variable, type = fresh(c.types), first_write = span, slot = len(c.order)}
+	s^ = Symbol{name = name, kind = .Constant if is_constant_name(name) else .Variable, type = c.settled[name] or_else fresh(c.types), first_write = span, slot = len(c.order)}
 	c.globals[name] = s
 	append(&c.order, s)
 	return s

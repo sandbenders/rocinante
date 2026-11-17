@@ -1730,3 +1730,33 @@ test_level_and_bands_alone_warn_only_in_a_sketch_that_makes_no_sound :: proc(t: 
 	// a picture is not a sound
 	expect_errors(t, "photo = load \"cat.png\"\nx = level", {.Level_Without_Sound})
 }
+
+@(test)
+test_a_list_that_starts_empty_has_the_type_a_verb_further_down_gives_it_in_every_verb_above :: proc(t: ^testing.T) {
+	// `far` reads the parts of an item before `fire` is the one that says what an item is.
+	got := check_text("shots = []\nlearn far [\n  n = 0\n  for each s in shots [ n = s.pos.x ]\n  give n\n]\nx = far\nlearn fire [ add { pos: { 1, 2 } } to shots ]\nfire")
+	testing.expect_value(t, len(got.checked.diagnostics), 0)
+	found := false
+	for inst in got.checked.program.instances {
+		if inst.name != "far" {
+			continue
+		}
+		for s in inst.body.stmts {
+			if each, is_each := s.kind.(IR_For_Each); is_each {
+				_, is_part := each.body.stmts[0].kind.(IR_Assign).value.kind.(IR_Swizzle)
+				testing.expect(t, is_part, "`s.pos.x` is a part of a vector")
+				found = true
+			}
+		}
+	}
+	testing.expect(t, found)
+}
+
+@(test)
+test_a_word_a_verb_takes_stays_a_word_when_the_sketch_has_a_variable_of_that_name :: proc(t: ^testing.T) {
+	// `z` is written below and above the line: it is the word after `around` either way.
+	expect_errors(t, "turn 10 around z\nz = 5", {})
+	expect_errors(t, "z = 5\nturn 10 around z", {})
+	// a name that is not one of the words is still the variable, and still wrong there
+	expect_errors(t, "w = 5\nturn 10 around w", {.Wrong_Argument_Kind})
+}
