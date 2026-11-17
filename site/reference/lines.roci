@@ -1,0 +1,12 @@
+poem = "roses are red\nviolets are blue\nsugar is sweet\n"
+y = 40
+
+draw [
+  background 20
+  fill white
+  for each verse in lines poem [
+    text verse at 20 y size 20
+    y = y + 28
+  ]
+  y = 40
+]

@@ -67,6 +67,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"actions", 1, "Actions", 2, 1},
 	{"memory", 1, "Memory", 2, 1},
 	{"vault", 1, "Vault", 2, 1},
+	{"data", 1, "Data", 2, 1},
 
 	{"flocking", 2, "Flocking", 100, 1},
 	{"life", 2, "Game of life", 120, 1},

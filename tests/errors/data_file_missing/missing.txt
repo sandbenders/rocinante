@@ -1,0 +1,8 @@
+── I cannot find the data file `birds.json` ─────────── sketch.roci:1:14
+
+1 │ birds = load "birds.json"
+  │              ^^^^^^^^^^^^
+
+`load` reads a data file from the sketch's assets folder (`roci add` puts one in `data`), and there is no file of that name in it. The sketch carries on without it.
+
+Name a file that is there:  birds = load "data.json"

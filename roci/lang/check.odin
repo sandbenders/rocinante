@@ -46,6 +46,8 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		msg_mixed   = make(map[string]bool, 8, allocator),
 		mem_types   = make(map[string]Type_Id, 8, allocator),
 		scenes      = make(map[string]Span, 8, allocator),
+		data_files  = make(map[string]Data_Found, 4, allocator),
+		data_sites  = make(map[string]int, 8, allocator),
 	}
 	// Two passes. A field assigned anywhere in the sketch belongs to the shape of the
 	// record, even to a line above it, so the first pass only settles
@@ -178,6 +180,8 @@ Checker :: struct {
 	aliases:       [dynamic]Alias,         // `b = a` of a list or record: two names, one value
 	msg_types:     map[string]Type_Id,     // what is sent to each window, by the name that is sent to (check_messages.odin)
 	msg_mixed:     map[string]bool,        // windows that are sent different kinds of value
+	data_files:    map[string]Data_Found,  // the data files read, by the name written in the sketch (check_data.odin)
+	data_sites:    map[string]int,         // the record shape of each place in a data file
 	mem_types:     map[string]Type_Id,     // the kind of value kept under each name of `remember` (check_memory.odin)
 	scenes:        map[string]Span,        // every scene of the sketch, by name, and where it is written (check_scene.odin)
 	in_leave:      int,                    // inside an `on leave` block

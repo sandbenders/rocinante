@@ -1405,6 +1405,18 @@ void roci_vault_forget(const char *key);
 /* Takes everything out of the vault. */
 void roci_vault_forget_all(void);
 
+/* The text of a file, or NULL when it is not there or cannot be read. The text stays valid until the next function that gives text back. */
+const char *roci_read_file(const char *path);
+
+/* Writes text to a file, making the folders in its path, and gives 1 when it was written. A file is never left half written. */
+int roci_write_file(const char *path, const char *text);
+
+/* How many files are in a folder, 0 for one that is not there. Folders inside it are not counted. */
+int roci_file_count(const char *folder);
+
+/* The name of a file of a folder, counting from 0 in the order of the names, or NULL past the last. The text stays valid until the next function that gives text back. */
+const char *roci_file_name(const char *folder, int index);
+
 #ifdef __cplusplus
 }
 #endif

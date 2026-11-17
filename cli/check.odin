@@ -4,6 +4,7 @@
 // format of the error messages. `roci run` comes after it.
 package main
 
+import "../roci/folder"
 import "../roci/lang"
 import "../roci/registry"
 import "../tools/term"
@@ -137,7 +138,13 @@ run_check :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	if !read_ok {
 		return 2
 	}
+	// a sketch is checked against the data files it loads
+	if root, in_folder := folder.program_root(file); in_folder {
+		folder.set_data_root(root)
+		lang.set_data_reader(folder.data_reader)
+	}
 	result := check_files(file, files, parsed.tree, parsed.types)
+	lang.set_data_reader(nil)
 	if parsed.json {
 		fmt.sbprintf(out, "%s", result.json)
 		return 1 if result.errors > 0 else 0

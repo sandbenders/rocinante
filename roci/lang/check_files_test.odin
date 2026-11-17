@@ -59,7 +59,11 @@ check_corpus :: proc(t: ^testing.T, root: string, only_sketch: bool) -> int {
 			// An example is the program of its whole folder, the way `roci run` reads it.
 			src = program_source(t, base, string(data))
 		}
+		if only_sketch {
+			use_folder_for_data(base[:strings.last_index_byte(base, '/')] if strings.contains_rune(base, '/') else ".")
+		}
 		checked := check(src, registry.ALL_VERBS, nil, context.temp_allocator)
+		set_data_reader(nil)
 		testing.expectf(t, len(checked.diagnostics) == 0, "%s.roci should check cleanly:\n%s", base, render_all(src, checked.diagnostics, context.temp_allocator))
 		got := describe_names(checked, context.temp_allocator)
 		path := fmt.tprintf("%s.types", base)

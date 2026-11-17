@@ -1,0 +1,8 @@
+birds: a record with title and birds
+scores: a list of records with name and points
+poem: text
+best: a number
+total: a number
+summary: a record with birds, total and best
+x: a number
+y: a number

@@ -1,0 +1,52 @@
+// Data files: `load` reads a JSON, CSV, TSV, TOML or text file from assets/data, and what it gives is
+// shaped by the file. birds.json is a record with a title and a list of birds, each with the fields
+// the file gives it (`b.size`, `b.name`), and scores.csv is a list of records with a field for each
+// column (its first line names them, and a column of numbers is numbers). poem.txt is text, and `lines`
+// splits it. Press S to `save` a summary as a JSON file in the output folder.
+window size 640 400 title "data"
+
+birds = load "birds.json"
+scores = load "scores.csv"
+poem = load "poem.txt"
+
+best = 0
+total = 0
+for each s in scores [
+  total = total + s.points
+  if s.points > best [ best = s.points ]
+]
+
+summary = { birds: count birds.birds, total: total, best: best }
+
+on key "s" [ save summary "summary.json" ]
+
+draw [
+  background 20
+  no stroke
+  fill gray
+  text birds.title at 20 28 size 18
+  fill (rgb 90 140 200)
+  for each b in birds.birds [
+    circle at b.x b.y radius b.size
+    fill white
+    text b.name at (b.x - b.size) (b.y + b.size + 16) size 12
+    fill (rgb 90 140 200)
+  ]
+  fill gray
+  text "scores" at 20 214 size 14
+  x = 20
+  for each s in scores [
+    fill (rgb 240 180 60)
+    rect at x (370 - s.points * 3) size 36 (s.points * 3)
+    fill white
+    text s.name at x 388 size 11
+    x = x + 48
+  ]
+  fill gray
+  y = 240
+  for each verse in lines poem [
+    text verse at 330 y size 14
+    y = y + 22
+  ]
+  text ("total: " + total + "   best: " + best + "   press S to save a summary") at 330 360 size 12
+]

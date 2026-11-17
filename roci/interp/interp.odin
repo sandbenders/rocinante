@@ -11,6 +11,7 @@
 package interp
 
 import "../"
+import "../folder"
 import "../lang"
 import "../registry"
 import "core:fmt"
@@ -114,6 +115,7 @@ Interp :: struct {
 	check_at:  int, // the check being run, counting from 1; 0 when none is
 	home:     string, // the file the program was read from, so `load` and `font` can find its assets even when it is not watched
 	pictures: map[string]Picture_Entry, // what `load` found, by name (images.odin)
+	datafiles: map[string]Data_Entry, // the data files `load` read, by name (data.odin)
 	sounds:   map[string]Sound_Entry,   // the sounds `load` found, by name (sounds.odin)
 	models:   map[string]Model_Entry, // what `model` found, by name (models.odin)
 	svgs:     map[string]Svg_Entry,     // what `svg` found, by name (svgs.odin)
@@ -174,7 +176,12 @@ load_files :: proc(files: []lang.File_Text) -> (p: ^Interp, ok: bool) {
 	} else {
 		p.src = lang.join_sources(kept, p.program_memory) // copies every text
 	}
+	if root, found := assets_root(p); found {
+		folder.set_data_root(root)
+		lang.set_data_reader(folder.data_reader)
+	}
 	p.checked = lang.check(p.src, registry.ALL_VERBS, nil, p.program_memory)
+	lang.set_data_reader(nil)
 	p.types = p.checked.program.types
 	if !lang.has_errors(p.checked.diagnostics) {
 		lang.optimise(&p.checked.program, lang.ALL_PASSES - passes_off, p.program_memory)
@@ -222,6 +229,8 @@ destroy :: proc(p: ^Interp) {
 	}
 	delete(p.fonts_missed)
 	drop_pictures(p)
+	delete(p.datafiles) // its names, paths and values live in the sketch's own memory
+	p.datafiles = nil
 	drop_sounds(p)
 	drop_models(p)
 	drop_svgs(p)

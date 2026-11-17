@@ -71,6 +71,9 @@ REFERENCE_SECTIONS := []Reference_Section{
 	{"Memory", "Values a sketch keeps between runs, in a file beside it.", {
 		"remember", "recall", "forget",
 	}},
+	{"Files", "Data files, read with `load` and written with `save`, and the names of the files in the assets folder.", {
+		"lines", "files",
+	}},
 	{"Collision", "Whether shapes touch, where, and what a line meets. Shapes are plain records.", {
 		"touching", "contact", "hits", "inside", "cast", "ray", "triangles", "outline",
 	}},

@@ -1,0 +1,9 @@
+{
+  "title": "Birds over the hill",
+  "birds": [
+    { "name": "owl", "x": 120, "y": 90, "size": 26, "wings": 2 },
+    { "name": "emu", "x": 250, "y": 140, "size": 34, "wings": 2 },
+    { "name": "moth", "x": 330, "y": 70, "size": 12, "wings": 4 },
+    { "name": "heron", "x": 470, "y": 120, "size": 30, "wings": 2 }
+  ]
+}

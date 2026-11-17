@@ -65,8 +65,16 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	#partial switch code {
 	case .Touching, .Contact, .Hits, .Inside, .Cast:
 		return collision_verb(it, e, call, code)
+	case .Lines:
+		return lines_of(it, as_text(eval(it, call.args[0])))
+	case .Files:
+		return files_in(it, as_text(option_or_nil(it, call.options, "in")))
 	case .Save:
-		save_picture(it, e, as_text(eval(it, call.args[0])))
+		if call.shape == 1 {
+			save_data(it, e, eval(it, call.args[0]), as_text(eval(it, call.args[1])))
+		} else {
+			save_picture(it, e, as_text(eval(it, call.args[0])))
+		}
 	case .Record:
 		if call.shape == 1 {
 			record_sound_start(it, e, as_sound(eval(it, call.args[0])), as_text(eval(it, call.args[1])))
@@ -175,6 +183,9 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			}
 		}
 	case .Load:
+		if is_data_load(call) {
+			return load_data(it, as_text(eval(it, call.args[0])), e.type, e.span)
+		}
 		if e.type == lang.T_SOUND {
 			buffer: Maybe(f64)
 			if v, ok := option_value(it, call.options, "buffer"); ok {

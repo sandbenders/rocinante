@@ -338,6 +338,10 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 	if special, handled := list_verb_type(c, verb, e, k, args[:], options); handled {
 		type = special
 	}
+	// lines and file names are text
+	if verb.name == "lines" || verb.name == "files" {
+		type = list_of(c.types, T_TEXT)
+	}
 	// the bands of a sound are numbers
 	if verb.name == "bands" {
 		type = list_of(c.types, T_NUMBER)
@@ -345,6 +349,11 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 	// `load` of a sound file's name gives a sound, of any other a picture
 	if verb.name == "load" && len(args) == 1 && is_sound_file(args[0]) {
 		type = T_SOUND
+	}
+	if verb.name == "load" && len(args) == 1 {
+		if data_type, is_data := data_load_type(c, e, args[0]); is_data {
+			type = data_type
+		}
 	}
 	sound_use(c, verb, e, k, args[:])
 	// a vector the verb gives is as long as the one it was given (normalize and limit), or three long (a point of the 3D floor)

@@ -1,0 +1,2 @@
+birds = load "birds.json"
+print birds

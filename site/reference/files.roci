@@ -1,0 +1,7 @@
+names = files in "images"
+
+draw [
+  background 20
+  fill white
+  text ("pictures: " + (count names)) at 20 40 size 20
+]

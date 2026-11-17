@@ -1,0 +1,8 @@
+── I cannot read the data file `birds.json` ─────────── sketch.roci:1:14
+
+1 │ birds = load "birds.json"
+  │              ^^^^^^^^^^^^
+
+The file is not written the way its kind of file is, on line 3: a comma or a closing } is missing after a member of the object. The sketch carries on without it.
+
+Fix the file, or load another:  birds = load "data.json"

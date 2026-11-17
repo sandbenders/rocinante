@@ -157,6 +157,8 @@ check_case :: proc(t: ^testing.T, c: Case) -> (Checked_Text, bool) {
 		}
 		return check_text(string(data)), true
 	}
+	use_folder_for_data(c.path)
+	defer set_data_reader(nil)
 	files := make([dynamic]File_Text, context.temp_allocator)
 	w: os.Walker
 	os.walker_init(&w, c.path)
