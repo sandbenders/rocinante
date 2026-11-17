@@ -44,6 +44,27 @@ mesh_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) {
 	roci.mesh(fmt.tprintf("%s:%d", site, n), corners[:], wireframe, look)
 }
 
+// `polygon [ ... ]`: the corners are a list of vectors.
+@(private)
+polygon_verb :: proc(it: ^Interp, call: lang.IR_Call) {
+	list := as_list(eval(it, call.args[0]))
+	if list == nil || len(list.items) < 3 {
+		return
+	}
+	corners := make([dynamic][2]f64, 0, len(list.items), context.temp_allocator)
+	for item in list.items {
+		append(&corners, as_pair(item))
+	}
+	look := &NO_LOOK
+	own_look: roci.Look
+	origin: roci.Origin
+	if len(call.options) > 0 {
+		own_look, origin = make_look(it, call.options)
+		look = &own_look
+	}
+	roci.polygon(corners[:], look^)
+}
+
 @(private)
 drop_meshes :: proc(it: ^Interp) {
 	delete(it.mesh_calls.counts)

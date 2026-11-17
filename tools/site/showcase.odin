@@ -69,6 +69,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"vault", 1, "Vault", 2, 1},
 	{"data", 1, "Data", 2, 1},
 	{"dialogs", 1, "Dialogs", 2, 1},
+	{"city", 1, "City", 2, 1},
 
 	{"flocking", 2, "Flocking", 100, 1},
 	{"life", 2, "Game of life", 120, 1},

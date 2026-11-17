@@ -1,0 +1,42 @@
+// A city built from polygons: `polygon` fills a shape through any number of corners, so a roof with a slope, a
+// tower with a step in it and a wall that leans need no quads and triangles. Each building is a list of
+// corners; the windows are small quads, and a road goes in front.
+window size 640 360 title "city"
+GROUND = 300
+towers = [
+  { x: 40, w: 90, h: 120, roof: 30, shade: 140 }
+  { x: 140, w: 70, h: 190, roof: 0, shade: 120 }
+  { x: 220, w: 110, h: 150, roof: 50, shade: 160 }
+  { x: 340, w: 80, h: 230, roof: 0, shade: 130 }
+  { x: 430, w: 100, h: 110, roof: 40, shade: 150 }
+  { x: 540, w: 70, h: 170, roof: 0, shade: 110 }
+]
+
+learn tower t [
+  top = GROUND - t.h
+  fill (hsb 220 40 t.shade)
+  if t.roof > 0 [
+    polygon [ { t.x, GROUND } { t.x, top } { t.x + t.w / 2, top - t.roof } { t.x + t.w, top } { t.x + t.w, GROUND } ]
+  ] else [
+    polygon [ { t.x, GROUND } { t.x, top + 12 } { t.x + 14, top } { t.x + t.w - 14, top } { t.x + t.w, top + 12 } { t.x + t.w, GROUND } ]
+  ]
+  fill (hsb 45 40 95)
+  for i from 0 to (t.h / 28 - 2) [
+    for j from 0 to (t.w / 22 - 2) [
+      x = t.x + 10 + j * 22
+      y = top + 22 + i * 28
+      quad { x, y } { x + 11, y } { x + 11, y + 14 } { x, y + 14 }
+    ]
+  ]
+]
+
+draw [
+  background (rgb 40 52 80)
+  fill (rgb 30 40 62)
+  polygon [ { 0, GROUND } { 0, 250 } { 80, 235 } { 160, 255 } { 260, 225 } { 380, 250 } { 500, 230 } { 640, 255 } { 640, GROUND } ]
+  for each t in towers [ tower t ]
+  fill 40
+  polygon [ { 0, GROUND } { 640, GROUND } { 640, 360 } { 0, 360 } ]
+  fill 90
+  polygon [ { 0, 330 } { 640, 322 } { 640, 328 } { 0, 336 } ]
+]

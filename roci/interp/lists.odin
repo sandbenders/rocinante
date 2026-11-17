@@ -130,6 +130,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		svg_verb(it, e, call)
 	case .Mesh:
 		mesh_verb(it, e, call)
+	case .Polygon:
+		polygon_verb(it, call)
 	case .Pixel, .Pixels, .Picture, .Crop, .Resize, .Filter, .Mask:
 		return picture_verb(it, e, call, code)
 	case .Label, .Button, .Toggle, .Slider, .Number, .Textbox, .Dropdown, .Choice, .Progress, .Separator, .Controls, .Tip, .List, .Colorpicker, .Knob, .Range, .Xypad, .Image_Button:

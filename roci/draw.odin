@@ -211,6 +211,23 @@ quad_v :: proc(a, b, c, d: [2]f64, look := Look{}) {
 
 quad :: proc{quad_xy, quad_v}
 
+// A filled shape through any number of corners, joined in order and closed. A path crossing itself leaves a
+// hole where it overlaps (the even-odd rule). Fewer than three corners, or a corner that is not a number,
+// draws nothing.
+polygon :: proc(corners: [][2]f64, look := Look{}) {
+	if len(corners) < 3 {
+		return
+	}
+	points := make([][2]f32, len(corners), context.temp_allocator)
+	for c, i in corners {
+		points[i] = {f32(c.x), f32(c.y)}
+	}
+	list := current_list()
+	opened := begin_look(list, look)
+	gfx.path(list, {{points = points, closed = true}})
+	end_look(list, opened)
+}
+
 // Part of an ellipse, between two angles in degrees, clockwise from the right.
 arc :: proc(x, y, width, height, start, stop: f64, look := Look{}, origin := Origin.Default) {
 	list := current_list()

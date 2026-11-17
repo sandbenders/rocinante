@@ -9,6 +9,7 @@ import "core:c"
 import "core:os"
 import "core:strings"
 import "core:testing"
+import "gfx"
 import "registry"
 
 // What a registry kind is as an exported procedure's parameter or result.
@@ -309,4 +310,17 @@ test_every_language_only_verb_has_c_functions_or_a_reason_c_needs_none :: proc(t
 			testing.expectf(t, found, "`%s` says %s does its job, and there is no such function", entry.verb, name)
 		}
 	}
+}
+
+@(test)
+test_c_draws_a_polygon_through_its_corners :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	corners := [4]Abi_Vec2{{0, 0}, {50, 0}, {50, 40}, {0, 40}}
+	abi_polygon(&corners[0], 4)
+	abi_polygon(&corners[0], 2) // two corners are no shape
+	abi_polygon(nil, 4)
+	list := recorded(current_window())
+	testing.expect_value(t, len(list), 1)
+	testing.expect_value(t, list[0].kind, gfx.Kind.Path)
 }

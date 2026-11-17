@@ -389,6 +389,16 @@ abi_quad_v :: proc "c" (a, b, c, d: Abi_Vec2) {
 	quad(vec_from_abi(a), vec_from_abi(b), vec_from_abi(c), vec_from_abi(d))
 }
 
+@(export, link_name = "roci_polygon")
+abi_polygon :: proc "c" (corners: [^]Abi_Vec2, count: c.int) {
+	context = abi_context()
+	if corners == nil || count < 3 {
+		return
+	}
+	// an Abi_Vec2 is two doubles in a row, as a [2]f64 is
+	polygon(([^][2]f64)(corners)[:count])
+}
+
 @(export, link_name = "roci_arc")
 abi_arc :: proc "c" (x, y, width, height, start, stop: f64) {
 	context = abi_context()

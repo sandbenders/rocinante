@@ -1,0 +1,2 @@
+GROUND: a number
+towers: a list of records with x, w, h, roof and shade

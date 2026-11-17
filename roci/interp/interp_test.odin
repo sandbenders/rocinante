@@ -2725,3 +2725,16 @@ test_a_hole_in_drawn_text_follows_its_value :: proc(t: ^testing.T) {
 	testing.expect_value(t, as_text(global_named(p, "caption")), "frame 2")
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_polygon_draws_one_filled_path_through_its_corners :: proc(t: ^testing.T) {
+	p := run_text(t, "polygon [ { 10, 10 } { 90, 20 } { 80, 70 } { 40, 90 } { 5, 60 } ] fill red\npolygon [ { 0, 0 } { 5, 5 } ]\npolygon []")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	// two corners and none are no shape
+	testing.expect_value(t, len(commands), 1)
+	testing.expect_value(t, commands[0].kind, gfx.Kind.Path)
+	testing.expect_value(t, commands[0].style.fill, [4]f32{255, 0, 0, 255})
+	testing.expect_value(t, [4]f32{commands[0].args[0], commands[0].args[1], commands[0].args[2], commands[0].args[3]}, [4]f32{5, 10, 85, 80})
+	testing.expect_value(t, len(p.errors), 0)
+}

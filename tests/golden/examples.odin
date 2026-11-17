@@ -60,6 +60,7 @@ EXAMPLES := [?]Example{
 	{"actions", 2, {1}}, // the ship waiting at the bottom with the three lines of how to steer, fire and boost it (the keys and pads come in the interpreter's test)
 	{"memory", 2, {1}}, // the bar, the circle and the three numbers a first run starts with (what it keeps comes in the interpreter's test)
 	{"data", 2, {1}}, // the birds, the bars and the poem read from the three files of assets/data (the saved summary comes in the interpreter's test)
+	{"city", 2, {1}}, // six buildings, a skyline and the road, every wall and roof a polygon
 	{"dialogs", 2, {1}}, // the picture from assets and the line about it (the dialogs are answered in the interpreter's test)
 	{"vault", 2, {1}}, // the level and the coins a first run starts with (what the vault keeps comes in the interpreter's test)
 	{"gamepad", 2, {1}}, // the invitation to plug a gamepad in (a headless run has none; the panels come in the interpreter's test)

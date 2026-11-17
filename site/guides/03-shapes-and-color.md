@@ -40,6 +40,17 @@ triangle { 100, 40 } { 180, 180 } { 20, 180 }
 quad { 220, 40 } { 360, 60 } { 340, 180 } { 240, 160 }
 ```
 
+`polygon` takes a list of any number of corners and fills the shape they make, joined in order and closed. A house, a wall in a city, a patch of land:
+
+```roci picture
+fill tomato
+polygon [ { 60, 180 } { 60, 100 } { 120, 50 } { 180, 100 } { 180, 180 } ]
+fill gold
+polygon [ { 220, 180 } { 220, 60 } { 250, 60 } { 250, 90 } { 300, 90 } { 300, 180 } ]
+```
+
+A line that crosses another leaves a hole where the two overlap.
+
 Circles, ellipses and arcs are placed by their middle; rectangles and squares by their top-left corner. `as center` or `as corner` after a shape's numbers changes that for one shape:
 
 ```roci picture
