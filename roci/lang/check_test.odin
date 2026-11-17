@@ -1781,11 +1781,17 @@ test_a_name_that_is_a_word_of_the_language_is_said_once :: proc(t: ^testing.T) {
 
 @(test)
 test_a_wrong_kind_has_an_example_only_when_the_writer_wrote_a_value_out :: proc(t: ^testing.T) {
-	// text where a list goes: the sample would replace their own name, so the message stands alone
-	named := check_text("t = \"abc\"\nn = count t")
+	// text where a number goes: the sample would replace their own name, so the message stands alone
+	named := check_text("t = \"abc\"\nn = abs t")
 	testing.expect_value(t, named.checked.diagnostics[0].id, Message_Id.Wrong_Argument_Kind)
 	testing.expect_value(t, named.checked.diagnostics[0].args[3], "")
 	// a value written out is replaced by another of the right kind
-	written := check_text("n = count \"abc\"")
-	testing.expect_value(t, written.checked.diagnostics[0].args[3], "n = count [ 1 2 3 ]")
+	written := check_text("n = abs \"abc\"")
+	testing.expect_value(t, written.checked.diagnostics[0].args[3], "n = abs 0")
+}
+
+@(test)
+test_count_takes_a_text_and_gives_its_characters :: proc(t: ^testing.T) {
+	expect_errors(t, "t = \"abc\"\nn = count t\nwhile (count t) < 6 [ t = t + \"x\" ]", {})
+	expect_errors(t, "n = count 5", {.Wrong_Argument_Kind})
 }

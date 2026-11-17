@@ -2772,3 +2772,13 @@ test_the_wing_flap_in_a_sketch_reads_a_whole_number_before_the_remainder :: proc
 	testing.expect_value(t, as_bool(global_named(p, "wing")), true)
 	testing.expect_value(t, as_bool(global_named(p, "other")), false)
 }
+
+@(test)
+test_count_of_a_text_is_its_characters_not_its_bytes :: proc(t: ^testing.T) {
+	p := run_text(t, "a = count \"hello\"\nb = count \"café\"\nc = count \"\"\ns = \"ab\"\nwhile (count s) < 6 [ s = s + \"x\" ]\nd = count s")
+	defer finish(p)
+	testing.expect_value(t, as_number(global_named(p, "a")), 5)
+	testing.expect_value(t, as_number(global_named(p, "b")), 4)
+	testing.expect_value(t, as_number(global_named(p, "c")), 0)
+	testing.expect_value(t, as_number(global_named(p, "d")), 6)
+}

@@ -66,7 +66,8 @@ LANGUAGE_VERBS := []Verb{
 	{"count", {
 		{LIST_PARAM, nil, .Number},
 		{{{"table", .Table}}, nil, .Number},
-	}, "How many items a list has, or names a table has."},
+		{{{"text", .Text}}, nil, .Number},
+	}, "How many items a list has, names a table has, or characters a text has (a letter with an accent is one character): `count \"hello\"` is 5."},
 	{"item", {
 		{{{"index", .Number}}, {{"of", {.List}, true}}, .Any},
 		{{{"text", .Text}}, nil, .Boolean},
