@@ -184,7 +184,7 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 	case .Load:
 		if is_data_load(call) {
-			return load_data(it, as_text(eval(it, call.args[0])), e.type, e.span)
+			return load_data(it, as_text(eval(it, call.args[0])), e.type, e.span, as_text(option_or_nil(it, call.options, "sheet")))
 		}
 		if e.type == lang.T_SOUND {
 			buffer: Maybe(f64)

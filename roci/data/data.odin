@@ -10,6 +10,7 @@
 package data
 
 import "core:strings"
+import "core:unicode"
 
 Null :: struct {}
 
@@ -88,8 +89,8 @@ field_name :: proc(raw: string, n: int, allocator := context.allocator) -> strin
 			}
 			pending = false
 			strings.write_rune(&b, r + ('a' - 'A'))
-		case r == '_' || r > 127:
-			// an underscore stays, a letter outside ASCII is kept as it is
+		case r == '_' || (r > 127 && unicode.is_letter(r)):
+			// an underscore stays, a letter outside ASCII is kept as it is (a symbol is a break)
 			if pending && strings.builder_len(b) > 0 {
 				strings.write_byte(&b, '_')
 			}

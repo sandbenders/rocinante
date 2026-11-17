@@ -47,6 +47,12 @@ parse_table :: proc(text: string, delimiter: byte, allocator := context.allocato
 		append(&rows, cells[:])
 		append(&lines, start_line)
 	}
+	return table_from_rows(rows[:], lines[:])
+}
+
+// A table from rows of cells, the first row holding the names of the columns (the rest of what `parse_table`
+// says, for any source of rows). `lines` says where each row was in the file, for a problem, or is empty.
+table_from_rows :: proc(rows: [][]string, lines: []int) -> (value: Datum, problem: Problem, ok: bool) {
 	if len(rows) == 0 {
 		return nil, Problem{1, "the file is empty: the first line holds the names of the columns"}, false
 	}
@@ -71,7 +77,7 @@ parse_table :: proc(text: string, delimiter: byte, allocator := context.allocato
 	}
 	for row, r in rows[1:] {
 		if len(row) > len(header) {
-			return nil, Problem{lines[r + 1], strings.concatenate({"this line has ", int_text(len(row)), " values but the first line names ", int_text(len(header)), " columns: is a quote missing or extra?"}, context.temp_allocator)}, false
+			return nil, Problem{(lines[r + 1] if r + 1 < len(lines) else 0), strings.concatenate({"this line has ", int_text(len(row)), " values but the first line names ", int_text(len(header)), " columns: is a quote missing or extra?"}, context.temp_allocator)}, false
 		}
 	}
 	// which columns are numbers
@@ -104,6 +110,7 @@ parse_table :: proc(text: string, delimiter: byte, allocator := context.allocato
 	}
 	return items, {}, true
 }
+
 
 @(private)
 is_number :: proc(cell: string) -> bool {

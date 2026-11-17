@@ -42,6 +42,17 @@ for each verse in lines poem [
 
 TOML works as JSON does, with the keys before any heading as fields and each `[table]` a record of its own.
 
+## Spreadsheets and documents
+
+Excel (`.xlsx`) and OpenDocument spreadsheets (`.ods`) load as tables, as a CSV does: the first row names the columns and the rest are records. A workbook has several sheets, and `sheet` picks one by name (the first if it is left out):
+
+```roci
+stock = load "stock.xlsx"
+notes = load "stock.xlsx" sheet "Notes"
+```
+
+What a cell shows is what you get: a number, a text, or for a formula the result it last had. A date comes as the number Excel keeps it as. A document (`.odt`) loads as its text, a paragraph to a line, so `lines (load "letter.odt")` is its paragraphs. rocinante reads these files and does not write them: `save` a CSV, which a spreadsheet opens.
+
 ## Saving
 
 `save` with a value first writes it to a file, in the kind its name ends in:

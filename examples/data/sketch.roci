@@ -2,12 +2,16 @@
 // shaped by the file. birds.json is a record with a title and a list of birds, each with the fields
 // the file gives it (`b.size`, `b.name`), and scores.csv is a list of records with a field for each
 // column (its first line names them, and a column of numbers is numbers). poem.txt is text, and `lines`
-// splits it. Press S to `save` a summary as a JSON file in the output folder.
+// splits it. stock.xlsx is a spreadsheet, read the same way (`sheet "Notes"` picks another sheet than the
+// first), and letter.odt a document, read as text. Press S to `save` a summary as a JSON file in the output folder.
 window size 640 400 title "data"
 
 birds = load "birds.json"
 scores = load "scores.csv"
 poem = load "poem.txt"
+stock = load "stock.xlsx"
+letter = lines (load "letter.odt")
+salutation = item 1 of letter
 
 best = 0
 total = 0
@@ -37,16 +41,18 @@ draw [
   x = 20
   for each s in scores [
     fill (rgb 240 180 60)
-    rect at x (370 - s.points * 3) size 36 (s.points * 3)
+    rect at x (362 - s.points * 3) size 36 (s.points * 3)
     fill white
-    text s.name at x 388 size 11
+    text s.name at x 370 size 11
     x = x + 48
   ]
   fill gray
-  y = 240
+  y = 230
   for each verse in lines poem [
     text verse at 330 y size 14
-    y = y + 22
+    y = y + 20
   ]
-  text ("total: " + total + "   best: " + best + "   press S to save a summary") at 330 360 size 12
+  text salutation at 330 318 size 12
+  text ("stock.xlsx: " + count stock + " items") at 330 338 size 12
+  text ("total: " + total + "   best: " + best + "   press S to save a summary") at 330 364 size 12
 ]

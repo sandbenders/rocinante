@@ -139,3 +139,22 @@ expect_ids :: proc(t: ^testing.T, text: string, want: []Message_Id, loc := #call
 		testing.expectf(t, ids[i] == id, "`%s` message %d: got %v, want %v", text, i, ids[i], id, loc = loc)
 	}
 }
+
+@(test)
+test_a_spreadsheet_gives_its_columns_as_fields_and_a_sheet_can_be_named :: proc(t: ^testing.T) {
+	bytes, err := os.read_entire_file("tests/office/book.xlsx", context.temp_allocator)
+	testing.expect(t, err == nil)
+	with_files({"book.xlsx" = string(bytes)})
+	defer done()
+	got := check_text("stock = load \"book.xlsx\"\nnotes = load \"book.xlsx\" sheet \"Notes\"\nn = 0\nfor each r in stock [ n = n + r.count ]\nm = 0\nfor each r in notes [ m = m + r.day ]")
+	testing.expectf(t, len(got.checked.diagnostics) == 0, "%s", render_all(got.src, got.checked.diagnostics, context.temp_allocator))
+	names := describe_names(got.checked, context.temp_allocator)
+	testing.expect(t, strings.contains(names, "stock: a list of records with item_name, count, price and in_stock"), names)
+	testing.expect(t, strings.contains(names, "notes: a list of records with day and note"), names)
+	// a sheet that is not there says which are, and a sheet that is worked out is not read before the sketch runs
+	expect_ids(t, "x = load \"book.xlsx\" sheet \"Nope\"", {.Data_File_Unreadable})
+	expect_ids(t, "name = \"Notes\"\nx = load \"book.xlsx\" sheet name", {})
+	// a document is its text
+	letter := check_text("x = load \"letter.odt\"")
+	testing.expect(t, strings.contains(describe_names(letter.checked, context.temp_allocator), "x: text"))
+}

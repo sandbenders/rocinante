@@ -1,6 +1,9 @@
 birds: a record with title and birds
 scores: a list of records with name and points
 poem: text
+stock: a list of records with item_name, count, price and in_stock
+letter: a list of text
+salutation: text
 best: a number
 total: a number
 summary: a record with birds, total and best

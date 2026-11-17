@@ -212,7 +212,7 @@ test_the_data_example_reads_its_files_and_saves_a_summary :: proc(t: ^testing.T)
 	root := "output/tests/data_example"
 	_ = os.remove_all(root)
 	testing.expect(t, folder.ensure_directory("output/tests/data_example/assets/data"))
-	for name in ([]string{"birds.json", "scores.csv", "poem.txt"}) {
+	for name in ([]string{"birds.json", "scores.csv", "poem.txt", "stock.xlsx", "letter.odt"}) {
 		bytes, err := os.read_entire_file(strings.concatenate({"examples/data/assets/data/", name}, context.temp_allocator), context.temp_allocator)
 		testing.expect(t, err == nil)
 		testing.expect(t, os.write_entire_file(strings.concatenate({root, "/assets/data/", name}, context.temp_allocator), bytes) == nil)
@@ -239,4 +239,47 @@ test_the_data_example_reads_its_files_and_saves_a_summary :: proc(t: ^testing.T)
 	bytes, err := os.read_entire_file("output/tests/data_example/output/summary.json", context.temp_allocator)
 	testing.expect(t, err == nil)
 	testing.expect(t, strings.contains(string(bytes), "\"total\": 172") && strings.contains(string(bytes), "\"birds\": 4"), string(bytes))
+}
+
+@(test)
+test_a_spreadsheet_and_a_document_load_like_the_other_data_files :: proc(t: ^testing.T) {
+	root := "output/tests/data_office"
+	_ = os.remove_all(root)
+	testing.expect(t, folder.ensure_directory("output/tests/data_office/assets/data"))
+	for name in ([]string{"book.xlsx", "book.ods", "letter.odt"}) {
+		bytes, err := os.read_entire_file(strings.concatenate({"tests/office/", name}, context.temp_allocator), context.temp_allocator)
+		testing.expect(t, err == nil)
+		testing.expect(t, os.write_entire_file(strings.concatenate({root, "/assets/data/", name}, context.temp_allocator), bytes) == nil)
+	}
+	text := `stock = load "book.xlsx"
+notes = load "book.xlsx" sheet "Notes"
+sheet_ods = load "book.ods" sheet "Notes"
+letter = load "letter.odt"
+cost = 0
+for each r in stock [ cost = cost + r.count * r.price ]
+n_notes = count notes
+last_note = ""
+for each r in notes [ last_note = r.note ]
+ods_note = ""
+for each r in sheet_ods [ ods_note = r.note ]
+first_line = item 1 of (lines letter)
+`
+	testing.expect(t, os.write_entire_file("output/tests/data_office/sketch.roci", transmute([]byte)text) == nil)
+	roci.start_headless(1)
+	p, ok := load("output/tests/data_office/sketch.roci", text)
+	if !testing.expectf(t, ok, "%s", lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator)) {
+		destroy(p)
+		roci.shutdown()
+		return
+	}
+	watch(p, "output/tests/data_office/sketch.roci")
+	start(p)
+	roci.step()
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, as_number(global_named(p, "cost")), 12 * 2.5 + 3 * 19.99)
+	testing.expect_value(t, as_number(global_named(p, "n_notes")), 2)
+	testing.expect_value(t, as_text(global_named(p, "last_note")), "closed")
+	testing.expect_value(t, as_text(global_named(p, "ods_note")), "closed")
+	testing.expect_value(t, as_text(global_named(p, "first_line")), "The Letter")
 }

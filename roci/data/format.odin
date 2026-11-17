@@ -13,9 +13,12 @@ Format :: enum u8 {
 	Tsv,
 	Toml,
 	Text,
+	Xlsx, // an Excel file, read as a table
+	Ods,  // an OpenDocument spreadsheet, read as a table
+	Odt,  // an OpenDocument text, read as its text
 }
 
-// What a file's name says it holds: `.json`, `.csv`, `.tsv`, `.toml` and `.txt`, in any case.
+// What a file's name says it holds: `.json`, `.csv`, `.tsv`, `.toml`, `.txt`, `.xlsx`, `.ods` and `.odt`, in any case.
 format_of :: proc(name: string) -> Format {
 	lower := strings.to_lower(name, context.temp_allocator)
 	switch {
@@ -24,13 +27,16 @@ format_of :: proc(name: string) -> Format {
 	case strings.has_suffix(lower, ".tsv"):  return .Tsv
 	case strings.has_suffix(lower, ".toml"): return .Toml
 	case strings.has_suffix(lower, ".txt"):  return .Text
+	case strings.has_suffix(lower, ".xlsx"): return .Xlsx
+	case strings.has_suffix(lower, ".ods"):  return .Ods
+	case strings.has_suffix(lower, ".odt"):  return .Odt
 	}
 	return .None
 }
 
 // Reads a file's text as its format says. Text is a text and nothing else (a byte order mark taken off, line
 // breaks kept as they are).
-parse :: proc(format: Format, text: string, allocator := context.allocator) -> (value: Datum, problem: Problem, ok: bool) {
+parse :: proc(format: Format, text: string, allocator := context.allocator, sheet := "") -> (value: Datum, problem: Problem, ok: bool) {
 	switch format {
 	case .Json:
 		return parse_json(text, allocator)
@@ -42,6 +48,12 @@ parse :: proc(format: Format, text: string, allocator := context.allocator) -> (
 		return parse_toml(text, allocator)
 	case .Text:
 		return strings.clone(strings.trim_prefix(text, "\xef\xbb\xbf"), allocator), {}, true
+	case .Xlsx:
+		return parse_xlsx(transmute([]byte)text, sheet, allocator)
+	case .Ods:
+		return parse_ods(transmute([]byte)text, sheet, allocator)
+	case .Odt:
+		return parse_odt(transmute([]byte)text, allocator)
 	case .None:
 	}
 	return nil, Problem{0, "this is not a kind of file I read as data"}, false
@@ -61,6 +73,8 @@ write :: proc(format: Format, d: Datum, allocator := context.allocator) -> (text
 		return write_toml(d, allocator)
 	case .Text:
 		return write_plain(d, allocator)
+	case .Xlsx, .Ods, .Odt:
+		return "", "I read Excel and OpenDocument files but do not write them: save a CSV, which they open", false
 	case .None:
 	}
 	return "", "this is not a kind of file I write", false

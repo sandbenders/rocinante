@@ -35,7 +35,7 @@ Data_Found :: struct {
 // The kind of value `load "name"` gives when `name` is a data file written in the sketch, or false when
 // `load` is for something else (a picture or a sound, or a name that is worked out while the sketch runs).
 @(private)
-data_load_type :: proc(c: ^Checker, e: ^Expr, name: ^IR) -> (type: Type_Id, handled: bool) {
+data_load_type :: proc(c: ^Checker, e: ^Expr, name: ^IR, options: []IR_Option) -> (type: Type_Id, handled: bool) {
 	literal, is_text := name.kind.(IR_Text)
 	if !is_text {
 		return
@@ -44,16 +44,28 @@ data_load_type :: proc(c: ^Checker, e: ^Expr, name: ^IR) -> (type: Type_Id, hand
 	if format == .None {
 		return
 	}
-	if format == .Text {
+	if format == .Text || format == .Odt {
 		return T_TEXT, true
 	}
 	if data_reader == nil {
 		return T_BOXED, true
 	}
-	found, seen := c.data_files[literal.value]
+	// the sheet of a spreadsheet is part of what is read
+	sheet := ""
+	for o in options {
+		if o.word == "sheet" && len(o.args) == 1 {
+			if text, is_literal := o.args[0].kind.(IR_Text); is_literal {
+				sheet = text.value
+			} else {
+				return T_BOXED, true
+			}
+		}
+	}
+	key := literal.value if sheet == "" else strings.concatenate({literal.value, "#", sheet}, c.alloc)
+	found, seen := c.data_files[key]
 	if !seen {
-		found = read_data_file(c, literal.value, format)
-		c.data_files[literal.value] = found
+		found = read_data_file(c, literal.value, format, sheet)
+		c.data_files[key] = found
 	}
 	if !found.ok {
 		if found.why != "" {
@@ -67,13 +79,13 @@ data_load_type :: proc(c: ^Checker, e: ^Expr, name: ^IR) -> (type: Type_Id, hand
 }
 
 @(private)
-read_data_file :: proc(c: ^Checker, name: string, format: data.Format) -> (found: Data_Found) {
+read_data_file :: proc(c: ^Checker, name: string, format: data.Format, sheet: string) -> (found: Data_Found) {
 	text, there, why := data_reader(name)
 	if !there {
 		found.why = why if why != "" else "there is no file of that name in it"
 		return
 	}
-	value, problem, ok := data.parse(format, text, c.alloc)
+	value, problem, ok := data.parse(format, text, c.alloc, sheet)
 	found.value, found.ok = value, ok
 	found.problem = copy_problem(problem, c.alloc)
 	return

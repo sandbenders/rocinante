@@ -351,7 +351,7 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 		type = T_SOUND
 	}
 	if verb.name == "load" && len(args) == 1 {
-		if data_type, is_data := data_load_type(c, e, args[0]); is_data {
+		if data_type, is_data := data_load_type(c, e, args[0], options); is_data {
 			type = data_type
 		}
 	}

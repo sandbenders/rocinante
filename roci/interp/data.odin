@@ -35,10 +35,12 @@ is_data_load :: proc(call: lang.IR_Call) -> bool {
 }
 
 @(private)
-load_data :: proc(it: ^Interp, name: string, type: lang.Type_Id, span: lang.Span) -> Value {
+load_data :: proc(it: ^Interp, name: string, type: lang.Type_Id, span: lang.Span, sheet := "") -> Value {
 	format := data.format_of(name)
 	root, _ := assets_root(it)
-	entry, known := it.datafiles[name]
+	// a sheet of a spreadsheet is a file of its own as far as what is kept goes
+	key := name if sheet == "" else strings.concatenate({name, "#", sheet}, context.temp_allocator)
+	entry, known := it.datafiles[key]
 	frame := roci.frame_count()
 	if known && (it.path == "" || entry.checked == frame) {
 		return entry.value
@@ -46,21 +48,21 @@ load_data :: proc(it: ^Interp, name: string, type: lang.Type_Id, span: lang.Span
 	if known && !entry.failed || known && entry.path != "" {
 		if info, err := os.stat(entry.path, context.temp_allocator); err == nil && info.modification_time == entry.mtime {
 			entry.checked = frame
-			it.datafiles[name] = entry
+			it.datafiles[key] = entry
 			return entry.value
 		}
 	}
 	fresh := Data_Entry{checked = frame}
 	if root == "" {
 		fresh.failed = true
-		store_data(it, name, known, fresh)
+		store_data(it, key, known, fresh)
 		fail(it, .Data_File_Missing, span, name, "this sketch has no folder to look in", "", "x = load \"data.json\"")
 		return nil
 	}
 	path, status, _ := folder.find_asset(root, name, context.temp_allocator)
 	if status != .Found {
 		fresh.failed = true
-		store_data(it, name, known, fresh)
+		store_data(it, key, known, fresh)
 		fail(it, .Data_File_Missing, span, name, "there is no file of that name in it", "", "x = load \"data.json\"")
 		return nil
 	}
@@ -71,14 +73,14 @@ load_data :: proc(it: ^Interp, name: string, type: lang.Type_Id, span: lang.Span
 	bytes, read_err := os.read_entire_file(fresh.path, context.temp_allocator)
 	if read_err != nil {
 		fresh.failed = true
-		store_data(it, name, known, fresh)
+		store_data(it, key, known, fresh)
 		fail(it, .Data_File_Missing, span, name, "the file is there but cannot be read", "", "x = load \"data.json\"")
 		return nil
 	}
-	datum, problem, ok := data.parse(format, string(bytes), context.temp_allocator)
+	datum, problem, ok := data.parse(format, string(bytes), context.temp_allocator, sheet)
 	if !ok {
 		fresh.failed = true
-		store_data(it, name, known, fresh)
+		store_data(it, key, known, fresh)
 		fail(it, .Data_File_Unreadable, span, name, fmt.tprintf("%d", problem.line), problem.why, "x = load \"data.json\"")
 		return nil
 	}
@@ -86,7 +88,7 @@ load_data :: proc(it: ^Interp, name: string, type: lang.Type_Id, span: lang.Span
 	it.alloc = it.long // what is read lives as long as the sketch
 	fresh.value = datum_to_value(it, datum, type)
 	it.alloc = saved
-	store_data(it, name, known, fresh)
+	store_data(it, key, known, fresh)
 	return fresh.value
 }
 
