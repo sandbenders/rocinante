@@ -845,3 +845,19 @@ test_the_text_verbs_and_their_words_are_in_the_language :: proc(t: ^testing.T) {
 	measure, _ := find_verb("measure")
 	testing.expect_value(t, measure.shapes[0].gives, Kind.Vector)
 }
+
+@(test)
+test_the_hand_written_examples_are_built_in :: proc(t: ^testing.T) {
+	text, found := reference_example("clamp")
+	testing.expect(t, found)
+	testing.expect(t, len(text) > 0 && text[len(text) - 1] != '\n')
+	_, spaced := reference_example("no fill")
+	testing.expect(t, spaced) // `no fill` is the file no-fill.roci
+	_, missing := reference_example("zzzzz")
+	testing.expect(t, !missing)
+	// every verb the language has an example for on the site has one here
+	for verb in ALL_VERBS {
+		_, has := reference_example(verb.name)
+		testing.expectf(t, has, "`%s` has no example on the site", verb.name)
+	}
+}

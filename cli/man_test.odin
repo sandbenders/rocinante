@@ -19,7 +19,8 @@ test_the_page_of_a_verb_shows_how_it_is_written_with_an_example :: proc(t: ^test
 	testing.expect_value(t, code, 0)
 	testing.expect(t, strings.contains(out, "Draws a rectangle."))
 	testing.expect(t, strings.contains(out, "rect at x y size width height [fill color]"))
-	testing.expect(t, strings.contains(out, "rect at 100 100 size 50 50"))
+	reference, _ := registry.reference_example("rect")
+	testing.expect(t, strings.contains(out, strings.split_lines(reference, context.temp_allocator)[0]))
 }
 
 @(test)
@@ -88,4 +89,35 @@ test_the_page_of_set_lists_what_a_window_is_like :: proc(t: ^testing.T) {
 	_, out, _ := man("set")
 	testing.expect(t, strings.contains(out, "what a window is like"))
 	testing.expect(t, strings.contains(out, "set main_window width 400"))
+}
+
+@(test)
+test_a_verb_shows_the_sketch_of_the_site_not_a_call_of_stand_in_values :: proc(t: ^testing.T) {
+	for word in ([]string{"clamp", "random", "map", "picture", "font", "direction", "synth", "set", "range", "list"}) {
+		code, out, _ := man(word)
+		testing.expect_value(t, code, 0)
+		reference, has := registry.reference_example(word)
+		testing.expectf(t, has, "`%s` has no sketch on the site", word)
+		first_line := strings.split_lines(reference, context.temp_allocator)[0]
+		testing.expectf(t, strings.contains(out, first_line), "the page of `%s` does not show the site's sketch", word)
+		testing.expectf(t, !strings.contains(out, "for example"), "the page of `%s` still has a call made of stand-in values", word)
+	}
+	_, clamp, _ := man("clamp")
+	testing.expect(t, !strings.contains(clamp, "clamp 100 100 50"))
+}
+
+@(test)
+test_the_values_and_events_and_scene_have_pages :: proc(t: ^testing.T) {
+	for word in ([]string{"scene", "time", "frame", "touches", "finger", "press", "release"}) {
+		code, out, err := man(word)
+		testing.expectf(t, code == 0, "`roci man %s` failed: %s", word, err)
+		testing.expectf(t, strings.contains(out, word), "`roci man %s` does not say its name", word)
+	}
+	_, press, _ := man("press")
+	testing.expect(t, strings.contains(press, "on press \"name\" [ ... ]"))
+	_, time, _ := man("time")
+	testing.expect(t, strings.contains(time, "Seconds since the sketch started."))
+	_, list, _ := man()
+	testing.expect(t, strings.contains(list, "values"))
+	testing.expect(t, strings.contains(list, "events"))
 }

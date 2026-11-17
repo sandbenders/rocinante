@@ -44,12 +44,20 @@ man_verb_text :: proc(verb: ^registry.Verb) -> string {
 	page := registry.manual_page(verb)
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, "%s\n  %s\n", term.out(page.name, .Bold_Cyan), page.doc)
+	// the sketch of the documentation site shows how a verb is really used; a call made of stand-in values
+	// is only what is left when the site has none
+	sketch, has_sketch := registry.reference_example(page.name)
 	for entry in page.entries {
 		fmt.sbprintf(&b, "\n  %s\n", paint_syntax(entry.syntax, term.out_colour))
-		fmt.sbprintf(&b, "      %s %s\n", term.out("for example", .Dim), term.out(entry.example, .Cyan))
+		if !has_sketch {
+			fmt.sbprintf(&b, "      %s %s\n", term.out("for example", .Dim), term.out(entry.example, .Cyan))
+		}
 		if entry.gives != "" {
 			fmt.sbprintf(&b, "      %s %s\n", term.out("gives", .Dim), entry.gives)
 		}
+	}
+	if has_sketch {
+		write_sketch(&b, sketch)
 	}
 	if page.name == "window" || page.name == "set" {
 		fmt.sbprintf(&b, "\n  %s\n", term.out("what a window is like", .Bold_Cyan))
@@ -68,13 +76,60 @@ man_statement_text :: proc(doc: ^registry.Statement_Doc) -> string {
 	for form in doc.forms {
 		fmt.sbprintf(&b, "  %s\n", term.out(form, .Green))
 	}
-	fmt.sbprintf(&b, "\n      %s %s\n", term.out("for example", .Dim), term.out(doc.example, .Cyan))
+	if sketch, has_sketch := registry.reference_example(doc.name); has_sketch {
+		write_sketch(&b, sketch)
+	} else {
+		fmt.sbprintf(&b, "\n      %s %s\n", term.out("for example", .Dim), term.out(doc.example, .Cyan))
+	}
 	if doc.name == "on" {
 		fmt.sbprintf(&b, "\n  %s\n", term.out("events", .Bold_Cyan))
 		for event in registry.EVENTS {
 			fmt.sbprintf(&b, "    %s %s\n", term.out(term.pad(event.name, 12), .Green), event.doc)
 		}
 	}
+	return strings.to_string(b)
+}
+
+// A sketch of the documentation site, under the heading `example`.
+@(private)
+write_sketch :: proc(b: ^strings.Builder, sketch: string) {
+	fmt.sbprintf(b, "\n  %s\n", term.out("example", .Bold_Cyan))
+	for line in strings.split_lines(sketch, context.temp_allocator) {
+		if line == "" {
+			fmt.sbprintf(b, "\n")
+		} else {
+			fmt.sbprintf(b, "    %s\n", term.out(line, .Cyan))
+		}
+	}
+}
+
+// The page of a built-in value (`time`, `frame`, `touches`, `finger`).
+man_value_text :: proc(def: ^registry.Value_Def) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&b, "%s\n  %s\n", term.out(def.name, .Bold_Cyan), def.doc)
+	if sketch, found := registry.reference_example(def.name); found {
+		write_sketch(&b, sketch)
+	}
+	return strings.to_string(b)
+}
+
+// The page of an event, the words after `on`.
+man_event_text :: proc(event: ^registry.Event) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&b, "%s\n  %s\n\n", term.out(event.name, .Bold_Cyan), event.doc)
+	form := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&form, "on %s", event.name)
+	for param in event.params {
+		switch param {
+		case .Text:   fmt.sbprintf(&form, " \"name\"")
+		case .Name:   fmt.sbprintf(&form, " word")
+		case .Number: fmt.sbprintf(&form, " number")
+		case .None, .Colour, .Paint, .Vector, .List, .Table, .Record, .Block, .Expr_Block, .Window, .Image, .Sound, .Gradient, .Any, .Boolean:
+			fmt.sbprintf(&form, " value")
+		}
+	}
+	fmt.sbprintf(&form, " [ ... ]")
+	fmt.sbprintf(&b, "  %s\n", term.out(strings.to_string(form), .Green))
 	return strings.to_string(b)
 }
 
@@ -92,6 +147,14 @@ man_list_text :: proc() -> string {
 	fmt.sbprintf(&b, "\n%s\n", term.out("statements", .Bold_Cyan))
 	for doc in registry.STATEMENT_DOCS {
 		fmt.sbprintf(&b, "  %s %s\n", term.out(term.pad(doc.name, 12), .Green), first_sentence(doc.doc))
+	}
+	fmt.sbprintf(&b, "\n%s\n", term.out("values", .Bold_Cyan))
+	for &def in registry.VALUE_DEFS {
+		fmt.sbprintf(&b, "  %s %s\n", term.out(term.pad(def.name, 12), .Green), first_sentence(def.doc))
+	}
+	fmt.sbprintf(&b, "\n%s\n", term.out("events", .Bold_Cyan))
+	for &event in registry.EVENTS {
+		fmt.sbprintf(&b, "  %s %s\n", term.out(term.pad(event.name, 12), .Green), first_sentence(event.doc))
 	}
 	fmt.sbprintf(&b, "\n%s\n", term.out("roci man <word> shows how one is written.", .Dim))
 	return strings.to_string(b)
@@ -124,6 +187,18 @@ run_man :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	if doc, found := registry.find_statement(name); found {
 		fmt.sbprintf(out, "%s", man_statement_text(doc))
 		return 0
+	}
+	for &def in registry.VALUE_DEFS {
+		if def.name == name {
+			fmt.sbprintf(out, "%s", man_value_text(&def))
+			return 0
+		}
+	}
+	for &event in registry.EVENTS {
+		if event.name == name {
+			fmt.sbprintf(out, "%s", man_event_text(&event))
+			return 0
+		}
 	}
 	fmt.sbprintf(err, "%s%s\n", term.err_icon(.Cannot), term.err(fmt.tprintf("I don't know the word `%s`.", name), .Bold_Red))
 	if suggestion, found := registry.suggest(name); found {
