@@ -156,3 +156,87 @@ test_set_replaces_a_value_and_a_number_that_is_not_a_number_is_written_as_zero :
 	defer delete(text)
 	testing.expect_value(t, text, "[t]\nk = \"now text\"\nn = 0.0\ni = 0.0\n")
 }
+
+@(test)
+test_arrays_of_text_and_mixed_arrays_and_numbers_stay_numbers :: proc(t: ^testing.T) {
+	d := parse("names = [\"a, b\", 'c', \"d]\"]\nnums = [1, 2.5, 3]\nmixed = [1, \"x\", true]\nnone = []\n")
+	defer destroy(&d)
+	testing.expect_value(t, len(d.problems), 0)
+	names, _ := get(&d, "", "names")
+	list, is_list := names.([]Value)
+	testing.expect(t, is_list)
+	testing.expect_value(t, len(list), 3)
+	testing.expect_value(t, list[0].(string), "a, b")
+	testing.expect_value(t, list[1].(string), "c")
+	testing.expect_value(t, list[2].(string), "d]")
+	nums, _ := get(&d, "", "nums")
+	testing.expect_value(t, len(nums.([]f64)), 3)
+	testing.expect_value(t, nums.([]f64)[1], 2.5)
+	mixed, _ := get(&d, "", "mixed")
+	testing.expect_value(t, len(mixed.([]Value)), 3)
+	none, _ := get(&d, "", "none")
+	testing.expect_value(t, len(none.([]f64)), 0)
+}
+
+@(test)
+test_inline_tables_nest_and_read_back :: proc(t: ^testing.T) {
+	d := parse("start = { x = 120.0, y = 80 }\nlist = [{ a = 1 }, { a = 2, b = \"t\" }]\nempty = {}\n")
+	defer destroy(&d)
+	testing.expect_value(t, len(d.problems), 0)
+	start, _ := get(&d, "", "start")
+	fields := start.(Inline)
+	testing.expect_value(t, len(fields), 2)
+	testing.expect_value(t, fields[0].key, "x")
+	testing.expect_value(t, fields[0].value.(f64), 120.0)
+	testing.expect_value(t, fields[1].value.(i64), 80)
+	list, _ := get(&d, "", "list")
+	testing.expect_value(t, len(list.([]Value)), 2)
+	empty, _ := get(&d, "", "empty")
+	testing.expect_value(t, len(empty.(Inline)), 0)
+	text := write(&d)
+	defer delete(text)
+	testing.expect_value(t, text, "start = { x = 120.0, y = 80 }\nlist = [{ a = 1 }, { a = 2, b = \"t\" }]\nempty = {}\n")
+	again := parse(text)
+	defer destroy(&again)
+	testing.expect_value(t, len(again.problems), 0)
+}
+
+@(test)
+test_bad_arrays_and_tables_are_problems_and_leak_nothing :: proc(t: ^testing.T) {
+	d := parse("a = [1, \"x\"\nb = [1 2]\nc = { x = 1\nd = { x 1 }\ne = { x = }\nf = [{ a = 1 }, ?]\ng = 'open\nh = [1] junk\nok = 1\n")
+	defer destroy(&d)
+	testing.expect_value(t, len(d.problems), 8)
+	v, found := get(&d, "", "ok")
+	testing.expect(t, found)
+	testing.expect_value(t, v.(i64), 1)
+}
+
+@(test)
+test_exact_mode_keeps_nan_and_inf :: proc(t: ^testing.T) {
+	d := parse("a = nan\nb = inf\nc = -inf\n", exact = true)
+	defer destroy(&d)
+	testing.expect_value(t, len(d.problems), 0)
+	a, _ := get(&d, "", "a")
+	testing.expect(t, math.is_nan(a.(f64)))
+	c, _ := get(&d, "", "c")
+	testing.expect(t, math.is_inf(c.(f64), -1))
+	text := write(&d, exact = true)
+	defer delete(text)
+	testing.expect_value(t, text, "a = nan\nb = inf\nc = -inf\n")
+	plain := parse("a = nan\n")
+	defer destroy(&plain)
+	testing.expect_value(t, len(plain.problems), 1)
+}
+
+@(test)
+test_set_copies_lists_and_tables :: proc(t: ^testing.T) {
+	d: Document
+	defer destroy(&d)
+	inner := []Entry{{key = "k", value = "v"}}
+	items := []Value{"a", Inline(inner)}
+	set(&d, "t", "list", items)
+	set(&d, "t", "list", items) // replaced, the old copy freed
+	text := write(&d)
+	defer delete(text)
+	testing.expect_value(t, text, "[t]\nlist = [\"a\", { k = \"v\" }]\n")
+}

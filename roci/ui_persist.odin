@@ -98,6 +98,7 @@ ui_remembered :: proc(w: ^Win) {
 				numbers.v[i] = f32(x[i])
 			}
 			append(&entries, ui.Saved{entry.key, numbers})
+		case []toml.Value, toml.Inline: // the interface never writes these
 		}
 	}
 	ui.set_loaded(w.ui, entries[:])
@@ -117,11 +118,7 @@ ui_save :: proc() -> bool {
 		if table := toml.find_table(&the.ui_doc, name); table != nil {
 			for entry in table.entries {
 				delete(entry.key)
-				switch x in entry.value {
-				case string:  delete(x)
-				case []f64:   delete(x)
-				case bool, i64, f64:
-				}
+				toml.free_value(entry.value)
 			}
 			clear(&table.entries)
 		}

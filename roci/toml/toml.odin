@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The part of TOML that `ui.toml` and `sketch.toml` use, read and written without a library:
-// `[table]` headers, `key = value` lines (a key bare or in quotes), and values that are text in
-// double quotes, whole numbers, decimal numbers, `true` or `false`, or a one-line array of numbers.
-// Comments start with `#`. Everything else is a problem with the line it is on, and the line is
-// left out: a file somebody edited by hand never stops a sketch.
+// The part of TOML that `ui.toml`, `memory.toml` and `sketch.toml` use, read and written without a library:
+// `[table]` headers, `key = value` lines (a key bare or in quotes), and values that are text (in double
+// or single quotes), whole numbers, decimal numbers, `true` or `false`, one-line arrays (of numbers
+// they are kept as numbers, of anything else as a list of values) and one-line tables in curly
+// brackets. Comments start with `#`. Everything else is a problem with the line it is on, and the line
+// is left out: a file somebody edited by hand never stops a sketch.
 package toml
 
 import "core:fmt"
@@ -18,7 +19,12 @@ Value :: union {
 	f64,
 	string,
 	[]f64,
+	[]Value,
+	Inline,
 }
+
+// A table written in curly brackets on one line.
+Inline :: distinct []Entry
 
 Entry :: struct {
 	key:   string,
@@ -58,13 +64,29 @@ destroy :: proc(d: ^Document) {
 	d^ = {}
 }
 
-@(private)
+// Frees what a value owns.
 free_value :: proc(v: Value) {
 	#partial switch x in v {
 	case string:
 		delete(x)
 	case []f64:
 		delete(x)
+	case []Value:
+		free_values(x)
+		delete(x)
+	case Inline:
+		for entry in x {
+			delete(entry.key)
+			free_value(entry.value)
+		}
+		delete(([]Entry)(x))
+	}
+}
+
+@(private)
+free_values :: proc(values: []Value) {
+	for v in values {
+		free_value(v)
 	}
 }
 
@@ -113,6 +135,18 @@ copy_value :: proc(v: Value) -> Value {
 		return strings.clone(x)
 	case []f64:
 		return slice_clone(x)
+	case []Value:
+		out := make([]Value, len(x))
+		for item, i in x {
+			out[i] = copy_value(item)
+		}
+		return out
+	case Inline:
+		out := make([]Entry, len(x))
+		for entry, i in x {
+			out[i] = Entry{strings.clone(entry.key), copy_value(entry.value)}
+		}
+		return Inline(out)
 	}
 	return v
 }
@@ -126,7 +160,9 @@ slice_clone :: proc(x: []f64) -> []f64 {
 
 // ---- reading ----
 
-parse :: proc(text: string) -> (d: Document) {
+
+parse :: proc(text: string, exact := false) -> (d: Document) {
+	r := Reader{exact = exact}
 	append(&d.tables, Table{name = ""})
 	current := 0
 	number := 0
@@ -168,7 +204,7 @@ parse :: proc(text: string) -> (d: Document) {
 			problem(&d, number, "a key is followed by an equals sign")
 			continue
 		}
-		value, why, value_ok := read_value(strings.trim_space(equals[1:]))
+		value, why, value_ok := read_value(r, strings.trim_space(equals[1:]))
 		if !value_ok {
 			delete(key)
 			problem(&d, number, why)
@@ -282,72 +318,184 @@ read_string :: proc(s: string) -> (text: string, rest: string, ok: bool) {
 }
 
 @(private)
-read_value :: proc(s: string) -> (v: Value, why: string, ok: bool) {
+Reader :: struct {
+	exact: bool, // `nan` and `inf` are read as numbers
+}
+
+// One value at the start of `s`, and what follows it. Arrays and inline tables nest.
+@(private)
+parse_value :: proc(r: Reader, s: string) -> (v: Value, rest: string, why: string, ok: bool) {
 	if s == "" {
-		return nil, "a key needs a value after the equals sign", false
+		return nil, "", "a key needs a value after the equals sign", false
 	}
-	// a trailing comment, outside any text
 	switch s[0] {
 	case '"':
 		text, after, text_ok := read_string(s)
 		if !text_ok {
-			return nil, "text in double quotes is closed by a second double quote", false
+			return nil, "", "text in double quotes is closed by a second double quote", false
 		}
-		if tail := strings.trim_space(after); tail != "" && tail[0] != '#' {
-			delete(text)
-			return nil, "nothing may follow a value but a comment", false
-		}
-		return text, "", true
-	case '[':
-		end := strings.index_byte(s, ']')
+		return text, after, "", true
+	case '\'':
+		end := strings.index_byte(s[1:], '\'')
 		if end < 0 {
-			return nil, "an array is closed by a square bracket on the same line", false
+			return nil, "", "text in single quotes is closed by a second single quote", false
 		}
-		if tail := strings.trim_space(s[end + 1:]); tail != "" && tail[0] != '#' {
-			return nil, "nothing may follow a value but a comment", false
-		}
-		inner := strings.trim_space(s[1:end])
-		numbers: [dynamic]f64
-		if inner != "" {
-			for part in strings.split(inner, ",", context.temp_allocator) {
-				piece := strings.trim_space(part)
-				if piece == "" && len(numbers) > 0 {
-					continue // a comma at the end is allowed
-				}
-				n, parsed := strconv.parse_f64(piece)
-				if !parsed {
-					delete(numbers)
-					return nil, "an array holds numbers only", false
-				}
-				append(&numbers, n)
-			}
-		}
-		return numbers[:], "", true
+		return strings.clone(s[1:1 + end]), s[end + 2:], "", true
+	case '[':
+		return parse_array(r, s)
+	case '{':
+		return parse_inline(r, s)
 	}
-	word := s
-	if hash := strings.index_byte(s, '#'); hash >= 0 {
-		word = strings.trim_space(s[:hash])
+	end := 0
+	for end < len(s) && !strings.contains_rune(",]}# \t", rune(s[end])) {
+		end += 1
 	}
+	word := s[:end]
+	rest = s[end:]
 	switch word {
-	case "true":  return true, "", true
-	case "false": return false, "", true
+	case "true":  return true, rest, "", true
+	case "false": return false, rest, "", true
+	}
+	if r.exact {
+		switch word {
+		case "nan", "+nan", "-nan": return math.nan_f64(), rest, "", true
+		case "inf", "+inf":         return math.inf_f64(1), rest, "", true
+		case "-inf":                return math.inf_f64(-1), rest, "", true
+		}
 	}
 	clean, _ := strings.remove_all(word, "_", context.temp_allocator)
 	if whole, parsed := strconv.parse_i64(clean); parsed {
-		return whole, "", true
+		return whole, rest, "", true
 	}
 	if decimal, parsed := strconv.parse_f64(clean); parsed && !math.is_nan(decimal) {
-		return decimal, "", true
+		return decimal, rest, "", true
 	}
-	return nil, "a value is text in double quotes, a number, true, false or an array of numbers", false
+	return nil, "", "a value is text in double quotes, a number, true, false, an array or a table in curly brackets", false
+}
+
+@(private)
+parse_array :: proc(r: Reader, s: string) -> (v: Value, rest: string, why: string, ok: bool) {
+	items: [dynamic]Value
+	rest = strings.trim_left_space(s[1:])
+	for {
+		if rest == "" {
+			free_values(items[:])
+			delete(items)
+			return nil, "", "an array is closed by a square bracket on the same line", false
+		}
+		if rest[0] == ']' {
+			rest = rest[1:]
+			break
+		}
+		item: Value
+		item, rest, why, ok = parse_value(r, rest)
+		if !ok {
+			free_values(items[:])
+			delete(items)
+			return nil, "", why, false
+		}
+		append(&items, item)
+		rest = strings.trim_left_space(rest)
+		if rest != "" && rest[0] == ',' {
+			rest = strings.trim_left_space(rest[1:])
+		} else if rest == "" || rest[0] != ']' {
+			free_values(items[:])
+			delete(items)
+			return nil, "", "array items are separated by commas", false
+		}
+	}
+	// An array of numbers only is kept as numbers.
+	numbers := true
+	for item in items {
+		#partial switch _ in item {
+		case f64, i64:
+		case:
+			numbers = false
+		}
+	}
+	if numbers {
+		out := make([]f64, len(items))
+		for item, i in items {
+			switch x in item {
+			case f64: out[i] = x
+			case i64: out[i] = f64(x)
+			case bool, string, []f64, []Value, Inline:
+			}
+		}
+		delete(items)
+		return out, rest, "", true
+	}
+	return items[:], rest, "", true
+}
+
+@(private)
+parse_inline :: proc(r: Reader, s: string) -> (v: Value, rest: string, why: string, ok: bool) {
+	entries: [dynamic]Entry
+	fail :: proc(entries: ^[dynamic]Entry, why: string) -> (Value, string, string, bool) {
+		for entry in entries {
+			delete(entry.key)
+			free_value(entry.value)
+		}
+		delete(entries^)
+		return nil, "", why, false
+	}
+	rest = strings.trim_left_space(s[1:])
+	for {
+		if rest == "" {
+			return fail(&entries, "a table in curly brackets is closed on the same line")
+		}
+		if rest[0] == '}' {
+			rest = rest[1:]
+			break
+		}
+		key, after_key, key_ok := read_key(rest)
+		if !key_ok {
+			return fail(&entries, "a table in curly brackets holds key = value pairs")
+		}
+		after_key = strings.trim_left_space(after_key)
+		if after_key == "" || after_key[0] != '=' {
+			delete(key)
+			return fail(&entries, "a key is followed by an equals sign")
+		}
+		item: Value
+		item, rest, why, ok = parse_value(r, strings.trim_left_space(after_key[1:]))
+		if !ok {
+			delete(key)
+			return fail(&entries, why)
+		}
+		append(&entries, Entry{key = key, value = item})
+		rest = strings.trim_left_space(rest)
+		if rest != "" && rest[0] == ',' {
+			rest = strings.trim_left_space(rest[1:])
+		} else if rest == "" || rest[0] != '}' {
+			return fail(&entries, "pairs in curly brackets are separated by commas")
+		}
+	}
+	return Inline(entries[:]), rest, "", true
+}
+
+// A value that fills the rest of its line, apart from a comment.
+@(private)
+read_value :: proc(r: Reader, s: string) -> (v: Value, why: string, ok: bool) {
+	rest: string
+	v, rest, why, ok = parse_value(r, s)
+	if !ok {
+		return nil, why, false
+	}
+	if tail := strings.trim_space(rest); tail != "" && tail[0] != '#' {
+		free_value(v)
+		return nil, "nothing may follow a value but a comment", false
+	}
+	return v, "", true
 }
 
 // ---- writing ----
 
 // The document as text: the tables in the order they are in, a blank line between them, each key on
 // a line of its own in the order it is in. Numbers keep their kind (a whole number has no point, a
-// decimal always has one), so reading what was written gives it back.
-write :: proc(d: ^Document, allocator := context.allocator) -> string {
+// decimal always has one), so reading what was written gives it back. A number that is not a number
+// or is infinite is written as zero, unless `exact` is set, which writes `nan` and `inf` as TOML does.
+write :: proc(d: ^Document, allocator := context.allocator, exact := false) -> string {
 	b := strings.builder_make(allocator)
 	first := true
 	for table in d.tables {
@@ -364,7 +512,7 @@ write :: proc(d: ^Document, allocator := context.allocator) -> string {
 		for entry in table.entries {
 			write_key(&b, entry.key)
 			strings.write_string(&b, " = ")
-			write_value(&b, entry.value)
+			write_value(&b, entry.value, exact)
 			strings.write_byte(&b, '\n')
 		}
 	}
@@ -408,10 +556,18 @@ write_text :: proc(b: ^strings.Builder, text: string) {
 }
 
 @(private)
-write_number :: proc(b: ^strings.Builder, n: f64) {
+write_number :: proc(b: ^strings.Builder, n: f64, exact: bool) {
 	value := n
 	if math.is_nan(value) || math.is_inf(value) {
-		value = 0 // TOML has these, but a sketch's value is never meant to be one
+		if exact {
+			switch {
+			case math.is_nan(value):     strings.write_string(b, "nan")
+			case math.is_inf(value, 1):  strings.write_string(b, "inf")
+			case:                        strings.write_string(b, "-inf")
+			}
+			return
+		}
+		value = 0 // TOML has these, but an interface value is never meant to be one
 	}
 	buffer: [40]u8
 	text := strings.trim_prefix(strconv.write_float(buffer[:], value, 'g', -1, 64), "+")
@@ -422,14 +578,14 @@ write_number :: proc(b: ^strings.Builder, n: f64) {
 }
 
 @(private)
-write_value :: proc(b: ^strings.Builder, v: Value) {
+write_value :: proc(b: ^strings.Builder, v: Value, exact: bool) {
 	switch x in v {
 	case bool:
 		strings.write_string(b, "true" if x else "false")
 	case i64:
 		fmt.sbprintf(b, "%d", x)
 	case f64:
-		write_number(b, x)
+		write_number(b, x, exact)
 	case string:
 		write_text(b, x)
 	case []f64:
@@ -438,8 +594,32 @@ write_value :: proc(b: ^strings.Builder, v: Value) {
 			if i > 0 {
 				strings.write_string(b, ", ")
 			}
-			write_number(b, n)
+			write_number(b, n, exact)
 		}
 		strings.write_string(b, "]")
+	case []Value:
+		strings.write_string(b, "[")
+		for item, i in x {
+			if i > 0 {
+				strings.write_string(b, ", ")
+			}
+			write_value(b, item, exact)
+		}
+		strings.write_string(b, "]")
+	case Inline:
+		if len(x) == 0 {
+			strings.write_string(b, "{}")
+			return
+		}
+		strings.write_string(b, "{ ")
+		for entry, i in x {
+			if i > 0 {
+				strings.write_string(b, ", ")
+			}
+			write_key(b, entry.key)
+			strings.write_string(b, " = ")
+			write_value(b, entry.value, exact)
+		}
+		strings.write_string(b, " }")
 	}
 }
