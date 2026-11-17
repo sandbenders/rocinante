@@ -117,6 +117,8 @@ widget_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Cod
 		roci.ui_progress(as_number(eval(it, call.args[0])))
 	case .Separator:
 		roci.ui_separator()
+	case .Controls:
+		roci.ui_controls()
 	case .Item:
 		return roci.ui_item(text)
 	case .Tip:

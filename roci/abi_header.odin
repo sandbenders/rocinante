@@ -99,6 +99,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"choice", "roci_choice", ""},
 	{"progress", "roci_progress", ""},
 	{"separator", "roci_separator", ""},
+	{"controls", "roci_controls roci_rebind roci_reset_controls", ""},
 	{"tip", "roci_tip", ""},
 	{"colorpicker", "roci_colorpicker", ""},
 	{"knob", "roci_knob", ""},

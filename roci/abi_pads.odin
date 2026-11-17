@@ -141,6 +141,8 @@ abi_pads_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_bind", typeid_of(type_of(abi_bind)), "int roci_bind(const char *action, const char *input)", "Makes an input one of the ways to do an action, so a program asks what the player does and not which button they press. `input` is text: \"key space\", \"mouse left\", \"pad bottom\" (a gamepad button, trigger, stick or d-pad on any pad; \"pad 2 bottom\" for the second), \"keys w a s d\" (four keys that make a vector: up, left, down, right) or \"joystick 1 button 3\" and \"joystick 1 axis 2\". Several inputs make one action. Gives 1 when it was bound, and 0 when the input is not one or the action has no name."))
 	append(all, abi_entry("roci_action_held", typeid_of(type_of(abi_action_held)), "int roci_action_held(const char *action)", "1 while any input bound to the action is held: a button or key down, a trigger or axis more than half way, a stick more than half way out. 0 for an action nothing was bound to. Press and release are events: roci_on with \"press\" or \"release\" and the action's name."))
 	append(all, abi_entry("roci_action_direction", typeid_of(type_of(abi_action_direction)), "roci_vec2 roci_action_direction(const char *action)", "Where an action points now: the sticks, the d-pad, the four-key inputs and the axes bound to it added together as x and y from -1 to 1 (up negative) and shortened to a length of 1 if they are longer. { 0, 0 } for an action nothing was bound to."))
+	append(all, abi_entry("roci_rebind", typeid_of(type_of(abi_rebind)), "int roci_rebind(const char *action, int slot, const char *input)", "Makes an input the one at a place of an action (counting from 0; one past the last adds one) and keeps the choice in ui.toml, as the player does with the controls widget. Gives 1 when it was done, 0 when the action, the place or the input is not there."))
+	append(all, abi_entry("roci_reset_controls", typeid_of(type_of(abi_reset_controls)), "void roci_reset_controls(void)", "Gives every action the inputs roci_bind made and forgets what a player chose."))
 	append(all, abi_entry("roci_unbind_all", typeid_of(type_of(abi_unbind_all)), "void roci_unbind_all(void)", "Forgets every binding of roci_bind."))
 	append(all, abi_entry("roci_gamepad_count", typeid_of(type_of(abi_gamepad_count)), "int roci_gamepad_count(void)", "How many gamepads are plugged in. The first call starts reading the pads; one plugged in or out while the program runs is noticed on the next frame."))
 	append(all, abi_entry("roci_gamepad_at", typeid_of(type_of(abi_gamepad_at)), "roci_gamepad roci_gamepad_at(int index)", "The gamepad at a place (from 0), the first plugged in first: its buttons by where they are on the pad (`bottom` is the one an Xbox pad calls A and a PlayStation pad a cross), sticks and the d-pad as vectors from -1 to 1 with up negative, triggers from 0 to 1. Past the last it is a pad at rest with `connected` 0. The name stays valid until the next function that gives text back."))
@@ -175,6 +177,20 @@ abi_action_direction :: proc "c" (action: cstring) -> Abi_Vec2 {
 	context = abi_context()
 	v := action_direction(text_from_abi(action))
 	return {v.x, v.y}
+}
+
+// Changes one input of an action, as a player does in the controls widget; 1 when it was done.
+@(export, link_name = "roci_rebind")
+abi_rebind :: proc "c" (action: cstring, slot: c.int, input: cstring) -> c.int {
+	context = abi_context()
+	return 1 if action_rebind(text_from_abi(action), int(slot), text_from_abi(input)) else 0
+}
+
+// Every action back to what roci_bind made, and the players' choices forgotten.
+@(export, link_name = "roci_reset_controls")
+abi_reset_controls :: proc "c" () {
+	context = abi_context()
+	actions_reset_all()
 }
 
 // Forgets every binding.

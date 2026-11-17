@@ -1,0 +1,17 @@
+bind "jump" to "key space"
+bind "jump" to "pad bottom"
+bind "move" to "keys w a s d"
+y = 200
+
+on press "jump" [ y = 80 ]
+
+ui [
+  panel "controls" [ controls ]
+]
+
+draw [
+  background 20
+  y = clamp (y + 4) 0 200
+  fill white
+  circle at 200 y radius 20
+]

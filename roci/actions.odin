@@ -47,9 +47,11 @@ Input :: struct {
 
 @(private)
 Action :: struct {
-	name:   string,
-	inputs: [dynamic]Input,
-	held:   bool, // as of the last step
+	name:     string,
+	inputs:   [dynamic]Input, // what works now
+	own:      [dynamic]Input, // what the sketch bound, kept for `reset`
+	remapped: bool, // the player changed `inputs`, so later `bind` lines of the sketch only add to `own`
+	held:     bool, // as of the last step
 }
 
 @(thread_local) @(private) actions: [dynamic]Action
@@ -230,39 +232,77 @@ bind :: proc(name, input: string) -> Bind_Result {
 		if actions.allocator.procedure == nil {
 			actions = make([dynamic]Action, actions_allocator())
 		}
-		append(&actions, Action{name = strings.clone(name, actions_allocator()), inputs = make([dynamic]Input, actions_allocator())})
+		append(&actions, Action{
+			name   = strings.clone(name, actions_allocator()),
+			inputs = make([dynamic]Input, actions_allocator()),
+			own    = make([dynamic]Input, actions_allocator()),
+		})
 		index = len(actions) - 1
+		// An action the player remapped starts from what they chose.
+		if saved, found := controls_saved(name); found {
+			actions[index].remapped = true
+			for text in saved {
+				if chosen, chosen_ok := parse_input(text); chosen_ok {
+					append(&actions[index].inputs, clone_input(chosen))
+				}
+			}
+		}
 	}
-	for have in actions[index].inputs {
+	a := &actions[index]
+	for have in a.own {
 		if have.text == parsed.text {
 			return .Bound
 		}
 	}
+	append(&a.own, clone_input(parsed))
+	if !a.remapped {
+		append(&a.inputs, clone_input(parsed))
+	}
+	return .Bound
+}
+
+// A copy of an input whose text lives as long as the actions do.
+@(private)
+clone_input :: proc(parsed: Input) -> Input {
 	stored := parsed
 	stored.text = strings.clone(parsed.text, actions_allocator())
 	stored.name = strings.clone(parsed.name, actions_allocator())
 	for k, i in parsed.keys {
 		stored.keys[i] = strings.clone(k, actions_allocator())
 	}
-	append(&actions[index].inputs, stored)
-	return .Bound
+	return stored
+}
+
+@(private)
+free_input :: proc(i: Input) {
+	delete(i.text, actions_allocator())
+	delete(i.name, actions_allocator())
+	for k in i.keys {
+		delete(k, actions_allocator())
+	}
 }
 
 // Forgets every binding: when a sketch starts again, so a line taken out of it stops binding.
 actions_clear :: proc() {
 	for a in actions {
 		for i in a.inputs {
-			delete(i.text, actions_allocator())
-			delete(i.name, actions_allocator())
-			for k in i.keys {
-				delete(k, actions_allocator())
-			}
+			free_input(i)
+		}
+		for i in a.own {
+			free_input(i)
 		}
 		delete(a.inputs)
+		delete(a.own)
 		delete(a.name, actions_allocator())
 	}
 	delete(actions)
 	actions = nil
+	listen_cancel()
+	for text in just_chosen {
+		delete(text)
+	}
+	delete(just_chosen)
+	just_chosen = nil
 }
 
 // Whether an action is known: something was bound to its name.
@@ -457,14 +497,18 @@ action_direction :: proc(name: string) -> (v: [2]f64) {
 // has the focus (or the first). Called by `step`, after the keys and the pads were read.
 @(private)
 actions_step :: proc() {
+	if listen.active {
+		listen_pads()
+	}
 	if len(actions) == 0 {
 		return
 	}
 	target := midi_target()
+	chosen_let_go()
 	for &a in actions {
 		now := false
 		for i in a.inputs {
-			if input_held(i) {
+			if input_held(i) && !is_just_chosen(i.text) {
 				now = true
 				break
 			}

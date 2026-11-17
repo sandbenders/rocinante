@@ -42,7 +42,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"forward", "back", "left", "right", "pen up", "pen down", "home", "show turtle", "turtle", "turtle space", "up", "down", "roll",
 	}},
 	{"Interface", "Buttons, sliders and check boxes in a `ui` block, drawn over the window with the keyboard, the mouse and touch all working.", {
-		"ui", "label", "button", "toggle", "slider", "number", "textbox", "dropdown", "choice", "progress", "separator", "tip", "colorpicker", "knob", "range", "xypad", "image button", "ui hide", "ui show", "ui key", "ui theme", "forget ui", "panel", "row", "column", "tabs", "tab", "menu", "list",
+		"ui", "label", "button", "toggle", "slider", "number", "textbox", "dropdown", "choice", "progress", "separator", "controls", "tip", "colorpicker", "knob", "range", "xypad", "image button", "ui hide", "ui show", "ui key", "ui theme", "forget ui", "panel", "row", "column", "tabs", "tab", "menu", "list",
 	}},
 	{"Running", "When the lines of a sketch run: once, every frame, again and again, or when something happens.", {
 		"draw", "every", "on", "if", "repeat", "while", "for", "for each",

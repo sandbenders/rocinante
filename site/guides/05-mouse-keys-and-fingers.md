@@ -158,3 +158,19 @@ draw [
 ```
 
 A name `held` is given is an action when something was bound to it, and otherwise a key, as before. An input that is not one (`"pad bottm"`) is said once with the nearest names, and the sketch goes on without it. `examples/actions` is a ship that moves and fires with all of this.
+
+## Letting the player choose
+
+Players have their own keyboards and pads, so a game can let them choose. `controls` in a `ui` block lists every action with a button for each input that does it:
+
+```roci
+bind "jump" to "key space"
+bind "jump" to "pad bottom"
+bind "move" to "keys w a s d"
+
+ui [ panel "controls" [ controls ] ]
+```
+
+A player presses the button of an input, and the next key, gamepad button, trigger or stick they use takes its place (an input of four keys asks for four, one after the other). The `+` button adds another way to do the action, Backspace while a button is waiting takes that input away, and Escape gives up. While a button is waiting, what the player presses only chooses: it does not do the action. `reset controls` gives back the inputs your `bind` lines made.
+
+What a player chooses is kept in `ui.toml`, next to the values of the other widgets, and wins over your `bind` lines the next time the sketch runs; `forget ui` puts the sketch's own inputs back. The sketch itself changes nothing: it still asks `held "jump"`, and works with whatever the player chose.

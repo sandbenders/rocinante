@@ -5,6 +5,9 @@
 // count, added up and kept to a length of one), `held "boost"` is true while any boost input is
 // held, and `on press "fire"` runs once for each press, whichever of space, the bottom button or
 // the mouse did it. A gamepad shakes a little for each shot. Plug a gamepad in to try it with one.
+// `controls` lists the actions in the panel: press an input's button and then the key or gamepad
+// button you want instead (Escape gives up, Backspace takes the input away, + adds another); what
+// you choose is kept in ui.toml, and `reset controls` gives the sketch's own inputs back.
 window size 640 400 title "actions"
 
 bind "move" to "keys w a s d"
@@ -27,6 +30,10 @@ on press "fire" [
   rumble 40 for 0.1
 ]
 
+ui [
+  panel "controls" [ controls ]
+]
+
 draw [
   background 20
   speed = 3
@@ -44,6 +51,6 @@ draw [
   fill (rgb 20 20 20)
   circle at ship.x (ship.y - 6) radius 5
   fill gray
-  text "move: WASD, arrows, stick, d-pad    fire: space, mouse, bottom button    boost: shift, right trigger" at 20 20 size 13
-  text ("shots: " + fired) at 20 44 size 13
+  text "move: WASD, arrows, stick, d-pad    fire: space, mouse, bottom button    boost: shift, right trigger" at 20 370 size 13
+  text ("shots: " + fired) at 20 346 size 13
 ]

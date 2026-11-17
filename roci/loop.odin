@@ -75,6 +75,11 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 	clear(&the.log)
 	the.wheel = 0
 	for event in events {
+		// A key the `controls` widget is waiting for is its choice and nothing else's.
+		if key, is_key := event.(platform.Key_Changed); is_key && listen_key(key) {
+			handle_event(event)
+			continue
+		}
 		note_event(event)
 		handle_event(event)
 		ui_event(event)

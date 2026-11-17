@@ -232,6 +232,9 @@ ui_forget :: proc() {
 		ui.forget(w.ui)
 		ui_touch()
 	}
+	if len(actions) > 0 || the.ui_file != "" {
+		actions_reset_all()
+	}
 }
 
 // Opens a panel, row, column, group of tabs, tab or menu in the window's interface; the widgets

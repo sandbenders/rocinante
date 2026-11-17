@@ -124,6 +124,21 @@ button :: proc(s: ^State, text: string) -> bool {
 	return clicked
 }
 
+// A button whose identity is `key` and not its words, for one whose words change while it is there (the
+// `controls` widget's buttons say what is being waited for); `name` is what a screen reader says.
+button_keyed :: proc(s: ^State, text, key, name: string) -> bool {
+	use(s)
+	place(s)
+	label := cstr(fmt.tprintf("%s###%s", text, key))
+	id := imgui.get_id(label)
+	clicked := imgui.button_ex(label, {s.width, 0})
+	if _, asked := take(s, id, .Click); asked {
+		clicked = true
+	}
+	note(s, .Button, name).changed = clicked
+	return clicked
+}
+
 // A check box; `value` is changed when it is clicked. Gives true on that frame.
 toggle :: proc(s: ^State, text: string, value: ^bool) -> bool {
 	use(s)

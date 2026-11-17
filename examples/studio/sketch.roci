@@ -7,7 +7,7 @@
 // stage, starts the widgets over and chooses their colors. The stage keeps its drawing on a
 // canvas, so with `trails` ticked each dot leaves a fading line. Tab and the arrow keys reach
 // every widget, and a screen reader is given all of them in one tree.
-controls = window size 380 760 at 40 40 title "controls" resizable false
+tools = window size 380 760 at 40 40 title "controls" resizable false
 stage = window size 560 560 at 450 60 title "stage" resizable false
 badge = load "sprite.png"
 paint = canvas 560 560
@@ -27,7 +27,7 @@ words = "studio"
 stamps = []
 wipe = false
 
-ui controls [
+ui tools [
   menu "file" [
     if item "clear the stage" [ wipe = true ]
     if item "start over" [

@@ -151,6 +151,12 @@ abi_progress :: proc "c" (fraction: f64) {
 	ui_progress(fraction)
 }
 
+@(export, link_name = "roci_controls")
+abi_controls :: proc "c" () {
+	context = abi_context()
+	ui_controls()
+}
+
 @(export, link_name = "roci_separator")
 abi_separator :: proc "c" () {
 	context = abi_context()
@@ -392,6 +398,7 @@ abi_ui_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_xypad", typeid_of(type_of(abi_xypad)), "roci_vec2 roci_xypad(const char *text, roci_vec2 start)", "A pad that keeps the place pressed on it, 0 to 1 across and down, starting at `start`: gives it."))
 	append(all, abi_entry("roci_image_button", typeid_of(type_of(abi_image_button)), "int roci_image_button(const char *text, roci_image_id picture, double width, double height)", "A button that shows a picture, `width` by `height` across and down (0 and 0 for the picture's own size, down to 64 pixels on the longer side): gives 1 on the frame it is clicked."))
 	append(all, abi_entry("roci_progress", typeid_of(type_of(abi_progress)), "void roci_progress(double fraction)", "A progress bar, from 0 to 1."))
+	append(all, abi_entry("roci_controls", typeid_of(type_of(abi_controls)), "void roci_controls(void)", "A list of every action with a button for each input, for a player to press and then press what they want instead."))
 	append(all, abi_entry("roci_separator", typeid_of(type_of(abi_separator)), "void roci_separator(void)", "A line between widgets."))
 	append(all, abi_entry("roci_tip", typeid_of(type_of(abi_tip)), "void roci_tip(const char *text)", "Words that show beside the widget made just before, when the mouse rests on it."))
 	append(all, abi_entry("roci_item", typeid_of(type_of(abi_item)), "int roci_item(const char *text)", "An entry of a menu: gives 1 on the frame it is chosen."))

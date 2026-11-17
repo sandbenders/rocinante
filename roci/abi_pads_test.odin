@@ -71,3 +71,20 @@ test_c_rumble_says_whether_there_was_a_pad :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(got), 2)
 	testing.expect_value(t, got[0], Rumble_Request{4, 50, 1})
 }
+
+@(test)
+test_c_changes_an_input_of_an_action_and_gives_the_programs_own_back :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	testing.expect_value(t, abi_bind("jump", "key space"), 1)
+	testing.expect_value(t, abi_rebind("jump", 0, "key z"), 1)
+	testing.expect_value(t, action_inputs("jump")[0].text, "key z")
+	testing.expect_value(t, abi_rebind("jump", 1, "pad bottom"), 1)
+	testing.expect_value(t, len(action_inputs("jump")), 2)
+	testing.expect_value(t, abi_rebind("jump", 0, "key nothing"), 0)
+	testing.expect_value(t, abi_rebind("nothing", 0, "key z"), 0)
+	testing.expect_value(t, abi_rebind("jump", 9, "key z"), 0)
+	abi_reset_controls()
+	testing.expect_value(t, len(action_inputs("jump")), 1)
+	testing.expect_value(t, action_inputs("jump")[0].text, "key space")
+}

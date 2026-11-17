@@ -1000,6 +1000,9 @@ int roci_image_button(const char *text, roci_image_id picture, double width, dou
 /* A progress bar, from 0 to 1. */
 void roci_progress(double fraction);
 
+/* A list of every action with a button for each input, for a player to press and then press what they want instead. */
+void roci_controls(void);
+
 /* A line between widgets. */
 void roci_separator(void);
 
@@ -1302,6 +1305,12 @@ int roci_action_held(const char *action);
 
 /* Where an action points now: the sticks, the d-pad, the four-key inputs and the axes bound to it added together as x and y from -1 to 1 (up negative) and shortened to a length of 1 if they are longer. { 0, 0 } for an action nothing was bound to. */
 roci_vec2 roci_action_direction(const char *action);
+
+/* Makes an input the one at a place of an action (counting from 0; one past the last adds one) and keeps the choice in ui.toml, as the player does with the controls widget. Gives 1 when it was done, 0 when the action, the place or the input is not there. */
+int roci_rebind(const char *action, int slot, const char *input);
+
+/* Gives every action the inputs roci_bind made and forgets what a player chose. */
+void roci_reset_controls(void);
 
 /* Forgets every binding of roci_bind. */
 void roci_unbind_all(void);
