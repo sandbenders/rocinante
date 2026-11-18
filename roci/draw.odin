@@ -344,6 +344,16 @@ joins :: proc(style: Join) {
 	gfx.set_joins(current_list(), style)
 }
 
+// Pictures drawn from now on are smoothed when drawn at another size (the start).
+smooth :: proc() {
+	gfx.set_smooth(current_list(), true)
+}
+
+// Pictures drawn from now on keep each pixel as a hard square when drawn at another size.
+no_smooth :: proc() {
+	gfx.set_smooth(current_list(), false)
+}
+
 // How what is drawn from now on mixes with what is behind it: normal, add, multiply,
 // screen, subtract or lighten.
 blend :: proc(mode: Blend) {

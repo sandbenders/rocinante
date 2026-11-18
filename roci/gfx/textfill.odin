@@ -225,7 +225,7 @@ text_fill_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item_i
 		append(&s.vertices, Typeset_Vertex{{x, y}, uvs[k], item.tint, 2})
 	}
 	append(&s.indices, base, base + 1, base + 2, base, base + 2, base + 3)
-	append(&s.draws, Typeset_Draw{item_index, made.texture, first, 6})
+	append(&s.draws, Typeset_Draw{item_index, made.texture, first, 6, false})
 }
 
 // Lets go of the filled texts not used for a while.

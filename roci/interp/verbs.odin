@@ -682,6 +682,10 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		}
 	case .No_Fill:
 		roci.no_fill()
+	case .Smooth:
+		roci.smooth()
+	case .No_Smooth:
+		roci.no_smooth()
 	case .Stroke:
 		if paint, ok := to_paint(it, a[0], call.options); ok {
 			roci.stroke_paint(paint)

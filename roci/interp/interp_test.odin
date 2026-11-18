@@ -2824,3 +2824,15 @@ test_polygon_of_lists_is_one_shape_with_a_contour_for_each_list :: proc(t: ^test
 	testing.expect_value(t, commands[1].args[5], 5)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_no_smooth_makes_pictures_keep_hard_pixels_until_smooth :: proc(t: ^testing.T) {
+	p := run_text(t, "tiny = picture from [ red green blue white ] size 2 2\nimage tiny at 0 0 size 10 10\nno smooth\nimage tiny at 0 0 size 10 10\nsmooth\nimage tiny at 0 0 size 10 10")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 3)
+	testing.expect_value(t, commands[0].style.nearest, false)
+	testing.expect_value(t, commands[1].style.nearest, true)
+	testing.expect_value(t, commands[2].style.nearest, false)
+	testing.expect_value(t, len(p.errors), 0)
+}

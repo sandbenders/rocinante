@@ -991,7 +991,7 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 					glyph_indices := sdl.GPUBufferBinding{buffer = r.typeset.index_buffer.buffer}
 					sdl.BindGPUIndexBuffer(pass, glyph_indices, ._32BIT)
 				}
-				atlas := sdl.GPUTextureSamplerBinding{texture = d.atlas, sampler = r.typeset.sampler}
+				atlas := sdl.GPUTextureSamplerBinding{texture = d.atlas, sampler = r.typeset.sampler_nearest if d.nearest else r.typeset.sampler}
 				sdl.BindGPUFragmentSamplers(pass, 0, &atlas, 1)
 				sdl.DrawGPUIndexedPrimitives(pass, d.count, 1, d.first, 0, 0)
 				r.stats.draws += 1

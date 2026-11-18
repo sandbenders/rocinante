@@ -1,0 +1,4 @@
+tiny = picture from [ red green blue white ] size 2 2
+image tiny at 20 20 size 120 120
+no smooth
+image tiny at 180 20 size 120 120

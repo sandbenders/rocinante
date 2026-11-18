@@ -352,3 +352,13 @@ test_c_draws_a_polygon_of_several_contours :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(list), 1)
 	testing.expect_value(t, list[0].args[5], 10) // 4 + 4 corners and a break after each
 }
+
+@(test)
+test_c_no_smooth_and_smooth_set_the_picture_style :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	abi_no_smooth()
+	testing.expect_value(t, current_list().style.nearest, true)
+	abi_smooth()
+	testing.expect_value(t, current_list().style.nearest, false)
+}

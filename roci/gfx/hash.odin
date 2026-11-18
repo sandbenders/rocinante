@@ -57,7 +57,7 @@ hash_style :: proc "contextless" (h: u64, s: Style) -> u64 {
 	h = hash_f32_pair(h, s.stroke_image.at.y, 0)
 	h = hash_u64(h, u64(s.fill_shader.shader) | u64(s.fill_shader.version) << 32)
 	h = hash_u64(h, s.fill_shader.hash)
-	h = hash_u64(h, u64(s.blend) | u64(s.clip.on) << 8)
+	h = hash_u64(h, u64(s.blend) | u64(s.clip.on) << 8 | u64(s.nearest) << 9)
 	h = hash_f32_pair(h, s.clip.rect[0], s.clip.rect[1])
 	h = hash_f32_pair(h, s.clip.rect[2], s.clip.rect[3])
 	return hash_u64(h, s.stroke_paint.hash)

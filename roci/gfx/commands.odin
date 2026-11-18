@@ -491,6 +491,13 @@ set_blend :: proc(list: ^Command_List, mode: Blend_Mode) {
 	list.style.blend = mode
 }
 
+// Whether pictures drawn from now on are smoothed when they are drawn bigger or smaller than their pixels
+// (`smooth`, the start) or keep each pixel as a hard square (`no smooth`).
+set_smooth :: proc(list: ^Command_List, smooth: bool) {
+	list.look_changed = true
+	list.style.nearest = !smooth
+}
+
 // Keeps later drawing inside the box `x y width height`, which is worked out in the
 // current transform and kept as its bounding box on the canvas: a turned or sheared box
 // clips to the smallest upright box round it. A box with no size, or numbers that are not

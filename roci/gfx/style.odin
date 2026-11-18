@@ -48,6 +48,7 @@ Style :: struct {
 	// rectangle, already carried through the transform that was current (`set_clip`).
 	blend:        Blend_Mode,
 	clip:         Clip,
+	nearest:      bool, // pictures drawn from now on keep their hard pixels when they are drawn bigger (`no smooth`)
 }
 
 // How a shape's colours combine with the picture behind it. Normal puts the shape over it;

@@ -61,6 +61,8 @@ API_NAMES := [?]Api_Entry{
 	{"arc", "arc"},
 	{"fill", "fill"},
 	{"no fill", "no_fill"},
+	{"smooth", "smooth"},
+	{"no smooth", "no_smooth"},
 	{"stroke", "stroke"},
 	{"no stroke", "no_stroke"},
 	{"thickness", "thickness"},

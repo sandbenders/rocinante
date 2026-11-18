@@ -423,6 +423,7 @@ paint_for_gpu :: proc "contextless" (colour: maths.Colour, alpha: f32, gradient_
 // it is good for this frame only.
 Typeset_Item :: struct {
 	image:     Image_Id, // not 0: a picture of this number, w by h at x y, in place of text
+	nearest:   bool,     // the picture keeps hard pixels when it is drawn at another size
 	premultiplied: bool, // the picture is a canvas, whose colours are already multiplied by its alpha
 	shaded:    bool,     // a shader fills `shape` (shaderfill.odin), drawn by its own pipeline
 	shader:    Shader_Fill, // for a shaded shape: which shader, and its values
@@ -480,6 +481,7 @@ image_item :: proc(c: Command) -> Typeset_Item {
 	return Typeset_Item{
 		image     = Image_Id(c.args[4]),
 		premultiplied = canvas_of(Image_Id(c.args[4])) != nil,
+		nearest   = c.style.nearest,
 		x         = x,
 		y         = y,
 		w         = w,

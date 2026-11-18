@@ -301,6 +301,12 @@ void roci_fill_gray(double value);
 /* Turns area color off from now on. */
 void roci_no_fill(void);
 
+/* Smooths pictures drawn from now on when they are drawn bigger or smaller than their pixels, which is how they start: `smooth`. It takes back `no smooth`. */
+void roci_smooth(void);
+
+/* Keeps each pixel of a picture or canvas drawn from now on as a hard square when it is drawn bigger, for pixel art: `no smooth` and then `image sprite at 10 10 size 64 64`. `smooth` turns it back on. In a `draw` block it lasts for the frame. */
+void roci_no_smooth(void);
+
 /* Sets the color of outlines and lines from now on, or draws them with a picture: each outline is a mask the picture shows through. */
 void roci_stroke(roci_color color);
 

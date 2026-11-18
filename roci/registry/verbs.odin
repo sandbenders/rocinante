@@ -308,6 +308,8 @@ VERBS := []Verb{
 		{{{"picture", .Image}}, FILL_IMAGE_OPTIONS, .None},
 	}, "Sets the color of areas from now on, or fills them with a picture: each shape is a mask the picture shows through."},
 	{"no fill", {{{}, nil, .None}}, "Turns area color off from now on."},
+	{"smooth", {{{}, nil, .None}}, "Smooths pictures drawn from now on when they are drawn bigger or smaller than their pixels, which is how they start: `smooth`. It takes back `no smooth`."},
+	{"no smooth", {{{}, nil, .None}}, "Keeps each pixel of a picture or canvas drawn from now on as a hard square when it is drawn bigger, for pixel art: `no smooth` and then `image sprite at 10 10 size 64 64`. `smooth` turns it back on. In a `draw` block it lasts for the frame."},
 	{"stroke", {
 		{{{"color", .Colour}}, GRADIENT_OPTIONS, .None},
 		{{{"picture", .Image}}, FILL_IMAGE_OPTIONS, .None},

@@ -173,6 +173,6 @@ emoji_vertices :: proc(r: ^Renderer, item_index: int, e: Emoji_Draw, item: Types
 		for n in 0 ..< int(seq.num_indices) {
 			append(&s.indices, base + u32(seq.indices[n]))
 		}
-		append(&s.draws, Typeset_Draw{item_index, seq.atlas_texture, first, u32(len(s.indices)) - first})
+		append(&s.draws, Typeset_Draw{item_index, seq.atlas_texture, first, u32(len(s.indices)) - first, false})
 	}
 }

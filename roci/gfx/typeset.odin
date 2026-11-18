@@ -28,6 +28,7 @@ Typeset_Draw :: struct {
 	atlas: ^sdl.GPUTexture,
 	first: u32, // the first index
 	count: u32,
+	nearest: bool, // read with the sampler that keeps hard pixels
 }
 
 // How many frames a text may go unused before it is let go.
@@ -51,6 +52,7 @@ Typeset_State :: struct {
 	vertex_buffer: Gpu_Buffer,
 	index_buffer:  Gpu_Buffer,
 	sampler:  ^sdl.GPUSampler,
+	sampler_nearest: ^sdl.GPUSampler, // for pictures drawn after `no smooth`
 }
 
 typeset_destroy :: proc(r: ^Renderer) {
@@ -72,6 +74,9 @@ typeset_destroy :: proc(r: ^Renderer) {
 	}
 	if s.sampler != nil {
 		sdl.ReleaseGPUSampler(r.device, s.sampler)
+	}
+	if s.sampler_nearest != nil {
+		sdl.ReleaseGPUSampler(r.device, s.sampler_nearest)
 	}
 	s^ = {}
 }
@@ -207,7 +212,7 @@ typeset_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batch
 			for k in 0 ..< int(seq.num_indices) {
 				append(&s.indices, base + u32(seq.indices[k]))
 			}
-			append(&s.draws, Typeset_Draw{i, seq.atlas_texture, first, u32(len(s.indices)) - first})
+			append(&s.draws, Typeset_Draw{i, seq.atlas_texture, first, u32(len(s.indices)) - first, false})
 		}
 		for e in entry.emoji {
 			emoji_vertices(r, i, e, item, shift, scale)
@@ -236,6 +241,16 @@ typeset_upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer) -> bool {
 		})
 		if s.sampler == nil {
 			set_error(r, "creating the text sampler")
+			return false
+		}
+	}
+	if s.sampler_nearest == nil {
+		s.sampler_nearest = sdl.CreateGPUSampler(r.device, {
+			min_filter = .NEAREST, mag_filter = .NEAREST, mipmap_mode = .NEAREST,
+			address_mode_u = .CLAMP_TO_EDGE, address_mode_v = .CLAMP_TO_EDGE, address_mode_w = .CLAMP_TO_EDGE,
+		})
+		if s.sampler_nearest == nil {
+			set_error(r, "creating the sampler of hard pixels")
 			return false
 		}
 	}
@@ -353,7 +368,7 @@ image_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item_index
 		append(&s.vertices, Typeset_Vertex{{x, y}, uvs[k], item.colour, 3 if item.premultiplied else 2})
 	}
 	append(&s.indices, base, base + 1, base + 2, base, base + 2, base + 3)
-	append(&s.draws, Typeset_Draw{item_index, texture, first, 6})
+	append(&s.draws, Typeset_Draw{item_index, texture, first, 6, item.nearest})
 }
 
 // How many sizes a picture of this size has down to one pixel, each half the one before.

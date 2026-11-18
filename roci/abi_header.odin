@@ -234,6 +234,8 @@ abi_table_init :: proc "contextless" () {
 	{"roci_fill_image_as", "", 0, typeid_of(type_of(abi_fill_image_as)), "void roci_fill_image_as(roci_image_id picture, int fit, double tile, double at_x, double at_y)", "Fills with a picture. `fit` is 0 cover, 1 fit, 2 stretch, 3 tile or 4 center; `tile` is the width of one copy for tile (0 is the picture's own size); `at_x` and `at_y` shift the picture for tile and center."},
 	{"roci_fill_gray", "", 0, typeid_of(type_of(abi_fill_gray)), "void roci_fill_gray(double value)", "Fills with a gray, 0 to 255, from now on."},
 	{"roci_no_fill", "no fill", 0, typeid_of(type_of(abi_no_fill)), "", ""},
+	{"roci_smooth", "smooth", 0, typeid_of(type_of(abi_smooth)), "", ""},
+	{"roci_no_smooth", "no smooth", 0, typeid_of(type_of(abi_no_smooth)), "", ""},
 	{"roci_stroke", "stroke", 0, typeid_of(type_of(abi_stroke)), "", ""},
 	{"roci_stroke_image", "stroke", 1, typeid_of(type_of(abi_stroke_image)), "", ""},
 	{"roci_stroke_image_as", "", 0, typeid_of(type_of(abi_stroke_image_as)), "void roci_stroke_image_as(roci_image_id picture, int fit, double tile, double at_x, double at_y)", "Outlines with a picture. `fit` is 0 cover, 1 fit, 2 stretch, 3 tile or 4 center; `tile` is the width of one copy for tile (0 is the picture's own size); `at_x` and `at_y` shift the picture for tile and center."},

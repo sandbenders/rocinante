@@ -461,6 +461,18 @@ abi_no_fill :: proc "c" () {
 	no_fill()
 }
 
+@(export, link_name = "roci_smooth")
+abi_smooth :: proc "c" () {
+	context = abi_context()
+	smooth()
+}
+
+@(export, link_name = "roci_no_smooth")
+abi_no_smooth :: proc "c" () {
+	context = abi_context()
+	no_smooth()
+}
+
 @(export, link_name = "roci_stroke")
 abi_stroke :: proc "c" (colour: Abi_Color) {
 	context = abi_context()

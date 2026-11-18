@@ -16,7 +16,9 @@ draw [
   fx = clamp spot.x 8 312
   fy = clamp spot.y 6 194
   zoom = crop photo at (fx - 8) (fy - 6) size 16 12
-  image (resize zoom size 192 144 as nearest) at 360 20
+  no smooth
+  image zoom at 360 20 size 192 144
+  smooth
   no fill
   stroke white
   rect at (20 + fx - 8) (20 + fy - 6) size 16 12
@@ -44,3 +46,4 @@ draw [
   image (flip small) at 656 250
   text "flip" at 656 354
 ]
+// keeps hard edges, so a few pixels become big squares; no smooth does the same for a picture drawn bigger), filter changes the colors or blurs,

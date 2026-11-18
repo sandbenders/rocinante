@@ -150,7 +150,7 @@ image_fill_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item_
 	for index in tri.indices {
 		append(&s.indices, base + index)
 	}
-	append(&s.draws, Typeset_Draw{item_index, texture, first, u32(len(s.indices)) - first})
+	append(&s.draws, Typeset_Draw{item_index, texture, first, u32(len(s.indices)) - first, false})
 }
 
 // Whether a kind of shape can have its outline drawn with a picture: every shape with a
@@ -267,5 +267,5 @@ image_stroke_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, ite
 	for index in tri.indices {
 		append(&s.indices, base + index)
 	}
-	append(&s.draws, Typeset_Draw{item_index, texture, first, u32(len(s.indices)) - first})
+	append(&s.draws, Typeset_Draw{item_index, texture, first, u32(len(s.indices)) - first, false})
 }

@@ -163,6 +163,16 @@ image (resize part size 190 0) at 10 10
 image (resize part size 190 0 as nearest) at 210 10
 ```
 
+A picture drawn bigger than its pixels is smoothed. For pixel art, `no smooth` keeps every pixel a hard square from then on, for pictures and canvases alike, without making a bigger copy first; `smooth` takes it back. Draw the sprite at a whole number of times its size and its edges stay sharp:
+
+```roci picture
+tiny = picture from [ red green blue white ] size 2 2
+no smooth
+image tiny at 20 20 size 120 120
+smooth
+image tiny at 180 20 size 120 120
+```
+
 `filter` takes one of `gray`, `invert`, `threshold`, `posterize`, `blur`, `edges` and `pixelate`, and `by` says how much: a brightness for `threshold` (0 to 255, the start 128), a number of steps for `posterize` (4), a radius in pixels for `blur` (2) and a block size in pixels for `pixelate` (8). `mask photo by shape` shows the picture only where the shape picture is white and solid, stretching the shape over it, so a canvas you drew a white circle on makes a round window.
 
 ```roci picture

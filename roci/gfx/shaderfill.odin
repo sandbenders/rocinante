@@ -41,7 +41,7 @@ shader_fill_vertices :: proc(r: ^Renderer, item_index: int, item: Typeset_Item) 
 	for index in tri.indices {
 		append(&s.indices, base + index)
 	}
-	append(&s.draws, Typeset_Draw{item_index, nil, first, u32(len(s.indices)) - first})
+	append(&s.draws, Typeset_Draw{item_index, nil, first, u32(len(s.indices)) - first, false})
 }
 
 // What a fill shader's pipeline is made for.
