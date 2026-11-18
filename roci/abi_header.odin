@@ -134,6 +134,10 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent roci_set_sound_at roci_set_sound_volume roci_set_sound_pan roci_set_sound_speed roci_set_sound_loop roci_set_sound_pitch roci_set_sound_wheels roci_play_note", ""},
 	{"osc send", "roci_osc_send roci_osc_send_bundle", ""},
 	{"udp send", "roci_udp_send roci_udp_listen", ""},
+	{"tcp connect", "roci_tcp_connect", ""},
+	{"tcp listen", "roci_tcp_listen", ""},
+	{"tcp send", "roci_tcp_send", ""},
+	{"tcp close", "roci_tcp_close", ""},
 	{"rumble", "roci_rumble", ""},
 	{"bind", "roci_bind", ""},
 	{"remember", "roci_remember_number roci_remember_text roci_remember_bool roci_remember_numbers roci_vault_remember_number roci_vault_remember_text roci_vault_remember_bool roci_vault_remember_numbers", ""},
@@ -400,6 +404,7 @@ abi_table_init :: proc "contextless" () {
 	abi_dialogs_group(&all)
 	abi_fetch_group(&all)
 	abi_udp_group(&all)
+	abi_tcp_group(&all)
 	ABI_TABLE = all[:]
 }
 
@@ -592,9 +597,14 @@ typedef struct { const char *address, *from, *text; double value; const roci_val
  * runs. */
 typedef struct { int to; const char *from; int port; const unsigned char *data; int size; const char *text; } roci_udp;
 
+/* What happened on a connection (kinds 21 to 23): the label it was made under, the line of text that arrived (or why
+ * the connection ended; empty for an opened one), who is at the other end and which client of a server it was (from 1).
+ * Valid only while the handler runs. */
+typedef struct { const char *label, *text, *from; int client; } roci_tcp;
+
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
  * mouse events; valid only while the handler runs), the finger (for touch events) and the key or
- * controller (for MIDI events), the message (for an osc event) and the datagram (for a udp event). */
+ * controller (for MIDI events), the message (for an osc event), the datagram (for a udp event) and what happened on a connection (for a tcp event). */
 typedef struct {
 	int kind;
 	roci_window_id window;
@@ -603,6 +613,7 @@ typedef struct {
 	roci_midi midi;
 	roci_osc osc;
 	roci_udp udp;
+	roci_tcp tcp;
 } roci_event;
 
 /* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;

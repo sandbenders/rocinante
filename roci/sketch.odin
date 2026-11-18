@@ -220,6 +220,7 @@ shutdown :: proc() {
 	actions_clear()
 	osc_stop()
 	udp_stop()
+	tcp_stop()
 	sounds_stop()
 	for w in the.windows {
 		destroy_win(w)

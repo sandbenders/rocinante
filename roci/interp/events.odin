@@ -99,6 +99,9 @@ event_name :: proc(kind: roci.Happening) -> string {
 	case .Midi_Control: return "midi control"
 	case .Osc:        return "osc"
 	case .Udp:        return "udp"
+	case .Tcp_Open:   return "tcp open"
+	case .Tcp_Line:   return "tcp"
+	case .Tcp_Close:  return "tcp close"
 	case .Midi_Bend:  return "midi bend"
 	case .Midi_Program: return "midi program"
 	case .Midi_Pressure: return "midi pressure"
@@ -131,6 +134,7 @@ run_event_handlers :: proc(p: ^Interp, w: roci.Window, happenings: []roci.Happen
 			p.midi = happening.midi
 			p.osc = happening.osc
 			p.packet = happening.udp
+			p.received = happening.tcp
 			if happening.osc.dropped != "" {
 				fail(p, .Osc_Unsupported, h.body.span, osc_dropped_words(happening.osc.dropped), "", "", "on osc [ print osc.args ]")
 			}
@@ -139,6 +143,7 @@ run_event_handlers :: proc(p: ^Interp, w: roci.Window, happenings: []roci.Happen
 			p.midi = {}
 			p.osc = {}
 			p.packet = {}
+			p.received = {}
 		}
 	}
 }
@@ -224,6 +229,9 @@ event_arg_matches :: proc(p: ^Interp, h: Handler, happening: roci.Happened) -> b
 	}
 	want := as_text(eval(p, h.args[0]))
 	p.alloc, p.frame = saved_alloc, saved_frame
+	if happening.kind == .Tcp_Open || happening.kind == .Tcp_Line || happening.kind == .Tcp_Close {
+		return want == happening.tcp.label
+	}
 	if happening.kind == .Osc {
 		return oscp.match(want, happening.osc.address)
 	}

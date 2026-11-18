@@ -1,0 +1,47 @@
+// TCP: a connection between two programs that carries lines of text. `tcp listen "server" port 9400`
+// waits for connections and `tcp connect "chat" to "localhost" port 9400` makes one; the label names it
+// from then on. Nothing waits for it: `on tcp open` runs when the connection is made, `on tcp "chat"`
+// for each line that comes in (`received.text`), and `on tcp close` when it ends, with the reason. A
+// server's clients are numbered from 1 in `received.client`, and `tcp send "server" "text" to 1`
+// answers one of them (without `to`, all of them). This sketch is both ends: it connects to its own
+// server, a click sends a line, the server echoes it back, and both lists show what they heard. Run it
+// twice (one sketch without the `tcp listen`) or point another program at port 9400 and it talks to that.
+window size 560 360 title "tcp"
+
+talk = []
+status = "connecting..."
+
+tcp listen "server" port 9400
+tcp connect "chat" to "localhost" port 9400
+
+// Keeps the last seven lines.
+learn say words [
+  add words to talk
+  if (count talk) > 7 [ remove (item 1 of talk) from talk ]
+]
+
+on tcp open "chat" [ status = "connected, click to send a line" ]
+on tcp close "chat" [ status = "closed: " + received.text ]
+
+on tcp "server" [
+  say ("server heard: " + received.text + " (client " + received.client + ")")
+  tcp send "server" ("echo " + received.text) to received.client
+]
+
+on tcp "chat" [ say ("chat heard: " + received.text) ]
+
+on mouse down [
+  tcp send "chat" ("click at " + (floor mouse.x) + "," + (floor mouse.y))
+]
+
+draw [
+  background 24
+  fill white
+  text status at 20 20 size 20
+  fill 150
+  if (count talk) is 0 [ text "nothing has come yet" at 20 70 size 16 ]
+  fill white
+  for i from 1 to count talk [
+    text (item i of talk) at 20 (60 + i * 30) size 16
+  ]
+]

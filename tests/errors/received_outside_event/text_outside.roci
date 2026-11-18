@@ -1,0 +1,3 @@
+draw [
+  text received.text at 20 20
+]

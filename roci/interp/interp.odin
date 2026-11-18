@@ -87,6 +87,7 @@ Interp :: struct {
 	midi:      roci.Midi_Message, // the key or controller the `on midi` block running now is for
 	osc:       roci.Osc_Message, // the message the `on osc` block running now is for
 	packet:    roci.Udp_Packet, // the datagram the `on udp` block running now is for
+	received:  roci.Tcp_Message, // what the `on tcp` block running now is for
 	errors:    [dynamic]Runtime_Error,
 	seen:      map[int]bool, // the errors said once: id and place
 	printed:   [dynamic]string,

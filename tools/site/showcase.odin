@@ -69,6 +69,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"vault", 1, "Vault", 2, 1},
 	{"data", 1, "Data", 2, 1},
 	{"dialogs", 1, "Dialogs", 2, 1},
+	{"tcp", 1, "TCP", 2, 1},
 	{"udp", 1, "UDP", 2, 1},
 	{"fetch", 1, "Fetching", 2, 1},
 	{"city", 1, "City", 2, 1},

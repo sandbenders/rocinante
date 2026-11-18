@@ -33,6 +33,9 @@ Happening :: enum u8 {
 	Action_Press, // an action went down: any input bound to it did
 	Action_Release, // and every input bound to it is up
 	Udp, // a datagram that arrived over the network
+	Tcp_Open, // a connection was made, or a client came in
+	Tcp_Line, // a line of text arrived on a connection
+	Tcp_Close, // a connection ended
 }
 
 Happened :: struct {
@@ -43,6 +46,7 @@ Happened :: struct {
 	midi:   Midi_Message, // the key or controller, for the Midi_ kinds
 	osc:    Osc_Message, // the message, for Osc
 	udp:    Udp_Packet, // the datagram, for Udp
+	tcp:    Tcp_Message, // what happened on a connection, for the Tcp_ kinds
 }
 
 // The events of the frame in progress.

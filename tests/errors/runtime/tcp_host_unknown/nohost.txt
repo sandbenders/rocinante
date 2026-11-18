@@ -1,0 +1,8 @@
+── I could not find a computer called `nowhere.invalid` ─── sketch.roci:1:1
+
+1 │ tcp connect "chat" to "nowhere.invalid" port 9400
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Give its name or its number, such as `localhost`, `studio.local` or `192.168.0.7`. No connection was made.
+
+For example:  tcp connect "chat" to "localhost" port 9400

@@ -1,0 +1,8 @@
+── Another program is listening on port 9400 ─────────── sketch.roci:1:1
+
+1 │ tcp listen "server" port 9400
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Only one program can listen on a port at a time, so this sketch is not listening and nobody can connect to it. Close the other program, or choose another port.
+
+Choose another port:  tcp listen "server" port 9401

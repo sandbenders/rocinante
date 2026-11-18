@@ -1,0 +1,8 @@
+── A connection needs a port from 1 to 65535 ─────────── sketch.roci:1:1
+
+1 │ tcp connect "chat" to "localhost" port 99999
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A port is a whole number from 1 to 65535. Nothing was done, and the sketch goes on.
+
+For example:  tcp connect "chat" to "localhost" port 9400

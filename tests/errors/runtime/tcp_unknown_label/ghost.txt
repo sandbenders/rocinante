@@ -1,0 +1,8 @@
+── There is no connection called `ghost` ─────────────── sketch.roci:1:1
+
+1 │ tcp send "ghost" "hello"
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^
+
+A connection gets its label from the `tcp connect` or `tcp listen` that made it, and loses it when it ends. Nothing was sent, and the sketch goes on.
+
+Make it first:  tcp connect "ghost" to "localhost" port 9400

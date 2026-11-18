@@ -111,6 +111,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		osc_send_verb(it, e, call)
 	case .Udp_Send:
 		udp_send_verb(it, e, call)
+	case .Tcp_Connect, .Tcp_Listen, .Tcp_Send, .Tcp_Close:
+		tcp_verb(it, e, call, code)
 	case .Rumble:
 		seconds, pad := 0.5, 1.0
 		if v, ok := option_value(it, call.options, "for"); ok {

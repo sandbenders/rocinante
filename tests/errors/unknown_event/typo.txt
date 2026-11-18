@@ -3,6 +3,6 @@
 1 │ on kee "space" [
   │    ^^^
 
-`on` runs a block when something happens. The events I know are key, mouse down, mouse up, touch down, touch up, midi down, midi up, midi control, midi bend, midi program, midi pressure, midi start, midi stop, osc, udp, press, release, enter, leave, resize, move, focus.
+`on` runs a block when something happens. The events I know are key, mouse down, mouse up, touch down, touch up, midi down, midi up, midi control, midi bend, midi program, midi pressure, midi start, midi stop, osc, udp, tcp, tcp open, tcp close, press, release, enter, leave, resize, move, focus.
 
 Did you mean:  on key "space" [

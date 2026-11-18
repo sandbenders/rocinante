@@ -1,0 +1,8 @@
+── `received` only works inside on tcp ───────────────── sketch.roci:2:8
+
+2 │   text received.text at 20 20
+  │        ^^^^^^^^^^^^^
+
+`received` is what has just happened on a connection, so it means something only in the block of `on tcp`, `on tcp open` or `on tcp close`, which name the connection's label.
+
+For example:  on tcp "chat" [ text received.text at 20 20 ]

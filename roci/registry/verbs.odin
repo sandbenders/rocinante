@@ -24,6 +24,19 @@ STYLE_OPTIONS := []Option{
 // What a text takes besides the style words: its size in pixels, its font (a name),
 // where its lines sit against the point, and how wide a line may be before it wraps.
 // Where an OSC message goes: a computer's name or number, and a port.
+TCP_CONNECT_OPTIONS := []Option{
+	{"to", {.Text}, true},
+	{"port", {.Number}, true},
+}
+
+TCP_LISTEN_OPTIONS := []Option{
+	{"port", {.Number}, true},
+}
+
+TCP_CLIENT_OPTIONS := []Option{
+	{"to", {.Number}, false},
+}
+
 UDP_SEND_OPTIONS := []Option{
 	{"to", {.Text}, false},
 	{"port", {.Number}, true},

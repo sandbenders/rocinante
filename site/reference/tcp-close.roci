@@ -1,0 +1,11 @@
+tcp connect "chat" to "localhost" port 9400
+state = "waiting"
+on tcp open "chat" [ state = "open, click to close it" ]
+on tcp close "chat" [ state = "closed" ]
+on mouse down [ tcp close "chat" ]
+
+draw [
+  background 245
+  fill 40
+  text state at 20 60 size 18
+]

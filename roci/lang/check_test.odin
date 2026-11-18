@@ -1952,3 +1952,17 @@ test_udp_blocks_read_a_packet_and_udp_send_needs_a_port :: proc(t: ^testing.T) {
 	expect_errors(t, "on udp \"nine\" [ print 1 ]", {.Wrong_Kind_Here})
 	expect_errors(t, "on udp 9000 [ print packet.nothing ]", {.Unknown_Field})
 }
+
+@(test)
+test_tcp_blocks_read_received_and_the_verbs_need_a_label_and_a_port :: proc(t: ^testing.T) {
+	expect_errors(t, "on tcp \"chat\" [ print received.text ]", {})
+	expect_errors(t, "on tcp open \"chat\" [ print received.client ]", {})
+	expect_errors(t, "on tcp close \"chat\" [ print received.from ]", {})
+	expect_errors(t, "tcp connect \"chat\" to \"localhost\" port 9400", {})
+	expect_errors(t, "tcp listen \"server\" port 9400", {})
+	expect_errors(t, "tcp send \"chat\" \"hi\"", {})
+	expect_errors(t, "tcp send \"server\" [ 1 2 3 ] to 2", {})
+	expect_errors(t, "tcp close \"server\" to 2", {})
+	expect_errors(t, "draw [ print received.text ]", {.Received_Outside_Event})
+	expect_errors(t, "on tcp \"chat\" [ print received.nothing ]", {.Unknown_Field})
+}

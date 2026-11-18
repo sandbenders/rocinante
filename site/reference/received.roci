@@ -1,0 +1,13 @@
+// received is what happened on a connection, inside the block of an on tcp
+tcp listen "server" port 9400
+last = "waiting for a line on port 9400"
+
+on tcp "server" [
+  last = received.text + " from " + received.from + ", client " + received.client
+]
+
+draw [
+  background 245
+  fill 40
+  text last at 20 60 size 18
+]

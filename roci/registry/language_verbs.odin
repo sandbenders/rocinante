@@ -105,6 +105,19 @@ LANGUAGE_VERBS := []Verb{
 		{{{"text", .Text}}, UDP_SEND_OPTIONS, .None},
 		{{{"bytes", .List}}, UDP_SEND_OPTIONS, .None},
 	}, "Sends a datagram to another program or computer: `udp send \"hello\" to \"192.168.0.7\" port 9000`, or a list of numbers from 0 to 255 as its bytes: `udp send [ 1 2 255 ] port 9000`. `port` is needed; `to` is a computer's name or number and starts as this computer. UDP promises nothing: a datagram can be lost, and one is not answered. A datagram holds up to 65507 bytes. To hear datagrams, `on udp 9000 [ ... ]`."},
+	{"tcp connect", {
+		{{{"label", .Text}}, TCP_CONNECT_OPTIONS, .None},
+	}, "Makes a connection to another program or computer that is listening: `tcp connect \"chat\" to \"192.168.0.7\" port 9400`. The label names the connection from now on, in `on tcp \"chat\"` and `tcp send \"chat\" \"hi\"`. Nothing waits: `on tcp open` runs when it is made, and `on tcp close` runs, with the reason, when it could not be or later ends. The same label to the same place again changes nothing, which is what a reload does. At most eight connections and listeners are open at once. What goes over a connection is lines of text."},
+	{"tcp listen", {
+		{{{"label", .Text}}, TCP_LISTEN_OPTIONS, .None},
+	}, "Waits for other programs to connect: `tcp listen \"server\" port 9400`. Each one that comes in runs `on tcp open \"server\"`, with `received.client` its number from 1 (up to 16 at once), and each line it sends runs `on tcp \"server\"`. `tcp send \"server\" \"text\"` goes to every client, and `... to 2` to one."},
+	{"tcp send", {
+		{{{"label", .Text}, {"text", .Text}}, TCP_CLIENT_OPTIONS, .None},
+		{{{"label", .Text}, {"bytes", .List}}, TCP_CLIENT_OPTIONS, .None},
+	}, "Sends on a connection: `tcp send \"chat\" \"hello\"`. A text goes as a line, with a newline after it; a list of numbers from 0 to 255 goes as exactly those bytes. Under a listener it goes to every client, or with `to` to one: `tcp send \"server\" \"hi\" to 2`. A connection that is not made yet or is over says so and sends nothing."},
+	{"tcp close", {
+		{{{"label", .Text}}, TCP_CLIENT_OPTIONS, .None},
+	}, "Ends a connection: `tcp close \"chat\"`, which then runs `on tcp close`. A listener and all its clients end, or with `to` one client: `tcp close \"server\" to 2`."},
 	{"no effect", {{{{"sound", .Sound}, {"name", .Text}}, nil, .None}}, "Takes a sound effect off a sound, or off the speakers: `no effect guitar \"delay\"`."},
 	{"effect", {
 		{{{"shader", .Text}}, {{"by", {.Record}, false}}, .None},

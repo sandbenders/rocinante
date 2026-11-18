@@ -83,9 +83,14 @@ typedef struct { const char *address, *from, *text; double value; const roci_val
  * runs. */
 typedef struct { int to; const char *from; int port; const unsigned char *data; int size; const char *text; } roci_udp;
 
+/* What happened on a connection (kinds 21 to 23): the label it was made under, the line of text that arrived (or why
+ * the connection ended; empty for an opened one), who is at the other end and which client of a server it was (from 1).
+ * Valid only while the handler runs. */
+typedef struct { const char *label, *text, *from; int client; } roci_tcp;
+
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
  * mouse events; valid only while the handler runs), the finger (for touch events) and the key or
- * controller (for MIDI events), the message (for an osc event) and the datagram (for a udp event). */
+ * controller (for MIDI events), the message (for an osc event), the datagram (for a udp event) and what happened on a connection (for a tcp event). */
 typedef struct {
 	int kind;
 	roci_window_id window;
@@ -94,6 +99,7 @@ typedef struct {
 	roci_midi midi;
 	roci_osc osc;
 	roci_udp udp;
+	roci_tcp tcp;
 } roci_event;
 
 /* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;
@@ -1485,6 +1491,18 @@ int roci_udp_send(const void *data, int size, const char *host, int port);
 
 /* Starts listening for datagrams on a port, 1 to 65535, so roci_on with "udp" and that port hears them. Gives 1 when it is listening (also when it already was), and 0 when the port is not one, another program has it or a sketch listens on too many already. */
 int roci_udp_listen(int port);
+
+/* Makes a connection to a computer (a name or a number) and a port, 1 to 65535, under a label of up to 64 letters, as a thread does: nothing waits, and "tcp open" says when it is made or "tcp close" that it could not be. The same label to the same place is left alone, to another place replaces it. Gives 1 when it is under way, and 0 when the label or the port is not one, the host is unknown or as many connections as a sketch may have are open. */
+int roci_tcp_connect(const char *label, const char *host, int port);
+
+/* Waits for connections on a port, 1 to 65535, under a label: "tcp open" says each time a client comes in, numbering clients from 1. Gives 1 when it is listening, and 0 when the label or the port is not one, another program has the port or as many connections as a sketch may have are open. */
+int roci_tcp_listen(const char *label, int port);
+
+/* Sends `size` bytes on the connection under a label: to the other end of one made by roci_tcp_connect, or for a listener to one client (a number from 1) or to all of them (0). A line of text ends with a newline, which is part of what is sent. Gives 1 when it was given to a connection, and 0 when the label has none, there is nothing to send or nobody is connected. */
+int roci_tcp_send(const char *label, const void *data, int size, int client);
+
+/* Ends the connection under a label, or a listener and all its clients, or for a listener one client (a number from 1; 0 for all). A connection says "tcp close" when it is over. Gives 1 when the label has a connection, and 0 when it has none. */
+int roci_tcp_close(const char *label, int client);
 
 #ifdef __cplusplus
 }

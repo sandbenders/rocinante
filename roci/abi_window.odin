@@ -300,13 +300,14 @@ abi_touch :: proc "c" (index: c.int) -> Abi_Touch {
 // ---- events ----
 
 Abi_Event :: struct {
-	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc, 13 midi bend, 14 midi program, 15 midi pressure, 16 midi start, 17 midi stop, 18 press, 19 release, 20 udp
+	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc, 13 midi bend, 14 midi program, 15 midi pressure, 16 midi start, 17 midi stop, 18 press, 19 release, 20 udp, 21 tcp open, 22 tcp line, 23 tcp close
 	window: c.int,
 	name:   cstring, // the key's name, or the mouse button's
 	finger: Abi_Touch,
 	midi:   Midi_Message, // five doubles, as roci_midi is
 	osc:    Abi_Osc, // the message, for an osc event
 	udp:    Abi_Udp, // the datagram, for a udp event
+	tcp:    Abi_Tcp, // what happened on a connection, for the tcp events
 }
 
 // A message that arrived over the network, as roci_osc is: the address and the sender as text, the first
@@ -332,6 +333,16 @@ Abi_Udp :: struct {
 	data: [^]u8,
 	size: c.int,
 	text: cstring,
+}
+
+// What happened on a connection, as roci_tcp is: the label it was made under, the line of text that arrived (or why
+// the connection ended; empty for an opened one), who is at the other end and, for a server, which of its clients it
+// was (from 1, and 1 for the one a client makes). The text lasts until the handler returns.
+Abi_Tcp :: struct {
+	label:  cstring,
+	text:   cstring,
+	from:   cstring,
+	client: c.int,
 }
 
 Abi_Event_Fn :: proc "c" (event: ^Abi_Event)
@@ -376,6 +387,9 @@ abi_event_name :: proc(kind: Happening) -> string {
 	case .Action_Press: return "press"
 	case .Action_Release: return "release"
 	case .Udp:        return "udp"
+	case .Tcp_Open:   return "tcp open"
+	case .Tcp_Line:   return "tcp"
+	case .Tcp_Close:  return "tcp close"
 	}
 	return ""
 }
@@ -446,6 +460,10 @@ abi_run_handlers :: proc(w: Window, happenings: []Happened) {
 				if h.argument != "" && !oscp.match(h.argument, happening.osc.address) {
 					continue
 				}
+			} else if happening.kind == .Tcp_Open || happening.kind == .Tcp_Line || happening.kind == .Tcp_Close {
+				if h.argument != "" && h.argument != happening.tcp.label {
+					continue
+				}
 			} else if happening.kind == .Udp {
 				if h.argument != "" && h.argument != fmt.tprint(happening.udp.to) {
 					continue
@@ -459,6 +477,13 @@ abi_run_handlers :: proc(w: Window, happenings: []Happened) {
 				event.osc = Abi_Osc{
 					address = strings.clone_to_cstring(m.address, context.temp_allocator), from = strings.clone_to_cstring(m.from, context.temp_allocator),
 					text = strings.clone_to_cstring(m.text, context.temp_allocator), value = m.value, args = raw_data(osc_values_to_abi(m.args)), arg_count = c.int(len(m.args)),
+				}
+			}
+			if happening.kind == .Tcp_Open || happening.kind == .Tcp_Line || happening.kind == .Tcp_Close {
+				m := happening.tcp
+				event.tcp = Abi_Tcp{
+					label = strings.clone_to_cstring(m.label, context.temp_allocator), text = strings.clone_to_cstring(m.text, context.temp_allocator),
+					from = strings.clone_to_cstring(m.from, context.temp_allocator), client = c.int(m.client),
 				}
 			}
 			if happening.kind == .Udp {
@@ -481,7 +506,8 @@ abi_install_hook :: proc() {
 
 // Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key",
 // "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up",
-// "midi control" (which start reading MIDI), "udp" (which listens on the port in `argument`, "9000") or "osc" (which starts
+// "midi control" (which start reading MIDI), "tcp", "tcp open" and "tcp close" (for the connection whose label is the argument; roci_tcp_connect
+// and roci_tcp_listen make connections), "udp" (which listens on the port in `argument`, "9000") or "osc" (which starts
 // listening on port 9000, unless roci_osc_listen chose another); `argument` is the key or the mouse button it is for ("space", "right"), or for osc an address
 // that may hold * and ? ("/fader/*"), or NULL for any. Any other event name does nothing.
 @(export, link_name = "roci_on")

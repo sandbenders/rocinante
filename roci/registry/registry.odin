@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "packet", "pi", "pmouse", "pressed", "reply", "scene", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
+	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "packet", "pi", "pmouse", "pressed", "received", "reply", "scene", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -107,6 +107,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"midi", .Record, 0, "What an `on midi` block runs for: `midi.note` (60 is middle C) and `midi.velocity` (0 to 100) for a key, `midi.control` and `midi.value` (0 to 100) for a knob or fader, `midi.bend` (-100 to 100) for the pitch wheel, `midi.program` (0 to 127) for an instrument chosen, `midi.pressure` (0 to 100, with `midi.note` the key, or 0 for the whole keyboard) for aftertouch, and `midi.channel` (1 to 16) for all of them. A field that does not belong to the message reads 0."},
 	{"osc", .Record, 0, "The message an `on osc` block runs for: `osc.address` (such as \"/fader/1\"), `osc.value` (the first number it carries, with true as 1 and false as 0, 0 when there is none), `osc.text` (the first text it carries), `osc.args` (everything it carries, in order, a blob of bytes being a list of numbers) and `osc.from` (the computer that sent it)."},
 	{"packet", .Record, 0, "The datagram an `on udp` block runs for: `packet.text` (what it carries read as text), `packet.bytes` (a list of numbers from 0 to 255), `packet.from` (who sent it, such as \"192.168.0.7\") and `packet.port` (the port it was sent from). It means something only inside `on udp`."},
+	{"received", .Record, 0, "What an `on tcp` block runs for: `received.text` (the line of text that arrived, or for `on tcp close` why the connection ended), `received.from` (who is at the other end, such as \"192.168.0.7\") and `received.client` (which client of a server it was, counting from 1; 1 for the connection a `tcp connect` made). It means something only inside `on tcp`, `on tcp open` and `on tcp close`."},
 	{"mouse", .Vector, 2, "Where the mouse is in the window: `mouse.x` and `mouse.y`."},
 	{"pressed", .Boolean, 0, "Whether a mouse button is held down in this window."},
 	{"pi", .Number, 0, "Half a turn in radians, 3.14159…, for sketches that work in radians."},
@@ -233,6 +234,9 @@ EVENTS := []Event{
 	{"midi stop", {}, "Runs when a MIDI sequencer or drum machine stops."},
 	{"osc", {.Text}, "Runs when an OSC message arrives over the network, from a phone app, a music program or another sketch; `osc` is that message. Name an address to wait for it alone, and `*` and `?` stand for any text and any one character inside one part of it: `on osc \"/fader/*\"`. The first one starts listening on port 9000, or on the one `osc listen` chose."},
 	{"udp", {.Number}, "Runs when a datagram arrives on a port, from another program or computer: `on udp 9000 [ print packet.text ]`. `packet` is that datagram. The sketch starts listening on the port when it starts, and one port can have several blocks."},
+	{"tcp", {.Text}, "Runs for each line of text that arrives on a connection `tcp connect` or `tcp listen` made, named by its label: `on tcp \"chat\" [ print received.text ]`. `received` is that line, without its newline."},
+	{"tcp open", {.Text}, "Runs when the connection of that label is made (`tcp connect`) or when a client comes in (`tcp listen`; `received.client` is its number): `on tcp open \"chat\" [ tcp send \"chat\" \"hello\" ]`."},
+	{"tcp close", {.Text}, "Runs when a connection of that label ends, or could not be made; `received.text` says why: `on tcp close \"chat\" [ print received.text ]`."},
 	{"press", {.Text}, "Runs when an action that `bind` made goes down, once for each press, whichever input did it: `on press \"jump\" [ ... ]`."},
 	{"release", {.Text}, "Runs when an action that `bind` made comes up, which is when every input bound to it is up: `on release \"fire\" [ ... ]`."},
 	{"enter", {}, "Runs when the scene it is written in begins, after the one before it has left: `scene \"play\" [ on enter [ restart ] ]`. Outside every scene it runs each time any scene begins."},

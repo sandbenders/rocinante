@@ -1,0 +1,10 @@
+clients = 0
+tcp listen "server" port 9400
+on tcp open "server" [ clients = clients + 1 ]
+on tcp close "server" [ clients = clients - 1 ]
+
+draw [
+  background 245
+  fill 40
+  text ("clients: " + clients) at 20 60 size 18
+]
