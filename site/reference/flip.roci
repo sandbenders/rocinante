@@ -1,0 +1,6 @@
+photo = load "landscape.png"
+small = resize photo size 150 0
+image small at 20 20
+image (flip small) at 200 20
+image (flip small as vertical) at 20 150
+image (flip small as both) at 200 150

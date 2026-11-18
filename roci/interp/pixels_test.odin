@@ -220,3 +220,24 @@ run_example_with_assets :: proc(t: ^testing.T, folder_name, text, source: string
 	roci.step()
 	return p
 }
+
+@(test)
+test_flip_turns_a_picture_over_across_down_or_both :: proc(t: ^testing.T) {
+	p := run_text(t, `p = picture from [ red green blue white ] size 2 2
+across = flip p
+upside = flip p as vertical
+both = flip p as both
+a = pixel across at 0 0
+d = pixel upside at 0 0
+b = pixel both at 0 0
+twice = flip across
+w = pixel twice at 0 0
+print a.g
+print d.b
+print b.a
+print across.width
+print w.r`)
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, printed(p), "128\n255\n100\n2\n255")
+}

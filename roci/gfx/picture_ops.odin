@@ -106,6 +106,21 @@ finite_f64 :: proc "contextless" (values: ..f64) -> bool {
 	return true
 }
 
+// ---- flip ----
+
+// The picture turned over: left to right (`horizontal`), top to bottom (`vertical`) or both.
+pixels_flip :: proc(src: []u8, width, height: int, horizontal, vertical: bool, allocator := context.allocator) -> []u8 {
+	out := make([]u8, width * height * 4, allocator)
+	for row in 0 ..< height {
+		from_row := height - 1 - row if vertical else row
+		for column in 0 ..< width {
+			from_column := width - 1 - column if horizontal else column
+			copy(out[(row * width + column) * 4:][:4], src[(from_row * width + from_column) * 4:][:4])
+		}
+	}
+	return out
+}
+
 // ---- resize ----
 
 // A picture scaled to `dw` by `dh` pixels. Smooth scaling mixes the pixels it covers: a

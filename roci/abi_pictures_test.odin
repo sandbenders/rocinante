@@ -98,6 +98,12 @@ test_the_c_pixel_functions_read_and_make_pictures :: proc(t: ^testing.T) {
 	testing.expect_value(t, abi_image_width(cropped), 2)
 	testing.expect_value(t, abi_pixel(cropped, 0, 0), abi_pixel(picture, 1, 1))
 	testing.expect_value(t, abi_crop(0, 0, 0, 1, 1), 0)
+	across := abi_flip(picture, 1, 0)
+	testing.expect_value(t, abi_pixel(across, 0, 0), abi_pixel(picture, abi_image_width(picture) - 1, 0))
+	testing.expect_value(t, abi_pixel(abi_flip(picture, 1, 0), 0, 0), abi_pixel(across, 0, 0))
+	down := abi_flip(picture, 0, 1)
+	testing.expect_value(t, abi_pixel(down, 0, 0), abi_pixel(picture, 0, abi_image_height(picture) - 1))
+	testing.expect_value(t, abi_flip(0, 1, 0), 0)
 	bigger := abi_resize(picture, 8, 0, 1)
 	testing.expect_value(t, abi_image_width(bigger), 8)
 	testing.expect_value(t, abi_image_height(bigger), 6) // a side of 0 follows the shape

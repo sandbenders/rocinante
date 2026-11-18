@@ -168,6 +168,14 @@ abi_crop :: proc "c" (picture: c.int, x, y, width, height: f64) -> c.int {
 	return c.int(result) if ok else 0
 }
 
+// Turns a picture over: `horizontal` left to right, `vertical` top to bottom, either or both.
+@(export, link_name = "roci_flip")
+abi_flip :: proc "c" (picture: c.int, horizontal, vertical: c.int) -> c.int {
+	context = abi_context()
+	result, ok := flip_picture(Image(picture), horizontal != 0, vertical != 0)
+	return c.int(result) if ok else 0
+}
+
 // Resizes a picture; a side of 0 follows the picture's shape; `smooth` 0 keeps hard edges.
 @(export, link_name = "roci_resize")
 abi_resize :: proc "c" (picture: c.int, width, height: f64, smooth: c.int) -> c.int {
@@ -464,6 +472,7 @@ abi_pictures_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_pixels", typeid_of(type_of(abi_pixels)), "int roci_pixels(roci_image_id picture, roci_color *colors, int capacity)", "Copies the colors of a picture, left to right and top to bottom, into `colors` as far as `capacity` allows (it may be NULL) and gives how many there are, or 0 for no picture or one of more than a million pixels."))
 	append(all, abi_entry("roci_picture_from_colors", typeid_of(type_of(abi_picture_from_colors)), "roci_image_id roci_picture_from_colors(const roci_color *colors, int count, int width, int height)", "Makes a picture of `width` by `height` from exactly that many colors, left to right and top to bottom, and gives it, or 0."))
 	append(all, abi_entry("roci_crop", typeid_of(type_of(abi_crop)), "roci_image_id roci_crop(roci_image_id picture, double x, double y, double width, double height)", "A new picture of the part of a picture in a box from its top left, in pixels; the picture is left as it was."))
+	append(all, abi_entry("roci_flip", typeid_of(type_of(abi_flip)), "roci_image_id roci_flip(roci_image_id picture, int horizontal, int vertical)", "A new picture turned over: `horizontal` 1 swaps left and right, `vertical` 1 swaps top and bottom, and both 1 does both; the picture is left as it was."))
 	append(all, abi_entry("roci_resize", typeid_of(type_of(abi_resize)), "roci_image_id roci_resize(roci_image_id picture, double width, double height, int smooth)", "A new picture of a size (a side of 0 follows the picture's shape); `smooth` 0 keeps hard edges."))
 	append(all, abi_entry("roci_filter", typeid_of(type_of(abi_filter)), "roci_image_id roci_filter(roci_image_id picture, const char *name, double amount)", "A new picture with a filter applied: \"gray\", \"invert\", \"threshold\", \"posterize\", \"blur\", \"edges\" or \"pixelate\". `amount` is what the filter uses (a brightness, a number of steps, a radius or a block size), or NaN for its usual. 0 for an unknown filter."))
 	append(all, abi_entry("roci_mask", typeid_of(type_of(abi_mask)), "roci_image_id roci_mask(roci_image_id picture, roci_image_id stencil)", "A new picture whose alpha is multiplied by how much of the stencil shows at each place, the stencil stretched over it."))

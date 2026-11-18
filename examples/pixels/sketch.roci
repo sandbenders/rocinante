@@ -1,9 +1,10 @@
 // The pixels of a picture. pixel reads one color, crop takes a part, resize scales (as nearest
 // keeps hard edges, so a few pixels become big squares), filter changes the colors or blurs,
+// flip turns it over,
 // and the picture itself is never changed: each of them gives a new one. Press the mouse on
 // the landscape to look at a place in it: the magnifier is a crop made big, and the color
 // beside it is the pixel under the spot.
-window size 680 420 title "pixels"
+window size 790 420 title "pixels"
 photo = load "landscape.png"
 small = resize photo size 96 0
 spot = { 192, 100 }
@@ -40,4 +41,6 @@ draw [
   text "posterize" at 444 354
   image (filter small as pixelate by 6) at 550 250
   text "pixelate" at 550 354
+  image (flip small) at 656 250
+  text "flip" at 656 354
 ]

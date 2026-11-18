@@ -35,6 +35,11 @@ RESIZE_OPTIONS := []Option{
 	{"as", {.Name}, false},
 }
 
+// What `flip` takes: which way to turn the picture over, left to right when it is not said.
+FLIP_OPTIONS := []Option{
+	{"as", {.Name}, false},
+}
+
 // What `filter` takes: which filter, and how much of it (a brightness, a number of steps, a radius
 // or a block size in pixels, by the filter).
 FILTER_OPTIONS := []Option{
@@ -114,6 +119,7 @@ LANGUAGE_VERBS := []Verb{
 	{"pixels", {{{{"picture", .Image}}, nil, .List}}, "Every color of a picture, left to right and top to bottom, as a list: `pixels photo`. Up to a million pixels; `crop` or `resize` a bigger one first."},
 	{"picture", {{{}, {{"from", {.List}, true}, {"size", {.Number, .Number}, true}}, .Image}}, "Makes a picture from a list of colors, left to right and top to bottom: `picture from colors size 4 3`. A list that is too short leaves the rest clear."},
 	{"crop", {{{{"picture", .Image}}, CROP_OPTIONS, .Image}}, "A new picture of the part of a picture inside a box, in pixels from its top left: `crop photo at 10 20 size 100 80`. The part outside the picture is left out."},
+	{"flip", {{{{"picture", .Image}}, FLIP_OPTIONS, .Image}}, "A new picture turned over, left to right: `left_fish = flip fish`, so a picture drawn facing one way can face the other. `as vertical` turns it top to bottom and `as both` does both. The picture is left as it was."},
 	{"resize", {{{{"picture", .Image}}, RESIZE_OPTIONS, .Image}}, "A new picture of another size: `resize photo size 100 80`. A side given as 0 follows the picture's shape, so `size 100 0` keeps it. `as nearest` keeps hard edges, which pixel art wants; the start is smooth."},
 	{"filter", {{{{"picture", .Image}}, FILTER_OPTIONS, .Image}}, "A new picture with a filter applied: gray, invert, threshold, posterize, blur, edges or pixelate: `filter photo as blur by 4`. `by` is a brightness for threshold (0 to 255, the start 128), a number of steps for posterize (4), a radius in pixels for blur (2) and a block size in pixels for pixelate (8)."},
 	{"mask", {{{{"picture", .Image}}, {{"by", {.Image}, true}}, .Image}}, "A new picture that shows only where a stencil picture is white and solid: `mask photo by shape`. The stencil is stretched over the picture."},

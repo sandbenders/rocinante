@@ -362,3 +362,23 @@ test_a_canvas_counts_the_rounds_it_has_closed :: proc(t: ^testing.T) {
 	canvas_close_round(canvas)
 	testing.expect_value(t, canvas.drawn, u64(2))
 }
+
+@(test)
+test_pixels_flip_turns_a_picture_over :: proc(t: ^testing.T) {
+	// two by two: a b / c d
+	src := []u8{1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4}
+	across := pixels_flip(src, 2, 2, true, false, context.temp_allocator)
+	testing.expect_value(t, across[0], 2)
+	testing.expect_value(t, across[4], 1)
+	testing.expect_value(t, across[8], 4)
+	down := pixels_flip(src, 2, 2, false, true, context.temp_allocator)
+	testing.expect_value(t, down[0], 3)
+	testing.expect_value(t, down[12], 2)
+	both := pixels_flip(src, 2, 2, true, true, context.temp_allocator)
+	testing.expect_value(t, both[0], 4)
+	testing.expect_value(t, both[12], 1)
+	none := pixels_flip(src, 2, 2, false, false, context.temp_allocator)
+	testing.expect_value(t, none[0], 1)
+	empty := pixels_flip(nil, 0, 0, true, false, context.temp_allocator)
+	testing.expect_value(t, len(empty), 0)
+}

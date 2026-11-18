@@ -60,6 +60,13 @@ picture_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, code: Verb_Co
 			say_unreadable(it, e)
 		}
 		return made
+	case .Flip:
+		way := as_text(option_or_nil(it, call.options, "as"))
+		made, ok := roci.flip_picture(picture, way != "vertical", way == "vertical" || way == "both")
+		if !ok {
+			say_unreadable(it, e)
+		}
+		return made
 	case .Resize:
 		size, _ := option_pair(it, call.options, "size")
 		own := roci.image_size(picture)

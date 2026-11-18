@@ -877,6 +877,9 @@ roci_image_id roci_picture_from_colors(const roci_color *colors, int count, int 
 /* A new picture of the part of a picture in a box from its top left, in pixels; the picture is left as it was. */
 roci_image_id roci_crop(roci_image_id picture, double x, double y, double width, double height);
 
+/* A new picture turned over: `horizontal` 1 swaps left and right, `vertical` 1 swaps top and bottom, and both 1 does both; the picture is left as it was. */
+roci_image_id roci_flip(roci_image_id picture, int horizontal, int vertical);
+
 /* A new picture of a size (a side of 0 follows the picture's shape); `smooth` 0 keeps hard edges. */
 roci_image_id roci_resize(roci_image_id picture, double width, double height, int smooth);
 

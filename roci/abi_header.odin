@@ -95,6 +95,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"picture", "roci_picture_from_colors roci_picture_of_window", ""},
 	{"crop", "roci_crop", ""},
 	{"resize", "roci_resize", ""},
+	{"flip", "roci_flip", ""},
 	{"filter", "roci_filter", ""},
 	{"mask", "roci_mask", ""},
 	{"outline", "roci_outline", ""},

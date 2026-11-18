@@ -268,6 +268,24 @@ crop_picture :: proc(picture: Image, x, y, width, height: f64) -> (result: Image
 	return derived_picture(id, pixels, w, h), true
 }
 
+// The picture turned over, left to right, top to bottom or both. The empty picture (0) when it is not there.
+flip_picture :: proc(picture: Image, horizontal, vertical: bool) -> (result: Image, ok: bool) {
+	read := picture_pixels(picture)
+	if !read.ok {
+		return 0, gfx.image_data(picture) == nil
+	}
+	key := key_begin("flip")
+	key_picture(&key, picture, read)
+	key_numbers(&key, 1 if horizontal else 0, 1 if vertical else 0)
+	id := key_done(key)
+	if found, known := the.derived[id]; known && gfx.image_data(found.id) != nil {
+		gfx.image_touch(found.id)
+		return found.id, true
+	}
+	pixels := gfx.pixels_flip(read.pixels, read.width, read.height, horizontal, vertical, context.temp_allocator)
+	return derived_picture(id, pixels, read.width, read.height), true
+}
+
 // The picture scaled to `width` by `height` pixels, smoothly or (`smooth` false) taking the
 // nearest pixel, which keeps hard edges. The empty picture (0) for a size that is no picture.
 resize_picture :: proc(picture: Image, width, height: f64, smooth := true) -> (result: Image, ok: bool) {
