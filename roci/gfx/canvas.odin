@@ -118,6 +118,22 @@ canvas_prepend_previous :: proc(list: ^Command_List, previous: Image_Id, width, 
 	})
 }
 
+// How many commands wait in the rounds not yet drawn.
+canvas_waiting_commands :: proc(c: ^Canvas) -> (count: int) {
+	for &round in c.rounds {
+		count += len(round.list.commands)
+	}
+	return
+}
+
+// Lets go of the rounds not yet drawn: nothing will ever draw them (there are no graphics).
+canvas_drop_rounds :: proc(c: ^Canvas) {
+	for &round in c.rounds {
+		destroy(&round.list)
+	}
+	clear(&c.rounds)
+}
+
 canvas_destroy :: proc(c: ^Canvas) {
 	for &round in c.rounds {
 		destroy(&round.list)

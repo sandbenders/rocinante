@@ -148,3 +148,29 @@ test_the_c_functions_for_canvases :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(gfx.canvas_of(Image(c)).list.commands), 1)
 	testing.expect_value(t, abi_begin_into(0), i32(0))
 }
+
+@(test)
+test_a_headless_canvas_drawn_into_every_frame_does_not_pile_up_rounds :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	set_graphics_refused(true)
+	defer set_graphics_refused(false)
+	c, _ := canvas(40, 40)
+	for _ in 0 ..< 100 {
+		testing.expect(t, begin_into(c))
+		circle(1, 1, 1)
+		end_into()
+		flush_canvases(nil)
+		testing.expect(t, len(gfx.canvas_of(c).rounds) <= CANVAS_ROUNDS_WAITING)
+	}
+	// a few big frames are let go as well, by their commands
+	for _ in 0 ..< 10 {
+		testing.expect(t, begin_into(c))
+		for _ in 0 ..< 500 {
+			circle(1, 1, 1)
+		}
+		end_into()
+		flush_canvases(nil)
+	}
+	testing.expect(t, gfx.canvas_waiting_commands(gfx.canvas_of(c)) < CANVAS_COMMANDS_WAITING + 500)
+}

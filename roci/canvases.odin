@@ -86,6 +86,10 @@ into_list :: proc() -> ^gfx.Command_List {
 	return nil
 }
 
+// How much a headless sketch lets wait in a canvas before drawing it: this many frames, or this many commands.
+CANVAS_ROUNDS_WAITING :: 16
+CANVAS_COMMANDS_WAITING :: 2000
+
 // Draws what is waiting in every canvas onto its texture, oldest round first, before the
 // windows are drawn. With no graphics (a headless sketch) the rounds are only closed, and
 // wait for `force`, which `picture` gives once it has a device to draw with.
@@ -99,6 +103,16 @@ flush_canvases :: proc(renderer: ^gfx.Renderer = nil) {
 			gfx.render_canvas(renderer, id)
 		} else {
 			gfx.canvas_close_round(canvas)
+			// Rounds wait for a device that a headless run may never ask for (`picture` does), so a long run
+			// would pile up every frame's drawing and then draw it all at once. Past a limit they are drawn as
+			// they come when there is a device, and let go when there is none, since nothing could show them.
+			if len(canvas.rounds) >= CANVAS_ROUNDS_WAITING || gfx.canvas_waiting_commands(canvas) >= CANVAS_COMMANDS_WAITING {
+				if graphics_refused {
+					gfx.canvas_drop_rounds(canvas)
+				} else if device := drawing_renderer(); device != nil {
+					gfx.render_canvas(device, id)
+				}
+			}
 		}
 	}
 }
