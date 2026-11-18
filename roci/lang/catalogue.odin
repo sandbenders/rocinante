@@ -116,6 +116,9 @@ Message_Id :: enum u8 {
 	Udp_Host_Unknown,
 	Udp_Data_Bad,
 	Received_Outside_Event,
+	Websocket_Address_Bad,
+	Websocket_Unknown_Label,
+	Websocket_Refused,
 	Tcp_Port_Busy,
 	Tcp_Host_Unknown,
 	Tcp_Unknown_Label,
@@ -479,8 +482,17 @@ CATALOGUE := [Message_Id]Entry{
 	.Udp_Data_Bad = {.Error, "A datagram needs {a}",
 		"{b} This datagram was not sent, and the sketch goes on.",
 		"For example:", "{d}"},
-	.Received_Outside_Event = {.Error, "`received` only works inside on tcp",
-		"`received` is what has just happened on a connection, so it means something only in the block of `on tcp`, `on tcp open` or `on tcp close`, which name the connection's label.",
+	.Received_Outside_Event = {.Error, "`received` only works inside on tcp or on websocket",
+		"`received` is what has just happened on a connection, so it means something only in the block of `on tcp` or `on websocket` (or their `open` and `close` forms), which name the connection's label.",
+		"For example:", "{d}"},
+	.Websocket_Address_Bad = {.Error, "A web socket address begins with ws:// or wss://, and `{a}` does not",
+		"The address of a web socket looks like `wss://example.org/live`, with `wss` for the secure kind most servers want. No connection was made.",
+		"Begin it with ws:// or wss://:", "{d}"},
+	.Websocket_Unknown_Label = {.Error, "There is no web socket called `{a}`",
+		"A web socket gets its label from the `websocket connect` that made it, and loses it when it closes. Nothing was sent, and the sketch goes on.",
+		"Open it first:", "{d}"},
+	.Websocket_Refused = {.Error, "A web socket needs {a}",
+		"{b} Nothing was done, and the sketch goes on.",
 		"For example:", "{d}"},
 	.Tcp_Port_Busy = {.Error, "Another program is listening on port {a}",
 		"Only one program can listen on a port at a time, so this sketch is not listening and nobody can connect to it. Close the other program, or choose another port.",
@@ -757,7 +769,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Tcp_Port_Busy, .Tcp_Host_Unknown, .Tcp_Unknown_Label, .Tcp_Refused, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Tcp_Port_Busy, .Tcp_Host_Unknown, .Tcp_Unknown_Label, .Tcp_Refused, .Websocket_Address_Bad, .Websocket_Unknown_Label, .Websocket_Refused, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

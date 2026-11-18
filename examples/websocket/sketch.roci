@@ -1,0 +1,39 @@
+// Web sockets: a connection to a web server that carries messages both ways, the way chats, games and
+// live feeds talk. `websocket connect "feed" to "wss://..."` opens one (`wss` is the secure kind, `ws` the
+// plain one) and the label names it from then on. Nothing waits for it: `on websocket open` runs when it
+// is open, `on websocket "feed"` for each message that arrives (`received.text`), and `on websocket close`
+// when it closes or could not be opened, with the reason. `websocket send "feed" "text"` sends a message.
+// This sketch talks to a public echo server, which sends back whatever it is sent: a click sends where it
+// was, and the answer is listed with the others. Change the address to one of a service of your own.
+window size 560 360 title "websocket"
+
+news = []
+status = "connecting..."
+
+websocket connect "feed" to "wss://echo.websocket.org/"
+
+// Keeps the last seven messages.
+learn say words [
+  add words to news
+  if (count news) > 7 [ remove (item 1 of news) from news ]
+]
+
+on websocket open "feed" [ status = "open, click to send a message" ]
+on websocket close "feed" [ status = "closed: " + received.text ]
+on websocket "feed" [ say received.text ]
+
+on mouse down [
+  websocket send "feed" ("click at " + (floor mouse.x) + "," + (floor mouse.y))
+]
+
+draw [
+  background 24
+  fill white
+  text status at 20 20 size 20
+  fill 150
+  if (count news) is 0 [ text "nothing has come yet" at 20 70 size 16 ]
+  fill white
+  for i from 1 to count news [
+    text (item i of news) at 20 (60 + i * 30) size 16
+  ]
+]

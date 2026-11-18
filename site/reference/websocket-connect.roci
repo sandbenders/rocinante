@@ -1,0 +1,10 @@
+state = "connecting..."
+websocket connect "feed" to "wss://echo.websocket.org/"
+on websocket open "feed" [ state = "open" ]
+on websocket close "feed" [ state = "closed: " + received.text ]
+
+draw [
+  background 245
+  fill 40
+  text state at 20 60 size 18
+]

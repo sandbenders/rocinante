@@ -1,0 +1,10 @@
+heard = "waiting"
+websocket connect "feed" to "wss://echo.websocket.org/"
+on websocket open "feed" [ websocket send "feed" "hello" ]
+on websocket "feed" [ heard = received.text ]
+
+draw [
+  background 245
+  fill 40
+  text heard at 20 60 size 18
+]

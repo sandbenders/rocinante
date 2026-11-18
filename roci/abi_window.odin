@@ -300,7 +300,7 @@ abi_touch :: proc "c" (index: c.int) -> Abi_Touch {
 // ---- events ----
 
 Abi_Event :: struct {
-	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc, 13 midi bend, 14 midi program, 15 midi pressure, 16 midi start, 17 midi stop, 18 press, 19 release, 20 udp, 21 tcp open, 22 tcp line, 23 tcp close
+	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc, 13 midi bend, 14 midi program, 15 midi pressure, 16 midi start, 17 midi stop, 18 press, 19 release, 20 udp, 21 tcp open, 22 tcp line, 23 tcp close, 24 websocket open, 25 websocket, 26 websocket close
 	window: c.int,
 	name:   cstring, // the key's name, or the mouse button's
 	finger: Abi_Touch,
@@ -335,7 +335,7 @@ Abi_Udp :: struct {
 	text: cstring,
 }
 
-// What happened on a connection, as roci_tcp is: the label it was made under, the line of text that arrived (or why
+// What happened on a connection or a web socket, as roci_tcp is: the label it was made under, the line of text that arrived (or why
 // the connection ended; empty for an opened one), who is at the other end and, for a server, which of its clients it
 // was (from 1, and 1 for the one a client makes). The text lasts until the handler returns.
 Abi_Tcp :: struct {
@@ -362,6 +362,16 @@ Abi_Handler :: struct {
 
 @(private, thread_local)
 abi_handlers: [dynamic]Abi_Handler
+
+// Whether a happening is something that happened on a TCP connection or a web socket, which `Abi_Tcp` holds.
+@(private)
+abi_is_link_event :: proc(kind: Happening) -> bool {
+	#partial switch kind {
+	case .Tcp_Open, .Tcp_Line, .Tcp_Close, .Ws_Open, .Ws_Message, .Ws_Close:
+		return true
+	}
+	return false
+}
 
 @(private)
 abi_event_name :: proc(kind: Happening) -> string {
@@ -390,6 +400,9 @@ abi_event_name :: proc(kind: Happening) -> string {
 	case .Tcp_Open:   return "tcp open"
 	case .Tcp_Line:   return "tcp"
 	case .Tcp_Close:  return "tcp close"
+	case .Ws_Open:    return "websocket open"
+	case .Ws_Message: return "websocket"
+	case .Ws_Close:   return "websocket close"
 	}
 	return ""
 }
@@ -460,7 +473,7 @@ abi_run_handlers :: proc(w: Window, happenings: []Happened) {
 				if h.argument != "" && !oscp.match(h.argument, happening.osc.address) {
 					continue
 				}
-			} else if happening.kind == .Tcp_Open || happening.kind == .Tcp_Line || happening.kind == .Tcp_Close {
+			} else if abi_is_link_event(happening.kind) {
 				if h.argument != "" && h.argument != happening.tcp.label {
 					continue
 				}
@@ -479,7 +492,7 @@ abi_run_handlers :: proc(w: Window, happenings: []Happened) {
 					text = strings.clone_to_cstring(m.text, context.temp_allocator), value = m.value, args = raw_data(osc_values_to_abi(m.args)), arg_count = c.int(len(m.args)),
 				}
 			}
-			if happening.kind == .Tcp_Open || happening.kind == .Tcp_Line || happening.kind == .Tcp_Close {
+			if abi_is_link_event(happening.kind) {
 				m := happening.tcp
 				event.tcp = Abi_Tcp{
 					label = strings.clone_to_cstring(m.label, context.temp_allocator), text = strings.clone_to_cstring(m.text, context.temp_allocator),
@@ -506,8 +519,8 @@ abi_install_hook :: proc() {
 
 // Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key",
 // "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up",
-// "midi control" (which start reading MIDI), "tcp", "tcp open" and "tcp close" (for the connection whose label is the argument; roci_tcp_connect
-// and roci_tcp_listen make connections), "udp" (which listens on the port in `argument`, "9000") or "osc" (which starts
+// "midi control" (which start reading MIDI), "tcp", "tcp open", "tcp close", "websocket", "websocket open" and "websocket close" (for the connection whose label is the
+// argument; roci_tcp_connect, roci_tcp_listen and roci_websocket_connect make connections), "udp" (which listens on the port in `argument`, "9000") or "osc" (which starts
 // listening on port 9000, unless roci_osc_listen chose another); `argument` is the key or the mouse button it is for ("space", "right"), or for osc an address
 // that may hold * and ? ("/fader/*"), or NULL for any. Any other event name does nothing.
 @(export, link_name = "roci_on")

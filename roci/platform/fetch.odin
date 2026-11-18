@@ -151,9 +151,8 @@ fetch_certificates :: proc() -> (file, folder: string) {
 	return "", ""
 }
 
-@(private)
-fetch_thread :: proc(job: ^Fetch_Job) {
-	defer fetch_free_job(job)
+// Starts libcurl once for the program, whichever thread asks first (fetching and web sockets both use it).
+curl_start :: proc() {
 	if !fetch_ready {
 		sync.mutex_lock(&fetch_lock)
 		if !fetch_ready {
@@ -162,6 +161,33 @@ fetch_thread :: proc(job: ^Fetch_Job) {
 		}
 		sync.mutex_unlock(&fetch_lock)
 	}
+}
+
+when ODIN_PLATFORM_SUBTARGET_IOS {
+	@(private = "file")
+	certificate_blob: curl.blob
+}
+
+// Tells a libcurl handle which certificate authorities to trust: the system's own, or an iPhone's carried list.
+// The temp allocator holds what it makes, which the caller lets go of.
+curl_trust :: proc(handle: ^curl.CURL) {
+	when ODIN_PLATFORM_SUBTARGET_IOS {
+		certificate_blob = curl.blob{data = raw_data(FETCH_CERTIFICATES), len = len(FETCH_CERTIFICATES), flags = curl.BLOB_NOCOPY}
+		curl.easy_setopt(handle, .CAINFO_BLOB, &certificate_blob)
+	} else {
+		file, folder := fetch_certificates()
+		if file != "" {
+			curl.easy_setopt(handle, .CAINFO, strings.clone_to_cstring(file, context.temp_allocator))
+		} else if folder != "" {
+			curl.easy_setopt(handle, .CAPATH, strings.clone_to_cstring(folder, context.temp_allocator))
+		}
+	}
+}
+
+@(private)
+fetch_thread :: proc(job: ^Fetch_Job) {
+	defer fetch_free_job(job)
+	curl_start()
 	handle := curl.easy_init()
 	if handle == nil {
 		fetch_deliver(job.id, 0, nil, "libcurl could not start")
@@ -183,17 +209,7 @@ fetch_thread :: proc(job: ^Fetch_Job) {
 	curl.easy_setopt(handle, .USERAGENT, cstring("rocinante"))
 	curl.easy_setopt(handle, .WRITEFUNCTION, curl.write_callback(fetch_write))
 	curl.easy_setopt(handle, .WRITEDATA, rawptr(job))
-	when ODIN_PLATFORM_SUBTARGET_IOS {
-		certificates := curl.blob{data = raw_data(FETCH_CERTIFICATES), len = len(FETCH_CERTIFICATES), flags = curl.BLOB_NOCOPY}
-		curl.easy_setopt(handle, .CAINFO_BLOB, &certificates)
-	} else {
-		file, folder := fetch_certificates()
-		if file != "" {
-			curl.easy_setopt(handle, .CAINFO, cstr(file))
-		} else if folder != "" {
-			curl.easy_setopt(handle, .CAPATH, cstr(folder))
-		}
-	}
+	curl_trust(handle)
 	if job.post {
 		curl.easy_setopt(handle, .POSTFIELDSIZE_LARGE, curl.off_t(len(job.body)))
 		curl.easy_setopt(handle, .COPYPOSTFIELDS, cstr(job.body))

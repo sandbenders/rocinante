@@ -62,6 +62,7 @@ EXAMPLES := [?]Example{
 	{"data", 2, {1}}, // the birds, the bars and the poem read from the three files of assets/data (the saved summary comes in the interpreter's test)
 	{"city", 2, {1}}, // six buildings, a skyline and the road, every wall and roof a polygon
 	{"dialogs", 2, {1}}, // the picture from assets and the line about it (the dialogs are answered in the interpreter's test)
+	{"websocket", 2, {1}}, // the invitation to click and the empty list (the messages come in the interpreter's test)
 	{"tcp", 2, {1}}, // the invitation to click and the empty list (the connections and their lines come in the interpreter's test)
 	{"udp", 2, {1}}, // the invitation to click and the empty list (the datagrams come in the interpreter's test)
 	{"fetch", 2, {1}}, // the sketch waiting for its answers: a headless run fetches nothing (the answers are given in the interpreter's test)

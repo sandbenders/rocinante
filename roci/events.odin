@@ -36,6 +36,9 @@ Happening :: enum u8 {
 	Tcp_Open, // a connection was made, or a client came in
 	Tcp_Line, // a line of text arrived on a connection
 	Tcp_Close, // a connection ended
+	Ws_Open, // a web socket was opened
+	Ws_Message, // a message arrived on a web socket
+	Ws_Close, // a web socket closed
 }
 
 Happened :: struct {
@@ -46,7 +49,7 @@ Happened :: struct {
 	midi:   Midi_Message, // the key or controller, for the Midi_ kinds
 	osc:    Osc_Message, // the message, for Osc
 	udp:    Udp_Packet, // the datagram, for Udp
-	tcp:    Tcp_Message, // what happened on a connection, for the Tcp_ kinds
+	tcp:    Tcp_Message, // what happened on a connection, for the Tcp_ and Ws_ kinds
 }
 
 // The events of the frame in progress.

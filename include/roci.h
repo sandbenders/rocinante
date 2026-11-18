@@ -83,8 +83,8 @@ typedef struct { const char *address, *from, *text; double value; const roci_val
  * runs. */
 typedef struct { int to; const char *from; int port; const unsigned char *data; int size; const char *text; } roci_udp;
 
-/* What happened on a connection (kinds 21 to 23): the label it was made under, the line of text that arrived (or why
- * the connection ended; empty for an opened one), who is at the other end and which client of a server it was (from 1).
+/* What happened on a connection or a web socket (kinds 21 to 26): the label it was made under, the line or message of text that
+ * arrived (or why the connection ended; empty for an opened one), who is at the other end and which client of a server it was (from 1).
  * Valid only while the handler runs. */
 typedef struct { const char *label, *text, *from; int client; } roci_tcp;
 
@@ -1503,6 +1503,15 @@ int roci_tcp_send(const char *label, const void *data, int size, int client);
 
 /* Ends the connection under a label, or a listener and all its clients, or for a listener one client (a number from 1; 0 for all). A connection says "tcp close" when it is over. Gives 1 when the label has a connection, and 0 when it has none. */
 int roci_tcp_close(const char *label, int client);
+
+/* Makes a connection to a web socket address (ws:// or wss://) under a label of up to 64 letters, as a thread does: nothing waits, and "websocket open" says when it is made or "websocket close" why it could not be. The same label to the same address is left alone, to another address replaces it. Gives 1 when it is under way, and 0 when the label or the address is not valid or as many web sockets as a sketch may have are open. */
+int roci_websocket_connect(const char *label, const char *address);
+
+/* Sends a message on the web socket under a label: `size` bytes as text, or as binary bytes when `binary` is not 0. Gives 1 when it was given to the connection, and 0 when the label has none, there is nothing to send or the connection is over. */
+int roci_websocket_send(const char *label, const void *data, int size, int binary);
+
+/* Closes the web socket under a label: it sends the close message and "websocket close" comes when it is over. Gives 1 when the label has a connection, and 0 when it has none. */
+int roci_websocket_close(const char *label);
 
 #ifdef __cplusplus
 }

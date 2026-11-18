@@ -1966,3 +1966,16 @@ test_tcp_blocks_read_received_and_the_verbs_need_a_label_and_a_port :: proc(t: ^
 	expect_errors(t, "draw [ print received.text ]", {.Received_Outside_Event})
 	expect_errors(t, "on tcp \"chat\" [ print received.nothing ]", {.Unknown_Field})
 }
+
+@(test)
+test_websocket_blocks_read_received_and_the_verbs_need_a_label_and_an_address :: proc(t: ^testing.T) {
+	expect_errors(t, "on websocket \"feed\" [ print received.text ]", {})
+	expect_errors(t, "on websocket open \"feed\" [ print received.from ]", {})
+	expect_errors(t, "on websocket close \"feed\" [ print received.text ]", {})
+	expect_errors(t, "websocket connect \"feed\" to \"wss://example.org/live\"", {})
+	expect_errors(t, "websocket send \"feed\" \"hi\"", {})
+	expect_errors(t, "websocket send \"feed\" [ 1 2 3 ]", {})
+	expect_errors(t, "websocket close \"feed\"", {})
+	expect_errors(t, "draw [ print received.text ]", {.Received_Outside_Event})
+	expect_errors(t, "websocket connect \"feed\"", {.Missing_Required_Word})
+}

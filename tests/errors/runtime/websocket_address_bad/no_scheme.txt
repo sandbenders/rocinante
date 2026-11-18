@@ -1,0 +1,8 @@
+── A web socket address begins with ws:// or wss://, and `example.org/live` does not ─── sketch.roci:1:1
+
+1 │ websocket connect "feed" to "example.org/live"
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The address of a web socket looks like `wss://example.org/live`, with `wss` for the secure kind most servers want. No connection was made.
+
+Begin it with ws:// or wss://:  websocket connect "feed" to "wss://example.org/live"

@@ -1,0 +1,8 @@
+── A web socket needs a name ─────────────────────────── sketch.roci:1:1
+
+1 │ websocket connect "" to "wss://example.org/live"
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A web socket is named by its label, up to 64 letters, so the sketch can tell it from the others. Nothing was done, and the sketch goes on.
+
+For example:  websocket connect "feed" to "wss://example.org/live"

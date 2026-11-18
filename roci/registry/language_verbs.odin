@@ -118,6 +118,16 @@ LANGUAGE_VERBS := []Verb{
 	{"tcp close", {
 		{{{"label", .Text}}, TCP_CLIENT_OPTIONS, .None},
 	}, "Ends a connection: `tcp close \"chat\"`, which then runs `on tcp close`. A listener and all its clients end, or with `to` one client: `tcp close \"server\" to 2`."},
+	{"websocket connect", {
+		{{{"label", .Text}}, WEBSOCKET_CONNECT_OPTIONS, .None},
+	}, "Opens a web socket, a connection to a web server that carries messages both ways, the way a chat, a game or a live feed talks: `websocket connect \"feed\" to \"wss://example.org/live\"`. The address begins with ws:// or wss:// (the secure one). The label names it from now on, in `on websocket \"feed\"` and `websocket send \"feed\" \"hi\"`. Nothing waits: `on websocket open` runs when it is open, and `on websocket close` runs, with the reason, when it could not be opened or later closes. The same label to the same address again changes nothing, which is what a reload does. At most eight web sockets are open at once."},
+	{"websocket send", {
+		{{{"label", .Text}, {"text", .Text}}, nil, .None},
+		{{{"label", .Text}, {"bytes", .List}}, nil, .None},
+	}, "Sends a message on a web socket: `websocket send \"feed\" \"hello\"` as text, or a list of numbers from 0 to 255 as binary bytes. Say it in `on websocket open` or after: before the socket is open there is nothing to send to."},
+	{"websocket close", {
+		{{{"label", .Text}}, nil, .None},
+	}, "Closes a web socket with the close message: `websocket close \"feed\"`. `on websocket close` runs when it is over."},
 	{"no effect", {{{{"sound", .Sound}, {"name", .Text}}, nil, .None}}, "Takes a sound effect off a sound, or off the speakers: `no effect guitar \"delay\"`."},
 	{"effect", {
 		{{{"shader", .Text}}, {{"by", {.Record}, false}}, .None},

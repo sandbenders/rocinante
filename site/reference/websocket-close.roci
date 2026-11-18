@@ -1,0 +1,11 @@
+websocket connect "feed" to "wss://echo.websocket.org/"
+state = "waiting"
+on websocket open "feed" [ state = "open, click to close it" ]
+on websocket close "feed" [ state = "closed" ]
+on mouse down [ websocket close "feed" ]
+
+draw [
+  background 245
+  fill 40
+  text state at 20 60 size 18
+]

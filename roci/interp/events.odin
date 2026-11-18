@@ -102,6 +102,9 @@ event_name :: proc(kind: roci.Happening) -> string {
 	case .Tcp_Open:   return "tcp open"
 	case .Tcp_Line:   return "tcp"
 	case .Tcp_Close:  return "tcp close"
+	case .Ws_Open:    return "websocket open"
+	case .Ws_Message: return "websocket"
+	case .Ws_Close:   return "websocket close"
 	case .Midi_Bend:  return "midi bend"
 	case .Midi_Program: return "midi program"
 	case .Midi_Pressure: return "midi pressure"
@@ -229,7 +232,8 @@ event_arg_matches :: proc(p: ^Interp, h: Handler, happening: roci.Happened) -> b
 	}
 	want := as_text(eval(p, h.args[0]))
 	p.alloc, p.frame = saved_alloc, saved_frame
-	if happening.kind == .Tcp_Open || happening.kind == .Tcp_Line || happening.kind == .Tcp_Close {
+	#partial switch happening.kind {
+	case .Tcp_Open, .Tcp_Line, .Tcp_Close, .Ws_Open, .Ws_Message, .Ws_Close:
 		return want == happening.tcp.label
 	}
 	if happening.kind == .Osc {

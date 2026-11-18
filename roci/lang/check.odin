@@ -684,7 +684,7 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 		midi := strings.has_prefix(k.event, "midi")
 		osc := k.event == "osc"
 		udp := k.event == "udp"
-		tcp := strings.has_prefix(k.event, "tcp")
+		tcp := strings.has_prefix(k.event, "tcp") || strings.has_prefix(k.event, "websocket")
 		if touch {
 			c.in_touch += 1
 		}
