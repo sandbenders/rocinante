@@ -335,3 +335,20 @@ test_the_c_functions_min_and_max_give_the_smaller_and_the_larger :: proc(t: ^tes
 	testing.expect_value(t, abi_min(nan, 4), 4)
 	testing.expect_value(t, abi_max(4, nan), 4)
 }
+
+@(test)
+test_c_draws_a_polygon_of_several_contours :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	corners := [8]Abi_Vec2{{0, 0}, {50, 0}, {50, 40}, {0, 40}, {10, 10}, {40, 10}, {40, 30}, {10, 30}}
+	counts := [2]c.int{4, 4}
+	abi_polygons(&corners[0], &counts[0], 2)
+	abi_polygons(nil, &counts[0], 2)
+	abi_polygons(&corners[0], nil, 2)
+	abi_polygons(&corners[0], &counts[0], 0)
+	small := [2]c.int{2, -3} // no shape, and a count below zero is none
+	abi_polygons(&corners[0], &small[0], 2)
+	list := recorded(current_window())
+	testing.expect_value(t, len(list), 1)
+	testing.expect_value(t, list[0].args[5], 10) // 4 + 4 corners and a break after each
+}

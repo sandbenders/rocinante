@@ -2812,3 +2812,15 @@ test_put_changes_one_item_of_a_list_and_says_when_it_is_not_there :: proc(t: ^te
 	testing.expect_value(t, len(p.errors), 2)
 	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Index_Out_Of_Range)
 }
+
+@(test)
+test_polygon_of_lists_is_one_shape_with_a_contour_for_each_list :: proc(t: ^testing.T) {
+	p := run_text(t, "outer = [ { 0, 0 } { 100, 0 } { 100, 100 } { 0, 100 } ]\nhole = [ { 20, 20 } { 80, 20 } { 80, 80 } { 20, 80 } ]\nisland = [ { 40, 40 } { 60, 40 } { 60, 60 } ]\npolygon [ outer hole island ]\npolygon [ outer [ { 1, 1 } ] ]")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 2)
+	// the points of every contour and a break after each: 4 + 4 + 3 + 3, and 4 + 1 (a lone corner is left out of the second)
+	testing.expect_value(t, commands[0].args[5], 14)
+	testing.expect_value(t, commands[1].args[5], 5)
+	testing.expect_value(t, len(p.errors), 0)
+}

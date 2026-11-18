@@ -44,16 +44,33 @@ mesh_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) {
 	roci.mesh(fmt.tprintf("%s:%d", site, n), corners[:], wireframe, look)
 }
 
-// `polygon [ ... ]`: the corners are a list of vectors.
+// `polygon [ ... ]`: the corners are a list of vectors, or a list of such lists, which are the contours of one
+// shape (a list inside another is a hole).
 @(private)
 polygon_verb :: proc(it: ^Interp, call: lang.IR_Call) {
 	list := as_list(eval(it, call.args[0]))
-	if list == nil || len(list.items) < 3 {
+	if list == nil || len(list.items) == 0 {
 		return
 	}
-	corners := make([dynamic][2]f64, 0, len(list.items), context.temp_allocator)
-	for item in list.items {
-		append(&corners, as_pair(item))
+	contours := make([dynamic][][2]f64, 0, 4, context.temp_allocator)
+	if _, nested := list.items[0].(^List); nested {
+		for item in list.items {
+			inner := as_list(item)
+			if inner == nil {
+				continue
+			}
+			corners := make([dynamic][2]f64, 0, len(inner.items), context.temp_allocator)
+			for corner in inner.items {
+				append(&corners, as_pair(corner))
+			}
+			append(&contours, corners[:])
+		}
+	} else {
+		corners := make([dynamic][2]f64, 0, len(list.items), context.temp_allocator)
+		for item in list.items {
+			append(&corners, as_pair(item))
+		}
+		append(&contours, corners[:])
 	}
 	look := &NO_LOOK
 	own_look: roci.Look
@@ -62,7 +79,7 @@ polygon_verb :: proc(it: ^Interp, call: lang.IR_Call) {
 		own_look, origin = make_look(it, call.options)
 		look = &own_look
 	}
-	roci.polygon(corners[:], look^)
+	roci.polygons(contours[:], look^)
 }
 
 @(private)

@@ -274,8 +274,11 @@ void roci_quad(double x1, double y1, double x2, double y2, double x3, double y3,
 /* Draws a four-sided shape through four points. */
 void roci_quad_v(roci_vec2 a, roci_vec2 b, roci_vec2 c, roci_vec2 d);
 
-/* Draws a filled shape through `count` corners (three or more), joined in order and closed, in the current fill and stroke. A path that crosses itself leaves a hole where it overlaps. */
+/* Draws a filled shape through `count` corners (three or more), joined in order and closed, in the current fill and stroke. A path that crosses itself is filled whole: a hole is a second contour, from roci_polygons. */
 void roci_polygon(const roci_vec2 *corners, int count);
+
+/* Draws a filled shape of several contours: `counts` holds how many corners each of the `contours` has, and `corners` holds them one after the other, in order. A contour inside another leaves a hole where it is. */
+void roci_polygons(const roci_vec2 *corners, const int *counts, int contours);
 
 /* Draws part of an ellipse, between two angles in degrees. */
 void roci_arc(double x, double y, double width, double height, double start, double stop);

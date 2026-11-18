@@ -160,7 +160,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"ray", "roci_ray roci_ray_v", ""},
 	{"triangles", "roci_triangles roci_triangles_v", ""},
 	{"mesh", "roci_mesh", ""},
-	{"polygon", "roci_polygon", ""},
+	{"polygon", "roci_polygon roci_polygons", ""},
 	{"svg", "roci_svg roci_svg_v roci_svg_sized roci_svg_sized_v roci_load_svg", ""},
 }
 
@@ -225,7 +225,8 @@ abi_table_init :: proc "contextless" () {
 	{"roci_triangle_v", "triangle", 1, typeid_of(type_of(abi_triangle_v)), "", ""},
 	{"roci_quad", "quad", 0, typeid_of(type_of(abi_quad)), "", ""},
 	{"roci_quad_v", "quad", 1, typeid_of(type_of(abi_quad_v)), "", ""},
-	{"roci_polygon", "", 0, typeid_of(type_of(abi_polygon)), "void roci_polygon(const roci_vec2 *corners, int count)", "Draws a filled shape through `count` corners (three or more), joined in order and closed, in the current fill and stroke. A path that crosses itself leaves a hole where it overlaps."},
+	{"roci_polygon", "", 0, typeid_of(type_of(abi_polygon)), "void roci_polygon(const roci_vec2 *corners, int count)", "Draws a filled shape through `count` corners (three or more), joined in order and closed, in the current fill and stroke. A path that crosses itself is filled whole: a hole is a second contour, from roci_polygons."},
+	{"roci_polygons", "", 0, typeid_of(type_of(abi_polygons)), "void roci_polygons(const roci_vec2 *corners, const int *counts, int contours)", "Draws a filled shape of several contours: `counts` holds how many corners each of the `contours` has, and `corners` holds them one after the other, in order. A contour inside another leaves a hole where it is."},
 	{"roci_arc", "arc", 0, typeid_of(type_of(abi_arc)), "", ""},
 	{"roci_debug_text", "", 0, typeid_of(type_of(abi_debug_text)), "void roci_debug_text(const char *text, double x, double y, double scale)", "Text in the built-in overlay font, in the fill color; whole-number scales look best."},
 	{"roci_fill", "fill", 0, typeid_of(type_of(abi_fill)), "", ""},

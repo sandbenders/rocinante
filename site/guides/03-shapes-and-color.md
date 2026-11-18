@@ -49,7 +49,17 @@ fill gold
 polygon [ { 220, 180 } { 220, 60 } { 250, 60 } { 250, 90 } { 300, 90 } { 300, 180 } ]
 ```
 
-A line that crosses another leaves a hole where the two overlap.
+A shape can have holes. Give `polygon` a list of lists: the first is the outline, and each list inside it is a hole cut out of it (and one inside a hole fills again):
+
+```roci picture
+wall = [ { 40, 30 } { 360, 30 } { 360, 170 } { 40, 170 } ]
+hole = [ { 120, 60 } { 280, 60 } { 280, 140 } { 120, 140 } ]
+island = [ { 170, 85 } { 230, 85 } { 230, 115 } { 170, 115 } ]
+fill tomato
+polygon [ wall hole island ]
+```
+
+A line that crosses itself does not make a hole: the shape is filled whole. Cut a hole with a second list.
 
 Circles, ellipses and arcs are placed by their middle; rectangles and squares by their top-left corner. `as center` or `as corner` after a shape's numbers changes that for one shape:
 

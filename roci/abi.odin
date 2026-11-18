@@ -399,6 +399,24 @@ abi_polygon :: proc "c" (corners: [^]Abi_Vec2, count: c.int) {
 	polygon(([^][2]f64)(corners)[:count])
 }
 
+// Several contours in one shape: `counts` has the number of corners of each of the `contours`, and `corners`
+// holds them one after the other. A contour inside another is a hole.
+@(export, link_name = "roci_polygons")
+abi_polygons :: proc "c" (corners: [^]Abi_Vec2, counts: [^]c.int, contours: c.int) {
+	context = abi_context()
+	if corners == nil || counts == nil || contours < 1 {
+		return
+	}
+	made := make([dynamic][][2]f64, 0, int(contours), context.temp_allocator)
+	at := 0
+	for i in 0 ..< int(contours) {
+		n := int(max(counts[i], 0))
+		append(&made, ([^][2]f64)(corners)[at:][:n])
+		at += n
+	}
+	polygons(made[:])
+}
+
 @(export, link_name = "roci_arc")
 abi_arc :: proc "c" (x, y, width, height, start, stop: f64) {
 	context = abi_context()

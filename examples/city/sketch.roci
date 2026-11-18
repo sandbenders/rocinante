@@ -12,6 +12,13 @@ towers = [
   { x: 540, w: 70, h: 170, roof: 0, shade: 110 }
 ]
 
+// The moon's halo is an octagon with a smaller one cut out of it: a list of lists is one shape, and a list
+// inside another is a hole.
+HALO = [
+  [ { 500, 30 } { 540, 30 } { 568, 58 } { 568, 98 } { 540, 126 } { 500, 126 } { 472, 98 } { 472, 58 } ]
+  [ { 504, 50 } { 536, 50 } { 548, 62 } { 548, 94 } { 536, 106 } { 504, 106 } { 492, 94 } { 492, 62 } ]
+]
+
 learn tower t [
   top = GROUND - t.h
   fill (hsb 220 40 t.shade)
@@ -32,6 +39,8 @@ learn tower t [
 
 draw [
   background (rgb 40 52 80)
+  fill (rgb 74 88 124)
+  polygon HALO
   fill (rgb 30 40 62)
   polygon [ { 0, GROUND } { 0, 250 } { 80, 235 } { 160, 255 } { 260, 225 } { 380, 250 } { 500, 230 } { 640, 255 } { 640, GROUND } ]
   for each t in towers [ tower t ]

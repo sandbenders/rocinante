@@ -211,20 +211,34 @@ quad_v :: proc(a, b, c, d: [2]f64, look := Look{}) {
 
 quad :: proc{quad_xy, quad_v}
 
-// A filled shape through any number of corners, joined in order and closed. A path crossing itself leaves a
-// hole where it overlaps (the even-odd rule). Fewer than three corners, or a corner that is not a number,
-// draws nothing.
+// A filled shape through any number of corners, joined in order and closed. Fewer than three corners, or a
+// corner that is not a number, draws nothing. A path that crosses itself is filled whole: a hole is a second
+// contour inside the first, which `polygons` takes.
 polygon :: proc(corners: [][2]f64, look := Look{}) {
-	if len(corners) < 3 {
-		return
+	polygons({corners}, look)
+}
+
+// A filled shape of several contours, each joined in order and closed: a contour inside another leaves a hole
+// where it is (and one inside that fills again), as the contours of an SVG path do. A contour with fewer than
+// three corners is left out.
+polygons :: proc(contours: [][][2]f64, look := Look{}) {
+	made := make([dynamic]gfx.Contour, 0, len(contours), context.temp_allocator)
+	for corners in contours {
+		if len(corners) < 3 {
+			continue
+		}
+		points := make([][2]f32, len(corners), context.temp_allocator)
+		for c, i in corners {
+			points[i] = {f32(c.x), f32(c.y)}
+		}
+		append(&made, gfx.Contour{points = points, closed = true})
 	}
-	points := make([][2]f32, len(corners), context.temp_allocator)
-	for c, i in corners {
-		points[i] = {f32(c.x), f32(c.y)}
+	if len(made) == 0 {
+		return
 	}
 	list := current_list()
 	opened := begin_look(list, look)
-	gfx.path(list, {{points = points, closed = true}})
+	gfx.path(list, made[:])
 	end_look(list, opened)
 }
 
