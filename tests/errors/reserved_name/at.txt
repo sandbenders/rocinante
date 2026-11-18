@@ -1,0 +1,8 @@
+── `at` is already a word ────────────────────────────── sketch.roci:1:1
+
+1 │ at = 3
+  │ ^^
+
+`at` is one of the few words the language keeps for itself (`if`, `for`, `at`, `to` and the like), so it cannot be the name of a value. Pick another name.
+
+Write:  myat = 3

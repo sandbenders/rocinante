@@ -22,13 +22,13 @@ learn cell_at x y [
 ]
 
 learn step [
-  for y from 0 to ROWS - 1 [
-    for x from 0 to COLUMNS - 1 [
-      cell = cell_at x y
+  for row from 0 to ROWS - 1 [
+    for column from 0 to COLUMNS - 1 [
+      cell = cell_at column row
       cell.near = 0
       for dy from -1 to 1 [
         for dx from -1 to 1 [
-          other = cell_at (x + dx) (y + dy)
+          other = cell_at (column + dx) (row + dy)
           if other.alive [ cell.near = cell.near + 1 ]
         ]
       ]
@@ -58,12 +58,12 @@ every 4 frames [ step ]
 draw [
   background (rgb 18 20 30)
   no stroke
-  for y from 0 to ROWS - 1 [
-    for x from 0 to COLUMNS - 1 [
-      here = cell_at x y
+  for row from 0 to ROWS - 1 [
+    for column from 0 to COLUMNS - 1 [
+      here = cell_at column row
       if here.alive [
-        tone = (x * 3 + y * 2 + generation) % 256
-        circle at (x * CELL + CELL / 2) (y * CELL + CELL / 2) radius 4 fill (hsb tone 150 240)
+        tone = (column * 3 + row * 2 + generation) % 256
+        circle at (column * CELL + CELL / 2) (row * CELL + CELL / 2) radius 4 fill (hsb tone 150 240)
       ]
     ]
   ]

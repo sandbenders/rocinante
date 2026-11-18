@@ -161,21 +161,18 @@ man_list_text :: proc() -> string {
 	return strings.to_string(b)
 }
 
-// The words the language keeps, which a sketch cannot use as the name of a variable or of a value a verb
-// takes, in lines that fit a terminal. A few are free in some places (`size` may name a variable): the
-// checker's own message says so when one is met, and this list is every word that is refused in at least one.
+// The few words the language keeps for itself (the keywords and the words that shape every statement), which a
+// sketch cannot use as a name, in lines that fit a terminal. Every other word of the language is a word only
+// where the grammar expects it, and a sketch's own name anywhere else.
 @(private)
 man_words_text :: proc() -> string {
-	words := registry.reserved_words(context.temp_allocator)
+	words := registry.words_kept(context.temp_allocator)
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, "%s\n", term.out("words that cannot be names", .Bold_Cyan))
-	fmt.sbprintf(&b, "%s\n\n", term.out("The language already uses these, so a variable or a value a verb takes cannot be called one of them: pick another, such as `myrow` for `row`.", .Dim))
+	fmt.sbprintf(&b, "%s\n\n", term.out("These shape every line, so a name cannot be one of them. Any other word of the language, such as `row`, `count` or `radius`, is a word only where the verb takes it, and your own name anywhere else.", .Dim))
 	line_length := 0
 	count := 0
 	for word in words {
-		if strings.contains_rune(word, ' ') || !registry.is_reserved(word) || (registry.is_free_as_name(word) && registry.is_free_as_parameter(word)) {
-			continue
-		}
 		if line_length > 0 && line_length + len(word) + 2 > 76 {
 			strings.write_string(&b, "\n")
 			line_length = 0
@@ -191,7 +188,7 @@ man_words_text :: proc() -> string {
 		line_length += len(word)
 		count += 1
 	}
-	fmt.sbprintf(&b, "\n\n%s\n", term.out(fmt.tprintf("%d words. A verb of more than one word, such as `no fill`, is not listed: its first word is free.", count), .Dim))
+	fmt.sbprintf(&b, "\n\n%s\n", term.out(fmt.tprintf("%d words.", count), .Dim))
 	return strings.to_string(b)
 }
 

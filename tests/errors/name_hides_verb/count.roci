@@ -1,0 +1,4 @@
+count = 0
+herd = [ 1 2 3 ]
+n = count herd
+print n

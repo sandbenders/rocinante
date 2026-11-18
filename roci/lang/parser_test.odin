@@ -762,11 +762,13 @@ test_for_every_on_use_and_learn_headers_are_checked :: proc(t: ^testing.T) {
 	expect_ids(t, "learn with [ ]", {.Learn_Missing_Name})
 	expect_ids(t, "hidden circle", {.Learn_Missing_Name})
 	expect_ids(t, "learn circle [ ]", {.Learn_Reserved_Name})
-	expect_ids(t, "learn star fill [ ]", {.Learn_Reserved_Name})
+	expect_ids(t, "learn star fill [ ]", {})
+	expect_ids(t, "learn star at [ ]", {.Learn_Reserved_Name})
 	expect_ids(t, "learn star size size [ ]", {.Learn_Repeated_Parameter})
 	expect_ids(t, "learn star size with points 5 6 [ ]", {.Learn_Default_Not_One_Item})
 	expect_ids(t, "learn star size with points [ ]", {.Learn_Default_Not_One_Item})
-	expect_ids(t, "learn star size with fill 5 [ ]", {.Learn_Reserved_Name})
+	expect_ids(t, "learn star size with fill 5 [ ]", {})
+	expect_ids(t, "learn star size with at 5 [ ]", {.Learn_Reserved_Name})
 	// `width`, `height` and `size` may be parameters.
 	expect_ids(t, "learn spot width height [ ]", {})
 }

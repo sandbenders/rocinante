@@ -52,13 +52,68 @@ info_of_taught :: proc(t: ^Taught_Verb) -> Call_Info {
 	return Call_Info{name = t.name, taught = t, max_args = len(t.params), uniform = true}
 }
 
+// Whether the word is a name of the sketch's own that is also a word of the language, here: a name given a value
+// in the files of the same folder or library, or a parameter of the verb being read.
+@(private)
+is_shadowed :: proc(p: ^Parser, word: string) -> bool {
+	if slice.contains(p.shadowed[:], word) {
+		return true
+	}
+	if len(p.own) == 0 {
+		return false
+	}
+	library := ""
+	if part, found := part_of(p.src, cur(p).span.start); found {
+		library = part.library
+	}
+	for o in p.own {
+		if o.name == word && o.library == library {
+			return true
+		}
+	}
+	return false
+}
+
+// A name of the sketch's that is also a verb, read as the name where something follows that looks like the
+// verb's arguments: `n = count herd` with `count = 0` above. It is an error, since a name followed by another
+// value there is a stray word whichever way it is read, and it says so where the verb was expected.
+@(private)
+hide_hint :: proc(p: ^Parser) {
+	word := text_of(p, cur(p))
+	if _, is_verb := registry.find_in(p.verbs, word); !is_verb {
+		return
+	}
+	// Only where a verb's call is the natural reading: the start of what an equals sign or a round bracket gives.
+	// Two names side by side after another word (`cell_at column row`) are two arguments of that word.
+	if p.at == 0 || p.at + 1 >= len(p.tokens) || (p.tokens[p.at - 1].kind != .Equals && p.tokens[p.at - 1].kind != .Open_Round) {
+		return
+	}
+	next := p.tokens[p.at + 1]
+	if next.kind != .Name || call_ends_at(p, next) || is_stop_word(p, text_of(p, next)) || next.spaces == 0 {
+		return
+	}
+	line := 0
+	for o in p.own {
+		if o.name == word {
+			line = o.line
+		}
+	}
+	if line == 0 {
+		return
+	}
+	report(p, .Name_Hides_Verb, cur(p).span, word, fmt.aprintf("%d", line, allocator = p.alloc), "", line_with(p, cur(p).span, fmt.aprintf("my%s", word, allocator = p.alloc)))
+}
+
 // The verb or taught verb the cursor is at, matching a phrase longest first, and how many words it used.
 @(private)
-find_callee :: proc(p: ^Parser) -> (info: Call_Info, used: int, ok: bool) {
+find_callee :: proc(p: ^Parser, statement := false) -> (info: Call_Info, used: int, ok: bool) {
 	if cur(p).kind != .Name {
 		return
 	}
-	if slice.contains(p.shadowed[:], text_of(p, cur(p))) {
+	// A name of the sketch's that is also a word of the language is the sketch's wherever a value is due.
+	// At the start of a line a verb is due, so the verb wins there (`count = 0` is read as a name before this).
+	if !statement && is_shadowed(p, text_of(p, cur(p))) {
+		hide_hint(p)
 		return
 	}
 	words: [4]string
@@ -190,11 +245,15 @@ param_kind_is :: proc(info: Call_Info, index: int, kind: registry.Kind) -> bool 
 // `it` and `result`, which are values) and the connecting words that are not also
 // values.
 @(private)
-is_stop_word :: proc(word: string) -> bool {
+is_stop_word :: proc(p: ^Parser, word: string) -> bool {
 	if slice.contains(registry.KEYWORDS[:], word) {
 		return word != "it" && word != "result"
 	}
-	return slice.contains(registry.CONNECTING_WORDS[:], word) && !registry.is_free_as_parameter(word)
+	if !slice.contains(registry.CONNECTING_WORDS[:], word) || registry.is_free_as_parameter(word) {
+		return false
+	}
+	// A word that goes with a verb is one only where that verb takes it; a sketch's own name is a value anywhere else.
+	return slice.contains(registry.GRAMMAR_WORDS[:], word) || !is_shadowed(p, word)
 }
 
 // A connecting word the call does not take, where the call still needs a value
@@ -219,7 +278,7 @@ is_argument_start :: proc(p: ^Parser, t: Token) -> bool {
 	case .Number, .Text, .Colour, .Open_Round, .Open_Curly, .Open_Square, .Minus_Prefix, .Invalid:
 		return true
 	case .Name:
-		return !is_stop_word(text_of(p, t))
+		return !is_stop_word(p, text_of(p, t))
 	}
 	return false
 }
@@ -290,7 +349,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 					break
 				}
 			}
-			if is_stop_word(word) && !param_kind_is(info, len(args), .Name) && !misplaced_word(info, word, len(args), nested) {
+			if is_stop_word(p, word) && !param_kind_is(info, len(args), .Name) && !misplaced_word(info, word, len(args), nested) {
 				break
 			}
 		}
@@ -387,7 +446,7 @@ parse_call :: proc(p: ^Parser, info: Call_Info, used: int, nested: bool) -> ^Exp
 			// word with nothing after it could only be a mistake.
 			if next.kind == .Name {
 				name := text_of(p, next)
-				if _, starts_option := option_kinds(info, name, len(args)); starts_option && !(len(option_args) == 0 && registry.is_free_as_parameter(name)) {
+				if _, starts_option := option_kinds(info, name, len(args)); starts_option && !(len(option_args) == 0 && (registry.is_free_as_parameter(name) || is_shadowed(p, name))) {
 					break
 				}
 			}

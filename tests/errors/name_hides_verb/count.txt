@@ -1,0 +1,8 @@
+── `count` is your name here, not the verb ───────────── sketch.roci:3:5
+
+3 │ n = count herd
+  │     ^^^^^
+
+`count` is a name of yours (line 1), so wherever a value is due it means your value and not the verb of the same name, and what follows it is no argument of the verb. If you meant the verb, give your name another one.
+
+Write:  n = mycount herd

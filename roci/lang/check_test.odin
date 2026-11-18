@@ -258,10 +258,13 @@ test_capital_names_are_constants :: proc(t: ^testing.T) {
 
 @(test)
 test_names_the_language_already_uses_cannot_be_assigned :: proc(t: ^testing.T) {
-	expect_errors(t, "circle = 3", {.Reserved_Name})
-	expect_errors(t, "width = 3", {.Reserved_Name})
-	expect_errors(t, "red = 3", {.Reserved_Name})
-	// `size` is both a value and a connecting word and stays free.
+	// only the keywords and the words that shape every statement are kept; any other word is a name where a value is due
+	expect_errors(t, "at = 3", {.Reserved_Name})
+	expect_errors(t, "it = 3", {.Reserved_Name})
+	expect_errors(t, "result = 3", {.Reserved_Name})
+	expect_errors(t, "circle = 3", {})
+	expect_errors(t, "width = 3", {})
+	expect_errors(t, "red = 3", {})
 	expect_errors(t, "size = 3", {})
 }
 
@@ -386,7 +389,7 @@ test_ui_blocks_and_their_widgets_are_checked :: proc(t: ^testing.T) {
 	expect_errors(t, "ui theme dark\nui theme light\nui theme system\nui [ if button \"x\" [ ui theme light ] ]", {})
 	expect_errors(t, "ui theme drak", {.Unknown_Choice})
 	expect_errors(t, "theme = 3\nprint theme", {}) // the word stays free as a name
-	expect_errors(t, "label = 3", {.Reserved_Name})
+	expect_errors(t, "label = 3", {})
 }
 
 @(test)
@@ -1125,8 +1128,8 @@ test_pressed_and_held_are_true_or_false_and_the_rounding_verbs_take_a_number :: 
 	expect_types(t, "a = pressed\nb = held \"space\"\nc = round 2.5\nd = floor mouse.x\ne = ceil 1", "a: true or false\nb: true or false\nc: a number\nd: a number\ne: a number")
 	expect_errors(t, "x = held 5", {.Wrong_Argument_Kind})
 	expect_errors(t, "x = floor \"a\"", {.Wrong_Argument_Kind})
-	expect_errors(t, "pressed = 3", {.Reserved_Name})
-	expect_errors(t, "round = 3", {.Reserved_Name})
+	expect_errors(t, "pressed = 3", {})
+	expect_errors(t, "round = 3", {})
 	// `round` is a verb, and still the word of caps and joins.
 	expect_errors(t, "caps round\njoins round\nx = round 1.5", {})
 }
@@ -1312,7 +1315,7 @@ test_finger_means_something_only_in_a_touch_block :: proc(t: ^testing.T) {
 	got := check_text("draw [\n  circle at finger.pos radius 5\n]")
 	testing.expect_value(t, got.checked.diagnostics[0].args[3], "on touch down [ circle at finger.pos radius 5 ]")
 	// `finger` and `touches` are built-in names, and the old `on touch` is no event.
-	expect_errors(t, "finger = 1", {.Reserved_Name})
+	expect_errors(t, "finger = 1", {})
 	expect_errors(t, "on touch [ ]", {.Unknown_Event})
 }
 
@@ -1355,7 +1358,7 @@ test_the_turtle_is_a_record_of_pos_angle_and_down :: proc(t: ^testing.T) {
 	expect_types(t, "p = turtle.pos\na = turtle.angle\nd = turtle.down", "p: a vector of 2 numbers\na: a number\nd: true or false")
 	expect_types(t, "marks = []\ndraw [ add turtle to marks ]", "marks: a list of records with pos, angle and down")
 	// The turtle's word is the language's, so it can never be a name of the writer's.
-	expect_errors(t, "turtle = 3", {.Reserved_Name})
+	expect_errors(t, "turtle = 3", {})
 }
 
 // ---- check and expect ----
@@ -1681,7 +1684,7 @@ test_a_sounds_words_fields_and_set :: proc(t: ^testing.T) {
 test_the_words_of_a_sound_stay_free_as_names :: proc(t: ^testing.T) {
 	expect_errors(t, "speed = 3\nvolume = 2\npan = speed + volume\nrain = load \"rain.wav\"\nplay rain speed speed volume volume pan pan", {})
 	expect_errors(t, "learn stroll speed [ print speed ]\nstroll 2", {})
-	expect_errors(t, "loop = 3", {.Reserved_Name})
+	expect_errors(t, "loop = 3", {})
 }
 
 @(test)
@@ -1775,8 +1778,9 @@ test_a_call_that_is_too_short_has_an_example_only_when_the_values_given_are_the_
 
 @(test)
 test_a_name_that_is_a_word_of_the_language_is_said_once :: proc(t: ^testing.T) {
-	// one mistake, one message: the later uses read as calls of the verb and say nothing
-	expect_errors(t, "limit = 100000\nx = limit + 1\ny = limit * 2\nprint limit\nz = limit - 3", {.Reserved_Name})
+	// a keyword is said once where it is made; the name of a verb of the language is simply a name
+	expect_errors(t, "at = 100000\nx = at + 1\ny = at * 2\nprint at\nz = at - 3", {.Reserved_Name})
+	expect_errors(t, "limit = 100000\nx = limit + 1\ny = limit * 2\nprint limit\nz = limit - 3", {})
 }
 
 @(test)
@@ -1799,12 +1803,12 @@ test_count_takes_a_text_and_gives_its_characters :: proc(t: ^testing.T) {
 @(test)
 test_a_name_that_is_a_word_is_said_once_and_its_uses_read_as_the_name :: proc(t: ^testing.T) {
 	// a parameter
-	expect_errors(t, "learn plug spot open [\n  if open > 0 [ circle at spot radius open ]\n]\nplug { 10, 10 } 5", {.Learn_Reserved_Name})
+	expect_errors(t, "learn plug spot open [\n  if open > 0 [ circle at spot radius open ]\n]\nplug { 10, 10 } 5", {})
 	// a verb of the language used as a name for a value, then used inside another verb's arguments
-	expect_errors(t, "box = 3\nrect at box 10 size 130 200", {.Reserved_Name})
-	expect_errors(t, "limit = 5\nc = limit + 1", {.Reserved_Name})
+	expect_errors(t, "box = 3\nrect at box 10 size 130 200", {})
+	expect_errors(t, "limit = 5\nc = limit + 1", {})
 	// a parameter's name is the parameter's only inside its verb
-	expect_errors(t, "learn plug open [\n  give open\n]\nx = plug 1\nopen \"a.txt\"", {.Learn_Reserved_Name})
+	expect_errors(t, "learn plug open [\n  give open\n]\nx = plug 1\nopen \"a.txt\"", {})
 }
 
 @(test)
@@ -1908,4 +1912,32 @@ test_a_name_used_before_a_later_file_gives_it_says_which_file_does :: proc(t: ^t
 	for d in single.checked.diagnostics {
 		testing.expect_value(t, d.args[1], "")
 	}
+}
+
+@(test)
+test_a_word_that_goes_with_a_verb_is_a_name_anywhere_the_verb_does_not_take_it :: proc(t: ^testing.T) {
+	// the option wins where the verb takes it, the name wins where a value is due
+	expect_errors(t, "radius = 20\ncircle at { 100, 100 } radius radius", {})
+	expect_errors(t, "start = 3\nheight = 40\nrect at { 10, 10 } size { 20, height }\nprint (start + height)", {})
+	// a verb is a name after the sketch gives a value to that name, but at the start of a line it is still the verb
+	expect_errors(t, "forward = 3\nforward 10\nx = forward + 1", {})
+	// a loop variable too
+	expect_errors(t, "for row from 1 to 3 [ print row ]", {})
+}
+
+@(test)
+test_a_name_that_hides_a_verb_where_arguments_follow_is_an_error :: proc(t: ^testing.T) {
+	expect_errors(t, "count = 0\nherd = [ 1 2 3 ]\nn = count herd\nprint n", {.Name_Hides_Verb})
+	// the verb is still the verb when nothing hides it
+	expect_errors(t, "herd = [ 1 2 3 ]\nn = count herd\nprint n", {})
+}
+
+@(test)
+test_a_library_keeps_the_words_of_the_language_whatever_the_sketch_names_its_values :: proc(t: ^testing.T) {
+	files := []File_Text{
+		{name = "libs/stars/stars.roci", library = "stars", text = "learn tally xs [\n  give count xs\n]\n"},
+		{name = "sketch.roci", text = "count = 7\nprint count\nprint (tally [ 1 2 3 ])\n"},
+	}
+	got := check_files(files)
+	testing.expect_value(t, len(got.checked.diagnostics), 0)
 }

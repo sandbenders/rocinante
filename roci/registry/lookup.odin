@@ -245,6 +245,26 @@ is_free_as_name :: proc(word: string) -> bool {
 	return word == "size" || slice.contains(WINDOW_FREE_WORDS[:], word) || slice.contains(SOUND_FREE_WORDS[:], word)
 }
 
+// Connecting words that shape whole statements and expressions (`for i from 1 to 10 by 2`, `item 2 of xs`,
+// `circle at x y`), so a sketch cannot use them as names either.
+GRAMMAR_WORDS := [?]string{"as", "at", "by", "from", "in", "of", "over", "to"}
+
+// Whether a word is one of the few the language keeps for itself: the keywords and the grammar words.
+// Every other word of the language (a verb, a value, a colour, a word that goes with a verb) is a word
+// only where the grammar expects it, and anywhere else it can be a sketch's own name.
+cannot_be_name :: proc(word: string) -> bool {
+	return slice.contains(KEYWORDS[:], word) || slice.contains(GRAMMAR_WORDS[:], word)
+}
+
+// Every word that cannot be a name, sorted and without repeats, for the docs. The caller frees the slice.
+words_kept :: proc(allocator := context.allocator) -> []string {
+	all := make([dynamic]string, allocator)
+	append(&all, ..KEYWORDS[:])
+	append(&all, ..GRAMMAR_WORDS[:])
+	slice.sort(all[:])
+	return all[:]
+}
+
 // Every reserved word, sorted and without repeats, for the docs.
 // The caller frees the slice.
 reserved_words :: proc(allocator := context.allocator) -> []string {

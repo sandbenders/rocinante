@@ -861,3 +861,21 @@ test_the_hand_written_examples_are_built_in :: proc(t: ^testing.T) {
 		testing.expectf(t, has, "`%s` has no example on the site", verb.name)
 	}
 }
+
+@(test)
+test_only_keywords_and_grammar_words_cannot_be_names :: proc(t: ^testing.T) {
+	for w in KEYWORDS {
+		testing.expectf(t, cannot_be_name(w), "keyword `%s` is kept", w)
+	}
+	for w in GRAMMAR_WORDS {
+		testing.expectf(t, cannot_be_name(w), "grammar word `%s` is kept", w)
+		testing.expectf(t, slice.contains(CONNECTING_WORDS[:], w), "grammar word `%s` is a connecting word", w)
+	}
+	for w in ([?]string{"count", "row", "radius", "start", "height", "red", "turn", "box", "size", "particles"}) {
+		testing.expectf(t, !cannot_be_name(w), "`%s` may be a name", w)
+	}
+	words := words_kept()
+	defer delete(words)
+	testing.expect_value(t, len(words), len(KEYWORDS) + len(GRAMMAR_WORDS))
+	testing.expect(t, slice.is_sorted(words))
+}

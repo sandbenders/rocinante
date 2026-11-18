@@ -323,6 +323,21 @@ declare_local :: proc(c: ^Checker, name: string, kind: Symbol_Kind, type: Type_I
 	return s
 }
 
+// `lookup` for a word read or written at `span`: a name of the sketch's that is also a word of the language is
+// the sketch's own, and a library that uses the word keeps its meaning whatever the sketch calls its names.
+@(private)
+lookup_here :: proc(c: ^Checker, name: string, span: Span) -> ^Symbol {
+	sym := lookup(c, name)
+	if sym != nil && sym.scope == 0 && sym.kind == .Variable && registry.is_reserved(name) {
+		there, in_there := part_of(c.src, sym.first_write.start)
+		here, in_here := part_of(c.src, span.start)
+		if in_there && in_here && there.library != here.library {
+			return nil
+		}
+	}
+	return sym
+}
+
 @(private)
 lookup :: proc(c: ^Checker, name: string) -> ^Symbol {
 	#reverse for s in c.locals {
@@ -755,7 +770,7 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 	name := k.target.parts[0]
 	span := Span{s.span.file, s.span.start, s.span.start + len(name)}
 	value := check_expr(c, k.value, false)
-	if registry.is_reserved(name) && !registry.is_free_as_name(name) {
+	if registry.cannot_be_name(name) {
 		note(c, .Reserved_Name, span, name, "", "", fix(c, span, fmt.tprintf("my%s", name)))
 		return IR_Error_Stmt{}
 	}
@@ -763,7 +778,7 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 		note(c, .Library_Name_Taken, span, name, fix(c, span, fmt.tprintf("%s_value", name)))
 		return IR_Error_Stmt{}
 	}
-	sym := lookup(c, name)
+	sym := lookup_here(c, name, span)
 	if sym == nil && c.verb != nil && len(k.target.parts) == 1 {
 		// A name made inside a taught verb that does not exist at top level is local to it.
 		sym = new(Symbol, c.alloc)
@@ -1005,7 +1020,7 @@ vector_parts_help :: proc(size: int) -> string {
 check_path :: proc(c: ^Checker, e: ^Expr, path: Path) -> ^IR {
 	word := path.parts[0]
 	base: ^IR
-	if sym := lookup(c, word); sym != nil {
+	if sym := lookup_here(c, word, e.span); sym != nil {
 		// A name read before its first value, in the order the sketch runs.
 		if sym.kind == .Variable || sym.kind == .Constant {
 			if c.deferred == 0 && !sym.written && e.span.start < sym.first_write.start {

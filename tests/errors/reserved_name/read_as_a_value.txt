@@ -3,6 +3,6 @@
 2 │   circle at 200 200 radius (20 + (sin angle) * 10)
   │                                       ^^^^^
 
-The language already uses `angle` for something else, so it cannot be the name of a value. Pick another name.
+`angle` is one of the few words the language keeps for itself (`if`, `for`, `at`, `to` and the like), so it cannot be the name of a value. Pick another name.
 
 Write:  circle at 200 200 radius (20 + (sin myangle) * 10)

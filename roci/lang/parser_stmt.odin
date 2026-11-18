@@ -50,7 +50,7 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 		case "draw":
 			// `draw into c [ ... ]` draws onto a canvas where it is written: a verb with a block.
 			if p.at + 1 < len(p.tokens) && p.tokens[p.at + 1].kind == .Name && text_of(p, p.tokens[p.at + 1]) == "into" {
-				if info, used, ok := find_callee(p); ok {
+				if info, used, ok := find_callee(p, true); ok {
 					return Expr_Stmt{expr = parse_call(p, info, used, false)}
 				}
 			}
@@ -60,7 +60,7 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 			if p.at + 1 < len(p.tokens) && p.tokens[p.at + 1].kind == .Name {
 				switch text_of(p, p.tokens[p.at + 1]) {
 				case "hide", "show", "key", "theme":
-					if info, used, ok := find_callee(p); ok {
+					if info, used, ok := find_callee(p, true); ok {
 						return Expr_Stmt{expr = parse_call(p, info, used, false)}
 					}
 				}
@@ -87,7 +87,7 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 		if is_assignment(p) {
 			return parse_assignment(p)
 		}
-		if info, used, ok := find_callee(p); ok {
+		if info, used, ok := find_callee(p, true); ok {
 			return Expr_Stmt{expr = parse_call(p, info, used, false)}
 		}
 		return unknown_word(p, t)
@@ -157,9 +157,6 @@ parse_assignment :: proc(p: ^Parser) -> Stmt_Kind {
 	target := parse_path(p)
 	path := target.kind.(Path)
 	equals := advance(p)
-	if len(path.parts) == 1 && is_taken_name(p, path.parts[0]) && !registry.is_free_as_name(path.parts[0]) {
-		append(&p.shadowed, path.parts[0])
-	}
 	next := cur(p)
 	// Spaces after the equals sign mean nothing, even in a block on one line.
 	if next.kind == .Newline || next.kind == .End_Of_File || next.kind == .Close_Square || next.kind == .Close_Round || next.kind == .Close_Curly {
@@ -499,8 +496,10 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 		param := text_of(p, t)
 		if slice.contains(params[:], param) {
 			report(p, .Learn_Repeated_Parameter, t.span, param, line_with(p, t.span, fmt.tprintf("%s2", param)))
-		} else if is_taken_name(p, param) {
+		} else if registry.cannot_be_name(param) {
 			report(p, .Learn_Reserved_Name, t.span, param, line_with(p, t.span, fmt.tprintf("my%s", param)))
+		} else if is_taken_name(p, param) {
+			// a word of the language that goes with a verb or stands for a value is the parameter's name inside the verb
 			append(&p.shadowed, param)
 		}
 		append(&params, param)
@@ -511,7 +510,7 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 		for cur(p).kind == .Name {
 			word := advance(p)
 			text := text_of(p, word)
-			if is_taken_name(p, text) {
+			if registry.cannot_be_name(text) {
 				report(p, .Learn_Reserved_Name, word.span, text, line_with(p, word.span, fmt.tprintf("my%s", text)))
 			}
 			if !is_argument_start(p, cur(p)) || call_ends_at(p, cur(p)) || cur(p).kind == .Open_Square {

@@ -2847,3 +2847,9 @@ test_constants_are_made_before_any_file_runs :: proc(t: ^testing.T) {
 	}
 	expect_files_printed(t, files, "13\n10")
 }
+
+@(test)
+test_words_of_the_language_are_names_where_a_value_is_due :: proc(t: ^testing.T) {
+	// the option wins where the verb takes it, the sketch's own name wherever a value is due, the verb at the start of a line
+	expect_printed(t, "start = 3\nbox = 10\nforward = 5\nradius = 20\nheight = 4\ncircle at { 50, 50 } radius radius\nforward 10\nprint (start + box + forward + radius + height)\nfor row from 1 to 2 [ print row ]", "42\n1\n2")
+}

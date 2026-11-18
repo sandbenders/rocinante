@@ -37,7 +37,7 @@ x = 0
 x = x + SPEED
 ```
 
-A name cannot be a word the language already uses: `row`, `box`, `limit`, `radius`, `open`, `tint` and every color name are some of them. `roci check` says so where it meets one, and `roci man words` lists them all, so the list is there before the first try.
+Only a few words are kept from names: the ones that shape a line (`if`, `for`, `learn`, `give`, `on`, `draw`, `it`, `result` and the like) and the little words that join a statement (`at`, `to`, `by`, `from`, `of`, `in`, `as`, `over`). `roci man words` lists them all. Every other word of the language (`row`, `box`, `count`, `radius`, `start`, `height`, every color name) is a word only where a verb takes it, and your own name anywhere else, so `radius = 20` and then `circle at 100 100 radius radius` works: the first `radius` is the verb's, the second is yours. At the start of a line a verb is still the verb, and a name that hides a verb gets a message where you might have meant the verb (`n = count herd`, with `count = 0` above); a sketch's names never change what a library does.
 
 ## Kinds of value
 

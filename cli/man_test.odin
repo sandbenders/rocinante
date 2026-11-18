@@ -127,17 +127,17 @@ test_man_words_lists_the_words_that_cannot_be_names :: proc(t: ^testing.T) {
 	code, out, _ := man("words")
 	testing.expect_value(t, code, 0)
 	words := strings.fields(out, context.temp_allocator)
-	for want in ([?]string{"box", "back", "down", "radius", "open", "height", "row", "roll", "tint", "sheet", "limit", "range", "list"}) {
+	for want in ([?]string{"if", "learn", "for", "each", "it", "result", "at", "to", "by", "from", "of"}) {
 		found := false
 		for w in words {
 			found ||= w == want
 		}
 		testing.expectf(t, found, "`%s` is listed", want)
 	}
-	// each word listed is one the checker refuses, and no word of two parts is listed
-	for w in words[:] {
-		if len(w) > 0 && w[0] >= 'a' && w[0] <= 'z' && registry.is_reserved(w) {
-			testing.expectf(t, !registry.is_free_as_name(w) || !registry.is_free_as_parameter(w), "`%s` is free everywhere", w)
+	// the words of verbs, values and colors are not kept: a name can be one of them
+	for free in ([?]string{"box", "row", "radius", "count", "height", "red", "start", "turn"}) {
+		for w in words {
+			testing.expectf(t, w != free, "`%s` is not kept", free)
 		}
 	}
 }

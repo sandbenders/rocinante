@@ -8,6 +8,8 @@ package lang
 
 import "core:strings"
 
+import "../registry"
+
 // The caller frees the slice and what it points to (an arena does it).
 prescan :: proc(src: Source, lexed: Lexed, allocator := context.allocator) -> []Taught_Verb {
 	found := make([dynamic]Taught_Verb, allocator)
@@ -135,4 +137,61 @@ library_name :: proc(use: string) -> string {
 		name = name[i + 1:]
 	}
 	return strings.trim_suffix(name, ".git")
+}
+
+// A name a sketch gives a value that is also a word of the language (`count = 0`, `for row from 1 to 3`),
+// and where: only the files of its own folder or library read it as a name, so a library that uses the verb
+// `count` keeps meaning the verb whatever a sketch calls its numbers.
+Own_Name :: struct {
+	name:    string,
+	library: string,
+	line:    int,
+}
+
+// Every name given a value anywhere in the files, found before the parser reads them: a name at the start of
+// a line with an equals sign after it, and the name of a `for` loop. Keywords and grammar words are left out,
+// since they are never names; so are names that are no word of the language, which need no care.
+own_names :: proc(src: Source, lexed: Lexed, verbs: []registry.Verb, allocator := context.allocator) -> [dynamic]Own_Name {
+	found := make([dynamic]Own_Name, allocator)
+	tokens := lexed.tokens
+	add :: proc(found: ^[dynamic]Own_Name, src: Source, verbs: []registry.Verb, token: Token) {
+		name := span_text(src, token.span)
+		if registry.cannot_be_name(name) {
+			return
+		}
+		if _, is_verb := registry.find_in(verbs, name); !is_verb && !registry.is_reserved(name) {
+			return
+		}
+		library := ""
+		if part, in_part := part_of(src, token.span.start); in_part {
+			library = part.library
+		}
+		for o in found^ {
+			if o.name == name && o.library == library {
+				return
+			}
+		}
+		append(found, Own_Name{name = name, library = library, line = position_of(src, token.span.start).line})
+	}
+	for i := 0; i < len(tokens); i += 1 {
+		t := tokens[i]
+		if t.kind != .Name {
+			continue
+		}
+		starts := i == 0 || tokens[i - 1].kind == .Newline || tokens[i - 1].kind == .Open_Square
+		if starts && i + 1 < len(tokens) && tokens[i + 1].kind == .Equals {
+			add(&found, src, verbs, t)
+			continue
+		}
+		if span_text(src, t.span) == "for" && i + 2 < len(tokens) && starts {
+			j := i + 1
+			if tokens[j].kind == .Name && span_text(src, tokens[j].span) == "each" {
+				j += 1
+			}
+			if j < len(tokens) && tokens[j].kind == .Name {
+				add(&found, src, verbs, tokens[j])
+			}
+		}
+	}
+	return found
 }
