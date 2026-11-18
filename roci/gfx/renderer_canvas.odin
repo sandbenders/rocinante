@@ -89,7 +89,7 @@ render_canvas_round :: proc(r: ^Renderer, id: Image_Id, canvas: ^Canvas, list: ^
 	}
 	target := gpu.textures[1 - gpu.current]
 	ok := render(r, commands, target, CANVAS_FORMAT, {width, height}, logical, list, &canvas.batcher)
-	if !sdl.SubmitGPUCommandBuffer(commands) {
+	if !canvas_submit(r, commands) {
 		set_error(r, "submitting a canvas")
 		return false
 	}
@@ -97,6 +97,28 @@ render_canvas_round :: proc(r: ^Renderer, id: Image_Id, canvas: ^Canvas, list: ^
 	gpu.rendered = true
 	r.canvases[id] = gpu
 	return ok
+}
+
+// How many canvas rounds are submitted before the GPU is waited for. Each round is a command
+// buffer of its own, and the descriptor sets its draws took go back to their pool only when the
+// GPU has finished it; a headless run submits rounds as fast as it can build them, so without
+// a wait now and then lavapipe ran out of descriptor sets and crashed.
+CANVAS_ROUNDS_PER_WAIT :: 16
+
+@(private)
+canvas_submit :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer) -> bool {
+	r.canvas_rounds += 1
+	if r.canvas_rounds < CANVAS_ROUNDS_PER_WAIT {
+		return sdl.SubmitGPUCommandBuffer(commands)
+	}
+	r.canvas_rounds = 0
+	fence := sdl.SubmitGPUCommandBufferAndAcquireFence(commands)
+	if fence == nil {
+		return false
+	}
+	waited := sdl.WaitForGPUFences(r.device, true, &fence, 1)
+	sdl.ReleaseGPUFence(r.device, fence)
+	return waited
 }
 
 // A canvas read back from the GPU as a picture: its logical size, 8-bit red, green, blue and

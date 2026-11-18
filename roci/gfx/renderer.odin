@@ -168,6 +168,7 @@ Renderer :: struct {
 	effects: Effect_Gpu,    // shaders of the sketch's own run over the frame (renderer_effect.odin)
 	images:  map[Image_Id]^sdl.GPUTexture, // the textures of the pictures drawn so far (typeset.odin)
 	canvases: map[Image_Id]Canvas_Gpu,     // the textures of the canvases (renderer_canvas.odin)
+	canvas_rounds: int,                    // canvas rounds submitted since the GPU was last waited for (renderer_canvas.odin)
 	text_fills: map[u64]Text_Fill_Texture, // the textures of texts filled with a picture (textfill.odin)
 	released_seen: int, // how many of `released_images` this renderer has dropped the textures of
 	uploaded_glyph_count:  int,
