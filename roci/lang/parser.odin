@@ -46,6 +46,7 @@ parse :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		diags  = make([dynamic]Diagnostic, allocator),
 		groups = make([dynamic]Group_Kind, allocator),
 		wraps  = make([dynamic]Span, allocator),
+		shadowed = make([dynamic]string, allocator),
 	}
 	report_lexer_problems(&p, lexed)
 	stmts := make([dynamic]^Stmt, allocator)
@@ -94,6 +95,7 @@ Parser :: struct {
 	groups:      [dynamic]Group_Kind, // what is open: a block, a group, a vector, a list
 	one_line:    bool, // the block being parsed opens and closes on one line, where two spaces end a call
 	learn_depth: int,
+	shadowed:    [dynamic]string, // names of the writer's that are also words of the language, said once where they are made: a use reads as the name
 	check_depth: int, // how many `check` blocks the statement being read is inside
 	wraps:       [dynamic]Span, // calls that need round brackets, in this statement
 	nest_depth:  int,

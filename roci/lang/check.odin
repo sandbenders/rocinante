@@ -778,6 +778,12 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 		note(c, .Kind_Conflict, span, name, prior, describe(c.types, value.type), fix(c, span, fmt.tprintf("%s2", name)))
 	}
 	sym.written = true
+	// The name now holds a value of its own, so what it shared before it is shared no more.
+	for i := len(c.aliases) - 1; i >= 0; i -= 1 {
+		if c.aliases[i].a == sym || c.aliases[i].b == sym {
+			ordered_remove(&c.aliases, i)
+		}
+	}
 	if load, is_load := value.kind.(IR_Load); is_load && load.symbol != sym {
 		kind := kind_of(c.types, value.type)
 		if kind == .List || kind == .Record {

@@ -131,7 +131,7 @@ shader_values :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, id: roci.Sha
 			found ||= n == f.name
 		}
 		if !found {
-			say_shader_value(it, e, name, f.name, known)
+			say_shader_value(it, e, call.verb.name, name, f.name, known)
 			continue
 		}
 		append(&given, item)
@@ -155,11 +155,11 @@ load_shader :: proc(it: ^Interp, name: string, span: lang.Span, fill := false) -
 				unchanged = err == nil && info.modification_time == entry.mtime
 			}
 			if unchanged {
-				say_shader_problem(it, name, entry, span)
+				say_shader_problem(it, name, entry, span, fill)
 				return entry.id if entry.state == .Good else 0
 			}
 		} else if time.duration_seconds(time.tick_since(entry.tried)) < SHADER_RETRY_SECONDS {
-			say_shader_problem(it, name, entry, span)
+			say_shader_problem(it, name, entry, span, fill)
 			return 0
 		}
 	}
@@ -169,7 +169,7 @@ load_shader :: proc(it: ^Interp, name: string, span: lang.Span, fill := false) -
 	store_shader(it, key, fresh)
 	// A message for the file as it was before is not one for the file as it is.
 	forget_error(it, .Shader_Broken, span)
-	say_shader_problem(it, name, fresh, span)
+	say_shader_problem(it, name, fresh, span, fill)
 	return fresh.id if fresh.state == .Good else 0
 }
 
@@ -266,18 +266,19 @@ drop_shaders :: proc(it: ^Interp) {
 }
 
 @(private)
-say_shader_problem :: proc(it: ^Interp, name: string, entry: Shader_Entry, span: lang.Span) {
-	example := strings.concatenate({"effect \"", name, "\""}, context.temp_allocator)
+say_shader_problem :: proc(it: ^Interp, name: string, entry: Shader_Entry, span: lang.Span, fill := false) {
+	verb := "shade" if fill else "effect"
+	example := strings.concatenate({verb, " \"", name, "\""}, context.temp_allocator)
 	switch entry.state {
 	case .Good:
 	case .Missing:
 		if !strings.contains(name, ".") {
-			fail(it, .Shader_Missing, span, name, fmt.tprintf("That is not one of the effects that come with rocinante (%s), and a shader of your own is a file with its extension, like `wave.hlsl`.", strings.join(roci.builtin_effect_names(), ", ", context.temp_allocator)), "", "effect \"blur\"")
+			fail(it, .Shader_Missing, span, name, fmt.tprintf("That is not one of the effects that come with rocinante (%s), and a shader of your own is a file with its extension, like `wave.hlsl`.", strings.join(roci.builtin_effect_names(), ", ", context.temp_allocator)), "", "shade \"spiral.hlsl\"" if fill else "effect \"blur\"")
 			return
 		}
-		fail(it, .Shader_Missing, span, name, "Shaders are found by their file name in your sketch's `assets` folder, and there is no file of that name there.", "", "effect \"wave.hlsl\"")
+		fail(it, .Shader_Missing, span, name, "Shaders are found by their file name in your sketch's `assets` folder, and there is no file of that name there.", "", strings.concatenate({verb, " \"wave.hlsl\""}, context.temp_allocator))
 	case .Ambiguous:
-		fail(it, .Shader_Missing, span, name, strings.concatenate({"Two or more files have that name: ", entry.others, ". Say which one you mean with its folder."}, context.temp_allocator), "", strings.concatenate({"effect \"", entry.suggest, "\""}, context.temp_allocator))
+		fail(it, .Shader_Missing, span, name, strings.concatenate({"Two or more files have that name: ", entry.others, ". Say which one you mean with its folder."}, context.temp_allocator), "", strings.concatenate({verb, " \"", entry.suggest, "\""}, context.temp_allocator))
 	case .Unreadable:
 		fail(it, .Shader_Missing, span, name, "The file could not be read.", "", example)
 	case .Broken:
@@ -286,15 +287,15 @@ say_shader_problem :: proc(it: ^Interp, name: string, entry: Shader_Entry, span:
 }
 
 @(private)
-say_shader_value :: proc(it: ^Interp, e: ^lang.IR, shader, value: string, known: []string) {
+say_shader_value :: proc(it: ^Interp, e: ^lang.IR, verb, shader, value: string, known: []string) {
 	have := "It reads no values: write `float amount;` at the top of the shader to give it one."
-	example := "effect \"wave.hlsl\" by { amount: 0.02 }"
+	example := ""
 	if len(known) > 0 {
 		have = fmt.tprintf("The values it reads are: %s.", strings.join(known, ", ", context.temp_allocator))
 		// the opening brace goes in as a value: in a format string it means something to fmt
-		example = fmt.tprintf("effect \"%s\" by %s %s: 1 }", shader, "{", known[0])
+		example = fmt.tprintf("%s \"%s\" by %s %s: 1 }", verb, shader, "{", known[0])
 	} else {
-		example = fmt.tprintf("effect \"%s\" by %s amount: 0.02 }", shader, "{")
+		example = fmt.tprintf("%s \"%s\" by %s amount: 0.02 }", verb, shader, "{")
 	}
 	fail(it, .Shader_Value, e.span, shader, value, have, example)
 }

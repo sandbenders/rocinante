@@ -106,6 +106,15 @@ test_a_value_the_shader_does_not_have_is_said_and_the_others_still_go :: proc(t:
 }
 
 @(test)
+test_a_wrong_value_given_to_shade_keeps_shade_in_the_fix :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "effects_shade_value", "shade \"paint.hlsl\" by { nope: 1 }\nrect at 0 0 size 5 5")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 1)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Shader_Value)
+	testing.expect(t, strings.has_prefix(p.errors[0].args[3], "shade \"paint.hlsl\""), p.errors[0].args[3])
+}
+
+@(test)
 test_a_shader_is_translated_once_and_again_when_its_file_changes :: proc(t: ^testing.T) {
 	p := run_effect_sketch(t, "effects_reload", "draw [ effect \"wave.hlsl\" ]")
 	defer finish(p)

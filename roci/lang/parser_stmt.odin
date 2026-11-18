@@ -157,6 +157,9 @@ parse_assignment :: proc(p: ^Parser) -> Stmt_Kind {
 	target := parse_path(p)
 	path := target.kind.(Path)
 	equals := advance(p)
+	if len(path.parts) == 1 && is_taken_name(p, path.parts[0]) && !registry.is_free_as_name(path.parts[0]) {
+		append(&p.shadowed, path.parts[0])
+	}
 	next := cur(p)
 	// Spaces after the equals sign mean nothing, even in a block on one line.
 	if next.kind == .Newline || next.kind == .End_Of_File || next.kind == .Close_Square || next.kind == .Close_Round || next.kind == .Close_Curly {
@@ -480,6 +483,8 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 		report(p, .Learn_Reserved_Name, name.span, verb_name, line_with(p, name.span, fmt.tprintf("my%s", verb_name)))
 	}
 	params := make([dynamic]string, p.alloc)
+	shadowed_before := len(p.shadowed)
+	defer resize(&p.shadowed, shadowed_before)
 	for {
 		t := cur(p)
 		if t.kind != .Name || is_word(p, t, "with") {
@@ -491,6 +496,7 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 			report(p, .Learn_Repeated_Parameter, t.span, param, line_with(p, t.span, fmt.tprintf("%s2", param)))
 		} else if is_taken_name(p, param) {
 			report(p, .Learn_Reserved_Name, t.span, param, line_with(p, t.span, fmt.tprintf("my%s", param)))
+			append(&p.shadowed, param)
 		}
 		append(&params, param)
 	}

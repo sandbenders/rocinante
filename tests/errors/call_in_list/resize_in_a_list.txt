@@ -1,0 +1,8 @@
+── A call inside a list goes in round brackets ───────── sketch.roci:2:3
+
+2 │   resize (load "reef.png") size 1440 0 as nearest
+  │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Each item of a list is one thing, so `resize` with its values reads as several. Wrap the whole call in round brackets and it is one item.
+
+Write:  ( resize (load "reef.png") size 1440 0 as nearest )

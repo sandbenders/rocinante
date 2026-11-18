@@ -58,6 +58,9 @@ find_callee :: proc(p: ^Parser) -> (info: Call_Info, used: int, ok: bool) {
 	if cur(p).kind != .Name {
 		return
 	}
+	if slice.contains(p.shadowed[:], text_of(p, cur(p))) {
+		return
+	}
 	words: [4]string
 	n := 0
 	for i := p.at; i < len(p.tokens) && n < len(words) && p.tokens[i].kind == .Name; i += 1 {
@@ -810,8 +813,71 @@ parse_list :: proc(p: ^Parser) -> ^Expr {
 			advance(p)
 			continue
 		}
+		if t.kind == .Name {
+			if call := call_without_brackets(p); call.end > call.start {
+				report(p, .Call_In_List, call, text_of(p, t), line_with(p, call, strings.concatenate({"( ", text_of_span(p, call), " )"}, p.alloc)))
+				p.at = call_end_token
+				p.last_end = call.end
+				continue
+			}
+		}
 		append(&items, parse_argument(p, plain = true))
 	}
+}
+
+// Set by `call_without_brackets`: the token just after the call it found.
+@(private, thread_local)
+call_end_token: int
+
+// The span of a call written as an item of a list without round brackets (`resize pic size 10 10`),
+// or an empty span when the item is not one. The call runs to the end of its line or its list.
+@(private)
+call_without_brackets :: proc(p: ^Parser) -> Span {
+	info, used, ok := find_callee(p)
+	if !ok {
+		return {}
+	}
+	next := p.tokens[min(p.at + used, len(p.tokens) - 1)]
+	takes_values := false
+	if info.taught != nil {
+		takes_values = len(info.taught.params) > 0 && is_argument_start(p, next)
+	} else if info.verb != nil {
+		for shape in info.verb.shapes {
+			takes_values ||= len(shape.params) > 0 && is_argument_start(p, next)
+		}
+		if next.kind == .Name {
+			_, is_option := option_arity(info, text_of(p, next), 0)
+			takes_values ||= is_option
+		}
+	}
+	if !takes_values {
+		return {}
+	}
+	depth := 0
+	i := p.at
+	last := p.tokens[p.at]
+	loop: for ; i < len(p.tokens); i += 1 {
+		#partial switch p.tokens[i].kind {
+		case .Open_Round, .Open_Curly, .Open_Square:
+			depth += 1
+		case .Close_Round, .Close_Curly:
+			depth -= 1
+		case .Close_Square:
+			if depth == 0 {
+				break loop
+			}
+			depth -= 1
+		case .Newline:
+			if depth == 0 {
+				break loop
+			}
+		case .End_Of_File:
+			break loop
+		}
+		last = p.tokens[i]
+	}
+	call_end_token = i
+	return Span{p.src.file, p.tokens[p.at].span.start, last.span.end}
 }
 
 // ---- expressions ----
@@ -1141,6 +1207,7 @@ parse_hole :: proc(p: ^Parser, from, to: int, hole: Span) -> ^Expr {
 		diags  = make([dynamic]Diagnostic, p.alloc),
 		groups = make([dynamic]Group_Kind, p.alloc),
 		wraps  = make([dynamic]Span, p.alloc),
+		shadowed = p.shadowed,
 	}
 	report_lexer_problems(&sub, Lexed{tokens = l.tokens[:], comments = l.comments[:], problems = l.problems[:]})
 	e := parse_expression(&sub)

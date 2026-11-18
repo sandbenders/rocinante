@@ -256,7 +256,7 @@ check_give :: proc(c: ^Checker, k: Give) -> IR_Stmt_Kind {
 		return IR_Give{value = value}
 	}
 	if !unify(c.types, c.verb.result, value.type) {
-		note(c, .Give_Kinds_Differ, k.value.span, c.verb.name, describe(c.types, c.verb.result), describe(c.types, value.type), fix(c, k.value.span, sample_of(c, c.verb.result)))
+		note(c, .Give_Kinds_Differ, k.value.span, c.verb.name, describe(c.types, c.verb.result), describe(c.types, value.type), "" if kind_of(c.types, c.verb.result) == .List || kind_of(c.types, c.verb.result) == .Record else fix(c, k.value.span, sample_of(c, c.verb.result)))
 	}
 	return IR_Give{value = value}
 }

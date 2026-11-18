@@ -1795,3 +1795,44 @@ test_count_takes_a_text_and_gives_its_characters :: proc(t: ^testing.T) {
 	expect_errors(t, "t = \"abc\"\nn = count t\nwhile (count t) < 6 [ t = t + \"x\" ]", {})
 	expect_errors(t, "n = count 5", {.Wrong_Argument_Kind})
 }
+
+@(test)
+test_a_name_that_is_a_word_is_said_once_and_its_uses_read_as_the_name :: proc(t: ^testing.T) {
+	// a parameter
+	expect_errors(t, "learn plug spot open [\n  if open > 0 [ circle at spot radius open ]\n]\nplug { 10, 10 } 5", {.Learn_Reserved_Name})
+	// a verb of the language used as a name for a value, then used inside another verb's arguments
+	expect_errors(t, "box = 3\nrect at box 10 size 130 200", {.Reserved_Name})
+	expect_errors(t, "limit = 5\nc = limit + 1", {.Reserved_Name})
+	// a parameter's name is the parameter's only inside its verb
+	expect_errors(t, "learn plug open [\n  give open\n]\nx = plug 1\nopen \"a.txt\"", {.Learn_Reserved_Name})
+}
+
+@(test)
+test_a_call_in_a_list_without_brackets_is_one_message :: proc(t: ^testing.T) {
+	expect_errors(t, "reef = [\n  resize (load \"x.png\") size 10 0 as nearest\n]", {.Call_In_List})
+	expect_errors(t, "L = [ random from 1 to 5 ]", {.Call_In_List})
+	// round brackets make it one item, and plain names and values are not calls
+	expect_errors(t, "L = [ (random from 1 to 5) 3 red ]", {})
+	expect_errors(t, "a = 1\nL = [ a a 2 ]", {})
+}
+
+@(test)
+test_a_name_given_a_new_list_no_longer_shares_the_old_one :: proc(t: ^testing.T) {
+	expect_errors(t, "pieces = [ 1 ]\nwhole = pieces\npieces = []\nadd 2 to pieces", {})
+	expect_errors(t, "pieces = [ 1 ]\nwhole = pieces\nwhole = [ 5 ]\nadd 2 to pieces", {})
+	// until it is given a new one, they are the same
+	expect_errors(t, "pieces = [ 1 ]\nwhole = pieces\nadd 2 to pieces", {.Shared_Change})
+}
+
+@(test)
+test_two_kinds_given_gives_no_sample_of_a_list :: proc(t: ^testing.T) {
+	got := check_text("learn f n [ if n < 0 [ give [ { 1, 2 } ] ] else [ give 3 ] ]\nx = f 1")
+	found := false
+	for d in got.checked.diagnostics {
+		if d.id == .Give_Kinds_Differ {
+			found = true
+			testing.expect_value(t, d.args[3], "")
+		}
+	}
+	testing.expect(t, found)
+}
