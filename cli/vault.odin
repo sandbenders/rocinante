@@ -9,6 +9,7 @@ import "../roci"
 import "../roci/toml"
 import "core:crypto"
 import "core:fmt"
+import "core:os"
 import "core:strings"
 
 VAULT_USAGE :: `roci vault show [--folder path]
@@ -22,6 +23,14 @@ roci vault forget <name> [--folder path]
 
 The folder is this one unless --folder says another. Its key is vault.key, which roci run makes
 the first time a sketch uses the vault.`
+
+// The full path of a file, or the path as given when it cannot be worked out.
+absolute_path :: proc(path: string) -> string {
+	if full, err := os.get_absolute_path(path, context.temp_allocator); err == nil {
+		return full
+	}
+	return path
+}
 
 run_vault :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	words := make([dynamic]string, context.temp_allocator)
@@ -72,6 +81,8 @@ run_vault :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	switch words[0] {
 	case "show":
 		text := toml.write(&doc, context.temp_allocator, true)
+		// where the file is, as a comment so what follows still reads as a file
+		fmt.sbprintf(out, "# %s\n", absolute_path(path))
 		if text == "" {
 			fmt.sbprintf(out, "The vault is empty.\n")
 		} else {

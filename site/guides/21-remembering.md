@@ -4,7 +4,7 @@ summary: "Keep a high score, a setting or a count in a file beside the sketch wi
 weight: 21
 ---
 
-A sketch forgets everything when it closes. Three verbs keep what you want: `remember` writes a value under a name, `recall` reads it back, and `forget` takes it away. The values go into a file called `memory.toml` beside `sketch.roci`.
+A sketch forgets everything when it closes. Three verbs keep what you want: `remember` writes a value under a name, `recall` reads it back, and `forget` takes it away. The values go into a file called `memory.toml` beside `sketch.roci` while you develop the sketch (a packaged sketch will keep them in the system's own place for an app's data, since an installed app cannot write beside itself). Keep the sketch's folder out of a folder that a cloud service syncs (iCloud Drive, Dropbox, OneDrive): the file is replaced each time it is written, and the services answer by keeping both, which leaves copies such as `vault 2.bin` behind.
 
 ```roci
 best = recall "best score" start 0

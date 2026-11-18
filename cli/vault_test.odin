@@ -38,7 +38,8 @@ test_vault_show_set_and_forget_work_on_a_folders_vault :: proc(t: ^testing.T) {
 	testing.expect(t, made)
 	code, out, _ = run("show", "--folder", folder)
 	testing.expect_value(t, code, 0)
-	testing.expect_value(t, out, "The vault is empty.\n")
+	testing.expect(t, strings.has_prefix(out, "# ") && strings.contains(out, "vault.bin\n"), out)
+	testing.expect_value(t, after_place(out), "The vault is empty.\n")
 	code, _, _ = run("set", "levels", "7", "--folder", folder)
 	testing.expect_value(t, code, 0)
 	code, _, _ = run("set", "name", "\"Ana\"", "--folder", folder)
@@ -46,7 +47,7 @@ test_vault_show_set_and_forget_work_on_a_folders_vault :: proc(t: ^testing.T) {
 	code, _, _ = run("set", "cleared", "[1, 2, 3]", "--folder", folder)
 	testing.expect_value(t, code, 0)
 	code, out, _ = run("show", "--folder", folder)
-	testing.expect_value(t, out, "levels = 7\nname = \"Ana\"\ncleared = [1.0, 2.0, 3.0]\n")
+	testing.expect_value(t, after_place(out), "levels = 7\nname = \"Ana\"\ncleared = [1.0, 2.0, 3.0]\n")
 	// a sketch's own run sees what was set
 	key, _ := roci.vault_key_for(folder, false)
 	doc, status := roci.vault_read_file(strings.concatenate({folder, "/vault.bin"}, context.temp_allocator), key)
@@ -62,7 +63,7 @@ test_vault_show_set_and_forget_work_on_a_folders_vault :: proc(t: ^testing.T) {
 	testing.expect_value(t, code, 1)
 	testing.expect(t, strings.contains(err, "keeps nothing"))
 	code, out, _ = run("show", "--folder", folder)
-	testing.expect_value(t, out, "name = \"Ana\"\ncleared = [1.0, 2.0, 3.0]\n")
+	testing.expect_value(t, after_place(out), "name = \"Ana\"\ncleared = [1.0, 2.0, 3.0]\n")
 	// the file does not show its values
 	data, _ := os.read_entire_file(strings.concatenate({folder, "/vault.bin"}, context.temp_allocator), context.temp_allocator)
 	testing.expect(t, !strings.contains(string(data), "Ana"))
@@ -94,4 +95,12 @@ test_vault_says_what_is_wrong_with_its_words_and_its_file :: proc(t: ^testing.T)
 	code, err = run("show", "--folder", folder)
 	testing.expect_value(t, code, 1)
 	testing.expect(t, strings.contains(err, "does not open"))
+}
+
+// What `roci vault show` wrote after its first line, which says where the vault is.
+after_place :: proc(out: string) -> string {
+	if at := strings.index_byte(out, '\n'); at >= 0 && strings.has_prefix(out, "# ") {
+		return out[at + 1:]
+	}
+	return out
 }
