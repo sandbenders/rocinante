@@ -37,6 +37,8 @@ x = 0
 x = x + SPEED
 ```
 
+A name cannot be a word the language already uses: `row`, `box`, `limit`, `radius`, `open`, `tint` and every color name are some of them. `roci check` says so where it meets one, and `roci man words` lists them all, so the list is there before the first try.
+
 ## Kinds of value
 
 | Kind          | Written                              |                                                               |

@@ -14,7 +14,8 @@ import "core:strings"
 MAN_USAGE :: `roci man [word]
 
   word  a verb (rect, random, no fill) or a statement (repeat, learn, on); with
-        nothing, every verb and statement is listed.`
+        nothing, every verb and statement is listed. 'words' lists the words
+        that cannot be the name of a variable or of a verb's value.`
 
 // The syntax with the optional parts, in square brackets, dimmed.
 @(private)
@@ -160,6 +161,40 @@ man_list_text :: proc() -> string {
 	return strings.to_string(b)
 }
 
+// The words the language keeps, which a sketch cannot use as the name of a variable or of a value a verb
+// takes, in lines that fit a terminal. A few are free in some places (`size` may name a variable): the
+// checker's own message says so when one is met, and this list is every word that is refused in at least one.
+@(private)
+man_words_text :: proc() -> string {
+	words := registry.reserved_words(context.temp_allocator)
+	b := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&b, "%s\n", term.out("words that cannot be names", .Bold_Cyan))
+	fmt.sbprintf(&b, "%s\n\n", term.out("The language already uses these, so a variable or a value a verb takes cannot be called one of them: pick another, such as `myrow` for `row`.", .Dim))
+	line_length := 0
+	count := 0
+	for word in words {
+		if strings.contains_rune(word, ' ') || !registry.is_reserved(word) || (registry.is_free_as_name(word) && registry.is_free_as_parameter(word)) {
+			continue
+		}
+		if line_length > 0 && line_length + len(word) + 2 > 76 {
+			strings.write_string(&b, "\n")
+			line_length = 0
+		}
+		if line_length == 0 {
+			strings.write_string(&b, "  ")
+			line_length = 2
+		} else {
+			strings.write_string(&b, " ")
+			line_length += 1
+		}
+		strings.write_string(&b, word)
+		line_length += len(word)
+		count += 1
+	}
+	fmt.sbprintf(&b, "\n\n%s\n", term.out(fmt.tprintf("%d words. A verb of more than one word, such as `no fill`, is not listed: its first word is free.", count), .Dim))
+	return strings.to_string(b)
+}
+
 @(private)
 first_sentence :: proc(text: string) -> string {
 	if at := strings.index(text, ". "); at >= 0 {
@@ -180,6 +215,12 @@ run_man :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		return 0 if args[0] == "--help" || args[0] == "-h" else 1
 	}
 	name := strings.join(args, " ", context.temp_allocator)
+	if name == "words" {
+		if _, is_verb := registry.find_verb(name); !is_verb {
+			fmt.sbprintf(out, "%s", man_words_text())
+			return 0
+		}
+	}
 	if verb, found := registry.find_verb(name); found {
 		fmt.sbprintf(out, "%s", man_verb_text(verb))
 		return 0
