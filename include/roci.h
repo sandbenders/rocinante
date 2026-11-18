@@ -409,6 +409,12 @@ double roci_map(double value, double from_low, double from_high, double to_low, 
 /* Keeps a number between a low and a high. */
 double roci_clamp(double value, double low, double high);
 
+/* The smaller of two numbers: `min 3 8` is 3. To keep a number from going above a limit, `min score 100`. */
+double roci_min(double a, double b);
+
+/* The larger of two numbers: `max 3 8` is 8. To keep a number from going below a limit, `max lives 0`. */
+double roci_max(double a, double b);
+
 /* The distance between two points. */
 double roci_dist(double x1, double y1, double x2, double y2);
 

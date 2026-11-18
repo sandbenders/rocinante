@@ -689,6 +689,18 @@ abi_clamp :: proc "c" (value, low, high: f64) -> f64 {
 	return clamp_between(value, low, high)
 }
 
+@(export, link_name = "roci_min")
+abi_min :: proc "c" (a, b: f64) -> f64 {
+	context = abi_context()
+	return smaller_of(a, b)
+}
+
+@(export, link_name = "roci_max")
+abi_max :: proc "c" (a, b: f64) -> f64 {
+	context = abi_context()
+	return larger_of(a, b)
+}
+
 @(export, link_name = "roci_dist")
 abi_dist :: proc "c" (x1, y1, x2, y2: f64) -> f64 {
 	context = abi_context()

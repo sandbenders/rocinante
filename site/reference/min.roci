@@ -1,0 +1,4 @@
+print (min 3 8)
+print (max 3 8)
+lives = 0 - 2
+print (max lives 0)

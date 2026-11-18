@@ -395,6 +395,8 @@ VERBS := []Verb{
 	// Maths
 	{"map", {{{{"value", .Number}, {"from_low", .Number}, {"from_high", .Number}, {"to_low", .Number}, {"to_high", .Number}}, nil, .Number}}, "Moves a number from one range to another."},
 	{"clamp", {{{{"value", .Number}, {"low", .Number}, {"high", .Number}}, nil, .Number}}, "Keeps a number between a low and a high."},
+	{"min", {{{{"a", .Number}, {"b", .Number}}, nil, .Number}}, "The smaller of two numbers: `min 3 8` is 3. To keep a number from going above a limit, `min score 100`."},
+	{"max", {{{{"a", .Number}, {"b", .Number}}, nil, .Number}}, "The larger of two numbers: `max 3 8` is 8. To keep a number from going below a limit, `max lives 0`."},
 	{"dist", {
 		{{{"x1", .Number}, {"y1", .Number}, {"x2", .Number}, {"y2", .Number}}, nil, .Number},
 		{{{"a", .Vector}, {"b", .Vector}}, nil, .Number},

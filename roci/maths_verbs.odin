@@ -94,6 +94,28 @@ clamp_between :: proc(value, low, high: f64) -> f64 {
 	return clamp(value, low, high)
 }
 
+// The smaller of two numbers (`min`). A number that is not a number loses to one that is.
+smaller_of :: proc(a, b: f64) -> f64 {
+	if a != a {
+		return b
+	}
+	if b != b {
+		return a
+	}
+	return a if a < b else b
+}
+
+// The larger of two numbers (`max`).
+larger_of :: proc(a, b: f64) -> f64 {
+	if a != a {
+		return b
+	}
+	if b != b {
+		return a
+	}
+	return a if a > b else b
+}
+
 // The distance between two points (`dist`).
 dist_xy :: proc(x1, y1, x2, y2: f64) -> f64 {
 	return math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))

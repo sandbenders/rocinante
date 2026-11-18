@@ -268,6 +268,8 @@ abi_table_init :: proc "contextless" () {
 	{"roci_show_turtle", "show turtle", 0, typeid_of(type_of(abi_show_turtle)), "", ""},
 	{"roci_map", "map", 0, typeid_of(type_of(abi_map)), "", ""},
 	{"roci_clamp", "clamp", 0, typeid_of(type_of(abi_clamp)), "", ""},
+	{"roci_min", "min", 0, typeid_of(type_of(abi_min)), "", ""},
+	{"roci_max", "max", 0, typeid_of(type_of(abi_max)), "", ""},
 	{"roci_dist", "dist", 0, typeid_of(type_of(abi_dist)), "", ""},
 	{"roci_dist_v", "dist", 1, typeid_of(type_of(abi_dist_v)), "", ""},
 	{"roci_atan", "atan", 0, typeid_of(type_of(abi_atan)), "", ""},

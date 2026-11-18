@@ -108,6 +108,8 @@ API_NAMES := [?]Api_Entry{
 	{"roll", "turtle_roll"},
 	{"map", "map_range"},
 	{"clamp", "clamp_between"},
+	{"min", "smaller_of"},
+	{"max", "larger_of"},
 	{"dist", "dist"},
 	{"atan", "atan"},
 	{"normalize", "normalize"},

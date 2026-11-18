@@ -29,7 +29,7 @@ draw [
   fill gray
   rect at 40 250 size 560 18
   fill gold
-  rect at 40 250 size (clamp (stage * 28) 0 560) 18
+  rect at 40 250 size (min (stage * 28) 560) 18
   fill white
   text "level {stage}" at 40 40 size 28
   text "coins {coins}" at 40 80 size 28

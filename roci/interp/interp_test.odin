@@ -2792,3 +2792,8 @@ test_for_counts_up_and_runs_no_times_when_the_end_is_below_the_start :: proc(t: 
 test_down_to_counts_down_and_by_steps_it :: proc(t: ^testing.T) {
 	expect_printed(t, "for i from 3 down to 1 [ print i ]\nfor i from 10 down to 0 by 5 [ print i ]\nfor i from 0 down to 1 [ print i ]", "3\n2\n1\n10\n5\n0")
 }
+
+@(test)
+test_min_and_max_give_the_smaller_and_the_larger_of_two_numbers :: proc(t: ^testing.T) {
+	expect_printed(t, "print (min 3 8)\nprint (max 3 8)\nprint (min -2 -5)\nprint (max 4 4)\nscore = 130\nprint (min score 100)\nprint (max (0 - 2) 0)", "3\n8\n-5\n4\n100\n0")
+}

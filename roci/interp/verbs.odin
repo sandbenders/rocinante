@@ -864,6 +864,10 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return roci.map_range(n(a, 0), n(a, 1), n(a, 2), n(a, 3), n(a, 4))
 	case .Clamp:
 		return roci.clamp_between(n(a, 0), n(a, 1), n(a, 2))
+	case .Min:
+		return roci.smaller_of(n(a, 0), n(a, 1))
+	case .Max:
+		return roci.larger_of(n(a, 0), n(a, 1))
 	case .Dist:
 		if call.shape == 0 {
 			return roci.dist_xy(n(a, 0), n(a, 1), n(a, 2), n(a, 3))

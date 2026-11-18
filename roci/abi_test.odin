@@ -6,6 +6,7 @@ package roci
 
 import "base:runtime"
 import "core:c"
+import "core:math"
 import "core:os"
 import "core:strings"
 import "core:testing"
@@ -323,4 +324,14 @@ test_c_draws_a_polygon_through_its_corners :: proc(t: ^testing.T) {
 	list := recorded(current_window())
 	testing.expect_value(t, len(list), 1)
 	testing.expect_value(t, list[0].kind, gfx.Kind.Path)
+}
+
+@(test)
+test_the_c_functions_min_and_max_give_the_smaller_and_the_larger :: proc(t: ^testing.T) {
+	testing.expect_value(t, abi_min(3, 8), 3)
+	testing.expect_value(t, abi_max(3, 8), 8)
+	testing.expect_value(t, abi_min(-2, -5), -5)
+	nan := math.nan_f64()
+	testing.expect_value(t, abi_min(nan, 4), 4)
+	testing.expect_value(t, abi_max(4, nan), 4)
 }
