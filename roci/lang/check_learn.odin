@@ -26,6 +26,15 @@ Verb_Ctx :: struct {
 	name:   string,
 	result: Type_Id,
 	gives:  bool,
+	span:    Span,     // the whole `learn`, to show it with a name changed
+	touched: [dynamic]^Symbol, // the sketch-wide names this verb has read or written so far
+	pending: [dynamic]Pending_Hint, // sketch-wide names given a value before being read here: said if the verb then reads them
+}
+
+@(private)
+Pending_Hint :: struct {
+	sym:  ^Symbol,
+	span: Span,
 }
 
 // The `learn` statements at the top of the sketch. A verb taught inside a block is
@@ -200,7 +209,7 @@ instantiate :: proc(c: ^Checker, decl: ^Learn_Decl, arg_types: []Type_Id, unused
 	c.locals = make([dynamic]^Symbol, c.alloc)
 	c.verb_locals = make([dynamic]^Symbol, c.alloc)
 	c.walking = make([dynamic]string, c.alloc)
-	ctx := Verb_Ctx{name = learn.name, result = inst.result, gives = gives}
+	ctx := Verb_Ctx{name = learn.name, result = inst.result, gives = gives, span = decl.span, touched = make([dynamic]^Symbol, c.alloc), pending = make([dynamic]Pending_Hint, c.alloc)}
 	c.verb = &ctx
 	c.deferred += 1
 	c.instances_open += 1

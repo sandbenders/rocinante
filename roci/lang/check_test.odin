@@ -1849,3 +1849,14 @@ test_put_takes_a_list_and_the_number_of_an_item :: proc(t: ^testing.T) {
 	expect_errors(t, "xs = [ 1 2 3 ]\nput xs 2 \"a\"", {.Wrong_Argument_Kind})
 	expect_errors(t, "XS = [ 1 2 3 ]\nput XS 2 20", {.Constant_Changed})
 }
+
+@(test)
+test_a_verb_that_gives_a_sketch_name_a_value_from_its_parameters_and_reads_it_gets_a_hint :: proc(t: ^testing.T) {
+	expect_errors(t, "speed = 3\nlearn swim n [\n  speed = n * 2\n  give speed + 1\n]\nprint (swim 4)", {.Verb_Sets_Sketch_Name})
+	// a reset, a value that has nothing of the verb's in it, or a name read before it is set is the point of the verb
+	expect_errors(t, "ships = [ 1 ]\nlearn restart [\n  ships = []\n  add 2 to ships\n]\nrestart", {})
+	expect_errors(t, "speed = 3\nlearn swim n [\n  give speed + n\n  speed = n\n]\nprint (swim 4)", {})
+	expect_errors(t, "score = 0\nlearn bump n [\n  score = score + n\n]\nbump 2", {})
+	// a name only the verb has is its own
+	expect_errors(t, "learn swim n [\n  speed = n * 2\n  give speed + 1\n]\nprint (swim 4)", {})
+}

@@ -1,0 +1,6 @@
+speed = 3
+learn swim n [
+  speed = n * 2
+  give speed + 1
+]
+print (swim 4)

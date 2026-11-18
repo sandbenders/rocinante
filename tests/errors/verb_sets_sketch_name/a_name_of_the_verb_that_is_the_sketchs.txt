@@ -1,0 +1,12 @@
+── Hint: `swim` changes the sketch's `speed` ─────────── sketch.roci:3:3
+
+3 │   speed = n * 2
+  │   ^^^^^
+
+`speed` is a name of the sketch (line 1), and here, before reading it, `swim` gives it a new value, which every other verb and the sketch see. If you wanted a name of the verb's own, pick one the sketch does not use. If changing the sketch's `speed` is the point, this hint is only a reminder.
+
+With a name of the verb's own:
+    learn swim n [
+      speed_here = n * 2
+      give speed_here + 1
+    ]

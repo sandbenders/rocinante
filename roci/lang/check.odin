@@ -191,6 +191,7 @@ Checker :: struct {
 	instance_keys: map[string]^IR_Instance,
 	verb_locals:   [dynamic]^Symbol,       // parameters and names made inside the taught verb being checked
 	verb:          ^Verb_Ctx,              // that verb, or nil outside one
+	assigning:     bool,                   // `touch` is for a write, not a read
 	aliases:       [dynamic]Alias,         // `b = a` of a list or record: two names, one value
 	msg_types:     map[string]Type_Id,     // what is sent to each window, by the name that is sent to (check_messages.odin)
 	msg_mixed:     map[string]bool,        // windows that are sent different kinds of value
@@ -341,6 +342,20 @@ lookup :: proc(c: ^Checker, name: string) -> ^Symbol {
 // can list what it captures (for the code generator's optimisation passes).
 @(private)
 touch :: proc(c: ^Checker, s: ^Symbol) {
+	if c.verb != nil && s.scope == 0 {
+		if !slice.contains(c.verb.touched[:], s) {
+			append(&c.verb.touched, s)
+		}
+		// Read after the verb gave it a value: it was used as a name of the verb's own.
+		if !c.assigning {
+			for i := len(c.verb.pending) - 1; i >= 0; i -= 1 {
+				if p := c.verb.pending[i]; p.sym == s {
+					note(c, .Verb_Sets_Sketch_Name, p.span, s.name, fmt.tprintf("%d", line_number(c, s.first_write)), c.verb.name, renamed_in(span_text(c.src, c.verb.span), s.name, strings.concatenate({s.name, "_here"}, context.temp_allocator)))
+					ordered_remove(&c.verb.pending, i)
+				}
+			}
+		}
+	}
 	for &f in c.frames {
 		if f.depth > s.scope && !slice.contains(f.seen[:], s) {
 			append(&f.seen, s)
@@ -759,7 +774,15 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 		unknown_name(c, span, name)
 		return IR_Error_Stmt{}
 	}
+	// A sketch-wide name that a verb gives a value before it has read it there looks like a name of the
+	// verb's own, which it is not: every other verb and the sketch see the change.
+	pend := c.verb != nil && len(k.target.parts) == 1 && sym.scope == 0 && sym.kind == .Variable && !slice.contains(c.verb.touched[:], sym) && sym.first_write.start != span.start && uses_a_parameter(c, k.value.span)
+	c.assigning = true
 	touch(c, sym)
+	c.assigning = false
+	if pend {
+		append(&c.verb.pending, Pending_Hint{sym, span})
+	}
 	if len(k.target.parts) == 1 && slice_contains(c.walking[:], name) {
 		changed_while_walking(c, name, span)
 	}
@@ -791,6 +814,46 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 		}
 	}
 	return IR_Assign{target = sym, value = value}
+}
+
+// `text` with every whole word `word` written as `with`, so a fix can show a verb with a name of its own.
+@(private)
+renamed_in :: proc(text, word, with: string) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	i := 0
+	for i < len(text) {
+		if strings.has_prefix(text[i:], word) && (i == 0 || !is_name_rune(rune(text[i - 1]))) && (i + len(word) == len(text) || !is_name_rune(rune(text[i + len(word)]))) {
+			strings.write_string(&b, with)
+			i += len(word)
+		} else {
+			strings.write_byte(&b, text[i])
+			i += 1
+		}
+	}
+	return strings.to_string(b)
+}
+
+// Whether the text of a value names a parameter of the verb being checked: a name worked out from what the verb
+// was given is what a name of the verb's own looks like, where a reset (`ships = []`) is not.
+@(private)
+uses_a_parameter :: proc(c: ^Checker, span: Span) -> bool {
+	text := span_text(c.src, span)
+	start := -1
+	for i := 0; i <= len(text); i += 1 {
+		in_name := i < len(text) && is_name_rune(rune(text[i]))
+		if in_name && start < 0 {
+			start = i
+		} else if !in_name && start >= 0 {
+			word := text[start:i]
+			start = -1
+			for s in c.verb_locals {
+				if s.kind == .Parameter && s.name == word {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 @(private)
@@ -1411,7 +1474,7 @@ check_check :: proc(c: ^Checker, k: Check) -> IR_Stmt_Kind {
 	c.locals = make([dynamic]^Symbol, c.alloc)
 	c.verb_locals = make([dynamic]^Symbol, c.alloc)
 	c.walking = make([dynamic]string, c.alloc)
-	ctx := Verb_Ctx{name = k.name}
+	ctx := Verb_Ctx{name = k.name, touched = make([dynamic]^Symbol, c.alloc), pending = make([dynamic]Pending_Hint, c.alloc)}
 	c.verb = &ctx
 	c.deferred += 1 // it runs after the sketch has set itself up, so every name has a value
 	body := check_block(c, k.body, false)
