@@ -488,6 +488,36 @@ is_table :: proc(items: []^Expr) -> bool {
 	return true
 }
 
+// The comments written inside a record or a list between `from` and `to`, split into the ones on a line
+// of their own (they stay above what follows) and one that ends the line of `previous_end` (it stays
+// there). `p.next` moves past them, so the statement that holds the record does not write them again.
+@(private)
+inner_comments :: proc(p: ^Printer, from, to, previous_end: int) -> (lead: []string, trail: string) {
+	out := make([dynamic]string, context.temp_allocator)
+	for c, i in p.comments {
+		if c.span.start < from || c.span.start >= to {
+			continue
+		}
+		p.next = max(p.next, i + 1)
+		if previous_end >= 0 && !c.own_line && src_line(p, c.span.start) == src_line(p, max(previous_end - 1, 0)) && trail == "" {
+			trail = comment_text(p, c)
+			continue
+		}
+		append(&out, comment_text(p, c))
+	}
+	return out[:], trail
+}
+
+@(private)
+comment_inside :: proc(p: ^Printer, span: Span) -> bool {
+	for c in p.comments {
+		if c.span.start >= span.start && c.span.start < span.end {
+			return true
+		}
+	}
+	return false
+}
+
 // `{ a: 1, b: 2 }` on one line, or one field to a line without commas when it was
 // written over lines or is too long.
 @(private)
@@ -496,18 +526,49 @@ record_text :: proc(p: ^Printer, e: ^Expr, k: Record_Lit, level: int, column: in
 		return "{}"
 	}
 	parts := make([dynamic]string, context.temp_allocator)
+	leads := make([dynamic][]string, context.temp_allocator)
+	trails := make([dynamic]string, context.temp_allocator)
+	commented := comment_inside(p, e.span)
+	previous_end := -1
+	from := e.span.start
 	for f in k.fields {
+		lead, trail := inner_comments(p, from, f.span.start, previous_end)
+		if trail != "" && len(trails) > 0 {
+			trails[len(trails) - 1] = trail
+		}
+		append(&leads, lead)
+		append(&trails, "")
 		append(&parts, strings.concatenate({f.name, ": ", expr_text(p, f.value, level + 1, (level + 1) * 2 + len(f.name) + 2)}, context.temp_allocator))
+		previous_end = f.value.span.end
+		from = previous_end
+	}
+	closing, closing_trail := inner_comments(p, from, e.span.end, previous_end)
+	if closing_trail != "" {
+		trails[len(trails) - 1] = closing_trail
 	}
 	inline := strings.concatenate({"{ ", strings.join(parts[:], ", ", context.temp_allocator), " }"}, context.temp_allocator)
-	if !spans_lines(p, e.span) && !too_wide(p, column, inline) {
+	if !commented && !spans_lines(p, e.span) && !too_wide(p, column, inline) {
 		return inline
 	}
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_string(&b, "{\n")
-	for part in parts {
+	for part, i in parts {
+		for line in leads[i] {
+			strings.write_string(&b, indent_text(level + 1))
+			strings.write_string(&b, line)
+			strings.write_string(&b, "\n")
+		}
 		strings.write_string(&b, indent_text(level + 1))
 		strings.write_string(&b, part)
+		if trails[i] != "" {
+			strings.write_string(&b, "  ")
+			strings.write_string(&b, trails[i])
+		}
+		strings.write_string(&b, "\n")
+	}
+	for line in closing {
+		strings.write_string(&b, indent_text(level + 1))
+		strings.write_string(&b, line)
 		strings.write_string(&b, "\n")
 	}
 	strings.write_string(&b, indent_text(level))
@@ -522,19 +583,60 @@ list_text :: proc(p: ^Printer, e: ^Expr, k: List_Lit, level: int, column: int) -
 		return "[]"
 	}
 	parts := make([dynamic]string, context.temp_allocator)
+	leads := make([dynamic][]string, context.temp_allocator)
+	trails := make([dynamic]string, context.temp_allocator)
+	commented := comment_inside(p, e.span)
 	// the rows of a table keep to one line each up to a wider limit, so a table of six stages stays six lines
 	saved := p.table
 	p.table = is_table(k.items)
+	previous_end := -1
+	from := e.span.start
 	for item in k.items {
+		lead, trail := inner_comments(p, from, item.span.start, previous_end)
+		if trail != "" && len(trails) > 0 {
+			trails[len(trails) - 1] = trail
+		}
+		append(&leads, lead)
+		append(&trails, "")
 		append(&parts, expr_text(p, item, level + 1, (level + 1) * 2))
+		previous_end = item.span.end
+		from = previous_end
+	}
+	closing, closing_trail := inner_comments(p, from, e.span.end, previous_end)
+	if closing_trail != "" {
+		trails[len(trails) - 1] = closing_trail
 	}
 	p.table = saved
 	inline := strings.concatenate({"[ ", strings.join(parts[:], " ", context.temp_allocator), " ]"}, context.temp_allocator)
-	if !spans_lines(p, e.span) && !too_wide(p, column, inline) {
+	if !commented && !spans_lines(p, e.span) && !too_wide(p, column, inline) {
 		return inline
 	}
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_string(&b, "[\n")
+	if commented {
+		for part, i in parts {
+			for line in leads[i] {
+				strings.write_string(&b, indent_text(level + 1))
+				strings.write_string(&b, line)
+				strings.write_string(&b, "\n")
+			}
+			strings.write_string(&b, indent_text(level + 1))
+			strings.write_string(&b, part)
+			if trails[i] != "" {
+				strings.write_string(&b, "  ")
+				strings.write_string(&b, trails[i])
+			}
+			strings.write_string(&b, "\n")
+		}
+		for line in closing {
+			strings.write_string(&b, indent_text(level + 1))
+			strings.write_string(&b, line)
+			strings.write_string(&b, "\n")
+		}
+		strings.write_string(&b, indent_text(level))
+		strings.write_string(&b, "]")
+		return strings.to_string(b)
+	}
 	// A list written in rows (a grid of numbers, a table of names) keeps its rows: the items that
 	// shared a line in the source still do, when the list was written over lines and any line held
 	// more than one. Otherwise (a long list written on one line) it is one item to a line.

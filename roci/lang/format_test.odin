@@ -411,3 +411,16 @@ test_a_row_past_120_columns_and_records_of_different_fields_break_at_the_old_lim
 	mixed := "things = [\n  { name: \"alpha stage\", speed: 12, power: 30, color: red, label: \"first of the six stages here\" }\n  { name: \"beta stage\", other: 14, power: 35, color: green, label: \"second of the six stages here and more\" }\n]\n"
 	expect_formatted(t, mixed, "things = [\n  { name: \"alpha stage\", speed: 12, power: 30, color: red, label: \"first of the six stages here\" }\n  {\n    name: \"beta stage\"\n    other: 14\n    power: 35\n    color: green\n    label: \"second of the six stages here and more\"\n  }\n]\n")
 }
+
+@(test)
+test_a_comment_inside_a_record_or_a_list_stays_before_the_item_that_follows_it :: proc(t: ^testing.T) {
+	record := "cursed = []\nadd {\n  phase: random 360\n  // where it aims\n  aim: { 1, 2 }\n} to cursed\n"
+	expect_formatted(t, record, record)
+	// a comment at the end of a line stays there, and one before the closing bracket stays inside
+	both := "x = {\n  a: 1  // one\n  b: 2\n  // the last\n}\n"
+	expect_formatted(t, both, both)
+	list := "L = [\n  // first\n  1\n  2  // two\n  3\n]\n"
+	expect_formatted(t, list, list)
+	// a record with no comment still goes on one line
+	expect_formatted(t, "x = { a: 1, b: 2 }\n", "x = { a: 1, b: 2 }\n")
+}
