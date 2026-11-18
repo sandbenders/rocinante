@@ -395,7 +395,7 @@ CATALOGUE := [Message_Id]Entry{
 		"`{a}` is not a name you have given a value, and it is not a verb or a built-in value either. {b}",
 		"{c}", "{d}"},
 	.No_Value_Yet = {.Error, "`{a}` has no value yet",
-		"`{a}` is given its value further down the sketch, but this line runs first, so it has nothing to use. Give it a value above this line.",
+		"`{a}` is given its value further down the sketch, but this line runs first, so it has nothing to use. Give it a value above this line. {b}",
 		"Write:", "{d}"},
 	.Kind_Conflict = {.Error, "`{a}` keeps one kind of value",
 		"`{a}` holds {b}, but here it is given {c}. A name keeps one kind of value; use a new name for {c}.",

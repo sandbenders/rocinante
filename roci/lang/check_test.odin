@@ -1860,3 +1860,26 @@ test_a_verb_that_gives_a_sketch_name_a_value_from_its_parameters_and_reads_it_ge
 	// a name only the verb has is its own
 	expect_errors(t, "learn swim n [\n  speed = n * 2\n  give speed + 1\n]\nprint (swim 4)", {})
 }
+
+@(test)
+test_a_name_used_before_a_later_file_gives_it_says_which_file_does :: proc(t: ^testing.T) {
+	files := []File_Text{
+		{name = "crowd.roci", text = "KIND_FREED = [ CREAM BLUSH ]\n"},
+		{name = "look.roci", text = "CREAM = 1\nBLUSH = 2\n"},
+		{name = "sketch.roci", text = "print KIND_FREED\n"},
+	}
+	got := check_files(files)
+	found := false
+	for d in got.checked.diagnostics {
+		if d.id == .No_Value_Yet {
+			found = true
+			testing.expect(t, strings.contains(d.args[1], "`look.roci`") && strings.contains(d.args[1], "`crowd.roci`") && strings.contains(d.args[1], "order of their names"), d.args[1])
+		}
+	}
+	testing.expect(t, found, "the name has no value yet")
+	// in one file there is nothing to add
+	single := check_text("a = b\nb = 1")
+	for d in single.checked.diagnostics {
+		testing.expect_value(t, d.args[1], "")
+	}
+}

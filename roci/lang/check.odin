@@ -1023,7 +1023,13 @@ check_path :: proc(c: ^Checker, e: ^Expr, path: Path) -> ^IR {
 		// A name read before its first value, in the order the sketch runs.
 		if sym.kind == .Variable || sym.kind == .Constant {
 			if c.deferred == 0 && !sym.written && e.span.start < sym.first_write.start {
-				note(c, .No_Value_Yet, e.span, word, "", "", fmt.tprintf("%s = 0\n%s", word, text_at_line(c, e.span)))
+				explain := ""
+				here, here_found := part_of(c.src, e.span.start)
+				there, there_found := part_of(c.src, sym.first_write.start)
+				if here_found && there_found && here.name != there.name {
+					explain = fmt.tprintf("It is given in `%s`, which is read after `%s`: the files of a sketch are read in the order of their names, and a value can only use what an earlier line gave. Give the value in a file whose name comes first, or write it in this file.", there.name, here.name)
+				}
+				note(c, .No_Value_Yet, e.span, word, explain, "", fmt.tprintf("%s = 0\n%s", word, text_at_line(c, e.span)))
 				return error_ir(c, e.span)
 			}
 		}
