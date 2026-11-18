@@ -65,7 +65,7 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"align", "alpha", "angle", "around", "as", "at", "attack", "bend", "blend", "bordered", "buffer", "by", "channel", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "height", "in",
+	"align", "alpha", "angle", "around", "as", "at", "attack", "bend", "blend", "bordered", "buffer", "by", "channel", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "header", "height", "in",
 	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "player", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "sheet", "size", "smallest", "speed", "start", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "tube", "velocity", "vibrato", "visible", "volume", "width",
 }
 
@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "pi", "pmouse", "pressed", "scene", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
+	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "pi", "pmouse", "pressed", "reply", "scene", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -91,6 +91,7 @@ Value_Def :: struct {
 
 VALUE_DEFS := [?]Value_Def{
 	{"anywhere", .Vector, 2, "A random point in the window, different each time it is read."},
+	{"reply", .Record, 0, "The answer a `fetch` block runs for: `reply.status` (the number the server answered with, 0 when nothing came), `reply.ok` (true for a status from 200 to 299), `reply.text` (what came, as text), `reply.problem` (why nothing came, empty otherwise) and `reply.picture` (what came as a picture, when the fetch said `as picture`). Outside a `fetch` block it is an answer with a status of 0."},
 	{"chosen", .Text, 0, "The path the player chose, inside the block of an `ask file`, `ask folder` or `ask save`: the whole path, with the folders it is in. It is empty text anywhere else."},
 	{"clipboard", .Text, 0, "The text on the computer's clipboard, empty when there is none or when it holds something that is not text: `pasted = clipboard`. `copy to clipboard` puts text there."},
 	{"false", .Boolean, 0, "The value of a condition that does not hold."},

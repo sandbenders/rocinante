@@ -1,0 +1,4 @@
+status: text
+page_length: a number
+logo: a picture
+got_logo: true or false

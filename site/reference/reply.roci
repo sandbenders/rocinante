@@ -1,0 +1,11 @@
+// reply is the answer inside the block of a fetch
+state = "waiting"
+fetch "https://rocinante-lang.org/" [
+  state = "status " + reply.status + ", ok is " + reply.ok
+]
+
+draw [
+  background 245
+  fill 40
+  text state at 20 60 size 18
+]

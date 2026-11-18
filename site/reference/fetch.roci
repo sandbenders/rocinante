@@ -1,0 +1,14 @@
+message = "asking..."
+fetch "https://rocinante-lang.org/" [
+  if reply.ok [
+    message = "the page has " + (count reply.text) + " letters"
+  ] else [
+    message = "nothing came: " + reply.problem
+  ]
+]
+
+draw [
+  background 245
+  fill 40
+  text message at 20 60 size 18
+]

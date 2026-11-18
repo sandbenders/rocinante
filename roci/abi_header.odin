@@ -86,6 +86,9 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"ask save", "roci_ask roci_answer", ""},
 	{"read", "roci_read_file", ""},
 	{"open", "roci_open", ""},
+	{"fetch", "roci_fetch roci_fetch_done roci_fetch_status roci_fetch_text roci_fetch_problem roci_fetch_picture roci_fetch_forget", ""},
+	{"fetch picture", "roci_fetch roci_fetch_done roci_fetch_picture roci_fetch_forget", ""},
+	{"post", "roci_fetch roci_fetch_done roci_fetch_status roci_fetch_text roci_fetch_forget", ""},
 	{"copy to clipboard", "roci_set_clipboard", ""},
 	{"record", "roci_record roci_record_sound roci_no_record", ""},
 	{"no record", "roci_no_record roci_no_record_sound", ""},
@@ -394,6 +397,7 @@ abi_table_init :: proc "contextless" () {
 	abi_memory_group(&all)
 	abi_files_group(&all)
 	abi_dialogs_group(&all)
+	abi_fetch_group(&all)
 	ABI_TABLE = all[:]
 }
 

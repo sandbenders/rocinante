@@ -1,0 +1,10 @@
+message = "sending..."
+post "https://example.org/scores" "ada 120" [
+  message = "the server said " + reply.status
+] header "Content-Type: text/plain"
+
+draw [
+  background 245
+  fill 40
+  text message at 20 60 size 18
+]

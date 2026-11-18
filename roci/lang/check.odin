@@ -1114,6 +1114,7 @@ type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
 	case "midi":    return midi_type(c)
 	case "scene":   return scene_type(c)
 	case "osc":     return osc_type(c)
+	case "reply":   return reply_type(c)
 	case "gamepad": return gamepad_type(c)
 	case "gamepads": return list_of(c.types, gamepad_type(c))
 	case "joysticks": return list_of(c.types, joystick_type(c))
@@ -1466,6 +1467,23 @@ osc_type :: proc(c: ^Checker) -> Type_Id {
 		add_field(c.types, shape, "text", T_TEXT)
 		add_field(c.types, shape, "value", T_NUMBER)
 		add_field(c.types, shape, "args", list_of(c.types, T_BOXED))
+	}
+	return record_of(c.types, shape)
+}
+
+// The record `reply` is inside a `fetch` block: what came back, one shape for the whole sketch.
+@(private)
+reply_type :: proc(c: ^Checker) -> Type_Id {
+	REPLY_SITE :: -8
+	shape, known := c.sites[REPLY_SITE]
+	if !known {
+		shape = new_shape(c.types, c.alloc)
+		c.sites[REPLY_SITE] = shape
+		add_field(c.types, shape, "status", T_NUMBER)
+		add_field(c.types, shape, "ok", T_BOOLEAN)
+		add_field(c.types, shape, "text", T_TEXT)
+		add_field(c.types, shape, "problem", T_TEXT)
+		add_field(c.types, shape, "picture", T_IMAGE)
 	}
 	return record_of(c.types, shape)
 }

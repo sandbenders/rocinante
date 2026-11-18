@@ -62,6 +62,7 @@ EXAMPLES := [?]Example{
 	{"data", 2, {1}}, // the birds, the bars and the poem read from the three files of assets/data (the saved summary comes in the interpreter's test)
 	{"city", 2, {1}}, // six buildings, a skyline and the road, every wall and roof a polygon
 	{"dialogs", 2, {1}}, // the picture from assets and the line about it (the dialogs are answered in the interpreter's test)
+	{"fetch", 2, {1}}, // the sketch waiting for its answers: a headless run fetches nothing (the answers are given in the interpreter's test)
 	{"vault", 2, {1}}, // the level and the coins a first run starts with (what the vault keeps comes in the interpreter's test)
 	{"gamepad", 2, {1}}, // the invitation to plug a gamepad in (a headless run has none; the panels come in the interpreter's test)
 	{"particles", 60, {1}}, // the fountain a second after it starts: 10,000 records

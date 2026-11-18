@@ -171,6 +171,7 @@ frame_hook :: proc(w: roci.Window) {
 			return
 		}
 		run_asks(p)
+		run_fetches(p)
 		say_save_problems(p)
 		say_record_results(p)
 		maybe_collect(p)

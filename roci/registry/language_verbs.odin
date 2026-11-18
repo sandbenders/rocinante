@@ -40,6 +40,11 @@ FLIP_OPTIONS := []Option{
 	{"as", {.Name}, false},
 }
 
+// What `fetch` and `post` take after their block: a header line to send with the request.
+FETCH_OPTIONS := []Option{
+	{"header", {.Text}, false},
+}
+
 // What `filter` takes: which filter, and how much of it (a brightness, a number of steps, a radius
 // or a block size in pixels, by the filter).
 FILTER_OPTIONS := []Option{
@@ -165,6 +170,9 @@ LANGUAGE_VERBS := []Verb{
 		{{{"body", .Block}}, nil, .None},
 		{{{"name", .Text}, {"body", .Block}}, nil, .None},
 	}, "Shows the system's dialog for choosing where to save a file and runs its block when the player has chosen, with `chosen` the whole path: `ask save \"poster.png\" [ save chosen ]`. The text is the name the dialog starts with, and its ending says which kind of file to show. Nothing is written until the block does it."},
+	{"fetch", {{{{"address", .Text}, {"body", .Block}}, FETCH_OPTIONS, .None}}, "Gets what is at a web address (http or https) without making the sketch wait, and runs its block when the answer has come: `fetch \"https://example.org/hello.txt\" [ print reply.text ]`. Inside the block `reply` is a record with `status` (the number the server answered with, 200 for a good answer, and 0 when nothing came), `ok` (true for a status from 200 to 299), `text` (what came, as text), `problem` (why nothing came, in words, otherwise empty) and `picture`, which `fetch picture` fills. `header \"Authorization: Bearer abc\"` after the block adds a header line. An answer over 64 megabytes, or one that has not come in 30 seconds, is a failure, and only http and https addresses are fetched. At most eight fetches are open at once. A headless run (`roci run --frames`) fetches nothing, so a sketch gives the same frames each time."},
+	{"fetch picture", {{{{"address", .Text}, {"body", .Block}}, FETCH_OPTIONS, .None}}, "Gets a picture from a web address, a PNG, JPEG, BMP, TGA or QOI file, and runs its block when it has come, with `reply.picture` the picture: `fetch picture \"https://example.org/cat.png\" [ cat = reply.picture ]`. What `fetch` says of `reply` holds here too: a picture that is not one gives `reply.problem` and a `reply.picture` that draws nothing."},
+	{"post", {{{{"address", .Text}, {"text", .Text}, {"body", .Block}}, FETCH_OPTIONS, .None}}, "Sends a text to a web address and runs its block when the answer has come, as `fetch` does: `post \"https://example.org/scores\" \"ada 120\" [ print reply.status ]`. Add `header \"Content-Type: application/json\"` after the block to say what the text is."},
 	{"read", {{{{"name", .Text}}, nil, .Text}}, "The text of a file: a name in the assets folder, or a path that `ask file` gave. A file that is not there says so and gives empty text. `load` is the one for pictures, sounds and data; `read` is for a file whose text you want as it is: `notes = read chosen`."},
 	{"open", {{{{"address", .Text}}, nil, .None}}, "Opens a web address, an email address or a file in the program the computer keeps for it: `open \"https://rocinante-lang.org\"`, `open \"mailto:me@example.org\"`, `open chosen`. A text that is neither an address nor a path is taken as a file in the sketch's assets folder."},
 	{"copy to clipboard", {{{{"text", .Text}}, nil, .None}}, "Puts text on the computer's clipboard, for the player to paste elsewhere: `copy to clipboard \"#ff8800\"`. `clipboard` reads what is there."},

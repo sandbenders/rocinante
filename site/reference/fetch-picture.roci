@@ -1,0 +1,9 @@
+logo = picture from [ #cccccc ] size 1 1
+fetch picture "https://rocinante-lang.org/logo.png" [
+  if reply.ok [ logo = reply.picture ]
+]
+
+draw [
+  background 245
+  image logo at 20 20 size 120 120
+]

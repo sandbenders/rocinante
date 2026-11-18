@@ -11,6 +11,7 @@ import "../tools/term"
 ALLOWED_LICENCES :: []string{
 	"0BSD", "MIT", "MIT-0", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause",
 	"ISC", "Zlib", "Unlicense", "Public-Domain",
+	"curl", // the curl licence: MIT-style, by its COPYING (read 2026-11-18)
 }
 
 // Licences that may only be used with a source notice shipped alongside.

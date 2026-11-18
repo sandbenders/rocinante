@@ -36,6 +36,7 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 		case "midi":    return midi_record(it, e.type, it.midi)
 		case "scene":   return scene_record(it, e.type)
 		case "osc":     return osc_record(it, e.type, it.osc)
+		case "reply":   return reply_record(it, e.type)
 		case "gamepad": return gamepad_value(it, e.type)
 		case "gamepads": return gamepads_list(it, e.type)
 		case "joysticks": return joysticks_list(it, e.type)

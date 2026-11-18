@@ -1,0 +1,45 @@
+// Getting what is on the web without waiting for it. `fetch` asks for a text and runs its block when the
+// answer has come, `fetch picture` does the same for a picture, and `post` sends a text. Until an answer
+// comes the sketch goes on drawing, so the screen says it is waiting; a headless run (roci test) fetches
+// nothing and keeps showing that.
+window size 480 300 title "fetch"
+status = "asking for the page..."
+page_length = 0
+logo = picture from [ #dddddd ] size 1 1
+got_logo = false
+
+fetch "https://rocinante-lang.org/" [
+  if reply.ok [
+    page_length = count reply.text
+    status = "the page came: " + reply.status
+  ] else [
+    status = "no page: " + reply.problem
+  ]
+]
+
+fetch picture "https://rocinante-lang.org/logo.png" [
+  if reply.ok [
+    logo = reply.picture
+    got_logo = true
+  ]
+]
+
+draw [
+  background 245
+  image logo at 40 60 size 120 120
+  fill 40
+  font "Inter" size 20
+  text status at 40 30
+  font "Inter" size 14
+  if page_length > 0 [
+    text ("it has " + page_length + " letters") at 190 90
+  ] else [
+    text "waiting for the answer" at 190 90
+  ]
+  if got_logo [
+    text "and the picture too" at 190 120
+  ]
+  // a bar that moves, to show nothing waits for the network
+  fill (hsb 200 60 220)
+  rect at (40 + (frame * 3) % 400) 230 size 30 12
+]

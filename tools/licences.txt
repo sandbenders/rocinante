@@ -42,3 +42,8 @@ vendor/spirvcross   Apache-2.0
 vendor/imgui    MIT
 # accesskit-c is Apache-2.0 OR MIT, used here under MIT; its Chromium-derived parts (LICENSE.chromium) are BSD-style (read 2026-11-09).
 vendor/accesskit MIT
+# libcurl 8.23.0 (the curl licence, SPDX id curl: a permission notice in the MIT style, COPYING read 2026-11-18) and the Odin
+# bindings to it in vendor/curl (Odin's own, copied from its vendor folder with the library path changed). It is built by
+# tools/net-libs.sh with mbedTLS 4.3.0 for the secure part (Apache-2.0, which it is offered under beside GPL-2.0-or-later,
+# its LICENSE read 2026-11-18); Windows uses the system's Schannel. No HTTP/2, compression or other protocol is built in.
+vendor/curl     curl

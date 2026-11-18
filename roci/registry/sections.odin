@@ -72,7 +72,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"remember", "recall", "forget",
 	}},
 	{"Files", "Data files, read with `load` and written with `save`, the names of the files in the assets folder, the dialogs where a player chooses a file, the clipboard, and opening an address.", {
-		"lines", "numbers", "files", "read", "ask file", "ask folder", "ask save", "chosen", "open", "copy to clipboard", "clipboard",
+		"lines", "numbers", "files", "read", "fetch", "fetch picture", "post", "reply", "ask file", "ask folder", "ask save", "chosen", "open", "copy to clipboard", "clipboard",
 	}},
 	{"Collision", "Whether shapes touch, where, and what a line meets. Shapes are plain records.", {
 		"touching", "contact", "hits", "inside", "cast", "ray", "triangles", "outline",

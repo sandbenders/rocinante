@@ -23,6 +23,7 @@ commands:
   odin          check the installed Odin against ODIN_VERSION
   ui-libs [regenerate]  build the user interface libraries into .cache/ui (regenerate: make the bindings again, needs python3)
   sound-libs    build the sound file decoders into .cache/sound (a C compiler)
+  net-libs      build libcurl and its TLS into .cache/net (cmake and a C compiler)
   docs          build the documentation site into output/site/public (needs Hugo, HUGO_VERSION)
   docs serve    preview it at http://localhost:1313/rocinante/, rewriting what changes in site/ as it is saved
 `
@@ -47,6 +48,8 @@ main :: proc() {
 		ok = ui_libs(len(args) > 1 && args[1] == "regenerate")
 	case "sound-libs":
 		ok = sound_libs()
+	case "net-libs":
+		ok = net_libs()
 	case "docs":
 		ok = docs_serve() if len(args) > 1 && args[1] == "serve" else docs()
 	case:
@@ -125,6 +128,7 @@ ci :: proc(fast: bool) -> bool {
 	ok = check_ui() && ok // first: every program that opens a window links Dear ImGui
 	ok = check_accesskit() && ok
 	ok = check_sound() && ok // before the packages: every program with sound links the decoders
+	ok = check_net() && ok // and every program that can fetch links libcurl
 	ok = check_packages() && ok
 	if !fast {
 		ok = check_optimised_tests() && ok

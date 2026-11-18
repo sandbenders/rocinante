@@ -15,7 +15,7 @@ import "../tools/term"
 SITE_SOURCE :: "output/site"
 
 docs :: proc() -> bool {
-	ok := check_hugo() && check_sound()
+	ok := check_hugo() && check_sound() && check_net()
 	if !ok {
 		return false
 	}
@@ -42,7 +42,7 @@ docs :: proc() -> bool {
 // a layout, the style sheet or an example shows in the browser at once. Its output is
 // passed straight through, because it runs until Ctrl+C.
 docs_serve :: proc() -> bool {
-	if !check_hugo() || !check_sound() {
+	if !check_hugo() || !check_sound() || !check_net() {
 		return false
 	}
 	tool := fmt.tprintf("%s/site-tool%s", TEST_OUT_DIR, EXE)

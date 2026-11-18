@@ -1,0 +1,51 @@
+#!/bin/sh
+# SPDX-License-Identifier: 0BSD
+#
+# Builds libcurl and mbedTLS (the TLS it uses) as static libraries into .cache/net (ignored by git):
+# .cache/net/lib/libcurl.a and the mbedTLS libraries beside it, .cache/net/include. HTTP and HTTPS only:
+# no HTTP/2, no compression, no other protocol, so nothing else is linked. The sources are fetched by
+# tools/fetch-net.sh. Needs cmake and a C compiler (cc). On Windows libcurl uses the system's Schannel and
+# builds with MSVC's cl, from Git Bash started inside vcvars64.bat (not yet run there).
+#
+#     tools/net-libs.sh
+set -eu
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+folders=$("$root/tools/fetch-net.sh") || exit 1
+curl_src=$(echo "$folders" | sed -n 1p)
+mbed_src=$(echo "$folders" | sed -n 2p)
+cache="$root/.cache/net"
+prefix="$cache"
+build="$cache/build"
+mkdir -p "$build"
+
+if ! command -v cmake >/dev/null 2>&1; then
+	echo "net-libs: cmake is not installed" >&2
+	exit 1
+fi
+
+# curl's options: the library only, HTTP and HTTPS, mbedTLS (Schannel on Windows) for the secure part
+common="-DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_PREFIX=$prefix"
+curl_options="-DBUILD_SHARED_LIBS=OFF -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF -DHTTP_ONLY=ON \
+ -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF -DCURL_USE_LIBSSH=OFF -DUSE_NGHTTP2=OFF -DCURL_ZLIB=OFF \
+ -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DUSE_LIBIDN2=OFF -DCURL_DISABLE_LDAP=ON -DENABLE_WEBSOCKETS=ON \
+ -DCURL_DISABLE_INSTALL=OFF"
+
+case "$(uname -s)" in
+MINGW* | MSYS* | CYGWIN*)
+	cmake -S "$curl_src" -B "$build/curl" -G "NMake Makefiles" $common $curl_options -DCURL_USE_SCHANNEL=ON -DCURL_STATIC_CRT=ON >/dev/null
+	cmake --build "$build/curl" >/dev/null
+	cmake --install "$build/curl" >/dev/null
+	;;
+*)
+	cmake -S "$mbed_src" -B "$build/mbedtls" $common -DENABLE_PROGRAMS=OFF -DENABLE_TESTING=OFF \
+		-DUSE_SHARED_MBEDTLS_LIBRARY=OFF -DUSE_STATIC_MBEDTLS_LIBRARY=ON >/dev/null
+	cmake --build "$build/mbedtls" -j 4 >/dev/null
+	cmake --install "$build/mbedtls" >/dev/null
+	cmake -S "$curl_src" -B "$build/curl" $common $curl_options -DCURL_USE_MBEDTLS=ON \
+		-DCMAKE_PREFIX_PATH="$prefix" -DMBEDTLS_INCLUDE_DIR="$prefix/include" >/dev/null
+	cmake --build "$build/curl" -j 4 >/dev/null
+	cmake --install "$build/curl" >/dev/null
+	;;
+esac
+echo "net-libs: built into $cache"

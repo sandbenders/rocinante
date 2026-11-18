@@ -71,6 +71,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		return lines_of(it, as_text(eval(it, call.args[0])))
 	case .Files:
 		return files_in(it, as_text(option_or_nil(it, call.options, "in")))
+	case .Fetch, .Fetch_Picture, .Post:
+		fetch_verb(it, call, code)
 	case .Ask_File, .Ask_Folder, .Ask_Save:
 		ask_verb(it, call, code)
 	case .Read:

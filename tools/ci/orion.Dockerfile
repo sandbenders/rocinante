@@ -16,7 +16,7 @@ FROM archlinux:latest
 # the format checks; openssh pushes main to the GitHub mirror; shaderc and spirv-cross translate a sketch's own shaders (the tests link
 # them); vulkan-swrast is Mesa's software Vulkan (lavapipe), which draws
 # the golden images. The package cache is emptied so the image stays small.
-RUN pacman -Syu --noconfirm clang gcc curl tar unzip git sdl3 sdl3_ttf shaderc spirv-cross diffutils openssh vulkan-swrast \
+RUN pacman -Syu --noconfirm clang gcc make cmake curl tar unzip git sdl3 sdl3_ttf shaderc spirv-cross diffutils openssh vulkan-swrast \
  && yes | pacman -Scc
 
 # The pinned Odin, in /opt/odin.

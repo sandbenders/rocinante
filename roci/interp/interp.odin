@@ -74,6 +74,8 @@ Interp :: struct {
 	block_depth:  int,                        // blocks the app loop asked for that are running (a `draw`, `ui` or event), 0 while setting up
 	widget_sites: map[int]int,                // how many widgets each call has made this frame, by its place in the source
 	handlers:  [dynamic]Handler,
+	fetches:   [dynamic]Fetching, // the fetches that are open, with the block each runs when the answer has come
+	reply:     Reply,             // the answer the block of the fetch running now was given
 	asks:      [dynamic]Ask,     // the dialogs that are open, with the block each runs when answered
 	allowed:   map[string]bool,  // the paths players chose in dialogs, which `load`, `read` and `open` may take
 	chosen:    string,           // the path the block of the dialog running now was answered with
@@ -213,6 +215,7 @@ destroy :: proc(p: ^Interp) {
 	}
 	delete(p.handlers)
 	drop_asks(p)
+	drop_fetches(p)
 	delete(p.scenes)
 	delete(p.scene_stack)
 	delete(p.items)
