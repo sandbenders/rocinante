@@ -79,6 +79,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"shade", "roci_shade roci_add_shader", ""},
 	{"save", "roci_save roci_write_file", ""},
 	{"lines", "", "a text is a C string: C splits its own"},
+	{"numbers", "", "a list is a C array: C makes its own"},
 	{"files", "roci_file_count roci_file_name", ""},
 	{"ask file", "roci_ask roci_answer", ""},
 	{"ask folder", "roci_ask roci_answer", ""},

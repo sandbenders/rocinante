@@ -65,6 +65,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	#partial switch code {
 	case .Touching, .Contact, .Hits, .Inside, .Cast:
 		return collision_verb(it, e, call, code)
+	case .Numbers:
+		return numbers_list(it, e, call)
 	case .Lines:
 		return lines_of(it, as_text(eval(it, call.args[0])))
 	case .Files:

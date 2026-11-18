@@ -220,7 +220,7 @@ test_a_taught_verb_gives_a_value :: proc(t: ^testing.T) {
 
 @(test)
 test_stop_ends_a_verb_early_and_give_ends_it_from_inside_a_loop :: proc(t: ^testing.T) {
-	text := "learn first_big numbers [\n  for each x in numbers [\n    if x > 10 [ give x ]\n  ]\n  give 0\n]\nlearn greet name [\n  if name is \"\" [ stop ]\n  print (\"hi \" + name)\n]\nprint (first_big [ 1 20 30 ])\nprint (first_big [ 1 2 ])\ngreet \"\"\ngreet \"ada\""
+	text := "learn first_big xs [\n  for each x in xs [\n    if x > 10 [ give x ]\n  ]\n  give 0\n]\nlearn greet name [\n  if name is \"\" [ stop ]\n  print (\"hi \" + name)\n]\nprint (first_big [ 1 20 30 ])\nprint (first_big [ 1 2 ])\ngreet \"\"\ngreet \"ada\""
 	expect_printed(t, text, "20\n0\nhi ada")
 }
 
@@ -2796,4 +2796,9 @@ test_down_to_counts_down_and_by_steps_it :: proc(t: ^testing.T) {
 @(test)
 test_min_and_max_give_the_smaller_and_the_larger_of_two_numbers :: proc(t: ^testing.T) {
 	expect_printed(t, "print (min 3 8)\nprint (max 3 8)\nprint (min -2 -5)\nprint (max 4 4)\nscore = 130\nprint (min score 100)\nprint (max (0 - 2) 0)", "3\n8\n-5\n4\n100\n0")
+}
+
+@(test)
+test_numbers_makes_a_list_counting_up_with_a_step_and_none_when_the_end_is_below :: proc(t: ^testing.T) {
+	expect_printed(t, "print (numbers from 1 to 4)\nprint (numbers from 0 to 1 by 0.5)\nprint (numbers from 3 to 1)\nprint (numbers from 3 to 1 by -1)\nprint (count (numbers from 1 to 48))\nprint (collect (numbers from 1 to 3) [ it * 10 ])\nprint ((count (numbers from 1 to 9999999)) is 1000000)", "[ 1 2 3 4 ]\n[ 0 0.5 1 ]\n[ ]\n[ 3 2 1 ]\n48\n[ 10 20 30 ]\ntrue")
 }

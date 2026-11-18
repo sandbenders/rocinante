@@ -10,6 +10,7 @@ import "../"
 import "../data"
 import "../folder"
 import "../lang"
+import "../maths"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -180,6 +181,33 @@ files_in :: proc(it: ^Interp, where_: string) -> Value {
 		if strings.has_prefix(file, prefix) {
 			append(&l.items, strings.clone(file[len(prefix):], it.alloc))
 		}
+	}
+	return l
+}
+
+// The most numbers `numbers` makes.
+NUMBERS_LIMIT :: 1_000_000
+
+// `numbers from a to b [by step]`: a list counting up from `a` while the numbers do not pass `b`, empty when
+// `b` is below `a`. Each is worked out from its place, so a step of 0.1 does not drift.
+@(private)
+numbers_list :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
+	low := as_number(option_or_nil(it, call.options, "from"))
+	high := as_number(option_or_nil(it, call.options, "to"))
+	step := 1.0
+	if by, found := option_value(it, call.options, "by"); found {
+		step = as_number(by)
+	}
+	l := new_list(it)
+	if step == 0 || low != low || high != high || step != step {
+		return l
+	}
+	count := int(maths.floor((high - low) / step + 1e-9)) + 1
+	if count > NUMBERS_LIMIT {
+		count = NUMBERS_LIMIT
+	}
+	for n in 0 ..< max(count, 0) {
+		append(&l.items, low + f64(n) * step)
 	}
 	return l
 }

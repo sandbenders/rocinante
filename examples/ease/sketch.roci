@@ -23,7 +23,7 @@ draw [
     (ease t as elastic)
     (ease t as bounce)
   ]
-  for i from 1 to 7 [
+  for each i in (numbers from 1 to 7) [
     y = i * 34
     line from 40 y to 520 y stroke 50
     circle at (40 + (item i of along) * 480) y radius 9 fill (hsb (i * 32) 190 255)

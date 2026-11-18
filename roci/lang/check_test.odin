@@ -1836,3 +1836,9 @@ test_two_kinds_given_gives_no_sample_of_a_list :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, found)
 }
+
+@(test)
+test_numbers_is_a_list_of_numbers_that_needs_both_ends :: proc(t: ^testing.T) {
+	expect_errors(t, "xs = numbers from 1 to 5\nys = collect xs [ it * 2 ]\nprint (item 1 of ys + 1)", {})
+	expect_errors(t, "xs = numbers from 1", {.Missing_Required_Word})
+}

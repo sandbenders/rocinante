@@ -343,6 +343,9 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 		type = list_of(c.types, T_TEXT)
 	}
 	// the bands of a sound are numbers
+	if verb.name == "numbers" {
+		type = list_of(c.types, T_NUMBER)
+	}
 	if verb.name == "bands" {
 		type = list_of(c.types, T_NUMBER)
 	}
