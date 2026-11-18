@@ -281,7 +281,7 @@ abi_measure_wrapped :: proc "c" (content: cstring, width: f64) -> Abi_Vec2 {
 @(export, link_name = "roci_start_headless")
 abi_start_headless :: proc "c" (seed: u64) {
 	context = runtime.default_context()
-	start_headless(seed)
+	start_headless(seed, true)
 }
 
 // Runs one frame of a sketch started with roci_start_headless (or of one that is showing, which is how a program drives it itself).

@@ -144,6 +144,7 @@ Sketch :: struct {
 	vault_changed:  time.Tick,
 	vault_random:   proc(dst: []byte), // where a nonce comes from; nil is the system's random numbers (tests set their own)
 	shot_ready:   bool,
+	pictures_wanted: bool, // a headless run that will take pictures: canvases may be drawn as they fill, which starts the graphics
 	cursor_shown: Cursor, // what the one cursor of the program is now
 	canvases:     [dynamic]Image, // every canvas made, for drawing their rounds before the windows
 	derived:      map[u64]Derived_Picture, // the pictures `crop`, `resize`, `filter`, `mask` and `picture` made, by what made them (pixels.odin)
@@ -161,10 +162,13 @@ the: Sketch
 // ---- starting and stopping ----
 
 // Starts a sketch with no windows and no graphics: verbs record, nothing is shown.
-// Used by tests, by the golden scenes and by the benchmark; `step` runs a frame.
-start_headless :: proc(seed: u64 = 0) {
+// Used by tests, by the golden scenes and by the benchmark; `step` runs a frame. `pictures` is for a run that
+// will take pictures (`roci run --frames`, the golden scenes, the site): only then may a canvas drawn into every
+// frame be drawn as it fills, which starts the graphics. A test never asks, so it never starts SDL.
+start_headless :: proc(seed: u64 = 0, pictures := false) {
 	shutdown()
 	the.started, the.headless, the.stepped = true, true, true
+	the.pictures_wanted = pictures
 	the.allocator = context.allocator
 	set_seed(seed)
 }

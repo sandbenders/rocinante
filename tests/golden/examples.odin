@@ -171,7 +171,7 @@ run_example :: proc(example: Example, number: int, name: string, update: bool) -
 		report(name, false, "cannot read the sketch")
 		return false
 	}
-	roci.start_headless(1)
+	roci.start_headless(1, true)
 	defer roci.shutdown()
 	p, ok := interp.load_files(program.files)
 	defer interp.destroy(p)

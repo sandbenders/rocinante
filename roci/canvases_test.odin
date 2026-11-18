@@ -174,3 +174,19 @@ test_a_headless_canvas_drawn_into_every_frame_does_not_pile_up_rounds :: proc(t:
 	}
 	testing.expect(t, gfx.canvas_waiting_commands(gfx.canvas_of(c)) < CANVAS_COMMANDS_WAITING + 500)
 }
+
+@(test)
+test_a_headless_test_never_starts_graphics_for_a_canvas_that_piles_up :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	c, _ := canvas(40, 40)
+	for _ in 0 ..< CANVAS_ROUNDS_WAITING + 4 {
+		testing.expect(t, begin_into(c))
+		circle(1, 1, 1)
+		end_into()
+		flush_canvases(nil)
+	}
+	// a run that has not said it will take pictures keeps the rounds and starts nothing
+	testing.expect(t, !the.shot_ready)
+	testing.expect(t, len(gfx.canvas_of(c).rounds) > CANVAS_ROUNDS_WAITING)
+}

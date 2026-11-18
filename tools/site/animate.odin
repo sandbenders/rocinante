@@ -31,7 +31,7 @@ record_example :: proc(code, apng_path: string, width, height: int, halve: bool,
 	_ = virtual.arena_init_growing(&scratch)
 	defer virtual.arena_destroy(&scratch)
 	context.temp_allocator = virtual.arena_allocator(&scratch)
-	roci.start_headless(1)
+	roci.start_headless(1, true)
 	defer roci.shutdown()
 	roci.set_default_window_size(width, height)
 	p, loaded := load_sketch(code, dir)

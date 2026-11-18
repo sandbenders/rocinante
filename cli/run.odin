@@ -162,7 +162,7 @@ run_files :: proc(
 	allocator := context.temp_allocator,
 	inputs: []Input_Step = nil,
 ) -> Run_Result {
-	roci.start_headless(seed)
+	roci.start_headless(seed, true)
 	defer roci.shutdown()
 	if len(files) > 0 && is_sketch_file(files[0].name) {
 		roci.keep_beside(folder.root_of(files[0].name), false)

@@ -300,7 +300,7 @@ test_sketch :: proc(file: string, files: []lang.File_Text, args: Test_Args, only
 	if args.seeded {
 		seed = args.seed
 	}
-	roci.start_headless(seed)
+	roci.start_headless(seed, true)
 	defer roci.shutdown()
 	roci.keep_beside(root, false)
 	p, ok := interp.load_files(files)

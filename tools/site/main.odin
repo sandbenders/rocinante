@@ -303,7 +303,7 @@ SAMPLE_SKETCH :: "site/sample/sketch.roci"
 // mouse in the window, and writes the picture of its first window when it drew anything,
 // shapes or widgets.
 draw_example :: proc(code, png_path: string, width := EXAMPLE_WIDTH, height := EXAMPLE_HEIGHT, scale := 2, always := false, frames := EXAMPLE_FRAMES, dir := "", window := 0) -> (drawn: Drawn, ok: bool) {
-	roci.start_headless(1)
+	roci.start_headless(1, true)
 	defer roci.shutdown()
 	roci.set_default_window_size(width, height)
 	p, loaded := load_sketch(code, dir)
