@@ -111,6 +111,10 @@ Message_Id :: enum u8 {
 	Finger_Outside_Touch,
 	Midi_Outside_Event,
 	Osc_Outside_Event,
+	Packet_Outside_Event,
+	Udp_Port_Busy,
+	Udp_Host_Unknown,
+	Udp_Data_Bad,
 	Midi_Out_Missing,
 	Osc_Port_Busy,
 	Osc_Address_Bad,
@@ -458,6 +462,18 @@ CATALOGUE := [Message_Id]Entry{
 	.Osc_Outside_Event = {.Error, "`osc` only works inside on osc",
 		"`osc` is the message that has just arrived, so it means something only in the block of `on osc`. Everywhere else, `osc value \"/fader/1\"` gives the latest number sent to an address.",
 		"For example:", "{d}"},
+	.Packet_Outside_Event = {.Error, "`packet` only works inside on udp",
+		"`packet` is the datagram that has just arrived, so it means something only in the block of `on udp`, which names the port it listens on.",
+		"For example:", "{d}"},
+	.Udp_Port_Busy = {.Error, "Another program is listening on port {a}",
+		"Only one program can listen on a port at a time, so this sketch is not listening and `on udp {a}` hears nothing. Close the other program, or choose another port.",
+		"Choose another port:", "{d}"},
+	.Udp_Host_Unknown = {.Error, "I could not find a computer called `{a}`",
+		"Give its name or its number, such as `localhost`, `studio.local` or `192.168.0.7`. This datagram was not sent.",
+		"For example:", "{d}"},
+	.Udp_Data_Bad = {.Error, "A datagram needs {a}",
+		"{b} This datagram was not sent, and the sketch goes on.",
+		"For example:", "{d}"},
 	.Osc_Port_Busy = {.Error, "Another program is listening on port {a}",
 		"Only one program can listen on a port at a time, so this sketch is not listening and `on osc` hears nothing. Close the other program, or choose another port.",
 		"Choose another port:", "{d}"},
@@ -721,7 +737,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

@@ -59,6 +59,9 @@ register_on :: proc(it: ^Interp, k: ^lang.IR_On) {
 	if strings.has_prefix(k.event, "midi") {
 		roci.start_midi()
 	}
+	if k.event == "udp" {
+		udp_register(it, k)
+	}
 	if k.event == "osc" {
 		if problem := roci.start_osc(); problem != .None {
 			say_osc_problem(it, problem, roci.DEFAULT_OSC_PORT, k.body.span)
@@ -95,6 +98,7 @@ event_name :: proc(kind: roci.Happening) -> string {
 	case .Midi_Up:    return "midi up"
 	case .Midi_Control: return "midi control"
 	case .Osc:        return "osc"
+	case .Udp:        return "udp"
 	case .Midi_Bend:  return "midi bend"
 	case .Midi_Program: return "midi program"
 	case .Midi_Pressure: return "midi pressure"
@@ -126,6 +130,7 @@ run_event_handlers :: proc(p: ^Interp, w: roci.Window, happenings: []roci.Happen
 			p.finger = happening.finger
 			p.midi = happening.midi
 			p.osc = happening.osc
+			p.packet = happening.udp
 			if happening.osc.dropped != "" {
 				fail(p, .Osc_Unsupported, h.body.span, osc_dropped_words(happening.osc.dropped), "", "", "on osc [ print osc.args ]")
 			}
@@ -133,6 +138,7 @@ run_event_handlers :: proc(p: ^Interp, w: roci.Window, happenings: []roci.Happen
 			p.finger = {}
 			p.midi = {}
 			p.osc = {}
+			p.packet = {}
 		}
 	}
 }
@@ -204,13 +210,18 @@ frame_hook :: proc(w: roci.Window) {
 	}
 }
 
-// `on key "space"`: the argument names the key.
+// `on key "space"`: the argument names the key. `on udp 9000`: it is the port the datagram came to.
 @(private)
 event_arg_matches :: proc(p: ^Interp, h: Handler, happening: roci.Happened) -> bool {
 	saved_alloc, saved_frame := p.alloc, p.frame
 	p.alloc = context.temp_allocator
 	frame := Frame{}
 	p.frame = &frame
+	if happening.kind == .Udp {
+		port := as_number(eval(p, h.args[0]))
+		p.alloc, p.frame = saved_alloc, saved_frame
+		return int(port) == happening.udp.to
+	}
 	want := as_text(eval(p, h.args[0]))
 	p.alloc, p.frame = saved_alloc, saved_frame
 	if happening.kind == .Osc {

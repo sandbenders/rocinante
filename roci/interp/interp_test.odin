@@ -539,6 +539,8 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 			// and the message about a taken port needs the port to be taken
 			roci.set_osc_port_busy(id == .Osc_Port_Busy)
 			defer roci.set_osc_port_busy(false)
+			roci.set_udp_port_busy(id == .Udp_Port_Busy)
+			defer roci.set_udp_port_busy(false)
 			roci.set_midi_none(id == .Midi_Out_Missing)
 			if id == .Memory_Mismatch {
 				roci.memory_put("best", "lots") // what a file edited by hand might hold

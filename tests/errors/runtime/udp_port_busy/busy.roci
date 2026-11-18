@@ -1,0 +1,1 @@
+on udp 9000 [ print packet.text ]

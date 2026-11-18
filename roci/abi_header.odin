@@ -133,6 +133,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"list", "roci_list", ""},
 	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent roci_set_sound_at roci_set_sound_volume roci_set_sound_pan roci_set_sound_speed roci_set_sound_loop roci_set_sound_pitch roci_set_sound_wheels roci_play_note", ""},
 	{"osc send", "roci_osc_send roci_osc_send_bundle", ""},
+	{"udp send", "roci_udp_send roci_udp_listen", ""},
 	{"rumble", "roci_rumble", ""},
 	{"bind", "roci_bind", ""},
 	{"remember", "roci_remember_number roci_remember_text roci_remember_bool roci_remember_numbers roci_vault_remember_number roci_vault_remember_text roci_vault_remember_bool roci_vault_remember_numbers", ""},
@@ -398,6 +399,7 @@ abi_table_init :: proc "contextless" () {
 	abi_files_group(&all)
 	abi_dialogs_group(&all)
 	abi_fetch_group(&all)
+	abi_udp_group(&all)
 	ABI_TABLE = all[:]
 }
 
@@ -585,9 +587,14 @@ typedef struct { double note, velocity, channel, control, value, bend, program, 
  * the handler runs. */
 typedef struct { const char *address, *from, *text; double value; const roci_value *args; int arg_count; } roci_osc;
 
+/* A datagram that arrived over the network (kind 20): the port it came to, who sent it as text and the port it was
+ * sent from, its bytes (size of them, not ended by a zero) and the same bytes as text. Valid only while the handler
+ * runs. */
+typedef struct { int to; const char *from; int port; const unsigned char *data; int size; const char *text; } roci_udp;
+
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
  * mouse events; valid only while the handler runs), the finger (for touch events) and the key or
- * controller (for MIDI events) and the message (for an osc event). */
+ * controller (for MIDI events), the message (for an osc event) and the datagram (for a udp event). */
 typedef struct {
 	int kind;
 	roci_window_id window;
@@ -595,6 +602,7 @@ typedef struct {
 	roci_finger finger;
 	roci_midi midi;
 	roci_osc osc;
+	roci_udp udp;
 } roci_event;
 
 /* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;

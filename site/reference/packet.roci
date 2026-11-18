@@ -1,0 +1,12 @@
+// packet is the datagram inside the block of an on udp
+last = "waiting for a datagram on port 9100"
+
+on udp 9100 [
+  last = packet.text + " (" + (count packet.bytes) + " bytes from port " + packet.port + ")"
+]
+
+draw [
+  background 20
+  fill white
+  text last at 20 20
+]

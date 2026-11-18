@@ -47,6 +47,7 @@ test_a_packet_goes_to_a_listener_and_comes_out_whole :: proc(t: ^testing.T) {
 		testing.expect_value(t, string(got[1].data), "/b\x00\x00")
 		testing.expect_value(t, string(got[2].data), "/c\x00\x00")
 		testing.expect_value(t, got[0].from, "127.0.0.1")
+		testing.expect(t, got[0].port > 0, "the port it was sent from comes with it")
 	}
 	// taken once, they are gone
 	again := make([dynamic]Osc_Packet)

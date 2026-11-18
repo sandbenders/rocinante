@@ -1,0 +1,8 @@
+── `packet` only works inside on udp ─────────────────── sketch.roci:2:8
+
+2 │   text packet.text at 20 20
+  │        ^^^^^^^^^^^
+
+`packet` is the datagram that has just arrived, so it means something only in the block of `on udp`, which names the port it listens on.
+
+For example:  on udp 9000 [ text packet.text at 20 20 ]

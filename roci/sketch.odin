@@ -219,6 +219,7 @@ shutdown :: proc() {
 	pads_shutdown()
 	actions_clear()
 	osc_stop()
+	udp_stop()
 	sounds_stop()
 	for w in the.windows {
 		destroy_win(w)

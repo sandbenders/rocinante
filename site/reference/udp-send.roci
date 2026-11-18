@@ -1,0 +1,13 @@
+on mouse down [
+  udp send ("click " + (floor mouse.x) + " " + (floor mouse.y)) to "localhost" port 9100
+]
+
+heard = "waiting for a datagram on port 9100"
+on udp 9100 [ heard = packet.text + " from " + packet.from ]
+
+draw [
+  background 20
+  fill white
+  text "click to send a datagram to port 9100" at 20 20
+  text heard at 20 50
+]

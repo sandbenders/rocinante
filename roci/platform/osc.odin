@@ -14,10 +14,12 @@ import "core:sync"
 import "core:thread"
 import "core:time"
 
-// One packet that arrived: its bytes and who sent them ("192.168.0.7", or "" when unknown).
+// One packet that arrived: its bytes and who sent them ("192.168.0.7", or "" when unknown), and the port it
+// was sent from. The same socket reading serves `on udp`, which has no meaning of its own for the bytes.
 Osc_Packet :: struct {
 	data: []byte,
 	from: string,
+	port: int,
 	at:   time.Tick,
 }
 
@@ -108,6 +110,7 @@ osc_read_loop :: proc(data: rawptr) {
 		packet := Osc_Packet {
 			data = make([]byte, n),
 			from = strings.clone(net.address_to_string(from.address, context.temp_allocator)),
+			port = from.port,
 			at   = time.tick_now(),
 		}
 		copy(packet.data, buffer[:n])
@@ -133,7 +136,7 @@ osc_take :: proc(o: ^Osc_In, out: ^[dynamic]Osc_Packet, allocator := context.all
 	sync.guard(&o.lock)
 	heap := runtime.heap_allocator()
 	for p in o.queue {
-		append(out, Osc_Packet{data = clone_bytes(p.data, allocator), from = strings.clone(p.from, allocator), at = p.at})
+		append(out, Osc_Packet{data = clone_bytes(p.data, allocator), from = strings.clone(p.from, allocator), port = p.port, at = p.at})
 		delete(p.data, heap)
 		delete(p.from, heap)
 	}

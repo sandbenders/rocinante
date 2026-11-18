@@ -6,6 +6,8 @@
 package roci
 
 import "core:c"
+import "core:fmt"
+import "core:strconv"
 import "core:strings"
 
 import oscp "osc"
@@ -298,12 +300,13 @@ abi_touch :: proc "c" (index: c.int) -> Abi_Touch {
 // ---- events ----
 
 Abi_Event :: struct {
-	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc, 13 midi bend, 14 midi program, 15 midi pressure, 16 midi start, 17 midi stop, 18 press, 19 release
+	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc, 13 midi bend, 14 midi program, 15 midi pressure, 16 midi start, 17 midi stop, 18 press, 19 release, 20 udp
 	window: c.int,
 	name:   cstring, // the key's name, or the mouse button's
 	finger: Abi_Touch,
 	midi:   Midi_Message, // five doubles, as roci_midi is
 	osc:    Abi_Osc, // the message, for an osc event
+	udp:    Abi_Udp, // the datagram, for a udp event
 }
 
 // A message that arrived over the network, as roci_osc is: the address and the sender as text, the first
@@ -317,6 +320,18 @@ Abi_Osc :: struct {
 	value:     f64,
 	args:      [^]Abi_Value,
 	arg_count: c.int,
+}
+
+// A datagram that arrived over the network, as roci_udp is: the port it came to, who sent it as text and the
+// port it was sent from, its bytes (`size` of them, which are not ended by a zero) and the same bytes as text.
+// The text and the bytes last until the handler returns.
+Abi_Udp :: struct {
+	to:   c.int,
+	from: cstring,
+	port: c.int,
+	data: [^]u8,
+	size: c.int,
+	text: cstring,
 }
 
 Abi_Event_Fn :: proc "c" (event: ^Abi_Event)
@@ -360,6 +375,7 @@ abi_event_name :: proc(kind: Happening) -> string {
 	case .Midi_Stop:  return "midi stop"
 	case .Action_Press: return "press"
 	case .Action_Release: return "release"
+	case .Udp:        return "udp"
 	}
 	return ""
 }
@@ -430,6 +446,10 @@ abi_run_handlers :: proc(w: Window, happenings: []Happened) {
 				if h.argument != "" && !oscp.match(h.argument, happening.osc.address) {
 					continue
 				}
+			} else if happening.kind == .Udp {
+				if h.argument != "" && h.argument != fmt.tprint(happening.udp.to) {
+					continue
+				}
 			} else if h.argument != "" && h.argument != happening.name {
 				continue
 			}
@@ -439,6 +459,13 @@ abi_run_handlers :: proc(w: Window, happenings: []Happened) {
 				event.osc = Abi_Osc{
 					address = strings.clone_to_cstring(m.address, context.temp_allocator), from = strings.clone_to_cstring(m.from, context.temp_allocator),
 					text = strings.clone_to_cstring(m.text, context.temp_allocator), value = m.value, args = raw_data(osc_values_to_abi(m.args)), arg_count = c.int(len(m.args)),
+				}
+			}
+			if happening.kind == .Udp {
+				u := happening.udp
+				event.udp = Abi_Udp{
+					to = c.int(u.to), from = strings.clone_to_cstring(u.from, context.temp_allocator), port = c.int(u.port),
+					data = raw_data(u.data), size = c.int(len(u.data)), text = strings.clone_to_cstring(u.text, context.temp_allocator),
 				}
 			}
 			h.fn(&event)
@@ -454,8 +481,8 @@ abi_install_hook :: proc() {
 
 // Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key",
 // "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up",
-// "midi control" (which start reading MIDI) or "osc" (which starts listening on port 9000, unless roci_osc_listen
-// chose another); `argument` is the key or the mouse button it is for ("space", "right"), or for osc an address
+// "midi control" (which start reading MIDI), "udp" (which listens on the port in `argument`, "9000") or "osc" (which starts
+// listening on port 9000, unless roci_osc_listen chose another); `argument` is the key or the mouse button it is for ("space", "right"), or for osc an address
 // that may hold * and ? ("/fader/*"), or NULL for any. Any other event name does nothing.
 @(export, link_name = "roci_on")
 abi_on :: proc "c" (window: c.int, event: cstring, argument: cstring, handler: Abi_Event_Fn) {
@@ -478,6 +505,11 @@ abi_on :: proc "c" (window: c.int, event: cstring, argument: cstring, handler: A
 	}
 	if name == "osc" {
 		start_osc()
+	}
+	if name == "udp" {
+		// the port it is for is the argument ("9000"); a handler without one hears no port
+		port, _ := strconv.parse_int(text_from_abi(argument))
+		udp_listen(f64(port))
 	}
 	append(&abi_handlers, Abi_Handler{
 		window = Window(window), any = window == 0, event = strings.clone(name), argument = strings.clone(text_from_abi(argument)), fn = handler,

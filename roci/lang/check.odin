@@ -181,6 +181,7 @@ Checker :: struct {
 	in_touch: int,              // how many `on touch down` or `on touch up` blocks deep, where `finger` means something
 	in_midi:  int,              // how many `on midi` blocks deep, where `midi` means something
 	in_osc:   int,              // how many `on osc` blocks deep, where `osc` means something
+	in_udp:   int,              // how many `on udp` blocks deep, where `packet` means something
 	report:   bool,             // false in the first pass, which only settles record shapes
 	sites:    map[int]int,      // where a record is made (its offset) to its shape
 	site_names: map[int][]string, // the fields each place's `{ }` is written with, by its shape
@@ -681,6 +682,7 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 		touch := k.event == "touch down" || k.event == "touch up"
 		midi := strings.has_prefix(k.event, "midi")
 		osc := k.event == "osc"
+		udp := k.event == "udp"
 		if touch {
 			c.in_touch += 1
 		}
@@ -689,6 +691,9 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 		}
 		if osc {
 			c.in_osc += 1
+		}
+		if udp {
+			c.in_udp += 1
 		}
 		leaving := k.event == "leave"
 		if leaving {
@@ -703,6 +708,9 @@ check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
 		}
 		if osc {
 			c.in_osc -= 1
+		}
+		if udp {
+			c.in_udp -= 1
 		}
 		if leaving {
 			c.in_leave -= 1
@@ -1045,6 +1053,10 @@ check_path :: proc(c: ^Checker, e: ^Expr, path: Path) -> ^IR {
 			note(c, .Midi_Outside_Event, e.span, word, "", "", fmt.tprintf("on midi down [ %s ]", text_at_line(c, e.span)))
 			return error_ir(c, e.span)
 		}
+		if word == "packet" && c.in_udp == 0 {
+			note(c, .Packet_Outside_Event, e.span, word, "", "", fmt.tprintf("on udp 9000 [ %s ]", text_at_line(c, e.span)))
+			return error_ir(c, e.span)
+		}
 		if word == "osc" && c.in_osc == 0 {
 			note(c, .Osc_Outside_Event, e.span, word, "", "", fmt.tprintf("on osc [ %s ]", text_at_line(c, e.span)))
 			return error_ir(c, e.span)
@@ -1114,6 +1126,7 @@ type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
 	case "midi":    return midi_type(c)
 	case "scene":   return scene_type(c)
 	case "osc":     return osc_type(c)
+	case "packet":  return packet_type(c)
 	case "reply":   return reply_type(c)
 	case "gamepad": return gamepad_type(c)
 	case "gamepads": return list_of(c.types, gamepad_type(c))
@@ -1471,6 +1484,22 @@ osc_type :: proc(c: ^Checker) -> Type_Id {
 	return record_of(c.types, shape)
 }
 
+// The record `packet` is inside an `on udp` block: the datagram that arrived, one shape for the whole sketch.
+@(private)
+packet_type :: proc(c: ^Checker) -> Type_Id {
+	PACKET_SITE :: -9
+	shape, known := c.sites[PACKET_SITE]
+	if !known {
+		shape = new_shape(c.types, c.alloc)
+		c.sites[PACKET_SITE] = shape
+		add_field(c.types, shape, "text", T_TEXT)
+		add_field(c.types, shape, "bytes", list_of(c.types, T_NUMBER))
+		add_field(c.types, shape, "from", T_TEXT)
+		add_field(c.types, shape, "port", T_NUMBER)
+	}
+	return record_of(c.types, shape)
+}
+
 // The record `reply` is inside a `fetch` block: what came back, one shape for the whole sketch.
 @(private)
 reply_type :: proc(c: ^Checker) -> Type_Id {
@@ -1492,10 +1521,11 @@ reply_type :: proc(c: ^Checker) -> Type_Id {
 // names it makes are its own, and it sees the sketch's.
 @(private)
 check_check :: proc(c: ^Checker, k: Check) -> IR_Stmt_Kind {
-	saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch, saved_midi, saved_osc := c.locals, c.verb_locals, c.verb, c.walking, c.in_touch, c.in_midi, c.in_osc
+	saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch, saved_midi, saved_osc, saved_udp := c.locals, c.verb_locals, c.verb, c.walking, c.in_touch, c.in_midi, c.in_osc, c.in_udp
 	c.in_touch = 0
 	c.in_midi = 0
 	c.in_osc = 0
+	c.in_udp = 0
 	c.locals = make([dynamic]^Symbol, c.alloc)
 	c.verb_locals = make([dynamic]^Symbol, c.alloc)
 	c.walking = make([dynamic]string, c.alloc)
@@ -1504,6 +1534,6 @@ check_check :: proc(c: ^Checker, k: Check) -> IR_Stmt_Kind {
 	c.deferred += 1 // it runs after the sketch has set itself up, so every name has a value
 	body := check_block(c, k.body, false)
 	c.deferred -= 1
-	c.locals, c.verb_locals, c.verb, c.walking, c.in_touch, c.in_midi, c.in_osc = saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch, saved_midi, saved_osc
+	c.locals, c.verb_locals, c.verb, c.walking, c.in_touch, c.in_midi, c.in_osc, c.in_udp = saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch, saved_midi, saved_osc, saved_udp
 	return IR_Check{name = k.name, body = body}
 }

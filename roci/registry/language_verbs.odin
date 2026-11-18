@@ -101,6 +101,10 @@ LANGUAGE_VERBS := []Verb{
 		{{{"address", .Text}, {"args", .List}}, OSC_SEND_OPTIONS, .None},
 		{{{"messages", .List}}, OSC_SEND_OPTIONS, .None},
 	}, "Sends an OSC message to another program, a phone or another sketch: `osc send \"/note\" [ 60 100 ] to \"localhost\" port 9000`. The address begins with a slash; the list holds numbers, text, true or false, and lists of numbers, which go as a blob of bytes (a whole number goes as an integer, any other as a float). Several messages go together as one bundle, which the receiver reads as a group, when the list is of lists that each start with an address: `osc send [ [ \"/a\" 1 ] [ \"/b\" \"x\" ] ]`. `to` is a computer's name or number and starts as this computer, `port` starts as 9000, so `osc send \"/ping\" [ 1 ]` reaches a sketch on this computer."},
+	{"udp send", {
+		{{{"text", .Text}}, UDP_SEND_OPTIONS, .None},
+		{{{"bytes", .List}}, UDP_SEND_OPTIONS, .None},
+	}, "Sends a datagram to another program or computer: `udp send \"hello\" to \"192.168.0.7\" port 9000`, or a list of numbers from 0 to 255 as its bytes: `udp send [ 1 2 255 ] port 9000`. `port` is needed; `to` is a computer's name or number and starts as this computer. UDP promises nothing: a datagram can be lost, and one is not answered. A datagram holds up to 65507 bytes. To hear datagrams, `on udp 9000 [ ... ]`."},
 	{"no effect", {{{{"sound", .Sound}, {"name", .Text}}, nil, .None}}, "Takes a sound effect off a sound, or off the speakers: `no effect guitar \"delay\"`."},
 	{"effect", {
 		{{{"shader", .Text}}, {{"by", {.Record}, false}}, .None},

@@ -32,6 +32,7 @@ Happening :: enum u8 {
 	Midi_Stop, // and stopped
 	Action_Press, // an action went down: any input bound to it did
 	Action_Release, // and every input bound to it is up
+	Udp, // a datagram that arrived over the network
 }
 
 Happened :: struct {
@@ -41,6 +42,7 @@ Happened :: struct {
 	finger: Touch,  // the finger, for Touch_Down and Touch_Up
 	midi:   Midi_Message, // the key or controller, for the Midi_ kinds
 	osc:    Osc_Message, // the message, for Osc
+	udp:    Udp_Packet, // the datagram, for Udp
 }
 
 // The events of the frame in progress.

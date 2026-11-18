@@ -1,0 +1,8 @@
+── I could not find a computer called `nowhere.invalid` ─── sketch.roci:1:1
+
+1 │ udp send "hello" to "nowhere.invalid" port 9000
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Give its name or its number, such as `localhost`, `studio.local` or `192.168.0.7`. This datagram was not sent.
+
+For example:  udp send "hello" to "localhost" port 9000

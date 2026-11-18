@@ -78,9 +78,14 @@ typedef struct { double note, velocity, channel, control, value, bend, program, 
  * the handler runs. */
 typedef struct { const char *address, *from, *text; double value; const roci_value *args; int arg_count; } roci_osc;
 
+/* A datagram that arrived over the network (kind 20): the port it came to, who sent it as text and the port it was
+ * sent from, its bytes (size of them, not ended by a zero) and the same bytes as text. Valid only while the handler
+ * runs. */
+typedef struct { int to; const char *from; int port; const unsigned char *data; int size; const char *text; } roci_udp;
+
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
  * mouse events; valid only while the handler runs), the finger (for touch events) and the key or
- * controller (for MIDI events) and the message (for an osc event). */
+ * controller (for MIDI events), the message (for an osc event) and the datagram (for a udp event). */
 typedef struct {
 	int kind;
 	roci_window_id window;
@@ -88,6 +93,7 @@ typedef struct {
 	roci_finger finger;
 	roci_midi midi;
 	roci_osc osc;
+	roci_udp udp;
 } roci_event;
 
 /* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;
@@ -1473,6 +1479,12 @@ roci_image_id roci_fetch_picture(int request);
 
 /* Lets go of a request and its answer. */
 void roci_fetch_forget(int request);
+
+/* Sends a datagram of `size` bytes to a computer (a name or a number; NULL for this one) and a port, 1 to 65535. Gives 1 when it was sent, and 0 when the port is not one, there is nothing or too much to send (a datagram holds 65507 bytes), the host is unknown or the system would not send it. */
+int roci_udp_send(const void *data, int size, const char *host, int port);
+
+/* Starts listening for datagrams on a port, 1 to 65535, so roci_on with "udp" and that port hears them. Gives 1 when it is listening (also when it already was), and 0 when the port is not one, another program has it or a sketch listens on too many already. */
+int roci_udp_listen(int port);
 
 #ifdef __cplusplus
 }

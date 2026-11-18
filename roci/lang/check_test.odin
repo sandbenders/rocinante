@@ -1941,3 +1941,14 @@ test_a_library_keeps_the_words_of_the_language_whatever_the_sketch_names_its_val
 	got := check_files(files)
 	testing.expect_value(t, len(got.checked.diagnostics), 0)
 }
+
+@(test)
+test_udp_blocks_read_a_packet_and_udp_send_needs_a_port :: proc(t: ^testing.T) {
+	expect_errors(t, "on udp 9000 [ print packet.text ]", {})
+	expect_errors(t, "on udp 9000 [ b = packet.bytes\n  print ((count b) + packet.port)\n  print packet.from ]", {})
+	expect_errors(t, "udp send \"hello\" port 9000", {})
+	expect_errors(t, "udp send [ 1 2 3 ] to \"localhost\" port 9000", {})
+	expect_errors(t, "draw [ print packet.text ]", {.Packet_Outside_Event})
+	expect_errors(t, "on udp \"nine\" [ print 1 ]", {.Wrong_Kind_Here})
+	expect_errors(t, "on udp 9000 [ print packet.nothing ]", {.Unknown_Field})
+}

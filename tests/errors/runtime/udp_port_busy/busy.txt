@@ -1,0 +1,8 @@
+── Another program is listening on port 9000 ────────── sketch.roci:1:13
+
+1 │ on udp 9000 [ print packet.text ]
+  │             ^^^^^^^^^^^^^^^^^^^^^
+
+Only one program can listen on a port at a time, so this sketch is not listening and `on udp 9000` hears nothing. Close the other program, or choose another port.
+
+Choose another port:  on udp 9001 [ print packet.text ]

@@ -1,0 +1,8 @@
+── A datagram needs a port from 1 to 65535 ───────────── sketch.roci:1:1
+
+1 │ udp send "hello" port 99999
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A port is a whole number from 1 to 65535, so a datagram can find the program listening there. This datagram was not sent, and the sketch goes on.
+
+For example:  udp send "hello" port 9000

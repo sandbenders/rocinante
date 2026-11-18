@@ -1,0 +1,38 @@
+// UDP: the plainest way for programs to talk over a network. `on udp 9200` runs for each datagram
+// that arrives on that port, and `packet` is the datagram: `packet.text` is what it carries read as
+// text, `packet.bytes` the same as numbers, `packet.from` who sent it and `packet.port` the port it
+// was sent from. A click sends a datagram to port 9200 on this very computer with `udp send`, so
+// it works with nothing else running; run the sketch twice (one with another port) or point any
+// program at this computer's address and port 9200 and it hears that too. UDP promises nothing: a
+// datagram can be lost, and nothing answers.
+window size 560 360 title "udp"
+
+news = []
+arrived = 0
+
+on udp 9200 [
+  arrived = arrived + 1
+  add (packet.text + "   from " + packet.from + ":" + packet.port) to news
+  if (count news) > 7 [ remove (item 1 of news) from news ]
+]
+
+on mouse down [
+  udp send ("ping " + (floor mouse.x) + "," + (floor mouse.y)) to "localhost" port 9200
+]
+
+draw [
+  background 24
+  fill white
+  text "listening on port 9200, click to send a ping" at 20 20 size 20
+  fill 150
+  if arrived is 0 [ text "nothing has come yet" at 20 70 size 16 ]
+  fill white
+  for i from 1 to count news [
+    text (item i of news) at 20 (60 + i * 30) size 16
+  ]
+  no stroke
+  for i from 1 to (min arrived 20) [
+    fill (hsb (i * 18) 80 100)
+    circle at (30 + i * 25) 335 radius 8
+  ]
+]
