@@ -56,8 +56,12 @@ if [ "${1:-}" = accesskit ]; then
 	esac
 	if [ -n "$prebuilt" ]; then
 		zip="$cache/accesskit-c-$ACCESSKIT_TAG.zip"
+		# an archive baked into the CI image (tools/ci/orion.Dockerfile) or put in /opt/accesskit by hand is used before any download
+		if [ ! -f "$zip" ] && [ -f "/opt/accesskit/accesskit-c-$ACCESSKIT_TAG.zip" ]; then
+			cp "/opt/accesskit/accesskit-c-$ACCESSKIT_TAG.zip" "$zip"
+		fi
 		if [ ! -f "$zip" ]; then
-			curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -o "$zip.part" "https://github.com/AccessKit/accesskit-c/releases/download/$ACCESSKIT_TAG/accesskit-c-$ACCESSKIT_TAG.zip"
+			curl -fsSL -C - --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -o "$zip.part" "https://github.com/AccessKit/accesskit-c/releases/download/$ACCESSKIT_TAG/accesskit-c-$ACCESSKIT_TAG.zip"
 			mv "$zip.part" "$zip"
 		fi
 		if command -v sha256sum >/dev/null 2>&1; then

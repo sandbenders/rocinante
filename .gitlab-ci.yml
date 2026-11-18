@@ -11,6 +11,13 @@
 default:
   image: rocinante-ci:latest
   tags: [orion]
+  # accesskit-c's release archive is 67 MB (every system's library) and GitHub's download host is sometimes slow, so
+  # the archive is kept from one job to the next, also when a later step of the job failed, until tools/ui-libs.sh changes.
+  cache:
+    key:
+      files: [tools/ui-libs.sh]
+    paths: [.cache/ui/accesskit-c-*.zip]
+    when: always
 
 variables:
   ODIN_DIR: $CI_PROJECT_DIR/.cache/odin

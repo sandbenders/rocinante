@@ -24,3 +24,4 @@ examples/*/ui.toml
 examples/*/memory.toml
 examples/*/vault.key
 examples/*/vault.bin*
+/accesskit-c-*.zip

@@ -23,3 +23,10 @@ RUN pacman -Syu --noconfirm clang gcc curl tar unzip git sdl3 sdl3_ttf shaderc s
 COPY ODIN_VERSION /tmp/rocinante/ODIN_VERSION
 COPY tools/ci/install-odin.sh /tmp/rocinante/tools/ci/install-odin.sh
 RUN /tmp/rocinante/tools/ci/install-odin.sh /opt/odin && rm -rf /tmp/rocinante
+
+# accesskit-c's release archive (67 MB, every system's library) when it sits in the build context, because GitHub's download host
+# is sometimes too slow for a job (11 KB/s on 2026-11-18): tools/ui-libs.sh uses /opt/accesskit/accesskit-c-<tag>.zip before it
+# downloads, and checks its sha256 as it does a downloaded one. Download it once, next to the repository's files, with
+# `wget -c https://github.com/AccessKit/accesskit-c/releases/download/<tag>/accesskit-c-<tag>.zip` (git ignores it). The Dockerfile
+# is listed too, so the pattern still matches something when there is no archive.
+COPY tools/ci/orion.Dockerfile accesskit-c-*.zi[p] /opt/accesskit/
