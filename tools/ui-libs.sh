@@ -21,10 +21,10 @@ set -eu
 
 IMGUI_TAG=v1.93.0
 DEAR_BINDINGS_TAG=v0.26
-ACCESSKIT_TAG=0.23.1
+ACCESSKIT_TAG=0.23.2
 # the release archive of that tag (accesskit-c's own: the header, the licences and a static
 # and shared library for macOS, Windows, Linux x86 and x86_64, iOS and Android)
-ACCESSKIT_ZIP_SHA256=35b7ca8a6f1e038b5da35e1e9e5a0adaed9bfcf21e1496d29598fbbadcc7043f
+ACCESSKIT_ZIP_SHA256=c7fa84f8f34fca909f662375737a54f98b17cf9eae51fffd94ab3d9f662e3681
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 cache="$root/.cache/ui"

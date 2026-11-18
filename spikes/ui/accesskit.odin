@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The part of the accesskit-c API (0.23.1) that Spike 4 uses, declared by hand.
+// The part of the accesskit-c API (0.23.2) that Spike 4 uses, declared by hand.
 // Enumerator values and struct layouts were read from `accesskit.h` by compiling
 // a small C program against it, so they are exact for this version; the real
 // bindings will be generated from the header.
