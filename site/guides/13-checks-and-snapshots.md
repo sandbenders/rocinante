@@ -57,6 +57,17 @@ window 1 is not the picture stored in tests/snapshot-1.png: 524 of 30000 pixels 
 
 If the change is on purpose, run `roci test --accept` again. A few pixels along the edges of shapes may differ between computers, because graphics drivers draw edges a little differently, and `roci test` allows for that.
 
+## Playing the sketch
+
+A game does nothing until a key is pressed, so a run can press keys by script. `--press key@frame` presses a key in one frame (the first frame is 0, as `frame` counts it) and `--hold key@from-to` holds it down from one frame to another, both included. The key is named as `on key` names it, and an action `bind` made from that key goes down with it:
+
+```
+roci run . --frames 600 --press "space@120" --hold "right@200-260" --screenshot out.png
+roci test --accept --frames 600 --press "space@120" --hold "right@200-260"
+```
+
+With `roci test --accept` the keys are stored beside the picture, in `tests/snapshot.txt`, so `roci test` plays the same game each time. Keys are the only input a script can give so far: a mouse button or a gamepad is not pressed this way.
+
 ## Many sketches at once
 
 `roci test` with no name tests the sketch in this folder, or every sketch in the folders inside it, and passes over the ones with nothing to test. `roci test examples` tests a whole folder of them. It exits with 0 when everything holds and 1 when it does not, so a script or a pipeline can use it.

@@ -174,3 +174,42 @@ test_a_single_file_that_is_not_sketch_roci_runs_alone_whatever_is_beside_it :: p
 	testing.expect_value(t, run_run({"output/tests/run_alone/mine.roci", "--frames", "1"}, &out, &err), 0)
 	testing.expect_value(t, strings.to_string(out), "2\n")
 }
+
+@(test)
+test_press_and_hold_name_a_key_and_its_frames :: proc(t: ^testing.T) {
+	a := parse_run_args({"--frames", "300", "--press", "space@120", "--hold", "right@200-260"})
+	testing.expect(t, a.ok)
+	if testing.expect_value(t, len(a.inputs), 2) {
+		testing.expect_value(t, a.inputs[0], Input_Step{key = "space", from = 120, to = 120})
+		testing.expect_value(t, a.inputs[1], Input_Step{key = "right", from = 200, to = 260})
+	}
+	// a key that has no name, a frame that is no number, a hold that goes backwards and keys with no frames to run
+	for bad, i in ([?][]string{
+		{"--frames", "3", "--press", "nope@1"},
+		{"--frames", "3", "--press", "space@x"},
+		{"--frames", "3", "--press", "space"},
+		{"--frames", "3", "--press", "space@-1"},
+		{"--frames", "3", "--hold", "space@5"},
+		{"--frames", "3", "--hold", "space@5-2"},
+		{"--press", "space@1"},
+	}) {
+		parsed := parse_run_args(bad)
+		testing.expectf(t, !parsed.ok, "case %d should not parse: %v", i, bad)
+	}
+}
+
+@(test)
+test_keys_pressed_by_a_script_reach_the_sketch_in_their_frames :: proc(t: ^testing.T) {
+	text := "window size 50 50\nbind \"fire\" to \"key space\"\non press \"fire\" [ print (\"fire \" + frame) ]\non key \"a\" [ print (\"a \" + frame) ]\ndraw [\n  if held \"right\" [ print (\"right \" + frame) ]\n]\n"
+	steps := []Input_Step{
+		{key = "space", from = 2, to = 2},
+		{key = "a", from = 3, to = 3},
+		{key = "right", from = 5, to = 6},
+	}
+	result := run_text("test.roci", text, 8, 1, false, inputs = steps)
+	testing.expect_value(t, result.code, 0)
+	testing.expect_value(t, strings.join(result.printed, "|", context.temp_allocator), "fire 2|a 3|right 5|right 6")
+	// no keys, no presses
+	none := run_text("test.roci", text, 8, 1, false)
+	testing.expect_value(t, len(none.printed), 0)
+}

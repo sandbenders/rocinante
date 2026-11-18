@@ -26,7 +26,7 @@ test_test_arguments_are_names_and_the_flags_for_storing_a_picture :: proc(t: ^te
 @(test)
 test_test_arguments_say_what_they_did_not_understand :: proc(t: ^testing.T) {
 	cases := [][]string{{"--oops"}, {"--frames"}, {"--accept", "--frames", "x"}, {"--accept", "--frames", "0"}, {"--accept", "--seed", "-1"}, {"--frames", "3"}, {"--seed", "3"}}
-	wanted := []string{"--oops", "--frames", "x", "0", "-1", "--frames and --seed go with --accept", "--frames and --seed go with --accept"}
+	wanted := []string{"--oops", "--frames", "x", "0", "-1", "--frames, --seed, --press and --hold go with --accept", "--frames, --seed, --press and --hold go with --accept"}
 	for args, i in cases {
 		parsed := parse_test_args(args)
 		testing.expectf(t, !parsed.ok, "%v should not parse", args)
@@ -37,12 +37,36 @@ test_test_arguments_say_what_they_did_not_understand :: proc(t: ^testing.T) {
 @(test)
 test_the_stored_settings_are_a_word_and_a_number_a_line :: proc(t: ^testing.T) {
 	s := parse_snapshot("frames 30\nseed 9\nwindows 2\n")
-	testing.expect_value(t, s, Snapshot{present = true, frames = 30, seed = 9, windows = 2})
-	testing.expect_value(t, parse_snapshot(snapshot_text(s)), s)
+	testing.expect_value(t, s.present, true)
+	testing.expect_value(t, s.frames, 30)
+	testing.expect_value(t, s.seed, 9)
+	testing.expect_value(t, s.windows, 2)
+	testing.expect_value(t, len(s.inputs), 0)
+	again := parse_snapshot(snapshot_text(s))
+	testing.expect_value(t, again.frames, s.frames)
+	testing.expect_value(t, again.seed, s.seed)
+	testing.expect_value(t, again.windows, s.windows)
 	// Missing, odd and wrong lines fall back to the defaults.
-	d := parse_snapshot("\nframes\nframes 0\nseed x\nwindows -1\nsomething 4\n")
-	testing.expect_value(t, d, Snapshot{present = true, frames = 1, seed = 1, windows = 1})
+	d := parse_snapshot("\nframes\nframes 0\nseed x\nwindows -1\nsomething 4\npress nothing@1\nhold space@5\n")
+	testing.expect_value(t, d.present, true)
+	testing.expect_value(t, d.frames, 1)
+	testing.expect_value(t, d.seed, 1)
+	testing.expect_value(t, d.windows, 1)
+	testing.expect_value(t, len(d.inputs), 0)
 	testing.expect(t, !read_snapshot("output/tests/test_no_such_folder").present)
+}
+
+@(test)
+test_the_keys_pressed_are_stored_with_the_picture_and_read_back :: proc(t: ^testing.T) {
+	s := parse_snapshot("frames 300\nseed 1\nwindows 1\npress space@120\nhold right@200-260\n")
+	if testing.expect_value(t, len(s.inputs), 2) {
+		testing.expect_value(t, s.inputs[0], Input_Step{key = "space", from = 120, to = 120})
+		testing.expect_value(t, s.inputs[1], Input_Step{key = "right", from = 200, to = 260})
+	}
+	text := snapshot_text(s)
+	testing.expect(t, strings.contains(text, "press space@120\n") && strings.contains(text, "hold right@200-260\n"), text)
+	again := parse_snapshot(text)
+	testing.expect_value(t, len(again.inputs), 2)
 }
 
 picture :: proc(width, height: int, colour: [4]u8) -> gfx.Image {
@@ -237,4 +261,16 @@ test_the_checks_example_holds :: proc(t: ^testing.T) {
 	code := run_test({"examples/checks"}, &out, &err)
 	testing.expectf(t, code == 0, "exit %d:\n%s\n%s", code, strings.to_string(out), strings.to_string(err))
 	testing.expect(t, strings.contains(strings.to_string(out), "3 checks held"), strings.to_string(out))
+}
+
+@(test)
+test_roci_test_takes_keys_with_accept_only :: proc(t: ^testing.T) {
+	ok := parse_test_args({"--accept", "--frames", "60", "--press", "space@10", "--hold", "left@20-30"})
+	testing.expect(t, ok.ok)
+	testing.expect_value(t, len(ok.inputs), 2)
+	alone := parse_test_args({"--press", "space@10"})
+	testing.expect(t, !alone.ok)
+	bad := parse_test_args({"--accept", "--press", "nope@10"})
+	testing.expect(t, !bad.ok)
+	testing.expect_value(t, bad.bad, "nope")
 }

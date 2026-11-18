@@ -18,6 +18,7 @@ import "core:strconv"
 import "core:strings"
 
 RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [--seed N] [--errors json]
+             [--press key@frame] [--hold key@from-to]
 
   file        the sketch to run; sketch.roci when left out
   --frames N  run N frames with no window, then stop
@@ -25,6 +26,12 @@ RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [
               with --frames, save a picture of the last frame
   --window N  which window the picture is of, counting from 1 (the first by default)
   --seed N    the seed of the random numbers when the sketch gives none (1 by default)
+  --press key@frame
+              with --frames, press a key in that frame, as 'on key' names keys and the first frame is
+              0: --press "space@120". It can be given many times
+  --hold key@from-to
+              with --frames, hold a key down from one frame to another, both included:
+              --hold "right@200-260"
   --errors json
               print every message as one line of JSON on standard output, for tools; with
               --frames what the sketch prints goes to standard error, and in a window each
@@ -37,6 +44,7 @@ Run_Args :: struct {
 	json:       bool, // messages as lines of JSON
 	window:     int, // which window the picture is of, counting from 1
 	seed:       u64,
+	inputs:     [dynamic]Input_Step, // the keys to press, from --press and --hold
 	ok:         bool,
 	bad:        string, // the word it did not understand, or what is missing after a flag
 }
@@ -57,6 +65,8 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 		     arg == "--screenshot" ||
 		     arg == "--seed" ||
 		     arg == "--window" ||
+		     arg == "--press" ||
+		     arg == "--hold" ||
 		     arg == "--errors":
 			if i + 1 >= len(args) {
 				return Run_Args{ok = false, bad = arg}
@@ -89,6 +99,15 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 				result.seed = n
 			case "--screenshot":
 				result.screenshot = value
+			case "--press", "--hold":
+				step, bad, step_ok := parse_input_step(value, arg == "--hold")
+				if !step_ok {
+					return Run_Args{ok = false, bad = bad}
+				}
+				if result.inputs == nil {
+					result.inputs = make([dynamic]Input_Step, context.temp_allocator)
+				}
+				append(&result.inputs, step)
 			}
 		case strings.has_prefix(arg, "-"):
 			return Run_Args{ok = false, bad = arg}
@@ -102,6 +121,9 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 	}
 	if result.screenshot != "" && result.frames == 0 {
 		return Run_Args{ok = false, bad = "--screenshot needs --frames"}
+	}
+	if len(result.inputs) > 0 && result.frames == 0 {
+		return Run_Args{ok = false, bad = "--press and --hold need --frames"}
 	}
 	return result
 }
@@ -125,8 +147,9 @@ run_text :: proc(
 	want_picture: bool,
 	window := 1,
 	allocator := context.temp_allocator,
+	inputs: []Input_Step = nil,
 ) -> Run_Result {
-	return run_files({lang.File_Text{name = name, text = text}}, frames, seed, want_picture, window, allocator)
+	return run_files({lang.File_Text{name = name, text = text}}, frames, seed, want_picture, window, allocator, inputs)
 }
 
 // The same for a program of several files, given in the order they are joined.
@@ -137,6 +160,7 @@ run_files :: proc(
 	want_picture: bool,
 	window := 1,
 	allocator := context.temp_allocator,
+	inputs: []Input_Step = nil,
 ) -> Run_Result {
 	roci.start_headless(seed)
 	defer roci.shutdown()
@@ -155,9 +179,7 @@ run_files :: proc(
 		return result
 	}
 	interp.start(p)
-	for _ in 0 ..< frames {
-		roci.step()
-	}
+	step_frames(frames, inputs)
 	if want_picture {
 		windows := roci.open_windows()
 		if window > len(windows) {
@@ -228,6 +250,7 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		parsed.seed,
 		parsed.screenshot != "",
 		parsed.window,
+		inputs = parsed.inputs[:],
 	)
 	// With JSON the messages are the output, so what the sketch prints moves aside.
 	lines_to := err if parsed.json else out

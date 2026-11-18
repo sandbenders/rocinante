@@ -14,11 +14,12 @@ import "../roci/lang"
 import "../tools/term"
 import "core:fmt"
 import "core:image/png"
+import "core:slice"
 import "core:os"
 import "core:strconv"
 import "core:strings"
 
-TEST_USAGE :: `roci test [folder or file] [--accept] [--frames N] [--seed N]
+TEST_USAGE :: `roci test [folder or file] [--accept] [--frames N] [--seed N] [--press key@frame] [--hold key@from-to]
 
   With no name, the sketch in this folder, or every sketch in the folders inside it.
   It runs each check block, and when a sketch has a stored picture (tests/snapshot-1.png)
@@ -27,7 +28,10 @@ TEST_USAGE :: `roci test [folder or file] [--accept] [--frames N] [--seed N]
   --accept    store the picture the sketch draws now as the one to compare with
   --frames N  with --accept, how many frames the sketch runs before the picture is
               taken (1 by default; the number is remembered in tests/snapshot.txt)
-  --seed N    with --accept, the seed of the random numbers (1 by default; remembered)`
+  --seed N    with --accept, the seed of the random numbers (1 by default; remembered)
+  --press key@frame, --hold key@from-to
+              with --accept, keys pressed while the frames run, as roci run takes them
+              (--press "space@120" --hold "right@200-260"); remembered with the picture`
 
 // How far a channel may be off before a pixel counts as changed, and how many pixels
 // of 120,000 may be: two computers' graphics drivers draw edges a little differently.
@@ -40,6 +44,7 @@ Test_Args :: struct {
 	frames: int,
 	seed:   u64,
 	seeded: bool,
+	inputs: [dynamic]Input_Step,
 	ok:     bool,
 	bad:    string,
 }
@@ -53,13 +58,22 @@ parse_test_args :: proc(args: []string) -> Test_Args {
 		switch {
 		case arg == "--accept":
 			result.accept = true
-		case arg == "--frames" || arg == "--seed":
+		case arg == "--frames" || arg == "--seed" || arg == "--press" || arg == "--hold":
 			if i + 1 >= len(args) {
 				return Test_Args{ok = false, bad = arg}
 			}
 			value := args[i + 1]
 			i += 1
-			if arg == "--frames" {
+			if arg == "--press" || arg == "--hold" {
+				step, bad, step_ok := parse_input_step(value, arg == "--hold")
+				if !step_ok {
+					return Test_Args{ok = false, bad = bad}
+				}
+				if result.inputs == nil {
+					result.inputs = make([dynamic]Input_Step, context.temp_allocator)
+				}
+				append(&result.inputs, step)
+			} else if arg == "--frames" {
 				n, parsed := strconv.parse_int(value)
 				if !parsed || n < 1 {
 					return Test_Args{ok = false, bad = value}
@@ -79,8 +93,8 @@ parse_test_args :: proc(args: []string) -> Test_Args {
 		}
 		i += 1
 	}
-	if (result.frames > 0 || result.seeded) && !result.accept {
-		return Test_Args{ok = false, bad = "--frames and --seed go with --accept"}
+	if (result.frames > 0 || result.seeded || len(result.inputs) > 0) && !result.accept {
+		return Test_Args{ok = false, bad = "--frames, --seed, --press and --hold go with --accept"}
 	}
 	if len(result.paths) == 0 {
 		append(&result.paths, ".")
@@ -94,6 +108,7 @@ Snapshot :: struct {
 	frames:  int,
 	seed:    u64,
 	windows: int, // how many pictures were stored
+	inputs:  []Input_Step, // the keys pressed while it ran
 }
 
 snapshot_settings_path :: proc(root: string) -> string {
@@ -115,6 +130,7 @@ read_snapshot :: proc(root: string) -> Snapshot {
 
 parse_snapshot :: proc(text: string) -> Snapshot {
 	s := Snapshot{present = true, frames = 1, seed = 1, windows = 1}
+	inputs := make([dynamic]Input_Step, context.temp_allocator)
 	for line in strings.split_lines(text, context.temp_allocator) {
 		fields := strings.fields(line, context.temp_allocator)
 		if len(fields) != 2 {
@@ -129,17 +145,22 @@ parse_snapshot :: proc(text: string) -> Snapshot {
 			if n, ok := strconv.parse_u64(fields[1]); ok {
 				s.seed = n
 			}
+		case "press", "hold":
+			if step, _, ok := parse_input_step(fields[1], fields[0] == "hold"); ok {
+				append(&inputs, step)
+			}
 		case "windows":
 			if n, ok := strconv.parse_int(fields[1]); ok && n >= 0 {
 				s.windows = n
 			}
 		}
 	}
+	s.inputs = inputs[:]
 	return s
 }
 
 snapshot_text :: proc(s: Snapshot) -> string {
-	return fmt.tprintf("frames %d\nseed %d\nwindows %d\n", s.frames, s.seed, s.windows)
+	return fmt.tprintf("frames %d\nseed %d\nwindows %d\n%s", s.frames, s.seed, s.windows, input_lines(s.inputs))
 }
 
 // Every sketch.roci under `path`: the file itself, a folder's own sketch.roci, or else the
@@ -321,7 +342,11 @@ test_sketch :: proc(file: string, files: []lang.File_Text, args: Test_Args, only
 		if args.accept {
 			frames = args.frames if args.frames > 0 else frames
 		}
-		test_picture(p, root, frames, seed, args.accept, totals, out)
+		inputs := stored.inputs
+		if args.accept && (args.frames > 0 || len(args.inputs) > 0) {
+			inputs = args.inputs[:]
+		}
+		test_picture(p, root, frames, seed, args.accept, totals, out, inputs)
 	}
 	if len(p.printed) > 0 {
 		fmt.sbprintf(out, "  The sketch printed:\n")
@@ -351,11 +376,12 @@ check_trouble :: proc(r: interp.Check_Result) -> string {
 
 // Runs the frames, takes the picture of every window and compares it with the stored one,
 // or stores it when asked.
-test_picture :: proc(p: ^interp.Interp, root: string, frames: int, seed: u64, accept: bool, totals: ^Test_Totals, out: ^strings.Builder) {
+test_picture :: proc(p: ^interp.Interp, root: string, frames: int, seed: u64, accept: bool, totals: ^Test_Totals, out: ^strings.Builder, given: []Input_Step = nil) {
+	// kept on the heap: the frames let go of temporary memory, and the keys are written down after them
+	inputs := slice.clone(given)
+	defer delete(inputs)
 	saved_before := totals.pictures_saved
-	for _ in 0 ..< frames {
-		roci.step()
-	}
+	step_frames(frames, inputs)
 	windows := roci.open_windows()
 	stored := read_snapshot(root)
 	if len(windows) == 0 {
@@ -411,7 +437,7 @@ test_picture :: proc(p: ^interp.Interp, root: string, frames: int, seed: u64, ac
 		fmt.sbprintf(out, "     The picture it draws now is %s, to look at. If the change is on purpose, run roci test --accept to store it.\n", saved)
 	}
 	if accept {
-		if totals.pictures_saved > saved_before && !finish_snapshot(root, Snapshot{present = true, frames = frames, seed = seed, windows = len(windows)}) {
+		if totals.pictures_saved > saved_before && !finish_snapshot(root, Snapshot{present = true, frames = frames, seed = seed, windows = len(windows), inputs = inputs}) {
 			fmt.sbprintf(out, "  %sI cannot write %s\n", term.out_icon(.Missing), snapshot_settings_path(root))
 			totals.pictures_changed += 1
 		}
