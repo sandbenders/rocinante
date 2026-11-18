@@ -1133,3 +1133,8 @@ test_a_hole_that_is_wrong_says_so_where_it_is :: proc(t: ^testing.T) {
 		testing.expect_value(t, span_text(got.src, got.result.diagnostics[0].span), "2")
 	}
 }
+
+@(test)
+test_for_down_to_is_a_for_that_counts_down :: proc(t: ^testing.T) {
+	expect_tree(t, "for i from 3 down to 1 [ ]", "(for-down i (num 3) (num 1)\n  (body\n  )\n)")
+}

@@ -424,3 +424,8 @@ test_a_comment_inside_a_record_or_a_list_stays_before_the_item_that_follows_it :
 	// a record with no comment still goes on one line
 	expect_formatted(t, "x = { a: 1, b: 2 }\n", "x = { a: 1, b: 2 }\n")
 }
+
+@(test)
+test_for_down_to_is_kept :: proc(t: ^testing.T) {
+	expect_formatted(t, "for i from 10  down   to 1 by 2 [ print i ]\n", "for i from 10 down to 1 by 2 [ print i ]\n")
+}

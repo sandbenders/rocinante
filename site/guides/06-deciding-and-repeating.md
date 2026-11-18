@@ -40,7 +40,7 @@ repeat 50 [ circle at (random 400) (random 300) radius 6 fill gold ]
 for i from 1 to 10 [ circle at (i * 36) 150 radius (i * 2) fill gold ]
 ```
 
-`by` sets the step: `for x from 0 to 400 by 50 [ ... ]`.
+`by` sets the step: `for x from 0 to 400 by 50 [ ... ]`. A `for` counts up, so when the end is below the start it runs no times at all: `for i from 1 to 0 [ ... ]` does nothing, which is what `for i from 1 to count` wants when the count is 0. To count down, write `down to`: `for i from 10 down to 1 [ ... ]` runs 10, 9 and so on to 1 (`by 2` steps by 2 down).
 
 ## while
 

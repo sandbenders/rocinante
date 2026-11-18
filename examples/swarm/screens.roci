@@ -46,10 +46,7 @@ learn hud [
   text ("" + top) at 210 32
   // the ships that are still to come: all the lives but the ones flying now
   spare = lives - (count (keep ships [ it.alive ]))
-  // `for` counts down when the end is smaller, so with no spare ships it must not run at all.
-  if spare > 0 [
-    for i from 1 to spare [ image life_look at (i * 28 - 16) 612 ]
-  ]
+  for i from 1 to spare [ image life_look at (i * 28 - 16) 612 ]
   for i from 1 to stage [
     fill (rgb 235 50 60)
     triangle { width - i * 14, 612 } { width - i * 14, 624 } { width - i * 14 + 10, 618 }

@@ -134,11 +134,15 @@ exec_stmt :: proc(it: ^Interp, s: ^lang.IR_Stmt) -> Flow {
 @(private)
 exec_for :: proc(it: ^Interp, s: ^lang.IR_Stmt, k: lang.IR_For) -> Flow {
 	from, to := as_number(eval(it, k.from)), as_number(eval(it, k.to))
-	step := 1.0 if from <= to else -1.0
+	// Up unless `down to` was written, so a loop to 0 from 1 runs no times. A negative `by` also counts down.
+	step := -1.0 if k.down else 1.0
 	if k.by != nil {
 		step = as_number(eval(it, k.by))
 		if step == 0 {
 			step = 1
+		}
+		if k.down {
+			step = -abs(step)
 		}
 	}
 	// Counting steps, not adding to a running total, so a step of 0.1 does not drift.

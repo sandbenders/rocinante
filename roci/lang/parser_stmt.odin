@@ -433,6 +433,11 @@ parse_for :: proc(p: ^Parser) -> Stmt_Kind {
 		return Error_Stmt{}
 	}
 	from := parse_expression(p)
+	down := false
+	if is_word(p, cur(p), "down") {
+		advance(p)
+		down = true
+	}
 	if !expect_word(p, "to") {
 		return Error_Stmt{}
 	}
@@ -446,7 +451,7 @@ parse_for :: proc(p: ^Parser) -> Stmt_Kind {
 	if !ok {
 		return Error_Stmt{}
 	}
-	return For{var = text_of(p, name), from = from, to = to, by = by, body = body}
+	return For{var = text_of(p, name), from = from, to = to, by = by, down = down, body = body}
 }
 
 @(private)

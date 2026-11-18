@@ -171,9 +171,9 @@ test_repeat_counts_and_ignores_a_count_below_one :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_for_counts_up_down_and_by_a_step :: proc(t: ^testing.T) {
+test_for_counts_up_and_by_a_step :: proc(t: ^testing.T) {
 	text := "for i from 1 to 3 [ print i ]\nfor i from 3 to 1 [ print i ]\nfor i from 0 to 1 by 0.25 [ print i ]\nfor i from 1 to 0 by 1 [ print i ]"
-	expect_printed(t, text, "1\n2\n3\n3\n2\n1\n0\n0.25\n0.5\n0.75\n1")
+	expect_printed(t, text, "1\n2\n3\n0\n0.25\n0.5\n0.75\n1")
 }
 
 @(test)
@@ -2781,4 +2781,14 @@ test_count_of_a_text_is_its_characters_not_its_bytes :: proc(t: ^testing.T) {
 	testing.expect_value(t, as_number(global_named(p, "b")), 4)
 	testing.expect_value(t, as_number(global_named(p, "c")), 0)
 	testing.expect_value(t, as_number(global_named(p, "d")), 6)
+}
+
+@(test)
+test_for_counts_up_and_runs_no_times_when_the_end_is_below_the_start :: proc(t: ^testing.T) {
+	expect_printed(t, "n = 0\nfor i from 1 to 0 [ n = n + 1 ]\nprint n\nm = 0\nfor i from 1 to 3 [ m = m + i ]\nprint m\nk = 0\nfor i from 0 to -1 by -1 [ k = k + 1 ]\nprint k", "0\n6\n2")
+}
+
+@(test)
+test_down_to_counts_down_and_by_steps_it :: proc(t: ^testing.T) {
+	expect_printed(t, "for i from 3 down to 1 [ print i ]\nfor i from 10 down to 0 by 5 [ print i ]\nfor i from 0 down to 1 [ print i ]", "3\n2\n1\n10\n5\n0")
 }

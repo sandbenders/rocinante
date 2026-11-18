@@ -47,7 +47,7 @@ path           = NAME { "." NAME } ;
 if_statement   = "if" expression block [ "else" ( if_statement | block ) ] ;
 repeat_statement = "repeat" argument block ;
 while_statement  = "while" expression block ;
-for_statement    = "for" NAME "from" expression "to" expression [ "by" expression ] block ;
+for_statement    = "for" NAME "from" expression [ "down" ] "to" expression [ "by" expression ] block ;
 for_each_statement = "for" "each" NAME "in" expression block ;
 
 (* Section 5.11. Each parameter is a NAME; after `with`, each default is a NAME and

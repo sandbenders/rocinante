@@ -272,7 +272,7 @@ stmt_text :: proc(p: ^Printer, s: ^Stmt, level: int) -> string {
 		strings.write_string(&b, block_text(p, k.body, level, column(level, head) + 1))
 	case For:
 		parts := make([dynamic]string, context.temp_allocator)
-		append(&parts, "for", k.var, "from", expr_text(p, k.from, level, level * 2 + 8), "to", expr_text(p, k.to, level, level * 2 + 8))
+		append(&parts, "for", k.var, "from", expr_text(p, k.from, level, level * 2 + 8), "down to" if k.down else "to", expr_text(p, k.to, level, level * 2 + 8))
 		if k.by != nil {
 			append(&parts, "by", expr_text(p, k.by, level, level * 2 + 8))
 		}

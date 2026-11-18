@@ -76,7 +76,7 @@ dump_stmt :: proc(b: ^strings.Builder, src: Source, s: ^Stmt, depth: int) {
 		indent(b, depth)
 		strings.write_string(b, ")\n")
 	case For:
-		line(b, src, depth, fmt.tprintf("(for %s", k.var), k.from, k.to, k.by)
+		line(b, src, depth, fmt.tprintf("(for-down %s" if k.down else "(for %s", k.var), k.from, k.to, k.by)
 		dump_block(b, src, "body", k.body, depth + 1)
 		indent(b, depth)
 		strings.write_string(b, ")\n")

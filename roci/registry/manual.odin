@@ -35,7 +35,7 @@ STATEMENT_DOCS := []Statement_Doc{
 	{"if", "Runs a block when a condition is true, and another when it is not.", {"if condition [ ... ]", "if condition [ ... ] else [ ... ]", "if condition [ ... ] else if condition [ ... ]"}, "if mouse.x > 100 [ fill red ] else [ fill blue ]"},
 	{"repeat", "Runs a block a number of times.", {"repeat count [ ... ]"}, "repeat 10 [ circle at (random width) (random height) radius 5 ]"},
 	{"while", "Runs a block for as long as a condition is true.", {"while condition [ ... ]"}, "while x < 100 [ x = x * 2 ]"},
-	{"for", "Counts from one number to another, inclusive, and runs a block for each.", {"for name from start to end [ ... ]", "for name from start to end by step [ ... ]"}, "for i from 1 to 10 [ circle at (i * 20) 100 radius 8 ]"},
+	{"for", "Counts up from one number to another, inclusive, and runs a block for each; no times when the end is below the start. `down to` counts down.", {"for name from start to end [ ... ]", "for name from start to end by step [ ... ]", "for name from start down to end [ ... ]"}, "for i from 1 to 10 [ circle at (i * 20) 100 radius 8 ]"},
 	{"for each", "Runs a block for each item of a list, with a name for the item.", {"for each name in list [ ... ]"}, "for each p in particles [ circle at p.pos radius 3 ]"},
 	{"learn", "Teaches a new verb. `give` hands back a value and `stop` ends it early; `with` gives optional words a default.", {"learn name parameter parameter [ ... ]", "learn name parameter with word value word value [ ... ]", "hidden learn name parameter [ ... ]"}, "learn double n [ give n * 2 ]"},
 	{"give", "Ends a verb you taught and hands back a value.", {"give value"}, "learn double n [ give n * 2 ]"},

@@ -542,7 +542,7 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 		mark := len(c.locals) - 1
 		body := check_block(c, k.body, false)
 		resize(&c.locals, mark)
-		out.kind = IR_For{var = var, from = from, to = to, by = by, body = body}
+		out.kind = IR_For{var = var, from = from, to = to, by = by, down = k.down, body = body}
 	case For_Each:
 		list := check_expr(c, k.list, false)
 		element := fresh(c.types)

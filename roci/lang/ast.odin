@@ -188,6 +188,7 @@ For :: struct {
 	var:      string,
 	from, to: ^Expr,
 	by:       ^Expr, // nil when absent
+	down:     bool,  // `for i from 10 down to 1`: counts down
 	body:     Block,
 }
 

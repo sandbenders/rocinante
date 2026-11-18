@@ -203,6 +203,7 @@ IR_For :: struct {
 	var:      ^Symbol,
 	from, to: ^IR,
 	by:       ^IR, // nil when absent
+	down:     bool,
 	body:     IR_Block,
 }
 
