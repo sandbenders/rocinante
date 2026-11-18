@@ -1842,3 +1842,10 @@ test_numbers_is_a_list_of_numbers_that_needs_both_ends :: proc(t: ^testing.T) {
 	expect_errors(t, "xs = numbers from 1 to 5\nys = collect xs [ it * 2 ]\nprint (item 1 of ys + 1)", {})
 	expect_errors(t, "xs = numbers from 1", {.Missing_Required_Word})
 }
+
+@(test)
+test_put_takes_a_list_and_the_number_of_an_item :: proc(t: ^testing.T) {
+	expect_errors(t, "xs = [ 1 2 3 ]\nput xs 2 20", {})
+	expect_errors(t, "xs = [ 1 2 3 ]\nput xs 2 \"a\"", {.Wrong_Argument_Kind})
+	expect_errors(t, "XS = [ 1 2 3 ]\nput XS 2 20", {.Constant_Changed})
+}

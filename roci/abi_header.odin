@@ -71,7 +71,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"shuffle", "roci_shuffle", ""},
 	{"copy", "", "a record or list is C's own memory: C copies it"},
 	{"table", "", "a table is a map of text to values: C has its own"},
-	{"put", "", "a table is a map of text to values: C has its own"},
+	{"put", "", "a table is a map of text to values and a list a C array: C changes its own"},
 	{"get", "", "a table is a map of text to values: C has its own"},
 	{"keys", "", "a table is a map of text to values: C has its own"},
 	{"effect", "roci_effect roci_builtin_effect roci_add_shader roci_update_shader roci_sound_effect roci_sound_effect_set roci_sound_effect_word", ""},

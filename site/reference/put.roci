@@ -3,3 +3,6 @@ put counts "cat" 2
 put counts "owl" 1
 put counts "cat" 3
 print counts
+scores = [ 10 20 30 ]
+put scores 2 25
+print scores

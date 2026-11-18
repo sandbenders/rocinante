@@ -139,6 +139,11 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 		}
 		table := args[0]
 		#partial switch kind_of(c.types, table.type) {
+		case .List:
+			element := Type_Id(c.types.items[resolve(c.types, table.type)].a)
+			if args[2].type != T_ERROR && !unify(c.types, element, args[2].type) {
+				note(c, .Wrong_Argument_Kind, k.args[2].span, verb.name, fmt.tprintf("%s, as the list holds", describe(c.types, element)), describe(c.types, args[2].type), fix(c, k.args[2].span, sample_of(c, element)))
+			}
 		case .Variable:
 			unify(c.types, table.type, table_of(c.types, args[2].type))
 		case .Table:

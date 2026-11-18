@@ -2802,3 +2802,13 @@ test_min_and_max_give_the_smaller_and_the_larger_of_two_numbers :: proc(t: ^test
 test_numbers_makes_a_list_counting_up_with_a_step_and_none_when_the_end_is_below :: proc(t: ^testing.T) {
 	expect_printed(t, "print (numbers from 1 to 4)\nprint (numbers from 0 to 1 by 0.5)\nprint (numbers from 3 to 1)\nprint (numbers from 3 to 1 by -1)\nprint (count (numbers from 1 to 48))\nprint (collect (numbers from 1 to 3) [ it * 10 ])\nprint ((count (numbers from 1 to 9999999)) is 1000000)", "[ 1 2 3 4 ]\n[ 0 0.5 1 ]\n[ ]\n[ 3 2 1 ]\n48\n[ 10 20 30 ]\ntrue")
 }
+
+@(test)
+test_put_changes_one_item_of_a_list_and_says_when_it_is_not_there :: proc(t: ^testing.T) {
+	expect_printed(t, "xs = [ 1 2 3 ]\nput xs 2 20\nput xs 3 0.5\nprint xs\nrs = [ { x: 1 } { x: 2 } ]\nput rs 1 { x: 10 }\nprint rs", "[ 1 20 0.5 ]\n[ { x: 10 } { x: 2 } ]")
+	p := run_text(t, "xs = [ 1 2 3 ]\nput xs 9 1\nput xs 0 1\nprint xs")
+	defer finish(p)
+	testing.expect_value(t, printed(p), "[ 1 2 3 ]")
+	testing.expect_value(t, len(p.errors), 2)
+	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Index_Out_Of_Range)
+}

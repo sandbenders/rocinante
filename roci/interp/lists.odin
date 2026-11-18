@@ -336,6 +336,10 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case .Table:
 		return new_table(it)
 	case .Put:
+		if call.shape == 1 {
+			put_in_list(it, e, call)
+			break
+		}
 		if t := as_table(eval(it, call.args[0])); t != nil {
 			table_put(it, t, as_text(eval(it, call.args[1])), eval(it, call.args[2]))
 		}
@@ -420,4 +424,26 @@ sort_list :: proc(it: ^Interp, call: lang.IR_Call) -> Value {
 // A printed line as a line of JSON, which a tool tells from a message by its "event".
 print_json_line :: proc(text: string) -> string {
 	return fmt.tprintf(`{{"event":"print","text":"%s"}}`, lang.json_escape(text))
+}
+
+// `put scores 3 100`: the third item of a list gets a new value. An item that is not there is the
+// error `item` gives, with a check in front of the line.
+@(private)
+put_in_list :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) {
+	list := as_list(eval(it, call.args[0]))
+	index := as_number(eval(it, call.args[1]))
+	value := eval(it, call.args[2])
+	at := int(maths.floor(index))
+	if list != nil && at >= 1 && at <= len(list.items) {
+		list.items[at - 1] = value
+		return
+	}
+	if said_already(it, .Index_Out_Of_Range, e.span) {
+		return
+	}
+	count := 0 if list == nil else len(list.items)
+	has := "no items" if count == 0 else fmt.tprintf("%d item%s", count, "" if count == 1 else "s")
+	name := lang.span_text(it.src, call.args[0].span)
+	line := strings.trim_space(lang.line_text(it.src, lang.position_of(it.src, e.span.start).line))
+	fail(it, .Index_Out_Of_Range, e.span, name, has, format_number(index), strings.concatenate({"if count ", name, " >= ", format_number(max(maths.floor(index), 1)), " [ ", line, " ]"}, context.temp_allocator))
 }

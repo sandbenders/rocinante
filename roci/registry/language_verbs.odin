@@ -189,7 +189,10 @@ LANGUAGE_VERBS := []Verb{
 	{"tween", {{{{"place", .Any}}, {{"to", {.Any}, true}, {"over", {.Number}, true}, {"as", {.Name}, false}}, .None}}, "Moves a number, vector or color to a value over some seconds, a little each frame: `tween ball.pos to mouse over 0.5 as out`. A new tween of the same place replaces the old."},
 	// Tables: text names with a value each, kept in the order they were put.
 	{"table", {{{}, nil, .Table}}, "A new, empty table: text names with a value each, kept in the order they were put: `counts = table`."},
-	{"put", {{{{"table", .Table}, {"key", .Text}, {"value", .Any}}, nil, .None}}, "Gives a name in a table a value: `put counts \"cat\" 3`. A name already there gets the new value."},
+	{"put", {
+		{{{"table", .Table}, {"key", .Text}, {"value", .Any}}, nil, .None},
+		{{{"list", .List}, {"item", .Number}, {"value", .Any}}, nil, .None},
+	}, "Gives a name in a table a value: `put counts \"cat\" 3`. A name already there gets the new value. With a list and the number of an item, counted from 1 as `item` counts, it changes that item: `put scores 3 100`; an item that is not there is an error, so use `add` to make one."},
 	{"get", {{{{"table", .Table}, {"key", .Text}}, nil, .Any}}, "The value of a name in a table, or an empty one (0, empty text) when it has none: `get counts \"cat\"`."},
 	{"keys", {{{{"table", .Table}}, nil, .List}}, "The names in a table, as a list of text, in the order they were put: `for each name in (keys counts) [ ... ]`."},
 
