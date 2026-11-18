@@ -2836,3 +2836,14 @@ test_no_smooth_makes_pictures_keep_hard_pixels_until_smooth :: proc(t: ^testing.
 	testing.expect_value(t, commands[2].style.nearest, false)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_constants_are_made_before_any_file_runs :: proc(t: ^testing.T) {
+	files := []lang.File_Text{
+		{name = "crowd.roci", text = "TOTAL = CREAM + BLUSH\n"},
+		{name = "look.roci", text = "CREAM = LIGHT + 1\nBLUSH = 2\n"},
+		{name = "tone.roci", text = "LIGHT = 10\n"},
+		{name = "sketch.roci", text = "print TOTAL\nprint LIGHT\n"},
+	}
+	expect_files_printed(t, files, "13\n10")
+}

@@ -69,8 +69,7 @@ learn reroll [
   for k from 1 to 5 [
     add { word: word_for k, color: deep_color, previous: "", previous_color: black, mix: 1 } to poem
   ]
-  big = fit_size
-  tween big to big over 0.01  // ends a slow change of the size that was on its way
+  tween big to fit_size over 0.01  // ends a slow change of the size that was on its way, and gets there
   schedule
 ]
 

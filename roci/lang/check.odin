@@ -78,7 +78,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		collect_learns(&c, parsed.program.stmts)
 		check_definitions_only(&c, parsed.program.stmts)
 		stmts = make([dynamic]^IR_Stmt, allocator)
-		for s in parsed.program.stmts {
+		for s in hoist_constants(&c, parsed.program.stmts) {
 			append(&stmts, check_stmt(&c, s))
 		}
 		check_unused_verbs(&c)
@@ -776,7 +776,7 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 	}
 	// A sketch-wide name that a verb gives a value before it has read it there looks like a name of the
 	// verb's own, which it is not: every other verb and the sketch see the change.
-	pend := c.verb != nil && len(k.target.parts) == 1 && sym.scope == 0 && sym.kind == .Variable && !slice.contains(c.verb.touched[:], sym) && sym.first_write.start != span.start && uses_a_parameter(c, k.value.span)
+	pend := c.verb != nil && len(k.target.parts) == 1 && sym.scope == 0 && sym.kind == .Variable && !slice.contains(c.verb.touched[:], sym) && sym.first_write.start != span.start && !is_empty_literal(c, k.value.span)
 	c.assigning = true
 	touch(c, sym)
 	c.assigning = false
@@ -833,27 +833,13 @@ renamed_in :: proc(text, word, with: string) -> string {
 	return strings.to_string(b)
 }
 
-// Whether the text of a value names a parameter of the verb being checked: a name worked out from what the verb
-// was given is what a name of the verb's own looks like, where a reset (`ships = []`) is not.
+// Whether a value is an empty list: a reset (`ships = []`) is the point of a verb that clears a name of
+// the sketch, where a number or anything worked out, even from a fixed number (`best = 999`), is what a
+// name of the verb's own looks like.
 @(private)
-uses_a_parameter :: proc(c: ^Checker, span: Span) -> bool {
+is_empty_literal :: proc(c: ^Checker, span: Span) -> bool {
 	text := span_text(c.src, span)
-	start := -1
-	for i := 0; i <= len(text); i += 1 {
-		in_name := i < len(text) && is_name_rune(rune(text[i]))
-		if in_name && start < 0 {
-			start = i
-		} else if !in_name && start >= 0 {
-			word := text[start:i]
-			start = -1
-			for s in c.verb_locals {
-				if s.kind == .Parameter && s.name == word {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return text == "[]" || (strings.has_prefix(text, "[") && strings.has_suffix(text, "]") && len(strings.trim_space(text[1:len(text) - 1])) == 0)
 }
 
 @(private)

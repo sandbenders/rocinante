@@ -1851,9 +1851,11 @@ test_put_takes_a_list_and_the_number_of_an_item :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_a_verb_that_gives_a_sketch_name_a_value_from_its_parameters_and_reads_it_gets_a_hint :: proc(t: ^testing.T) {
+test_a_verb_that_gives_a_sketch_name_a_value_and_reads_it_gets_a_hint :: proc(t: ^testing.T) {
 	expect_errors(t, "speed = 3\nlearn swim n [\n  speed = n * 2\n  give speed + 1\n]\nprint (swim 4)", {.Verb_Sets_Sketch_Name})
-	// a reset, a value that has nothing of the verb's in it, or a name read before it is set is the point of the verb
+	// a start from a fixed number is as much a name of the verb's own as one worked out from its parameters
+	expect_errors(t, "best = 0\nlearn nearest xs [\n  best = 999\n  for each x in xs [ if x < best [ best = x ] ]\n  give best\n]\nprint (nearest [ 4 5 ])", {.Verb_Sets_Sketch_Name})
+	// an emptied list, or a name read before it is set is the point of the verb
 	expect_errors(t, "ships = [ 1 ]\nlearn restart [\n  ships = []\n  add 2 to ships\n]\nrestart", {})
 	expect_errors(t, "speed = 3\nlearn swim n [\n  give speed + n\n  speed = n\n]\nprint (swim 4)", {})
 	expect_errors(t, "score = 0\nlearn bump n [\n  score = score + n\n]\nbump 2", {})
@@ -1862,11 +1864,35 @@ test_a_verb_that_gives_a_sketch_name_a_value_from_its_parameters_and_reads_it_ge
 }
 
 @(test)
-test_a_name_used_before_a_later_file_gives_it_says_which_file_does :: proc(t: ^testing.T) {
+test_constants_exist_for_every_file_whatever_the_order_of_their_names :: proc(t: ^testing.T) {
+	// a constant of a later file, one that uses another constant of a still later file, and the sketch itself
 	files := []File_Text{
 		{name = "crowd.roci", text = "KIND_FREED = [ CREAM BLUSH ]\n"},
-		{name = "look.roci", text = "CREAM = 1\nBLUSH = 2\n"},
+		{name = "look.roci", text = "CREAM = LIGHT + 1\nBLUSH = 2\n"},
+		{name = "tone.roci", text = "LIGHT = 10\n"},
 		{name = "sketch.roci", text = "print KIND_FREED\n"},
+	}
+	got := check_files(files)
+	testing.expect_value(t, len(got.checked.diagnostics), 0)
+	// a constant that uses a name that changes waits where it is written, so a line above it still has no value to read
+	waits := check_text("print LIMIT\nbase = 3\nLIMIT = base * 2")
+	found := false
+	for d in waits.checked.diagnostics {
+		found ||= d.id == .No_Value_Yet
+	}
+	testing.expect(t, found, "a constant made from a variable is not moved")
+	// a constant given twice and a loop of constants say what they said before, and do not hang
+	expect_errors(t, "A = 1\nA = 2", {.Constant_Changed})
+	loop := check_text("A = B\nB = A")
+	testing.expect(t, len(loop.checked.diagnostics) > 0, "a loop of constants is still a mistake")
+}
+
+@(test)
+test_a_name_used_before_a_later_file_gives_it_says_which_file_does :: proc(t: ^testing.T) {
+	files := []File_Text{
+		{name = "crowd.roci", text = "kind_freed = [ cream blush ]\n"},
+		{name = "look.roci", text = "cream = 1\nblush = 2\n"},
+		{name = "sketch.roci", text = "print kind_freed\n"},
 	}
 	got := check_files(files)
 	found := false

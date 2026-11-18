@@ -53,6 +53,8 @@ repeat 40 [ star (random 400) (random 300) (1 + random 3) ]
 
 (Here both are written in one block, so the example runs on its own; in a folder, the first three lines live in `palette.roci`.) A message about another file names it: `palette.roci:4:2`.
 
+Constants (names in capitals) exist for every file from the start, whatever the order of the files' names, and a constant can use another constant of any file: `GLOW = SKY` works wherever each is written. A name in small letters is a variable, which gets its value when the line that gives it runs, and files are read in the order of their names, so a variable of a later file has no value yet for a line of an earlier one. Constants made from a variable, or from `random` and the other words that differ from one run to the next, are made where they are written.
+
 ## Libraries
 
 A library is a folder of `.roci` files someone has shared in a git repository. `roci get` copies it into the sketch's `libs/` folder, where it stays, so the sketch keeps working even if the library changes or disappears:
