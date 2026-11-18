@@ -123,6 +123,13 @@ fetch_write :: proc "c" (buffer: [^]byte, size, count: c.size_t, userdata: rawpt
 	return c.size_t(n)
 }
 
+// An iPhone has no file or folder of trusted certificates, so its builds carry Mozilla's list (curl.se's
+// cacert.pem, MPL-2.0 data, in vendor/curl) and give it to libcurl from memory. Everywhere else the system's own is read.
+when ODIN_PLATFORM_SUBTARGET_IOS {
+	@(private = "file")
+	FETCH_CERTIFICATES := #load("../../vendor/curl/cacert.pem")
+}
+
 // The file of the system's certificates, or the folder of them, whichever this computer has; "" for none.
 fetch_certificates :: proc() -> (file, folder: string) {
 	for path in ([?]string{
@@ -176,11 +183,16 @@ fetch_thread :: proc(job: ^Fetch_Job) {
 	curl.easy_setopt(handle, .USERAGENT, cstring("rocinante"))
 	curl.easy_setopt(handle, .WRITEFUNCTION, curl.write_callback(fetch_write))
 	curl.easy_setopt(handle, .WRITEDATA, rawptr(job))
-	file, folder := fetch_certificates()
-	if file != "" {
-		curl.easy_setopt(handle, .CAINFO, cstr(file))
-	} else if folder != "" {
-		curl.easy_setopt(handle, .CAPATH, cstr(folder))
+	when ODIN_PLATFORM_SUBTARGET_IOS {
+		certificates := curl.blob{data = raw_data(FETCH_CERTIFICATES), len = len(FETCH_CERTIFICATES), flags = curl.BLOB_NOCOPY}
+		curl.easy_setopt(handle, .CAINFO_BLOB, &certificates)
+	} else {
+		file, folder := fetch_certificates()
+		if file != "" {
+			curl.easy_setopt(handle, .CAINFO, cstr(file))
+		} else if folder != "" {
+			curl.easy_setopt(handle, .CAPATH, cstr(folder))
+		}
 	}
 	if job.post {
 		curl.easy_setopt(handle, .POSTFIELDSIZE_LARGE, curl.off_t(len(job.body)))

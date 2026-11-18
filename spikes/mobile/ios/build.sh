@@ -37,14 +37,14 @@ odin build "$here" -target:darwin_arm64 -subtarget:iphone -build-mode:lib \
 echo "== link"
 # What roci links beside SDL3, built for the phone by spikes/mobile/ios/libs.sh.
 lib="$root/.cache/ios/lib"
-libs="$lib/libroci_ui.a $lib/libroci_sound.a $lib/libSDL3_ttf.a $(ls "$lib"/libfreetype*.a "$lib"/libharfbuzz*.a) $lib/libshaderc_combined.a $(ls "$lib"/libspirv-cross-*.a)"
+libs="$lib/libroci_ui.a $lib/libroci_sound.a $lib/libcurl.a $lib/libmbedtls.a $lib/libmbedx509.a $lib/libmbedcrypto.a $lib/libtfpsacrypto.a $lib/libSDL3_ttf.a $(ls "$lib"/libfreetype*.a "$lib"/libharfbuzz*.a) $lib/libshaderc_combined.a $(ls "$lib"/libspirv-cross-*.a)"
 xcrun --sdk iphoneos clang -target "arm64-apple-ios$MIN_IOS" -isysroot "$sdk" \
   "$out/libspike.a" "$SDL_IOS_LIB/libSDL3.a" $libs \
   -framework CoreMedia -framework CoreVideo -framework CoreAudio \
   -framework AudioToolbox -framework AVFoundation -framework CoreBluetooth \
   -framework CoreGraphics -framework CoreText -framework CoreFoundation -framework CoreMIDI -framework CoreMotion -framework Foundation \
   -framework GameController -framework Metal -framework OpenGLES \
-  -framework QuartzCore -framework UIKit -weak_framework CoreHaptics \
+  -framework QuartzCore -framework SystemConfiguration -framework UIKit -weak_framework CoreHaptics \
   -lc++ -lm -lpthread -o "$out/proj/spike"
 cp "$here/Info.plist" "$out/proj/Info.plist"
 

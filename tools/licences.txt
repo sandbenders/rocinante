@@ -46,4 +46,7 @@ vendor/accesskit MIT
 # bindings to it in vendor/curl (Odin's own, copied from its vendor folder with the library path changed). It is built by
 # tools/net-libs.sh with mbedTLS 4.3.0 for the secure part (Apache-2.0, which it is offered under beside GPL-2.0-or-later,
 # its LICENSE read 2026-11-18); Windows uses the system's Schannel. No HTTP/2, compression or other protocol is built in.
+# vendor/curl/cacert.pem is Mozilla's list of certificate authorities as curl.se publishes it (2026-11-05, unchanged,
+# MPL-2.0, which has no permissive alternative; the source notice goes with an iOS app, which is the only build that
+# embeds it), for the iPhone, which has no file of its own.
 vendor/curl     curl

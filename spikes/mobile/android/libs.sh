@@ -129,6 +129,13 @@ if [ ! -f "$lib/libroci_sound.a" ]; then
   "$ar" rcs "$lib/libroci_sound.a" $objs
 fi
 
+# libcurl and mbedTLS for fetch, built by tools/net-libs.sh (HTTP and HTTPS, static). The system's certificates
+# are read from /system/etc/security/cacerts at run time.
+if [ ! -f "$lib/libcurl.a" ]; then
+  ANDROID_HOME="$ANDROID_HOME" NDK_VERSION="$NDK_VERSION" API_LEVEL="$API_LEVEL" "$root/tools/net-libs.sh" android
+  cp "$root/.cache/net-android/lib/"lib*.a "$lib/"
+fi
+
 # The C++ runtime the libraries above were built against, linked statically into libmain.so.
 cp "$ndk/toolchains/llvm/prebuilt/$host/sysroot/usr/lib/aarch64-linux-android/libc++_static.a" "$lib/"
 cp "$ndk/toolchains/llvm/prebuilt/$host/sysroot/usr/lib/aarch64-linux-android/libc++abi.a" "$lib/"

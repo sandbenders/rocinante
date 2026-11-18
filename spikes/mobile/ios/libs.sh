@@ -121,4 +121,10 @@ if [ ! -f "$lib/libroci_sound.a" ]; then
   rm -f "$lib/libroci_sound.a"
   ar rcs "$lib/libroci_sound.a" $objs
 fi
+# libcurl and mbedTLS for fetch, built by tools/net-libs.sh (HTTP and HTTPS, static). The phone has no list of
+# trusted certificates in a file, so the program carries its own.
+if [ ! -f "$lib/libcurl.a" ]; then
+  MIN_IOS="$MIN_IOS" "$root/tools/net-libs.sh" ios
+  cp "$root/.cache/net-ios/lib/"lib*.a "$lib/"
+fi
 echo "built into $lib"

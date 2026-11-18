@@ -4,7 +4,16 @@ import c "core:c/libc"
 
 // libcurl and mbedTLS, built by tools/net-libs.sh into .cache/net: HTTP and HTTPS and WebSockets only, linked
 // statically, so a sketch needs no library installed. Windows uses the system's Schannel for the secure part.
-when ODIN_OS == .Windows {
+when ODIN_PLATFORM_SUBTARGET == .Android {
+	@(export)
+	foreign import lib {
+		"../../.cache/android/lib/libcurl.a",
+		"../../.cache/android/lib/libmbedtls.a",
+		"../../.cache/android/lib/libmbedx509.a",
+		"../../.cache/android/lib/libmbedcrypto.a",
+		"../../.cache/android/lib/libtfpsacrypto.a",
+	}
+} else when ODIN_OS == .Windows {
 	@(export, extra_linker_flags="/NODEFAULTLIB:msvcrt")
 	foreign import lib {
 		"../../.cache/net/lib/libcurl.lib",
