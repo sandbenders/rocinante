@@ -22,7 +22,7 @@ if [ -f "$folder/include/opus.h" ]; then
 fi
 mkdir -p "$src"
 archive="$src/opus-$OPUS_VERSION.tar.gz"
-curl -fsSL -o "$archive" "$OPUS_URL" || { echo "fetch-opus: cannot download $OPUS_URL" >&2; exit 1; }
+curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -o "$archive" "$OPUS_URL" || { echo "fetch-opus: cannot download $OPUS_URL" >&2; exit 1; }
 if command -v sha256sum >/dev/null 2>&1; then
 	sum=$(sha256sum "$archive" | cut -d ' ' -f 1)
 elif command -v shasum >/dev/null 2>&1; then

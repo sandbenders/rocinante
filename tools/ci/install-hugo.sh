@@ -18,8 +18,8 @@ base="https://github.com/gohugoio/hugo/releases/download/v$version"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 echo "install-hugo: $base/$file"
-curl -fsSL -o "$work/$file" "$base/$file"
-curl -fsSL -o "$work/checksums.txt" "$base/hugo_${version}_checksums.txt"
+curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -o "$work/$file" "$base/$file"
+curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -o "$work/checksums.txt" "$base/hugo_${version}_checksums.txt"
 (cd "$work" && grep " $file\$" checksums.txt | sha256sum -c -)
 mkdir -p "$dest"
 tar -xzf "$work/$file" -C "$dest" hugo

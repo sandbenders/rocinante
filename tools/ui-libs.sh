@@ -57,7 +57,7 @@ if [ "${1:-}" = accesskit ]; then
 	if [ -n "$prebuilt" ]; then
 		zip="$cache/accesskit-c-$ACCESSKIT_TAG.zip"
 		if [ ! -f "$zip" ]; then
-			curl -fsSL -o "$zip.part" "https://github.com/AccessKit/accesskit-c/releases/download/$ACCESSKIT_TAG/accesskit-c-$ACCESSKIT_TAG.zip"
+			curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -o "$zip.part" "https://github.com/AccessKit/accesskit-c/releases/download/$ACCESSKIT_TAG/accesskit-c-$ACCESSKIT_TAG.zip"
 			mv "$zip.part" "$zip"
 		fi
 		if command -v sha256sum >/dev/null 2>&1; then
