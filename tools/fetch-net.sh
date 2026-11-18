@@ -38,7 +38,7 @@ fetch() {
 		return 0
 	fi
 	archive="$src/$1-$2.archive"
-	curl -fsSL -o "$archive" "$3" || { echo "fetch-net: cannot download $3" >&2; exit 1; }
+	curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -o "$archive" "$3" || { echo "fetch-net: cannot download $3" >&2; exit 1; }
 	sum=$(checksum "$archive")
 	if [ "$sum" != "$4" ]; then
 		rm -f "$archive"
