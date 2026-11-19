@@ -347,6 +347,8 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 	// ---- lists and printing ----
 	case "print":
 		#partial switch kind_of(g, c.args[0]) {
+		case .Boxed:
+			return fmt.aprintf("fmt.println(rt.show_box(%s, context.allocator))", args[0], allocator = context.temp_allocator), false
 		case .Number, .Boolean, .Text, .Vector:
 			return fmt.aprintf("fmt.println(rt.show(%s, context.allocator))", args[0], allocator = context.temp_allocator), false
 		case .List, .Table:
@@ -518,7 +520,7 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 printable :: proc(g: ^Gen, t: lang.Type_Id) -> bool {
 	item := g.types.items[lang.resolve(g.types, t)]
 	#partial switch item.kind {
-	case .Number, .Boolean, .Text, .Vector:
+	case .Number, .Boolean, .Text, .Vector, .Boxed:
 		return true
 	case .List, .Table:
 		return printable(g, lang.Type_Id(item.a))

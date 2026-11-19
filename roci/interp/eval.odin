@@ -93,6 +93,8 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 		return binary(it, e, k)
 	case lang.IR_Call:
 		return eval_call(it, e, k)
+	case lang.IR_Convert:
+		return eval(it, k.value) // made only by the code generator
 	case lang.IR_Block_Value, lang.IR_Error:
 		return nil
 	}

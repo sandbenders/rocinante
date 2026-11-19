@@ -22,6 +22,8 @@ copy_value :: proc(g: ^Gen, t: lang.Type_Id, value: string, span: lang.Span) -> 
 		return value, true
 	case .Text:
 		return fmt.aprintf("rt.keep(%s)", value, allocator = context.temp_allocator), true
+	case .Boxed:
+		return fmt.aprintf("rt.copy_box(%s)", value, allocator = context.temp_allocator), true
 	case .Record, .List:
 		odin, type_ok := odin_type(g, resolved, span, "a value to copy")
 		if !type_ok {
@@ -39,7 +41,7 @@ copy_value :: proc(g: ^Gen, t: lang.Type_Id, value: string, span: lang.Span) -> 
 			first := true
 			for f in g.types.shapes[item.a].fields {
 				kind := g.types.items[lang.resolve(g.types, f.type)].kind
-				if kind == .Boxed || kind == .Variable {
+				if kind == .Variable {
 					continue
 				}
 				inner, inner_ok := copy_value(g, f.type, fmt.tprintf("r.%s", field_name(f.name)), span)
@@ -121,4 +123,43 @@ find_receivers :: proc(g: ^Gen, stmts: []^lang.IR_Stmt) {
 			find_receivers(g, k.body.stmts)
 		}
 	}
+}
+
+// The name of the package-level `rt.Heap_Ops` for a record, list or table that goes in a box: how to copy it and,
+// for a list of what `show` reads, how it reads. Written the first time; "" for a type with neither.
+@(private)
+heap_ops :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span) -> string {
+	resolved := lang.resolve(g.types, t)
+	item := g.types.items[resolved]
+	odin, ok := odin_type(g, resolved, span, "a value in a mix")
+	if !ok {
+		return ""
+	}
+	key := fmt.tprintf("ops:%s", odin)
+	if known, found := g.copiers[key]; found {
+		return known
+	}
+	copy_proc, show_proc := "nil", "nil"
+	name := fmt.aprintf("box_ops_%d", len(g.copiers) + 1, allocator = context.temp_allocator)
+	g.copiers[key] = name
+	if item.kind == .Record || item.kind == .List {
+		if made, copied := copy_value(g, resolved, "x", span); copied {
+			if copier, found := g.copiers[odin]; found {
+				wrapper := fmt.aprintf("%s_copy", name, allocator = context.temp_allocator)
+				fmt.sbprintf(&g.procs, "%s :: proc(h: ^rt.Header) -> ^rt.Header {{\n\tout := %s((%s)(h))\n\treturn &out.gc__\n}}\n\n", wrapper, copier, odin)
+				copy_proc = wrapper
+			}
+			_ = made
+		}
+	}
+	if item.kind == .List && printable(g, resolved) {
+		wrapper := fmt.aprintf("%s_show", name, allocator = context.temp_allocator)
+		fmt.sbprintf(&g.procs, "%s :: proc(h: ^rt.Header) -> string {{\n\treturn rt.show((%s)(h))\n}}\n\n", wrapper, odin)
+		show_proc = wrapper
+	}
+	if copy_proc == "nil" && show_proc == "nil" {
+		return ""
+	}
+	fmt.sbprintf(&g.defs, "%s := rt.Heap_Ops{{copy = %s, show = %s}}\n\n", name, copy_proc, show_proc)
+	return name
 }

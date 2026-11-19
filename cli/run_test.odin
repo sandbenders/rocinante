@@ -2,6 +2,7 @@
 package main
 
 import "../roci"
+import "../roci/lang"
 import "core:os"
 import "core:strings"
 import "core:testing"
@@ -242,4 +243,21 @@ test_a_timed_headless_run_keeps_what_it_measured :: proc(t: ^testing.T) {
 	s := roci.stats_last()
 	testing.expect_value(t, s.frames, 19)
 	testing.expect(t, s.fps_average > 0)
+}
+
+@(test)
+test_a_sketch_of_several_files_reads_what_it_remembers :: proc(t: ^testing.T) {
+	root := "output/tests/run_memory"
+	_ = os.remove_all(root)
+	testing.expect(t, os.make_directory_all(root) == nil)
+	defer os.remove_all(root)
+	testing.expect(t, os.write_entire_file("output/tests/run_memory/memory.toml", "best = 5\n") == nil)
+	// the sketch's own file comes last, as the files of a folder are joined
+	files := []lang.File_Text{
+		{name = "output/tests/run_memory/look.roci", text = "learn double n [ give n * 2 ]\n"},
+		{name = "output/tests/run_memory/sketch.roci", text = "best = recall \"best\" start 0\nprint (double best)\n"},
+	}
+	r := run_files(files, 1, 1, false)
+	testing.expect_value(t, r.code, 0)
+	testing.expect_value(t, strings.join(r.printed, ",", context.temp_allocator), "10")
 }

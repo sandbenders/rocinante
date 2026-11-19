@@ -478,6 +478,9 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 		value := table_type[len("^rt.Table("):len(table_type) - 1]
 		return fmt.aprintf("rt.new_table(%s, %s)", value, item_marker(g, table_value(g, e.type), value), allocator = context.temp_allocator), true, true
 	case "put":
+		if c.shape == 1 {
+			return fmt.aprintf("rt.put_item(%s, %s, %s)", args[0], args[1], stored(g, c.args[2]), allocator = context.temp_allocator), false, true
+		}
 		if c.shape == 0 {
 			return fmt.aprintf("rt.put(%s, %s, %s)", args[0], args[1], stored(g, c.args[2]), allocator = context.temp_allocator), false, true
 		}

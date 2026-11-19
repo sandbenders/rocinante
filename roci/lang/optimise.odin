@@ -188,6 +188,8 @@ walk_expr :: proc(o: ^Optimiser, e: ^IR) {
 		walk_options(o, k.options)
 	case IR_Block_Value:
 		walk_block(o, k.block)
+	case IR_Convert:
+		walk_expr(o, k.value)
 	case IR_Number, IR_Text, IR_Colour, IR_Boolean, IR_Word, IR_Load, IR_Builtin, IR_Error:
 	}
 	if .Typed_Values in o.passes {

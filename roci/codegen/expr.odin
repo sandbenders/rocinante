@@ -115,6 +115,9 @@ expr_fresh :: proc(g: ^Gen, e: ^lang.IR) -> string {
 		return record_literal(g, e, k)
 	case lang.IR_Unary:
 		operand := expr(g, k.operand)
+		if kind_of(g, k.operand) == .Boxed {
+			return fmt.aprintf("rt.box_%s(%s)", "not" if k.op == .Not else "negate", operand, allocator = context.temp_allocator)
+		}
 		if k.op == .Not {
 			return fmt.aprintf("(!%s)", operand, allocator = context.temp_allocator)
 		}
@@ -124,6 +127,8 @@ expr_fresh :: proc(g: ^Gen, e: ^lang.IR) -> string {
 	case lang.IR_Call:
 		text, _ := call(g, e, k)
 		return text
+	case lang.IR_Convert:
+		return convert(g, e, k)
 	case lang.IR_Block_Value:
 		refuse(g, e.span, "a block used as a value")
 	case lang.IR_Error:
@@ -221,18 +226,17 @@ field :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Field) -> string {
 		refuse(g, e.span, fmt.tprintf("`.%s` of a window", k.name))
 		return "0.0"
 	}
+	if kind_of(g, k.base) == .Boxed && len(k.name) == 1 && strings.contains_rune("xyzwrgba", rune(k.name[0])) {
+		// a part of a vector or a color that is only known to be one while the sketch runs
+		return fmt.aprintf("rt.box_part(%s, %q)", expr(g, k.base), k.name, allocator = context.temp_allocator)
+	}
+	if kind_of(g, k.base) == .Boxed {
+		refuse(g, e.span, fmt.tprintf("`.%s` of a value that may be a record or not, which compiled sketches cannot read yet", k.name))
+		return "rt.Box{}"
+	}
 	if kind_of(g, k.base) != .Record {
 		refuse(g, e.span, fmt.tprintf("`.%s` of something that is not a record", k.name))
 		return "0.0"
-	}
-	if info, found := lang.shape_field(g.types, g.types.items[lang.resolve(g.types, k.base.type)].a, k.name); found {
-		before := len(g.problems)
-		_, can_hold := odin_type(g, info.type, e.span, k.name)
-		if !can_hold {
-			resize(&g.problems, before)
-			refuse(g, e.span, fmt.tprintf("`.%s`, which holds a mix of values", k.name))
-			return "0.0"
-		}
 	}
 	return fmt.aprintf("%s.%s", expr(g, k.base), field_name(k.name), allocator = context.temp_allocator)
 }
@@ -330,13 +334,101 @@ keep_wrapped :: proc(g: ^Gen, e: ^lang.IR, text: string) -> string {
 			return fmt.aprintf("rt.keep(%s)", text, allocator = context.temp_allocator)
 		}
 	}
+	if kind_of(g, e) == .Boxed {
+		return fmt.aprintf("rt.keep_box(%s)", text, allocator = context.temp_allocator)
+	}
 	return text
+}
+
+// A value changed to or from a box (see boxes.odin): what it is going to is the type of this node.
+@(private)
+convert :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Convert) -> string {
+	value := expr(g, k.value)
+	have, want := kind_of(g, k.value), kind_of(g, e)
+	if have == .List && want == .List {
+		// a list whose items are boxes in one place and of one kind in the other is copied item by item, which
+		// is right for a list made on the spot and wrong for one that is shared, so that is said
+		#partial switch inner in k.value.kind {
+		case lang.IR_Load, lang.IR_Field:
+			refuse(g, e.span, "a list shared between a place that holds a mix of values and one that holds one kind")
+			return "nil"
+		}
+		from, to := list_element(g, k.value.type), list_element(g, e.type)
+		one := to if kind_of_type(g, from) == .Boxed else from
+		suffix := ""
+		#partial switch kind_of_type(g, one) {
+		case .Number:  suffix = "number"
+		case .Boolean: suffix = "bool"
+		case .Text:    suffix = "text"
+		case .Colour:  suffix = "colour"
+		case .Image:   suffix = "image"
+		case .Sound:   suffix = "sound"
+		case .Window:  suffix = "window"
+		case .Vector:  suffix = fmt.tprintf("vector%d", g.types.items[lang.resolve(g.types, one)].a)
+		}
+		if suffix == "" {
+			refuse(g, e.span, fmt.tprintf("%s changed to %s", lang.describe(g.types, k.value.type), lang.describe(g.types, e.type)))
+			return "nil"
+		}
+		if kind_of_type(g, from) == .Boxed {
+			element, ok := odin_type(g, to, e.span, "a list taken out of a mix")
+			if !ok {
+				return "nil"
+			}
+			return fmt.aprintf("rt.list_unboxed(%s, rt.unbox_%s, %s)", value, suffix, item_marker(g, to, element), allocator = context.temp_allocator)
+		}
+		return fmt.aprintf("rt.list_boxed(%s, rt.box_%s)", value, suffix, allocator = context.temp_allocator)
+	}
+	if have == want {
+		return value
+	}
+	a := context.temp_allocator
+	if want == .Boxed {
+		#partial switch have {
+		case .Number:   return fmt.aprintf("rt.box_number(%s)", value, allocator = a)
+		case .Boolean:  return fmt.aprintf("rt.box_bool(%s)", value, allocator = a)
+		case .Text:     return fmt.aprintf("rt.box_text(%s)", value, allocator = a)
+		case .Colour:   return fmt.aprintf("rt.box_colour(%s)", value, allocator = a)
+		case .Image:    return fmt.aprintf("rt.box_image(%s)", value, allocator = a)
+		case .Sound:    return fmt.aprintf("rt.box_sound(%s)", value, allocator = a)
+		case .Window:   return fmt.aprintf("rt.box_window(%s)", value, allocator = a)
+		case .Gradient: return fmt.aprintf("rt.box_gradient(%s)", value, allocator = a)
+		case .Vector:   return fmt.aprintf("rt.box_vector%d(%s)", vector_size(g, k.value), value, allocator = a)
+		case .Record, .List, .Table:
+			if ops := heap_ops(g, k.value.type, e.span); ops != "" {
+				return fmt.aprintf("rt.box_heap(%s, &%s)", value, ops, allocator = a)
+			}
+			return fmt.aprintf("rt.box_heap(%s)", value, allocator = a)
+		}
+	} else if have == .Boxed {
+		#partial switch want {
+		case .Number:   return fmt.aprintf("rt.unbox_number(%s)", value, allocator = a)
+		case .Boolean:  return fmt.aprintf("rt.unbox_bool(%s)", value, allocator = a)
+		case .Text:     return fmt.aprintf("rt.unbox_text(%s)", value, allocator = a)
+		case .Colour:   return fmt.aprintf("rt.unbox_colour(%s)", value, allocator = a)
+		case .Image:    return fmt.aprintf("rt.unbox_image(%s)", value, allocator = a)
+		case .Sound:    return fmt.aprintf("rt.unbox_sound(%s)", value, allocator = a)
+		case .Window:   return fmt.aprintf("rt.unbox_window(%s)", value, allocator = a)
+		case .Gradient: return fmt.aprintf("rt.unbox_gradient(%s)", value, allocator = a)
+		case .Vector:   return fmt.aprintf("rt.unbox_vector(%s, %d)", value, vector_size(g, e), allocator = a)
+		case .Record, .List, .Table:
+			type, ok := odin_type(g, e.type, e.span, "a value taken out of a mix")
+			if ok {
+				return fmt.aprintf("rt.unbox_heap(%s, %s)", value, type, allocator = a)
+			}
+			return "nil"
+		}
+	}
+	refuse(g, e.span, fmt.tprintf("%s changed to %s", lang.describe(g.types, k.value.type), lang.describe(g.types, e.type)))
+	return "0.0"
 }
 
 // What `+` with text makes of a value.
 @(private)
 shown :: proc(g: ^Gen, e: ^lang.IR) -> string {
 	#partial switch kind_of(g, e) {
+	case .Boxed:
+		return fmt.aprintf("rt.show_box(%s)", expr(g, e), allocator = context.temp_allocator)
 	case .Number, .Boolean, .Text, .Vector:
 		return fmt.aprintf("rt.show(%s)", expr(g, e), allocator = context.temp_allocator)
 	}
@@ -357,6 +449,17 @@ binary :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Binary) -> string {
 	} else {
 		both := in_order(g, {k.lhs, k.rhs})
 		l, r = both[0], both[1]
+	}
+	if lk == .Boxed && rk == .Boxed {
+		switch k.op {
+		case .Add:      return fmt.aprintf("rt.box_arith(.Add, %s, %s)", l, r, allocator = context.temp_allocator)
+		case .Subtract: return fmt.aprintf("rt.box_arith(.Subtract, %s, %s)", l, r, allocator = context.temp_allocator)
+		case .Multiply: return fmt.aprintf("rt.box_arith(.Multiply, %s, %s)", l, r, allocator = context.temp_allocator)
+		case .Divide:   return fmt.aprintf("rt.box_arith(.Divide, %s, %s)", l, r, allocator = context.temp_allocator)
+		case .Is:       return fmt.aprintf("rt.box_equal(%s, %s)", l, r, allocator = context.temp_allocator)
+		case .Is_Not:   return fmt.aprintf("(!rt.box_equal(%s, %s))", l, r, allocator = context.temp_allocator)
+		case .Less, .Less_Equal, .Greater, .Greater_Equal, .Modulo, .Power, .And, .Or:
+		}
 	}
 	both_numbers := lk == .Number && rk == .Number
 	arithmetic := (lk == .Number || lk == .Vector) && (rk == .Number || rk == .Vector)
@@ -445,7 +548,7 @@ builtin_record :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 		case "midi":
 			fmt.sbprintf(&b, "\tm := rt.happening.midi\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"note", "m.note"}, {"velocity", "m.velocity"}, {"channel", "m.channel"}, {"control", "m.control"}, {"value", "m.value"}, {"bend", "m.bend"}, {"program", "m.program"}, {"pressure", "m.pressure"}}), trace_arg(g, record))
 		case "osc":
-			fmt.sbprintf(&b, "\tm := rt.happening.osc\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"address", "rt.keep(m.address)"}, {"from", "rt.keep(m.from)"}, {"text", "rt.keep(m.text)"}, {"value", "m.value"}}), trace_arg(g, record))
+			fmt.sbprintf(&b, "\tm := rt.happening.osc\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"address", "rt.keep(m.address)"}, {"from", "rt.keep(m.from)"}, {"text", "rt.keep(m.text)"}, {"value", "m.value"}, {"args", "rt.osc_args(m)"}}), trace_arg(g, record))
 		case "packet":
 			fmt.sbprintf(&b, "\td := rt.happening.udp\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"text", "rt.keep(d.text)"}, {"from", "rt.keep(d.from)"}, {"port", "f64(d.port)"}, {"bytes", "rt.bytes_list(d.data)"}}), trace_arg(g, record))
 		case "received":
@@ -534,6 +637,8 @@ impure :: proc(e: ^lang.IR) -> bool {
 		return impure(k.base)
 	case lang.IR_Unary:
 		return impure(k.operand)
+	case lang.IR_Convert:
+		return impure(k.value)
 	case lang.IR_Binary:
 		return impure(k.lhs) || impure(k.rhs)
 	case lang.IR_Vector:

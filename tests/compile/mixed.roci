@@ -1,0 +1,37 @@
+// Lists whose items are of different kinds: numbers, text, true and vectors, and what is done with them.
+mixed = [ 1 "two" true { 1, 2 } 2.5 ]
+print mixed
+print (count mixed)
+for each m in mixed [
+  print (m + "!")
+]
+total = 0
+for each m in mixed [
+  if m is 1 [ total = total + 10 ]
+  if m is "two" [ total = total + 20 ]
+  if m is true [ total = total + 30 ]
+  if m is { 1, 2 } [ total = total + 40 ]
+]
+print total
+second = item 2 of mixed
+print (second + second)
+shown = item 5 of mixed
+print (shown * 2)
+print (item 4 of mixed * 3)
+print (-(item 5 of mixed))
+add 7 to mixed
+add "seven" to mixed
+add false to mixed
+print (count mixed)
+print (item 6 of mixed + 1)
+if item 3 of mixed [ print "the third is true" ]
+mixed_copy = copy mixed
+add 0 to mixed_copy
+print (count mixed_copy)
+print (count mixed)
+put mixed 1 100
+print (item 1 of mixed)
+words = collect mixed [ it + "" ]
+print words
+many = keep mixed [ it is not 1 ]
+print (count many)

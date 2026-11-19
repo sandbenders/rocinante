@@ -210,8 +210,12 @@ run_files :: proc(
 	if stats {
 		roci.stats_start(false)
 	}
-	if len(files) > 0 && is_sketch_file(files[0].name) {
-		roci.keep_beside(folder.root_of(files[0].name), false)
+	// a sketch of several files has its sketch.roci last, so it is looked for among all of them
+	for file in files {
+		if is_sketch_file(file.name) {
+			roci.keep_beside(folder.root_of(file.name), false)
+			break
+		}
 	}
 	p, ok := interp.load_files(files)
 	defer interp.destroy(p)

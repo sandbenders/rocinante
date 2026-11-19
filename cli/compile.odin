@@ -222,7 +222,20 @@ say_problems :: proc(problems: []codegen.Problem, src: lang.Source, err: ^string
 	shown := 0
 	for p in problems {
 		line, column := codegen.position(src, p.span)
-		fmt.sbprintf(err, "  line %d, column %d: %s\n", line, column, p.what)
+		// the files of a sketch are joined, so the line is counted from the start of the file it is in
+		file := ""
+		joined := line
+		for part in src.parts {
+			if part.start <= p.span.start {
+				file = part.name
+				line = joined - part.first_line + 1
+			}
+		}
+		if file != "" {
+			fmt.sbprintf(err, "  %s, line %d, column %d: %s\n", file, line, column, p.what)
+		} else {
+			fmt.sbprintf(err, "  line %d, column %d: %s\n", line, column, p.what)
+		}
 		shown += 1
 		if shown >= 20 && len(problems) > 22 {
 			fmt.sbprintf(err, "  and %d more\n", len(problems) - shown)

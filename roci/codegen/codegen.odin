@@ -135,6 +135,7 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 			g.has_scenes = true
 		}
 	}
+	box_program(&g)
 	g.handlers = make([dynamic]Handler, context.temp_allocator)
 	for r in RESERVED {
 		g.taken[r] = true
@@ -286,6 +287,7 @@ odin_type :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span, what: string) -> (n
 	case .Sound:   return "roci.Sound", true
 	case .Window:  return "roci.Window", true
 	case .Gradient: return "^rt.Gradient_Box", true
+	case .Boxed:   return "rt.Box", true
 	case .Table:
 		value, value_ok := odin_type(g, lang.Type_Id(item.a), span, what)
 		if !value_ok {
@@ -363,6 +365,8 @@ mark_statement :: proc(g: ^Gen, t: lang.Type_Id, value: string) -> string {
 		return fmt.aprintf("rt.mark_text(%s)", value, allocator = context.temp_allocator)
 	case .Record, .List, .Table, .Gradient:
 		return fmt.aprintf("if %s != nil {{ rt.mark(&%s.gc__) }}", value, value, allocator = context.temp_allocator)
+	case .Boxed:
+		return fmt.aprintf("rt.mark_box(%s)", value, allocator = context.temp_allocator)
 	}
 	return ""
 }
@@ -373,6 +377,8 @@ mark_statement_text :: proc(g: ^Gen, odin: string, value: string) -> string {
 	switch {
 	case odin == "string":
 		return fmt.aprintf("rt.mark_text(%s)", value, allocator = context.temp_allocator)
+	case odin == "rt.Box":
+		return fmt.aprintf("rt.mark_box(%s)", value, allocator = context.temp_allocator)
 	case strings.has_prefix(odin, "^"):
 		return fmt.aprintf("if %s != nil {{ rt.mark(&%s.gc__) }}", value, value, allocator = context.temp_allocator)
 	}

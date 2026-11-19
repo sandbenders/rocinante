@@ -798,7 +798,7 @@ check_assign :: proc(c: ^Checker, s: ^Stmt, k: Assign) -> IR_Stmt_Kind {
 	if sym == nil && c.verb != nil && len(k.target.parts) == 1 {
 		// A name made inside a taught verb that does not exist at top level is local to it.
 		sym = new(Symbol, c.alloc)
-		sym^ = Symbol{name = name, kind = .Local, type = fresh(c.types), first_write = span, scope = c.depth + 1}
+		sym^ = Symbol{name = name, kind = .Local, type = fresh(c.types), first_write = span, scope = c.depth}
 		append(&c.verb_locals, sym)
 	}
 	if sym == nil {

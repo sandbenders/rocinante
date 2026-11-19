@@ -133,7 +133,7 @@ test_list_blocks_become_procedures_with_plain_loops :: proc(t: ^testing.T) {
 
 @(test)
 test_what_cannot_be_compiled_yet_is_refused_with_its_name_and_never_half_done :: proc(t: ^testing.T) {
-	refused_for(t, "on osc \"/a\" [ print osc.args ]\n", "mix of values")
+	refused_for(t, "xs = [ 1 \"a\" ]\nys = xs\nzs = [ 1 2 ]\nys = zs\nprint (collect ys [ it ])\n", "shared between")
 	refused_for(t, "scene \"a\" [ draw [ scene \"b\" [ ] ] ]\n", "another block")
 	refused_for(t, "x = table\n", "table")
 	refused_for(t, "draw [ push [ circle at 1 1 radius 1 ] ]\nevery 1 second [ draw [ circle at 1 1 radius 1 ] ]\n", "inside another block")
@@ -141,7 +141,7 @@ test_what_cannot_be_compiled_yet_is_refused_with_its_name_and_never_half_done ::
 
 @(test)
 test_every_problem_is_said_not_just_the_first :: proc(t: ^testing.T) {
-	result := compile("scene \"a\" [ draw [ scene \"b\" [ ] ] ]\nx = table\non osc \"/a\" [ print osc.args ]\n")
+	result := compile("scene \"a\" [ draw [ scene \"b\" [ ] ] ]\nx = table\ndraw [ push [ circle at 1 1 radius 1 ] ]\nevery 1 second [ draw [ circle at 1 1 radius 1 ] ]\n")
 	testing.expect(t, len(result.problems) >= 3, "three things to say")
 }
 
@@ -329,4 +329,32 @@ save node "node.json"
 `)
 	testing.expect_value(t, len(result.problems), 0)
 	testing.expect(t, strings.contains(result.source, "rt.datum_enter()"))
+}
+
+@(test)
+test_a_list_of_mixed_kinds_is_a_list_of_boxes_and_each_use_takes_out_the_kind_it_wants :: proc(t: ^testing.T) {
+	result := compile("m = [ 1 \"two\" true ]\nn = item 1 of m\ntotal = 0\nif n is 1 [ total = total + 1 ]\nprint (n + 1)\nadd 4 to m\nprint m\n")
+	testing.expect_value(t, len(result.problems), 0)
+	source := result.source
+	testing.expect(t, strings.contains(source, "rt.list_of(rt.Box, mark_item_"), "the list holds boxes")
+	testing.expect(t, strings.contains(source, "rt.box_number(1.0)"), "a number goes in a box")
+	testing.expect(t, strings.contains(source, "rt.box_text(\"two\")"), "text goes in a box")
+	testing.expect(t, strings.contains(source, "rt.box_bool(true)"), "true goes in a box")
+	testing.expect(t, strings.contains(source, "rt.box_equal("), "a comparison of boxes compares kind and contents")
+	testing.expect(t, strings.contains(source, "rt.box_arith(.Add, "), "a sum of boxes is worked out from what they hold")
+	testing.expect(t, strings.contains(source, "rt.mark_box("), "the collector keeps what a box holds")
+}
+
+@(test)
+test_the_arguments_of_an_osc_message_are_read_from_the_message :: proc(t: ^testing.T) {
+	result := compile("on osc \"/a\" [ print osc.args ]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "args = rt.osc_args(m)"))
+}
+
+@(test)
+test_a_part_of_a_box_is_read_while_the_sketch_runs :: proc(t: ^testing.T) {
+	result := compile("m = [ { 1, 2 } \"a\" ]\nfor each p in m [ print p.x ]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "rt.box_part("))
 }

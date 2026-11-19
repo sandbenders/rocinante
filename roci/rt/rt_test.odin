@@ -7,6 +7,8 @@ import "core:time"
 import "../"
 import "../data"
 import "../folder"
+import "../maths"
+import "../osc"
 import "core:testing"
 
 @(test)
@@ -252,4 +254,165 @@ test_a_data_file_is_read_again_when_it_changes :: proc(t: ^testing.T) {
 	testing.expect_value(t, load_data(path, "", read_number), 1) // still the same frame: not looked at again
 	roci.step()
 	testing.expect_value(t, load_data(path, "", read_number), 2)
+}
+
+@(test)
+test_a_box_gives_back_what_was_put_in_it_and_zero_for_another_kind :: proc(t: ^testing.T) {
+	testing.expect_value(t, unbox_number(box_number(3)), 3)
+	testing.expect_value(t, unbox_number(box_bool(true)), 1)
+	testing.expect_value(t, unbox_number(box_text("x")), 0)
+	testing.expect_value(t, unbox_number(nil), 0)
+	testing.expect_value(t, unbox_bool(box_bool(true)), true)
+	testing.expect_value(t, unbox_bool(box_number(2)), true)
+	testing.expect_value(t, unbox_bool(box_number(0)), false)
+	testing.expect_value(t, unbox_bool(box_text("true")), false)
+	testing.expect_value(t, unbox_text(box_text("hi")), "hi")
+	testing.expect_value(t, unbox_text(box_number(1)), "")
+	testing.expect_value(t, unbox_vector(box_vector2({1, 2}), 2), [2]f64{1, 2})
+	testing.expect_value(t, unbox_vector(box_vector2({1, 2}), 3), [3]f64{1, 2, 0})
+	testing.expect_value(t, unbox_vector(box_vector3({1, 2, 3}), 2), [2]f64{1, 2})
+	testing.expect_value(t, unbox_vector(box_number(1), 2), [2]f64{0, 0})
+	testing.expect_value(t, unbox_colour(box_colour({1, 2, 3, 4})), maths.Colour{1, 2, 3, 4})
+	testing.expect_value(t, unbox_colour(nil), maths.Colour{})
+	testing.expect_value(t, unbox_image(box_image(4)), roci.Image(4))
+	testing.expect_value(t, unbox_sound(box_text("")), roci.Sound(0))
+	testing.expect_value(t, unbox_window(box_window(2)), roci.Window(2))
+}
+
+@(test)
+test_a_box_holds_a_list_only_for_the_type_it_was_made_as :: proc(t: ^testing.T) {
+	defer gc_reset()
+	numbers := list_of(f64, nil, 1, 2)
+	boxed := box_heap(numbers)
+	testing.expect(t, unbox_heap(boxed, ^List(f64)) == numbers)
+	testing.expect(t, unbox_heap(boxed, ^List(string)) == nil)
+	testing.expect(t, unbox_heap(box_number(1), ^List(f64)) == nil)
+	nothing: ^List(f64)
+	testing.expect_value(t, box_heap(nothing), nil)
+	testing.expect(t, box_equal(boxed, box_heap(numbers)))
+	testing.expect(t, !box_equal(boxed, box_heap(list_of(f64, nil, 1, 2))))
+	// with nothing written for the type it is shared and reads plainly
+	testing.expect(t, copy_box(boxed).(Heap_Ref).object == &numbers.gc__)
+	testing.expect_value(t, show_box(boxed), "a record or a list")
+	// with what the generator writes for it, copied and read as a list
+	with_ops := box_heap(numbers, &number_list_ops)
+	copied := copy_box(with_ops)
+	testing.expect(t, copied.(Heap_Ref).object != &numbers.gc__)
+	testing.expect_value(t, show_box(copied), "[ 1 2 ]")
+}
+
+@(test)
+test_boxes_are_equal_by_kind_and_contents :: proc(t: ^testing.T) {
+	testing.expect(t, box_equal(box_number(1), box_number(1)))
+	testing.expect(t, !box_equal(box_number(1), box_number(2)))
+	testing.expect(t, !box_equal(box_number(1), box_bool(true)))
+	testing.expect(t, box_equal(box_bool(true), box_bool(true)))
+	testing.expect(t, box_equal(box_text("a"), box_text("a")))
+	testing.expect(t, !box_equal(box_text("a"), box_text("b")))
+	testing.expect(t, !box_equal(box_text("1"), box_number(1)))
+	testing.expect(t, box_equal(box_vector2({1, 2}), box_vector2({1, 2})))
+	testing.expect(t, !box_equal(box_vector2({1, 2}), box_vector3({1, 2, 0})))
+	testing.expect(t, box_equal(box_vector3({1, 2, 3}), box_vector3({1, 2, 3})))
+	testing.expect(t, box_equal(box_vector4({1, 2, 3, 4}), box_vector4({1, 2, 3, 4})))
+	testing.expect(t, box_equal(box_colour({1, 2, 3, 4}), box_colour({1, 2, 3, 4})))
+	testing.expect(t, !box_equal(box_colour({1, 2, 3, 4}), box_colour({1, 2, 3, 5})))
+	testing.expect(t, box_equal(box_image(2), box_image(2)))
+	testing.expect(t, box_equal(box_sound(2), box_sound(2)))
+	testing.expect(t, box_equal(box_window(2), box_window(2)))
+	testing.expect(t, box_equal(nil, nil))
+	testing.expect(t, !box_equal(nil, box_number(0)))
+	testing.expect(t, !box_equal(box_number(0), nil))
+}
+
+@(test)
+test_a_box_is_worked_out_as_the_interpreter_works_values_out :: proc(t: ^testing.T) {
+	defer gc_reset()
+	testing.expect_value(t, box_arith(.Add, box_number(1), box_number(2)).(f64), 3)
+	testing.expect_value(t, box_arith(.Subtract, box_number(1), box_number(2)).(f64), -1)
+	testing.expect_value(t, box_arith(.Multiply, box_number(3), box_number(2)).(f64), 6)
+	testing.expect_value(t, box_arith(.Divide, box_number(1), box_number(0)).(f64), 0)
+	testing.expect_value(t, box_arith(.Divide, box_number(3), box_number(2)).(f64), 1.5)
+	testing.expect_value(t, box_arith(.Add, box_text("a"), box_number(2)).(string), "a2")
+	testing.expect_value(t, box_arith(.Add, box_bool(true), box_text("!")).(string), "true!")
+	testing.expect_value(t, box_arith(.Add, box_text("a"), box_vector2({1, 2})).(string), "a{ 1, 2 }")
+	testing.expect_value(t, box_arith(.Add, box_bool(true), box_number(1)).(f64), 2)
+	testing.expect_value(t, box_arith(.Add, box_text(""), nil).(string), "")
+	testing.expect_value(t, box_arith(.Multiply, box_vector2({1, 2}), box_number(3)).([2]f64), [2]f64{3, 6})
+	testing.expect_value(t, box_arith(.Add, box_vector2({1, 2}), box_vector3({10, 20, 30})).([2]f64), [2]f64{11, 22})
+	testing.expect_value(t, box_arith(.Divide, box_vector3({1, 2, 3}), box_number(0)).([3]f64), [3]f64{0, 0, 0})
+	testing.expect_value(t, box_arith(.Multiply, box_number(2), box_vector4({1, 2, 3, 4})).([4]f64), [4]f64{2, 4, 6, 8})
+	testing.expect_value(t, box_arith(.Subtract, box_number(10), box_vector2({1, 2})).([2]f64), [2]f64{9, 8})
+	testing.expect_value(t, box_arith(.Add, box_colour({10, 20, 30, 40}), box_colour({250, 0, 0, 0})).(maths.Colour), maths.Colour{255, 20, 30, 40})
+	testing.expect_value(t, box_arith(.Multiply, box_colour({10, 20, 30, 40}), box_number(2)).(maths.Colour), maths.Colour{20, 40, 60, 80})
+	testing.expect_value(t, box_arith(.Multiply, box_number(100), box_colour({10, 20, 30, 40})).(maths.Colour), maths.Colour{255, 255, 255, 255})
+	testing.expect_value(t, box_negate(box_number(2)).(f64), -2)
+	testing.expect_value(t, box_negate(box_vector2({1, -2})).([2]f64), [2]f64{-1, 2})
+	testing.expect_value(t, box_negate(box_colour({1, 2, 3, 4})).(maths.Colour), maths.Colour{0, 0, 0, 0})
+	testing.expect_value(t, box_not(box_bool(true)).(bool), false)
+	testing.expect_value(t, box_not(nil).(bool), true)
+	testing.expect_value(t, box_part(box_vector2({1, 2}), "y").(f64), 2)
+	testing.expect_value(t, box_part(box_vector3({1, 2, 3}), "z").(f64), 3)
+	testing.expect_value(t, box_part(box_vector2({1, 2}), "z").(f64), 0)
+	testing.expect_value(t, box_part(box_colour({1, 2, 3, 255}), "b").(f64), 3)
+	testing.expect_value(t, box_part(box_colour({1, 2, 3, 255}), "a").(f64), 100)
+	testing.expect_value(t, box_part(box_number(1), "x").(f64), 0)
+	testing.expect_value(t, box_part(box_vector2({1, 2}), "xy").(f64), 0)
+}
+
+@(test)
+test_a_box_reads_in_text_as_the_interpreter_writes_values :: proc(t: ^testing.T) {
+	defer gc_reset()
+	testing.expect_value(t, show_box(box_number(2.5)), "2.5")
+	testing.expect_value(t, show_box(box_bool(false)), "false")
+	testing.expect_value(t, show_box(box_text("hi")), "hi")
+	testing.expect_value(t, show_box(box_vector2({1, 2})), "{ 1, 2 }")
+	testing.expect_value(t, show_box(box_vector3({1, 2, 3})), "{ 1, 2, 3 }")
+	testing.expect_value(t, show_box(box_vector4({1, 2, 3, 4})), "{ 1, 2, 3, 4 }")
+	testing.expect_value(t, show_box(box_colour({1, 2, 3, 255})), "rgb 1 2 3 alpha 100")
+	testing.expect_value(t, show_box(box_window(2)), "window 2")
+	testing.expect_value(t, show_box(nil), "")
+	testing.expect_value(t, show(list_of(Box, mark_box, box_number(1), box_text("a"))), "[ 1 a ]")
+}
+
+@(test)
+test_lists_of_boxes_and_of_one_kind_are_copied_into_each_other :: proc(t: ^testing.T) {
+	defer gc_reset()
+	boxes := list_of(Box, mark_box, box_number(1), box_text("x"), box_number(3))
+	numbers := list_unboxed(boxes, unbox_number, nil)
+	testing.expect_value(t, len(numbers.items), 3)
+	testing.expect_value(t, numbers.items[0], 1)
+	testing.expect_value(t, numbers.items[1], 0)
+	testing.expect_value(t, numbers.items[2], 3)
+	back := list_boxed(numbers, box_number)
+	testing.expect_value(t, len(back.items), 3)
+	testing.expect(t, box_equal(back.items[2], box_number(3)))
+	nothing: ^List(Box)
+	testing.expect_value(t, len(list_unboxed(nothing, unbox_number, nil).items), 0)
+	nobody: ^List(f64)
+	testing.expect_value(t, len(list_boxed(nobody, box_number).items), 0)
+}
+
+@(test)
+test_a_text_in_a_box_is_kept_and_marked_by_the_collector :: proc(t: ^testing.T) {
+	defer gc_reset()
+	made := keep_box(box_text(join("a", "b")))
+	testing.expect_value(t, made.(string), "ab")
+	testing.expect(t, keep_box(box_number(1)).(f64) == 1)
+	mark_box(made) // a text of the heap, an object, a number: each is marked without trouble
+	mark_box(box_number(1))
+	mark_box(box_heap(list_of(f64, nil, 1)))
+	mark_box(nil)
+}
+
+@(test)
+test_the_arguments_of_an_osc_message_are_boxes :: proc(t: ^testing.T) {
+	defer gc_reset()
+	args := []osc.Arg{f64(1), true, "hi", osc.Blob{1, 2}}
+	list := osc_args(roci.Osc_Message{args = args})
+	testing.expect_value(t, len(list.items), 4)
+	testing.expect_value(t, list.items[0].(f64), 1)
+	testing.expect_value(t, list.items[1].(bool), true)
+	testing.expect_value(t, list.items[2].(string), "hi")
+	testing.expect_value(t, show_box(list.items[3]), "[ 1 2 ]")
+	testing.expect_value(t, len(osc_args(roci.Osc_Message{}).items), 0)
 }

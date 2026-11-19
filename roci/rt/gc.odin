@@ -252,6 +252,17 @@ item :: proc(list: ^List($T), place: f64) -> T {
 	return list.items[at - 1]
 }
 
+// `put scores 3 100`: changes the item at a place counting from 1; a place with no item changes nothing.
+put_item :: proc(list: ^List($T), place: f64, value: T) {
+	if list == nil {
+		return
+	}
+	at := int(floor(place))
+	if at >= 1 && at <= len(list.items) {
+		list.items[at - 1] = value
+	}
+}
+
 count :: proc "contextless" (list: ^List($T)) -> f64 {
 	return 0 if list == nil else f64(len(list.items))
 }

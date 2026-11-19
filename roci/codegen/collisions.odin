@@ -66,16 +66,26 @@ shape3_of_value :: proc(g: ^Gen, t: lang.Type_Id, value: string, span: lang.Span
 		case .Mesh:
 			return fmt.aprintf("rt.mesh_shape(%s.triangles)", value, allocator = context.temp_allocator), true
 		case .Segment:
-			return fmt.aprintf("collide.segment3(%s.from, %s.to)", value, value, allocator = context.temp_allocator), true
+			return fmt.aprintf("collide.segment3(%s, %s)", part(g, item.a, value, "from", "vector3"), part(g, item.a, value, "to", "vector3"), allocator = context.temp_allocator), true
 		case .Circle:
-			return fmt.aprintf("collide.sphere(%s.pos, %s.radius)", value, value, allocator = context.temp_allocator), true
+			return fmt.aprintf("collide.sphere(%s, %s)", part(g, item.a, value, "pos", "vector3"), part(g, item.a, value, "radius", "number"), allocator = context.temp_allocator), true
 		case .Box:
-			angle := fmt.tprintf("%s.angle", value) if lang_has(names[:], "angle") else "[3]f64{}"
-			return fmt.aprintf("collide.box3(%s.pos, %s.size, %s)", value, value, angle, allocator = context.temp_allocator), true
+			angle := part(g, item.a, value, "angle", "vector3") if lang_has(names[:], "angle") else "[3]f64{}"
+			return fmt.aprintf("collide.box3(%s, %s, %s)", part(g, item.a, value, "pos", "vector3"), part(g, item.a, value, "size", "vector3"), angle, allocator = context.temp_allocator), true
 		}
 	}
 	refuse(g, span, fmt.tprintf("%s as a shape in space", lang.describe(g.types, t)))
 	return "", false
+}
+
+// A field of a shape's record, taken out of its box when the field is one (a field that is a number in one record and
+// something else in another): `as_kind` is what the shape wants of it, `number`, `vector2` or `vector3`.
+@(private)
+part :: proc(g: ^Gen, shape: int, value, label, as_kind: string) -> string {
+	if info, found := lang.shape_field(g.types, shape, label); found && kind_of_type(g, info.type) == .Boxed {
+		return fmt.aprintf("rt.unbox_%s(%s.%s)", as_kind, value, label, allocator = context.temp_allocator)
+	}
+	return fmt.aprintf("%s.%s", value, label, allocator = context.temp_allocator)
 }
 
 @(private)
@@ -123,12 +133,12 @@ shape_of_value :: proc(g: ^Gen, t: lang.Type_Id, value: string, span: lang.Span)
 		case .Polygon:
 			return fmt.aprintf("rt.outline(%s.points)", value, allocator = context.temp_allocator), true
 		case .Segment:
-			return fmt.aprintf("collide.segment(%s.from, %s.to)", value, value, allocator = context.temp_allocator), true
+			return fmt.aprintf("collide.segment(%s, %s)", part(g, item.a, value, "from", "vector2"), part(g, item.a, value, "to", "vector2"), allocator = context.temp_allocator), true
 		case .Circle:
-			return fmt.aprintf("collide.circle(%s.pos, %s.radius)", value, value, allocator = context.temp_allocator), true
+			return fmt.aprintf("collide.circle(%s, %s)", part(g, item.a, value, "pos", "vector2"), part(g, item.a, value, "radius", "number"), allocator = context.temp_allocator), true
 		case .Box:
-			angle := fmt.tprintf("%s.angle", value) if has(names[:], "angle") else "0.0"
-			return fmt.aprintf("collide.box(%s.pos, %s.size, %s)", value, value, angle, allocator = context.temp_allocator), true
+			angle := part(g, item.a, value, "angle", "number") if has(names[:], "angle") else "0.0"
+			return fmt.aprintf("collide.box(%s, %s, %s)", part(g, item.a, value, "pos", "vector2"), part(g, item.a, value, "size", "vector2"), angle, allocator = context.temp_allocator), true
 		}
 	}
 	refuse(g, span, fmt.tprintf("%s as a shape", lang.describe(g.types, t)))
@@ -284,14 +294,14 @@ mixed_shape_helper :: proc(g: ^Gen, shape_index: int, names: []string) -> string
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, "rt_shape_%s :: proc(r: ^%s) -> collide.Shape {{\n\tif r == nil {{ return collide.polygon(nil) }}\n\tswitch r.class__ {{\n", name, record)
 	if has(names, "pos") && has(names, "radius") {
-		fmt.sbprintf(&b, "\tcase %d: return collide.circle(r.pos, r.radius)\n", int(lang.Shape_Class.Circle))
+		fmt.sbprintf(&b, "\tcase %d: return collide.circle(%s, %s)\n", int(lang.Shape_Class.Circle), part(g, shape_index, "r", "pos", "vector2"), part(g, shape_index, "r", "radius", "number"))
 	}
 	if has(names, "pos") && has(names, "size") {
-		angle := "r.angle" if has(names, "angle") else "0.0"
-		fmt.sbprintf(&b, "\tcase %d: return collide.box(r.pos, r.size, %s)\n", int(lang.Shape_Class.Box), angle)
+		angle := part(g, shape_index, "r", "angle", "number") if has(names, "angle") else "0.0"
+		fmt.sbprintf(&b, "\tcase %d: return collide.box(%s, %s, %s)\n", int(lang.Shape_Class.Box), part(g, shape_index, "r", "pos", "vector2"), part(g, shape_index, "r", "size", "vector2"), angle)
 	}
 	if has(names, "from") && has(names, "to") {
-		fmt.sbprintf(&b, "\tcase %d: return collide.segment(r.from, r.to)\n", int(lang.Shape_Class.Segment))
+		fmt.sbprintf(&b, "\tcase %d: return collide.segment(%s, %s)\n", int(lang.Shape_Class.Segment), part(g, shape_index, "r", "from", "vector2"), part(g, shape_index, "r", "to", "vector2"))
 	}
 	if has(names, "points") {
 		fmt.sbprintf(&b, "\tcase %d: return rt.outline(r.points)\n", int(lang.Shape_Class.Polygon))

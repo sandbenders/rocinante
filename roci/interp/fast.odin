@@ -79,7 +79,7 @@ eval_number :: proc(it: ^Interp, e: ^lang.IR) -> f64 {
 			case .Cos:   return roci.cos_deg(x)
 			}
 		}
-	case lang.IR_Text, lang.IR_Colour, lang.IR_Boolean, lang.IR_Word, lang.IR_Builtin, lang.IR_Swizzle, lang.IR_Field, lang.IR_Vector, lang.IR_List, lang.IR_Record, lang.IR_Block_Value, lang.IR_Error:
+	case lang.IR_Text, lang.IR_Colour, lang.IR_Boolean, lang.IR_Word, lang.IR_Builtin, lang.IR_Swizzle, lang.IR_Field, lang.IR_Vector, lang.IR_List, lang.IR_Record, lang.IR_Block_Value, lang.IR_Convert, lang.IR_Error:
 	}
 	return as_number(eval(it, e))
 }

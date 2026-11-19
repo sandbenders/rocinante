@@ -141,6 +141,12 @@ IR_Block_Value :: struct {
 	value_type: Type_Id, // for a block that holds one expression: what the expression gives
 }
 
+// A value changed between a box (a value of a kind only known while the sketch runs) and the kind of the place it
+// goes to: made by the code generator where a mix of values meets a place of one kind, never by the checker.
+IR_Convert :: struct {
+	value: ^IR,
+}
+
 IR_Error :: struct {}
 
 IR_Kind :: union {
@@ -160,6 +166,7 @@ IR_Kind :: union {
 	IR_Binary,
 	IR_Call,
 	IR_Block_Value,
+	IR_Convert,
 	IR_Error,
 }
 

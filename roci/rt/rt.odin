@@ -62,7 +62,11 @@ show_list :: proc(list: ^List($T), allocator := context.temp_allocator) -> strin
 	if list != nil {
 		for item in list.items {
 			strings.write_string(&b, " ")
-			strings.write_string(&b, show(item, allocator))
+			when T == Box {
+				strings.write_string(&b, show_box(item, allocator))
+			} else {
+				strings.write_string(&b, show(item, allocator))
+			}
 		}
 	}
 	strings.write_string(&b, " ]")
@@ -77,7 +81,11 @@ show_table :: proc(table: ^Table($V), allocator := context.temp_allocator) -> st
 			strings.write_string(&b, ", " if i > 0 else " ")
 			strings.write_quoted_string(&b, name)
 			strings.write_string(&b, ": ")
-			strings.write_string(&b, show(table.values[i], allocator))
+			when V == Box {
+				strings.write_string(&b, show_box(table.values[i], allocator))
+			} else {
+				strings.write_string(&b, show(table.values[i], allocator))
+			}
 		}
 	}
 	strings.write_string(&b, " }")
