@@ -152,6 +152,7 @@ SHOWCASE := [?]Showcase_Entry{
 // Examples that are not on the site, and why.
 SHOWCASE_LEFT_OUT := [?][2]string{
 	{"benchmark", "100,000 circles a frame: a measurement, not a picture to look at"},
+	{"platform", "it draws the mark of the system it runs on, so its picture would differ from computer to computer (the arrow keys show the others)"},
 	{"sengen", "its font comes with a Mac, so its picture would differ from computer to computer"},
 }
 

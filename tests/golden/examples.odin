@@ -132,6 +132,7 @@ EXAMPLES := [?]Example{
 NO_PICTURE := [?]string{
 	"sengen", // its font, Helvetica Neue Condensed Black, comes with a Mac and is not on the pipelines, so the picture would differ
 	"benchmark", // 100,000 small circles hardly compress, and an interpreter test checks its work
+	"platform", // it draws the mark of the system it runs on, so its picture differs from one pipeline to the next (an interpreter test goes through every mark)
 }
 
 run_examples :: proc(update: bool, only: []string) -> (ran, failures: int) {

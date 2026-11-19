@@ -3,6 +3,7 @@ package interp
 
 import "../"
 import "core:testing"
+import sdl "vendor:sdl3"
 
 // A headless sketch has one stand-in screen, and `platform` is the system's name as text.
 @(test)
@@ -56,5 +57,40 @@ draw [
 	testing.expect_value(t, as_number(global_named(p, "real")), 3024)
 	testing.expect_value(t, as_pair(global_named(p, "left")), [2]f64{-2560, -200})
 	testing.expect_value(t, as_text(global_named(p, "other_name")), "Left")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// The platform example starts on the mark of the system it runs on, the arrow keys go through the
+// seven marks and round again in both directions, and every mark draws something with no error.
+@(test)
+test_the_platform_example_shows_each_mark_and_the_arrow_keys_move_between_them :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("platform"), 1)
+	defer finish(p)
+	names := [?]string{"macos", "windows", "linux", "freebsd", "openbsd", "ios", "android"}
+	start_at := 0
+	for name, i in names {
+		if name == roci.platform_name() {
+			start_at = i + 1
+		}
+	}
+	// a system the example has no mark for (none today) starts on the first
+	start_at = max(start_at, 1)
+	testing.expect_value(t, as_number(global_named(p, "shown")), f64(start_at))
+	w := first_window()
+	expected := start_at
+	for _ in 0 ..< 8 {
+		roci.step({key_event(w, sdl.Scancode.RIGHT)})
+		roci.step({key_event(w, sdl.Scancode.RIGHT, false)})
+		expected = expected % 7 + 1
+		testing.expect_value(t, as_number(global_named(p, "shown")), f64(expected))
+		testing.expect(t, len(roci.recorded(w)) > 3, "a mark draws shapes and a label")
+	}
+	for _ in 0 ..< 8 {
+		roci.step({key_event(w, sdl.Scancode.LEFT)})
+		roci.step({key_event(w, sdl.Scancode.LEFT, false)})
+		expected = (expected + 5) % 7 + 1
+		testing.expect_value(t, as_number(global_named(p, "shown")), f64(expected))
+	}
+	testing.expect_value(t, expected, start_at)
 	testing.expect_value(t, len(p.errors), 0)
 }

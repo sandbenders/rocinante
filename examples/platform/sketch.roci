@@ -1,0 +1,164 @@
+// The system the sketch runs on: `platform` is its name as text, and this sketch draws a simple mark for
+// it, made of plain shapes and nowhere near the real logos, which belong to their owners. The left and
+// right arrow keys show the marks of the other systems, so a sketch that looks after a phone differently
+// can be tried on a computer. Each mark is a verb drawn around the point 0 0, and `move` puts it in the
+// middle of the window.
+window size 400 400 title "platform"
+
+names = [ "macos" "windows" "linux" "freebsd" "openbsd" "ios" "android" ]
+shown = 1
+n = 0
+for each system in names [
+  n = n + 1
+  if system is platform [ shown = n ]
+]
+
+// A rectangle with round corners, about a point: two bars and a circle in each corner.
+learn pill c w h r [
+  rect at c size w (h - r * 2) as center
+  rect at c size (w - r * 2) h as center
+  for each corner in [ { -1, -1 } { 1, -1 } { -1, 1 } { 1, 1 } ] [
+    circle at (c.x + corner.x * (w / 2 - r)) (c.y + corner.y * (h / 2 - r)) radius r
+  ]
+]
+
+learn mark_macos [
+  push [
+    clip at -100 -100 size 100 200
+    fill #9bd0ff
+    pill { 0, 0 } 190 190 40
+  ]
+  push [
+    clip at 0 -100 size 100 200
+    fill #1e90ff
+    pill { 0, 0 } 190 190 40
+  ]
+  fill black
+  rect at -38 -30 size 12 44 as center
+  rect at 38 -30 size 12 44 as center
+  stroke black
+  thickness 8
+  no fill
+  arc at 0 5 size 110 80 from 15 to 165
+  no stroke
+]
+
+learn mark_windows [
+  fill #0a84d6
+  rect at -49 -49 size 92 92 as center
+  rect at 49 -49 size 92 92 as center
+  rect at -49 49 size 92 92 as center
+  rect at 49 49 size 92 92 as center
+]
+
+learn mark_linux [
+  fill black
+  ellipse at 0 30 size 130 160
+  ellipse at -66 40 size 24 100
+  ellipse at 66 40 size 24 100
+  circle at 0 -50 radius 38
+  fill white
+  ellipse at 0 45 size 88 120
+  ellipse at -13 -52 size 22 28
+  ellipse at 13 -52 size 22 28
+  fill black
+  circle at -11 -52 radius 4
+  circle at 11 -52 radius 4
+  fill #f5a800
+  triangle { -13, -38 } { 13, -38 } { 0, -20 }
+  ellipse at -32 106 size 52 22
+  ellipse at 32 106 size 52 22
+]
+
+learn mark_freebsd [
+  fill #ab2b28
+  circle at 0 15 radius 72
+  triangle { -62, -25 } { -30, -48 } { -78, -90 }
+  triangle { 62, -25 } { 30, -48 } { 78, -90 }
+  fill white
+  circle at -26 5 radius 15
+  circle at 26 5 radius 15
+  fill black
+  circle at -22 5 radius 7
+  circle at 30 5 radius 7
+  stroke white
+  thickness 6
+  no fill
+  arc at 0 40 size 70 44 from 20 to 160
+  no stroke
+]
+
+learn mark_openbsd [
+  fill #f2ca30
+  push [
+    repeat 14 [
+      turn (360 / 14)
+      triangle { -11, -62 } { 11, -62 } { 0, -102 }
+    ]
+  ]
+  circle at 0 0 radius 70
+  fill white
+  circle at 28 -16 radius 17
+  fill black
+  circle at 32 -16 radius 8
+  stroke black
+  thickness 5
+  no fill
+  arc at 38 22 size 40 24 from 10 to 170
+  no stroke
+  fill #d9a91c
+  ellipse at -40 20 size 40 56
+]
+
+learn mark_ios [
+  fill #2b2b30
+  pill { 0, 0 } 110 200 26
+  fill #f3f3f7
+  pill { 0, -4 } 92 168 14
+  fill #2b2b30
+  pill { 0, -78 } 36 10 5
+  fill #1e90ff
+  pill { 0, -20 } 52 52 14
+  fill #ffd60a
+  pill { 0, 50 } 52 52 14
+]
+
+learn mark_android [
+  fill #3ddc84
+  arc at 0 -5 size 150 150 from 180 to 360
+  pill { 0, 60 } 150 100 18
+  pill { -92, 52 } 28 90 14
+  pill { 92, 52 } 28 90 14
+  pill { -34, 118 } 28 56 14
+  pill { 34, 118 } 28 56 14
+  stroke #3ddc84
+  thickness 7
+  line from -45 -62 to -60 -92
+  line from 45 -62 to 60 -92
+  no stroke
+  fill white
+  circle at -32 -38 radius 7
+  circle at 32 -38 radius 7
+]
+
+on key "right" [ shown = shown % 7 + 1 ]
+on key "left" [ shown = (shown + 5) % 7 + 1 ]
+
+draw [
+  background 30
+  which = item shown of names
+  push [
+    move 200 175
+    if which is "macos" [ mark_macos ]
+    if which is "windows" [ mark_windows ]
+    if which is "linux" [ mark_linux ]
+    if which is "freebsd" [ mark_freebsd ]
+    if which is "openbsd" [ mark_openbsd ]
+    if which is "ios" [ mark_ios ]
+    if which is "android" [ mark_android ]
+  ]
+  fill white
+  text which at 200 340 align center size 28
+  fill gray
+  text ("this sketch is running on " + platform) at 200 375 align center size 14
+]

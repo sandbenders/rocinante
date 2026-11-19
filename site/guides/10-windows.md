@@ -87,4 +87,4 @@ if platform is "ios" or platform is "android" [
 ]
 ```
 
-`examples/screens` draws every screen where it sits on the desk.
+`examples/screens` draws every screen where it sits on the desk, and `examples/platform` draws a simple mark for the system it runs on (the arrow keys show the others).
