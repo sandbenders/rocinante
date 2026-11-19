@@ -150,7 +150,9 @@ builtin :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 	case "webcam":   return "roci.webcam()"
 	case "screens", "joysticks", "gamepads", "touches": return builtin_list(g, e, name)
 	case "gamepad": return builtin_record(g, e, name)
-	case "turtle", "midi", "osc", "packet", "received", "finger", "scene": return builtin_record(g, e, name)
+	case "turtle", "midi", "osc", "packet", "received", "finger", "scene", "reply": return builtin_record(g, e, name)
+	case "chosen":   return "rt.chosen_path"
+	case "clipboard": return "rt.keep(roci.clipboard(context.temp_allocator))"
 	case "mic":      return "roci.mic()"
 	case "speakers": return "roci.the_speakers()"
 	case "platform": return "roci.platform_name()"
@@ -438,6 +440,8 @@ builtin_record :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 			fmt.sbprintf(&b, "\tname, seconds, frames := rt.scene_info()\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"name", "name"}, {"time", "seconds"}, {"frame", "f64(frames)"}}), trace_arg(g, record))
 		case "gamepad":
 			fmt.sbprintf(&b, "\tp, ok := roci.gamepad()\n\tif !ok {{ p = {{}} }}\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"connected", "ok"}, {"bottom", "p.bottom"}, {"right", "p.right"}, {"left", "p.left"}, {"top", "p.top"}, {"leftstick", "p.left_stick"}, {"rightstick", "p.right_stick"}, {"dpad", "p.dpad"}, {"lefttrigger", "p.left_trigger"}, {"righttrigger", "p.right_trigger"}, {"leftstickpress", "p.left_stick_press"}, {"rightstickpress", "p.right_stick_press"}, {"leftshoulder", "p.left_shoulder"}, {"rightshoulder", "p.right_shoulder"}, {"start", "p.start"}, {"back", "p.back"}, {"home", "p.home"}, {"extra", "rt.pad_extra(p)"}}), trace_arg(g, record))
+		case "reply":
+			fmt.sbprintf(&b, "\tr := rt.reply\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"status", "f64(r.status)"}, {"ok", "r.status >= 200 && r.status < 300"}, {"text", "rt.keep(r.text)"}, {"problem", "rt.keep(r.problem)"}, {"picture", "r.picture"}}), trace_arg(g, record))
 		case "midi":
 			fmt.sbprintf(&b, "\tm := rt.happening.midi\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"note", "m.note"}, {"velocity", "m.velocity"}, {"channel", "m.channel"}, {"control", "m.control"}, {"value", "m.value"}, {"bend", "m.bend"}, {"program", "m.program"}, {"pressure", "m.pressure"}}), trace_arg(g, record))
 		case "osc":

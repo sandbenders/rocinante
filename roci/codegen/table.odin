@@ -60,6 +60,7 @@ PLAIN := [?]Plain{
 	{"up", 0, "rt.turtle_up", "n", false, false},
 	{"down", 0, "rt.turtle_down", "n", false, false},
 	{"roll", 0, "rt.turtle_roll", "n", false, false},
+	{"clear", 0, "roci.clear_window", "", false, false},
 	{"smooth", 0, "roci.smooth", "", false, false},
 	{"no smooth", 0, "roci.no_smooth", "", false, false},
 	{"no clip", 0, "roci.no_clip", "", false, false},

@@ -133,17 +133,15 @@ test_list_blocks_become_procedures_with_plain_loops :: proc(t: ^testing.T) {
 
 @(test)
 test_what_cannot_be_compiled_yet_is_refused_with_its_name_and_never_half_done :: proc(t: ^testing.T) {
-	refused_for(t, "fetch \"http://x.org\" [ print reply.text ]\n", "fetch")
+	refused_for(t, "on osc \"/a\" [ print osc.args ]\n", "mix of values")
 	refused_for(t, "scene \"a\" [ draw [ scene \"b\" [ ] ] ]\n", "another block")
-	refused_for(t, "o = midi outputs\n", "midi outputs")
-	refused_for(t, "ui [ button \"x\" ]\n", "ui")
 	refused_for(t, "x = table\n", "table")
 	refused_for(t, "draw [ push [ circle at 1 1 radius 1 ] ]\nevery 1 second [ draw [ circle at 1 1 radius 1 ] ]\n", "inside another block")
 }
 
 @(test)
 test_every_problem_is_said_not_just_the_first :: proc(t: ^testing.T) {
-	result := compile("scene \"a\" [ ]\nx = table\nui [ ]\n")
+	result := compile("scene \"a\" [ draw [ scene \"b\" [ ] ] ]\nx = table\non osc \"/a\" [ print osc.args ]\n")
 	testing.expect(t, len(result.problems) >= 3, "three things to say")
 }
 

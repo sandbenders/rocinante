@@ -3,7 +3,7 @@ NOTES: a list of numbers
 at_note: a number
 rings: a list of records with note and age
 clock_on: true or false
-names: a list of mixed values
+names: a list of text
 options: a list of text
 next_at: a number
 target: text

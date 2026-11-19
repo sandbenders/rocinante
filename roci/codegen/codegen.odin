@@ -95,6 +95,8 @@ Gen :: struct {
 	has_scenes: bool,
 	scenes:   [dynamic]string, // the names of the scenes, in the order they are met (the places `rt.scene_register` gives)
 	draw_registered: bool,
+	ui_registered: bool,
+	scene_uis: [dynamic]Scene_Draw,
 	scene_draws: [dynamic]Scene_Draw,
 	uses_data: bool,
 	lenient:  int, // above 0 while a record type the language hands out is made: a field of a type compiled sketches cannot hold is left out
@@ -127,6 +129,7 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	g.receiver_info = make([dynamic]Receiver, context.temp_allocator)
 	g.copiers = make(map[string]string, 4, context.temp_allocator)
 	g.scene_draws = make([dynamic]Scene_Draw, context.temp_allocator)
+	g.scene_uis = make([dynamic]Scene_Draw, context.temp_allocator)
 	for s in program.stmts {
 		if _, is_scene := s.kind.(lang.IR_Scene); is_scene {
 			g.has_scenes = true
@@ -225,6 +228,9 @@ name_of :: proc(g: ^Gen, sym: ^lang.Symbol) -> string {
 	}
 	if sym.kind == .Item {
 		return "it_" // the item a list verb's block is looking at; the procedure made for the call names it so
+	}
+	if sym.kind == .Result {
+		return "result_" // the running value of `combine`
 	}
 	base := clean(sym.name)
 	name := base

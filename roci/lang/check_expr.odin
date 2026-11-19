@@ -339,7 +339,7 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 		type = special
 	}
 	// lines and file names are text
-	if verb.name == "lines" || verb.name == "files" {
+	if verb.name == "lines" || verb.name == "files" || verb.name == "midi outputs" || verb.name == "webcam cameras" {
 		type = list_of(c.types, T_TEXT)
 	}
 	// the bands of a sound are numbers

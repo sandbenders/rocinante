@@ -42,6 +42,9 @@ say_once :: proc(key, message: string) {
 // The file a name stands for, or "" after saying why not.
 @(private)
 find_file :: proc(name, what: string) -> string {
+	if is_chosen(name) {
+		return name // a file the player chose is read where it is
+	}
 	path, status, others := folder.find_asset(ASSETS_ROOT, name, context.temp_allocator)
 	#partial switch status {
 	case .Found:

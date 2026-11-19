@@ -20,12 +20,15 @@ import "../"
 // The file's contents as data, or false after saying why not. A file is read once.
 read_datum :: proc(name, sheet: string) -> (datum: data.Datum, ok: bool) {
 	format := data.format_of(name)
-	path, status, _ := folder.find_asset(ASSETS_ROOT, name, context.temp_allocator)
-	if status != .Found {
-		say_once(name, fmt.tprintf("I could not load `%s`: there is no file of that name in the assets folder.", name))
-		return nil, false
+	full := name
+	if !is_chosen(name) {
+		path, status, _ := folder.find_asset(ASSETS_ROOT, name, context.temp_allocator)
+		if status != .Found {
+			say_once(name, fmt.tprintf("I could not load `%s`: there is no file of that name in the assets folder.", name))
+			return nil, false
+		}
+		full = strings.concatenate({ASSETS_ROOT, "/", path}, context.temp_allocator)
 	}
-	full := strings.concatenate({ASSETS_ROOT, "/", path}, context.temp_allocator)
 	bytes, err := os.read_entire_file(full, context.temp_allocator)
 	if err != nil {
 		say_once(name, fmt.tprintf("I could not load `%s`: the file is there but cannot be read.", name))

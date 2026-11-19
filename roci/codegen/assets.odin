@@ -288,6 +288,58 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 			}
 			return fmt.aprintf("roci.forward_sound(%s, %s)", args[0], expr(g, by.args[0]), allocator = context.temp_allocator), false, true
 		}
+	case "label", "button", "toggle", "slider", "number", "knob", "textbox", "dropdown", "choice", "list", "colorpicker", "range", "xypad", "image button", "progress", "separator", "controls", "tip", "forget ui", "ui hide", "ui show", "ui key", "ui theme":
+		return widget_call(g, e, c, name, args)
+	case "fetch", "fetch picture", "post":
+		block, is_block := c.args[len(c.args) - 1].kind.(lang.IR_Block_Value)
+		if !is_block || len(c.args) < 2 {
+			refuse(g, e.span, "`fetch` without its block")
+			return "", false, true
+		}
+		for sym in block.block.captures {
+			if sym.scope != 0 && sym.kind != .Item {
+				refuse(g, e.span, "`fetch` whose block reads a name of a taught verb")
+				return "", false, true
+			}
+		}
+		g.next_id += 1
+		proc_name := fmt.aprintf("fetched_%d", g.next_id, allocator = context.temp_allocator)
+		emit_proc(g, proc_name, "()", block.block)
+		send := args[1] if name == "post" && len(c.args) > 2 else `""`
+		return fmt.aprintf("rt.fetch(%s, %v, %s, %s, %v, %s)", args[0], name == "post", send, maybe_or(g, c.options, "header", `""`), name == "fetch picture", proc_name, allocator = context.temp_allocator), false, true
+	case "ask file", "ask folder", "ask save":
+		block, is_block := c.args[len(c.args) - 1].kind.(lang.IR_Block_Value)
+		if !is_block {
+			refuse(g, e.span, "`ask` without its block")
+			return "", false, true
+		}
+		for sym in block.block.captures {
+			if sym.scope != 0 && sym.kind != .Item {
+				refuse(g, e.span, "`ask` whose block reads a name of a taught verb")
+				return "", false, true
+			}
+		}
+		g.next_id += 1
+		proc_name := fmt.aprintf("asked_%d", g.next_id, allocator = context.temp_allocator)
+		emit_proc(g, proc_name, "()", block.block)
+		kind := 0 if name == "ask file" else 1 if name == "ask folder" else 2
+		prompt := args[0] if len(c.args) > 1 else `""`
+		return fmt.aprintf("rt.ask(%d, %s, %s)", kind, prompt, proc_name, allocator = context.temp_allocator), false, true
+	case "read":
+		return fmt.aprintf("rt.read(%s)", args[0], allocator = context.temp_allocator), true, true
+	case "open":
+		return fmt.aprintf("rt.open(%s)", args[0], allocator = context.temp_allocator), false, true
+	case "copy to clipboard":
+		return fmt.aprintf("roci.set_clipboard(%s)", args[0], allocator = context.temp_allocator), false, true
+	case "midi outputs":
+		return "rt.text_list(roci.midi_outputs(context.temp_allocator))", true, true
+	case "webcam cameras":
+		return "rt.text_list(roci.webcam_cameras(context.temp_allocator))", true, true
+	case "webcam pick":
+		if kind_of(g, c.args[0]) == .Text {
+			return fmt.aprintf("roci.webcam_pick(%s)", args[0], allocator = context.temp_allocator), false, true
+		}
+		return fmt.aprintf("roci.webcam_pick(int(%s))", args[0], allocator = context.temp_allocator), false, true
 	case "numbers":
 		from, to := option(c.options, "from"), option(c.options, "to")
 		if from == nil || to == nil {

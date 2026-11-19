@@ -369,6 +369,9 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		refuse(g, e.span, "`count` of something that is not a list")
 		return "0.0", true
 	case "item":
+		if option(c.options, "of") == nil && kind_of(g, c.args[0]) == .Text {
+			return fmt.aprintf("rt.ui_item(%s, %s)", placing(g, e, c), args[0], allocator = context.temp_allocator), true
+		}
 		if c.shape == 0 {
 			if of := option(c.options, "of"); of != nil && kind_of(g, of.args[0]) == .List {
 				return fmt.aprintf("rt.item(%s, %s)", expr(g, of.args[0]), args[0], allocator = context.temp_allocator), true
@@ -382,7 +385,7 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		}
 		refuse(g, e.span, "`add` to something that is not a list")
 		return "", false
-	case "keep", "skip", "collect", "sort", "find":
+	case "keep", "skip", "collect", "sort", "find", "combine":
 		return list_block_call(g, e, c, name), true
 	}
 	if made, handled := plain_call(g, e, c, args); handled {
@@ -418,6 +421,10 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 		if by := option(c.options, "by"); by != nil {
 			block_ir = by.args[0]
 		}
+	} else if name == "combine" {
+		if from := option(c.options, "from"); from != nil && len(from.args) >= 2 {
+			block_ir = from.args[1]
+		}
 	} else if len(c.args) >= 2 {
 		block_ir = c.args[1]
 	}
@@ -438,7 +445,7 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 	extra_params := strings.builder_make(context.temp_allocator)
 	extra_args := strings.builder_make(context.temp_allocator)
 	for sym in block.block.captures {
-		if sym.scope == 0 || sym.kind == .Item {
+		if sym.scope == 0 || sym.kind == .Item || sym.kind == .Result {
 			continue
 		}
 		type, type_ok := odin_type(g, sym.type, e.span, sym.name)
@@ -479,6 +486,18 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 		made_marker := item_marker(g, stmt.expr.type, made)
 		stored_value := fmt.tprintf("rt.keep(%s)", condition) if kind_of(g, stmt.expr) == .Text else condition
 		fmt.sbprintf(&b, "%s :: proc(list: %s%s) -> ^rt.List(%s) {{\n\tout := rt.new_list(%s, %s)\n\tif list != nil {{\n\t\tfor it_ in list.items {{\n\t\t\trt.add(%s, out)\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, extra, made, made, made_marker, stored_value)
+	case "combine":
+		start := option(c.options, "from")
+		kind := kind_of(g, stmt.expr)
+		made, made_ok := odin_type(g, stmt.expr.type, e.span, "what combine makes")
+		if !made_ok || start == nil || (kind != .Number && kind != .Text && kind != .Boolean && kind != .Vector && kind != .Colour) {
+			refuse(g, e.span, "`combine` into something that is not a number, a text, a vector or a color")
+			return "nil"
+		}
+		stored_value := fmt.tprintf("rt.keep(%s)", condition) if kind == .Text else condition
+		fmt.sbprintf(&b, "%s :: proc(list: %s%s, start: %s) -> %s {{\n\tresult_ := start\n\tif list != nil {{\n\t\tfor it_ in list.items {{\n\t\t\tresult_ = %s\n\t\t}}\n\t}}\n\treturn result_\n}}\n\n", helper, list_type, extra, made, made, stored_value)
+		strings.write_string(&g.procs, strings.to_string(b))
+		return fmt.aprintf("%s(%s%s, %s)", helper, expr(g, c.args[0]), strings.to_string(extra_args), expr(g, start.args[0]), allocator = context.temp_allocator)
 	case "find":
 		fmt.sbprintf(&b, "%s :: proc(list: %s%s) -> (found: %s) {{\n\tif list == nil {{ return }}\n\tfor it_ in list.items {{\n\t\tif %s {{ return it_ }}\n\t}}\n\treturn\n}}\n\n", helper, list_type, extra, element, condition)
 	case "sort":

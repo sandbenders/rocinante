@@ -1,4 +1,4 @@
-cameras: a list of mixed values
+cameras: a list of text
 shots: a list of pictures
 chosen: text
 which: text

@@ -91,7 +91,14 @@ emit_stmt :: proc(g: ^Gen, s: ^lang.IR_Stmt) {
 	case lang.IR_With:
 		comment(g, s.span)
 		emit_with(g, s, k)
-	case lang.IR_Every, lang.IR_On, lang.IR_Draw:
+	case lang.IR_Draw:
+		if k.ui {
+			// a `ui` block inside `draw` or an event makes its widgets right there
+			emit_block(g, k.body)
+			return
+		}
+		refuse(g, s.span, "`draw`, `every` or `on` inside another block (they go at the top of the sketch)")
+	case lang.IR_Every, lang.IR_On:
 		refuse(g, s.span, "`draw`, `every` or `on` inside another block (they go at the top of the sketch)")
 	case lang.IR_Scene:
 		refuse(g, s.span, "a `scene` inside another block (scenes go at the top of the sketch)")
@@ -179,6 +186,13 @@ emit_expr_stmt :: proc(g: ^Gen, e: ^lang.IR) {
 	if call_ir.verb != nil && call_ir.instance == nil && call_ir.verb.name == "draw into" {
 		emit_draw_into(g, e, call_ir)
 		return
+	}
+	if call_ir.verb != nil && call_ir.instance == nil {
+		switch call_ir.verb.name {
+		case "panel", "row", "column", "tabs", "tab", "menu":
+			emit_group(g, e, call_ir, call_ir.verb.name)
+			return
+		}
 	}
 	if call_ir.verb != nil && call_ir.instance == nil && call_ir.verb.name == "set" {
 		emit_set(g, e, call_ir)
@@ -495,14 +509,33 @@ emit_proc :: proc(g: ^Gen, name, signature: string, body: lang.IR_Block, locals:
 
 @(private)
 emit_draw :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Draw) {
-	if k.ui {
-		refuse(g, s.span, "`ui`, which makes widgets")
-		return
-	}
 	id := g.next_id
 	g.next_id += 1
 	name := fmt.aprintf("draw_%d", id, allocator = context.temp_allocator)
+	if k.ui {
+		name = fmt.aprintf("ui_%d", id, allocator = context.temp_allocator)
+	}
 	emit_proc(g, name, "()", k.body)
+	if k.ui {
+		if k.window != nil {
+			if g.has_scenes {
+				refuse(g, s.span, "`ui` for a window of its own in a sketch with scenes")
+				return
+			}
+			line(g, "roci.ui_window(%s, %s)", expr(g, k.window), name)
+			return
+		}
+		if g.has_scenes {
+			append(&g.scene_uis, Scene_Draw{scene = g.registering, proc_name = name})
+			if !g.ui_registered {
+				g.ui_registered = true
+				line(g, "roci.ui_window(roci.current_window(), scene_ui)")
+			}
+			return
+		}
+		line(g, "roci.ui_window(roci.current_window(), %s)", name)
+		return
+	}
 	if k.window != nil {
 		if g.has_scenes {
 			refuse(g, s.span, "`draw` for a window of its own in a sketch with scenes")
@@ -838,6 +871,22 @@ emit_scene_procs :: proc(g: ^Gen, out: ^strings.Builder) {
 	for place in 1 ..= len(g.scenes) {
 		fmt.sbprintf(out, "\tcase %d:\n", place)
 		for d in g.scene_draws {
+			if d.scene == place {
+				fmt.sbprintf(out, "\t\t%s()\n", d.proc_name)
+			}
+		}
+	}
+	fmt.sbprintf(out, "\t}}\n}}\n\n")
+	fmt.sbprintf(out, "scene_ui :: proc() {{\n")
+	for d in g.scene_uis {
+		if d.scene == 0 {
+			fmt.sbprintf(out, "\t%s()\n", d.proc_name)
+		}
+	}
+	fmt.sbprintf(out, "\tswitch rt.active_scene() {{\n")
+	for place in 1 ..= len(g.scenes) {
+		fmt.sbprintf(out, "\tcase %d:\n", place)
+		for d in g.scene_uis {
 			if d.scene == place {
 				fmt.sbprintf(out, "\t\t%s()\n", d.proc_name)
 			}

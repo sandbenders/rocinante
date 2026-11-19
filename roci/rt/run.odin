@@ -133,6 +133,8 @@ execute :: proc(run: Run, setup: proc(), roots: proc(), hook: proc(w: roci.Windo
 // Run as every frame ends, when no verb is running: the moment the collector may free what nothing holds.
 @(private)
 end_of_frame :: proc() {
+	step_fetches()
+	step_asks()
 	scene_apply()
 	say_record_results()
 	if collector_roots != nil {
