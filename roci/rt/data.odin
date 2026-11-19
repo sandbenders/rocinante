@@ -9,13 +9,14 @@ import "base:intrinsics"
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:time"
 import "../data"
 import "../folder"
 import "../maths"
 import "../"
 
-@(private) data_cache: map[string]rawptr
-@(private) data_heap: [dynamic]^Header
+@(private, thread_local) data_cache: map[string]Kept_Data
+@(private, thread_local) data_heap: [dynamic]^Header
 
 // The file's contents as data, or false after saying why not. A file is read once.
 read_datum :: proc(name, sheet: string) -> (datum: data.Datum, ok: bool) {
@@ -42,14 +43,62 @@ read_datum :: proc(name, sheet: string) -> (datum: data.Datum, ok: bool) {
 	return parsed, true
 }
 
-// `load "name"` of a data file: the value of the type `convert` makes, kept after the first time.
+// What `load` remembers about a data file.
+@(private)
+Kept_Data :: struct {
+	value:   rawptr,
+	path:    string, // the file that was read, empty when there was none
+	mtime:   time.Time,
+	checked: int, // the frame the file's time was last compared with `mtime`
+	slot:    int,  // where its value sits in `data_heap`, or -1
+}
+
+// The full path of the file a name stands for, or empty.
+@(private)
+data_path :: proc(name: string) -> string {
+	if is_chosen(name) {
+		return name
+	}
+	path, status, _ := folder.find_asset(ASSETS_ROOT, name, context.temp_allocator)
+	if status != .Found {
+		return ""
+	}
+	return strings.concatenate({ASSETS_ROOT, "/", path}, context.temp_allocator)
+}
+
+// `load "name"` of a data file: the value of the type `convert` makes. It is the same one each time `load` runs
+// until the file changes on the disk (looked at once a frame), and then it is made again from the new file.
 load_data :: proc(name, sheet: string, convert: proc(d: data.Datum) -> $T) -> T {
 	key := name if sheet == "" else strings.concatenate({name, "#", sheet}, context.temp_allocator)
 	if data_cache == nil {
-		data_cache = make(map[string]rawptr)
+		data_cache = make(map[string]Kept_Data)
 	}
-	if kept, found := data_cache[key]; found {
-		return (^T)(kept)^
+	frame := roci.frame_count()
+	kept, found := data_cache[key]
+	if found {
+		if kept.checked == frame {
+			return (^T)(kept.value)^
+		}
+		kept.checked = frame
+		if kept.path != "" {
+			if info, err := os.stat(kept.path, context.temp_allocator); err == nil && info.modification_time == kept.mtime {
+				data_cache[key] = kept
+				return (^T)(kept.value)^
+			}
+		} else {
+			// there was no file: it is looked for again only when one has appeared
+			if data_path(name) == "" {
+				data_cache[key] = kept
+				return (^T)(kept.value)^
+			}
+		}
+	}
+	entry := Kept_Data{checked = frame, slot = -1}
+	if path := data_path(name); path != "" {
+		entry.path = strings.clone(path)
+		if info, err := os.stat(path, context.temp_allocator); err == nil {
+			entry.mtime = info.modification_time
+		}
 	}
 	value: T
 	if datum, ok := read_datum(name, sheet); ok {
@@ -57,11 +106,37 @@ load_data :: proc(name, sheet: string, convert: proc(d: data.Datum) -> $T) -> T 
 	} else {
 		value = convert(data.Null{}) // what a place of that kind holds when there is nothing
 	}
-	data_cache[strings.clone(key)] = new_clone(value)
 	when intrinsics.type_is_pointer(T) {
-		append(&data_heap, (^Header)(value))
+		if found && kept.slot >= 0 {
+			data_heap[kept.slot] = (^Header)(value)
+			entry.slot = kept.slot
+		} else {
+			entry.slot = len(data_heap)
+			append(&data_heap, (^Header)(value))
+		}
+	}
+	entry.value = new_clone(value)
+	if found {
+		delete(kept.path)
+		free(kept.value)
+		data_cache[key] = entry
+	} else {
+		data_cache[strings.clone(key)] = entry
 	}
 	return value
+}
+
+// Lets go of every data file that was read (tests end with it, and a run that starts again).
+forget_data :: proc() {
+	for key, kept in data_cache {
+		delete(kept.path)
+		free(kept.value)
+		delete(key)
+	}
+	delete(data_cache)
+	data_cache = nil
+	delete(data_heap)
+	data_heap = nil
 }
 
 // What the collector keeps for the data files.
@@ -154,9 +229,34 @@ members :: proc(m: []data.Member) -> []data.Member {
 	return out
 }
 
+// How deep a value may go before it is called a loop: a record that holds itself has no end.
+DATUM_DEPTH :: 64
+
+@(private, thread_local) datum_depth: int
+@(private, thread_local) datum_looped: bool
+
+// Called by the procedures that make the data of a record, list or table: false when the value goes too deep.
+datum_enter :: proc() -> bool {
+	if datum_depth >= DATUM_DEPTH {
+		datum_looped = true
+		return false
+	}
+	datum_depth += 1
+	return true
+}
+
+datum_leave :: proc() {
+	datum_depth -= 1
+}
+
 // Writes the data to the file named, in the kind the name ends in.
 save_data :: proc(d: data.Datum, name: string) {
 	format := data.format_of(name)
+	if datum_looped {
+		datum_looped = false
+		say_once(name, fmt.tprintf("I could not save `%s`: the value holds itself (a record that has itself inside), so it has no end to write.", name))
+		return
+	}
 	if format == .None {
 		say_once(name, fmt.tprintf("I could not save `%s`: I write data to files ending in `.json`, `.csv`, `.tsv`, `.toml` or `.txt`.", name))
 		return

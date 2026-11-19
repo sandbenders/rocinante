@@ -1,6 +1,12 @@
 package rt
 
 import "core:math"
+import "core:os"
+import "core:strings"
+import "core:time"
+import "../"
+import "../data"
+import "../folder"
 import "core:testing"
 
 @(test)
@@ -193,3 +199,57 @@ test_a_collection_starts_when_enough_was_made :: proc(t: ^testing.T) {
 }
 
 @(thread_local) test_kept_list2: ^List(f64)
+
+@(test)
+test_a_value_that_goes_too_deep_to_save_is_a_loop_and_writes_nothing :: proc(t: ^testing.T) {
+	for _ in 0 ..< DATUM_DEPTH {
+		testing.expect(t, datum_enter())
+	}
+	testing.expect(t, !datum_enter())
+	testing.expect(t, datum_looped)
+	for _ in 0 ..< DATUM_DEPTH {
+		datum_leave()
+	}
+	testing.expect_value(t, datum_depth, 0)
+	defer forget_said()
+	save_data(data.Null{}, "loop.json") // says the value holds itself and forgets the loop
+	testing.expect(t, !datum_looped)
+	testing.expect(t, datum_enter()) // the next save starts again from the top
+	datum_leave()
+}
+
+@(test)
+test_a_data_file_is_read_again_when_it_changes :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	defer roci.shutdown()
+	defer gc_reset()
+	testing.expect(t, folder.ensure_directory("output/tests/rt-data"))
+	path := "output/tests/rt-data/count.json"
+	defer forget_data()
+	defer forget_said()
+	defer {
+		for key in allowed {
+			delete(key)
+		}
+		delete(allowed)
+		allowed = nil
+	}
+	read_number :: proc(d: data.Datum) -> f64 {
+		return datum_number(datum_member(d, "n"))
+	}
+	testing.expect(t, roci.write_text_file(path, `{"n": 1}`))
+	if allowed == nil {
+		allowed = make(map[string]bool)
+	}
+	allowed[strings.clone(path)] = true
+	testing.expect_value(t, load_data(path, "", read_number), 1)
+	roci.step()
+	testing.expect_value(t, load_data(path, "", read_number), 1) // unchanged: kept
+	testing.expect(t, roci.write_text_file(path, `{"n": 2}`))
+	info, err := os.stat(path, context.temp_allocator)
+	testing.expect(t, err == nil)
+	testing.expect(t, os.change_times(path, time.now(), time.time_add(info.modification_time, 10 * time.Second)) == nil)
+	testing.expect_value(t, load_data(path, "", read_number), 1) // still the same frame: not looked at again
+	roci.step()
+	testing.expect_value(t, load_data(path, "", read_number), 2)
+}

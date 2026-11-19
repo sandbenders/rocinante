@@ -39,6 +39,15 @@ say_once :: proc(key, message: string) {
 	fmt.eprintfln("%s", message)
 }
 
+// Forgets what was said once, so a test can hear it again.
+forget_said :: proc() {
+	for key in said {
+		delete(key)
+	}
+	delete(said)
+	said = nil
+}
+
 // The file a name stands for, or "" after saying why not.
 @(private)
 find_file :: proc(name, what: string) -> string {

@@ -102,19 +102,19 @@ to_datum_proc :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span) -> (name: strin
 				}
 				fmt.sbprintf(&members, "data.Member{{%q, %s(v.%s)}}", f.name, inner, field_name(f.name))
 			}
-			fmt.sbprintf(&b, "%s :: proc(v: %s) -> data.Datum {{\n\tif v == nil {{ return data.Null{{}} }}\n\treturn data.Object(rt.members({{%s}}))\n}}\n\n", proc_name, odin, strings.to_string(members))
+			fmt.sbprintf(&b, "%s :: proc(v: %s) -> data.Datum {{\n\tif v == nil || !rt.datum_enter() {{ return data.Null{{}} }}\n\tdefer rt.datum_leave()\n\treturn data.Object(rt.members({{%s}}))\n}}\n\n", proc_name, odin, strings.to_string(members))
 		case .List:
 			inner, inner_ok := to_datum_proc(g, lang.Type_Id(item.a), span)
 			if !inner_ok {
 				return "", false
 			}
-			fmt.sbprintf(&b, "%s :: proc(v: %s) -> data.Datum {{\n\tif v == nil {{ return data.Null{{}} }}\n\titems := make([]data.Datum, len(v.items), context.temp_allocator)\n\tfor x, i in v.items {{ items[i] = %s(x) }}\n\treturn items\n}}\n\n", proc_name, odin, inner)
+			fmt.sbprintf(&b, "%s :: proc(v: %s) -> data.Datum {{\n\tif v == nil || !rt.datum_enter() {{ return data.Null{{}} }}\n\tdefer rt.datum_leave()\n\titems := make([]data.Datum, len(v.items), context.temp_allocator)\n\tfor x, i in v.items {{ items[i] = %s(x) }}\n\treturn items\n}}\n\n", proc_name, odin, inner)
 		case .Table:
 			inner, inner_ok := to_datum_proc(g, lang.Type_Id(item.a), span)
 			if !inner_ok {
 				return "", false
 			}
-			fmt.sbprintf(&b, "%s :: proc(v: %s) -> data.Datum {{\n\tif v == nil {{ return data.Null{{}} }}\n\tmembers := make([]data.Member, len(v.keys), context.temp_allocator)\n\tfor key, i in v.keys {{ members[i] = data.Member{{key, %s(v.values[i])}} }}\n\treturn data.Object(members)\n}}\n\n", proc_name, inner)
+			fmt.sbprintf(&b, "%s :: proc(v: %s) -> data.Datum {{\n\tif v == nil || !rt.datum_enter() {{ return data.Null{{}} }}\n\tdefer rt.datum_leave()\n\tmembers := make([]data.Member, len(v.keys), context.temp_allocator)\n\tfor key, i in v.keys {{ members[i] = data.Member{{key, %s(v.values[i])}} }}\n\treturn data.Object(members)\n}}\n\n", proc_name, inner)
 		}
 		strings.write_string(&g.procs, strings.to_string(b))
 		return proc_name, true

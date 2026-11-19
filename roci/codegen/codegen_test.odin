@@ -320,3 +320,13 @@ test_midi_osc_and_tcp_events_read_what_happened_through_the_runtime :: proc(t: ^
 	testing.expect(t, strings.contains(result.source, "rt.happening.midi"))
 	testing.expect(t, strings.contains(result.source, "rt.happening.tcp"))
 }
+
+@(test)
+test_saving_a_record_that_holds_itself_stops_at_a_depth :: proc(t: ^testing.T) {
+	result := compile(`node = { name: "a", next: 0 }
+node.next = node
+save node "node.json"
+`)
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "rt.datum_enter()"))
+}
