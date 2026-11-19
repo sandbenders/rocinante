@@ -1,0 +1,34 @@
+// `is` on lists, records and tables compares what they hold; a record that is not there reads as empty and is not changed.
+a = { x: 1, y: "a", tags: [ 1 2 ] }
+b = { x: 1, y: "a", tags: [ 1 2 ] }
+c = { x: 2, y: "a", tags: [ 1 2 ] }
+d = { x: 1, y: "a", tags: [ 1 3 ] }
+print (a is b)
+print (a is c)
+print (a is d)
+print (a is not c)
+print (a is a)
+l = [ 1 2 3 ]
+print (l is [ 1 2 3 ])
+print (l is [ 1 2 ])
+print ([ a ] is [ b ])
+print ([ a ] is [ c ])
+t = table
+put t "k" 1
+put t "j" 2
+u = table
+put u "j" 2
+put u "k" 1
+print (t is u)
+put u "j" 3
+print (t is u)
+loop_a = { n: 1, next: { n: 2 } }
+loop_a.next = loop_a
+loop_b = { n: 1, next: { n: 2 } }
+loop_b.next = loop_b
+print (loop_a is loop_b)
+none = find [ a ] [ it.x > 5 ]
+print (none.x + 1)
+none.x = 9
+none.tags = [ 5 ]
+print "still here"

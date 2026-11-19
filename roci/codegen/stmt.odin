@@ -137,6 +137,8 @@ emit_assign :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Assign) {
 	}
 	path := strings.builder_make(context.temp_allocator)
 	strings.write_string(&path, name)
+	// a record that is not there (`find` found nothing) is not changed: each record on the way is looked at first
+	guards := make([dynamic]string, context.temp_allocator)
 	// the fields of a record, or the part of a vector at the end
 	holder := k.target.type
 	for part, i in k.fields {
@@ -144,6 +146,7 @@ emit_assign :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Assign) {
 		item := g.types.items[resolved]
 		#partial switch item.kind {
 		case .Record:
+			append(&guards, fmt.aprintf("%s != nil", strings.to_string(path), allocator = context.temp_allocator))
 			strings.write_string(&path, ".")
 			strings.write_string(&path, field_name(part))
 			if shape_field, found := lang.shape_field(g.types, item.a, part); found {
@@ -154,11 +157,11 @@ emit_assign :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Assign) {
 			strings.write_string(&path, part)
 		case .Colour:
 			if len(part) == 1 && i == len(k.fields) - 1 && (part == "r" || part == "g" || part == "b") {
-				line(g, "%s.%s = f32(%s)", strings.to_string(path), part, value)
+				guarded(g, guards[:], fmt.tprintf("%s.%s = f32(%s)", strings.to_string(path), part, value))
 				return
 			}
 			if part == "a" && i == len(k.fields) - 1 {
-				line(g, "%s.a = f32(rt.alpha_to_byte(%s))", strings.to_string(path), value)
+				guarded(g, guards[:], fmt.tprintf("%s.a = f32(rt.alpha_to_byte(%s))", strings.to_string(path), value))
 				return
 			}
 			refuse(g, s.span, "changing a part of a color")
@@ -169,7 +172,17 @@ emit_assign :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Assign) {
 		}
 		_ = i
 	}
-	line(g, "%s = %s", strings.to_string(path), value)
+	guarded(g, guards[:], fmt.tprintf("%s = %s", strings.to_string(path), value))
+}
+
+// A statement that runs only when each of the records on its way is there.
+@(private)
+guarded :: proc(g: ^Gen, guards: []string, statement: string) {
+	if len(guards) == 0 {
+		line(g, "%s", statement)
+		return
+	}
+	line(g, "if %s {{ %s }}", strings.join(guards, " && ", context.temp_allocator), statement)
 }
 
 // A call written as a statement: a value it gives back is let go, which Odin wants said.
@@ -518,11 +531,7 @@ emit_draw :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Draw) {
 	emit_proc(g, name, "()", k.body)
 	if k.ui {
 		if k.window != nil {
-			if g.has_scenes {
-				refuse(g, s.span, "`ui` for a window of its own in a sketch with scenes")
-				return
-			}
-			line(g, "roci.ui_window(%s, %s)", expr(g, k.window), name)
+			line(g, "roci.ui_window(%s, %s)", expr(g, k.window), scene_gated(g, name))
 			return
 		}
 		if g.has_scenes {
@@ -537,11 +546,7 @@ emit_draw :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Draw) {
 		return
 	}
 	if k.window != nil {
-		if g.has_scenes {
-			refuse(g, s.span, "`draw` for a window of its own in a sketch with scenes")
-			return
-		}
-		line(g, "roci.draw_window(%s, %s)", expr(g, k.window), name)
+		line(g, "roci.draw_window(%s, %s)", expr(g, k.window), scene_gated(g, name))
 		return
 	}
 	if g.has_scenes {
@@ -554,6 +559,18 @@ emit_draw :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Draw) {
 		return
 	}
 	line(g, "roci.draw(%s)", name)
+}
+
+// The procedure to register for a block of a window of its own: in a scene, one that runs the block only while that
+// scene takes part, as the blocks of the first window do.
+@(private)
+scene_gated :: proc(g: ^Gen, name: string) -> string {
+	if !g.has_scenes || g.registering == 0 {
+		return name
+	}
+	gated := fmt.aprintf("%s_in_scene", name, allocator = context.temp_allocator)
+	fmt.sbprintf(&g.procs, "%s :: proc() {{\n\tif rt.takes_part(%d) {{ %s() }}\n}}\n\n", gated, g.registering, name)
+	return gated
 }
 
 @(private)

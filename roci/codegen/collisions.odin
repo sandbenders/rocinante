@@ -99,7 +99,8 @@ lang_has :: proc(names: []string, label: string) -> bool {
 }
 
 @(private)
-shape_of_value :: proc(g: ^Gen, t: lang.Type_Id, value: string, span: lang.Span) -> (text: string, ok: bool) {
+shape_of_value :: proc(g: ^Gen, t: lang.Type_Id, given: string, span: lang.Span) -> (text: string, ok: bool) {
+	value := given
 	resolved := lang.resolve(g.types, t)
 	item := g.types.items[resolved]
 	#partial switch item.kind {
@@ -110,6 +111,7 @@ shape_of_value :: proc(g: ^Gen, t: lang.Type_Id, value: string, span: lang.Span)
 		refuse(g, span, "a shape in space")
 		return "", false
 	case .Record:
+		value = fmt.tprintf("rt.live(%s)", value) // a record that is not there touches nothing
 		names := make([dynamic]string, context.temp_allocator)
 		for f in g.types.shapes[item.a].fields {
 			append(&names, f.name)

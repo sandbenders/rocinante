@@ -238,7 +238,7 @@ field :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Field) -> string {
 		refuse(g, e.span, fmt.tprintf("`.%s` of something that is not a record", k.name))
 		return "0.0"
 	}
-	return fmt.aprintf("%s.%s", expr(g, k.base), field_name(k.name), allocator = context.temp_allocator)
+	return fmt.aprintf("rt.live(%s).%s", expr(g, k.base), field_name(k.name), allocator = context.temp_allocator)
 }
 
 @(private)
@@ -509,6 +509,16 @@ binary :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Binary) -> string {
 			return text(g, l, op, r)
 		}
 	case .Is, .Is_Not:
+		if lk == rk && (lk == .Record || lk == .List || lk == .Table) {
+			left, left_ok := odin_type(g, k.lhs.type, e.span, "a value to compare")
+			right, right_ok := odin_type(g, k.rhs.type, e.span, "a value to compare")
+			if left_ok && right_ok && left == right {
+				if made, same := same_text(g, k.lhs.type, l, r, e.span); same {
+					return made if k.op == .Is else fmt.aprintf("(!%s)", made, allocator = context.temp_allocator)
+				}
+				return "false"
+			}
+		}
 		if lk == rk && (lk == .Number || lk == .Boolean || lk == .Text || lk == .Vector || lk == .Colour) {
 			return text(g, l, "==" if k.op == .Is else "!=", r)
 		}

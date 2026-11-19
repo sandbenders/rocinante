@@ -300,13 +300,21 @@ tween_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> string {
 	}
 	g.uses_tweens = true
 	curve := word_option(g, c.options, "as")
+	call: string
 	#partial switch kind_of(g, place) {
 	case .Number:
-		return fmt.aprintf("rt.tween_number(&%s, %s, %s, %s, %s)", expr(g, place), expr(g, to.args[0]), expr(g, over.args[0]), curve, owner, allocator = context.temp_allocator)
+		call = fmt.aprintf("rt.tween_number(&%s, %s, %s, %s, %s)", expr(g, place), expr(g, to.args[0]), expr(g, over.args[0]), curve, owner, allocator = context.temp_allocator)
 	case .Vector:
-		return fmt.aprintf("rt.tween_vector(&%s, %s, %s, %s, %s)", expr(g, place), expr(g, to.args[0]), expr(g, over.args[0]), curve, owner, allocator = context.temp_allocator)
+		call = fmt.aprintf("rt.tween_vector(&%s, %s, %s, %s, %s)", expr(g, place), expr(g, to.args[0]), expr(g, over.args[0]), curve, owner, allocator = context.temp_allocator)
 	case .Colour:
-		return fmt.aprintf("rt.tween_colour(&%s, %s, %s, %s, %s)", expr(g, place), expr(g, to.args[0]), expr(g, over.args[0]), curve, owner, allocator = context.temp_allocator)
+		call = fmt.aprintf("rt.tween_colour(&%s, %s, %s, %s, %s)", expr(g, place), expr(g, to.args[0]), expr(g, over.args[0]), curve, owner, allocator = context.temp_allocator)
+	}
+	if call != "" {
+		if owner == "nil" {
+			return call
+		}
+		// a record that is not there is not moved
+		return fmt.aprintf("if %s != nil {{ %s }}", owner, call, allocator = context.temp_allocator)
 	}
 	refuse(g, e.span, fmt.tprintf("`tween` of %s", lang.describe(g.types, place.type)))
 	return ""

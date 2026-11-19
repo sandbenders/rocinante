@@ -459,6 +459,8 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 		list_type, _ := odin_type(g, c.args[0].type, e.span, "a list")
 		element := list_type[len("^rt.List("):len(list_type) - 1]
 		return fmt.aprintf("rt.shuffle(%s, %s)", args[0], item_marker(g, list_element(g, c.args[0].type), element), allocator = context.temp_allocator), true, true
+	case "files":
+		return fmt.aprintf("rt.files_in(%s)", maybe_or(g, c.options, "in", `""`), allocator = context.temp_allocator), true, true
 	case "lines":
 		return fmt.aprintf("rt.lines(%s)", args[0], allocator = context.temp_allocator), true, true
 	case "measure":
@@ -537,28 +539,42 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 	case "osc value":
 		return fmt.aprintf("roci.osc_value(%s)", args[0], allocator = context.temp_allocator), true, true
 	case "osc send":
+		host, port := maybe_or(g, c.options, "to", `"127.0.0.1"`), maybe_or(g, c.options, "port", "0.0")
 		if c.shape != 0 {
-			refuse(g, e.span, "`osc send` of several messages in a bundle")
-			return "", false, true
+			return fmt.aprintf("rt.osc_bundle(%s, %s, %s)", args[0], host, port, allocator = context.temp_allocator), false, true
 		}
 		literal, is_literal := c.args[1].kind.(lang.IR_List)
 		if !is_literal {
-			refuse(g, e.span, "`osc send` of a list of arguments that is not written out")
+			// a list made elsewhere: its items are read as they are
+			list := expr(g, c.args[1])
+			#partial switch kind_of_list_element(g, c.args[1]) {
+			case .Boxed:
+				return fmt.aprintf("rt.osc_send(%s, rt.osc_args_of_boxes(%s), %s, %s)", args[0], list, host, port, allocator = context.temp_allocator), false, true
+			case .Number, .Boolean, .Text:
+				return fmt.aprintf("rt.osc_send(%s, rt.osc_args_of_values(%s), %s, %s)", args[0], list, host, port, allocator = context.temp_allocator), false, true
+			}
+			refuse(g, e.span, "`osc send` of a list that holds something OSC cannot carry")
 			return "", false, true
 		}
 		parts := make([dynamic]string, context.temp_allocator)
-		for item in literal.items {
+		for written in literal.items {
+			// the list is a mix, so each item was put in a box; what was written is what OSC is given
+			item := written
+			if convert, boxed := item.kind.(lang.IR_Convert); boxed && kind_of(g, convert.value) != .Boxed {
+				item = convert.value
+			}
 			#partial switch kind_of(g, item) {
 			case .Number, .Boolean, .Text:
 				append(&parts, fmt.tprintf("rt.Osc_Arg(%s)", expr(g, item)))
+			case .Boxed:
+				refuse(g, item.span, "`osc send` of a value that may be of any kind inside a list written out")
 			case .List:
 				append(&parts, fmt.tprintf("rt.osc_blob(%s)", expr(g, item)))
 			case:
 				refuse(g, item.span, "`osc send` of something that is not a number, a text, true or false, or a list of numbers")
 			}
 		}
-		port := maybe_or(g, c.options, "port", "0.0")
-		return fmt.aprintf("rt.osc_send(%s, []rt.Osc_Arg{{%s}}, %s, %s)", args[0], strings.join(parts[:], ", ", context.temp_allocator), maybe_or(g, c.options, "to", `"127.0.0.1"`), port, allocator = context.temp_allocator), false, true
+		return fmt.aprintf("rt.osc_send(%s, []rt.Osc_Arg{{%s}}, %s, %s)", args[0], strings.join(parts[:], ", ", context.temp_allocator), host, port, allocator = context.temp_allocator), false, true
 	case "udp send":
 		data := fmt.tprintf("rt.bytes_of(%s)", args[0]) if c.shape == 1 else fmt.tprintf("transmute([]byte)%s", args[0])
 		return fmt.aprintf("rt.udp_send(%s, %s, %s)", data, maybe_or(g, c.options, "to", `"127.0.0.1"`), maybe_or(g, c.options, "port", "0.0"), allocator = context.temp_allocator), false, true

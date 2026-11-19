@@ -139,7 +139,7 @@ heap_ops :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span) -> string {
 	if known, found := g.copiers[key]; found {
 		return known
 	}
-	copy_proc, show_proc := "nil", "nil"
+	copy_proc, show_proc, equal_proc_name := "nil", "nil", "nil"
 	name := fmt.aprintf("box_ops_%d", len(g.copiers) + 1, allocator = context.temp_allocator)
 	g.copiers[key] = name
 	if item.kind == .Record || item.kind == .List {
@@ -157,9 +157,85 @@ heap_ops :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span) -> string {
 		fmt.sbprintf(&g.procs, "%s :: proc(h: ^rt.Header) -> string {{\n\treturn rt.show((%s)(h))\n}}\n\n", wrapper, odin)
 		show_proc = wrapper
 	}
-	if copy_proc == "nil" && show_proc == "nil" {
+	if equaled, named := equal_proc(g, resolved, span); named {
+		wrapper := fmt.aprintf("%s_equal", name, allocator = context.temp_allocator)
+		fmt.sbprintf(&g.procs, "%s :: proc(x, y: ^rt.Header) -> bool {{\n\treturn %s_top((%s)(x), (%s)(y))\n}}\n\n", wrapper, equaled, odin, odin)
+		equal_proc_name = wrapper
+	}
+	if copy_proc == "nil" && show_proc == "nil" && equal_proc_name == "nil" {
 		return ""
 	}
-	fmt.sbprintf(&g.defs, "%s := rt.Heap_Ops{{copy = %s, show = %s}}\n\n", name, copy_proc, show_proc)
+	fmt.sbprintf(&g.defs, "%s := rt.Heap_Ops{{copy = %s, show = %s, equal = %s}}\n\n", name, copy_proc, show_proc, equal_proc_name)
 	return name
+}
+
+// An Odin expression that says whether two values of one type are equal, as `is` says it: lists, records and tables by
+// what they hold. False (after saying why) for a type that cannot be compared.
+@(private)
+same_text :: proc(g: ^Gen, t: lang.Type_Id, a, b: string, span: lang.Span) -> (text: string, ok: bool) {
+	resolved := lang.resolve(g.types, t)
+	#partial switch g.types.items[resolved].kind {
+	case .Number, .Boolean, .Text, .Colour, .Vector, .Image, .Sound, .Window:
+		return fmt.aprintf("(%s == %s)", a, b, allocator = context.temp_allocator), true
+	case .Gradient:
+		return fmt.aprintf("rt.gradient_equal(%s, %s)", a, b, allocator = context.temp_allocator), true
+	case .Boxed:
+		return fmt.aprintf("rt.box_equal(%s, %s)", a, b, allocator = context.temp_allocator), true
+	case .Variable, .None, .Error:
+		return "true", true
+	case .Record, .List, .Table:
+		name, named := equal_proc(g, resolved, span)
+		if !named {
+			return "", false
+		}
+		return fmt.aprintf("%s_top(%s, %s)", name, a, b, allocator = context.temp_allocator), true
+	}
+	refuse(g, span, fmt.tprintf("`is` on %s", lang.describe(g.types, t)))
+	return "", false
+}
+
+// The name of the procedure that compares two records, lists or tables of a type (`eq_N`, with `eq_N_top` that
+// begins and ends the comparison), written the first time.
+@(private)
+equal_proc :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span) -> (name: string, ok: bool) {
+	resolved := lang.resolve(g.types, t)
+	item := g.types.items[resolved]
+	odin, type_ok := odin_type(g, resolved, span, "a value to compare")
+	if !type_ok {
+		return "", false
+	}
+	key := fmt.tprintf("eq:%s", odin)
+	if known, found := g.copiers[key]; found {
+		return known, true
+	}
+	name = fmt.aprintf("eq_%d", len(g.copiers) + 1, allocator = context.temp_allocator)
+	g.copiers[key] = name // before its body, so a record that holds its own kind finds it
+	b := strings.builder_make(context.temp_allocator)
+	#partial switch item.kind {
+	case .Record:
+		parts := strings.builder_make(context.temp_allocator)
+		for f in g.types.shapes[item.a].fields {
+			inner, inner_ok := same_text(g, f.type, fmt.tprintf("a.%s", field_name(f.name)), fmt.tprintf("b.%s", field_name(f.name)), span)
+			if !inner_ok {
+				return "", false
+			}
+			if inner == "true" {
+				continue
+			}
+			strings.write_string(&parts, " && ")
+			strings.write_string(&parts, inner)
+		}
+		fmt.sbprintf(&b, "%s :: proc(a, b: %s) -> bool {{\n\tif a == b {{ return true }}\n\tif a == nil || b == nil {{ return false }}\n\tif !rt.pair_new(a, b) {{ return true }}\n\treturn true%s\n}}\n\n", name, odin, strings.to_string(parts))
+	case .List, .Table:
+		inner, inner_ok := same_text(g, lang.Type_Id(item.a), "x", "y", span)
+		if !inner_ok {
+			return "", false
+		}
+		element := odin[len("^rt.List("):len(odin) - 1] if item.kind == .List else odin[len("^rt.Table("):len(odin) - 1]
+		fmt.sbprintf(&b, "%s_same :: proc(x, y: %s) -> bool {{\n\treturn %s\n}}\n\n", name, element, inner)
+		fmt.sbprintf(&b, "%s :: proc(a, b: %s) -> bool {{\n\treturn rt.%s(a, b, %s_same)\n}}\n\n", name, odin, "lists_equal" if item.kind == .List else "tables_equal", name)
+	}
+	fmt.sbprintf(&b, "%s_top :: proc(a, b: %s) -> bool {{\n\trt.compare_begin()\n\tdefer rt.compare_end()\n\treturn %s(a, b)\n}}\n\n", name, odin, name)
+	strings.write_string(&g.procs, strings.to_string(b))
+	return name, true
 }

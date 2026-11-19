@@ -240,6 +240,16 @@ release_list :: proc($T: typeid) -> proc(self: ^Header) {
 	}
 }
 
+// A record to read a field of: the record itself, or, where there is none (a record that `find` did not find),
+// a record whose fields are all empty, so that reading a field gives 0 or nothing as it does in the interpreter.
+live :: proc(r: ^$T) -> ^T {
+	if r == nil {
+		@(static) empty: T
+		return &empty
+	}
+	return r
+}
+
 // The item at a place counting from 1, or the zero value past either end.
 item :: proc(list: ^List($T), place: f64) -> T {
 	if list == nil {
@@ -390,4 +400,74 @@ keys :: proc(t: ^Table($V)) -> ^List(string) {
 
 count_names :: proc "contextless" (t: ^Table($V)) -> f64 {
 	return 0 if t == nil else f64(len(t.keys))
+}
+
+// ---- `is` on lists, records and tables ----
+
+@(private, thread_local) met_pairs: map[[2]rawptr]struct{}
+@(private, thread_local) met_depth: int
+
+// A comparison of two lists, records or tables is begun and ended around the whole of it, so a pair of objects met a
+// second time (a value that holds itself) is taken as equal there: it is not that pair that makes them differ.
+compare_begin :: proc() {
+	met_depth += 1
+}
+
+compare_end :: proc() {
+	met_depth -= 1
+	if met_depth == 0 {
+		delete(met_pairs)
+		met_pairs = nil
+	}
+}
+
+// True the first time a pair is met, which is when its parts are to be compared.
+pair_new :: proc(a, b: rawptr) -> bool {
+	if met_pairs == nil {
+		met_pairs = make(map[[2]rawptr]struct{})
+	}
+	key := [2]rawptr{a, b}
+	if key in met_pairs {
+		return false
+	}
+	met_pairs[key] = {}
+	return true
+}
+
+// Whether two tables hold the same names with the same values, in any order, as `same` says of two values.
+tables_equal :: proc(a, b: ^Table($V), same: proc(x, y: V) -> bool) -> bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil || len(a.keys) != len(b.keys) {
+		return false
+	}
+	if !pair_new(a, b) {
+		return true
+	}
+	for name, i in a.keys {
+		at, found := b.index[name]
+		if !found || !same(a.values[i], b.values[at]) {
+			return false
+		}
+	}
+	return true
+}
+
+lists_equal :: proc(a, b: ^List($T), same: proc(x, y: T) -> bool) -> bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil || len(a.items) != len(b.items) {
+		return false
+	}
+	if !pair_new(a, b) {
+		return true
+	}
+	for item, i in a.items {
+		if !same(item, b.items[i]) {
+			return false
+		}
+	}
+	return true
 }

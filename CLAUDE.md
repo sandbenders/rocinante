@@ -368,6 +368,7 @@ Taken in this order (decided 2026-11-16):
 - Packaging build time measured on each desktop OS, since the core is compiled with every sketch (§4.7); record it here.
 - Back-end equivalence suite (§9) running every example in both modes in the Linux pipeline, and locally on the other platforms before each release.
 - **Exit**: every example produces identical frames interpreted and compiled; the particle benchmark (100,000 records updated and drawn per frame) holds 60 fps compiled on a mid-range laptop, with the interpreted figure recorded here for comparison. Measure the particle benchmark with each optimisation pass off and on, and record the result here.
+- **Measured 2026-11-19** (Apple M4 Pro, headless, so the CPU's share of a frame; 100,000 records, each moved, tested against the window's edges and drawn as a circle): interpreted 20.8 ms a frame with the passes on and 24.2 ms with them off; compiled 4.9 ms either way (the code generator does not read the passes' marks, since Odin does the work they exist for). `roci doctor` now says which targets this computer can build and which tools compiling a sketch lacks (`cli/doctor.odin`); packaging build times, source mapping into packaged sketches and the other desktop systems wait for Phase 8 and the release checklist.
 
 ### Phase 8: Packaging
 - `roci package` for all seven targets (generate, build, bundle, sign where needed); `roci doctor` for every target.

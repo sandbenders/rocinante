@@ -248,7 +248,7 @@ draw into c [ circle at 5 5 radius 2 ]
 	testing.expect(t, strings.contains(source, "labels: ^rt.Table(string)"))
 	testing.expect(t, strings.contains(source, "rt.put(counts, \"cat\", 3.0)"))
 	testing.expect(t, strings.contains(source, "rt.put(labels, \"a\", \"alpha\")"))
-	testing.expect(t, strings.contains(source, "rt.tween_vector(&p.pos, [2]f64{5.0, 5.0}, 2.0, \"out\", &p.gc__)"), "the record a tween moves is kept while it does")
+	testing.expect(t, strings.contains(source, "rt.tween_vector(&rt.live(p).pos, [2]f64{5.0, 5.0}, 2.0, \"out\", &p.gc__)"), "the record a tween moves is kept while it does")
 	testing.expect(t, strings.contains(source, "rt.tween_number(&level, 10.0, 1.0, \"\", nil)"))
 	testing.expect(t, strings.contains(source, "rt.step_tweens()"), "the frame hook steps the tweens")
 	testing.expect(t, strings.contains(source, "rt.effect(\"glow\", []roci.Effect_Value{rt.effect_number(\"amount\", 0.5)})"))
@@ -357,4 +357,27 @@ test_a_part_of_a_box_is_read_while_the_sketch_runs :: proc(t: ^testing.T) {
 	result := compile("m = [ { 1, 2 } \"a\" ]\nfor each p in m [ print p.x ]\n")
 	testing.expect_value(t, len(result.problems), 0)
 	testing.expect(t, strings.contains(result.source, "rt.box_part("))
+}
+
+@(test)
+test_the_blocks_of_a_window_of_its_own_in_a_sketch_with_scenes_run_only_while_their_scene_takes_part :: proc(t: ^testing.T) {
+	result := compile("other = window size 100 100\nscene \"a\" [\n  draw other [ circle at 1 1 radius 1 ]\n  draw other [ ui [ ] ]\n]\ndraw other [ circle at 2 2 radius 2 ]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	source := result.source
+	testing.expect(t, strings.contains(source, "if rt.takes_part(1) { draw_"), "a scene's block is gated")
+	testing.expect(t, strings.contains(source, "roci.draw_window(other, draw_"), "the block outside every scene is registered as it is")
+	testing.expect(t, strings.contains(source, "_in_scene)"), "the gated procedure is the one registered")
+}
+
+@(test)
+test_files_in_a_folder_and_osc_lists_made_elsewhere_are_written_as_calls :: proc(t: ^testing.T) {
+	result := compile("names = files in \"images\"\nall = files\nlist = [ 1 \"a\" true ]\nosc send \"/x\" list\nnums = [ 1 2 ]\nosc send \"/y\" nums\nosc send [ [ \"/a\" 1 ] [ \"/b\" ] ] to \"localhost\" port 9000\nosc send \"/z\" [ 1 \"a\" true ]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	source := result.source
+	testing.expect(t, strings.contains(source, "rt.files_in(\"images\")"))
+	testing.expect(t, strings.contains(source, "rt.files_in(\"\")"))
+	testing.expect(t, strings.contains(source, "rt.osc_args_of_boxes("))
+	testing.expect(t, strings.contains(source, "rt.osc_args_of_values("))
+	testing.expect(t, strings.contains(source, "rt.osc_bundle("))
+	testing.expect(t, strings.contains(source, "[]rt.Osc_Arg{rt.Osc_Arg(1.0), rt.Osc_Arg(\"a\"), rt.Osc_Arg(true)}"))
 }

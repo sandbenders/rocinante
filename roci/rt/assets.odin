@@ -9,6 +9,7 @@
 package rt
 
 import "core:fmt"
+import "core:mem"
 import "core:math"
 import "core:os"
 import "core:time"
@@ -420,6 +421,14 @@ Gradient_Box :: struct {
 	value:      roci.Gradient,
 }
 
+// Whether two gradients are the same one, or hold the same things.
+gradient_equal :: proc(a, b: ^Gradient_Box) -> bool {
+	if a == b {
+		return true
+	}
+	return a != nil && b != nil && mem.compare_ptrs(&a.value, &b.value, size_of(roci.Gradient)) == 0
+}
+
 new_gradient :: proc(colours: []roci.Colour, kind: int, angle: f64, space: int, stops: []f32, centre: [2]f32) -> ^Gradient_Box {
 	box := new(Gradient_Box)
 	if paint, ok := gradient_paint(colours, kind, angle, space, stops, centre).(roci.Gradient); ok {
@@ -711,6 +720,86 @@ osc_blob :: proc(list: ^List(f64)) -> oscp.Arg {
 	return oscp.Blob(bytes_of(list))
 }
 
+// The arguments of an OSC message from the boxes of a list, from the item at `from` (counting from 0): numbers, text,
+// true and false, and a list of numbers, which goes as a blob of bytes (each rounded and kept from 0 to 255). What
+// else a box holds is left out and said once.
+osc_args_of_boxes :: proc(items: ^List(Box), from := 0) -> []oscp.Arg {
+	args := make([dynamic]oscp.Arg, context.temp_allocator)
+	if items == nil {
+		return args[:]
+	}
+	for item, i in items.items {
+		if i < from {
+			continue
+		}
+		#partial switch v in item {
+		case f64:
+			append(&args, v)
+		case bool:
+			append(&args, v)
+		case string:
+			append(&args, v)
+		case Heap_Ref:
+			if numbers := unbox_heap(item, ^List(f64)); numbers != nil {
+				bytes := make([]byte, len(numbers.items), context.temp_allocator)
+				for b, j in numbers.items {
+					bytes[j] = byte(clamp(math.round(b), 0, 255))
+				}
+				append(&args, oscp.Blob(bytes))
+			} else {
+				say_once("osc list", "OSC carries numbers, text, true and false, and lists of numbers: a list of anything else is left out.")
+			}
+		case:
+			say_once("osc value", "OSC carries numbers, text, true and false, and lists of numbers: anything else is left out.")
+		}
+	}
+	return args[:]
+}
+
+// The arguments of an OSC message from a list of one kind of value.
+osc_args_of_values :: proc(items: ^List($T)) -> []oscp.Arg {
+	args := make([dynamic]oscp.Arg, context.temp_allocator)
+	if items != nil {
+		for item in items.items {
+			append(&args, oscp.Arg(item))
+		}
+	}
+	return args[:]
+}
+
+// `osc send [ [ "/a" 1 ] [ "/b" 2 ] ] to "host" port 9000`: several messages in one bundle, each a list that begins with
+// its address. Nothing is sent when one has no address that begins with a slash.
+osc_bundle :: proc(messages: ^List(^List(Box)), host: string, port: f64) {
+	number := roci.DEFAULT_OSC_PORT
+	if port >= 1 && port < 65536 {
+		number = int(port)
+	}
+	outgoing := make([dynamic]oscp.Out_Message, context.temp_allocator)
+	bad := ""
+	count := 0
+	if messages != nil {
+		count = len(messages.items)
+		for message in messages.items {
+			address := ""
+			if message != nil && len(message.items) > 0 {
+				address, _ = message.items[0].(string)
+			}
+			if address == "" || address[0] != '/' {
+				bad = address
+				break
+			}
+			append(&outgoing, oscp.Out_Message{address = address, args = osc_args_of_boxes(message, 1)})
+		}
+	}
+	if bad != "" || len(outgoing) != count {
+		say_once("osc address", fmt.tprintf("`%s` is not an OSC address: one starts with a slash, like `/note`.", bad))
+		return
+	}
+	if roci.osc_send_bundle(outgoing[:], host, number) == .Host_Unknown {
+		say_once(host, fmt.tprintf("I could not find a computer called `%s`.", host))
+	}
+}
+
 // `osc send "/note" [ 60 "hi" ] to "host" port 9000`: a port that is not one is the usual port.
 osc_send :: proc(address: string, args: []oscp.Arg, host: string, port: f64) {
 	number := roci.DEFAULT_OSC_PORT
@@ -731,6 +820,21 @@ udp_send :: proc(data: []byte, host: string, port: f64) {
 	if result := roci.udp_send(data, host, number); result == .Bad_Port {
 		say_once("udp port", "A port is a whole number from 1 to 65535, so a datagram can find the program listening there.")
 	}
+}
+
+// `files in "images"`: the names of the files in a folder of the assets, from that folder, in the order of their paths.
+files_in :: proc(where_: string) -> ^List(string) {
+	out := new_list(string, mark_text)
+	prefix := "assets/"
+	if where_ != "" {
+		prefix = strings.concatenate({"assets/", strings.trim_suffix(strings.trim_prefix(where_, "/"), "/"), "/"}, context.temp_allocator)
+	}
+	for file in folder.asset_files(ASSETS_ROOT, context.temp_allocator) {
+		if strings.has_prefix(file, prefix) {
+			add(keep(file[len(prefix):]), out)
+		}
+	}
+	return out
 }
 
 // `lines text`: the lines of a text, with no line break left on them and no empty line at the end.

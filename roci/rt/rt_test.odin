@@ -416,3 +416,88 @@ test_the_arguments_of_an_osc_message_are_boxes :: proc(t: ^testing.T) {
 	testing.expect_value(t, show_box(list.items[3]), "[ 1 2 ]")
 	testing.expect_value(t, len(osc_args(roci.Osc_Message{}).items), 0)
 }
+
+@(test)
+test_lists_and_tables_are_equal_by_what_they_hold_and_a_loop_does_not_end_the_comparison :: proc(t: ^testing.T) {
+	defer gc_reset()
+	same_number :: proc(x, y: f64) -> bool { return x == y }
+	a := list_of(f64, nil, 1, 2)
+	b := list_of(f64, nil, 1, 2)
+	c := list_of(f64, nil, 1, 3)
+	short := list_of(f64, nil, 1)
+	compare_begin()
+	testing.expect(t, lists_equal(a, a, same_number))
+	testing.expect(t, lists_equal(a, b, same_number))
+	testing.expect(t, !lists_equal(a, c, same_number))
+	testing.expect(t, !lists_equal(a, short, same_number))
+	testing.expect(t, !lists_equal(a, nil, same_number))
+	testing.expect(t, lists_equal(a, b, same_number), "a pair met again is taken as equal")
+	compare_end()
+	ta, tb, tc := new_table(f64), new_table(f64), new_table(f64)
+	put(ta, "k", 1)
+	put(ta, "j", 2)
+	put(tb, "j", 2)
+	put(tb, "k", 1)
+	put(tc, "k", 1)
+	put(tc, "j", 3)
+	compare_begin()
+	testing.expect(t, tables_equal(ta, tb, same_number))
+	testing.expect(t, !tables_equal(ta, tc, same_number))
+	testing.expect(t, !tables_equal(ta, nil, same_number))
+	compare_end()
+	testing.expect_value(t, met_depth, 0)
+}
+
+@(test)
+test_a_record_that_is_not_there_reads_as_an_empty_one :: proc(t: ^testing.T) {
+	Thing :: struct {
+		using gc__: Header,
+		n:          f64,
+	}
+	none: ^Thing
+	testing.expect_value(t, live(none).n, 0)
+	defer gc_reset()
+	there := new_record(Thing{n = 4})
+	testing.expect_value(t, live(there).n, 4)
+}
+
+@(test)
+test_osc_messages_are_made_from_boxes_and_sent_alone_or_in_a_bundle :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	defer roci.shutdown()
+	defer gc_reset()
+	defer forget_said()
+	numbers := list_of(f64, nil, 1, 300, -5)
+	items := list_of(Box, mark_box, box_number(60), box_text("hi"), box_bool(true), box_heap(numbers), box_vector2({1, 2}))
+	args := osc_args_of_boxes(items)
+	testing.expect_value(t, len(args), 4) // the vector is left out
+	testing.expect_value(t, args[0].(f64), 60)
+	testing.expect_value(t, args[1].(string), "hi")
+	testing.expect_value(t, args[2].(bool), true)
+	blob, is_blob := args[3].(osc.Blob)
+	testing.expect(t, is_blob)
+	testing.expect_value(t, len(blob), 3)
+	testing.expect_value(t, blob[1], 255)
+	testing.expect_value(t, blob[2], 0)
+	testing.expect_value(t, len(osc_args_of_boxes(items, 3)), 1)
+	testing.expect_value(t, len(osc_args_of_boxes(nil)), 0)
+	testing.expect_value(t, len(osc_args_of_values(list_of(string, nil, "a", "b"))), 2)
+	testing.expect_value(t, len(osc_args_of_values((^List(f64))(nil))), 0)
+
+	first := list_of(Box, mark_box, box_text("/a"), box_number(1))
+	second := list_of(Box, mark_box, box_text("/b"))
+	messages := list_of(^List(Box), nil, first, second)
+	osc_bundle(messages, "localhost", 9000)
+	sent := roci.osc_sent_messages()
+	testing.expect_value(t, len(sent), 2)
+	testing.expect(t, sent[0].bundled && sent[1].bundled)
+	testing.expect_value(t, sent[0].address, "/a")
+	testing.expect_value(t, sent[1].address, "/b")
+	testing.expect_value(t, sent[0].port, 9000)
+	// an address without a slash sends nothing
+	bad := list_of(^List(Box), nil, list_of(Box, mark_box, box_text("a")))
+	osc_bundle(bad, "localhost", 9000)
+	testing.expect_value(t, len(roci.osc_sent_messages()), 2)
+	osc_send("/one", osc_args_of_boxes(items), "localhost", 1)
+	testing.expect_value(t, len(roci.osc_sent_messages()), 3)
+}

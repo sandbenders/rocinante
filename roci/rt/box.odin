@@ -24,6 +24,7 @@ Heap_Ref :: struct {
 Heap_Ops :: struct {
 	copy: proc(object: ^Header) -> ^Header, // an independent copy, items and fields inside included
 	show: proc(object: ^Header) -> string,  // how it reads in text, for a list of what `show` reads
+	equal: proc(a, b: ^Header) -> bool,     // whether two of them hold the same things
 }
 
 Box :: union {
@@ -254,6 +255,9 @@ box_equal :: proc(a, b: Box) -> bool {
 		return ok && x == y
 	case Heap_Ref:
 		y, ok := b.(Heap_Ref)
+		if ok && x.object != y.object && x.type == y.type && x.ops != nil && x.ops.equal != nil && x.object != nil && y.object != nil {
+			return x.ops.equal(x.object, y.object)
+		}
 		return ok && x.object == y.object
 	}
 	return b == nil
