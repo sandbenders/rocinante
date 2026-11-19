@@ -1,0 +1,8 @@
+── Warning: The camera cannot be used: its pictures cannot be read ─── sketch.roci:1:7
+
+1 │ image webcam at 20 20 width 320
+  │       ^^^^^^
+
+`webcam` stays a dark picture and the sketch goes on. The camera said: the frames are in a format it cannot convert. Another camera may work: `webcam cameras` lists them and `webcam pick` chooses one.
+
+For example:  webcam pick 2

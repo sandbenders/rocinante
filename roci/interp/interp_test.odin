@@ -545,8 +545,19 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 			defer roci.set_tcp_port_busy(false)
 			roci.set_midi_none(id == .Midi_Out_Missing)
 			if id == .Webcam_Unavailable {
-				// the two reasons a camera cannot be used, by the name of the sketch
-				roci.set_webcam_problem(.Denied if strings.contains(entry.name, "denied") else .No_Camera)
+				// the reasons a camera cannot be used, by the name of the sketch
+				switch {
+				case strings.contains(entry.name, "denied"):
+					roci.set_webcam_problem(.Denied)
+				case strings.contains(entry.name, "not_found"):
+					roci.set_webcam_cameras({"FaceTime HD Camera", "USB Camera"})
+					roci.webcam_pick(3)
+					roci.set_webcam_problem(.Not_Found)
+				case strings.contains(entry.name, "unreadable"):
+					roci.set_webcam_problem(.Unreadable, "the frames are in a format it cannot convert")
+				case:
+					roci.set_webcam_problem(.No_Camera)
+				}
 			}
 			defer roci.set_webcam_problem(.None)
 			if id == .Memory_Mismatch {

@@ -8,15 +8,19 @@
 package platform
 
 import "core:c"
+import "core:fmt"
 import "core:mem"
+import "core:strings"
 import sdl "vendor:sdl3"
 
 // How far the camera has got.
 Camera_State :: enum {
-	Opening, // the system has not answered yet
-	Ready,   // frames come
-	Denied,  // the person said no
-	None,    // no camera on this computer, or it would not open
+	Opening,    // the system has not answered yet
+	Ready,      // frames come
+	Denied,     // the person said no
+	None,       // no camera on this computer, or it would not open
+	Not_Found,  // the camera asked for (a number past the last, a name nothing has) is not there
+	Unreadable, // the camera gives frames in a format that cannot be turned into pictures
 }
 
 Camera_In :: struct {
@@ -31,10 +35,31 @@ Camera_In :: struct {
 CAMERA_WANT_WIDTH :: 640
 CAMERA_WANT_HEIGHT :: 480
 
-// Opens the first camera, whatever it is, and starts it. Never gives nil: a computer with no
-// camera, or one that will not open, gives a result whose `state` is `.None` and whose `error`
-// says why.
-open_camera :: proc(allocator := context.allocator) -> ^Camera_In {
+// The names of the cameras the system lists, in its order (the order `open_camera` counts in); a
+// computer with none gives an empty list. The names are copied with `allocator`.
+camera_names :: proc(allocator := context.allocator) -> []string {
+	if !sdl.InitSubSystem({.CAMERA}) {
+		return nil
+	}
+	defer sdl.QuitSubSystem({.CAMERA})
+	count: c.int
+	ids := sdl.GetCameras(&count)
+	if ids == nil {
+		return nil
+	}
+	defer sdl.free(ids)
+	names := make([]string, int(count), allocator)
+	for i in 0 ..< int(count) {
+		names[i] = strings.clone_from_cstring(sdl.GetCameraName(ids[i]), allocator)
+	}
+	return names
+}
+
+// Opens a camera and starts it: the one that is `number` in the system's list (counting from 1; 0
+// is the first) or, when `name` is not empty, the first whose name holds it, in any case. Never
+// gives nil: a computer with no camera, a pick that is not there and a camera that will not open
+// give a result whose `state` is `.None` or `.Not_Found` and whose `error` says why.
+open_camera :: proc(number := 0, name := "", allocator := context.allocator) -> ^Camera_In {
 	cam := new(Camera_In, allocator)
 	cam.state = .None
 	if !sdl.InitSubSystem({.CAMERA}) {
@@ -52,7 +77,27 @@ open_camera :: proc(allocator := context.allocator) -> ^Camera_In {
 		return cam
 	}
 	defer sdl.free(ids)
-	id := ids[0]
+	pick := -1
+	if name != "" {
+		wanted := strings.to_lower(name, context.temp_allocator)
+		for i in 0 ..< int(count) {
+			have := strings.to_lower(string(sdl.GetCameraName(ids[i])), context.temp_allocator)
+			if strings.contains(have, wanted) {
+				pick = i
+				break
+			}
+		}
+	} else if number <= 0 {
+		pick = 0
+	} else if number <= int(count) {
+		pick = number - 1
+	}
+	if pick < 0 {
+		cam.state = .Not_Found
+		sdl.QuitSubSystem({.CAMERA})
+		return cam
+	}
+	id := ids[pick]
 	spec, have_spec := camera_choice(id)
 	cam.camera = sdl.OpenCamera(id, &spec if have_spec else nil)
 	if cam.camera == nil {
@@ -124,6 +169,8 @@ camera_frame :: proc(cam: ^Camera_In, pixels: ^[dynamic]u8) -> (width, height: i
 	defer sdl.ReleaseCameraFrame(cam.camera, newest)
 	converted := sdl.ConvertSurface(newest, .RGBA32)
 	if converted == nil {
+		cam.state = .Unreadable
+		cam.error = fmt.aprintf("%s; the frames are %v", sdl.GetError(), newest.format)
 		return 0, 0, false
 	}
 	defer sdl.DestroySurface(converted)
@@ -144,6 +191,9 @@ camera_frame :: proc(cam: ^Camera_In, pixels: ^[dynamic]u8) -> (width, height: i
 close_camera :: proc(cam: ^Camera_In) {
 	if cam == nil {
 		return
+	}
+	if cam.state == .Unreadable {
+		delete(cam.error)
 	}
 	if cam.camera != nil {
 		sdl.CloseCamera(cam.camera)

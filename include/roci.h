@@ -886,6 +886,18 @@ roci_image_id roci_load_image_file(const char *path);
 /* What the computer's camera sees now, as a picture to draw or fill with. The first call in a program with a window opens the camera (the system may ask first). The same picture is given all through a frame, and one kept from an earlier frame stays as it was. Until the first frame has come, with no camera and in a headless run it is a dark picture of 640 by 480. */
 roci_image_id roci_webcam(void);
 
+/* How many cameras the computer has, in the order roci_webcam_pick_number counts them. */
+int roci_webcam_camera_count(void);
+
+/* Copies the name of a camera (counting from 0) into `out`, which holds `capacity` bytes, and gives its length; 0 when there is no such camera. */
+int roci_webcam_camera_name(int index, char *out, int capacity);
+
+/* Chooses the camera roci_webcam shows by its place in the list, counting from 1; 0 goes back to the first. The camera in use is closed and the chosen one opens at the next roci_webcam. */
+void roci_webcam_pick_number(int number);
+
+/* Chooses the camera roci_webcam shows by a part of its name, in any case; an empty text goes back to the first. */
+void roci_webcam_pick(const char *name);
+
 /* The last frame of a window as a picture, `scale` times its logical size (1 or more), or 0 when there are no graphics to draw it. */
 roci_image_id roci_picture_of_window(roci_window_id window, int scale);
 

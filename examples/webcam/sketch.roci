@@ -3,10 +3,25 @@
 // a mirror), and it fills the letters of a text. A click keeps the picture of that moment in `shots`:
 // a picture kept from an earlier frame stays as it was, so the four thumbnails are snapshots, not live
 // views. The first time the sketch reads `webcam` the camera opens (the system may ask first); until a
-// frame comes, or with no camera at all, it is a dark picture, which is what a headless run draws.
-window size 640 400 title "webcam"
+// frame comes, or with no camera at all, it is a gray picture, which is what a headless run draws.
+// `webcam cameras` lists the cameras by name and `webcam pick` chooses one, here from the drop-down.
+window size 800 400 title "webcam"
 
+cameras = webcam cameras
 shots = []
+chosen = ""
+
+ui [
+  panel "camera" [
+    if (count cameras) > 0 [
+      which = dropdown "camera" cameras
+      if which is not chosen [
+        chosen = which
+        webcam pick which
+      ]
+    ] else [ label "no camera found" ]
+  ] at 570 20 width 210
+]
 
 on mouse down [
   add webcam to shots
@@ -17,9 +32,9 @@ draw [
   background 16
   image (flip webcam) at 20 20 width 400
   for i from 1 to count shots [
-    image (item i of shots) at 450 (20 + (i - 1) * 75) width 100
+    image (item i of shots) at 440 (20 + (i - 1) * 75) width 100
   ]
   text "hello" at 20 330 size 56 fill webcam
   fill 160
-  text "click to keep a snapshot" at 450 340 size 14
+  text "click to keep a snapshot" at 440 340 size 14
 ]

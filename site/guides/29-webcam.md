@@ -65,14 +65,43 @@ draw [
 
 The camera makes about 30 pictures a second, so a sketch drawing 60 frames a second sees the same picture for two frames in a row. A frame nothing has drawn or read for a second and a half is let go, so a camera left running does not fill the memory; a snapshot a sketch keeps and draws is kept.
 
+## Choosing a camera
+
+A computer can have several cameras: the one in the screen, a USB one, a phone used as a camera. `webcam` shows the first the system lists. `webcam cameras` is the list of their names, and `webcam pick` chooses one, by its number in that list (counting from 1) or by a part of its name, in any case. A drop-down in a `ui` block makes the choice a player's:
+
+```roci
+cameras = webcam cameras
+chosen = ""
+
+ui [
+  panel "camera" [
+    if (count cameras) > 0 [
+      which = dropdown "camera" cameras
+      if which is not chosen [
+        chosen = which
+        webcam pick which
+      ]
+    ]
+  ]
+]
+
+draw [
+  image (flip webcam) at 20 20 width 360
+]
+```
+
+The camera in use is closed and the chosen one opens at the next read of `webcam`, which is the gray picture until its first frame comes. `webcam pick 0` and `webcam pick ""` go back to the first. When the camera asked for is not there, the sketch says so, lists the cameras there are, and `webcam` stays gray.
+
+If the picture stays gray with a camera that is allowed, the first camera may be one that gives no pictures, such as a virtual camera or a phone that is not on. Pick another.
+
 ## Size
 
 `webcam.width` and `webcam.height` are the size of the picture. The camera is asked for a size near 640 by 480, and a device that cannot give it converts, so the size is whatever its nearest format is. Draw it with `width` or `height` to fit the window, and the other side follows.
 
 ## With C and Odin
 
-C programs have `roci_webcam`, which gives a picture number to pass to `roci_image` and the other picture functions. In Odin, `webcam()` gives the picture.
+C programs have `roci_webcam`, which gives a picture number to pass to `roci_image` and the other picture functions, `roci_webcam_camera_count` and `roci_webcam_camera_name` for the list of cameras, and `roci_webcam_pick_number` and `roci_webcam_pick` to choose one. In Odin, `webcam()` gives the picture.
 
 ## Testing
 
-A headless run has no camera. A test of a sketch that reads the webcam gives it frames with the Odin API's `feed_webcam` (a width, a height and the red, green, blue and alpha bytes of each pixel), after `start_headless`, and `set_webcam_problem` makes the camera say it cannot be used.
+A headless run has no camera. A test of a sketch that reads the webcam gives it frames with the Odin API's `feed_webcam` (a width, a height and the red, green, blue and alpha bytes of each pixel), after `start_headless`, and `set_webcam_problem` makes the camera say it cannot be used, and `set_webcam_cameras` says which cameras a headless run has.

@@ -114,3 +114,46 @@ test_a_camera_that_cannot_be_used_is_said_once :: proc(t: ^testing.T) {
 		testing.expect_value(t, p.errors[0].id, lang.Message_Id.Webcam_Unavailable)
 	}
 }
+
+// `webcam cameras` lists the cameras by name, `webcam pick` chooses by number or by part of a name.
+@(test)
+test_webcam_cameras_and_pick_in_a_sketch :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	roci.set_webcam_cameras({"Built-in", "USB Camera"})
+	p := start_fed(t, `names = webcam cameras
+count_of = count names
+second = item 2 of names
+webcam pick 2
+webcam pick "usb"
+draw [ image webcam at 0 0 ]
+`)
+	defer finish(p)
+	defer gfx.images_stop()
+	testing.expect_value(t, as_number(global_named(p, "count_of")), 2)
+	testing.expect_value(t, as_text(global_named(p, "second")), "USB Camera")
+	testing.expect_value(t, roci.webcam_picked(context.temp_allocator), "usb")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// Writing a snapshot as `add webcam to shots` is the verb `add` and the value `webcam`, not a `webcam` verb.
+@(test)
+test_add_webcam_to_a_list_adds_the_picture :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	p := start_fed(t, "shots = []\nadd webcam to shots\nn = count shots\n")
+	defer finish(p)
+	defer gfx.images_stop()
+	testing.expect_value(t, as_number(global_named(p, "n")), 1)
+}
+
+// With cameras to choose from, the example's drop-down starts on the first and picks it by name.
+@(test)
+test_the_webcam_example_picks_the_camera_of_its_drop_down :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	roci.set_webcam_cameras({"Built-in", "USB Camera"})
+	p := start_fed(t, example_text("webcam"), 3)
+	defer finish(p)
+	defer gfx.images_stop()
+	testing.expect_value(t, as_text(global_named(p, "chosen")), "Built-in")
+	testing.expect_value(t, roci.webcam_picked(context.temp_allocator), "Built-in")
+	testing.expect_value(t, len(p.errors), 0)
+}

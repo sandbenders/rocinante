@@ -10,15 +10,19 @@
 // before the camera answers. The camera itself is roci/platform's (camera.odin).
 package roci
 
+import "core:fmt"
 import "core:mem"
+import "core:strings"
 import "gfx"
 import "platform"
 
 // What kept the camera from working, for the interpreter to say once.
 Webcam_Problem :: enum {
 	None,
-	No_Camera, // there is no camera on this computer, or it would not open
-	Denied,    // the person did not allow it
+	No_Camera,  // there is no camera on this computer, or it would not open
+	Denied,     // the person did not allow it
+	Not_Found,  // the camera `webcam pick` asked for is not there
+	Unreadable, // the camera gives pictures that cannot be read
 }
 
 // The size of the dark picture `webcam` is until a frame has come.
@@ -40,6 +44,10 @@ WEBCAM_KEEP_FRAMES :: 90
 @(thread_local) @(private) webcam_feed: [dynamic]u8
 @(thread_local) @(private) webcam_feed_size: [2]int
 @(thread_local) @(private) webcam_pretend: Webcam_Problem
+@(thread_local) @(private) webcam_pretend_error: string
+@(thread_local) @(private) webcam_pick_number: int // the camera `webcam pick` chose by number, 0 for none
+@(thread_local) @(private) webcam_pick_name: string // or by part of its name
+@(thread_local) @(private) webcam_test_names: [dynamic]string // the cameras a headless run finds (tests)
 
 // The picture of the camera: the newest frame it has made, or the dark stand-in.
 webcam :: proc() -> Image {
@@ -51,7 +59,7 @@ webcam :: proc() -> Image {
 	}
 	if !webcam_tried && !the.headless && !graphics_refused {
 		webcam_tried = true
-		webcam_device = platform.open_camera(the.allocator if the.allocator.procedure != nil else context.allocator)
+		webcam_device = platform.open_camera(webcam_pick_number, webcam_pick_name, the.allocator if the.allocator.procedure != nil else context.allocator)
 	}
 	if webcam_polled != the.frame + 1 {
 		webcam_polled = the.frame + 1
@@ -117,8 +125,10 @@ webcam_problem :: proc() -> Webcam_Problem {
 		return .None
 	}
 	#partial switch webcam_device.state {
-	case .None:   return .No_Camera
-	case .Denied: return .Denied
+	case .None:       return .No_Camera
+	case .Denied:     return .Denied
+	case .Not_Found:  return .Not_Found
+	case .Unreadable: return .Unreadable
 	}
 	return .None
 }
@@ -135,9 +145,10 @@ feed_webcam :: proc(width, height: int, pixels: []u8) {
 	webcam_feed_size = {width, height}
 }
 
-// Makes `webcam_problem` say `problem`, for tests of the message.
-set_webcam_problem :: proc(problem: Webcam_Problem) {
+// Makes `webcam_problem` say `problem` (and `webcam_error` say `why`), for tests of the message.
+set_webcam_problem :: proc(problem: Webcam_Problem, why := "") {
 	webcam_pretend = problem
+	webcam_pretend_error = why
 }
 
 // Closes the camera and forgets the frames. Called by `shutdown`; the pictures themselves go
@@ -156,4 +167,87 @@ webcam_stop :: proc() {
 	delete(webcam_feed)
 	webcam_feed = nil
 	webcam_pretend = .None
+	webcam_pretend_error = ""
+	delete(webcam_pick_name, the.allocator if the.allocator.procedure != nil else context.allocator)
+	webcam_pick_name = ""
+	webcam_pick_number = 0
+	for n in webcam_test_names {
+		delete(n)
+	}
+	delete(webcam_test_names)
+	webcam_test_names = nil
+}
+
+// The names of the cameras the computer has, in the order `webcam pick` counts them (from 1). A
+// headless run has none, unless a test says so (`set_webcam_cameras`).
+webcam_cameras :: proc(allocator := context.allocator) -> []string {
+	if !the.headless && !graphics_refused {
+		return platform.camera_names(allocator)
+	}
+	names := make([]string, len(webcam_test_names), allocator)
+	for n, i in webcam_test_names {
+		names[i] = strings.clone(n, allocator)
+	}
+	return names
+}
+
+// Chooses the camera `webcam` shows by its place in `webcam_cameras` (from 1; 0 or less goes
+// back to the first).
+webcam_pick_number_of :: proc(number: int) {
+	webcam_choose(max(number, 0), "")
+}
+
+// Chooses the camera by part of its name, in any case; "" goes back to the first.
+webcam_pick_name_of :: proc(name: string) {
+	webcam_choose(0, name)
+}
+
+webcam_pick :: proc{webcam_pick_number_of, webcam_pick_name_of}
+
+// What `webcam pick` was asked for, as the words to say it back: the name, the number or "".
+webcam_picked :: proc(allocator := context.temp_allocator) -> string {
+	if webcam_pick_name != "" {
+		return strings.clone(webcam_pick_name, allocator)
+	}
+	if webcam_pick_number > 0 {
+		return fmt.aprint(webcam_pick_number, allocator = allocator)
+	}
+	return ""
+}
+
+// What the camera itself said when it would not work, when it said.
+webcam_error :: proc() -> string {
+	if webcam_pretend_error != "" {
+		return webcam_pretend_error
+	}
+	if webcam_device != nil {
+		return webcam_device.error
+	}
+	return ""
+}
+
+@(private)
+webcam_choose :: proc(number: int, name: string) {
+	allocator := the.allocator if the.allocator.procedure != nil else context.allocator
+	delete(webcam_pick_name, allocator)
+	webcam_pick_name = strings.clone(name, allocator) if name != "" else ""
+	webcam_pick_number = number
+	// the camera in use is let go and the chosen one opens at the next read; the picture shown is the
+	// stand-in until a frame of the new one comes
+	platform.close_camera(webcam_device)
+	webcam_device = nil
+	webcam_tried = false
+	webcam_polled = 0
+	webcam_current = 0
+}
+
+// Says which cameras a headless run has, for tests of `webcam cameras` and `webcam pick`.
+set_webcam_cameras :: proc(names: []string) {
+	for n in webcam_test_names {
+		delete(n)
+	}
+	clear(&webcam_test_names)
+	for n in names {
+		append(&webcam_test_names, strings.clone(n))
+	}
 }

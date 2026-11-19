@@ -474,6 +474,10 @@ abi_pictures_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_mix_in", typeid_of(type_of(abi_mix_in)), "roci_color roci_mix_in(roci_color first, roci_color second, double amount, int space)", "Blends two colors in a color space: 0 Oklab, 1 RGB or 2 Oklch. roci_mix is the Oklab one."))
 	append(all, abi_entry("roci_load_image_file", typeid_of(type_of(abi_load_image_file)), "roci_image_id roci_load_image_file(const char *path)", "Reads a picture file (PNG, JPEG, BMP, TGA or QOI) and gives its number, or 0 when it cannot be read."))
 	append(all, abi_entry("roci_webcam", typeid_of(type_of(abi_webcam)), "roci_image_id roci_webcam(void)", "What the computer's camera sees now, as a picture to draw or fill with. The first call in a program with a window opens the camera (the system may ask first). The same picture is given all through a frame, and one kept from an earlier frame stays as it was. Until the first frame has come, with no camera and in a headless run it is a dark picture of 640 by 480."))
+	append(all, abi_entry("roci_webcam_camera_count", typeid_of(type_of(abi_webcam_camera_count)), "int roci_webcam_camera_count(void)", "How many cameras the computer has, in the order roci_webcam_pick_number counts them."))
+	append(all, abi_entry("roci_webcam_camera_name", typeid_of(type_of(abi_webcam_camera_name)), "int roci_webcam_camera_name(int index, char *out, int capacity)", "Copies the name of a camera (counting from 0) into `out`, which holds `capacity` bytes, and gives its length; 0 when there is no such camera."))
+	append(all, abi_entry("roci_webcam_pick_number", typeid_of(type_of(abi_webcam_pick_number)), "void roci_webcam_pick_number(int number)", "Chooses the camera roci_webcam shows by its place in the list, counting from 1; 0 goes back to the first. The camera in use is closed and the chosen one opens at the next roci_webcam."))
+	append(all, abi_entry("roci_webcam_pick", typeid_of(type_of(abi_webcam_pick)), "void roci_webcam_pick(const char *name)", "Chooses the camera roci_webcam shows by a part of its name, in any case; an empty text goes back to the first."))
 	append(all, abi_entry("roci_picture_of_window", typeid_of(type_of(abi_picture_of_window)), "roci_image_id roci_picture_of_window(roci_window_id window, int scale)", "The last frame of a window as a picture, `scale` times its logical size (1 or more), or 0 when there are no graphics to draw it."))
 	append(all, abi_entry("roci_pixel", typeid_of(type_of(abi_pixel)), "roci_color roci_pixel(roci_image_id picture, double x, double y)", "The color of a pixel of a picture; clear black outside it."))
 	append(all, abi_entry("roci_pixels", typeid_of(type_of(abi_pixels)), "int roci_pixels(roci_image_id picture, roci_color *colors, int capacity)", "Copies the colors of a picture, left to right and top to bottom, into `colors` as far as `capacity` allows (it may be NULL) and gives how many there are, or 0 for no picture or one of more than a million pixels."))
@@ -499,4 +503,40 @@ abi_pictures_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_builtin_effect_name", typeid_of(type_of(abi_builtin_effect_name)), "const char *roci_builtin_effect_name(int index)", "The name of a built-in effect (from 0), or NULL past the last. The text stays valid until the next function that gives text back."))
 	append(all, abi_entry("roci_add_font", typeid_of(type_of(abi_add_font)), "int roci_add_font(const char *name, const unsigned char *bytes, int length, int face)", "Adds a font from the bytes of its file (a face of a collection by `face`) under a name, so roci_font finds it. Gives 1 when the bytes are a font."))
 	append(all, abi_entry("roci_has_font", typeid_of(type_of(abi_has_font)), "int roci_has_font(const char *name)", "Whether a font of this name is known."))
+}
+
+// How many cameras the computer has (0 in a headless program).
+@(export, link_name = "roci_webcam_camera_count")
+abi_webcam_camera_count :: proc "c" () -> c.int {
+	context = abi_context()
+	return c.int(len(webcam_cameras(context.temp_allocator)))
+}
+
+// Copies the name of a camera (counting from 0) into `out`, which holds `capacity` bytes, and gives its length.
+@(export, link_name = "roci_webcam_camera_name")
+abi_webcam_camera_name :: proc "c" (index: c.int, out: [^]u8, capacity: c.int) -> c.int {
+	context = abi_context()
+	names := webcam_cameras(context.temp_allocator)
+	if index < 0 || int(index) >= len(names) || out == nil || capacity <= 0 {
+		return 0
+	}
+	name := names[index]
+	n := min(len(name), int(capacity) - 1)
+	copy(out[:n], name[:n])
+	out[n] = 0
+	return c.int(n)
+}
+
+// Chooses the camera roci_webcam shows: by its place in the list (counting from 1; 0 is the first).
+@(export, link_name = "roci_webcam_pick_number")
+abi_webcam_pick_number :: proc "c" (number: c.int) {
+	context = abi_context()
+	webcam_pick_number_of(int(number))
+}
+
+// Chooses the camera by part of its name, in any case; "" is the first.
+@(export, link_name = "roci_webcam_pick")
+abi_webcam_pick :: proc "c" (name: cstring) {
+	context = abi_context()
+	webcam_pick_name_of(text_from_abi(name))
 }

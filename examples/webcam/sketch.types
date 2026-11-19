@@ -1,1 +1,4 @@
+cameras: a list of mixed values
 shots: a list of pictures
+chosen: text
+which: text

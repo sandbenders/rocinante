@@ -95,6 +95,8 @@ LANGUAGE_VERBS := []Verb{
 	{"midi program", {{{{"number", .Number}}, MIDI_CHANNEL_OPTION, .None}}, "Chooses an instrument on a synthesizer, 0 to 127 (in General MIDI 0 is a piano, 40 a violin, 73 a flute): `midi program 40`, on a channel with `channel`."},
 	{"midi to", {{{{"name", .Text}}, nil, .None}}, "Chooses which MIDI output the messages go to, by a part of its name, in any case: `midi to \"IAC\"`. Without it they go to the first output there is; `midi to \"\"` goes back to that."},
 	{"midi outputs", {{{}, nil, .List}}, "The names of the MIDI outputs there are, a list of text: `print midi outputs`."},
+	{"webcam pick", {{{{"camera", .Any}}, nil, .None}}, "Chooses which camera `webcam` shows, by its place in `webcam cameras` (counting from 1) or by a part of its name, in any case: `webcam pick 2`, `webcam pick \"USB\"`. Without it the first camera there is is used; `webcam pick 0` or `webcam pick \"\"` goes back to that. The camera in use is closed and the chosen one opens at the next read of `webcam`, which is the dark picture until its first frame comes."},
+	{"webcam cameras", {{{}, nil, .List}}, "The names of the cameras there are, in the order `webcam pick` counts them, a list of text: `print webcam cameras`. A sketch headless, or on a computer with none, gets an empty list."},
 	{"midi clock", {{{{"tempo", .Number}}, nil, .None}}, "Starts a steady MIDI clock at a tempo in beats a minute, 20 to 300: `midi clock 120` sends Start and then 24 ticks a beat, which a drum machine or a sequencer follows. Saying it again changes the tempo, and `midi stop` ends it."},
 	{"midi stop", {{{}, nil, .None}}, "Stops the clock `midi clock` started, sending Stop."},
 	{"osc send", {

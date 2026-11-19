@@ -157,6 +157,8 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"midi program", "roci_midi_program", ""},
 	{"midi to", "roci_midi_to", ""},
 	{"midi outputs", "roci_midi_output_count roci_midi_output_name", ""},
+	{"webcam pick", "roci_webcam_pick roci_webcam_pick_number", ""},
+	{"webcam cameras", "roci_webcam_camera_count roci_webcam_camera_name", ""},
 	{"midi clock", "roci_midi_clock", ""},
 	{"midi stop", "roci_midi_stop", ""},
 	{"send", "roci_send roci_send_number roci_send_text roci_send_vec2 roci_send_boolean", ""},

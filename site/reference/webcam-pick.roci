@@ -1,0 +1,6 @@
+// shows the second camera, when there is one
+webcam pick 2
+
+draw [
+  image (flip webcam) at 20 20 width 360
+]

@@ -5,4 +5,4 @@
 
 `webcam` stays a dark picture and the sketch goes on. Plug one in and run the sketch again.
 
-A picture of your own can stand in for it:  photo = load "photo.png"
+For example:  photo = load "photo.png"

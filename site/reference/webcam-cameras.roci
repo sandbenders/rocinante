@@ -1,0 +1,10 @@
+cameras = webcam cameras
+
+draw [
+  background 20
+  fill white
+  text "cameras:" at 20 20
+  for i from 1 to count cameras [
+    text ((i) + "  " + (item i of cameras)) at 40 (20 + i * 22)
+  ]
+]

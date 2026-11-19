@@ -5,4 +5,4 @@
 
 `webcam` stays a dark picture and the sketch goes on. Allow rocinante (or the program that runs it, such as your terminal) to use the camera in the system's privacy settings, and run the sketch again.
 
-A picture of your own can stand in for it:  photo = load "photo.png"
+For example:  photo = load "photo.png"

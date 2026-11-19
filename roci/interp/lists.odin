@@ -128,6 +128,10 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		midi_out_verb(it, e, call, code)
 	case .Midi_Outputs:
 		return midi_outputs_verb(it)
+	case .Webcam_Pick:
+		webcam_pick_verb(it, call)
+	case .Webcam_Cameras:
+		return webcam_cameras_verb(it)
 	case .Shade:
 		shade_verb(it, e, call)
 	case .Outline:

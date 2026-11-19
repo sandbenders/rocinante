@@ -146,3 +146,74 @@ test_the_webcam_is_in_the_c_api :: proc(t: ^testing.T) {
 	testing.expect_value(t, Image(u32(picture)), webcam())
 	testing.expect_value(t, abi_image_width(picture), WEBCAM_STAND_IN_WIDTH)
 }
+
+@(test)
+test_the_cameras_are_listed_and_one_is_picked :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	defer gfx.images_stop()
+	testing.expect_value(t, len(webcam_cameras(context.temp_allocator)), 0) // a headless run has none
+	set_webcam_cameras({"FaceTime HD Camera", "USB Capture"})
+	names := webcam_cameras(context.temp_allocator)
+	if testing.expect_value(t, len(names), 2) {
+		testing.expect_value(t, names[0], "FaceTime HD Camera")
+		testing.expect_value(t, names[1], "USB Capture")
+	}
+	testing.expect_value(t, webcam_picked(context.temp_allocator), "")
+	webcam_pick(2)
+	testing.expect_value(t, webcam_picked(context.temp_allocator), "2")
+	webcam_pick("usb")
+	testing.expect_value(t, webcam_picked(context.temp_allocator), "usb")
+	webcam_pick("") // back to the first
+	testing.expect_value(t, webcam_picked(context.temp_allocator), "")
+	webcam_pick(-3)
+	testing.expect_value(t, webcam_picked(context.temp_allocator), "")
+}
+
+@(test)
+test_picking_a_camera_shows_the_stand_in_until_its_frame_comes :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	defer gfx.images_stop()
+	feed_webcam(2, 2, flat_frame(2, 2, 1, 2, 3))
+	live := webcam()
+	testing.expect_value(t, image_size(live), [2]f64{2, 2})
+	webcam_pick(2)
+	picture := webcam()
+	testing.expect_value(t, image_size(picture), [2]f64{WEBCAM_STAND_IN_WIDTH, WEBCAM_STAND_IN_HEIGHT})
+	feed_webcam(3, 3, flat_frame(3, 3, 4, 5, 6)) // the chosen camera's first frame, which comes in the next frame
+	step()
+	testing.expect_value(t, image_size(webcam()), [2]f64{3, 3})
+}
+
+@(test)
+test_the_camera_can_say_why_its_pictures_cannot_be_read :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	set_webcam_problem(.Unreadable, "no conversion")
+	testing.expect_value(t, webcam_problem(), Webcam_Problem.Unreadable)
+	testing.expect_value(t, webcam_error(), "no conversion")
+	set_webcam_problem(.Not_Found)
+	testing.expect_value(t, webcam_problem(), Webcam_Problem.Not_Found)
+	set_webcam_problem(.None)
+	testing.expect_value(t, webcam_error(), "")
+}
+
+@(test)
+test_the_camera_functions_are_in_the_c_api :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	set_webcam_cameras({"Built-in", "External"})
+	testing.expect_value(t, abi_webcam_camera_count(), 2)
+	out: [16]u8
+	testing.expect_value(t, abi_webcam_camera_name(1, raw_data(out[:]), 16), 8)
+	testing.expect_value(t, string(cstring(raw_data(out[:]))), "External")
+	testing.expect_value(t, abi_webcam_camera_name(2, raw_data(out[:]), 16), 0)
+	testing.expect_value(t, abi_webcam_camera_name(0, nil, 16), 0)
+	testing.expect_value(t, abi_webcam_camera_name(0, raw_data(out[:]), 0), 0)
+	testing.expect_value(t, abi_webcam_camera_name(0, raw_data(out[:]), 4), 3) // cut to fit, with its end
+	abi_webcam_pick_number(2)
+	testing.expect_value(t, webcam_picked(context.temp_allocator), "2")
+	abi_webcam_pick("ext")
+	testing.expect_value(t, webcam_picked(context.temp_allocator), "ext")
+}
