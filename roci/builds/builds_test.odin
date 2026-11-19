@@ -19,7 +19,10 @@ import "core:strconv"
 import "core:strings"
 import "core:testing"
 
-// What the interpreter prints for a sketch in one headless frame.
+// How many frames each sketch runs: enough for the scenes and timers of tests/compile to do their changes.
+FRAMES :: 40
+
+// What the interpreter prints for a sketch in headless frames.
 interpreted_lines :: proc(t: ^testing.T, name, text: string) -> []string {
 	roci.start_headless(1)
 	defer roci.shutdown()
@@ -31,7 +34,9 @@ interpreted_lines :: proc(t: ^testing.T, name, text: string) -> []string {
 		return nil
 	}
 	interp.start(p)
-	roci.step()
+	for _ in 0 ..< FRAMES {
+		roci.step()
+	}
 	out := make([]string, len(p.printed), context.temp_allocator)
 	for line, i in p.printed {
 		out[i] = strings.clone(line, context.temp_allocator)
@@ -59,7 +64,7 @@ compiled_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string, o
 	if !testing.expectf(t, err == nil && state.exit_code == 0, "%s: the generated program did not build:\n%s", name, string(build_err)) {
 		return nil, false
 	}
-	run_state, stdout, run_err, run_start_err := os.process_exec({command = {binary, "--frames", "1"}}, context.temp_allocator)
+	run_state, stdout, run_err, run_start_err := os.process_exec({command = {binary, "--frames", fmt.tprint(FRAMES)}}, context.temp_allocator)
 	testing.expectf(t, run_start_err == nil && run_state.exit_code == 0, "%s: the program failed (%d):\n%s", name, run_state.exit_code, string(run_err))
 	text_out := strings.trim_right(string(stdout), "\n")
 	if text_out == "" {

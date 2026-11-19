@@ -18,6 +18,7 @@ import "../collide"
 import "../folder"
 import "../gfx"
 import "../maths"
+import oscp "../osc"
 
 @(thread_local) @(private) pictures: map[string]roci.Image
 @(thread_local) @(private) sounds: map[string]roci.Sound
@@ -649,4 +650,90 @@ set_cursor :: proc(w: roci.Window, name: string) {
 	if c, known := roci.cursor_by_name(name); known {
 		roci.set_cursor(w, c)
 	}
+}
+
+// ---- what an `on` block runs for ----
+
+// The happening a block of events is being run for: `midi`, `osc`, `packet`, `received` and `finger` read it.
+@(thread_local) happening: roci.Happened
+
+// Whether an OSC address matches the pattern an `on osc` names (`/fader/*`).
+osc_match :: proc(pattern, address: string) -> bool {
+	return oscp.match(pattern, address)
+}
+
+// The bytes of a datagram as a list of numbers from 0 to 255.
+bytes_list :: proc(data: []byte) -> ^List(f64) {
+	out := new_list(f64)
+	for b in data {
+		add(f64(b), out)
+	}
+	return out
+}
+
+// The numbers of a list as the bytes of a message, each clamped to 0 to 255.
+bytes_of :: proc(list: ^List(f64)) -> []byte {
+	if list == nil {
+		return nil
+	}
+	out := make([]byte, len(list.items), context.temp_allocator)
+	for v, i in list.items {
+		out[i] = byte(clamp(math.round(v), 0, 255))
+	}
+	return out
+}
+
+// Whether a number can be the place of a client or a port: a whole number, at least 0.
+whole :: proc(v: f64) -> int {
+	if v >= 0 && v == math.floor(v) {
+		return int(v)
+	}
+	return 0
+}
+
+// ---- OSC and UDP ----
+
+Osc_Arg :: oscp.Arg
+
+osc_blob :: proc(list: ^List(f64)) -> oscp.Arg {
+	return oscp.Blob(bytes_of(list))
+}
+
+// `osc send "/note" [ 60 "hi" ] to "host" port 9000`: a port that is not one is the usual port.
+osc_send :: proc(address: string, args: []oscp.Arg, host: string, port: f64) {
+	number := roci.DEFAULT_OSC_PORT
+	if port >= 1 && port < 65536 {
+		number = int(port)
+	}
+	if result := roci.osc_send(address, args, host, number); result == .Bad_Address {
+		say_once(address, fmt.tprintf("`%s` is not an OSC address: one starts with a slash, like `/note`.", address))
+	}
+}
+
+// `udp send "hello" to "localhost" port 9000`.
+udp_send :: proc(data: []byte, host: string, port: f64) {
+	number := 0
+	if port >= 1 && port < 65536 && port == math.floor(port) {
+		number = int(port)
+	}
+	if result := roci.udp_send(data, host, number); result == .Bad_Port {
+		say_once("udp port", "A port is a whole number from 1 to 65535, so a datagram can find the program listening there.")
+	}
+}
+
+// `lines text`: the lines of a text, with no line break left on them and no empty line at the end.
+lines :: proc(text: string) -> ^List(string) {
+	out := new_list(string, mark_text)
+	rest := text
+	for len(rest) > 0 {
+		end := strings.index_byte(rest, '\n')
+		line: string
+		if end < 0 {
+			line, rest = rest, ""
+		} else {
+			line, rest = rest[:end], rest[end + 1:]
+		}
+		add(keep(strings.trim_suffix(line, "\r")), out)
+	}
+	return out
 }

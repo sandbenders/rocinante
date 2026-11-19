@@ -149,7 +149,7 @@ builtin :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 	case "anywhere": return "roci.anywhere()"
 	case "webcam":   return "roci.webcam()"
 	case "screens":  return builtin_list(g, e, name)
-	case "turtle":   return builtin_record(g, e, name)
+	case "turtle", "midi", "osc", "packet", "received", "finger", "scene": return builtin_record(g, e, name)
 	case "mic":      return "roci.mic()"
 	case "speakers": return "roci.the_speakers()"
 	case "platform": return "roci.platform_name()"
@@ -221,6 +221,15 @@ field :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Field) -> string {
 	if kind_of(g, k.base) != .Record {
 		refuse(g, e.span, fmt.tprintf("`.%s` of something that is not a record", k.name))
 		return "0.0"
+	}
+	if info, found := lang.shape_field(g.types, g.types.items[lang.resolve(g.types, k.base.type)].a, k.name); found {
+		before := len(g.problems)
+		_, can_hold := odin_type(g, info.type, e.span, k.name)
+		if !can_hold {
+			resize(&g.problems, before)
+			refuse(g, e.span, fmt.tprintf("`.%s`, which holds a mix of values", k.name))
+			return "0.0"
+		}
 	}
 	return fmt.aprintf("%s.%s", expr(g, k.base), field_name(k.name), allocator = context.temp_allocator)
 }
@@ -411,7 +420,9 @@ binary :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Binary) -> string {
 // the first time the sketch reads it, which makes the record or the list as a sketch would have made it.
 @(private)
 builtin_record :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
+	g.lenient += 1
 	record := record_name(g, e.type, e.span)
+	g.lenient -= 1
 	if record == "" {
 		return "nil"
 	}
@@ -422,6 +433,18 @@ builtin_record :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 		switch name {
 		case "turtle":
 			fmt.sbprintf(&b, "\tstate := roci.turtle_state()\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"pos", "state.pos"}, {"angle", "state.angle"}, {"down", "state.down"}}), trace_arg(g, record))
+		case "scene":
+			fmt.sbprintf(&b, "\tname, seconds, frames := rt.scene_info()\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"name", "name"}, {"time", "seconds"}, {"frame", "f64(frames)"}}), trace_arg(g, record))
+		case "midi":
+			fmt.sbprintf(&b, "\tm := rt.happening.midi\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"note", "m.note"}, {"velocity", "m.velocity"}, {"channel", "m.channel"}, {"control", "m.control"}, {"value", "m.value"}, {"bend", "m.bend"}, {"program", "m.program"}, {"pressure", "m.pressure"}}), trace_arg(g, record))
+		case "osc":
+			fmt.sbprintf(&b, "\tm := rt.happening.osc\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"address", "rt.keep(m.address)"}, {"from", "rt.keep(m.from)"}, {"text", "rt.keep(m.text)"}, {"value", "m.value"}}), trace_arg(g, record))
+		case "packet":
+			fmt.sbprintf(&b, "\td := rt.happening.udp\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"text", "rt.keep(d.text)"}, {"from", "rt.keep(d.from)"}, {"port", "f64(d.port)"}, {"bytes", "rt.bytes_list(d.data)"}}), trace_arg(g, record))
+		case "received":
+			fmt.sbprintf(&b, "\tm := rt.happening.tcp\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"text", "rt.keep(m.text)"}, {"from", "rt.keep(m.from)"}, {"client", "f64(m.client)"}}), trace_arg(g, record))
+		case "finger":
+			fmt.sbprintf(&b, "\tf := rt.happening.finger\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"id", "f64(f.id)"}, {"pos", "f.pos"}, {"start", "f.start"}, {"pressure", "f.pressure"}}), trace_arg(g, record))
 		}
 		strings.write_string(&g.procs, strings.to_string(b))
 	}

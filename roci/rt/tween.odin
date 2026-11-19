@@ -19,6 +19,7 @@ Tween :: struct {
 	duration: f64,
 	curve:    maths.Ease,
 	owner:    ^Header, // the record the place is in, kept alive while the tween lasts
+	scene:    int,     // the scene that was current when it began: it ends with that scene, and waits while one is visited over it
 }
 
 @(thread_local) @(private) tweens: [dynamic]Tween
@@ -28,6 +29,7 @@ Tween :: struct {
 begin :: proc(t: Tween, name: string) {
 	t := t
 	t.start = roci.time_now()
+	t.scene = active_scene()
 	if name != "" {
 		t.curve, _ = maths.ease_by_name(name)
 	}
@@ -87,6 +89,10 @@ step_tweens :: proc() {
 	now := roci.time_now()
 	for i := 0; i < len(tweens); {
 		t := tweens[i]
+		if !takes_part(t.scene) {
+			i += 1 // it belongs to a scene that waits
+			continue
+		}
 		amount := (now - t.start) / t.duration if t.duration > 0 else 1
 		if amount >= 1 {
 			write(t, t.to)
@@ -116,6 +122,26 @@ mark_tweens :: proc() {
 	for t in tweens {
 		if t.owner != nil {
 			mark(t.owner)
+		}
+	}
+}
+
+// Drops what a scene started and left running.
+drop_scene_tweens :: proc(scene: int) {
+	for i := 0; i < len(tweens); {
+		if tweens[i].scene == scene {
+			ordered_remove(&tweens, i)
+			continue
+		}
+		i += 1
+	}
+}
+
+// Moves the tweens of a scene on by the time it waited under another.
+shift_tweens :: proc(scene: int, waited: f64) {
+	for &t in tweens {
+		if t.scene == scene {
+			t.start += waited
 		}
 	}
 }

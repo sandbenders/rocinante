@@ -1,0 +1,12 @@
+box = window size 100 100
+scores = [ 1 2 3 ]
+on box receive v [
+  print ("box list " + count v + " " + item 1 of v)
+]
+every 3 frames [
+  send box scores
+  add frame to scores
+]
+copy_of = copy scores
+add 99 to scores
+print (count copy_of + " " + count scores)

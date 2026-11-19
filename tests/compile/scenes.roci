@@ -1,0 +1,30 @@
+count = 0
+scene "title" [
+  on enter [ print "enter title" ]
+  on leave [ print "leave title" ]
+  every 4 frames [ print ("title " + scene.frame) ]
+  draw [
+    background 20
+    if frame is 9 [ go "play" ]
+  ]
+]
+scene "play" [
+  on enter [ print ("enter play at " + scene.frame) ]
+  on leave [ print "leave play" ]
+  every 5 frames [ count = count + 1
+    print ("play " + count + " " + scene.name) ]
+  draw [
+    background 40
+    if scene.frame is 12 [ visit "paused" ]
+    if scene.frame is 30 [ go "title" ]
+  ]
+]
+scene "paused" [
+  on enter [ print "enter paused" ]
+  on leave [ print "leave paused" ]
+  every 3 frames [ print ("paused " + scene.frame) ]
+  draw [
+    if scene.frame is 6 [ return ]
+  ]
+]
+print "set up"

@@ -19,6 +19,9 @@ emit_top_level :: proc(g: ^Gen, s: ^lang.IR_Stmt) {
 	case lang.IR_On:
 		comment(g, s.span)
 		emit_on(g, s, k)
+	case lang.IR_Scene:
+		comment(g, s.span)
+		emit_scene(g, s, k)
 	case:
 		emit_stmt(g, s)
 	}
@@ -91,7 +94,7 @@ emit_stmt :: proc(g: ^Gen, s: ^lang.IR_Stmt) {
 	case lang.IR_Every, lang.IR_On, lang.IR_Draw:
 		refuse(g, s.span, "`draw`, `every` or `on` inside another block (they go at the top of the sketch)")
 	case lang.IR_Scene:
-		refuse(g, s.span, "`scene`")
+		refuse(g, s.span, "a `scene` inside another block (scenes go at the top of the sketch)")
 	case lang.IR_Give:
 		comment(g, s.span)
 		if g.in_verb == nil || !g.in_verb.gives {
@@ -500,7 +503,20 @@ emit_draw :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Draw) {
 	name := fmt.aprintf("draw_%d", id, allocator = context.temp_allocator)
 	emit_proc(g, name, "()", k.body)
 	if k.window != nil {
+		if g.has_scenes {
+			refuse(g, s.span, "`draw` for a window of its own in a sketch with scenes")
+			return
+		}
 		line(g, "roci.draw_window(%s, %s)", expr(g, k.window), name)
+		return
+	}
+	if g.has_scenes {
+		// the draw blocks of a sketch with scenes are run by one procedure that picks the ones that take part
+		append(&g.scene_draws, Scene_Draw{scene = g.registering, proc_name = name})
+		if !g.draw_registered {
+			g.draw_registered = true
+			line(g, "roci.draw(scene_draw)")
+		}
 		return
 	}
 	line(g, "roci.draw(%s)", name)
@@ -512,7 +528,7 @@ emit_every :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Every) {
 	frames := k.unit == "frame" || k.unit == "frames"
 	name := fmt.aprintf("every_%d", id, allocator = context.temp_allocator)
 	emit_proc(g, name, "()", k.body)
-	append(&g.handlers, Handler{kind = .Every, proc_name = name, frames = frames, index = id})
+	append(&g.handlers, Handler{kind = .Every, proc_name = name, frames = frames, index = id, scene = g.registering})
 	fmt.sbprintf(&g.procs, "%s_next, %s_period: f64\n%s_window: roci.Window\n\n", name, name, name)
 	line(g, "{{")
 	g.indent += 1
@@ -531,12 +547,12 @@ emit_every :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Every) {
 @(private)
 emit_on :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_On) {
 	if k.message != nil {
-		refuse(g, s.span, "`on` for a message")
+		emit_receive(g, s, k)
 		return
 	}
 	id := len(g.handlers) + 1
 	name := fmt.aprintf("on_%d", id, allocator = context.temp_allocator)
-	handler := Handler{kind = .Event, proc_name = name, index = id}
+	handler := Handler{kind = .Event, proc_name = name, index = id, scene = g.registering}
 	if k.window != nil {
 		handler.window = expr(g, k.window)
 	}
@@ -544,18 +560,44 @@ emit_on :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_On) {
 	case "key":
 		handler.event = "Key_Down"
 		if len(k.args) > 0 {
-			handler.arg = expr(g, k.args[0])
+			handler.arg = fmt.tprintf("happening.name == %s", expr(g, k.args[0]))
 		}
-	case "mouse down":
-		handler.event = "Mouse_Down"
+	case "mouse down", "mouse up":
+		handler.event = "Mouse_Down" if k.event == "mouse down" else "Mouse_Up"
 		if len(k.args) > 0 {
-			handler.arg = expr(g, k.args[0])
+			handler.arg = fmt.tprintf("happening.name == %s", expr(g, k.args[0]))
 		}
-	case "mouse up":
-		handler.event = "Mouse_Up"
+	case "touch down", "touch up", "resize", "move", "focus":
+		handler.event = happening_of(k.event)
+	case "press", "release":
+		handler.event = happening_of(k.event)
 		if len(k.args) > 0 {
-			handler.arg = expr(g, k.args[0])
+			handler.arg = fmt.tprintf("happening.name == %s", expr(g, k.args[0]))
 		}
+	case "midi down", "midi up", "midi control", "midi bend", "midi program", "midi pressure", "midi start", "midi stop":
+		handler.event = happening_of(k.event)
+		line(g, "roci.start_midi()")
+	case "osc":
+		handler.event = "Osc"
+		if len(k.args) > 0 {
+			handler.arg = fmt.tprintf("rt.osc_match(%s, happening.osc.address)", expr(g, k.args[0]))
+		}
+		line(g, "_ = roci.start_osc()")
+	case "udp":
+		handler.event = "Udp"
+		if len(k.args) > 0 {
+			port := expr(g, k.args[0])
+			handler.arg = fmt.tprintf("happening.udp.to == int(%s)", port)
+			line(g, "_ = roci.udp_listen(%s)", port)
+		}
+	case "tcp", "tcp open", "tcp close", "websocket", "websocket open", "websocket close":
+		handler.event = happening_of(k.event)
+		if len(k.args) > 0 {
+			handler.arg = fmt.tprintf("happening.tcp.label == %s", expr(g, k.args[0]))
+		}
+	case "enter", "leave":
+		handler.kind = .Scene_Event
+		handler.event = k.event
 	case:
 		refuse(g, s.span, fmt.tprintf("`on %s`", k.event))
 		return
@@ -575,6 +617,26 @@ emit_handlers :: proc(g: ^Gen, out: ^strings.Builder) {
 	if g.uses_tweens {
 		fmt.sbprintf(out, "\trt.step_tweens()\n")
 	}
+	receives := false
+	for h in g.handlers {
+		receives ||= h.kind == .Receive
+	}
+	if receives {
+		// what was sent last frame arrives now, and what arrived last frame is gone
+		fmt.sbprintf(out, "\tif inbox_frame != roci.frame_count() {{\n\t\tinbox_frame = roci.frame_count()\n")
+		for h in g.handlers {
+			if h.kind == .Receive {
+				fmt.sbprintf(out, "\t\tinbox_%d_now, inbox_%d_next = inbox_%d_next, inbox_%d_now\n\t\tclear(&inbox_%d_next)\n", h.index, h.index, h.index, h.index, h.index)
+			}
+		}
+		fmt.sbprintf(out, "\t}}\n")
+		for h in g.handlers {
+			if h.kind == .Receive {
+				gate := fmt.tprintf(" && rt.takes_part(%d)", h.scene) if h.scene > 0 else ""
+				fmt.sbprintf(out, "\tif w == %s%s {{\n\t\tfor message in inbox_%d_now {{ %s(message) }}\n\t}}\n", h.window, gate, h.index, h.proc_name)
+			}
+		}
+	}
 	events := false
 	for h in g.handlers {
 		events ||= h.kind == .Event
@@ -587,12 +649,15 @@ emit_handlers :: proc(g: ^Gen, out: ^strings.Builder) {
 			}
 			test := fmt.tprintf("happening.kind == .%s", h.event)
 			if h.arg != "" {
-				test = fmt.tprintf("%s && happening.name == %s", test, h.arg)
+				test = fmt.tprintf("%s && %s", test, h.arg)
 			}
 			if h.window != "" {
 				test = fmt.tprintf("%s && w == %s", test, h.window)
 			}
-			fmt.sbprintf(out, "\t\tif %s {{ %s() }}\n", test, h.proc_name)
+			if h.scene > 0 {
+				test = fmt.tprintf("%s && rt.takes_part(%d)", test, h.scene)
+			}
+			fmt.sbprintf(out, "\t\tif %s {{\n\t\t\trt.happening = happening\n\t\t\t%s()\n\t\t\trt.happening = {{}}\n\t\t}}\n", test, h.proc_name)
 		}
 		fmt.sbprintf(out, "\t}}\n")
 	}
@@ -600,7 +665,8 @@ emit_handlers :: proc(g: ^Gen, out: ^strings.Builder) {
 		if h.kind != .Every {
 			continue
 		}
-		fmt.sbprintf(out, "\tif %s_window == w && %s_period >= 1 {{\n", h.proc_name, h.proc_name)
+		gate := fmt.tprintf(" && rt.takes_part(%d)", h.scene) if h.scene > 0 else ""
+		fmt.sbprintf(out, "\tif %s_window == w && %s_period >= 1%s {{\n", h.proc_name, h.proc_name, gate)
 		fmt.sbprintf(out, "\t\tnow := %s\n", "f64(roci.frame_count())" if h.frames else "roci.time_now()")
 		fmt.sbprintf(out, "\t\tif now >= %s_next {{\n", h.proc_name)
 		fmt.sbprintf(out, "\t\t\t%s_next = now + %s_period if now >= %s_next + %s_period else %s_next + %s_period\n", h.proc_name, h.proc_name, h.proc_name, h.proc_name, h.proc_name, h.proc_name)
@@ -704,4 +770,121 @@ collect_locals :: proc(block: lang.IR_Block, out: ^[dynamic]^lang.Symbol) {
 			collect_locals(k.body, out)
 		}
 	}
+}
+
+// The `Happening` of each name `on` uses.
+@(private)
+happening_of :: proc(name: string) -> string {
+	switch name {
+	case "touch down":       return "Touch_Down"
+	case "touch up":         return "Touch_Up"
+	case "resize":           return "Resize"
+	case "move":             return "Move"
+	case "focus":            return "Focus"
+	case "press":            return "Action_Press"
+	case "release":          return "Action_Release"
+	case "midi down":        return "Midi_Down"
+	case "midi up":          return "Midi_Up"
+	case "midi control":     return "Midi_Control"
+	case "midi bend":        return "Midi_Bend"
+	case "midi program":     return "Midi_Program"
+	case "midi pressure":    return "Midi_Pressure"
+	case "midi start":       return "Midi_Start"
+	case "midi stop":        return "Midi_Stop"
+	case "tcp":              return "Tcp_Line"
+	case "tcp open":         return "Tcp_Open"
+	case "tcp close":        return "Tcp_Close"
+	case "websocket":        return "Ws_Message"
+	case "websocket open":   return "Ws_Open"
+	case "websocket close":  return "Ws_Close"
+	}
+	return ""
+}
+
+// `scene "play" [ ... ]`: what is written in it is written where it stands, tagged with the scene.
+@(private)
+emit_scene :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Scene) {
+	place := 0
+	for known, i in g.scenes {
+		if known == k.name {
+			place = i + 1
+		}
+	}
+	if place == 0 {
+		append(&g.scenes, k.name)
+		place = len(g.scenes)
+	}
+	line(g, "_ = rt.scene_register(%q)", k.name)
+	saved := g.registering
+	g.registering = place
+	for inner in k.body.stmts {
+		emit_top_level(g, inner)
+	}
+	g.registering = saved
+}
+
+// The procedures the scenes need: the one draw block that runs the ones that take part, the restart of a scene's timers,
+// its `on enter` and `on leave` blocks, and the shift of its timers by the time it waited.
+@(private)
+emit_scene_procs :: proc(g: ^Gen, out: ^strings.Builder) {
+	fmt.sbprintf(out, "scene_draw :: proc() {{\n")
+	for d in g.scene_draws {
+		if d.scene == 0 {
+			fmt.sbprintf(out, "\t%s()\n", d.proc_name)
+		}
+	}
+	fmt.sbprintf(out, "\tswitch rt.active_scene() {{\n")
+	for place in 1 ..= len(g.scenes) {
+		fmt.sbprintf(out, "\tcase %d:\n", place)
+		for d in g.scene_draws {
+			if d.scene == place {
+				fmt.sbprintf(out, "\t\t%s()\n", d.proc_name)
+			}
+		}
+	}
+	fmt.sbprintf(out, "\t}}\n}}\n\n")
+	fmt.sbprintf(out, "scene_restart :: proc(scene: int) {{\n")
+	for h in g.handlers {
+		if h.kind == .Every && h.scene > 0 {
+			now := "f64(roci.frame_count())" if h.frames else "roci.time_now()"
+			fmt.sbprintf(out, "\tif scene == %d {{ %s_next = %s_period + %s }}\n", h.scene, h.proc_name, h.proc_name, now)
+		}
+	}
+	fmt.sbprintf(out, "}}\n\nscene_shift :: proc(scene: int, waited: f64) {{\n")
+	for h in g.handlers {
+		if h.kind == .Every && h.scene > 0 && !h.frames {
+			fmt.sbprintf(out, "\tif scene == %d {{ %s_next += waited }}\n", h.scene, h.proc_name)
+		}
+	}
+	fmt.sbprintf(out, "}}\n\nscene_event :: proc(name: string, scene: int) {{\n")
+	for h in g.handlers {
+		if h.kind == .Scene_Event {
+			if h.scene == 0 {
+				fmt.sbprintf(out, "\tif name == %q {{ %s() }}\n", h.event, h.proc_name)
+			} else {
+				fmt.sbprintf(out, "\tif name == %q && scene == %d {{ %s() }}\n", h.event, h.scene, h.proc_name)
+			}
+		}
+	}
+	fmt.sbprintf(out, "}}\n\n")
+}
+
+// `on stage receive message [ ... ]`: a procedure that takes the message, run for each one in the window's inbox.
+@(private)
+emit_receive :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_On) {
+	if k.window == nil {
+		refuse(g, s.span, "`on receive` without a window")
+		return
+	}
+	g.receiver_next += 1
+	if g.receiver_next > len(g.receiver_info) {
+		refuse(g, s.span, "`on receive` for a message of a kind a sketch cannot keep yet")
+		return
+	}
+	info := g.receiver_info[g.receiver_next - 1]
+	id := len(g.handlers) + 1
+	name := fmt.aprintf("on_%d", id, allocator = context.temp_allocator)
+	emit_proc(g, name, fmt.tprintf("(%s: %s)", name_of(g, k.message), info.message_type), k.body)
+	fmt.sbprintf(&g.procs, "inbox_%d_now, inbox_%d_next: [dynamic]%s\n\n", info.id, info.id, info.message_type)
+	append(&g.handlers, Handler{kind = .Receive, proc_name = name, index = info.id, message_type = info.message_type, window = info.window, scene = g.registering})
 }

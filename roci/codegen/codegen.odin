@@ -39,14 +39,24 @@ Result :: struct {
 Handler_Kind :: enum {
 	Every,
 	Event,
+	Scene_Event, // `on enter` and `on leave`
+	Receive,     // `on w receive message`
+}
+
+@(private)
+Scene_Draw :: struct {
+	scene:     int,
+	proc_name: string,
 }
 
 @(private)
 Handler :: struct {
 	kind:    Handler_Kind,
 	proc_name: string,
+	scene:   int, // the scene it was written in, 0 for none
 	event:   string, // for an event: the name `on` uses
 	arg:     string, // for an event: the Odin text of the name it waits for ("" for any)
+	message_type: string, // for a receiver: the Odin type of what it takes
 	window:  string, // for an event: the Odin text of the window it is for ("" for any)
 	frames:  bool,   // for `every`: counted in frames
 	index:   int,
@@ -78,6 +88,15 @@ Gen :: struct {
 	uses_tweens: bool, // the frame hook steps the tweens
 	uses_collide: bool,
 	written:  map[^lang.IR]string,
+	receiver_info: [dynamic]Receiver,
+	receiver_next: int, // how many receivers have been written
+	copiers:  map[string]string, // an Odin type -> the procedure that makes a deep copy of a value of it
+	registering: int, // the scene whose statements are being written, 0 outside every scene
+	has_scenes: bool,
+	scenes:   [dynamic]string, // the names of the scenes, in the order they are met (the places `rt.scene_register` gives)
+	draw_registered: bool,
+	scene_draws: [dynamic]Scene_Draw,
+	lenient:  int, // above 0 while a record type the language hands out is made: a field of a type compiled sketches cannot hold is left out
 	no_hoist: int, // above 0 while writing something that is evaluated more than once or not at all (a loop's test, the right side of `and`)
 }
 
@@ -103,6 +122,15 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	g.verb_names = make(map[^lang.IR_Instance]string, 4, context.temp_allocator)
 	g.markers = make(map[string]string, 4, context.temp_allocator)
 	g.written = make(map[^lang.IR]string, 64, context.temp_allocator)
+	g.scenes = make([dynamic]string, context.temp_allocator)
+	g.receiver_info = make([dynamic]Receiver, context.temp_allocator)
+	g.copiers = make(map[string]string, 4, context.temp_allocator)
+	g.scene_draws = make([dynamic]Scene_Draw, context.temp_allocator)
+	for s in program.stmts {
+		if _, is_scene := s.kind.(lang.IR_Scene); is_scene {
+			g.has_scenes = true
+		}
+	}
 	g.handlers = make([dynamic]Handler, context.temp_allocator)
 	for r in RESERVED {
 		g.taken[r] = true
@@ -121,8 +149,17 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 		}
 		fmt.sbprintf(&globals, "%s: %s\n", name, type)
 	}
+	find_receivers(&g, program.stmts)
 	// what the collector starts from: every name of the sketch that can hold a heap object
 	roots := strings.builder_make(context.temp_allocator)
+	for r in g.receiver_info {
+		for inbox in ([]string{"now", "next"}) {
+			element := r.message_type
+			if statement := mark_statement_text(&g, element, "item"); statement != "" {
+				fmt.sbprintf(&roots, "\tfor item in inbox_%d_%s {{ %s }}\n", r.id, inbox, statement)
+			}
+		}
+	}
 	for sym in program.symbols {
 		if statement := mark_statement(&g, sym.type, name_of(&g, sym)); statement != "" {
 			fmt.sbprintf(&roots, "\t%s\n", statement)
@@ -138,6 +175,9 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	setup := strings.builder_make(context.temp_allocator)
 	g.body = setup
 	g.indent = 1
+	if g.has_scenes {
+		line(&g, "rt.scene_hooks = {{restart = scene_restart, event = scene_event, shift = scene_shift}}")
+	}
 	for s in program.stmts {
 		emit_top_level(&g, s)
 	}
@@ -155,7 +195,11 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	fmt.sbprintf(&out, "%s\n", strings.to_string(globals))
 	strings.write_string(&out, strings.to_string(g.procs))
 	fmt.sbprintf(&out, "// What the names of the sketch hold, for the collector.\nroots :: proc() {{\n%s}}\n\n", strings.to_string(roots))
+	fmt.sbprintf(&out, "inbox_frame := -1\n\n")
 	emit_handlers(&g, &out)
+	if g.has_scenes {
+		emit_scene_procs(&g, &out)
+	}
 	fmt.sbprintf(&out, "setup :: proc() {{\n%s}}\n\n", strings.to_string(setup))
 	fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, ", hook" if len(g.handlers) > 0 || g.uses_tweens else "")
 	return Result{source = strings.to_string(out), problems = nil}
@@ -276,6 +320,14 @@ record_type :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span, what: string) -> 
 	marks := strings.builder_make(context.temp_allocator)
 	ok := true
 	for f in g.types.shapes[shape_index].fields {
+		if g.lenient > 0 {
+			before := len(g.problems)
+			_, can_hold := odin_type(g, f.type, span, f.name)
+			if !can_hold {
+				resize(&g.problems, before)
+				continue // `osc.args` is a list of mixed values, which is left out; reading it is refused
+			}
+		}
 		type, field_ok := odin_type(g, f.type, span, f.name)
 		if !field_ok {
 			ok = false
@@ -303,6 +355,18 @@ mark_statement :: proc(g: ^Gen, t: lang.Type_Id, value: string) -> string {
 	case .Text:
 		return fmt.aprintf("rt.mark_text(%s)", value, allocator = context.temp_allocator)
 	case .Record, .List, .Table, .Gradient:
+		return fmt.aprintf("if %s != nil {{ rt.mark(&%s.gc__) }}", value, value, allocator = context.temp_allocator)
+	}
+	return ""
+}
+
+// The statement that marks a value of a type given by its Odin text (a message): a pointer to a record or a list, or a text.
+@(private)
+mark_statement_text :: proc(g: ^Gen, odin: string, value: string) -> string {
+	switch {
+	case odin == "string":
+		return fmt.aprintf("rt.mark_text(%s)", value, allocator = context.temp_allocator)
+	case strings.has_prefix(odin, "^"):
 		return fmt.aprintf("if %s != nil {{ rt.mark(&%s.gc__) }}", value, value, allocator = context.temp_allocator)
 	}
 	return ""

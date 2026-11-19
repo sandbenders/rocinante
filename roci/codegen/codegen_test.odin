@@ -134,12 +134,12 @@ test_list_blocks_become_procedures_with_plain_loops :: proc(t: ^testing.T) {
 @(test)
 test_what_cannot_be_compiled_yet_is_refused_with_its_name_and_never_half_done :: proc(t: ^testing.T) {
 	refused_for(t, "record \"clip.apng\"\n", "record")
-	refused_for(t, "scene \"a\" [ draw [ circle at 1 1 radius 1 ] ]\n", "scene")
-	refused_for(t, "w = window size 100 100\nsend w 5\n", "send")
+	refused_for(t, "scene \"a\" [ draw [ scene \"b\" [ ] ] ]\n", "another block")
+	refused_for(t, "g = gamepads\n", "gamepads")
 	refused_for(t, "ui [ button \"x\" ]\n", "ui")
 	refused_for(t, "x = table\n", "table")
 	refused_for(t, "draw [ push [ circle at 1 1 radius 1 ] ]\nevery 1 second [ draw [ circle at 1 1 radius 1 ] ]\n", "inside another block")
-	refused_for(t, "poem = lines \"a\"\n", "lines")
+	refused_for(t, "mesh [ [ 0 0 0 ] [ 1 0 0 ] [ 0 1 0 ] ]\n", "mesh")
 }
 
 @(test)
@@ -294,4 +294,32 @@ test_an_expression_asked_for_twice_is_written_once :: proc(t: ^testing.T) {
 	result := compile("things = []\nadd { a: random 2, b: random 2 } to things\n")
 	testing.expect_value(t, len(result.problems), 0)
 	testing.expect_value(t, strings.count(result.source, "roci.random(2.0)"), 2)
+}
+
+@(test)
+test_scenes_are_run_by_one_draw_procedure_that_picks_the_ones_that_take_part :: proc(t: ^testing.T) {
+	result := compile("scene \"a\" [\n  on enter [ print \"in\" ]\n  draw [ if frame is 3 [ go \"b\" ] ]\n]\nscene \"b\" [\n  draw [ circle at 1 1 radius 1 ]\n]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "roci.draw(scene_draw)"))
+	testing.expect(t, strings.contains(result.source, "rt.go(\"b\")"))
+	testing.expect(t, strings.contains(result.source, "rt.scene_hooks"))
+	testing.expect(t, strings.contains(result.source, "if name == \"enter\" && scene == 1"))
+}
+
+@(test)
+test_a_message_is_copied_into_the_inbox_of_the_window_that_receives_it :: proc(t: ^testing.T) {
+	result := compile("w = window size 10 10\nxs = [ 1 2 ]\non w receive m [ print count m ]\nsend w xs\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "append(&inbox_1_next, copy_1(xs))"))
+	testing.expect(t, strings.contains(result.source, "inbox_1_now, inbox_1_next = inbox_1_next, inbox_1_now"))
+}
+
+@(test)
+test_midi_osc_and_tcp_events_read_what_happened_through_the_runtime :: proc(t: ^testing.T) {
+	result := compile("on midi down [ print midi.note ]\non osc \"/a\" [ print osc.value ]\non tcp \"chat\" [ print received.text ]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "roci.start_midi()"))
+	testing.expect(t, strings.contains(result.source, "rt.osc_match("))
+	testing.expect(t, strings.contains(result.source, "rt.happening.midi"))
+	testing.expect(t, strings.contains(result.source, "rt.happening.tcp"))
 }

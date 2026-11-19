@@ -108,6 +108,7 @@ execute :: proc(run: Run, setup: proc(), roots: proc(), hook: proc(w: roci.Windo
 		roci.set_frame_hook(hook)
 	}
 	setup()
+	scene_start()
 	code := 0
 	if run.frames > 0 {
 		for _ in 0 ..< run.frames {
@@ -132,6 +133,7 @@ execute :: proc(run: Run, setup: proc(), roots: proc(), hook: proc(w: roci.Windo
 // Run as every frame ends, when no verb is running: the moment the collector may free what nothing holds.
 @(private)
 end_of_frame :: proc() {
+	scene_apply()
 	if collector_roots != nil {
 		maybe_collect(all_roots)
 	}

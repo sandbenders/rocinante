@@ -362,6 +362,8 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 		list_type, _ := odin_type(g, c.args[0].type, e.span, "a list")
 		element := list_type[len("^rt.List("):len(list_type) - 1]
 		return fmt.aprintf("rt.shuffle(%s, %s)", args[0], item_marker(g, list_element(g, c.args[0].type), element), allocator = context.temp_allocator), true, true
+	case "lines":
+		return fmt.aprintf("rt.lines(%s)", args[0], allocator = context.temp_allocator), true, true
 	case "measure":
 		return fmt.aprintf("roci.measure(%s)", args[0], allocator = context.temp_allocator), true, true
 	case "gradient":
@@ -386,6 +388,92 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 		return fmt.aprintf("rt.get(%s, %s)", args[0], args[1], allocator = context.temp_allocator), true, true
 	case "keys":
 		return fmt.aprintf("rt.keys(%s)", args[0], allocator = context.temp_allocator), true, true
+	case "send":
+		return send_call(g, e, c, args), false, true
+	case "copy":
+		made, _ := copy_value(g, c.args[0].type, args[0], e.span)
+		return made, true, true
+	// ---- scenes ----
+	case "go":
+		return fmt.aprintf("rt.go(%s)", args[0], allocator = context.temp_allocator), false, true
+	case "visit":
+		return fmt.aprintf("rt.visit(%s)", args[0], allocator = context.temp_allocator), false, true
+	case "return":
+		return "rt.scene_return()", false, true
+	// ---- the network ----
+	case "tcp connect":
+		return fmt.aprintf("_ = roci.tcp_connect(%s, %s, %s)", args[0], maybe_or(g, c.options, "to", `""`), maybe_or(g, c.options, "port", "0.0"), allocator = context.temp_allocator), false, true
+	case "tcp listen":
+		return fmt.aprintf("_ = roci.tcp_listen(%s, %s)", args[0], maybe_or(g, c.options, "port", "0.0"), allocator = context.temp_allocator), false, true
+	case "tcp send":
+		client := fmt.tprintf("rt.whole(%s)", maybe_or(g, c.options, "to", "0.0"))
+		if c.shape == 1 {
+			return fmt.aprintf("_ = roci.tcp_send(%s, rt.bytes_of(%s), %s)", args[0], args[1], client, allocator = context.temp_allocator), false, true
+		}
+		return fmt.aprintf("_ = roci.tcp_send(%s, transmute([]byte)rt.join(%s, \"\\n\"), %s)", args[0], args[1], client, allocator = context.temp_allocator), false, true
+	case "tcp close":
+		return fmt.aprintf("_ = roci.tcp_close(%s, rt.whole(%s))", args[0], maybe_or(g, c.options, "to", "0.0"), allocator = context.temp_allocator), false, true
+	case "websocket connect":
+		return fmt.aprintf("_ = roci.websocket_connect(%s, %s)", args[0], maybe_or(g, c.options, "to", `""`), allocator = context.temp_allocator), false, true
+	case "websocket send":
+		if c.shape == 1 {
+			return fmt.aprintf("_ = roci.websocket_send(%s, rt.bytes_of(%s), true)", args[0], args[1], allocator = context.temp_allocator), false, true
+		}
+		return fmt.aprintf("_ = roci.websocket_send(%s, transmute([]byte)%s)", args[0], args[1], allocator = context.temp_allocator), false, true
+	case "websocket close":
+		return fmt.aprintf("_ = roci.websocket_close(%s)", args[0], allocator = context.temp_allocator), false, true
+	case "osc listen":
+		return fmt.aprintf("_ = roci.osc_listen(%s)", args[0], allocator = context.temp_allocator), false, true
+	case "osc value":
+		return fmt.aprintf("roci.osc_value(%s)", args[0], allocator = context.temp_allocator), true, true
+	case "osc send":
+		if c.shape != 0 {
+			refuse(g, e.span, "`osc send` of several messages in a bundle")
+			return "", false, true
+		}
+		literal, is_literal := c.args[1].kind.(lang.IR_List)
+		if !is_literal {
+			refuse(g, e.span, "`osc send` of a list of arguments that is not written out")
+			return "", false, true
+		}
+		parts := make([dynamic]string, context.temp_allocator)
+		for item in literal.items {
+			#partial switch kind_of(g, item) {
+			case .Number, .Boolean, .Text:
+				append(&parts, fmt.tprintf("rt.Osc_Arg(%s)", expr(g, item)))
+			case .List:
+				append(&parts, fmt.tprintf("rt.osc_blob(%s)", expr(g, item)))
+			case:
+				refuse(g, item.span, "`osc send` of something that is not a number, a text, true or false, or a list of numbers")
+			}
+		}
+		port := maybe_or(g, c.options, "port", "0.0")
+		return fmt.aprintf("rt.osc_send(%s, []rt.Osc_Arg{{%s}}, %s, %s)", args[0], strings.join(parts[:], ", ", context.temp_allocator), maybe_or(g, c.options, "to", `"127.0.0.1"`), port, allocator = context.temp_allocator), false, true
+	case "udp send":
+		data := fmt.tprintf("rt.bytes_of(%s)", args[0]) if c.shape == 1 else fmt.tprintf("transmute([]byte)%s", args[0])
+		return fmt.aprintf("rt.udp_send(%s, %s, %s)", data, maybe_or(g, c.options, "to", `"127.0.0.1"`), maybe_or(g, c.options, "port", "0.0"), allocator = context.temp_allocator), false, true
+	// ---- MIDI out ----
+	case "midi note":
+		return fmt.aprintf("_ = roci.midi_note(%s, %s, %s, %s)", args[0], maybe(g, c.options, "velocity"), maybe(g, c.options, "channel"), maybe(g, c.options, "for"), allocator = context.temp_allocator), false, true
+	case "midi release":
+		first := args[0] if len(args) > 0 else "nil"
+		return fmt.aprintf("_ = roci.midi_release(%s, %s)", first, maybe(g, c.options, "channel"), allocator = context.temp_allocator), false, true
+	case "midi set":
+		return fmt.aprintf("_ = roci.midi_set(%s, %s, %s)", args[0], maybe_or(g, c.options, "to", "0.0"), maybe(g, c.options, "channel"), allocator = context.temp_allocator), false, true
+	case "midi bend":
+		return fmt.aprintf("_ = roci.midi_bend(%s, %s)", args[0], maybe(g, c.options, "channel"), allocator = context.temp_allocator), false, true
+	case "midi program":
+		return fmt.aprintf("_ = roci.midi_program(%s, %s)", args[0], maybe(g, c.options, "channel"), allocator = context.temp_allocator), false, true
+	case "midi to":
+		return fmt.aprintf("roci.midi_to(%s)", args[0], allocator = context.temp_allocator), false, true
+	case "midi clock":
+		return fmt.aprintf("_ = roci.midi_clock(%s)", args[0], allocator = context.temp_allocator), false, true
+	case "midi stop":
+		return "roci.midi_clock_stop()", false, true
+	case "midi control":
+		return fmt.aprintf("roci.midi_control(%s)", args[0], allocator = context.temp_allocator), true, true
+	case "midi tempo":
+		return "roci.midi_tempo()", true, true
 	// ---- the player's controls ----
 	case "bind":
 		to := option(c.options, "to")
