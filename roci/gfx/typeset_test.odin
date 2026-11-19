@@ -281,3 +281,33 @@ an_emoji_measures_as_one_em_whatever_size_its_font_is_made_in :: proc(t: ^testin
 	w2, _ := measure_typeset(FACE_DEFAULT, 20, .Left, "\U0001F642\U0001F642")
 	testing.expect_value(t, w2, space_w * 2)
 }
+
+@(test)
+text_is_laid_out_at_the_size_it_is_drawn :: proc(t: ^testing.T) {
+	item := Typeset_Item{size = 20, transform = IDENTITY}
+	// no transform, a slide and a turn leave the scale of the window alone
+	testing.expect_value(t, text_scale(item, 2), 2)
+	item.transform = transform_move(IDENTITY, 30, 40)
+	testing.expect_value(t, text_scale(item, 2), 2)
+	item.transform = transform_turn(IDENTITY, 37)
+	testing.expect_value(t, text_scale(item, 2), 2) // exactly: a size that differs in its last bit is another font
+	// `grow 3` lays text out three times as big, and `grow 0.5` half as big
+	item.transform = transform_grow(IDENTITY, 3, 3)
+	testing.expect_value(t, text_scale(item, 2), 6)
+	item.transform = transform_grow(IDENTITY, 0.5, 0.5)
+	testing.expect_value(t, text_scale(item, 2), 1)
+	// a grow that is not the same each way uses the size of the square it makes
+	item.transform = transform_grow(IDENTITY, 4, 1)
+	testing.expect_value(t, text_scale(item, 1), 2)
+	// a mirror is as big as what it mirrors, and a transform that squashes everything flat is left alone
+	item.transform = transform_grow(IDENTITY, -2, 2)
+	testing.expect_value(t, text_scale(item, 1), 2)
+	item.transform = transform_grow(IDENTITY, 0, 5)
+	testing.expect_value(t, text_scale(item, 1), 1)
+	// text is never laid out past MAX_TEXT_PIXELS: a size of 20 grown a thousand times is capped
+	item.transform = transform_grow(IDENTITY, 1000, 1000)
+	testing.expect_value(t, text_scale(item, 1), MAX_TEXT_PIXELS / 20)
+	// and never made absurdly small
+	item.transform = transform_grow(IDENTITY, 0.0001, 0.0001)
+	testing.expect_value(t, text_scale(item, 1), 0.01)
+}

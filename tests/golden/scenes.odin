@@ -53,6 +53,7 @@ SCENES := [?]Scene{
 	{"ui_widgets", ui_backdrop},
 	{"model_pictures", model_pictures},
 	{"model_colours", model_colours},
+	{"text_grown", text_grown},
 }
 
 named :: proc(name: string) -> maths.Colour {
@@ -448,6 +449,30 @@ images :: proc(list: ^gfx.Command_List) {
 	gfx.set_font_size(list, 10)
 	gfx.typeset(list, "text between pictures", 66, 62)
 	gfx.draw_image(list, picture, 160, 100, 24, 40)               // stretched
+}
+
+// Text after `grow` is laid out at the size it is drawn, so its edges are as sharp at three times, at two
+// times and at half as they are at one. (Not turned: turned text is sampled between the glyphs of the
+// atlas it shares with every other scene, so a pixel of it depends on which scenes ran before.)
+text_grown :: proc(list: ^gfx.Command_List) {
+	gfx.background(list, maths.grey(250))
+	gfx.set_fill(list, maths.grey(20))
+	gfx.set_font_size(list, 10)
+	gfx.push(list, .Style_And_Transform)
+	gfx.grow(list, 3, 3)
+	gfx.typeset(list, "Grow 3", 4, 4)
+	gfx.pop(list)
+	gfx.push(list, .Style_And_Transform)
+	gfx.move(list, 6, 70)
+	gfx.grow(list, 2, 2)
+	gfx.typeset(list, "grow 2", 0, 0)
+	gfx.pop(list)
+	gfx.push(list, .Style_And_Transform)
+	gfx.move(list, 130, 90)
+	gfx.grow(list, 0.5, 0.5)
+	gfx.set_font_size(list, 28)
+	gfx.typeset(list, "half", 0, 0)
+	gfx.pop(list)
 }
 
 // A shader of its own over the frame: the picture is waved sideways and mixed with a colour

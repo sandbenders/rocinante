@@ -91,6 +91,27 @@ text_key :: proc(item: Typeset_Item, pixels, wrap: f32) -> u64 {
 	return hash_u64(h, u64(item.face) | u64(item.align) << 16)
 }
 
+// The largest a text is laid out, in device pixels: bigger than any screen, and past it the picture of
+// the text is enlarged by the transform, as it always was.
+MAX_TEXT_PIXELS :: f32(4096)
+
+// The device pixels for each logical pixel the text of an item is laid out at: the window's scale times
+// how much the transform in force makes things bigger, so that text after `grow 3` is made at the size it
+// is drawn and its edges stay sharp, and text after `grow 0.5` is not made large to be shrunk. The
+// vertices are placed in the item's own units (divided by this), and the transform that carries them
+// brings them to the size they were made at, so only the sharpness changes.
+text_scale :: proc(item: Typeset_Item, scale: f32) -> f32 {
+	k := f32(scale_of(item.transform))
+	if k <= 0 || abs(k - 1) < 0.001 {
+		return scale // a transform that squashes everything flat, or leaves the size alone (a turn does, to within rounding)
+	}
+	made := scale * clamp(k, 0.01, 1000)
+	if item.size > 0 {
+		made = min(made, MAX_TEXT_PIXELS / item.size)
+	}
+	return max(made, 0.01)
+}
+
 // Makes (or finds) the text for an item at this scale.
 cached_text :: proc(r: ^Renderer, item: Typeset_Item, scale: f32) -> (entry: Cached_Text, ok: bool) {
 	s := &r.typeset
@@ -177,18 +198,19 @@ typeset_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batch
 			continue
 		}
 		if item.masked {
-			text_fill_vertices(r, commands, i, item, scale)
+			text_fill_vertices(r, commands, i, item, text_scale(item, scale))
 			continue
 		}
 		if item.image != 0 {
 			image_vertices(r, commands, i, item)
 			continue
 		}
-		entry, ok := cached_text(r, item, scale)
+		laid := text_scale(item, scale) // device pixels for each unit the text is laid out in
+		entry, ok := cached_text(r, item, laid)
 		if !ok {
 			continue
 		}
-		width := entry.width / scale
+		width := entry.width / laid
 		shift := f32(0)
 		switch item.align {
 		case .Left:
@@ -204,8 +226,8 @@ typeset_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batch
 			coloured: f32 = 1 if seq.image_type == .COLOR else 0
 			for v in 0 ..< int(seq.num_vertices) {
 				// SDL_ttf's y points up from the text's top; the canvas's points down.
-				local_x := item.x + shift + seq.xy[v].x / scale
-				local_y := item.y - seq.xy[v].y / scale
+				local_x := item.x + shift + seq.xy[v].x / laid
+				local_y := item.y - seq.xy[v].y / laid
 				x, y := transform_apply(item.transform, local_x, local_y)
 				append(&s.vertices, Typeset_Vertex{{x, y}, {seq.uv[v].x, seq.uv[v].y}, item.colour, coloured})
 			}
@@ -215,7 +237,7 @@ typeset_prepare :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batch
 			append(&s.draws, Typeset_Draw{i, seq.atlas_texture, first, u32(len(s.indices)) - first, false})
 		}
 		for e in entry.emoji {
-			emoji_vertices(r, i, e, item, shift, scale)
+			emoji_vertices(r, i, e, item, shift, laid)
 		}
 	}
 	forget_old_texts(r)
