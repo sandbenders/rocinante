@@ -225,6 +225,7 @@ shutdown :: proc() {
 	sounds_stop()
 	webcam_stop()
 	movies_stop()
+	stats_stop()
 	for w in the.windows {
 		destroy_win(w)
 	}
@@ -324,6 +325,7 @@ make_win :: proc(width, height: int, position: Maybe([2]int), title: string, fla
 			the.failed, the.headless = true, true
 		}
 		w.handle = handle
+		stats_new_window(handle)
 	}
 	gfx.begin_frame(&w.list)
 	append(&the.windows, w)

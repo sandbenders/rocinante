@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package main
 
+import "../roci"
 import "core:os"
 import "core:strings"
 import "core:testing"
@@ -212,4 +213,33 @@ test_keys_pressed_by_a_script_reach_the_sketch_in_their_frames :: proc(t: ^testi
 	// no keys, no presses
 	none := run_text("test.roci", text, 8, 1, false)
 	testing.expect_value(t, len(none.printed), 0)
+}
+
+@(test)
+test_run_args_take_stats_and_no_vsync_for_a_window :: proc(t: ^testing.T) {
+	a := parse_run_args({"--stats"})
+	testing.expect(t, a.ok && a.stats && !a.no_vsync)
+	b := parse_run_args({"sketch.roci", "--stats", "--no-vsync"})
+	testing.expect(t, b.ok && b.stats && b.no_vsync)
+	c := parse_run_args({"--frames", "30", "--stats"})
+	testing.expect(t, c.ok && c.stats && c.frames == 30)
+}
+
+@(test)
+test_run_args_refuse_no_vsync_without_a_window_or_without_stats :: proc(t: ^testing.T) {
+	a := parse_run_args({"--no-vsync"})
+	testing.expect(t, !a.ok)
+	testing.expect_value(t, a.bad, "--no-vsync goes with --stats")
+	b := parse_run_args({"--stats", "--no-vsync", "--frames", "10"})
+	testing.expect(t, !b.ok)
+	testing.expect(t, strings.contains(b.bad, "needs a window"))
+}
+
+@(test)
+test_a_timed_headless_run_keeps_what_it_measured :: proc(t: ^testing.T) {
+	r := run_text("a.roci", "n = 0\ndraw [\n  n = n + 1\n]\n", 20, 1, false, stats = true)
+	testing.expect_value(t, r.code, 0)
+	s := roci.stats_last()
+	testing.expect_value(t, s.frames, 19)
+	testing.expect(t, s.fps_average > 0)
 }

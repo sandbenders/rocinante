@@ -136,6 +136,7 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 	sounds_step(the.delta)
 	movies_step(the.delta)
 	the.frame += 1
+	stats_frame()
 	gfx.images_tick()
 	evict_derived()
 }
@@ -167,6 +168,7 @@ show_frame :: proc(w: ^Win) {
 	if the.overlay_title != "" {
 		draw_overlay(w)
 	}
+	draw_stats(w)
 	gfx.build(&w.batcher, &w.list, canvas)
 	if w.handle == nil {
 		return

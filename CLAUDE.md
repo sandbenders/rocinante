@@ -47,7 +47,7 @@ odin run examples/shapes [-- seconds]         # roci/gfx by hand: every shape th
 odin run examples/window [-- seconds]         # roci/platform by hand: windows, events, N / F / V keys
 odin run examples/benchmark -o:speed -- [seconds] [count] [novsync] [headless]   # 100,000 circles a frame; frame rate and where the time goes
 odin build cli -o:speed -out:output/roci && output/roci run examples/benchmark   # the same through the interpreter, its frame rate printed each second
-odin run cli -- run examples/garden/sketch.roci [--frames N --screenshot out.png --window 2 --seed N --errors json]   # run a sketch in the language (a folder runs its sketch.roci); with --frames, headless
+odin run cli -- run examples/garden/sketch.roci [--frames N --screenshot out.png --window 2 --seed N --errors json --stats --no-vsync]   # run a sketch in the language (a folder runs its sketch.roci; --stats times the frames, shows a box with the frame and the frame rate and adds a line to artifacts/log.json, and --no-vsync lets a window run as fast as it can); with --frames, headless
 odin run cli -- check <file or folder> [--types --tree --errors json]   # parse and check, and say every mistake
 odin run cli -- fmt [file or folder]          # write sketches in the house style; no name means every .roci file here
 odin run cli -- man [word]                    # how a verb or statement is written, made from the registry

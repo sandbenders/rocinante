@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package folder
 
+import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:testing"
@@ -56,13 +57,41 @@ test_init_adds_what_is_missing_and_never_overwrites :: proc(t: ^testing.T) {
 	result, err := init_sketch(root, Options{}, context.temp_allocator)
 	testing.expect_value(t, err, Scaffold_Error.None)
 	testing.expect_value(t, read(path_in(root, "sketch.roci")), "print 1\n")
-	testing.expect_value(t, read(path_in(root, ".gitignore")), "mine\n")
+	testing.expect_value(t, read(path_in(root, ".gitignore")), "mine\nartifacts/\n") // kept, with the one line `roci run --compile` needs
+	testing.expect_value(t, len(result.updated), 1)
 	testing.expect_value(t, read(path_in(root, "assets/images/cat.png")), "png")
 	testing.expect(t, os.exists(path_in(root, "assets/sounds/.keep")))
 	testing.expect(t, strings.join(result.kept[:], ",", context.temp_allocator) != "")
 	again, err2 := init_sketch(root, Options{}, context.temp_allocator)
 	testing.expect_value(t, err2, Scaffold_Error.None)
 	testing.expect_value(t, len(again.created), 0)
+	testing.expect_value(t, len(again.updated), 0)
+	testing.expect_value(t, read(path_in(root, ".gitignore")), "mine\nartifacts/\n") // not added twice
+}
+
+@(test)
+test_init_adds_artifacts_to_a_gitignore_only_when_it_does_not_leave_it_out_already :: proc(t: ^testing.T) {
+	// no newline at the end: the line is put on a line of its own; an empty file gets just the line
+	cases := [?][2]string{{"mine", "mine\nartifacts/\n"}, {"", "artifacts/\n"}, {"a\n\n", "a\n\nartifacts/\n"}}
+	for c, i in cases {
+		root := fresh(fmt.tprintf("ignore_add_%d", i))
+		testing.expect(t, os.make_directory_all(root) == nil)
+		testing.expect(t, os.write_entire_file(path_in(root, ".gitignore"), transmute([]byte)c[0]) == nil)
+		_, err := init_sketch(root, Options{}, context.temp_allocator)
+		testing.expect_value(t, err, Scaffold_Error.None)
+		testing.expect_value(t, read(path_in(root, ".gitignore")), c[1])
+	}
+	// every way of writing the line is enough
+	for line, i in ([]string{"artifacts/", "/artifacts/", "artifacts", "/artifacts", "  artifacts/  "}) {
+		root := fresh(fmt.tprintf("ignore_has_%d", i))
+		testing.expect(t, os.make_directory_all(root) == nil)
+		text := strings.concatenate({"x\n", line, "\ny\n"}, context.temp_allocator)
+		testing.expect(t, os.write_entire_file(path_in(root, ".gitignore"), transmute([]byte)text) == nil)
+		result, err := init_sketch(root, Options{}, context.temp_allocator)
+		testing.expect_value(t, err, Scaffold_Error.None)
+		testing.expect_value(t, read(path_in(root, ".gitignore")), text)
+		testing.expect_value(t, len(result.updated), 0)
+	}
 }
 
 @(test)
@@ -234,6 +263,7 @@ test_the_known_types_are_listed_by_folder_for_the_message_that_teaches :: proc(t
 @(test)
 test_the_lfs_patterns_are_binary_types_and_the_gitignore_leaves_out_what_is_written :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(GITIGNORE, "output/"))
+	testing.expect(t, strings.contains(GITIGNORE, "\nartifacts/\n"))
 	for pattern in LFS_PATTERNS {
 		testing.expect(t, strings.has_prefix(pattern, "*."))
 	}

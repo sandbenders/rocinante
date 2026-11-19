@@ -18,7 +18,7 @@ import "core:strconv"
 import "core:strings"
 
 RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [--seed N] [--errors json]
-             [--press key@frame] [--hold key@from-to]
+             [--press key@frame] [--hold key@from-to] [--stats] [--no-vsync]
 
   file        the sketch to run; sketch.roci when left out
   --frames N  run N frames with no window, then stop
@@ -32,6 +32,11 @@ RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [
   --hold key@from-to
               with --frames, hold a key down from one frame to another, both included:
               --hold "right@200-260"
+  --stats     time the frames: a black box in the top left corner of each window shows the frame
+              and the frame rate, and when the run ends a line says how fast it was and is added
+              to artifacts/log.json in the sketch's folder (with --frames there is no window, so no box)
+  --no-vsync  with a window, do not wait for the display, so the frame rate is what the computer can
+              do and not what the screen allows (it goes with --stats)
   --errors json
               print every message as one line of JSON on standard output, for tools; with
               --frames what the sketch prints goes to standard error, and in a window each
@@ -44,6 +49,8 @@ Run_Args :: struct {
 	json:       bool, // messages as lines of JSON
 	window:     int, // which window the picture is of, counting from 1
 	seed:       u64,
+	stats:      bool, // time the frames, show the box, and log the run
+	no_vsync:   bool,
 	inputs:     [dynamic]Input_Step, // the keys to press, from --press and --hold
 	ok:         bool,
 	bad:        string, // the word it did not understand, or what is missing after a flag
@@ -109,6 +116,10 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 				}
 				append(&result.inputs, step)
 			}
+		case arg == "--stats":
+			result.stats = true
+		case arg == "--no-vsync":
+			result.no_vsync = true
 		case strings.has_prefix(arg, "-"):
 			return Run_Args{ok = false, bad = arg}
 		case have_file:
@@ -121,6 +132,12 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 	}
 	if result.screenshot != "" && result.frames == 0 {
 		return Run_Args{ok = false, bad = "--screenshot needs --frames"}
+	}
+	if result.no_vsync && result.frames > 0 {
+		return Run_Args{ok = false, bad = "--no-vsync needs a window, so it does not go with --frames"}
+	}
+	if result.no_vsync && !result.stats {
+		return Run_Args{ok = false, bad = "--no-vsync goes with --stats"}
 	}
 	if len(result.inputs) > 0 && result.frames == 0 {
 		return Run_Args{ok = false, bad = "--press and --hold need --frames"}
@@ -148,8 +165,9 @@ run_text :: proc(
 	window := 1,
 	allocator := context.temp_allocator,
 	inputs: []Input_Step = nil,
+	stats := false,
 ) -> Run_Result {
-	return run_files({lang.File_Text{name = name, text = text}}, frames, seed, want_picture, window, allocator, inputs)
+	return run_files({lang.File_Text{name = name, text = text}}, frames, seed, want_picture, window, allocator, inputs, stats)
 }
 
 // The same for a program of several files, given in the order they are joined.
@@ -161,9 +179,13 @@ run_files :: proc(
 	window := 1,
 	allocator := context.temp_allocator,
 	inputs: []Input_Step = nil,
+	stats := false,
 ) -> Run_Result {
 	roci.start_headless(seed, true)
 	defer roci.shutdown()
+	if stats {
+		roci.stats_start(false)
+	}
 	if len(files) > 0 && is_sketch_file(files[0].name) {
 		roci.keep_beside(folder.root_of(files[0].name), false)
 	}
@@ -242,7 +264,7 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		return 2
 	}
 	if parsed.frames == 0 {
-		return run_windows(file, files, parsed.json, out, err)
+		return run_windows(file, files, parsed.json, parsed.stats, parsed.no_vsync, out, err)
 	}
 	result := run_files(
 		files,
@@ -251,7 +273,12 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		parsed.screenshot != "",
 		parsed.window,
 		inputs = parsed.inputs[:],
+		stats = parsed.stats,
 	)
+	if parsed.stats {
+		// the run has shut down, so what it measured is what the core kept
+		report_stats(file, "interpreted", true, out, err)
+	}
 	// With JSON the messages are the output, so what the sketch prints moves aside.
 	lines_to := err if parsed.json else out
 	for line in result.printed {
@@ -280,7 +307,7 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 
 // Opens the windows and runs until they are closed.
 @(private)
-run_windows :: proc(name: string, files: []lang.File_Text, json: bool, out, err: ^strings.Builder) -> int {
+run_windows :: proc(name: string, files: []lang.File_Text, json: bool, stats, no_vsync: bool, out, err: ^strings.Builder) -> int {
 	p, ok := interp.load_files(files)
 	if len(p.checked.diagnostics) > 0 && (ok || json) {
 		if json {
@@ -321,11 +348,17 @@ run_windows :: proc(name: string, files: []lang.File_Text, json: bool, out, err:
 		roci.ui_persist(fmt.tprintf("%s/ui.toml", folder.root_of(name)))
 		roci.keep_beside(folder.root_of(name))
 	}
+	if stats {
+		roci.stats_start(true, no_vsync)
+	}
 	interp.start(p)
 	defer interp.shutdown()
 	if !roci.run() {
 		fmt.sbprintf(err, "I could not open a window on this computer.\n")
 		return 3
+	}
+	if stats {
+		report_stats(name, "interpreted", !no_vsync, out, err)
 	}
 	if running := interp.active(); running != nil {
 		if running.has_errors {
@@ -401,4 +434,31 @@ HOT_RELOAD_HINT :: proc(file: string) -> string {
 		reload_key,
 		quit_key,
 	)
+}
+
+// Where a sketch's artifacts go: the `artifacts` folder of its folder (git leaves it out), for a lone file
+// the one beside it.
+artifacts_folder :: proc(file: string) -> string {
+	return strings.concatenate({folder.root_of(file), "/artifacts"}, context.temp_allocator)
+}
+
+// What the run that ended last measured, said in words and added to `artifacts/log.json`.
+report_stats :: proc(file, mode: string, vsync: bool, out, err: ^strings.Builder) {
+	summary := roci.stats_last()
+	fmt.sbprintf(out, "%s %s\n", term.out("speed:", .Bold_Cyan), roci.stats_text(summary))
+	if summary.frames == 0 {
+		return
+	}
+	name := folder.root_of(file)
+	if name == "." || name == "" {
+		name = "sketch"
+	} else if slash := strings.last_index_byte(name, '/'); slash >= 0 {
+		name = name[slash + 1:]
+	}
+	log := strings.concatenate({artifacts_folder(file), "/log.json"}, context.temp_allocator)
+	if roci.stats_log(log, mode, name, summary, vsync) {
+		fmt.sbprintf(out, "%s %s\n", term.out("log:", .Bold_Cyan), log)
+	} else {
+		fmt.sbprintf(err, "I could not write `%s`.\n", log)
+	}
 }

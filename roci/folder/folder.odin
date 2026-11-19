@@ -17,10 +17,10 @@ ASSET_FOLDERS := [?]string{"images", "sounds", "videos", "fonts", "3d-models", "
 // What a new sketch starts with: the smallest program.
 STARTING_SKETCH :: "circle at 100 100 radius 50\n"
 
-// What git leaves out: what the sketch writes (its output, and what it remembers: a high score is not
+// What git leaves out: what the sketch writes (its output, the programs and logs `roci run --compile` makes in `artifacts`, and what it remembers: a high score is not
 // source, and a file committed on purpose is a starting state), roci's own cache, and the files a Mac
 // scatters.
-GITIGNORE :: "output/\nmemory.toml\nvault.key\nvault.bin\nvault.bin.bak\nvault.bin.bad\n.roci/\n.DS_Store\n"
+GITIGNORE :: "output/\nartifacts/\nmemory.toml\nvault.key\nvault.bin\nvault.bin.bak\nvault.bin.bad\n.roci/\n.DS_Store\n"
 
 // The large binary files that go to Git LFS when it is chosen: audio, video, 3D
 // models, machine-learning models and big pictures.
@@ -57,6 +57,7 @@ Scaffold :: struct {
 	root:    string,
 	created: [dynamic]string, // paths made, from the sketch folder
 	kept:    [dynamic]string, // paths that were already there and left alone
+	updated: [dynamic]string, // files that were there and had a line added (`.gitignore`, for `artifacts/`)
 	git:     Git_Outcome,
 	lfs:     Lfs_Outcome,
 }
@@ -79,6 +80,7 @@ new_sketch :: proc(root: string, options: Options, allocator := context.allocato
 	result.root = root
 	result.created = make([dynamic]string, allocator)
 	result.kept = make([dynamic]string, allocator)
+	result.updated = make([dynamic]string, allocator)
 	append(&result.created, strings.clone("./", allocator))
 	return fill(&result, options, allocator)
 }
@@ -91,6 +93,7 @@ init_sketch :: proc(root: string, options: Options, allocator := context.allocat
 	result.root = root
 	result.created = make([dynamic]string, allocator)
 	result.kept = make([dynamic]string, allocator)
+	result.updated = make([dynamic]string, allocator)
 	return fill(&result, options, allocator)
 }
 
@@ -98,7 +101,7 @@ init_sketch :: proc(root: string, options: Options, allocator := context.allocat
 fill :: proc(result: ^Scaffold, options: Options, allocator := context.allocator) -> (Scaffold, Scaffold_Error) {
 	root := result.root
 	// `sketch.roci` and `.gitignore` are files; the others are folders, each kept in git with a `.keep`.
-	if !put_file(result, root, "sketch.roci", STARTING_SKETCH) || !put_file(result, root, ".gitignore", GITIGNORE) {
+	if !put_file(result, root, "sketch.roci", STARTING_SKETCH) || !put_file(result, root, ".gitignore", GITIGNORE) || !ignore_artifacts(result, root) {
 		return result^, .Cannot_Create
 	}
 	for name in ASSET_FOLDERS {
@@ -115,6 +118,30 @@ fill :: proc(result: ^Scaffold, options: Options, allocator := context.allocator
 	}
 	result.git, result.lfs = start_git(root, options)
 	return result^, .None
+}
+
+// A `.gitignore` that is there already is kept, but it must leave `artifacts/` out of git, so that line is
+// added when it is missing (a sketch folder made before `artifacts` existed gets it from `roci init`).
+@(private)
+ignore_artifacts :: proc(result: ^Scaffold, root: string) -> bool {
+	path := strings.concatenate({root, "/.gitignore"}, context.temp_allocator)
+	data, err := os.read_entire_file(path, context.temp_allocator)
+	if err != nil {
+		return false
+	}
+	text := string(data)
+	for line in strings.split_lines_iterator(&text) {
+		if name := strings.trim_space(line); name == "artifacts/" || name == "/artifacts/" || name == "artifacts" || name == "/artifacts" {
+			return true
+		}
+	}
+	added := strings.concatenate({string(data), "\n" if len(data) > 0 && data[len(data) - 1] != '\n' else "", "artifacts/\n"}, context.temp_allocator)
+	if os.write_entire_file(path, transmute([]byte)added) != nil {
+		return false
+	}
+	// the file was kept when `put_file` found it, and it was changed after all
+	append(&result.updated, strings.clone(".gitignore", result.updated.allocator))
+	return true
 }
 
 // Makes a folder and the ones above it; one that is there already is fine.
@@ -163,6 +190,10 @@ destroy_scaffold :: proc(result: ^Scaffold) {
 	for s in result.kept {
 		delete(s)
 	}
+	for s in result.updated {
+		delete(s)
+	}
 	delete(result.created)
 	delete(result.kept)
+	delete(result.updated)
 }

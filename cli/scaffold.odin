@@ -86,9 +86,9 @@ say_scaffold :: proc(out: ^strings.Builder, root: string, result: ^folder.Scaffo
 			append(&top, first)
 		}
 	}
-	if len(top) == 0 {
+	if len(top) == 0 && len(result.updated) == 0 {
 		fmt.sbprintf(out, "%s%s\n", term.out_icon(.Ok), term.out(fmt.tprintf("%s already has everything a sketch folder has", root), .Green))
-	} else {
+	} else if len(top) > 0 {
 		fmt.sbprintf(out, "%s%s\n", term.out_icon(.Ok), term.out(fmt.tprintf("made %s", root if !entered else "the sketch files here"), .Bold_Green))
 		for path in top {
 			note := ""
@@ -99,6 +99,9 @@ say_scaffold :: proc(out: ^strings.Builder, root: string, result: ^folder.Scaffo
 			}
 			fmt.sbprintf(out, "   %s%s\n", term.out(path, .Cyan), term.out(note, .Dim))
 		}
+	}
+	for path in result.updated {
+		fmt.sbprintf(out, "%s%s\n", term.out_icon(.Ok), term.out(fmt.tprintf("updated %s: added artifacts/, where `roci run --compile` puts its programs and logs, so git leaves it out", path), .Green))
 	}
 	if len(result.kept) > 0 {
 		kept := make([dynamic]string, context.temp_allocator)
