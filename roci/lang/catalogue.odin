@@ -128,6 +128,7 @@ Message_Id :: enum u8 {
 	Osc_Address_Bad,
 	Osc_Host_Unknown,
 	Osc_Unsupported,
+	Webcam_Unavailable,
 	Wrong_Item_Kind,
 	Block_Gives_Wrong_Kind,
 	Changed_While_Walking,
@@ -518,7 +519,10 @@ CATALOGUE := [Message_Id]Entry{
 	.Osc_Unsupported = {.Warning, "An OSC message carried {a}, which a sketch cannot use yet",
 		"Numbers, text and true or false are read. What else a message carries is left out, and the message is used without it.",
 		"Read what is there:", "{d}"},
-	.Wrong_Item_Kind = {.Error, "`{a}` needs the same kind of item as the list",
+	.Webcam_Unavailable = {.Warning, "The camera cannot be used: {a}",
+		"`webcam` stays a dark picture and the sketch goes on. {b}",
+		"A picture of your own can stand in for it:", "{d}"},
+	.Wrong_Item_Kind ={.Error, "`{a}` needs the same kind of item as the list",
 		"The list holds {b}, but this line gives `{a}` {c}. A list holds one kind of item.",
 		"Write:", "{d}"},
 	.Block_Gives_Wrong_Kind = {.Error, "The block of `{a}` has to give {b}",
@@ -769,7 +773,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Tcp_Port_Busy, .Tcp_Host_Unknown, .Tcp_Unknown_Label, .Tcp_Refused, .Websocket_Address_Bad, .Websocket_Unknown_Label, .Websocket_Refused, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Tcp_Port_Busy, .Tcp_Host_Unknown, .Tcp_Unknown_Label, .Tcp_Refused, .Websocket_Address_Bad, .Websocket_Unknown_Label, .Websocket_Refused, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Webcam_Unavailable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

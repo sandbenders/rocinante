@@ -544,6 +544,11 @@ test_every_runtime_message_has_a_sketch_and_its_text_matches :: proc(t: ^testing
 			roci.set_tcp_port_busy(id == .Tcp_Port_Busy)
 			defer roci.set_tcp_port_busy(false)
 			roci.set_midi_none(id == .Midi_Out_Missing)
+			if id == .Webcam_Unavailable {
+				// the two reasons a camera cannot be used, by the name of the sketch
+				roci.set_webcam_problem(.Denied if strings.contains(entry.name, "denied") else .No_Camera)
+			}
+			defer roci.set_webcam_problem(.None)
 			if id == .Memory_Mismatch {
 				roci.memory_put("best", "lots") // what a file edited by hand might hold
 			}

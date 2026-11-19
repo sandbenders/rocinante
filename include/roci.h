@@ -883,6 +883,9 @@ roci_color roci_mix_in(roci_color first, roci_color second, double amount, int s
 /* Reads a picture file (PNG, JPEG, BMP, TGA or QOI) and gives its number, or 0 when it cannot be read. */
 roci_image_id roci_load_image_file(const char *path);
 
+/* What the computer's camera sees now, as a picture to draw or fill with. The first call in a program with a window opens the camera (the system may ask first). The same picture is given all through a frame, and one kept from an earlier frame stays as it was. Until the first frame has come, with no camera and in a headless run it is a dark picture of 640 by 480. */
+roci_image_id roci_webcam(void);
+
 /* The last frame of a window as a picture, `scale` times its logical size (1 or more), or 0 when there are no graphics to draw it. */
 roci_image_id roci_picture_of_window(roci_window_id window, int scale);
 

@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "packet", "pi", "pmouse", "pressed", "received", "reply", "scene", "speakers", "tau", "time", "touches", "true", "turtle", "wheel", "width",
+	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "packet", "pi", "pmouse", "pressed", "received", "reply", "scene", "speakers", "tau", "time", "touches", "true", "turtle", "webcam", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -119,6 +119,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"touches", .List, 0, "The fingers down in the window now, in the order they went down, each a record like `finger`."},
 	{"true", .Boolean, 0, "The value of a condition that holds."},
 	{"turtle", .Record, 0, "The turtle of the window the code runs in: a record with `pos` (where it is), `angle` (degrees clockwise from up) and `down` (true while its pen is down)."},
+	{"webcam", .Image, 0, "What the computer's camera sees now, as a picture: it goes wherever a picture goes, `image webcam at 0 0`, `fill webcam`, `flip webcam`. The first time a sketch with a window reads it, the camera opens (the system may ask first). Until the first frame comes, and when there is no camera, it is a dark picture 640 by 480. It is the same picture all through a frame, and a picture kept from an earlier frame stays as it was: `snapshot = webcam`. `webcam.width` and `webcam.height` are the size the camera gives."},
 	{"wheel", .Vector, 2, "How far the mouse wheel turned since the last frame: `wheel.y` up, `wheel.x` to the right."},
 	{"width", .Number, 0, "The width of the window the code runs in, in pixels."},
 }

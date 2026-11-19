@@ -109,6 +109,12 @@ abi_load_image_file :: proc "c" (path: cstring) -> c.int {
 	return c.int(picture) if ok else 0
 }
 
+@(export, link_name = "roci_webcam")
+abi_webcam :: proc "c" () -> c.int {
+	context = abi_context()
+	return c.int(webcam())
+}
+
 @(export, link_name = "roci_picture_of_window")
 abi_picture_of_window :: proc "c" (window: c.int, scale: c.int) -> c.int {
 	context = abi_context()
@@ -467,6 +473,7 @@ abi_pictures_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_hex", typeid_of(type_of(abi_hex)), "roci_color roci_hex(const char *text)", "A color from \"#rgb\", \"#rgba\", \"#rrggbb\" or \"#rrggbbaa\"; clear black for text that is not one."))
 	append(all, abi_entry("roci_mix_in", typeid_of(type_of(abi_mix_in)), "roci_color roci_mix_in(roci_color first, roci_color second, double amount, int space)", "Blends two colors in a color space: 0 Oklab, 1 RGB or 2 Oklch. roci_mix is the Oklab one."))
 	append(all, abi_entry("roci_load_image_file", typeid_of(type_of(abi_load_image_file)), "roci_image_id roci_load_image_file(const char *path)", "Reads a picture file (PNG, JPEG, BMP, TGA or QOI) and gives its number, or 0 when it cannot be read."))
+	append(all, abi_entry("roci_webcam", typeid_of(type_of(abi_webcam)), "roci_image_id roci_webcam(void)", "What the computer's camera sees now, as a picture to draw or fill with. The first call in a program with a window opens the camera (the system may ask first). The same picture is given all through a frame, and one kept from an earlier frame stays as it was. Until the first frame has come, with no camera and in a headless run it is a dark picture of 640 by 480."))
 	append(all, abi_entry("roci_picture_of_window", typeid_of(type_of(abi_picture_of_window)), "roci_image_id roci_picture_of_window(roci_window_id window, int scale)", "The last frame of a window as a picture, `scale` times its logical size (1 or more), or 0 when there are no graphics to draw it."))
 	append(all, abi_entry("roci_pixel", typeid_of(type_of(abi_pixel)), "roci_color roci_pixel(roci_image_id picture, double x, double y)", "The color of a pixel of a picture; clear black outside it."))
 	append(all, abi_entry("roci_pixels", typeid_of(type_of(abi_pixels)), "int roci_pixels(roci_image_id picture, roci_color *colors, int capacity)", "Copies the colors of a picture, left to right and top to bottom, into `colors` as far as `capacity` allows (it may be NULL) and gives how many there are, or 0 for no picture or one of more than a million pixels."))

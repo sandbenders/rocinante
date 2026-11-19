@@ -72,6 +72,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"websocket", 1, "Web sockets", 2, 1},
 	{"tcp", 1, "TCP", 2, 1},
 	{"udp", 1, "UDP", 2, 1},
+	{"webcam", 1, "Webcam", 2, 1},
 	{"fetch", 1, "Fetching", 2, 1},
 	{"city", 1, "City", 2, 1},
 

@@ -42,6 +42,7 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 		case "gamepad": return gamepad_value(it, e.type)
 		case "gamepads": return gamepads_list(it, e.type)
 		case "joysticks": return joysticks_list(it, e.type)
+		case "webcam":  return webcam_value(it, e.span)
 		}
 		return builtin_value(it, k.name)
 	case lang.IR_Swizzle:

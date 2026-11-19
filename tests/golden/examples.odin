@@ -65,6 +65,7 @@ EXAMPLES := [?]Example{
 	{"websocket", 2, {1}}, // the invitation to click and the empty list (the messages come in the interpreter's test)
 	{"tcp", 2, {1}}, // the invitation to click and the empty list (the connections and their lines come in the interpreter's test)
 	{"udp", 2, {1}}, // the invitation to click and the empty list (the datagrams come in the interpreter's test)
+	{"webcam", 2, {1}}, // the dark picture a headless run has for the camera, in the mirror, a text filled with it and the invitation to click (the frames and the snapshots come in the interpreter's test)
 	{"fetch", 2, {1}}, // the sketch waiting for its answers: a headless run fetches nothing (the answers are given in the interpreter's test)
 	{"vault", 2, {1}}, // the level and the coins a first run starts with (what the vault keeps comes in the interpreter's test)
 	{"gamepad", 2, {1}}, // the invitation to plug a gamepad in (a headless run has none; the panels come in the interpreter's test)

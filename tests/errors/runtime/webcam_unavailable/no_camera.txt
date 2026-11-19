@@ -1,0 +1,8 @@
+── Warning: The camera cannot be used: no camera is connected ─── sketch.roci:1:7
+
+1 │ image webcam at 20 20 width 320
+  │       ^^^^^^
+
+`webcam` stays a dark picture and the sketch goes on. Plug one in and run the sketch again.
+
+A picture of your own can stand in for it:  photo = load "photo.png"

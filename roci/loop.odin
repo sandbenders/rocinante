@@ -57,6 +57,7 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 	}
 	context.temp_allocator = runtime.Allocator{procedure = runtime.default_temp_allocator_proc, data = &frame_memory}
 	defer end_frame_memory()
+	webcam_polled = 0 // the camera is looked at again in this frame, whatever frame number it has
 	if !the.started {
 		start()
 	}

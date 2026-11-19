@@ -1,0 +1,5 @@
+draw [
+  background 70
+  image (flip webcam) at 20 20 width 240
+  text "hello" at 20 210 size 72 fill webcam
+]

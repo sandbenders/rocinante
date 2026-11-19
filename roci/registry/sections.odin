@@ -23,7 +23,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"text", "font", "align", "leading", "measure",
 	}},
 	{"Pictures", "Pictures loaded from the sketch's assets folder or drawn on a canvas, shown anywhere and through a color.", {
-		"load", "image", "svg", "tint", "canvas", "draw into", "save", "record", "no record", "pixel", "pixels", "picture", "crop", "resize", "flip", "filter", "mask",
+		"load", "image", "svg", "tint", "canvas", "draw into", "save", "record", "no record", "pixel", "pixels", "picture", "crop", "resize", "flip", "filter", "mask", "webcam",
 	}},
 	{"Sound", "Sounds loaded from the sketch's assets folder (WAV, FLAC, MP3, Ogg Vorbis, Opus, AIFF and AAC) with `load`, each a player that is where it is, playing or not; long files are read as they play. Volume is 0 to 100, pan -100 (left) to 100 (right), and times are in seconds. `synth` makes an instrument (a wave or a SoundFont) whose notes (`note 60` is middle C, `pitch` is in hertz) sound together, shaped by `attack`, `decay`, `sustain` and `release`. `level`, `bands` and `mic` say how loud and how high a sound is, `effect` puts one of sixteen effects on a sound, MIDI and OSC talk to instruments and other programs, and `record` with a sound writes what plays to a file. `forward` with a sound moves it ahead, and `set` changes it.", {
 		"play", "loop", "pause", "rewind", "synth", "level", "bands", "mic", "speakers", "no effect", "midi", "midi control", "midi tempo", "midi note", "midi release", "midi set", "midi bend", "midi program", "midi to", "midi outputs", "midi clock", "midi stop", "osc", "osc send", "osc listen", "osc value", "udp send", "packet", "tcp connect", "tcp listen", "tcp send", "tcp close", "websocket connect", "websocket send", "websocket close", "received",

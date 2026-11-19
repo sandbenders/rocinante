@@ -1,0 +1,25 @@
+// The webcam: `webcam` is a picture of what the computer's camera sees now, so it goes wherever a
+// picture goes. Here it is drawn mirrored with `flip` (so moving right moves right on the screen, as in
+// a mirror), and it fills the letters of a text. A click keeps the picture of that moment in `shots`:
+// a picture kept from an earlier frame stays as it was, so the four thumbnails are snapshots, not live
+// views. The first time the sketch reads `webcam` the camera opens (the system may ask first); until a
+// frame comes, or with no camera at all, it is a dark picture, which is what a headless run draws.
+window size 640 400 title "webcam"
+
+shots = []
+
+on mouse down [
+  add webcam to shots
+  if (count shots) > 4 [ remove (item 1 of shots) from shots ]
+]
+
+draw [
+  background 16
+  image (flip webcam) at 20 20 width 400
+  for i from 1 to count shots [
+    image (item i of shots) at 450 (20 + (i - 1) * 75) width 100
+  ]
+  text "hello" at 20 330 size 56 fill webcam
+  fill 160
+  text "click to keep a snapshot" at 450 340 size 14
+]
