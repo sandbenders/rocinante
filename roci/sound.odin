@@ -39,6 +39,7 @@ Sound_State :: struct {
 @(thread_local) @(private) mixer: ^audio.Mixer
 @(thread_local) @(private) speakers: ^platform.Audio_Out
 @(thread_local) @(private) speakers_tried: bool
+@(thread_local) @(private) speakers_open_asked: int // how many times something asked for the speakers to open, for tests
 @(thread_local) @(private) microphone: ^platform.Audio_In
 @(thread_local) @(private) microphone_tried: bool
 @(thread_local) @(private) headless_frames: f64 // the fraction of a frame a headless step did not mix yet
@@ -74,7 +75,8 @@ the_mixer :: proc() -> ^audio.Mixer {
 // Keeps the bytes of a sound file as a sound, stopped at its start: decoded whole, or, when it is
 // longer than 30 seconds, read as it plays from a copy of the (compressed) bytes, so the caller may
 // let go of them at once. False when the bytes are not a sound this reads (or have no sound in them).
-add_sound :: proc(bytes: []u8, buffer := Maybe(f64){}) -> (Sound, bool) {
+add_sound :: proc(bytes: []u8, buffer := Maybe(f64){}) -> (s: Sound, ok: bool) {
+	defer if ok {open_speakers()} // the device opens now, while the sketch is being set up, not at the first `play`
 	if source, long := open_long_sound_memory(bytes); long {
 		return audio.add_stream(the_mixer(), source, buffer.? or_else audio.RING_SECONDS), true
 	}
@@ -189,6 +191,7 @@ pause :: proc(s: Sound, note := Maybe(f64){}) {
 // first one when neither is given. `found` is false when the one asked for is not there, and then
 // the first preset plays; ok is false when the bytes are not a SoundFont.
 add_soundfont :: proc(bytes: []u8, number := -1, name := "") -> (s: Sound, found: bool, ok: bool) {
+	defer if ok {open_speakers()}
 	m := the_mixer()
 	font, read := audio.font_read(bytes, m.players.allocator)
 	if !read {
@@ -211,6 +214,7 @@ SPEAKERS :: audio.SPEAKERS
 
 the_speakers :: proc() -> Sound {
 	the_mixer()
+	open_speakers() // what is asked of the whole mix is about to be heard
 	return SPEAKERS
 }
 
@@ -316,6 +320,7 @@ sound_notes :: proc(s: Sound) -> int {
 // Makes an instrument: a sound of the sketch's own, of a wave, "sine", "triangle", "square",
 // "saw" or "noise" (any other is a sine). Its notes are played with `play` and sound together.
 synth :: proc(wave: string) -> Sound {
+	open_speakers()
 	chosen := audio.Wave.Sine
 	for name, w in audio.WAVE_NAMES {
 		if name != "" && name == wave {
@@ -489,11 +494,13 @@ bands_of :: proc(s: Sound, count := BANDS_USUAL) -> []f64 {
 
 bands :: proc{bands_all, bands_of}
 
-// Opens the speakers the first time a sound plays in a sketch that has a window to show (never
+// Opens the speakers the first time a sketch makes a sound to play (a sound file loaded, an instrument, a
+// SoundFont, the whole mix asked of) or plays one, in a sketch that has a window to show (never
 // in a headless one or a test that refused graphics, which move their sounds on in `step`).
 // A computer whose device cannot open says so once and the sketch goes on silent.
 @(private)
 open_speakers :: proc() {
+	speakers_open_asked += 1
 	if speakers_tried || the.headless || graphics_refused {
 		return
 	}
@@ -506,6 +513,12 @@ open_speakers :: proc() {
 		platform.close_audio(speakers)
 		speakers = nil
 	}
+}
+
+// How many times something has asked for the speakers to open since the last `shutdown` (a headless
+// run does not open them, but is still asked): for tests of when the device is wanted.
+speakers_asked_to_open :: proc() -> int {
+	return speakers_open_asked
 }
 
 // Why the speakers would not open, in SDL's words, for the language to say once; "" when they did.
@@ -544,6 +557,7 @@ sounds_stop :: proc() {
 	platform.close_audio(speakers)
 	speakers = nil
 	speakers_tried = false
+	speakers_open_asked = 0
 	platform.close_microphone(microphone)
 	microphone = nil
 	microphone_tried = false
@@ -591,7 +605,8 @@ open_long_sound :: proc(path: string) -> (audio.Source, bool) {
 // Opens a sound file by its path and keeps it, stopped at its start: a long file (over 30 seconds) is
 // read as it plays, keeping `buffer` seconds of it ready (from 1 to 60, 8 when not given), a short one
 // decoded whole. False when the file cannot be read or is no sound.
-add_sound_file :: proc(path: string, buffer := Maybe(f64){}) -> (Sound, bool) {
+add_sound_file :: proc(path: string, buffer := Maybe(f64){}) -> (s: Sound, ok: bool) {
+	defer if ok {open_speakers()}
 	if source, long := open_long_sound(path); long {
 		return audio.add_stream(the_mixer(), source, buffer.? or_else audio.RING_SECONDS), true
 	}

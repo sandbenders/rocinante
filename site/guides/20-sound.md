@@ -11,7 +11,7 @@ click = load "click.wav"
 on mouse down [ play click ]
 ```
 
-Nothing needs to be set up: the first sound that plays opens the computer's speakers.
+Nothing needs to be set up: the first sound a sketch loads, makes with `synth` or plays opens the computer's speakers, while the sketch is starting, so a sketch that loads its sounds at the top never waits for them in the middle of a frame.
 
 ## One sound, one player
 

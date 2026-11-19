@@ -612,3 +612,42 @@ func_ring :: proc(t: ^testing.T, path: string, buffer: Maybe(f64)) -> int {
 	testing.expect(t, ok)
 	return mixer.players[int(s) - 1].stream.ring_frames / audio.RATE
 }
+
+// The speakers are asked for when a sound is made, not at the first `play`, so the device's slow
+// open falls in the set-up of the sketch (issue 43).
+@(test)
+test_the_speakers_are_asked_for_when_a_sound_is_made_not_when_it_plays :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	testing.expect_value(t, speakers_asked_to_open(), 0)
+	s := tone(t) // a sound file that reads
+	testing.expect_value(t, speakers_asked_to_open(), 1)
+	_, ok := add_sound(transmute([]u8)string("not a sound")) // one that does not: nothing to play, no device
+	testing.expect(t, !ok)
+	testing.expect_value(t, speakers_asked_to_open(), 1)
+	synth("sine")
+	testing.expect_value(t, speakers_asked_to_open(), 2)
+	the_speakers()
+	testing.expect_value(t, speakers_asked_to_open(), 3)
+	play(s) // and playing asks again, which does nothing once the device is open
+	testing.expect_value(t, speakers_asked_to_open(), 4)
+	shutdown()
+	testing.expect_value(t, speakers_asked_to_open(), 0)
+}
+
+@(test)
+test_a_sound_file_by_its_path_and_a_soundfont_ask_for_the_speakers :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	_, ok := add_sound_file("tests/sounds/tone.wav")
+	testing.expect(t, ok)
+	testing.expect_value(t, speakers_asked_to_open(), 1)
+	_, ok = add_sound_file("tests/sounds/missing.wav")
+	testing.expect(t, !ok)
+	testing.expect_value(t, speakers_asked_to_open(), 1)
+	font, err := os.read_entire_file_from_path("tests/sounds/tiny.sf2", context.temp_allocator)
+	testing.expect_value(t, err, nil)
+	_, _, ok = add_soundfont(font)
+	testing.expect(t, ok)
+	testing.expect_value(t, speakers_asked_to_open(), 2)
+}
