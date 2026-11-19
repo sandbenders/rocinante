@@ -60,11 +60,6 @@ join :: proc(a, b: string) -> string {
 	return strings.concatenate({a, b}, context.temp_allocator)
 }
 
-// A text that outlives the frame it was made in, for storing in a name, a record or a list.
-keep :: proc(text: string) -> string {
-	return strings.clone(text)
-}
-
 // The language writes alpha as a percentage (0 gone, 100 solid) while colours and the Odin API keep
 // every channel 0 to 255.
 alpha_to_byte :: proc "contextless" (percent: f64) -> f64 {
@@ -111,42 +106,4 @@ power :: proc "contextless" (a, b: f64) -> f64 {
 		return 0
 	}
 	return result
-}
-
-// A list is shared by whoever holds it, as in the language: a verb that adds to a list it was given
-// changes the caller's, so lists are kept by pointer.
-new_list :: proc($T: typeid) -> ^[dynamic]T {
-	list := new([dynamic]T)
-	list^ = make([dynamic]T, 0, 4)
-	return list
-}
-
-list_of :: proc($T: typeid, items: ..T) -> ^[dynamic]T {
-	list := new([dynamic]T)
-	list^ = make([dynamic]T, 0, max(len(items), 4))
-	append(list, ..items)
-	return list
-}
-
-// The item at a place counting from 1, or the zero value past either end.
-item :: proc(list: ^[dynamic]$T, place: f64) -> T {
-	if list == nil {
-		return {}
-	}
-	at := int(math.floor(place))
-	if at < 1 || at > len(list^) {
-		return {}
-	}
-	return list[at - 1]
-}
-
-count :: proc "contextless" (list: ^[dynamic]$T) -> f64 {
-	return 0 if list == nil else f64(len(list^))
-}
-
-// Puts an item at the end of a list.
-add :: proc(item: $T, list: ^[dynamic]T) {
-	if list != nil {
-		append(list, item)
-	}
 }

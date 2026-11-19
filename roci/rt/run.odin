@@ -93,13 +93,15 @@ read_run :: proc(sketch, odin: string) -> Run {
 
 // Runs the program: `setup` is the sketch's own first lines (it opens the windows and registers what runs
 // every frame), then the frames, then the report. Never returns.
-execute :: proc(run: Run, setup: proc(), hook: proc(w: roci.Window) = nil) {
+execute :: proc(run: Run, setup: proc(), roots: proc(), hook: proc(w: roci.Window) = nil) {
 	if run.frames > 0 {
 		roci.start_headless(run.seed, run.screenshot != "")
 	}
 	if run.stats {
 		roci.stats_start(run.frames == 0, run.no_vsync)
 	}
+	collector_roots = roots
+	roci.set_end_hook(end_of_frame)
 	if hook != nil {
 		roci.set_frame_hook(hook)
 	}
@@ -121,6 +123,16 @@ execute :: proc(run: Run, setup: proc(), hook: proc(w: roci.Window) = nil) {
 		report(run)
 	}
 	os.exit(code)
+}
+
+@(thread_local) @(private) collector_roots: proc()
+
+// Run as every frame ends, when no verb is running: the moment the collector may free what nothing holds.
+@(private)
+end_of_frame :: proc() {
+	if collector_roots != nil {
+		maybe_collect(collector_roots)
+	}
 }
 
 // The picture of the first window, as a PNG file. 0 when it was made, 3 when it was not.
@@ -155,6 +167,9 @@ save_picture :: proc(path: string) -> int {
 report :: proc(run: Run) {
 	summary := roci.stats_last()
 	fmt.printfln("speed: %s", roci.stats_text(summary))
+	if gc := gc_stats(); gc.collections > 0 || gc.objects > 0 {
+		fmt.printfln("memory: %d objects, %.1f MB held, %d collections that freed %.1f MB", gc.objects, f64(gc.live) / 1048576, gc.collections, f64(gc.freed) / 1048576)
+	}
 	if summary.frames == 0 || run.log == "" {
 		return
 	}

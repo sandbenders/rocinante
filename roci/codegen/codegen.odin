@@ -65,6 +65,7 @@ Gen :: struct {
 	taken:    map[string]bool,
 	records:  map[int]string, // shape root -> type name
 	verb_names: map[^lang.IR_Instance]string,
+	markers:  map[string]string, // an element type's Odin text -> the procedure that marks an item of it, "nil" for items that hold nothing
 	defs:     strings.Builder, // the record types
 	handlers: [dynamic]Handler,
 	next_id:  int,
@@ -95,6 +96,7 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	g.taken = make(map[string]bool, 16, context.temp_allocator)
 	g.records = make(map[int]string, 4, context.temp_allocator)
 	g.verb_names = make(map[^lang.IR_Instance]string, 4, context.temp_allocator)
+	g.markers = make(map[string]string, 4, context.temp_allocator)
 	g.handlers = make([dynamic]Handler, context.temp_allocator)
 	for r in RESERVED {
 		g.taken[r] = true
@@ -112,6 +114,13 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 			continue
 		}
 		fmt.sbprintf(&globals, "%s: %s\n", name, type)
+	}
+	// what the collector starts from: every name of the sketch that can hold a heap object
+	roots := strings.builder_make(context.temp_allocator)
+	for sym in program.symbols {
+		if statement := mark_statement(&g, sym.type, name_of(&g, sym)); statement != "" {
+			fmt.sbprintf(&roots, "\t%s\n", statement)
+		}
 	}
 	// taught verbs
 	for instance in program.instances {
@@ -139,9 +148,10 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	strings.write_string(&out, strings.to_string(g.defs))
 	fmt.sbprintf(&out, "%s\n", strings.to_string(globals))
 	strings.write_string(&out, strings.to_string(g.procs))
+	fmt.sbprintf(&out, "// What the names of the sketch hold, for the collector.\nroots :: proc() {{\n%s}}\n\n", strings.to_string(roots))
 	emit_handlers(&g, &out)
 	fmt.sbprintf(&out, "setup :: proc() {{\n%s}}\n\n", strings.to_string(setup))
-	fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, ", hook" if len(g.handlers) > 0 else "")
+	fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, ", hook" if len(g.handlers) > 0 else "")
 	return Result{source = strings.to_string(out), problems = nil}
 }
 
@@ -221,7 +231,7 @@ odin_type :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span, what: string) -> (n
 		if !element_ok {
 			return "", false
 		}
-		return fmt.aprintf("^[dynamic]%s", element, allocator = context.temp_allocator), true
+		return fmt.aprintf("^rt.List(%s)", element, allocator = context.temp_allocator), true
 	case .Record:
 		return record_type(g, resolved, span, what)
 	case .None:
@@ -236,7 +246,8 @@ describe_type :: proc(g: ^Gen, t: lang.Type_Id) -> string {
 	return lang.describe(g.types, t)
 }
 
-// The struct of a record shape, written the first time it is needed.
+// The struct of a record shape, written the first time it is needed, with the header the collector needs as
+// its first field and a procedure that marks the heap objects its fields hold.
 @(private)
 record_type :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span, what: string) -> (string, bool) {
 	shape_index := g.types.items[t].a
@@ -246,6 +257,7 @@ record_type :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span, what: string) -> 
 	name := fmt.aprintf("Record_%d", len(g.records) + 1, allocator = context.temp_allocator)
 	g.records[shape_index] = name
 	fields := strings.builder_make(context.temp_allocator)
+	marks := strings.builder_make(context.temp_allocator)
 	ok := true
 	for f in g.types.shapes[shape_index].fields {
 		type, field_ok := odin_type(g, f.type, span, f.name)
@@ -254,9 +266,46 @@ record_type :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span, what: string) -> 
 			continue
 		}
 		fmt.sbprintf(&fields, "\t%s: %s,\n", field_name(f.name), type)
+		if statement := mark_statement(g, f.type, fmt.tprintf("r.%s", field_name(f.name))); statement != "" {
+			fmt.sbprintf(&marks, "\t%s\n", statement)
+		}
 	}
-	fmt.sbprintf(&g.defs, "%s :: struct {{\n%s}}\n\n", name, strings.to_string(fields))
+	fmt.sbprintf(&g.defs, "%s :: struct {{\n\tusing gc__: rt.Header,\n%s}}\n\n", name, strings.to_string(fields))
+	if strings.to_string(marks) != "" {
+		fmt.sbprintf(&g.defs, "trace_%s :: proc(h: ^rt.Header) {{\n\tr := (^%s)(h)\n%s}}\n\n", name, name, strings.to_string(marks))
+	}
 	return fmt.aprintf("^%s", name, allocator = context.temp_allocator), ok
+}
+
+// The statement that marks a value of a type for the collector, or "" for a type that holds nothing on the
+// heap (numbers, vectors, colors, true and false).
+@(private)
+mark_statement :: proc(g: ^Gen, t: lang.Type_Id, value: string) -> string {
+	resolved := lang.resolve(g.types, t)
+	#partial switch g.types.items[resolved].kind {
+	case .Text:
+		return fmt.aprintf("rt.mark_text(%s)", value, allocator = context.temp_allocator)
+	case .Record, .List:
+		return fmt.aprintf("if %s != nil {{ rt.mark(&%s.gc__) }}", value, value, allocator = context.temp_allocator)
+	}
+	return ""
+}
+
+// The procedure that marks one item of a list whose items are of this type, or "nil" for items that hold nothing.
+@(private)
+item_marker :: proc(g: ^Gen, element: lang.Type_Id, element_odin: string) -> string {
+	if known, ok := g.markers[element_odin]; ok {
+		return known
+	}
+	statement := mark_statement(g, element, "item")
+	if statement == "" {
+		g.markers[element_odin] = "nil"
+		return "nil"
+	}
+	name := fmt.aprintf("mark_item_%d", len(g.markers) + 1, allocator = context.temp_allocator)
+	g.markers[element_odin] = name
+	fmt.sbprintf(&g.defs, "%s :: proc(item: %s) {{\n\t%s\n}}\n\n", name, element_odin, statement)
+	return name
 }
 
 // The record struct's own name (without the pointer), for building one.

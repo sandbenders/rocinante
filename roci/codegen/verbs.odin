@@ -424,7 +424,8 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 	id := g.next_id
 	g.next_id += 1
 	helper := fmt.aprintf("%s_%d", name, id, allocator = context.temp_allocator)
-	element := list_type[len("^[dynamic]"):]
+	element := list_type[len("^rt.List("):len(list_type) - 1]
+	marker := item_marker(g, list_element(g, c.args[0].type), element)
 	// the block's own expression is written with `it` as the item
 	saved_body, saved_indent := g.body, g.indent
 	g.body = strings.builder_make(context.temp_allocator)
@@ -435,13 +436,14 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 	switch name {
 	case "keep", "skip":
 		test := condition if name == "keep" else fmt.tprintf("!%s", condition)
-		fmt.sbprintf(&b, "%s :: proc(list: %s) -> %s {{\n\tout := rt.new_list(%s)\n\tif list != nil {{\n\t\tfor it_ in list^ {{\n\t\t\tif %s {{ append(out, it_) }}\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, list_type, element, test)
+		fmt.sbprintf(&b, "%s :: proc(list: %s) -> %s {{\n\tout := rt.new_list(%s, %s)\n\tif list != nil {{\n\t\tfor it_ in list.items {{\n\t\t\tif %s {{ rt.add(it_, out) }}\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, list_type, element, marker, test)
 	case "collect":
 		made, made_ok := odin_type(g, stmt.expr.type, e.span, "what collect makes")
 		if !made_ok {
 			return "nil"
 		}
-		fmt.sbprintf(&b, "%s :: proc(list: %s) -> ^[dynamic]%s {{\n\tout := rt.new_list(%s)\n\tif list != nil {{\n\t\tfor it_ in list^ {{\n\t\t\tappend(out, %s)\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, made, made, condition)
+		made_marker := item_marker(g, stmt.expr.type, made)
+		fmt.sbprintf(&b, "%s :: proc(list: %s) -> ^rt.List(%s) {{\n\tout := rt.new_list(%s, %s)\n\tif list != nil {{\n\t\tfor it_ in list.items {{\n\t\t\trt.add(%s, out)\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, made, made, made_marker, condition)
 	}
 	strings.write_string(&g.procs, strings.to_string(b))
 	return fmt.aprintf("%s(%s)", helper, expr(g, c.args[0]), allocator = context.temp_allocator)

@@ -184,12 +184,13 @@ list_literal :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_List) -> string {
 	if !ok {
 		return "nil"
 	}
-	element := list_type[len("^[dynamic]"):]
+	element := list_type[len("^rt.List("):len(list_type) - 1]
+	marker := item_marker(g, list_element(g, e.type), element)
 	if len(k.items) == 0 {
-		return fmt.aprintf("rt.new_list(%s)", element, allocator = context.temp_allocator)
+		return fmt.aprintf("rt.new_list(%s, %s)", element, marker, allocator = context.temp_allocator)
 	}
 	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, "rt.list_of(%s", element)
+	fmt.sbprintf(&b, "rt.list_of(%s, %s", element, marker)
 	for item in k.items {
 		strings.write_string(&b, ", ")
 		strings.write_string(&b, stored(g, item))
@@ -205,15 +206,31 @@ record_literal :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Record) -> string {
 		return "nil"
 	}
 	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, "new_clone(%s{{", name)
+	fmt.sbprintf(&b, "rt.new_record(%s{{", name)
 	for field_label, i in k.names {
 		if i > 0 {
 			strings.write_string(&b, ", ")
 		}
 		fmt.sbprintf(&b, "%s = %s", field_name(field_label), stored(g, k.values[i]))
 	}
-	strings.write_string(&b, "})")
+	strings.write_string(&b, "}")
+	if has_trace(g, name) {
+		fmt.sbprintf(&b, ", trace_%s", name)
+	}
+	strings.write_string(&b, ")")
 	return strings.to_string(b)
+}
+
+// Whether a record type has a procedure that marks what it holds.
+@(private)
+has_trace :: proc(g: ^Gen, name: string) -> bool {
+	return strings.contains(strings.to_string(g.defs), fmt.tprintf("trace_%s :: proc", name))
+}
+
+// The type of the items of a list type.
+@(private)
+list_element :: proc(g: ^Gen, list: lang.Type_Id) -> lang.Type_Id {
+	return lang.Type_Id(g.types.items[lang.resolve(g.types, list)].a)
 }
 
 // A value that is going to be kept (put in a name, a record or a list): a text made while the frame ran

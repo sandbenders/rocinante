@@ -34,7 +34,7 @@ test_the_smallest_sketch_is_a_program_that_draws_a_circle :: proc(t: ^testing.T)
 	testing.expect(t, strings.contains(source, "package sketch"))
 	testing.expect(t, strings.contains(source, "roci.circle_xyr(100.0, 100.0, 50.0)"))
 	testing.expect(t, strings.contains(source, "// line 1: circle at 100 100 radius 50"), "each statement says its line")
-	testing.expect(t, strings.contains(source, "rt.execute(run, setup)"))
+	testing.expect(t, strings.contains(source, "rt.execute(run, setup, roots)"))
 	testing.expect(t, !strings.contains(source, "hook"), "no handlers, no hook")
 }
 
@@ -45,7 +45,7 @@ test_names_keep_the_sketchs_own_and_are_declared_once_at_the_top :: proc(t: ^tes
 	testing.expect(t, strings.contains(result.source, "speed: f64\n"))
 	testing.expect(t, strings.contains(result.source, "size: [2]f64\n"))
 	testing.expect(t, strings.contains(result.source, "name: string\n"))
-	testing.expect(t, strings.contains(result.source, "list: ^[dynamic]f64\n"))
+	testing.expect(t, strings.contains(result.source, "list: ^rt.List(f64)\n"))
 }
 
 @(test)
@@ -83,7 +83,8 @@ test_a_record_shape_is_a_struct_and_records_are_pointers :: proc(t: ^testing.T) 
 	testing.expect(t, strings.contains(result.source, "Record_1 :: struct {"))
 	testing.expect(t, strings.contains(result.source, "x: f64,"))
 	testing.expect(t, strings.contains(result.source, "p: ^Record_1"))
-	testing.expect(t, strings.contains(result.source, "new_clone(Record_1{x = 1.0, y = 2.0})"))
+	testing.expect(t, strings.contains(result.source, "rt.new_record(Record_1{x = 1.0, y = 2.0})"), "a record with no heap objects in it has nothing to trace")
+	testing.expect(t, strings.contains(result.source, "using gc__: rt.Header"))
 }
 
 @(test)
@@ -107,7 +108,7 @@ test_draw_every_and_on_are_procedures_the_program_registers :: proc(t: ^testing.
 	testing.expect(t, strings.contains(source, "on_2 :: proc() {"))
 	testing.expect(t, strings.contains(source, "hook :: proc(w: roci.Window) {"))
 	testing.expect(t, strings.contains(source, "happening.kind == .Key_Down && happening.name == \"space\""))
-	testing.expect(t, strings.contains(source, "rt.execute(run, setup, hook)"))
+	testing.expect(t, strings.contains(source, "rt.execute(run, setup, roots, hook)"))
 }
 
 @(test)
@@ -124,10 +125,10 @@ test_a_style_word_after_a_shape_makes_a_look :: proc(t: ^testing.T) {
 test_list_blocks_become_procedures_with_plain_loops :: proc(t: ^testing.T) {
 	result := compile("xs = [ 1 2 3 ]\nbig = keep xs [ it > 1 ]\nsmall = skip xs [ it > 1 ]\ndouble = collect xs [ it * 2 ]\n")
 	testing.expect_value(t, len(result.problems), 0)
-	testing.expect(t, strings.contains(result.source, "keep_0 :: proc(list: ^[dynamic]f64) -> ^[dynamic]f64 {"))
-	testing.expect(t, strings.contains(result.source, "if (it_ > 1.0) { append(out, it_) }"))
-	testing.expect(t, strings.contains(result.source, "if !(it_ > 1.0) { append(out, it_) }"))
-	testing.expect(t, strings.contains(result.source, "append(out, (it_ * 2.0))"))
+	testing.expect(t, strings.contains(result.source, "keep_0 :: proc(list: ^rt.List(f64)) -> ^rt.List(f64) {"))
+	testing.expect(t, strings.contains(result.source, "if (it_ > 1.0) { rt.add(it_, out) }"))
+	testing.expect(t, strings.contains(result.source, "if !(it_ > 1.0) { rt.add(it_, out) }"))
+	testing.expect(t, strings.contains(result.source, "rt.add((it_ * 2.0), out)"))
 }
 
 @(test)
@@ -171,4 +172,30 @@ test_the_verbs_in_space_and_the_window_words_are_written_as_calls :: proc(t: ^te
 	testing.expect(t, strings.contains(source, "roci.camera_xyz(0.0, 5.0, 10.0, 60.0)"))
 	testing.expect(t, strings.contains(source, "roci.push(.Style)"))
 	testing.expect(t, strings.contains(source, "roci.pop()"))
+}
+
+@(test)
+test_records_and_lists_that_hold_heap_objects_are_traced_and_the_names_are_the_roots :: proc(t: ^testing.T) {
+	result := compile(`sparks = []
+names = [ "a" ]
+thing = { label: "x", kids: [ 1 2 ], n: 1 }
+count_of = 5
+add thing to sparks
+`)
+	testing.expect_value(t, len(result.problems), 0)
+	source := result.source
+	// the record marks its text and its list; a number needs nothing
+	testing.expect(t, strings.contains(source, "trace_Record_1 :: proc(h: ^rt.Header) {"))
+	testing.expect(t, strings.contains(source, "rt.mark_text(r.label)"))
+	testing.expect(t, strings.contains(source, "if r.kids != nil { rt.mark(&r.kids.gc__) }"))
+	// a list of records marks each record, a list of texts each text, a list of numbers nothing
+	testing.expect(t, strings.contains(source, "mark_item_"))
+	testing.expect(t, strings.contains(source, "rt.mark_text(item)"))
+	// the roots are the names that can hold something on the heap, and only those
+	roots_at := strings.index(source, "roots :: proc() {")
+	testing.expect(t, roots_at >= 0)
+	roots := source[roots_at:]
+	testing.expect(t, strings.contains(roots, "if sparks != nil { rt.mark(&sparks.gc__) }"))
+	testing.expect(t, strings.contains(roots, "if thing != nil { rt.mark(&thing.gc__) }"))
+	testing.expect(t, !strings.contains(roots[:strings.index(roots, "}\n")], "count_of"), "a number holds nothing")
 }

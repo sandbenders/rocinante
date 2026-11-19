@@ -15,6 +15,7 @@ import "../interp"
 import "../lang"
 import "core:fmt"
 import "core:os"
+import "core:strconv"
 import "core:strings"
 import "core:testing"
 
@@ -98,4 +99,59 @@ test_compiled_sketches_print_what_interpreted_ones_do :: proc(t: ^testing.T) {
 		}
 	}
 	testing.expect(t, checked >= 2, "the sketches of tests/compile were not all compiled")
+}
+
+// A compiled sketch that makes garbage every frame must give it back: `particles` makes and drops hundreds of
+// records a frame, and 40 MB a minute was once left behind for ever. After a few thousand frames the program says
+// how many collections it made and how much it still holds.
+@(test)
+test_a_compiled_sketch_that_makes_garbage_frees_it :: proc(t: ^testing.T) {
+	data, err := os.read_entire_file("examples/particles/sketch.roci", context.temp_allocator)
+	if !testing.expect(t, err == nil) {
+		return
+	}
+	roci.start_headless(1)
+	p, loaded := interp.load_files({lang.File_Text{name = "particles", text = string(data)}})
+	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = "particles", source = "particles"}, context.temp_allocator)
+	interp.destroy(p)
+	interp.forget_decoded_pictures()
+	roci.shutdown()
+	if !testing.expectf(t, loaded && len(generated.problems) == 0, "particles could not be compiled: %v", generated.problems) {
+		return
+	}
+	dir := "output/tests/compiled/particles_memory"
+	_ = os.remove_all(dir)
+	testing.expect(t, folder.ensure_directory(dir))
+	testing.expect(t, os.write_entire_file(fmt.tprintf("%s/sketch.odin", dir), transmute([]byte)generated.source) == nil)
+	binary := fmt.tprintf("output/tests/compiled/particles_memory_program%s", ".exe" when ODIN_OS == .Windows else "")
+	state, _, build_err, build_run_err := os.process_exec({command = {"odin", "build", dir, "-collection:rocinante=.", fmt.tprintf("-out:%s", binary)}}, context.temp_allocator)
+	if !testing.expectf(t, build_run_err == nil && state.exit_code == 0, "the program did not build:\n%s", string(build_err)) {
+		return
+	}
+	run_state, stdout, run_log, run_err := os.process_exec({command = {binary, "--frames", "2500", "--stats"}}, context.temp_allocator)
+	if !testing.expectf(t, run_err == nil && run_state.exit_code == 0, "the program failed:\n%s", string(run_log)) {
+		return
+	}
+	memory_line := ""
+	for l in strings.split_lines(string(stdout), context.temp_allocator) {
+		if strings.has_prefix(l, "memory:") {
+			memory_line = l
+		}
+	}
+	if !testing.expectf(t, memory_line != "", "the program did not say what it holds:\n%s", string(stdout)) {
+		return
+	}
+	// "memory: 17104 objects, 8.2 MB held, 50 collections that freed 401.0 MB"
+	words := strings.fields(memory_line, context.temp_allocator)
+	collections, held := 0, 0.0
+	for word, i in words {
+		if word == "collections" && i > 0 {
+			collections, _ = strconv.parse_int(words[i - 1])
+		}
+		if word == "MB" && i > 0 && held == 0 {
+			held, _ = strconv.parse_f64(words[i - 1])
+		}
+	}
+	testing.expectf(t, collections >= 10, "it made %d collections in 2,500 frames: %s", collections, memory_line)
+	testing.expectf(t, held > 0 && held < 40, "it still holds %.1f MB, which is more than the 10,000 sparks it keeps alive come to: %s", held, memory_line)
 }

@@ -309,16 +309,16 @@ emit_for_each :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_For_Each) {
 	line(g, "list_%d := %s", id, expr(g, k.list))
 	line(g, "if list_%d != nil {{", id)
 	g.indent += 1
-	line(g, "for at_%d := 0; at_%d < len(list_%d^); at_%d += 1 {{", id, id, id, id)
+	line(g, "for at_%d := 0; at_%d < len(list_%d.items); at_%d += 1 {{", id, id, id, id)
 	g.indent += 1
 	item := name_of(g, k.var)
-	line(g, "%s := list_%d^[at_%d]", item, id, id)
+	line(g, "%s := list_%d.items[at_%d]", item, id, id)
 	g.indent -= 1
 	emit_block(g, k.body)
 	g.indent += 1
 	// a vector or number changed in the body stays in the list; a record is shared and needs nothing
 	if kind_of_symbol(g, k.var) != .Record {
-		line(g, "if at_%d < len(list_%d^) {{ list_%d^[at_%d] = %s }}", id, id, id, id, item)
+		line(g, "if at_%d < len(list_%d.items) {{ list_%d.items[at_%d] = %s }}", id, id, id, id, item)
 	} else {
 		line(g, "_ = %s", item)
 	}
