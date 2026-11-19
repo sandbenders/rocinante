@@ -10,6 +10,7 @@ package rt
 import "core:math"
 import "core:strconv"
 import "core:strings"
+import "core:unicode/utf8"
 
 PI :: math.PI
 TAU :: math.TAU
@@ -106,4 +107,9 @@ power :: proc "contextless" (a, b: f64) -> f64 {
 		return 0
 	}
 	return result
+}
+
+// How many characters a text has.
+count_text :: proc(text: string) -> f64 {
+	return f64(utf8.rune_count_in_string(text))
 }

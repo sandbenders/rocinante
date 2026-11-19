@@ -47,6 +47,7 @@ Handler :: struct {
 	proc_name: string,
 	event:   string, // for an event: the name `on` uses
 	arg:     string, // for an event: the Odin text of the name it waits for ("" for any)
+	window:  string, // for an event: the Odin text of the window it is for ("" for any)
 	frames:  bool,   // for `every`: counted in frames
 	index:   int,
 }
@@ -74,6 +75,7 @@ Gen :: struct {
 	dynamic_depth: int, // how deep in a block that is not the top level of the sketch
 	uses_fmt: bool,
 	uses_math: bool,
+	uses_tweens: bool, // the frame hook steps the tweens
 }
 
 // What a compiled sketch cannot be (Odin keywords and the names the generated code uses itself).
@@ -151,7 +153,7 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	fmt.sbprintf(&out, "// What the names of the sketch hold, for the collector.\nroots :: proc() {{\n%s}}\n\n", strings.to_string(roots))
 	emit_handlers(&g, &out)
 	fmt.sbprintf(&out, "setup :: proc() {{\n%s}}\n\n", strings.to_string(setup))
-	fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, ", hook" if len(g.handlers) > 0 else "")
+	fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, ", hook" if len(g.handlers) > 0 || g.uses_tweens else "")
 	return Result{source = strings.to_string(out), problems = nil}
 }
 
@@ -225,6 +227,16 @@ odin_type :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span, what: string) -> (n
 	case .Boolean: return "bool", true
 	case .Text:    return "string", true
 	case .Colour:  return "maths.Colour", true
+	case .Image:   return "roci.Image", true
+	case .Sound:   return "roci.Sound", true
+	case .Window:  return "roci.Window", true
+	case .Gradient: return "^rt.Gradient_Box", true
+	case .Table:
+		value, value_ok := odin_type(g, lang.Type_Id(item.a), span, what)
+		if !value_ok {
+			return "", false
+		}
+		return fmt.aprintf("^rt.Table(%s)", value, allocator = context.temp_allocator), true
 	case .Vector:  return fmt.aprintf("[%d]f64", item.a, allocator = context.temp_allocator), true
 	case .List:
 		element, element_ok := odin_type(g, lang.Type_Id(item.a), span, what)
@@ -285,7 +297,7 @@ mark_statement :: proc(g: ^Gen, t: lang.Type_Id, value: string) -> string {
 	#partial switch g.types.items[resolved].kind {
 	case .Text:
 		return fmt.aprintf("rt.mark_text(%s)", value, allocator = context.temp_allocator)
-	case .Record, .List:
+	case .Record, .List, .Table, .Gradient:
 		return fmt.aprintf("if %s != nil {{ rt.mark(&%s.gc__) }}", value, value, allocator = context.temp_allocator)
 	}
 	return ""

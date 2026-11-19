@@ -1,0 +1,43 @@
+counts = table
+put counts "cat" 3
+put counts "dog" 1
+put counts "cat" 4
+print (get counts "cat")
+print (get counts "bird")
+print (count counts)
+for each name in (keys counts) [ print name ]
+remove "cat" from counts
+print (count counts)
+for each name in (keys counts) [ print name ]
+words = table
+put words "a" "alpha"
+put words "b" "beta"
+print (get words "b")
+names = [ "pear" "apple" "fig" ]
+sorted_names = sort names by [ it ]
+for each n in sorted_names [ print n ]
+nums = [ 3 1 2 5 4 ]
+by_distance = sort nums by [ abs (it - 3) ]
+for each x in by_distance [ print x ]
+add 9 to nums
+remove 1 from nums
+print (count nums)
+print (item 1 of nums)
+learn bigger_than limit [ give keep nums [ it > limit ] ]
+print (count (bigger_than 3))
+learn scaled factor [ give collect nums [ it * factor ] ]
+for each y in (scaled 10) [ print y ]
+c = rgb 10 20 30 alpha 50
+print c.r
+print c.g
+print c.a
+c.r = 99
+print c.r
+print (ease 0.5)
+print (ease 0.25 as out)
+print (mix 0 100 0.25)
+print (noise 1.5)
+print (noise 1 2 as simplex)
+print (normalize { 3, 4 })
+print (atan 1 1)
+print (limit { 3, 4 } 2)

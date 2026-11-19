@@ -17,11 +17,11 @@ import "core:mem"
 // The part every object of the heap starts with. `trace` marks the objects this one holds, and `release`
 // gives its memory back; both are the object's own, set when it was made.
 Header :: struct {
-	next:    ^Header,
-	marked:  bool,
-	trace:   proc(self: ^Header),
-	release: proc(self: ^Header),
-	size:    int, // what it was counted as when it was made
+	gc_next:    ^Header,
+	gc_marked:  bool,
+	gc_trace:   proc(self: ^Header),
+	gc_release: proc(self: ^Header),
+	gc_size:    int, // what it was counted as when it was made
 }
 
 @(private)
@@ -61,11 +61,11 @@ gc_stats :: proc() -> Gc_Stats {
 
 // Puts a new object in the heap. `size` is what it counts as towards the next collection.
 register :: proc(h: ^Header, size: int, trace: proc(self: ^Header), release: proc(self: ^Header)) {
-	h.next = heap.all
-	h.marked = false
-	h.trace = trace
-	h.release = release
-	h.size = size
+	h.gc_next = heap.all
+	h.gc_marked = false
+	h.gc_trace = trace
+	h.gc_release = release
+	h.gc_size = size
 	heap.all = h
 	heap.made += size
 	heap.objects += 1
@@ -91,10 +91,10 @@ release_record :: proc(h: ^Header) {
 
 // Marks an object (and so, later, everything it holds).
 mark :: proc(h: ^Header) {
-	if h == nil || h.marked {
+	if h == nil || h.gc_marked {
 		return
 	}
-	h.marked = true
+	h.gc_marked = true
 	append(&heap.gray, h)
 }
 
@@ -127,8 +127,8 @@ collect :: proc(roots: proc()) {
 	roots()
 	for len(heap.gray) > 0 {
 		h := pop(&heap.gray)
-		if h.trace != nil {
-			h.trace(h)
+		if h.gc_trace != nil {
+			h.gc_trace(h)
 		}
 	}
 	live := 0
@@ -137,15 +137,15 @@ collect :: proc(roots: proc()) {
 	link := &heap.all
 	for link^ != nil {
 		h := link^
-		if h.marked {
-			h.marked = false
-			live += h.size
+		if h.gc_marked {
+			h.gc_marked = false
+			live += h.gc_size
 			objects += 1
-			link = &h.next
+			link = &h.gc_next
 		} else {
-			link^ = h.next
-			heap.freed += h.size
-			h.release(h)
+			link^ = h.gc_next
+			heap.freed += h.gc_size
+			h.gc_release(h)
 		}
 	}
 	// the texts
@@ -180,8 +180,8 @@ maybe_collect :: proc(roots: proc()) {
 // Lets go of everything, at the end of a run or a test.
 gc_reset :: proc() {
 	for h := heap.all; h != nil; {
-		next := h.next
-		h.release(h)
+		next := h.gc_next
+		h.gc_release(h)
 		h = next
 	}
 	for pointer in heap.texts {
@@ -262,7 +262,7 @@ add :: proc(item: $T, list: ^List(T)) {
 		before := cap(list.items)
 		append(&list.items, item)
 		grown := (cap(list.items) - before) * size_of(T)
-		list.size += grown // what a collection counts the list as follows what it holds
+		list.gc_size += grown // what a collection counts the list as follows what it holds
 		account(grown)
 	}
 }
@@ -270,4 +270,113 @@ add :: proc(item: $T, list: ^List(T)) {
 @(private)
 floor :: proc "contextless" (x: f64) -> f64 {
 	return f64(i64(x)) - (1 if x < 0 && f64(i64(x)) != x else 0)
+}
+
+// ---- tables ----
+
+// Text names, each with a value, kept in the order they were put, so `keys` and `print` give the same order
+// as the interpreter's. Like lists, a table is shared by whoever holds it.
+Table :: struct($V: typeid) {
+	using gc__: Header,
+	keys:       [dynamic]string,
+	values:     [dynamic]V,
+	index:      map[string]int, // where each name is in `keys`
+	mark_item:  proc(item: V),
+}
+
+new_table :: proc($V: typeid, mark_item: proc(item: V) = nil) -> ^Table(V) {
+	t := new(Table(V))
+	t.keys = make([dynamic]string, 0, 4)
+	t.values = make([dynamic]V, 0, 4)
+	t.index = make(map[string]int, 4)
+	t.mark_item = mark_item
+	register(&t.gc__, size_of(Table(V)) + 4 * (size_of(string) + size_of(V)), trace_table(V), release_table(V))
+	return t
+}
+
+@(private)
+trace_table :: proc($V: typeid) -> proc(self: ^Header) {
+	return proc(h: ^Header) {
+		t := (^Table(V))(h)
+		for key in t.keys {
+			mark_text(key)
+		}
+		if t.mark_item != nil {
+			for value in t.values {
+				t.mark_item(value)
+			}
+		}
+	}
+}
+
+@(private)
+release_table :: proc($V: typeid) -> proc(self: ^Header) {
+	return proc(h: ^Header) {
+		t := (^Table(V))(h)
+		delete(t.keys)
+		delete(t.values)
+		delete(t.index)
+		free(t)
+	}
+}
+
+// Gives `key` the value, adding the name at the end when it is new.
+put :: proc(t: ^Table($V), key: string, value: V) {
+	if t == nil {
+		return
+	}
+	if at, found := t.index[key]; found {
+		t.values[at] = value
+		return
+	}
+	name := keep(key)
+	t.index[name] = len(t.keys)
+	append(&t.keys, name)
+	append(&t.values, value)
+	grown := size_of(string) + size_of(V) + len(key)
+	t.gc_size += grown
+	account(grown)
+}
+
+// The value of a name, or the zero value of the table's values when it has none.
+get :: proc(t: ^Table($V), key: string) -> V {
+	if t == nil {
+		return {}
+	}
+	if at, found := t.index[key]; found {
+		return t.values[at]
+	}
+	return {}
+}
+
+// Takes the name out; the names after it move up one place.
+table_remove :: proc(t: ^Table($V), key: string) {
+	if t == nil {
+		return
+	}
+	at, found := t.index[key]
+	if !found {
+		return
+	}
+	delete_key(&t.index, key)
+	ordered_remove(&t.keys, at)
+	ordered_remove(&t.values, at)
+	for name, i in t.keys[at:] {
+		t.index[name] = at + i
+	}
+}
+
+// The names of a table, as a list of text, in the order they were put.
+keys :: proc(t: ^Table($V)) -> ^List(string) {
+	out := new_list(string, mark_text)
+	if t != nil {
+		for name in t.keys {
+			add(name, out)
+		}
+	}
+	return out
+}
+
+count_names :: proc "contextless" (t: ^Table($V)) -> f64 {
+	return 0 if t == nil else f64(len(t.keys))
 }

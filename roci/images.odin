@@ -52,7 +52,7 @@ image_v :: proc(picture: Image, position: [2]f64, look := Look{}, origin := Orig
 image_sized_xy :: proc(picture: Image, x, y, width, height: f64, look := Look{}, origin := Origin.Default) {
 	list := current_list()
 	opened := begin_look(list, look)
-	gfx.draw_image(list, picture, f32(x), f32(y), f32(width), f32(height), origin)
+	gfx.draw_image(list, movie_frame(picture), f32(x), f32(y), f32(width), f32(height), origin)
 	end_look(list, opened)
 }
 

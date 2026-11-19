@@ -125,6 +125,17 @@ emit_assign :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Assign) {
 		case .Vector:
 			strings.write_string(&path, ".")
 			strings.write_string(&path, part)
+		case .Colour:
+			if len(part) == 1 && i == len(k.fields) - 1 && (part == "r" || part == "g" || part == "b") {
+				line(g, "%s.%s = f32(%s)", strings.to_string(path), part, value)
+				return
+			}
+			if part == "a" && i == len(k.fields) - 1 {
+				line(g, "%s.a = f32(rt.alpha_to_byte(%s))", strings.to_string(path), value)
+				return
+			}
+			refuse(g, s.span, "changing a part of a color")
+			return
 		case:
 			refuse(g, s.span, fmt.tprintf("changing a part of %s", lang.describe(g.types, holder)))
 			return
@@ -143,6 +154,14 @@ emit_expr_stmt :: proc(g: ^Gen, e: ^lang.IR) {
 	}
 	if call_ir.verb != nil && call_ir.instance == nil && call_ir.verb.name == "push" {
 		emit_push(g, call_ir)
+		return
+	}
+	if call_ir.verb != nil && call_ir.instance == nil && call_ir.verb.name == "draw into" {
+		emit_draw_into(g, e, call_ir)
+		return
+	}
+	if call_ir.verb != nil && call_ir.instance == nil && call_ir.verb.name == "set" {
+		emit_set(g, e, call_ir)
 		return
 	}
 	if call_ir.verb != nil && call_ir.instance == nil && call_ir.verb.name == "window" && len(call_ir.options) > 0 {
@@ -170,6 +189,70 @@ emit_push :: proc(g: ^Gen, c: lang.IR_Call) {
 		}
 	}
 	line(g, "roci.pop()")
+}
+
+// `set w size 400 300 resizable false`, `set rain volume 50`, `set clip at 10`: each word changes what the first value is.
+@(private)
+emit_set :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) {
+	if len(c.args) == 0 {
+		return
+	}
+	target := expr(g, c.args[0])
+	switch c.shape {
+	case 0: // a window
+		for o in c.options {
+			if len(o.args) == 0 {
+				continue
+			}
+			switch o.word {
+			case "size":
+				if len(o.args) == 2 {
+					line(g, "roci.set_window_size(%s, int(%s), int(%s))", target, expr(g, o.args[0]), expr(g, o.args[1]))
+				}
+			case "title":
+				line(g, "roci.title_window(%s, %s)", target, expr(g, o.args[0]))
+			case "resizable", "bordered", "topmost", "focusable", "grab", "modal", "fullscreen":
+				line(g, "roci.set_%s(%s, %s)", o.word, target, expr(g, o.args[0]))
+			case "smallest", "largest":
+				holder := point2(g, o)
+				line(g, "roci.set_%s(%s, int((%s)[0]), int((%s)[1]))", o.word, target, holder, holder)
+			case "ratio":
+				line(g, "roci.set_ratio(%s, %s)", target, expr(g, o.args[0]))
+			case "alpha":
+				line(g, "roci.set_window_alpha(%s, rt.alpha_to_byte(%s))", target, expr(g, o.args[0]))
+			case:
+				refuse(g, e.span, fmt.tprintf("`set` of a window with `%s`", o.word))
+			}
+		}
+	case 1: // a sound
+		line(g, "roci.set_sound(%s, at = %s, volume = %s, pan = %s, speed = %s, looping = %s, note = %s, pitch = %s)", target, maybe(g, c.options, "at"), maybe(g, c.options, "volume"), maybe(g, c.options, "pan"), maybe(g, c.options, "speed"), maybe(g, c.options, "loop"), maybe(g, c.options, "note"), maybe(g, c.options, "pitch"))
+		if option(c.options, "bend") != nil || option(c.options, "vibrato") != nil {
+			line(g, "roci.set_wheels(%s, %s, %s)", target, maybe(g, c.options, "bend"), maybe(g, c.options, "vibrato"))
+		}
+		if option(c.options, "attack") != nil || option(c.options, "decay") != nil || option(c.options, "sustain") != nil || option(c.options, "release") != nil {
+			line(g, "roci.set_envelope(%s, %s, %s, %s, %s)", target, maybe(g, c.options, "attack"), maybe(g, c.options, "decay"), maybe(g, c.options, "sustain"), maybe(g, c.options, "release"))
+		}
+	case 2: // a movie
+		line(g, "roci.movie_set(%s, at = %s, speed = %s, looping = %s)", target, maybe(g, c.options, "at"), maybe(g, c.options, "speed"), maybe(g, c.options, "loop"))
+	}
+}
+
+// `draw into canvas [ ... ]`: everything the block draws goes onto the canvas; a picture that is no canvas gets nothing.
+@(private)
+emit_draw_into :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) {
+	if len(c.args) < 1 {
+		return
+	}
+	line(g, "if rt.begin_into(%s) {{", expr(g, c.args[0]))
+	if len(c.args) > 1 {
+		if block, ok := c.args[1].kind.(lang.IR_Block_Value); ok {
+			emit_block(g, block.block)
+		}
+	}
+	g.indent += 1
+	line(g, "roci.end_into()")
+	g.indent -= 1
+	line(g, "}}")
 }
 
 // `with fill red thickness 3 [ ... ]`: the style holds for the block and is put back after it.
@@ -370,14 +453,14 @@ emit_draw :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Draw) {
 		refuse(g, s.span, "`ui`, which makes widgets")
 		return
 	}
-	if k.window != nil {
-		refuse(g, s.span, "`draw` for a window of its own")
-		return
-	}
 	id := g.next_id
 	g.next_id += 1
 	name := fmt.aprintf("draw_%d", id, allocator = context.temp_allocator)
 	emit_proc(g, name, "()", k.body)
+	if k.window != nil {
+		line(g, "roci.draw_window(%s, %s)", expr(g, k.window), name)
+		return
+	}
 	line(g, "roci.draw(%s)", name)
 }
 
@@ -405,13 +488,16 @@ emit_every :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Every) {
 
 @(private)
 emit_on :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_On) {
-	if k.window != nil || k.message != nil {
-		refuse(g, s.span, "`on` for a window of its own, or for a message")
+	if k.message != nil {
+		refuse(g, s.span, "`on` for a message")
 		return
 	}
 	id := len(g.handlers) + 1
 	name := fmt.aprintf("on_%d", id, allocator = context.temp_allocator)
 	handler := Handler{kind = .Event, proc_name = name, index = id}
+	if k.window != nil {
+		handler.window = expr(g, k.window)
+	}
 	switch k.event {
 	case "key":
 		handler.event = "Key_Down"
@@ -421,14 +507,12 @@ emit_on :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_On) {
 	case "mouse down":
 		handler.event = "Mouse_Down"
 		if len(k.args) > 0 {
-			refuse(g, s.span, "`on mouse down` for one button")
-			return
+			handler.arg = expr(g, k.args[0])
 		}
 	case "mouse up":
 		handler.event = "Mouse_Up"
 		if len(k.args) > 0 {
-			refuse(g, s.span, "`on mouse up` for one button")
-			return
+			handler.arg = expr(g, k.args[0])
 		}
 	case:
 		refuse(g, s.span, fmt.tprintf("`on %s`", k.event))
@@ -442,10 +526,13 @@ emit_on :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_On) {
 // blocks that are due and the `on` blocks for what happened.
 @(private)
 emit_handlers :: proc(g: ^Gen, out: ^strings.Builder) {
-	if len(g.handlers) == 0 {
+	if len(g.handlers) == 0 && !g.uses_tweens {
 		return
 	}
 	fmt.sbprintf(out, "hook :: proc(w: roci.Window) {{\n")
+	if g.uses_tweens {
+		fmt.sbprintf(out, "\trt.step_tweens()\n")
+	}
 	events := false
 	for h in g.handlers {
 		events ||= h.kind == .Event
@@ -456,11 +543,14 @@ emit_handlers :: proc(g: ^Gen, out: ^strings.Builder) {
 			if h.kind != .Event {
 				continue
 			}
+			test := fmt.tprintf("happening.kind == .%s", h.event)
 			if h.arg != "" {
-				fmt.sbprintf(out, "\t\tif happening.kind == .%s && happening.name == %s {{ %s() }}\n", h.event, h.arg, h.proc_name)
-			} else {
-				fmt.sbprintf(out, "\t\tif happening.kind == .%s {{ %s() }}\n", h.event, h.proc_name)
+				test = fmt.tprintf("%s && happening.name == %s", test, h.arg)
 			}
+			if h.window != "" {
+				test = fmt.tprintf("%s && w == %s", test, h.window)
+			}
+			fmt.sbprintf(out, "\t\tif %s {{ %s() }}\n", test, h.proc_name)
 		}
 		fmt.sbprintf(out, "\t}}\n")
 	}

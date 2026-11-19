@@ -18,7 +18,7 @@ import "../../roci/gfx"
 import "../../roci/interp"
 
 // The examples built as programs, which draw a picture of window 1.
-COMPILED := [?]string{"circle", "shapes", "particles", "life", "shapes3d", "solids", "lamp"}
+COMPILED := [?]string{"circle", "shapes", "particles", "life", "shapes3d", "solids", "lamp", "images", "fills", "paint", "blend", "starfield", "bounce"}
 
 run_compiled_examples :: proc(update: bool, only: []string) -> (ran, failures: int) {
 	if update {
@@ -78,7 +78,9 @@ run_compiled_example :: proc(name, picture_name: string) -> bool {
 		return false
 	}
 	made := actual_path(picture_name)
-	run_state, _, run_log, run_err := os.process_exec({command = {binary, "--frames", fmt.tprint(example.frames), "--screenshot", made}}, context.temp_allocator)
+	// a compiled sketch finds its `assets` in the folder it runs in, so it runs in its own, with whole paths
+	here, _ := os.get_working_directory(context.temp_allocator)
+	run_state, _, run_log, run_err := os.process_exec({command = {fmt.tprintf("%s/%s", here, binary), "--frames", fmt.tprint(example.frames), "--screenshot", fmt.tprintf("%s/%s", here, made)}, working_dir = fmt.tprintf("examples/%s", name)}, context.temp_allocator)
 	if run_err != nil || run_state.exit_code != 0 {
 		report(picture_name, false, fmt.tprintf("the program failed (%d): %s", run_state.exit_code, string(run_log)))
 		return false

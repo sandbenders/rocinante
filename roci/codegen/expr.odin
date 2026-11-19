@@ -134,6 +134,10 @@ builtin :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 	case "pi":      return "rt.PI"
 	case "tau":     return "rt.TAU"
 	case "pressed": return "roci.pressed()"
+	case "anywhere": return "roci.anywhere()"
+	case "mic":      return "roci.mic()"
+	case "speakers": return "roci.the_speakers()"
+	case "platform": return "roci.platform_name()"
 	case "key":     return "roci.last_key()"
 	case "true":    return "true"
 	case "false":   return "false"
@@ -145,6 +149,12 @@ builtin :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 @(private)
 swizzle :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Swizzle) -> string {
 	base := expr(g, k.base)
+	if kind_of(g, k.base) == .Colour && len(k.parts) == 1 {
+		switch k.parts {
+		case "r", "g", "b": return fmt.aprintf("f64(%s.%s)", base, k.parts, allocator = context.temp_allocator)
+		case "a":           return fmt.aprintf("rt.byte_to_alpha(f64(%s.a))", base, allocator = context.temp_allocator)
+		}
+	}
 	if kind_of(g, k.base) != .Vector {
 		refuse(g, e.span, fmt.tprintf("`.%s` of something that is not a vector", k.parts))
 		return "0.0"
@@ -154,6 +164,30 @@ swizzle :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Swizzle) -> string {
 
 @(private)
 field :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Field) -> string {
+	#partial switch kind_of(g, k.base) {
+	case .Image:
+		switch k.name {
+		case "width":  return fmt.aprintf("roci.image_size(%s).x", expr(g, k.base), allocator = context.temp_allocator)
+		case "height": return fmt.aprintf("roci.image_size(%s).y", expr(g, k.base), allocator = context.temp_allocator)
+		}
+		refuse(g, e.span, fmt.tprintf("`.%s` of a picture", k.name))
+		return "0.0"
+	case .Sound:
+		switch k.name {
+		case "loop": return fmt.aprintf("roci.sound_state(%s).looping", expr(g, k.base), allocator = context.temp_allocator)
+		case "playing", "at", "length", "volume", "pan", "speed", "pitch", "note":
+			return fmt.aprintf("roci.sound_state(%s).%s", expr(g, k.base), k.name, allocator = context.temp_allocator)
+		}
+		refuse(g, e.span, fmt.tprintf("`.%s` of a sound", k.name))
+		return "0.0"
+	case .Window:
+		switch k.name {
+		case "width":  return fmt.aprintf("roci.window_size(%s).x", expr(g, k.base), allocator = context.temp_allocator)
+		case "height": return fmt.aprintf("roci.window_size(%s).y", expr(g, k.base), allocator = context.temp_allocator)
+		}
+		refuse(g, e.span, fmt.tprintf("`.%s` of a window", k.name))
+		return "0.0"
+	}
 	if kind_of(g, k.base) != .Record {
 		refuse(g, e.span, fmt.tprintf("`.%s` of something that is not a record", k.name))
 		return "0.0"

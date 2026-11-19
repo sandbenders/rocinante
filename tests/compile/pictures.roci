@@ -1,0 +1,21 @@
+small = picture from [ red green blue white ] size 2 2
+print small.width
+print small.height
+doubled = resize small size 4 0
+print doubled.width
+print doubled.height
+top = crop small at 0 0 size 2 1
+print top.height
+flipped = flip small
+print flipped.width
+grey = filter small as gray
+print grey.width
+first = pixel small at 0 0
+print first.r
+print first.g
+all = pixels small
+print (count all)
+c = canvas 20 10
+print c.width
+draw into c [ fill red
+  circle at 5 5 radius 3 ]

@@ -110,6 +110,76 @@ more_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (te
 		return fmt.aprintf("roci.material(%s)", strings.to_string(b), allocator = context.temp_allocator), false
 	case "light":
 		return light_call(g, e, c)
+	case "tween":
+		return tween_call(g, e, c), false
+	// ---- more of the maths ----
+	case "ease":
+		curve := `""`
+		if o := option(c.options, "as"); o != nil {
+			if word, ok := word_of(o.args[0]); ok {
+				curve = fmt.tprintf("%q", word)
+			}
+		}
+		return fmt.aprintf("rt.ease(%s, %s)", args[0], curve, allocator = context.temp_allocator), true
+	case "noise":
+		simplex := "false"
+		if o := option(c.options, "as"); o != nil {
+			if word, ok := word_of(o.args[0]); ok && word == "simplex" {
+				simplex = "true"
+			}
+		}
+		count := len(c.args)
+		if count < 1 || count > 4 {
+			refuse(g, e.span, "`noise` with this many values")
+			return "0.0", true
+		}
+		return fmt.aprintf("roci.noise_%d(%s, %s)", count, strings.join(args[:count], ", ", context.temp_allocator), simplex, allocator = context.temp_allocator), true
+	case "fbm":
+		return fmt.aprintf("roci.fbm(%s, %s, %s)", args[0], args[1], args[2], allocator = context.temp_allocator), true
+	case "gaussian":
+		return fmt.aprintf("roci.gaussian(%s, %s)", args[0], args[1], allocator = context.temp_allocator), true
+	case "mix":
+		if c.shape == 0 {
+			return fmt.aprintf("roci.mix_colours(%s, %s, %s)", args[0], args[1], args[2], allocator = context.temp_allocator), true
+		}
+		return fmt.aprintf("roci.mix_numbers(%s, %s, %s)", args[0], args[1], args[2], allocator = context.temp_allocator), true
+	case "atan":
+		if c.shape == 0 {
+			return fmt.aprintf("roci.atan_xy(%s, %s)", args[0], args[1], allocator = context.temp_allocator), true
+		}
+		return fmt.aprintf("roci.atan_v(%s)", args[0], allocator = context.temp_allocator), true
+	case "normalize":
+		if vector_size(g, c.args[0]) == 2 {
+			return fmt.aprintf("roci.normalize(%s)", args[0], allocator = context.temp_allocator), true
+		}
+	case "limit":
+		if vector_size(g, c.args[0]) == 2 {
+			return fmt.aprintf("roci.limit_length(%s, %s)", args[0], args[1], allocator = context.temp_allocator), true
+		}
+	case "pick":
+		if kind_of(g, c.args[0]) == .List {
+			return fmt.aprintf("rt.pick(%s)", args[0], allocator = context.temp_allocator), true
+		}
+	case "polygon":
+		look, _ := look_of(g, e, c.options)
+		inner := kind_of_list_element(g, c.args[0])
+		procedure := "rt.polygon" if inner == .Vector else "rt.polygons"
+		if inner != .Vector && inner != .List {
+			refuse(g, e.span, "`polygon` of something that is not a list of corners")
+			return "", false
+		}
+		return shape_call(procedure, {args[0]}, look, ""), false
+	case "save":
+		return fmt.aprintf("rt.save(%s)", args[0], allocator = context.temp_allocator), false
+	case "remove":
+		if from := option(c.options, "from"); from != nil {
+			#partial switch kind_of(g, from.args[0]) {
+			case .List:
+				return fmt.aprintf("rt.remove(%s, %s)", args[0], expr(g, from.args[0]), allocator = context.temp_allocator), false
+			case .Table:
+				return fmt.aprintf("rt.table_remove(%s, %s)", expr(g, from.args[0]), args[0], allocator = context.temp_allocator), false
+			}
+		}
 	}
 	refuse(g, e.span, fmt.tprintf("`%s`, which compiled sketches cannot do yet", name))
 	return "", false
@@ -166,4 +236,53 @@ light_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (string, bool) {
 	}
 	// a light that does not fit (too many) is not an error here: the call gives false and the light is left out
 	return fmt.aprintf("_ = roci.light(.%s, %s, %s, %s, %s, %s)", capitalise(kind), at, aim, colour, falloff, angle, allocator = context.temp_allocator), false
+}
+
+// `tween ball.pos to mouse over 0.5 as out`: the place (a name, a field of a record, a part of a vector) is a pointer,
+// taken once, and the runtime moves what it points to a little each frame.
+@(private)
+tween_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> string {
+	to, over := option(c.options, "to"), option(c.options, "over")
+	if len(c.args) == 0 || to == nil || over == nil {
+		refuse(g, e.span, "`tween` without `to` and `over`")
+		return ""
+	}
+	place := c.args[0]
+	// the place is a chain of names, fields and parts; the first record in it is the owner the collector must keep
+	owner := "nil"
+	node := place
+	chain: for {
+		#partial switch k in node.kind {
+		case lang.IR_Load:
+			break chain
+		case lang.IR_Field:
+			if kind_of(g, k.base) != .Record {
+				refuse(g, e.span, "`tween` of a part of something that is not a record")
+				return ""
+			}
+			owner = fmt.tprintf("&%s.gc__", expr(g, k.base))
+			node = k.base
+		case lang.IR_Swizzle:
+			if len(k.parts) != 1 || kind_of(g, k.base) != .Vector {
+				refuse(g, e.span, "`tween` of more than one part of a vector at once")
+				return ""
+			}
+			node = k.base
+		case:
+			refuse(g, e.span, "`tween` of something that is not a name or a part of one")
+			return ""
+		}
+	}
+	g.uses_tweens = true
+	curve := word_option(g, c.options, "as")
+	#partial switch kind_of(g, place) {
+	case .Number:
+		return fmt.aprintf("rt.tween_number(&%s, %s, %s, %s, %s)", expr(g, place), expr(g, to.args[0]), expr(g, over.args[0]), curve, owner, allocator = context.temp_allocator)
+	case .Vector:
+		return fmt.aprintf("rt.tween_vector(&%s, %s, %s, %s, %s)", expr(g, place), expr(g, to.args[0]), expr(g, over.args[0]), curve, owner, allocator = context.temp_allocator)
+	case .Colour:
+		return fmt.aprintf("rt.tween_colour(&%s, %s, %s, %s, %s)", expr(g, place), expr(g, to.args[0]), expr(g, over.args[0]), curve, owner, allocator = context.temp_allocator)
+	}
+	refuse(g, e.span, fmt.tprintf("`tween` of %s", lang.describe(g.types, place.type)))
+	return ""
 }

@@ -85,11 +85,7 @@ look_of :: proc(g: ^Gen, e: ^lang.IR, options: []lang.IR_Option) -> (look: strin
 		}
 		switch o.word {
 		case "fill", "stroke":
-			if len(o.extra) > 0 {
-				refuse(g, e.span, fmt.tprintf("`%s` with a gradient or a picture", o.word))
-				continue
-			}
-			put(&b, &any, fmt.tprintf("%s = %s", o.word, paint(g, o.args[0])))
+			put(&b, &any, fmt.tprintf("%s = %s", o.word, paint(g, o.args[0], o.extra)))
 		case "thickness":
 			put(&b, &any, fmt.tprintf("thickness = %s", expr(g, o.args[0])))
 		case "alpha":
@@ -115,8 +111,16 @@ look_of :: proc(g: ^Gen, e: ^lang.IR, options: []lang.IR_Option) -> (look: strin
 			case:
 				refuse(g, e.span, "`as` with a word the compiler does not know here")
 			}
-		case "width":
-			// text's wrap width: said by the text verb itself
+		case "tint":
+			put(&b, &any, fmt.tprintf("tint = %s", expr(g, o.args[0])))
+		case "blend":
+			if word, is_word := word_of(o.args[0]); is_word {
+				put(&b, &any, fmt.tprintf("blend = rt.blend_mode(%q)", word))
+			} else {
+				refuse(g, e.span, "`blend` that is not written as a word")
+			}
+		case "width", "height":
+			// the wrap width of a text and the size of a picture: said by the verb itself
 		case:
 			refuse(g, e.span, fmt.tprintf("the word `%s` after a shape", o.word))
 		}
@@ -125,19 +129,6 @@ look_of :: proc(g: ^Gen, e: ^lang.IR, options: []lang.IR_Option) -> (look: strin
 		look = fmt.aprintf("roci.Look{{%s}}", strings.to_string(b), allocator = context.temp_allocator)
 	}
 	return
-}
-
-// A value as a paint: a colour is one, and a number is a grey.
-@(private)
-paint :: proc(g: ^Gen, e: ^lang.IR) -> string {
-	#partial switch kind_of(g, e) {
-	case .Colour:
-		return expr(g, e)
-	case .Number:
-		return fmt.aprintf("roci.grey(%s)", expr(g, e), allocator = context.temp_allocator)
-	}
-	refuse(g, e.span, fmt.tprintf("%s as a color", lang.describe(g.types, e.type)))
-	return "maths.Colour{}"
 }
 
 // `procedure(args..., look, origin)`: the arguments are given as they are, then the look and the origin only when
@@ -184,7 +175,7 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 	switch name {
 	// ---- the window ----
 	case "window":
-		return window_call(g, e, c, args), option(c.options, "title") == nil
+		return window_call(g, e, c, args), true
 	case "title":
 		return fmt.aprintf("roci.title_text(%s)", args[0], allocator = context.temp_allocator), false
 	case "seed":
@@ -192,10 +183,7 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 	case "quit":
 		return "roci.quit()", false
 	case "background":
-		if len(c.options) > 0 {
-			refuse(g, e.span, "`background` with a gradient or a picture")
-		}
-		return fmt.aprintf("roci.background(%s)", paint(g, c.args[0]), allocator = context.temp_allocator), false
+		return fmt.aprintf("roci.background(%s)", paint(g, c.args[0], c.options), allocator = context.temp_allocator), false
 
 	// ---- shapes ----
 	case "circle":
@@ -258,9 +246,9 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 
 	// ---- style and transforms ----
 	case "fill":
-		return fmt.aprintf("roci.fill_paint(%s)", paint(g, c.args[0]), allocator = context.temp_allocator), false
+		return fmt.aprintf("roci.fill_paint(%s)", paint(g, c.args[0], c.options), allocator = context.temp_allocator), false
 	case "stroke":
-		return fmt.aprintf("roci.stroke_paint(%s)", paint(g, c.args[0]), allocator = context.temp_allocator), false
+		return fmt.aprintf("roci.stroke_paint(%s)", paint(g, c.args[0], c.options), allocator = context.temp_allocator), false
 	case "no fill":
 		return "roci.no_fill()", false
 	case "no stroke":
@@ -339,8 +327,13 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		refuse(g, e.span, fmt.tprintf("`print` of %s", lang.describe(g.types, c.args[0].type)))
 		return "", false
 	case "count":
-		if kind_of(g, c.args[0]) == .List {
+		#partial switch kind_of(g, c.args[0]) {
+		case .List:
 			return fmt.aprintf("rt.count(%s)", args[0], allocator = context.temp_allocator), true
+		case .Table:
+			return fmt.aprintf("rt.count_names(%s)", args[0], allocator = context.temp_allocator), true
+		case .Text:
+			return fmt.aprintf("rt.count_text(%s)", args[0], allocator = context.temp_allocator), true
 		}
 		refuse(g, e.span, "`count` of something that is not a list")
 		return "0.0", true
@@ -358,19 +351,23 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		}
 		refuse(g, e.span, "`add` to something that is not a list")
 		return "", false
-	case "keep", "skip", "collect":
+	case "keep", "skip", "collect", "sort":
 		return list_block_call(g, e, c, name), true
 	}
 	if made, handled := plain_call(g, e, c, args); handled {
 		return made, false
 	}
+	if made, gave, handled := asset_verbs(g, e, c, args); handled {
+		return made, gave
+	}
 	return more_verbs(g, e, c, args)
 }
 
-// `window size 800 600 title "x"`: a window, its title and where it sits.
+// `window size 800 600 title "x"` used as a value: the window, with the words that can be given as values. A
+// window with more words is written as a statement (`emit_window`).
 @(private)
 window_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> string {
-	at := ""
+	at := "nil"
 	if o := option(c.options, "at"); o != nil {
 		if len(o.args) >= 2 {
 			at = fmt.tprintf("[2]int{{int(%s), int(%s)}}", expr(g, o.args[0]), expr(g, o.args[1]))
@@ -379,29 +376,38 @@ window_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> st
 			at = fmt.tprintf("[2]int{{int(%s.x), int(%s.y)}}", holder, holder)
 		}
 	}
+	hidden := "false"
+	if o := option(c.options, "visible"); o != nil {
+		hidden = fmt.tprintf("!(%s)", expr(g, o.args[0]))
+	}
 	for o in c.options {
 		switch o.word {
-		case "at", "title":
+		case "at", "title", "visible":
 		case:
-			refuse(g, e.span, fmt.tprintf("`window` with `%s`", o.word))
+			refuse(g, e.span, fmt.tprintf("a window used as a value with `%s`", o.word))
 		}
 	}
-	made := fmt.tprintf("roci.window(int(%s), int(%s)%s)", args[0], args[1], fmt.tprintf(", %s", at) if at != "" else "")
-	if t := option(c.options, "title"); t != nil {
-		return fmt.aprintf("roci.title_window(%s, %s)", made, expr(g, t.args[0]), allocator = context.temp_allocator)
-	}
-	return made
+	return fmt.aprintf("rt.new_window(int(%s), int(%s), %s, %s, %s)", args[0], args[1], at, hidden, maybe(g, c.options, "title"), allocator = context.temp_allocator)
 }
 
-// `keep list [ ... ]`, `skip` and `collect`: a procedure of their own made for the call, so the block is
-// a plain loop with no function value in it.
+// `keep list [ ... ]`, `skip`, `collect` and `sort list by [ ... ]`: a procedure of their own made for the call, so the
+// block is a plain loop with no function value in it. Names of a taught verb the block reads (a parameter, a name
+// the verb made) are given to the procedure as arguments.
 @(private)
 list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> string {
-	if len(c.args) < 2 || kind_of(g, c.args[0]) != .List {
+	block_ir: ^lang.IR
+	if name == "sort" {
+		if by := option(c.options, "by"); by != nil {
+			block_ir = by.args[0]
+		}
+	} else if len(c.args) >= 2 {
+		block_ir = c.args[1]
+	}
+	if len(c.args) < 1 || block_ir == nil || kind_of(g, c.args[0]) != .List {
 		refuse(g, e.span, fmt.tprintf("`%s` of something that is not a list", name))
 		return "nil"
 	}
-	block, is_block := c.args[1].kind.(lang.IR_Block_Value)
+	block, is_block := block_ir.kind.(lang.IR_Block_Value)
 	if !is_block || len(block.block.stmts) != 1 {
 		refuse(g, e.span, fmt.tprintf("`%s` with a block of more than one thing", name))
 		return "nil"
@@ -411,11 +417,18 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 		refuse(g, e.span, fmt.tprintf("`%s` with a block that is not one value", name))
 		return "nil"
 	}
+	extra_params := strings.builder_make(context.temp_allocator)
+	extra_args := strings.builder_make(context.temp_allocator)
 	for sym in block.block.captures {
-		if sym.scope != 0 && sym.kind != .Item {
-			refuse(g, e.span, fmt.tprintf("`%s` with a block that reads `%s`, a name of a taught verb", name, sym.name))
+		if sym.scope == 0 || sym.kind == .Item {
+			continue
+		}
+		type, type_ok := odin_type(g, sym.type, e.span, sym.name)
+		if !type_ok {
 			return "nil"
 		}
+		fmt.sbprintf(&extra_params, ", %s: %s", name_of(g, sym), type)
+		fmt.sbprintf(&extra_args, ", %s", name_of(g, sym))
 	}
 	list_type, ok := odin_type(g, c.args[0].type, e.span, "a list")
 	if !ok {
@@ -433,18 +446,28 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 	condition := expr(g, stmt.expr)
 	g.body, g.indent = saved_body, saved_indent
 	b := strings.builder_make(context.temp_allocator)
+	extra := strings.to_string(extra_params)
 	switch name {
 	case "keep", "skip":
 		test := condition if name == "keep" else fmt.tprintf("!%s", condition)
-		fmt.sbprintf(&b, "%s :: proc(list: %s) -> %s {{\n\tout := rt.new_list(%s, %s)\n\tif list != nil {{\n\t\tfor it_ in list.items {{\n\t\t\tif %s {{ rt.add(it_, out) }}\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, list_type, element, marker, test)
+		fmt.sbprintf(&b, "%s :: proc(list: %s%s) -> %s {{\n\tout := rt.new_list(%s, %s)\n\tif list != nil {{\n\t\tfor it_ in list.items {{\n\t\t\tif %s {{ rt.add(it_, out) }}\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, extra, list_type, element, marker, test)
 	case "collect":
 		made, made_ok := odin_type(g, stmt.expr.type, e.span, "what collect makes")
 		if !made_ok {
 			return "nil"
 		}
 		made_marker := item_marker(g, stmt.expr.type, made)
-		fmt.sbprintf(&b, "%s :: proc(list: %s) -> ^rt.List(%s) {{\n\tout := rt.new_list(%s, %s)\n\tif list != nil {{\n\t\tfor it_ in list.items {{\n\t\t\trt.add(%s, out)\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, made, made, made_marker, condition)
+		stored_value := fmt.tprintf("rt.keep(%s)", condition) if kind_of(g, stmt.expr) == .Text else condition
+		fmt.sbprintf(&b, "%s :: proc(list: %s%s) -> ^rt.List(%s) {{\n\tout := rt.new_list(%s, %s)\n\tif list != nil {{\n\t\tfor it_ in list.items {{\n\t\t\trt.add(%s, out)\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, extra, made, made, made_marker, stored_value)
+	case "sort":
+		key_kind := kind_of(g, stmt.expr)
+		if key_kind != .Number && key_kind != .Text {
+			refuse(g, e.span, "`sort` by something that is not a number or a text")
+			return "nil"
+		}
+		key_type := "f64" if key_kind == .Number else "string"
+		fmt.sbprintf(&b, "%s :: proc(list: %s%s) -> %s {{\n\tif list == nil {{ return rt.new_list(%s, %s) }}\n\tkeys := make([]%s, len(list.items), context.temp_allocator)\n\tfor it_, at in list.items {{\n\t\tkeys[at] = %s\n\t}}\n\treturn rt.sorted(list, keys, %s)\n}}\n\n", helper, list_type, extra, list_type, element, marker, key_type, condition, marker)
 	}
 	strings.write_string(&g.procs, strings.to_string(b))
-	return fmt.aprintf("%s(%s)", helper, expr(g, c.args[0]), allocator = context.temp_allocator)
+	return fmt.aprintf("%s(%s%s)", helper, expr(g, c.args[0]), strings.to_string(extra_args), allocator = context.temp_allocator)
 }

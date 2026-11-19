@@ -112,6 +112,18 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 		fmt.sbprintf(err, "I cannot write the program into `%s`.\n", source_folder)
 		return 2
 	}
+	// `ROCI_COMPILE_CHECK=1` only type-checks the program that was made, which is how a change to the generator is
+	// tried on every example in seconds (an example that passes is then built and compared for real).
+	if os.get_env("ROCI_COMPILE_CHECK", context.temp_allocator) != "" {
+		state, _, check_err, check_run_err := os.process_exec({command = {"odin", "check", source_folder, strings.concatenate({"-collection:rocinante=", root}, context.temp_allocator)}}, context.temp_allocator)
+		_ = check_run_err
+		if state.exit_code != 0 {
+			fmt.sbprintf(err, "The compiler could not build the program.\n%s\n", string(check_err))
+			return 5
+		}
+		fmt.sbprintf(out, "checked\n")
+		return 0
+	}
 	binary := strings.concatenate({folder_path, "/", sketch, ".exe" if ODIN_OS == .Windows else ""}, context.temp_allocator)
 	fmt.sbprintf(out, "%s %s\n", term.out("compiling", .Bold_Cyan), term.out(fmt.tprintf("%s (%s) with Odin %s", sketch, mode, ODIN_VERSION), .Cyan))
 	if !build(root, source_folder, binary, parsed.debug, folder_path, err) {
@@ -175,6 +187,8 @@ build :: proc(root, source_folder, binary: string, debug: bool, folder_path: str
 	append(&command, "odin", "build", source_folder, strings.concatenate({"-collection:rocinante=", root}, context.temp_allocator), strings.concatenate({"-out:", binary}, context.temp_allocator))
 	if debug {
 		append(&command, "-debug", "-o:none")
+	} else if os.get_env("ROCI_COMPILE_FAST", context.temp_allocator) != "" {
+		append(&command, "-o:minimal") // for trying many sketches quickly; a program to measure is built without it
 	} else {
 		append(&command, "-o:speed")
 	}

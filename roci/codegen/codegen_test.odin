@@ -133,13 +133,13 @@ test_list_blocks_become_procedures_with_plain_loops :: proc(t: ^testing.T) {
 
 @(test)
 test_what_cannot_be_compiled_yet_is_refused_with_its_name_and_never_half_done :: proc(t: ^testing.T) {
-	refused_for(t, "photo = load \"cat.png\"\nimage photo at 0 0\n", "picture")
+	refused_for(t, "svg \"logo.svg\" at 0 0\n", "svg")
 	refused_for(t, "scene \"a\" [ draw [ circle at 1 1 radius 1 ] ]\n", "scene")
 	refused_for(t, "window size 100 100 cursor none\n", "cursor")
 	refused_for(t, "ui [ button \"x\" ]\n", "ui")
 	refused_for(t, "x = table\n", "table")
 	refused_for(t, "draw [ push [ circle at 1 1 radius 1 ] ]\nevery 1 second [ draw [ circle at 1 1 radius 1 ] ]\n", "inside another block")
-	refused_for(t, "background [ red blue ]\n", "list of colors")
+	refused_for(t, "model \"ship.glb\" at 0 0 0 size 1\n", "model")
 }
 
 @(test)
@@ -198,4 +198,71 @@ add thing to sparks
 	testing.expect(t, strings.contains(roots, "if sparks != nil { rt.mark(&sparks.gc__) }"))
 	testing.expect(t, strings.contains(roots, "if thing != nil { rt.mark(&thing.gc__) }"))
 	testing.expect(t, !strings.contains(roots[:strings.index(roots, "}\n")], "count_of"), "a number holds nothing")
+}
+
+@(test)
+test_pictures_sounds_fonts_and_paints_are_written_as_calls_of_the_runtime :: proc(t: ^testing.T) {
+	result := compile(`photo = load "cat.png"
+rain = load "rain.wav"
+image photo at 1 2 width 30
+fill photo as cover
+fill [ red blue ] as radial
+font "Mono" size 18
+play rain volume 50
+set rain speed 2
+pale = crop photo at 0 0 size 5 5
+w = window size 100 100 title "x" at 1 2
+`)
+	testing.expect_value(t, len(result.problems), 0)
+	source := result.source
+	testing.expect(t, strings.contains(source, "photo: roci.Image"))
+	testing.expect(t, strings.contains(source, "rain: roci.Sound"))
+	testing.expect(t, strings.contains(source, "rt.load_image(\"cat.png\")"))
+	testing.expect(t, strings.contains(source, "rt.load_sound(\"rain.wav\", 0.0)"))
+	testing.expect(t, strings.contains(source, "roci.image_xy(photo, 1.0, 2.0, roci.Look{}, roci.Origin.Default, 30.0, nil)"))
+	testing.expect(t, strings.contains(source, "rt.picture_fill(photo, 0, 0.0, [2]f64{})"))
+	testing.expect(t, strings.contains(source, "rt.gradient_paint([]maths.Colour{"))
+	testing.expect(t, strings.contains(source, "rt.font(\"Mono\", 18.0)"))
+	testing.expect(t, strings.contains(source, "roci.play(rain, volume = 50.0, pan = nil"))
+	testing.expect(t, strings.contains(source, "roci.set_sound(rain, at = nil, volume = nil, pan = nil, speed = 2.0"))
+	testing.expect(t, strings.contains(source, "rt.crop(photo, [2]f64{0.0, 0.0}, [2]f64{5.0, 5.0})"))
+	testing.expect(t, strings.contains(source, "rt.new_window(int(100.0), int(100.0), [2]int{int(1.0), int(2.0)}, false, \"x\")"))
+}
+
+@(test)
+test_tables_tweens_effects_and_canvases_are_written_with_what_the_collector_needs :: proc(t: ^testing.T) {
+	result := compile(`counts = table
+put counts "cat" 3
+labels = table
+put labels "a" "alpha"
+p = { pos: { 1, 2 } }
+tween p.pos to { 5, 5 } over 2 as out
+level = 1
+tween level to 10 over 1
+effect "glow" by { amount: 0.5 }
+c = canvas 10 10
+draw into c [ circle at 5 5 radius 2 ]
+`)
+	testing.expect_value(t, len(result.problems), 0)
+	source := result.source
+	testing.expect(t, strings.contains(source, "counts: ^rt.Table(f64)"))
+	testing.expect(t, strings.contains(source, "labels: ^rt.Table(string)"))
+	testing.expect(t, strings.contains(source, "rt.put(counts, \"cat\", 3.0)"))
+	testing.expect(t, strings.contains(source, "rt.put(labels, \"a\", \"alpha\")"))
+	testing.expect(t, strings.contains(source, "rt.tween_vector(&p.pos, [2]f64{5.0, 5.0}, 2.0, \"out\", &p.gc__)"), "the record a tween moves is kept while it does")
+	testing.expect(t, strings.contains(source, "rt.tween_number(&level, 10.0, 1.0, \"\", nil)"))
+	testing.expect(t, strings.contains(source, "rt.step_tweens()"), "the frame hook steps the tweens")
+	testing.expect(t, strings.contains(source, "rt.effect(\"glow\", []roci.Effect_Value{rt.effect_number(\"amount\", 0.5)})"))
+	testing.expect(t, strings.contains(source, "if rt.begin_into(c) {"))
+	testing.expect(t, strings.contains(source, "if counts != nil { rt.mark(&counts.gc__) }"), "a table held by a name is a root")
+}
+
+@(test)
+test_a_list_block_that_reads_a_verbs_own_names_gets_them_as_arguments :: proc(t: ^testing.T) {
+	result := compile("nums = [ 1 2 3 ]\nlearn above limit [ give keep nums [ it > limit ] ]\nprint (count (above 1))\nbyname = sort nums by [ 0 - it ]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "keep_0 :: proc(list: ^rt.List(f64), limit: f64) -> ^rt.List(f64) {"))
+	testing.expect(t, strings.contains(result.source, "keep_0(nums, limit)"))
+	testing.expect(t, strings.contains(result.source, "sort_1 :: proc(list: ^rt.List(f64)) -> ^rt.List(f64) {"))
+	testing.expect(t, strings.contains(result.source, "rt.sorted(list, keys, nil)"))
 }

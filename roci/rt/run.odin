@@ -131,8 +131,15 @@ execute :: proc(run: Run, setup: proc(), roots: proc(), hook: proc(w: roci.Windo
 @(private)
 end_of_frame :: proc() {
 	if collector_roots != nil {
-		maybe_collect(collector_roots)
+		maybe_collect(all_roots)
 	}
+}
+
+// What the collector starts from: the names of the sketch, and the records tweens are moving.
+@(private)
+all_roots :: proc() {
+	collector_roots()
+	mark_tweens()
 }
 
 // The picture of the first window, as a PNG file. 0 when it was made, 3 when it was not.
