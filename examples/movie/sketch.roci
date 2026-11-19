@@ -1,0 +1,38 @@
+// Movies: `load "zoom.mpg"` gives a picture that changes as the movie plays, so it goes wherever a
+// picture goes: `image` draws it, `fill` paints a shape with it. `play`, `loop`, `pause` and `rewind`
+// move it, `set zoom at 2 speed 0.5` puts it somewhere or slows it down, and `zoom.at`, `zoom.length`
+// and `zoom.playing` say where it is. Space pauses and plays, R rewinds, and a click puts the movie
+// where the bar was clicked. rocinante plays MPEG-1 files (.mpg), and only the picture, for now;
+// ffmpeg turns any video into one: `ffmpeg -i in.mp4 -an -c:v mpeg1video out.mpg`.
+window size 640 360 title "movie"
+
+zoom = load "zoom.mpg"
+loop zoom
+
+on key "space" [
+  if zoom.playing [ pause zoom ] else [ play zoom ]
+]
+
+on key "r" [ rewind zoom ]
+
+on mouse down [
+  if mouse.y > 320 [ set zoom at ((mouse.x - 20) / 600 * zoom.length) ]
+]
+
+draw [
+  background 25
+  // the movie as a picture, and as the fill of a circle and a bar
+  image zoom at 20 20 width 384
+  fill zoom
+  circle at 520 112 radius 90
+  rect at 424 214 size 196 40
+  // where it is
+  fill gray
+  rect at 20 320 size 600 12
+  fill gold
+  rect at 20 320 size (600 * zoom.at / zoom.length) 12
+  fill white
+  seen = round (zoom.at * 10) / 10
+  total = round (zoom.length * 10) / 10
+  text (seen + " of " + total + " seconds") at 20 270 size 14
+]

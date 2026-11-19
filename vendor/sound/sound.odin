@@ -39,14 +39,14 @@ foreign lib {
 	roci_stream_close :: proc(stream: rawptr) ---
 
 	// MPEG-1 movies (c/roci_movie.h, over pl_mpeg); movie.odin wraps them.
-	roci_movie_open :: proc(data: rawptr, size: c.size_t, width, height: ^c.int, duration, rate: ^f64) -> rawptr ---
-	roci_movie_close :: proc(movie: rawptr) ---
-	roci_movie_advance :: proc(movie: rawptr, seconds: f64) ---
-	roci_movie_seek :: proc(movie: rawptr, time: f64) -> c.int ---
-	roci_movie_loop :: proc(movie: rawptr, on: c.int) ---
-	roci_movie_time :: proc(movie: rawptr) -> f64 ---
-	roci_movie_ended :: proc(movie: rawptr) -> c.int ---
-	roci_movie_picture :: proc(movie: rawptr, pixels: ^[^]u8) -> c.int ---
+	roci_mpeg_open :: proc(data: rawptr, size: c.size_t, width, height: ^c.int, duration, rate: ^f64) -> rawptr ---
+	roci_mpeg_close :: proc(movie: rawptr) ---
+	roci_mpeg_advance :: proc(movie: rawptr, seconds: f64) ---
+	roci_mpeg_seek :: proc(movie: rawptr, time: f64) -> c.int ---
+	roci_mpeg_loop :: proc(movie: rawptr, on: c.int) ---
+	roci_mpeg_time :: proc(movie: rawptr) -> f64 ---
+	roci_mpeg_ended :: proc(movie: rawptr) -> c.int ---
+	roci_mpeg_picture :: proc(movie: rawptr, pixels: ^[^]u8) -> c.int ---
 }
 
 // Decodes a file into interleaved frames of `channels` floats at `rate`, copied into memory of

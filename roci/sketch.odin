@@ -224,6 +224,7 @@ shutdown :: proc() {
 	websocket_stop()
 	sounds_stop()
 	webcam_stop()
+	movies_stop()
 	for w in the.windows {
 		destroy_win(w)
 	}

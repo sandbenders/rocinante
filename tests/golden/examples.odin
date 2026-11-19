@@ -65,6 +65,7 @@ EXAMPLES := [?]Example{
 	{"websocket", 2, {1}}, // the invitation to click and the empty list (the messages come in the interpreter's test)
 	{"tcp", 2, {1}}, // the invitation to click and the empty list (the connections and their lines come in the interpreter's test)
 	{"udp", 2, {1}}, // the invitation to click and the empty list (the datagrams come in the interpreter's test)
+	{"movie", 40, {1}}, // a movie of a Mandelbrot zoom two thirds of a second in, drawn as a picture, as the fill of a circle and of a bar, with its place in a bar below (a headless frame is a sixtieth of a second, so the picture is the same everywhere)
 	{"webcam", 2, {1}}, // the dark picture a headless run has for the camera, in the mirror, a text filled with it and the invitation to click (the frames and the snapshots come in the interpreter's test)
 	{"fetch", 2, {1}}, // the sketch waiting for its answers: a headless run fetches nothing (the answers are given in the interpreter's test)
 	{"vault", 2, {1}}, // the level and the coins a first run starts with (what the vault keeps comes in the interpreter's test)

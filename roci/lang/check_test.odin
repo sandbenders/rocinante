@@ -1655,7 +1655,8 @@ test_load_gives_a_sound_by_the_files_name :: proc(t: ^testing.T) {
 		got, _ := types_of(text)
 		testing.expectf(t, strings.contains(got, "s: a picture"), "%s: %s", text, got)
 	}
-	expect_errors(t, "photo = load \"cat.png\"\nplay photo", {.Wrong_Argument_Kind})
+	expect_errors(t, "play 3", {.Wrong_Argument_Kind})
+	expect_errors(t, "photo = load \"cat.png\"\nplay photo", {}) // a picture is what a movie is, so it is a movie that does nothing
 	expect_errors(t, "rain = load \"rain.wav\"\nimage rain at 0 0", {.Wrong_Argument_Kind})
 	got, _ := types_of("sounds = [ (load \"a.wav\") (load \"b.mp3\") ]")
 	testing.expectf(t, strings.contains(got, "a list of sounds"), "%s", got)

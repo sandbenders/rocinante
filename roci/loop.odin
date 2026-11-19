@@ -134,6 +134,7 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 	memory_autosave()
 	vault_autosave()
 	sounds_step(the.delta)
+	movies_step(the.delta)
 	the.frame += 1
 	gfx.images_tick()
 	evict_derived()

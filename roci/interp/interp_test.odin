@@ -2276,6 +2276,8 @@ make_message_sketch :: proc(t: ^testing.T) -> string {
 	testing.expect(t, folder.ensure_directory(root + "/assets/images/b"))
 	testing.expect(t, os.write_entire_file(root + "/sketch.roci", transmute([]byte)string("circle at 1 1 radius 1\n")) == nil)
 	testing.expect(t, os.write_entire_file(root + "/assets/images/broken.png", transmute([]byte)string("not a picture")) == nil)
+	testing.expect(t, folder.ensure_directory(root + "/assets/videos"))
+	testing.expect(t, os.write_entire_file(root + "/assets/videos/broken.mpg", transmute([]byte)string("not a movie")) == nil)
 	testing.expect(t, folder.ensure_directory(root + "/assets/sounds"))
 	testing.expect(t, os.write_entire_file(root + "/assets/sounds/broken.wav", transmute([]byte)string("not a sound")) == nil)
 	testing.expect(t, os.write_entire_file(root + "/assets/sounds/broken.sf2", transmute([]byte)string("not a SoundFont")) == nil)

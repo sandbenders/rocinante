@@ -315,7 +315,9 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		send_message(it, eval(it, call.args[0]), eval(it, call.args[1]))
 	case .Set:
 		target := eval(it, call.args[0])
-		if call.shape == 1 {
+		if call.shape == 2 {
+			set_movie(it, target, call.options)
+		} else if call.shape == 1 {
 			set_sound(it, target, call.options)
 		} else {
 			set_window(it, target, call.options)

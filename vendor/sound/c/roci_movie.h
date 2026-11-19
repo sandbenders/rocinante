@@ -12,20 +12,24 @@ typedef struct {
 	plm_t *plm;
 	uint8_t *pixels; // the newest picture, width * height * 4 bytes
 	int width, height;
-	int fresh; // a picture was made since the last roci_movie_picture
+	int fresh; // a picture was made since the last roci_mpeg_picture
 } roci_movie;
 
 static void roci_movie_on_video(plm_t *plm, plm_frame_t *frame, void *user) {
 	(void)plm;
 	roci_movie *m = (roci_movie *)user;
 	plm_frame_to_rgba(frame, m->pixels, m->width * 4);
+	// the conversion leaves the alpha byte as it found it
+	for (size_t i = 3, n = (size_t)m->width * m->height * 4; i < n; i += 4) {
+		m->pixels[i] = 255;
+	}
 	m->fresh = 1;
 }
 
 // Opens a movie from the bytes of an MPEG program stream (.mpg), copying them. Gives nil when the bytes
 // are not an MPEG-1 movie with a picture. The first picture is made at once, so a movie that has not
 // started yet shows it.
-void *roci_movie_open(const void *data, size_t size, int *width, int *height, double *duration, double *rate) {
+void *roci_mpeg_open(const void *data, size_t size, int *width, int *height, double *duration, double *rate) {
 	if (data == NULL || size == 0) {
 		return NULL;
 	}
@@ -67,7 +71,7 @@ void *roci_movie_open(const void *data, size_t size, int *width, int *height, do
 	return m;
 }
 
-void roci_movie_close(void *movie) {
+void roci_mpeg_close(void *movie) {
 	roci_movie *m = (roci_movie *)movie;
 	if (m == NULL) {
 		return;
@@ -79,14 +83,14 @@ void roci_movie_close(void *movie) {
 
 // Moves the movie on by `seconds` (it decodes the pictures that fell due; the newest is kept). A movie
 // that has reached its end and is not looping stays on its last picture.
-void roci_movie_advance(void *movie, double seconds) {
+void roci_mpeg_advance(void *movie, double seconds) {
 	roci_movie *m = (roci_movie *)movie;
 	plm_decode(m->plm, seconds);
 }
 
 // Puts the movie at a time in seconds, on the picture there (exact: it decodes from the nearest key
 // picture). 1 when the time was inside the movie.
-int roci_movie_seek(void *movie, double time) {
+int roci_mpeg_seek(void *movie, double time) {
 	roci_movie *m = (roci_movie *)movie;
 	plm_frame_t *frame = plm_seek_frame(m->plm, time, 1);
 	if (frame == NULL) {
@@ -96,21 +100,21 @@ int roci_movie_seek(void *movie, double time) {
 	return 1;
 }
 
-void roci_movie_loop(void *movie, int on) {
+void roci_mpeg_loop(void *movie, int on) {
 	plm_set_loop(((roci_movie *)movie)->plm, on);
 }
 
-double roci_movie_time(void *movie) {
+double roci_mpeg_time(void *movie) {
 	return plm_get_time(((roci_movie *)movie)->plm);
 }
 
-int roci_movie_ended(void *movie) {
+int roci_mpeg_ended(void *movie) {
 	return plm_has_ended(((roci_movie *)movie)->plm);
 }
 
 // The newest picture when one was made since the last call (then 1, and `pixels` is where it is, valid
 // until the next advance, seek or close), otherwise 0.
-int roci_movie_picture(void *movie, const uint8_t **pixels) {
+int roci_mpeg_picture(void *movie, const uint8_t **pixels) {
 	roci_movie *m = (roci_movie *)movie;
 	*pixels = m->pixels;
 	int fresh = m->fresh;

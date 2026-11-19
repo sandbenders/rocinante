@@ -90,7 +90,7 @@ as_text :: proc(v: Value) -> string {
 // A picture, or the empty one (which draws nothing) for anything else.
 as_image :: proc(v: Value) -> roci.Image {
 	if picture, ok := v.(roci.Image); ok {
-		return picture
+		return roci.movie_frame(picture) // a movie is its picture of the moment; anything else is itself
 	}
 	return 0
 }
@@ -582,4 +582,32 @@ as_vec :: proc(v: Value) -> Vec {
 		return x
 	}
 	return Vec{n = 2}
+}
+
+// The number a movie is known by, for the verbs that move it (not its picture of the moment, which
+// is what `as_image` gives); 0 for anything that is not a picture.
+movie_handle :: proc(v: Value) -> roci.Image {
+	if picture, ok := v.(roci.Image); ok {
+		return picture
+	}
+	return 0
+}
+
+// `set clip at 10 speed 2 loop true`.
+@(private)
+set_movie :: proc(it: ^Interp, target: Value, options: []lang.IR_Option) {
+	at, speed: Maybe(f64)
+	looping: Maybe(bool)
+	for o in options {
+		if len(o.args) == 0 {
+			continue
+		}
+		v := eval(it, o.args[0])
+		switch o.word {
+		case "at":    at = as_number(v)
+		case "speed": speed = as_number(v)
+		case "loop":  looping = as_bool(v)
+		}
+	}
+	roci.movie_set(movie_handle(target), at, speed, looping)
 }

@@ -299,6 +299,11 @@ read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
 		switch name {
 		case "width":  return roci.image_size(picture).x
 		case "height": return roci.image_size(picture).y
+		case "playing": return roci.movie_state(picture).playing
+		case "loop":    return roci.movie_state(picture).looping
+		case "at":      return roci.movie_state(picture).at
+		case "length":  return roci.movie_state(picture).length
+		case "speed":   return roci.movie_state(picture).speed
 		}
 		return nil
 	}

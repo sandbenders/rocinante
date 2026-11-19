@@ -101,6 +101,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"outline", 4, "Outline", 3, 1},
 	{"vector", 4, "Vector drawing", 20, 1},
 	{"blend", 4, "Blend and clip", 3, 1},
+	{"movie", 4, "Movie", 40, 1},
 
 	{"effects", 5, "Your own effects", 3, 1},
 	{"neon", 5, "Neon", 20, 1},

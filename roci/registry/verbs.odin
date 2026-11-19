@@ -379,7 +379,8 @@ VERBS := []Verb{
 	{"forward", {
 		{{{"distance", .Number}}, nil, .None},
 		{{{"sound", .Sound}}, {{"by", {.Number}, true}}, .None},
-	}, "Walks the turtle forward, drawing a line while its pen is down; with a sound, moves it ahead: `forward rain by 10` (seconds)."},
+		{{{"movie", .Image}}, {{"by", {.Number}, true}}, .None},
+	}, "Walks the turtle forward, drawing a line while its pen is down; with a sound or a movie, moves it ahead: `forward rain by 10` (seconds)."},
 	{"back", {{{{"distance", .Number}}, nil, .None}}, "Walks the turtle backwards, without turning it round."},
 	{"left", {{{{"degrees", .Number}}, nil, .None}}, "Turns the turtle anticlockwise, in degrees."},
 	{"right", {{{{"degrees", .Number}}, nil, .None}}, "Turns the turtle clockwise, in degrees."},
@@ -393,9 +394,18 @@ VERBS := []Verb{
 	{"roll", {{{{"degrees", .Number}}, nil, .None}}, "Rolls the turtle in space about the way it faces, its top going to the right, in degrees. It needs `turtle space` first."},
 
 	// Sound: a sound is one player, made by `load` from a sound file of the assets
-	{"play", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound once, from where it is, or from its start when it had come to its end: `play click`. `volume` is 0 to 100, `pan` -100 (left) to 100 (right) and `speed` 1 as recorded."},
-	{"loop", {{{{"sound", .Sound}}, SOUND_OPTIONS, .None}}, "Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish."},
-	{"pause", {{{{"sound", .Sound}}, {{"note", {.Number}, false}}, .None}}, "Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade out, all of them or one: `pause piano note 60`."},
+	{"play", {
+		{{{"sound", .Sound}}, SOUND_OPTIONS, .None},
+		{{{"movie", .Image}}, MOVIE_OPTIONS, .None},
+	}, "Plays a sound once, from where it is, or from its start when it had come to its end: `play click`. `volume` is 0 to 100, `pan` -100 (left) to 100 (right) and `speed` 1 as recorded. A movie plays the same way, `play clip speed 2`."},
+	{"loop", {
+		{{{"sound", .Sound}}, SOUND_OPTIONS, .None},
+		{{{"movie", .Image}}, MOVIE_OPTIONS, .None},
+	}, "Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish. A movie loops the same way: `loop clip`."},
+	{"pause", {
+		{{{"sound", .Sound}}, {{"note", {.Number}, false}}, .None},
+		{{{"movie", .Image}}, nil, .None},
+	}, "Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade out, all of them or one: `pause piano note 60`. A movie stops on its picture: `pause clip`."},
 	{"midi control", {{{{"number", .Number}}, nil, .Number}}, "The latest value of a MIDI controller, 0 to 100, 0 until it first moves: `midi control 1` is the mod wheel, and the knobs and faders of a controller have numbers of their own (its manual says which, or `on midi control [ print midi.control ]`)."},
 	{"midi tempo", {{{}, nil, .Number}}, "The tempo of the clock a MIDI keyboard or sequencer sends, in beats a minute, 0 when none is coming (nothing for a second). The first call starts reading MIDI."},
 	{"osc listen", {{{{"port", .Number}}, nil, .None}}, "Starts listening for OSC messages on a port: `osc listen 8000`. Without it the first `on osc` or `osc value` listens on port 9000. If another program has the port, a message says so and the sketch goes on without listening; asking again for the port in use changes nothing."},
@@ -404,7 +414,10 @@ VERBS := []Verb{
 		{{{"wave", .Name}}, ENVELOPE_OPTIONS, .Sound},
 		{{{"file", .Text}}, SOUNDFONT_OPTIONS, .Sound},
 	}, "Makes an instrument, a sound of the sketch's own: `piano = synth triangle` (or `sine`, `square`, `saw`, `noise`), or from a SoundFont in the assets, `piano = synth \"upright.sf2\"`, with `preset` naming one of its instruments by number (General MIDI's 0 is a piano, 48 strings) or by name. `play piano note 60` plays middle C until `pause piano note 60`, or `for 0.5` seconds, and several notes sound together. `attack`, `decay`, `sustain` and `release` shape each note: seconds to come in, seconds to fall to the sustain, the level it sits at while held (0 to 100) and seconds to fade out after it is let go, as in `synth saw attack 0.5 release 2` or later `set pad attack 3`; a SoundFont's own envelope is the least they can be."},
-	{"rewind", {{{{"sound", .Sound}}, {{"by", {.Number}, false}}, .None}}, "Puts a sound back to its start, or some seconds back: `rewind rain by 10`. A sound that plays goes on playing."},
+	{"rewind", {
+		{{{"sound", .Sound}}, {{"by", {.Number}, false}}, .None},
+		{{{"movie", .Image}}, {{"by", {.Number}, false}}, .None},
+	}, "Puts a sound or a movie back to its start, or some seconds back: `rewind rain by 10`. One that plays goes on playing."},
 	{"level", {
 		{{}, nil, .Number},
 		{{{"sound", .Sound}}, nil, .Number},
@@ -495,6 +508,18 @@ SOUNDFONT_OPTIONS := []Option{
 	{"decay", {.Number}, false},
 	{"sustain", {.Number}, false},
 	{"release", {.Number}, false},
+}
+
+// What `play` and `loop` take after a movie: how fast it plays, 1 as filmed.
+MOVIE_OPTIONS := []Option{
+	{"speed", {.Number}, false},
+}
+
+// What `set` changes of a movie: where it is (seconds), how fast it plays and whether it loops.
+MOVIE_SET_OPTIONS := []Option{
+	{"at", {.Number}, false},
+	{"speed", {.Number}, false},
+	{"loop", {.Boolean}, false},
 }
 
 SOUND_SET_OPTIONS := []Option{

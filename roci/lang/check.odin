@@ -919,7 +919,7 @@ check_field_assign :: proc(c: ^Checker, sym: ^Symbol, span: Span, k: Assign, val
 		note(c, .Set_Window, whole, label, "", "", fix(c, whole, fmt.tprintf("set %s %s %s", window_text, last, text_at(c, k.value.span))))
 		return IR_Error_Stmt{}
 	case .Image:
-		note(c, .Bad_Field, last_span, last, "a picture", fmt.tprintf("`%s` can be read but not changed.", last), fix(c, last_span, "width"))
+		note(c, .Bad_Field, last_span, last, "a picture", fmt.tprintf("`%s` can be read but not changed; a movie is moved with `set`, `play`, `pause` and `rewind`.", last), fix(c, last_span, "width"))
 		return IR_Error_Stmt{}
 	case .Sound:
 		def, found := sound_property(last)
@@ -1226,7 +1226,14 @@ check_field :: proc(c: ^Checker, base: ^IR, part: string, span: Span) -> ^IR {
 		if part == "width" || part == "height" {
 			return new_ir(c, base.span, T_NUMBER, IR_Field{base = base, name = part})
 		}
-		note(c, .Bad_Field, span, part, "a picture", "A picture has a width and a height.", fix(c, span, "width"))
+		// a movie is a picture that plays: it also says whether it does, where it is and how long it is
+		if part == "playing" || part == "loop" {
+			return new_ir(c, base.span, T_BOOLEAN, IR_Field{base = base, name = part})
+		}
+		if part == "at" || part == "length" || part == "speed" {
+			return new_ir(c, base.span, T_NUMBER, IR_Field{base = base, name = part})
+		}
+		note(c, .Bad_Field, span, part, "a picture", "A picture has a width and a height, and a movie also `playing`, `at`, `length`, `speed` and `loop`.", fix(c, span, "width"))
 		return error_ir(c, base.span)
 	case .Record:
 		if field, found := shape_field(c.types, item.a, part); found {

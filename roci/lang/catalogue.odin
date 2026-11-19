@@ -153,6 +153,7 @@ Message_Id :: enum u8 {
 	Font_Licence,
 	Image_Missing,
 	Image_Unreadable,
+	Movie_Unreadable,
 	Sound_Missing,
 	Sound_Unreadable,
 	Soundfont_Unreadable,
@@ -579,6 +580,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Image_Unreadable = {.Error, "`{a}` is not a picture I can read",
 		"I read PNG, JPEG, BMP, TGA and QOI pictures. `{a}` is another kind of file, or it is damaged. The picture draws nothing, and the sketch carries on.",
 		"Load one I can read:", "{d}"},
+	.Movie_Unreadable = {.Error, "`{a}` is not a movie I can read",
+		"I play MPEG-1 movies, `.mpg` files, and `{a}` is another kind of file, or it is damaged. Only the picture is played for now, not the sound. The movie draws nothing, and the sketch carries on. ffmpeg can make one from any video: `ffmpeg -i in.mp4 -an -c:v mpeg1video out.mpg`.",
+		"Load one I can read:", "{d}"},
 	.Sound_Missing = {.Error, "I could not load a sound called `{a}`",
 		"{b} The sound plays nothing, and the sketch carries on.",
 		"Load one that is there:", "{d}"},
@@ -773,7 +777,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Tcp_Port_Busy, .Tcp_Host_Unknown, .Tcp_Unknown_Label, .Tcp_Refused, .Websocket_Address_Bad, .Websocket_Unknown_Label, .Websocket_Refused, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Webcam_Unavailable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Movie_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Tcp_Port_Busy, .Tcp_Host_Unknown, .Tcp_Unknown_Label, .Tcp_Refused, .Websocket_Address_Bad, .Websocket_Unknown_Label, .Websocket_Refused, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Webcam_Unavailable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

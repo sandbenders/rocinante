@@ -22,6 +22,12 @@ test_a_movie_opens_with_its_size_and_length :: proc(t: ^testing.T) {
 	pixels, fresh := movie_picture(movie)
 	testing.expect(t, fresh)
 	testing.expect_value(t, len(pixels), 160 * 96 * 4)
+	for i := 3; i < len(pixels); i += 4 {
+		if pixels[i] != 255 {
+			testing.expect_value(t, pixels[i], 255) // every picture is solid
+			break
+		}
+	}
 	_, again := movie_picture(movie)
 	testing.expect(t, !again)
 	testing.expect_value(t, movie_time(movie), 0)

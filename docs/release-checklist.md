@@ -100,6 +100,7 @@ These systems were last tried in full before text, shaders, canvases, export and
 **5. Tests that need a real system**
 - [ ] IME composition (above), clipboard, a real touch screen (`examples/touch` with several fingers, numbered in order, never reused), a stylus if there is one.
 - [ ] Gamepads on each system: `output/roci run` a sketch that prints `gamepads` and what each pad's buttons, sticks, triggers and d-pad read as (a PlayStation, an Xbox and a generic pad if there are any); a pad plugged in and out while it runs; `rumble 100 for 1 player n` shakes the pads that can (the Xbox Series X pad did not on macOS, 2026-11-16); unmapped devices appear in `joysticks`.
+- [ ] Movies on each system (the C decoder is built from the same file everywhere and has been run on a Mac only): `output/roci run examples/movie` plays a Mandelbrot zoom as a picture, in a circle and in a bar, space pauses it, R rewinds it and a click on the bar puts it there; on both phones too.
 - [ ] `roci/folder`'s tests in a real git clone (they need a repository), and the `roci/movies` tests (they start a process).
 
 **6. Sound** (all five desktop systems, and the phones in Phase 8)

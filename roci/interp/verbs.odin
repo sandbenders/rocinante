@@ -771,14 +771,30 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.shear(n(a, 0), n(a, 1))
 
 	case .Forward:
-		if call.shape == 1 {
+		if call.shape >= 1 {
 			if by, ok := option_value(it, call.options, "by"); ok {
-				roci.forward_sound(as_sound(a[0]), as_number(by))
+				if call.shape == 2 {
+					roci.movie_forward(movie_handle(a[0]), as_number(by))
+				} else {
+					roci.forward_sound(as_sound(a[0]), as_number(by))
+				}
 			}
 		} else {
 			roci.forward(n(a, 0))
 		}
 	case .Play, .Loop:
+		if call.shape == 1 {
+			movie := movie_handle(a[0])
+			if v, ok := option_value(it, call.options, "speed"); ok {
+				roci.movie_set(movie, speed = as_number(v))
+			}
+			if code == .Play {
+				roci.movie_play(movie)
+			} else {
+				roci.movie_loop(movie)
+			}
+			break
+		}
 		volume, pan, speed, note, pitch, seconds := sound_options(it, call.options)
 		if code == .Play {
 			roci.play(as_sound(a[0]), volume, pan, speed, note, pitch, seconds)
@@ -786,7 +802,9 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			roci.loop(as_sound(a[0]), volume, pan, speed, note, pitch, seconds)
 		}
 	case .Pause:
-		if v, ok := option_value(it, call.options, "note"); ok {
+		if call.shape == 1 {
+			roci.movie_pause(movie_handle(a[0]))
+		} else if v, ok := option_value(it, call.options, "note"); ok {
 			roci.pause(as_sound(a[0]), as_number(v))
 		} else {
 			roci.pause(as_sound(a[0]))
@@ -834,7 +852,11 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		if v, ok := option_value(it, call.options, "by"); ok {
 			by = as_number(v)
 		}
-		roci.rewind(as_sound(a[0]), by)
+		if call.shape == 1 {
+			roci.movie_rewind(movie_handle(a[0]), by)
+		} else {
+			roci.rewind(as_sound(a[0]), by)
+		}
 	case .Back:
 		roci.back(n(a, 0))
 	case .Left:

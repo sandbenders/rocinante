@@ -1,0 +1,8 @@
+── `broken.mpg` is not a movie I can read ────────────── sketch.roci:1:8
+
+1 │ clip = load "broken.mpg"
+  │        ^^^^^^^^^^^^^^^^^
+
+I play MPEG-1 movies, `.mpg` files, and `broken.mpg` is another kind of file, or it is damaged. Only the picture is played for now, not the sound. The movie draws nothing, and the sketch carries on. ffmpeg can make one from any video: `ffmpeg -i in.mp4 -an -c:v mpeg1video out.mpg`.
+
+Load one I can read:  clip = load "broken.mpg"

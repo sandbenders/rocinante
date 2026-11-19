@@ -42,6 +42,7 @@ ABI_NOT_IN_C := [?]Abi_Skip{
 	{"model", 0, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
 	{"model", 1, "takes a file name; C has roci_load_model, roci_model and roci_model_v"},
 	{"forward", 1, "moves a sound by the seconds after `by`; C has roci_forward_sound"},
+	{"forward", 2, "moves a movie by the seconds after `by`; C has roci_movie_forward"},
 	{"synth", 1, "takes a file found in the assets; C has roci_soundfont and roci_soundfont_named, which read the file by its path"},
 	{"bands", 0, "gives a list; C has roci_bands, which writes the numbers into the caller's array"},
 	{"bands", 1, "gives a list; C has roci_bands, which writes the numbers into the caller's array"},
@@ -131,7 +132,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"tab", "roci_tab_begin roci_tab_end", ""},
 	{"menu", "roci_menu_begin roci_menu_end", ""},
 	{"list", "roci_list", ""},
-	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent roci_set_sound_at roci_set_sound_volume roci_set_sound_pan roci_set_sound_speed roci_set_sound_loop roci_set_sound_pitch roci_set_sound_wheels roci_play_note", ""},
+	{"set", "roci_set_title roci_set_size roci_set_position roci_set_window_flag roci_set_cursor roci_set_parent roci_movie_set_at roci_movie_set_speed roci_movie_set_loop roci_set_sound_at roci_set_sound_volume roci_set_sound_pan roci_set_sound_speed roci_set_sound_loop roci_set_sound_pitch roci_set_sound_wheels roci_play_note", ""},
 	{"osc send", "roci_osc_send roci_osc_send_bundle", ""},
 	{"udp send", "roci_udp_send roci_udp_listen", ""},
 	{"tcp connect", "roci_tcp_connect", ""},
@@ -369,6 +370,10 @@ abi_table_init :: proc "contextless" () {
 	{"roci_loop", "loop", 0, typeid_of(type_of(abi_loop)), "", ""},
 	{"roci_pause", "pause", 0, typeid_of(type_of(abi_pause)), "", ""},
 	{"roci_rewind", "rewind", 0, typeid_of(type_of(abi_rewind)), "", ""},
+	{"roci_movie_play", "play", 1, typeid_of(type_of(abi_movie_play)), "", ""},
+	{"roci_movie_loop", "loop", 1, typeid_of(type_of(abi_movie_loop)), "", ""},
+	{"roci_movie_pause", "pause", 1, typeid_of(type_of(abi_movie_pause)), "", ""},
+	{"roci_movie_rewind", "rewind", 1, typeid_of(type_of(abi_movie_rewind)), "", ""},
 	{"roci_level", "level", 0, typeid_of(type_of(abi_level)), "", ""},
 	{"roci_synth", "synth", 0, typeid_of(type_of(abi_synth)), "", ""},
 	{"roci_midi_control", "midi control", 0, typeid_of(type_of(abi_midi_control)), "", ""},
@@ -399,6 +404,7 @@ abi_table_init :: proc "contextless" () {
 	append(&all, ..entries[:])
 	abi_window_group(&all)
 	abi_pictures_group(&all)
+	abi_movies_group(&all)
 	abi_collide_group(&all)
 	abi_ui_group(&all)
 	abi_misc_group(&all)

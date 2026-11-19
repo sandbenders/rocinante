@@ -400,7 +400,7 @@ void roci_push(void);
 /* Puts back what the matching roci_push saved. Gives 0 for a pop without a push. */
 int roci_pop(void);
 
-/* Walks the turtle forward, drawing a line while its pen is down; with a sound, moves it ahead: `forward rain by 10` (seconds). */
+/* Walks the turtle forward, drawing a line while its pen is down; with a sound or a movie, moves it ahead: `forward rain by 10` (seconds). */
 void roci_forward(double distance);
 
 /* Walks the turtle backwards, without turning it round. */
@@ -667,17 +667,29 @@ void roci_down(double degrees);
 /* Rolls the turtle in space about the way it faces, its top going to the right, in degrees. It needs `turtle space` first. */
 void roci_roll(double degrees);
 
-/* Plays a sound once, from where it is, or from its start when it had come to its end: `play click`. `volume` is 0 to 100, `pan` -100 (left) to 100 (right) and `speed` 1 as recorded. */
+/* Plays a sound once, from where it is, or from its start when it had come to its end: `play click`. `volume` is 0 to 100, `pan` -100 (left) to 100 (right) and `speed` 1 as recorded. A movie plays the same way, `play clip speed 2`. */
 void roci_play(roci_sound_id sound);
 
-/* Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish. */
+/* Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish. A movie loops the same way: `loop clip`. */
 void roci_loop(roci_sound_id sound);
 
-/* Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade out, all of them or one: `pause piano note 60`. */
+/* Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade out, all of them or one: `pause piano note 60`. A movie stops on its picture: `pause clip`. */
 void roci_pause(roci_sound_id sound);
 
-/* Puts a sound back to its start, or some seconds back: `rewind rain by 10`. A sound that plays goes on playing. */
+/* Puts a sound or a movie back to its start, or some seconds back: `rewind rain by 10`. One that plays goes on playing. */
 void roci_rewind(roci_sound_id sound);
+
+/* Plays a sound once, from where it is, or from its start when it had come to its end: `play click`. `volume` is 0 to 100, `pan` -100 (left) to 100 (right) and `speed` 1 as recorded. A movie plays the same way, `play clip speed 2`. */
+void roci_movie_play(roci_image_id movie);
+
+/* Plays a sound over and over, from where it is: `loop rain volume 40`. `set rain loop false` lets it finish. A movie loops the same way: `loop clip`. */
+void roci_movie_loop(roci_image_id movie);
+
+/* Holds a sound where it is; `play` or `loop` goes on from there. An instrument's notes fade out, all of them or one: `pause piano note 60`. A movie stops on its picture: `pause clip`. */
+void roci_movie_pause(roci_image_id movie);
+
+/* Puts a sound or a movie back to its start, or some seconds back: `rewind rain by 10`. One that plays goes on playing. */
+void roci_movie_rewind(roci_image_id movie);
 
 /* How loud everything that plays is now, 0 (silent) to 100: `circle at 200 200 radius (level * 2)`. `level rain` is one sound, `level mic` the microphone. */
 double roci_level(void);
@@ -972,6 +984,45 @@ int roci_add_font(const char *name, const unsigned char *bytes, int length, int 
 
 /* Whether a font of this name is known. */
 int roci_has_font(const char *name);
+
+/* Takes the bytes of an MPEG-1 movie (a .mpg file) and gives the number that stands for it, showing its first picture and at rest, or 0 when they are no movie. Draw it with the picture roci_movie_frame gives; only the picture is played, a movie has no sound yet. */
+roci_image_id roci_load_movie(const unsigned char *bytes, int length);
+
+/* Reads an MPEG-1 movie file and gives its number, or 0 when it cannot be read. */
+roci_image_id roci_load_movie_file(const char *path);
+
+/* The picture of a movie at this moment, to draw or fill with: it changes as the movie plays, and is the same all through a frame. A number that is no movie is given back as it is. */
+roci_image_id roci_movie_frame(roci_image_id movie);
+
+/* Puts a movie some seconds back from where it is (not before its start). */
+void roci_movie_rewind_by(roci_image_id movie, double seconds);
+
+/* Puts a movie some seconds on from where it is (not past its end). */
+void roci_movie_forward(roci_image_id movie, double seconds);
+
+/* Puts a movie at a time, in seconds from its start. */
+void roci_movie_set_at(roci_image_id movie, double seconds);
+
+/* How fast a movie plays, 1 as filmed; 0 or less holds the picture without pausing. */
+void roci_movie_set_speed(roci_image_id movie, double speed);
+
+/* Whether a movie starts again at its end (1) or stops there (0). */
+void roci_movie_set_loop(roci_image_id movie, int loop);
+
+/* 1 while a movie plays; 0 when it is paused, has ended or is no movie. */
+int roci_movie_playing(roci_image_id movie);
+
+/* 1 when a movie starts again at its end. */
+int roci_movie_looping(roci_image_id movie);
+
+/* Where a movie is, in seconds from its start; 0 for a number that is no movie. */
+double roci_movie_at(roci_image_id movie);
+
+/* How long a movie is, in seconds. */
+double roci_movie_length(roci_image_id movie);
+
+/* How fast a movie plays, 1 as filmed. */
+double roci_movie_speed(roci_image_id movie);
 
 /* Whether two shapes touch, edges included. A flat shape and a shape in space never touch. */
 int roci_touching(const roci_shape *a, const roci_shape *b);

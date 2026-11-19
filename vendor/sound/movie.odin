@@ -24,7 +24,7 @@ movie_open :: proc(data: []byte) -> (movie: Movie, ok: bool) {
 	}
 	width, height: c.int
 	duration, rate: f64
-	handle := roci_movie_open(raw_data(data), c.size_t(len(data)), &width, &height, &duration, &rate)
+	handle := roci_mpeg_open(raw_data(data), c.size_t(len(data)), &width, &height, &duration, &rate)
 	if handle == nil {
 		return {}, false
 	}
@@ -34,7 +34,7 @@ movie_open :: proc(data: []byte) -> (movie: Movie, ok: bool) {
 // Lets go of a movie.
 movie_close :: proc(movie: ^Movie) {
 	if movie.handle != nil {
-		roci_movie_close(movie.handle)
+		roci_mpeg_close(movie.handle)
 	}
 	movie^ = {}
 }
@@ -42,32 +42,32 @@ movie_close :: proc(movie: ^Movie) {
 // Moves a movie on by `seconds`, decoding the pictures that fall due.
 movie_advance :: proc(movie: Movie, seconds: f64) {
 	if movie.handle != nil && seconds > 0 {
-		roci_movie_advance(movie.handle, seconds)
+		roci_mpeg_advance(movie.handle, seconds)
 	}
 }
 
 // Puts a movie at a time in seconds (clamped to the movie), on the picture there.
 movie_seek :: proc(movie: Movie, time: f64) {
 	if movie.handle != nil {
-		roci_movie_seek(movie.handle, clamp(time, 0, movie.duration))
+		roci_mpeg_seek(movie.handle, clamp(time, 0, movie.duration))
 	}
 }
 
 // Whether a movie starts again when it ends.
 movie_set_loop :: proc(movie: Movie, on: bool) {
 	if movie.handle != nil {
-		roci_movie_loop(movie.handle, 1 if on else 0)
+		roci_mpeg_loop(movie.handle, 1 if on else 0)
 	}
 }
 
 // Where a movie is, in seconds.
 movie_time :: proc(movie: Movie) -> f64 {
-	return roci_movie_time(movie.handle) if movie.handle != nil else 0
+	return roci_mpeg_time(movie.handle) if movie.handle != nil else 0
 }
 
 // Whether a movie has played to its end (never true for one that loops).
 movie_ended :: proc(movie: Movie) -> bool {
-	return roci_movie_ended(movie.handle) != 0 if movie.handle != nil else false
+	return roci_mpeg_ended(movie.handle) != 0 if movie.handle != nil else false
 }
 
 // The newest picture, `width * height * 4` bytes, when one was made since the last call. The bytes
@@ -77,6 +77,6 @@ movie_picture :: proc(movie: Movie) -> (pixels: []byte, fresh: bool) {
 		return nil, false
 	}
 	bytes: [^]u8
-	made := roci_movie_picture(movie.handle, &bytes) != 0
+	made := roci_mpeg_picture(movie.handle, &bytes) != 0
 	return bytes[:movie.width * movie.height * 4], made
 }

@@ -156,7 +156,13 @@ read_picture_file :: proc(found: Picture_Entry) -> (entry: Picture_Entry) {
 		entry.state = .Unreadable
 		return
 	}
-	id, ok := roci.add_image(bytes)
+	id: roci.Image
+	ok: bool
+	if is_movie_file(entry.path) {
+		id, ok = roci.add_movie(bytes)
+	} else {
+		id, ok = roci.add_image(bytes)
+	}
 	if !ok {
 		entry.state = .Unreadable
 		return
@@ -212,6 +218,17 @@ say_picture_problem :: proc(it: ^Interp, name: string, entry: Picture_Entry, spa
 	case .Ambiguous:
 		fail(it, .Image_Missing, span, name, strings.concatenate({"Two or more files have that name: ", entry.others, ". Say which one you mean with its folder."}, context.temp_allocator), "", strings.concatenate({"photo = load \"", entry.suggest, "\""}, context.temp_allocator))
 	case .Unreadable:
-		fail(it, .Image_Unreadable, span, name, "", "", example)
+		if is_movie_file(name) {
+			fail(it, .Movie_Unreadable, span, name, "", "", strings.concatenate({"clip = load \"", name, "\""}, context.temp_allocator))
+		} else {
+			fail(it, .Image_Unreadable, span, name, "", "", example)
+		}
 	}
+}
+
+// Whether a file is read as a movie, by what its name ends with (in any case): MPEG-1 program streams.
+@(private)
+is_movie_file :: proc(path: string) -> bool {
+	lower := strings.to_lower(path, context.temp_allocator)
+	return strings.has_suffix(lower, ".mpg") || strings.has_suffix(lower, ".mpeg")
 }
