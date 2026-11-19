@@ -29,8 +29,11 @@ vendor:stb      Public-Domain
 vendor:portmidi MIT
 # The sound decoders: vendor/sound/c/roci_sound.c (ours, 0BSD) built with miniaudio's decoders (MIT-0 or public domain) and
 # stb_vorbis (MIT or public domain) from Odin's own vendor folder (vendor:miniaudio and vendor:stb above), and libopus 1.6.1
-# (Xiph.Org, BSD-3-Clause by its COPYING, checked 2026-11-16), fetched by tools/sound-libs.sh and built into the same library.
-vendor/sound    MIT-0
+# (Xiph.Org, BSD-3-Clause by its COPYING, checked 2026-11-16), fetched by tools/sound-libs.sh and built into the same library,
+# and pl_mpeg (MPEG-1 movies, Dominic Szablewski, MIT by its SPDX line, checked 2026-11-19), vendor/sound/c/pl_mpeg.h copied
+# from commit c871f2be022ece7ef4f64230b4fb8e1fb9eb6023 of github.com/phoboslab/pl_mpeg (2025-12-30, sha256 3a8cb30c83c2a1147719c30fe0c8b93da2987aa43140077c575b39aaa75fc2c9).
+# The strictest of these is MIT. pl_mpeg has no LICENSE file: its header says `SPDX-License-Identifier: MIT` and names its author, and its README says "MIT licensed" (read 2026-11-19); the header ships as it is.
+vendor/sound    MIT
 # sancho: rocinante's own PNG writer and deflate, published on their own; its LICENSE is 0BSD (checked 2026-10-30).
 vendor/sancho   0BSD
 # shaderc (Google, wraps glslang) and SPIRV-Cross, translating a sketch's own shaders while it runs: Apache-2.0 both, by their LICENSE files

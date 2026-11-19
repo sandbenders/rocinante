@@ -35,6 +35,7 @@
 #include "roci_aiff.h"
 #include "roci_opus.h"
 #include "roci_aac.h"
+#include "roci_movie.h"
 #ifdef __APPLE__
 #include "roci_apple.h"
 #endif

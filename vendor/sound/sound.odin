@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: 0BSD
 //
-// The sound file decoders: c/roci_sound.c, which holds miniaudio's decoders (WAV, FLAC, MP3;
+// The sound file decoders (and the movie decoder, movie.odin): c/roci_sound.c, which holds miniaudio's decoders (WAV, FLAC, MP3;
 // MIT-0 or public domain) and stb_vorbis (Ogg Vorbis; MIT or public domain) from Odin's own
 // vendor folder, built by tools/sound-libs.sh into .cache/sound.
 package sound
@@ -37,6 +37,16 @@ foreign lib {
 	roci_stream_read :: proc(stream: rawptr, out: [^]f32, frames: u64) -> u64 ---
 	roci_stream_seek :: proc(stream: rawptr, frame: u64) -> c.int ---
 	roci_stream_close :: proc(stream: rawptr) ---
+
+	// MPEG-1 movies (c/roci_movie.h, over pl_mpeg); movie.odin wraps them.
+	roci_movie_open :: proc(data: rawptr, size: c.size_t, width, height: ^c.int, duration, rate: ^f64) -> rawptr ---
+	roci_movie_close :: proc(movie: rawptr) ---
+	roci_movie_advance :: proc(movie: rawptr, seconds: f64) ---
+	roci_movie_seek :: proc(movie: rawptr, time: f64) -> c.int ---
+	roci_movie_loop :: proc(movie: rawptr, on: c.int) ---
+	roci_movie_time :: proc(movie: rawptr) -> f64 ---
+	roci_movie_ended :: proc(movie: rawptr) -> c.int ---
+	roci_movie_picture :: proc(movie: rawptr, pixels: ^[^]u8) -> c.int ---
 }
 
 // Decodes a file into interleaved frames of `channels` floats at `rate`, copied into memory of
