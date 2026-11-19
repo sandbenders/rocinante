@@ -737,3 +737,71 @@ lines :: proc(text: string) -> ^List(string) {
 	}
 	return out
 }
+
+// ---- recording ----
+
+@(private)
+output_path :: proc(name: string) -> string {
+	if strings.has_prefix(name, "/") || (len(name) > 2 && name[1] == ':') {
+		return name
+	}
+	return strings.concatenate({"output/", name}, context.temp_allocator)
+}
+
+// `record "take.apng"`: the current window into a movie.
+record :: proc(name: string) {
+	if ok, why := roci.record(output_path(name)); !ok {
+		say_once(name, fmt.tprintf("I could not record into `%s`. %s", name, why))
+	}
+}
+
+// `record speakers "take.wav"`, `record sound "x.wav"`, `record mic "x.wav"`.
+record_sound :: proc(s: roci.Sound, name: string) {
+	if ok, why := roci.record_sound(s, output_path(name)); !ok {
+		say_once(name, fmt.tprintf("I could not record into `%s`. %s", name, why))
+	}
+}
+
+// Says what became of the recordings that ended since the last frame.
+say_record_results :: proc() {
+	for result in roci.take_record_results() {
+		if result.ok {
+			text := fmt.tprintf("recorded %d frames into %s", result.frames, result.path)
+			if result.seconds > 0 {
+				text = fmt.tprintf("recorded %.1f seconds of sound into %s", result.seconds, result.path)
+			}
+			if result.why != "" {
+				text = fmt.tprintf("%s. %s", text, result.why)
+			}
+			fmt.eprintfln("%s", text)
+			continue
+		}
+		say_once(result.path, fmt.tprintf("I could not record into `%s`. %s", result.path, result.why))
+	}
+}
+
+// The list of bools a pad's extra buttons are.
+pad_extra :: proc(pad: roci.Pad_State) -> ^List(bool) {
+	out := new_list(bool)
+	for on in pad.extra {
+		add(on, out)
+	}
+	return out
+}
+
+// The list of bools or numbers a joystick's axes or buttons are.
+joystick_axes :: proc(j: roci.Joystick_State) -> ^List(f64) {
+	out := new_list(f64)
+	for a in j.axes {
+		add(a, out)
+	}
+	return out
+}
+
+joystick_buttons :: proc(j: roci.Joystick_State) -> ^List(bool) {
+	out := new_list(bool)
+	for b in j.buttons {
+		add(b, out)
+	}
+	return out
+}

@@ -5,6 +5,7 @@
 // a picture or a list of colors.
 package codegen
 
+import "../data"
 import "../lang"
 import "core:fmt"
 import "core:strings"
@@ -150,7 +151,19 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 			}
 			return fmt.aprintf("rt.load_sound(%s, %s)", args[0], buffer, allocator = context.temp_allocator), true, true
 		}
-		refuse(g, e.span, "`load` of a data file")
+		if name, is_text := c.args[0].kind.(lang.IR_Text); is_text && data.format_of(name.value) != .None {
+			convert, ok := datum_proc(g, e.type, e.span)
+			if !ok {
+				return "", false, true
+			}
+			g.uses_data = true
+			sheet := `""`
+			if o := option(c.options, "sheet"); o != nil {
+				sheet = expr(g, o.args[0])
+			}
+			return fmt.aprintf("rt.load_data(%s, %s, %s)", args[0], sheet, convert, allocator = context.temp_allocator), true, true
+		}
+		refuse(g, e.span, "`load` of a file whose kind it cannot tell from the name")
 		return "", false, true
 	case "font":
 		size := "0.0"
@@ -393,6 +406,16 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 	case "copy":
 		made, _ := copy_value(g, c.args[0].type, args[0], e.span)
 		return made, true, true
+	case "record":
+		if c.shape == 1 {
+			return fmt.aprintf("rt.record_sound(%s, %s)", args[0], args[1], allocator = context.temp_allocator), false, true
+		}
+		return fmt.aprintf("rt.record(%s)", args[0], allocator = context.temp_allocator), false, true
+	case "no record":
+		if c.shape == 1 {
+			return fmt.aprintf("roci.no_record_sound(%s)", args[0], allocator = context.temp_allocator), false, true
+		}
+		return "roci.no_record()", false, true
 	// ---- scenes ----
 	case "go":
 		return fmt.aprintf("rt.go(%s)", args[0], allocator = context.temp_allocator), false, true

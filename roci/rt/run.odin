@@ -134,6 +134,7 @@ execute :: proc(run: Run, setup: proc(), roots: proc(), hook: proc(w: roci.Windo
 @(private)
 end_of_frame :: proc() {
 	scene_apply()
+	say_record_results()
 	if collector_roots != nil {
 		maybe_collect(all_roots)
 	}
@@ -144,6 +145,7 @@ end_of_frame :: proc() {
 all_roots :: proc() {
 	collector_roots()
 	mark_tweens()
+	mark_data()
 }
 
 // The picture of the first window, as a PNG file. 0 when it was made, 3 when it was not.

@@ -170,6 +170,13 @@ more_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (te
 		}
 		return shape_call(procedure, {args[0]}, look, ""), false
 	case "save":
+		if c.shape == 1 {
+			convert, ok := to_datum_proc(g, c.args[0].type, e.span)
+			if !ok {
+				return "", false
+			}
+			return fmt.aprintf("rt.save_data(%s(%s), %s)", convert, args[0], args[1], allocator = context.temp_allocator), false
+		}
 		return fmt.aprintf("rt.save(%s)", args[0], allocator = context.temp_allocator), false
 	case "remove":
 		if from := option(c.options, "from"); from != nil {

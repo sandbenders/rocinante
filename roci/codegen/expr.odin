@@ -148,7 +148,8 @@ builtin :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 	case "pressed": return "roci.pressed()"
 	case "anywhere": return "roci.anywhere()"
 	case "webcam":   return "roci.webcam()"
-	case "screens":  return builtin_list(g, e, name)
+	case "screens", "joysticks", "gamepads", "touches": return builtin_list(g, e, name)
+	case "gamepad": return builtin_record(g, e, name)
 	case "turtle", "midi", "osc", "packet", "received", "finger", "scene": return builtin_record(g, e, name)
 	case "mic":      return "roci.mic()"
 	case "speakers": return "roci.the_speakers()"
@@ -435,6 +436,8 @@ builtin_record :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 			fmt.sbprintf(&b, "\tstate := roci.turtle_state()\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"pos", "state.pos"}, {"angle", "state.angle"}, {"down", "state.down"}}), trace_arg(g, record))
 		case "scene":
 			fmt.sbprintf(&b, "\tname, seconds, frames := rt.scene_info()\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"name", "name"}, {"time", "seconds"}, {"frame", "f64(frames)"}}), trace_arg(g, record))
+		case "gamepad":
+			fmt.sbprintf(&b, "\tp, ok := roci.gamepad()\n\tif !ok {{ p = {{}} }}\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"connected", "ok"}, {"bottom", "p.bottom"}, {"right", "p.right"}, {"left", "p.left"}, {"top", "p.top"}, {"leftstick", "p.left_stick"}, {"rightstick", "p.right_stick"}, {"dpad", "p.dpad"}, {"lefttrigger", "p.left_trigger"}, {"righttrigger", "p.right_trigger"}, {"leftstickpress", "p.left_stick_press"}, {"rightstickpress", "p.right_stick_press"}, {"leftshoulder", "p.left_shoulder"}, {"rightshoulder", "p.right_shoulder"}, {"start", "p.start"}, {"back", "p.back"}, {"home", "p.home"}, {"extra", "rt.pad_extra(p)"}}), trace_arg(g, record))
 		case "midi":
 			fmt.sbprintf(&b, "\tm := rt.happening.midi\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"note", "m.note"}, {"velocity", "m.velocity"}, {"channel", "m.channel"}, {"control", "m.control"}, {"value", "m.value"}, {"bend", "m.bend"}, {"program", "m.program"}, {"pressure", "m.pressure"}}), trace_arg(g, record))
 		case "osc":
@@ -465,6 +468,12 @@ builtin_list :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 		b := strings.builder_make(context.temp_allocator)
 		fmt.sbprintf(&b, "%s :: proc() -> %s {{\n\tout := rt.new_list(%s, %s)\n", helper, list_type, item_type, item_marker(g, element, item_type))
 		switch name {
+		case "gamepads":
+			fmt.sbprintf(&b, "\tfor p in roci.gamepads() {{\n\t\tok := true\n\t\t_ = ok\n\t\trt.add(rt.new_record(%s{{%s}}%s), out)\n\t}}\n", record, record_fields(g, element, {{"connected", "ok"}, {"bottom", "p.bottom"}, {"right", "p.right"}, {"left", "p.left"}, {"top", "p.top"}, {"leftstick", "p.left_stick"}, {"rightstick", "p.right_stick"}, {"dpad", "p.dpad"}, {"lefttrigger", "p.left_trigger"}, {"righttrigger", "p.right_trigger"}, {"leftstickpress", "p.left_stick_press"}, {"rightstickpress", "p.right_stick_press"}, {"leftshoulder", "p.left_shoulder"}, {"rightshoulder", "p.right_shoulder"}, {"start", "p.start"}, {"back", "p.back"}, {"home", "p.home"}, {"extra", "rt.pad_extra(p)"}}), trace_arg(g, record))
+		case "joysticks":
+			fmt.sbprintf(&b, "\tfor j in roci.joysticks() {{\n\t\trt.add(rt.new_record(%s{{%s}}%s), out)\n\t}}\n", record, record_fields(g, element, {{"id", "f64(j.id)"}, {"name", "rt.keep(j.name)"}, {"axes", "rt.joystick_axes(j)"}, {"buttons", "rt.joystick_buttons(j)"}}), trace_arg(g, record))
+		case "touches":
+			fmt.sbprintf(&b, "\tfor f in roci.touches() {{\n\t\trt.add(rt.new_record(%s{{%s}}%s), out)\n\t}}\n", record, record_fields(g, element, {{"id", "f64(f.id)"}, {"pos", "f.pos"}, {"start", "f.start"}, {"pressure", "f.pressure"}}), trace_arg(g, record))
 		case "screens":
 			fmt.sbprintf(&b, "\tfor s in roci.screens() {{\n\t\trt.add(rt.new_record(%s{{%s}}%s), out)\n\t}}\n", record, record_fields(g, element, {{"name", "rt.keep(s.name)"}, {"pos", "[2]f64{f64(s.x), f64(s.y)}"}, {"width", "f64(s.width)"}, {"height", "f64(s.height)"}, {"density", "s.density"}, {"refresh", "s.refresh"}, {"main", "s.main"}}), trace_arg(g, record))
 		}
