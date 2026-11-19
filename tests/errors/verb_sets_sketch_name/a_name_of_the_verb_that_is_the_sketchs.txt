@@ -3,7 +3,7 @@
 3 │   speed = n * 2
   │   ^^^^^
 
-`speed` is a name of the sketch (line 1), and here, before reading it, `swim` gives it a new value, which every other verb and the sketch see. If you wanted a name of the verb's own, pick one the sketch does not use. If changing the sketch's `speed` is the point, this hint is only a reminder.
+`speed` is a name of the sketch (line 1), and here, before reading it, `swim` gives it a new value, which every other verb and the sketch see. If you wanted a name of the verb's own, pick one the sketch does not use. If changing the sketch's `speed` is the point, this hint is only a reminder, and a value that verbs step is better kept as a field of a record, such as `state.speed`, which this hint leaves alone.
 
 With a name of the verb's own:
     learn swim n [

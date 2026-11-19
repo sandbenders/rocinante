@@ -864,13 +864,13 @@ renamed_in :: proc(text, word, with: string) -> string {
 	return strings.to_string(b)
 }
 
-// Whether a value is an empty list: a reset (`ships = []`) is the point of a verb that clears a name of
-// the sketch, where a number or anything worked out, even from a fixed number (`best = 999`), is what a
-// name of the verb's own looks like.
+// Whether a value is an empty list or a new table (`ships = []`, `cells = table`): a reset is the point of a
+// verb that clears or remakes a name of the sketch, where a number or anything worked out, even from a
+// fixed number (`best = 999`), is what a name of the verb's own looks like.
 @(private)
 is_empty_literal :: proc(c: ^Checker, span: Span) -> bool {
 	text := span_text(c.src, span)
-	return text == "[]" || (strings.has_prefix(text, "[") && strings.has_suffix(text, "]") && len(strings.trim_space(text[1:len(text) - 1])) == 0)
+	return text == "[]" || text == "table" || (strings.has_prefix(text, "[") && strings.has_suffix(text, "]") && len(strings.trim_space(text[1:len(text) - 1])) == 0)
 }
 
 @(private)

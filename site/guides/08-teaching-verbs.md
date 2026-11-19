@@ -79,6 +79,8 @@ draw [
 
 Names given a value inside a verb belong to the verb; names of the sketch it can read and change.
 
+A verb that gives a value to a name the sketch also uses changes the sketch's value, for every verb and for the sketch, even when the line looks like a name of the verb's own. `roci check` says so with a hint when the verb then reads the name. When a verb steps something the sketch keeps (a speed, a score, where the drain is), keep it as the fields of a record: `drain.swirl = drain.swirl + 1` changes the record the sketch holds and says what it means, and the hint leaves it alone. A name that only the verb uses is already the verb's own.
+
 ## A verb that uses itself (recursion)
 
 A verb may call itself, which is how trees and fractals are drawn. It needs a way to stop:

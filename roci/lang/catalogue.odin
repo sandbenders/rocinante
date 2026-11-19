@@ -544,7 +544,7 @@ CATALOGUE := [Message_Id]Entry{
 		"`{a}` and `{b}` are one list or record, so changing it through `{a}` changes it through `{b}` too. If you wanted a separate one, copy it where it is made.",
 		"Write:", "{d}"},
 	.Verb_Sets_Sketch_Name = {.Hint, "`{c}` changes the sketch's `{a}`",
-		"`{a}` is a name of the sketch (line {b}), and here, before reading it, `{c}` gives it a new value, which every other verb and the sketch see. If you wanted a name of the verb's own, pick one the sketch does not use. If changing the sketch's `{a}` is the point, this hint is only a reminder.",
+		"`{a}` is a name of the sketch (line {b}), and here, before reading it, `{c}` gives it a new value, which every other verb and the sketch see. If you wanted a name of the verb's own, pick one the sketch does not use. If changing the sketch's `{a}` is the point, this hint is only a reminder, and a value that verbs step is better kept as a field of a record, such as `state.{a}`, which this hint leaves alone.",
 		"With a name of the verb's own:", "{d}"},
 	.Name_Hides_Verb = {.Error, "`{a}` is your name here, not the verb",
 		"`{a}` is a name of yours (line {b}), so wherever a value is due it means your value and not the verb of the same name, and what follows it is no argument of the verb. If you meant the verb, give your name another one.",

@@ -1865,6 +1865,10 @@ test_a_verb_that_gives_a_sketch_name_a_value_and_reads_it_gets_a_hint :: proc(t:
 	expect_errors(t, "score = 0\nlearn bump n [\n  score = score + n\n]\nbump 2", {})
 	// a name only the verb has is its own
 	expect_errors(t, "learn swim n [\n  speed = n * 2\n  give speed + 1\n]\nprint (swim 4)", {})
+	// a new table is a remade container, as an emptied list is
+	expect_errors(t, "cells = table\nlearn remake [\n  cells = table\n  put cells \"a\" 1\n]\nremake", {})
+	// a value a verb steps as the field of a record is the way the hint points to, and says nothing
+	expect_errors(t, "state = { speed: 3 }\nlearn swim n [\n  state.speed = n * 2\n  give state.speed + 1\n]\nprint (swim 4)", {})
 }
 
 @(test)
