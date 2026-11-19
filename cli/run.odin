@@ -19,6 +19,7 @@ import "core:strings"
 
 RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [--seed N] [--errors json]
              [--press key@frame] [--hold key@from-to] [--stats] [--no-vsync]
+             [--compile [--debug] [--target ios|android]]
 
   file        the sketch to run; sketch.roci when left out
   --frames N  run N frames with no window, then stop
@@ -37,6 +38,13 @@ RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [
               to artifacts/log.json in the sketch's folder (with --frames there is no window, so no box)
   --no-vsync  with a window, do not wait for the display, so the frame rate is what the computer can
               do and not what the screen allows (it goes with --stats)
+  --compile   compile the sketch to a program for this computer, in the artifacts folder of the
+              sketch's folder, and run it in the terminal instead of interpreting it (it does not
+              reload when the file changes). It needs Odin, the release this rocinante is pinned to
+  --debug     with --compile, build with debug information and no optimisation, so a debugger can
+              follow it; without it the program is built as a released sketch is
+  --target ios|android
+              with --compile, build for a phone and install it on one that is connected (not built yet)
   --errors json
               print every message as one line of JSON on standard output, for tools; with
               --frames what the sketch prints goes to standard error, and in a window each
@@ -49,6 +57,9 @@ Run_Args :: struct {
 	json:       bool, // messages as lines of JSON
 	window:     int, // which window the picture is of, counting from 1
 	seed:       u64,
+	compile:    bool, // build a program and run that
+	debug:      bool, // with compile: debug information, no optimisation
+	target:     string, // with compile: ios or android
 	stats:      bool, // time the frames, show the box, and log the run
 	no_vsync:   bool,
 	inputs:     [dynamic]Input_Step, // the keys to press, from --press and --hold
@@ -116,6 +127,16 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 				}
 				append(&result.inputs, step)
 			}
+		case arg == "--compile":
+			result.compile = true
+		case arg == "--debug":
+			result.debug = true
+		case arg == "--target":
+			if i + 1 >= len(args) || (args[i + 1] != "ios" && args[i + 1] != "android") {
+				return Run_Args{ok = false, bad = "--target takes ios or android"}
+			}
+			result.target = args[i + 1]
+			i += 1
 		case arg == "--stats":
 			result.stats = true
 		case arg == "--no-vsync":
@@ -132,6 +153,9 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 	}
 	if result.screenshot != "" && result.frames == 0 {
 		return Run_Args{ok = false, bad = "--screenshot needs --frames"}
+	}
+	if (result.debug || result.target != "") && !result.compile {
+		return Run_Args{ok = false, bad = "--debug and --target go with --compile"}
 	}
 	if result.no_vsync && result.frames > 0 {
 		return Run_Args{ok = false, bad = "--no-vsync needs a window, so it does not go with --frames"}
@@ -262,6 +286,9 @@ run_run :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	files, read_ok := read_files(file, "roci run", err)
 	if !read_ok {
 		return 2
+	}
+	if parsed.compile {
+		return run_compile(parsed, file, files, out, err)
 	}
 	if parsed.frames == 0 {
 		return run_windows(file, files, parsed.json, parsed.stats, parsed.no_vsync, out, err)

@@ -1,0 +1,301 @@
+// SPDX-License-Identifier: 0BSD
+//
+// The release back end: turns the typed IR of a sketch into Odin source that calls the same procedures of
+// package roci the interpreter calls, so a compiled sketch draws what the interpreted one does. Names keep
+// the sketch's own, each statement says which line of the `.roci` it came from, every name the sketch
+// assigns is declared once at the top, a record shape becomes a plain struct, a number a `f64`, a vector
+// an array and a list a pointer to a dynamic array (lists are shared, as in the language). Taught verbs
+// become one procedure for each tuple of argument types the checker found (`IR_Instance`).
+//
+// This is the first slice of the compiler: it covers the numbers, vectors, colours, text, lists and
+// records, the control statements, taught verbs, `draw`, `every`, `on key` and `on mouse`, the shapes and
+// the style verbs, and the maths. A sketch that uses anything else is refused with every line that does,
+// said in plain words, never half compiled. What it leaves alone (memory is not freed while a sketch runs,
+// there is no overlay for runtime errors, and a block that runs too long is not stopped) is listed in the
+// design notes.
+package codegen
+
+import "../lang"
+import "core:fmt"
+import "core:strings"
+
+// A line of the sketch the compiler cannot do yet, and what it is.
+Problem :: struct {
+	span: lang.Span,
+	what: string,
+}
+
+Options :: struct {
+	sketch: string, // the sketch's name, for the header and the log
+	source: string, // the file it was written in, for the comments that say which line
+}
+
+Result :: struct {
+	source:   string, // the Odin program; empty when there are problems
+	problems: []Problem,
+}
+
+@(private)
+Handler_Kind :: enum {
+	Every,
+	Event,
+}
+
+@(private)
+Handler :: struct {
+	kind:    Handler_Kind,
+	proc_name: string,
+	event:   string, // for an event: the name `on` uses
+	arg:     string, // for an event: the Odin text of the name it waits for ("" for any)
+	frames:  bool,   // for `every`: counted in frames
+	index:   int,
+}
+
+@(private)
+Gen :: struct {
+	program:  ^lang.IR_Program,
+	types:    ^lang.Types,
+	src:      lang.Source,
+	options:  Options,
+	problems: [dynamic]Problem,
+	body:     strings.Builder, // the procedure being written
+	procs:    strings.Builder, // everything written so far at package level
+	indent:   int,
+	names:    map[^lang.Symbol]string,
+	taken:    map[string]bool,
+	records:  map[int]string, // shape root -> type name
+	verb_names: map[^lang.IR_Instance]string,
+	defs:     strings.Builder, // the record types
+	handlers: [dynamic]Handler,
+	next_id:  int,
+	in_verb:  ^lang.IR_Instance,
+	comment_line: int,
+	dynamic_depth: int, // how deep in a block that is not the top level of the sketch
+	uses_fmt: bool,
+	uses_math: bool,
+}
+
+// What a compiled sketch cannot be (Odin keywords and the names the generated code uses itself).
+@(private)
+RESERVED := [?]string{
+	"asm", "auto_cast", "bit_field", "bit_set", "break", "case", "cast", "context", "continue", "defer", "distinct",
+	"do", "dynamic", "else", "enum", "fallthrough", "for", "foreign", "if", "import", "in", "map", "matrix",
+	"nil", "not_in", "or_break", "or_continue", "or_else", "or_return", "package", "proc", "return", "struct",
+	"switch", "transmute", "typeid", "union", "using", "when", "where", "string", "bool", "int", "f64", "f32",
+	"u8", "u32", "u64", "i32", "i64", "len", "cap", "append", "make", "new", "delete", "free", "min", "max",
+	"abs", "clamp", "copy", "swizzle", "real", "imag", "any", "rawptr", "true", "false", "type_of", "size_of",
+	"roci", "rt", "maths", "fmt", "math", "main", "setup", "result__", "it_", "item",
+}
+
+// Makes the Odin source for a checked sketch, or says every place it cannot.
+generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, allocator := context.allocator) -> Result {
+	g := Gen{program = program, types = program.types, src = src, options = options}
+	g.problems = make([dynamic]Problem, allocator)
+	g.names = make(map[^lang.Symbol]string, 16, context.temp_allocator)
+	g.taken = make(map[string]bool, 16, context.temp_allocator)
+	g.records = make(map[int]string, 4, context.temp_allocator)
+	g.verb_names = make(map[^lang.IR_Instance]string, 4, context.temp_allocator)
+	g.handlers = make([dynamic]Handler, context.temp_allocator)
+	for r in RESERVED {
+		g.taken[r] = true
+	}
+	g.body = strings.builder_make(context.temp_allocator)
+	g.procs = strings.builder_make(context.temp_allocator)
+	g.defs = strings.builder_make(context.temp_allocator)
+
+	// the sketch-wide names, each declared once with the type the checker settled on
+	globals := strings.builder_make(context.temp_allocator)
+	for sym in program.symbols {
+		name := name_of(&g, sym)
+		type, ok := odin_type(&g, sym.type, lang.Span{}, sym.name)
+		if !ok {
+			continue
+		}
+		fmt.sbprintf(&globals, "%s: %s\n", name, type)
+	}
+	// taught verbs
+	for instance in program.instances {
+		if !instance.unused {
+			emit_instance(&g, instance)
+		}
+	}
+	// the statements that run once, in order, and the blocks they register
+	setup := strings.builder_make(context.temp_allocator)
+	g.body = setup
+	g.indent = 1
+	for s in program.stmts {
+		emit_top_level(&g, s)
+	}
+	setup = g.body
+
+	if len(g.problems) > 0 {
+		return Result{problems = g.problems[:]}
+	}
+
+	out := strings.builder_make(allocator)
+	fmt.sbprintf(&out, "// Generated by roci from %s: the program of the sketch %s. Do not edit it by hand: the next compile makes it again.\n", options.source if options.source != "" else "the sketch", options.sketch)
+	fmt.sbprintf(&out, "#+feature dynamic-literals\npackage sketch\n\nimport \"core:fmt\"\nimport \"core:math\"\nimport \"rocinante:roci\"\nimport \"rocinante:roci/maths\"\nimport \"rocinante:roci/rt\"\n\n")
+	fmt.sbprintf(&out, "// Keeps the imports used even when a sketch does not need them.\n_ :: fmt.println\n_ :: math.PI\n_ :: maths.grey\n\n")
+	strings.write_string(&out, strings.to_string(g.defs))
+	fmt.sbprintf(&out, "%s\n", strings.to_string(globals))
+	strings.write_string(&out, strings.to_string(g.procs))
+	emit_handlers(&g, &out)
+	fmt.sbprintf(&out, "setup :: proc() {{\n%s}}\n\n", strings.to_string(setup))
+	fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, ", hook" if len(g.handlers) > 0 else "")
+	return Result{source = strings.to_string(out), problems = nil}
+}
+
+// The release of Odin the sketch was generated for, said in the header of a build log.
+@(private)
+ODIN_VERSION_PIN :: ODIN_VERSION
+
+// A problem to be reported: a place the compiler cannot do yet.
+@(private)
+refuse :: proc(g: ^Gen, span: lang.Span, what: string) {
+	append(&g.problems, Problem{span = span, what = what})
+}
+
+// The Odin name of a symbol, made once: the sketch's own name, with a trailing underscore when Odin uses
+// it, and a number when two symbols would otherwise share a name.
+@(private)
+name_of :: proc(g: ^Gen, sym: ^lang.Symbol) -> string {
+	if found, ok := g.names[sym]; ok {
+		return found
+	}
+	if sym.kind == .Item {
+		return "it_" // the item a list verb's block is looking at; the procedure made for the call names it so
+	}
+	base := clean(sym.name)
+	name := base
+	if g.taken[name] {
+		name = fmt.aprintf("%s_", base, allocator = context.temp_allocator)
+		for n := 2; g.taken[name]; n += 1 {
+			name = fmt.aprintf("%s_%d", base, n, allocator = context.temp_allocator)
+		}
+	}
+	g.taken[name] = true
+	g.names[sym] = name
+	return name
+}
+
+// A name Odin will take: letters, digits and underscores, not starting with a digit.
+@(private)
+clean :: proc(name: string) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	for r, i in name {
+		ok := r == '_' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r > 127
+		if i == 0 && r >= '0' && r <= '9' {
+			strings.write_byte(&b, '_')
+		}
+		strings.write_rune(&b, r if ok else '_')
+	}
+	return strings.to_string(b)
+}
+
+// A field name as Odin wants it (records keep the sketch's names, so only the odd one is changed).
+@(private)
+field_name :: proc(name: string) -> string {
+	c := clean(name)
+	for r in RESERVED {
+		if r == c {
+			return strings.concatenate({c, "_"}, context.temp_allocator)
+		}
+	}
+	return c
+}
+
+// The Odin type of a checked type. Says what is not supported (a mix of values the checker could not
+// settle, windows, pictures, sounds and the like) when it has a place to say it at.
+@(private)
+odin_type :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span, what: string) -> (name: string, ok: bool) {
+	resolved := lang.resolve(g.types, t)
+	item := g.types.items[resolved]
+	#partial switch item.kind {
+	case .Number:  return "f64", true
+	case .Boolean: return "bool", true
+	case .Text:    return "string", true
+	case .Colour:  return "maths.Colour", true
+	case .Vector:  return fmt.aprintf("[%d]f64", item.a, allocator = context.temp_allocator), true
+	case .List:
+		element, element_ok := odin_type(g, lang.Type_Id(item.a), span, what)
+		if !element_ok {
+			return "", false
+		}
+		return fmt.aprintf("^[dynamic]%s", element, allocator = context.temp_allocator), true
+	case .Record:
+		return record_type(g, resolved, span, what)
+	case .None:
+		return "", true
+	}
+	refuse(g, span, fmt.tprintf("`%s` holds %s, which compiled sketches cannot hold yet", what, describe_type(g, resolved)))
+	return "", false
+}
+
+@(private)
+describe_type :: proc(g: ^Gen, t: lang.Type_Id) -> string {
+	return lang.describe(g.types, t)
+}
+
+// The struct of a record shape, written the first time it is needed.
+@(private)
+record_type :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span, what: string) -> (string, bool) {
+	shape_index := g.types.items[t].a
+	if known, ok := g.records[shape_index]; ok {
+		return fmt.aprintf("^%s", known, allocator = context.temp_allocator), true
+	}
+	name := fmt.aprintf("Record_%d", len(g.records) + 1, allocator = context.temp_allocator)
+	g.records[shape_index] = name
+	fields := strings.builder_make(context.temp_allocator)
+	ok := true
+	for f in g.types.shapes[shape_index].fields {
+		type, field_ok := odin_type(g, f.type, span, f.name)
+		if !field_ok {
+			ok = false
+			continue
+		}
+		fmt.sbprintf(&fields, "\t%s: %s,\n", field_name(f.name), type)
+	}
+	fmt.sbprintf(&g.defs, "%s :: struct {{\n%s}}\n\n", name, strings.to_string(fields))
+	return fmt.aprintf("^%s", name, allocator = context.temp_allocator), ok
+}
+
+// The record struct's own name (without the pointer), for building one.
+@(private)
+record_name :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span) -> string {
+	resolved := lang.resolve(g.types, t)
+	odin_type(g, resolved, span, "a record")
+	return g.records[g.types.items[resolved].a]
+}
+
+// ---- output ----
+
+@(private)
+line :: proc(g: ^Gen, format: string, args: ..any) {
+	for _ in 0 ..< g.indent {
+		strings.write_byte(&g.body, '\t')
+	}
+	fmt.sbprintf(&g.body, format, ..args)
+	strings.write_byte(&g.body, '\n')
+}
+
+// A comment naming the line of the sketch a statement comes from, once for each new line.
+@(private)
+comment :: proc(g: ^Gen, span: lang.Span) {
+	if span.end <= span.start && span.start == 0 {
+		return
+	}
+	at := lang.position_of(g.src, span.start).line
+	if at == g.comment_line {
+		return
+	}
+	g.comment_line = at
+	text := strings.trim_space(lang.line_text(g.src, at))
+	text, _ = strings.replace_all(text, "\n", " ", context.temp_allocator)
+	line(g, "// line %d: %s", at, text)
+}
+
+// A line number and column for a problem.
+position :: proc(src: lang.Source, span: lang.Span) -> (line, column: int) {
+	p := lang.position_of(src, span.start)
+	return p.line, p.column
+}

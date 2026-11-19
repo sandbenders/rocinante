@@ -10,9 +10,9 @@ package interp
 import "../"
 import "../lang"
 import "../maths"
+import "../rt"
 import "core:math"
 import "core:mem"
-import "core:strconv"
 import "core:strings"
 
 // A vector of 2, 3 or 4 numbers.
@@ -473,15 +473,7 @@ equal_parts :: proc(a, b: Value, pairs: ^[dynamic][2]Value, met: ^map[[2]rawptr]
 
 // A number as people write it: 3, not 3.000000; 0.5, not 0.500000.
 format_number :: proc(n: f64, allocator := context.temp_allocator) -> string {
-	if math.is_nan(n) {
-		return "nan"
-	}
-	if math.is_inf(n) {
-		return "inf" if n > 0 else "-inf"
-	}
-	buf := make([]u8, 32, allocator)
-	text := strconv.write_float(buf, n, 'g', -1, 64)
-	return text[1:] if len(text) > 0 && text[0] == '+' else text
+	return rt.format_number(n, allocator) // the one a compiled sketch uses too
 }
 
 // How `print` and `+` with text show a value.
@@ -562,7 +554,7 @@ format :: proc(it: ^Interp, v: Value, allocator := context.temp_allocator, depth
 // The language writes alpha as a percentage (0 gone, 100 solid) while colours and
 // the Odin API keep every channel 0 to 255.
 alpha_to_byte :: proc(percent: f64) -> f64 {
-	return clamp(percent, 0, 100) * 255 / 100
+	return rt.alpha_to_byte(percent) // the one a compiled sketch uses too
 }
 
 // The other way, rounded so a byte that came from a whole percentage reads back whole.

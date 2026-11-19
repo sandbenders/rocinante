@@ -10,7 +10,7 @@ Everything is done with one program, `roci`. Run it with no name to see this lis
 
 | Command | What it does |
 |---|---|
-| `roci run [file]` | opens the sketch in a window and reloads it each time you save. With `--frames N` it runs without a window, and `--screenshot out.png` saves the picture. `--stats` times the frames: a box in the top left corner shows the frame and the frame rate, and the run adds a line to `artifacts/log.json`; `--no-vsync` lets the window go as fast as the computer can. |
+| `roci run [file]` | opens the sketch in a window and reloads it each time you save. With `--frames N` it runs without a window, and `--screenshot out.png` saves the picture. `--stats` times the frames: a box in the top left corner shows the frame and the frame rate, and the run adds a line to `artifacts/log.json`; `--no-vsync` lets the window go as fast as the computer can. `--compile` turns the sketch into a program for this computer and runs it, to see how fast it is when it is compiled (`--debug` builds it for a debugger); it needs Odin and the source of rocinante beside `roci`, and it says so when a sketch uses something it cannot compile yet. |
 | [`roci check`](../roci-check/) | reads a sketch and says every mistake in plain words, without a window. |
 | [`roci fmt`](../roci-fmt/) | writes a sketch in the house style. |
 | [`roci man`](../roci-man/) | shows how a word is written. |

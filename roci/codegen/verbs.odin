@@ -1,0 +1,445 @@
+// SPDX-License-Identifier: 0BSD
+//
+// Calls of the verbs: each is written as the call of the procedure of package roci that the interpreter
+// makes for it (interp/verbs.odin), with the values of the call's arguments in the order of the shape the
+// checker chose. A verb not listed here is refused, with its name, so the sketch says what is missing.
+package codegen
+
+import "../lang"
+import "core:fmt"
+import "core:strings"
+
+// A call, as Odin text, and whether it gives a value back (so a call used as a statement lets it go).
+@(private)
+call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives: bool) {
+	if c.instance != nil {
+		return taught_call(g, e, c)
+	}
+	if c.verb == nil {
+		refuse(g, e.span, "a verb taught in another file that is not here")
+		return "", false
+	}
+	return verb_call(g, e, c)
+}
+
+@(private)
+taught_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (string, bool) {
+	inst := c.instance
+	if inst.unused {
+		return "", false
+	}
+	b := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&b, "%s(", instance_name(g, inst))
+	for a, i in c.args {
+		if i > 0 {
+			strings.write_string(&b, ", ")
+		}
+		strings.write_string(&b, expr(g, a))
+	}
+	first := len(c.args) == 0
+	for d in inst.defaults {
+		for o in c.options {
+			if o.word == d.word && len(o.args) > 0 {
+				if !first {
+					strings.write_string(&b, ", ")
+				}
+				first = false
+				fmt.sbprintf(&b, "%s = %s", name_of(g, d.symbol), expr(g, o.args[0]))
+			}
+		}
+	}
+	strings.write_string(&b, ")")
+	return strings.to_string(b), inst.gives
+}
+
+// Where an option of a call is, by its word.
+@(private)
+option :: proc(options: []lang.IR_Option, word: string) -> ^lang.IR_Option {
+	for &o in options {
+		if o.word == word && len(o.args) > 0 {
+			return &o
+		}
+	}
+	return nil
+}
+
+// The words after the arguments of a shape, as the `Look` and the origin they make. A word the compiler
+// cannot do yet is refused. `allowed` names the ones the verb takes here.
+@(private)
+look_of :: proc(g: ^Gen, e: ^lang.IR, options: []lang.IR_Option) -> (look: string, origin: string) {
+	if len(options) == 0 {
+		return "", ""
+	}
+	b := strings.builder_make(context.temp_allocator)
+	any := false
+	put :: proc(b: ^strings.Builder, any: ^bool, text: string) {
+		if any^ {
+			strings.write_string(b, ", ")
+		}
+		strings.write_string(b, text)
+		any^ = true
+	}
+	for o in options {
+		if len(o.args) == 0 {
+			continue
+		}
+		switch o.word {
+		case "fill", "stroke":
+			if len(o.extra) > 0 {
+				refuse(g, e.span, fmt.tprintf("`%s` with a gradient or a picture", o.word))
+				continue
+			}
+			put(&b, &any, fmt.tprintf("%s = %s", o.word, paint(g, o.args[0])))
+		case "thickness":
+			put(&b, &any, fmt.tprintf("thickness = %s", expr(g, o.args[0])))
+		case "alpha":
+			put(&b, &any, fmt.tprintf("alpha = rt.alpha_to_byte(%s)", expr(g, o.args[0])))
+		case "size":
+			put(&b, &any, fmt.tprintf("size = %s", expr(g, o.args[0])))
+		case "leading":
+			put(&b, &any, fmt.tprintf("leading = %s", expr(g, o.args[0])))
+		case "align":
+			word, is_word := o.args[0].kind.(lang.IR_Word)
+			switch {
+			case is_word && word.word == "left":   put(&b, &any, "align = roci.Align.Left")
+			case is_word && word.word == "center": put(&b, &any, "align = roci.Align.Center")
+			case is_word && word.word == "right":  put(&b, &any, "align = roci.Align.Right")
+			case:
+				refuse(g, e.span, "`align` that is not written as a word")
+			}
+		case "as":
+			word, is_word := o.args[0].kind.(lang.IR_Word)
+			switch {
+			case is_word && word.word == "center": origin = "roci.Origin.Center"
+			case is_word && word.word == "corner": origin = "roci.Origin.Corner"
+			case:
+				refuse(g, e.span, "`as` with a word the compiler does not know here")
+			}
+		case "width":
+			// text's wrap width: said by the text verb itself
+		case:
+			refuse(g, e.span, fmt.tprintf("the word `%s` after a shape", o.word))
+		}
+	}
+	if any {
+		look = fmt.aprintf("roci.Look{{%s}}", strings.to_string(b), allocator = context.temp_allocator)
+	}
+	return
+}
+
+// A value as a paint: a colour is one, and a number is a grey.
+@(private)
+paint :: proc(g: ^Gen, e: ^lang.IR) -> string {
+	#partial switch kind_of(g, e) {
+	case .Colour:
+		return expr(g, e)
+	case .Number:
+		return fmt.aprintf("roci.grey(%s)", expr(g, e), allocator = context.temp_allocator)
+	}
+	refuse(g, e.span, fmt.tprintf("%s as a color", lang.describe(g.types, e.type)))
+	return "maths.Colour{}"
+}
+
+// `procedure(args..., look, origin)`: the arguments are given as they are, then the look and the origin only when
+// the call has words for them.
+@(private)
+shape_call :: proc(procedure: string, args: []string, look, origin: string) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, procedure)
+	strings.write_string(&b, "(")
+	for a, i in args {
+		if i > 0 {
+			strings.write_string(&b, ", ")
+		}
+		strings.write_string(&b, a)
+	}
+	if look != "" {
+		strings.write_string(&b, ", ")
+		strings.write_string(&b, look)
+	}
+	if origin != "" {
+		if look == "" {
+			strings.write_string(&b, ", roci.Look{}")
+		}
+		strings.write_string(&b, ", ")
+		strings.write_string(&b, origin)
+	}
+	strings.write_string(&b, ")")
+	return strings.to_string(b)
+}
+
+@(private)
+verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives: bool) {
+	args := make([]string, len(c.args), context.temp_allocator)
+	for a, i in c.args {
+		if _, is_block := a.kind.(lang.IR_Block_Value); is_block {
+			continue // run by the verb that takes it
+		}
+		args[i] = expr(g, a)
+	}
+	n :: proc(args: []string, i: int) -> string {
+		return args[i] if i < len(args) else "0.0"
+	}
+	name := c.verb.name
+	switch name {
+	// ---- the window ----
+	case "window":
+		return window_call(g, e, c, args), option(c.options, "title") == nil
+	case "title":
+		return fmt.aprintf("roci.title_text(%s)", args[0], allocator = context.temp_allocator), false
+	case "seed":
+		return fmt.aprintf("roci.seed(%s)", args[0], allocator = context.temp_allocator), false
+	case "background":
+		if len(c.options) > 0 {
+			refuse(g, e.span, "`background` with a gradient or a picture")
+		}
+		return fmt.aprintf("roci.background(%s)", paint(g, c.args[0]), allocator = context.temp_allocator), false
+
+	// ---- shapes ----
+	case "circle":
+		look, origin := look_of(g, e, c.options)
+		if c.shape == 0 {
+			return shape_call("roci.circle_xyr", {args[0], args[1], args[2]}, look, origin), false
+		}
+		return shape_call("roci.circle_vr", {args[0], args[1]}, look, origin), false
+	case "ellipse":
+		look, origin := look_of(g, e, c.options)
+		if c.shape == 0 {
+			return shape_call("roci.ellipse_xywh", {args[0], args[1], args[2], args[3]}, look, origin), false
+		}
+		return shape_call("roci.ellipse_vs", {args[0], args[1]}, look, origin), false
+	case "rect":
+		look, origin := look_of(g, e, c.options)
+		if c.shape == 0 {
+			return shape_call("roci.rect_xywh", {args[0], args[1], args[2], args[3]}, look, origin), false
+		}
+		return shape_call("roci.rect_vs", {args[0], args[1]}, look, origin), false
+	case "square":
+		look, origin := look_of(g, e, c.options)
+		if c.shape == 0 {
+			return shape_call("roci.square_xys", {args[0], args[1], args[2]}, look, origin), false
+		}
+		return shape_call("roci.square_vs", {args[0], args[1]}, look, origin), false
+	case "line":
+		look, _ := look_of(g, e, c.options)
+		if c.shape == 0 {
+			return shape_call("roci.line_xyxy", {args[0], args[1], args[2], args[3]}, look, ""), false
+		}
+		return shape_call("roci.line_vv", {args[0], args[1]}, look, ""), false
+	case "point":
+		look, _ := look_of(g, e, c.options)
+		if c.shape == 0 {
+			return shape_call("roci.point_xy", {args[0], args[1]}, look, ""), false
+		}
+		return shape_call("roci.point_v", {args[0]}, look, ""), false
+	case "triangle":
+		look, _ := look_of(g, e, c.options)
+		if c.shape == 0 {
+			return shape_call("roci.triangle_xy", {args[0], args[1], args[2], args[3], args[4], args[5]}, look, ""), false
+		}
+		return shape_call("roci.triangle_v", {args[0], args[1], args[2]}, look, ""), false
+	case "text":
+		look, _ := look_of(g, e, c.options)
+		wrap := "0.0"
+		if w := option(c.options, "width"); w != nil {
+			wrap = expr(g, w.args[0])
+		}
+		if option(c.options, "font") != nil {
+			refuse(g, e.span, "`font`")
+		}
+		procedure := "roci.text_xy" if c.shape == 0 else "roci.text_v"
+		given := strings.join(args[:3] if c.shape == 0 else args[:2], ", ", context.temp_allocator)
+		if look == "" && wrap == "0.0" {
+			return fmt.aprintf("%s(%s)", procedure, given, allocator = context.temp_allocator), false
+		}
+		return fmt.aprintf("%s(%s, %s, %s)", procedure, given, look if look != "" else "roci.Look{}", wrap, allocator = context.temp_allocator), false
+
+	// ---- style and transforms ----
+	case "fill":
+		return fmt.aprintf("roci.fill_paint(%s)", paint(g, c.args[0]), allocator = context.temp_allocator), false
+	case "stroke":
+		return fmt.aprintf("roci.stroke_paint(%s)", paint(g, c.args[0]), allocator = context.temp_allocator), false
+	case "no fill":
+		return "roci.no_fill()", false
+	case "no stroke":
+		return "roci.no_stroke()", false
+	case "thickness":
+		return fmt.aprintf("roci.thickness(%s)", args[0], allocator = context.temp_allocator), false
+	case "alpha":
+		return fmt.aprintf("roci.alpha(rt.alpha_to_byte(%s))", args[0], allocator = context.temp_allocator), false
+	case "move":
+		if c.shape == 0 {
+			return fmt.aprintf("roci.move_xy(%s, %s)", args[0], args[1], allocator = context.temp_allocator), false
+		}
+		if c.shape == 1 && vector_size(g, c.args[0]) == 2 {
+			return fmt.aprintf("roci.move_v(%s)", args[0], allocator = context.temp_allocator), false
+		}
+		refuse(g, e.span, "`move` in space")
+		return "", false
+	case "turn":
+		if len(c.options) > 0 {
+			refuse(g, e.span, "`turn around`")
+		}
+		return fmt.aprintf("roci.turn(%s)", args[0], allocator = context.temp_allocator), false
+	case "grow":
+		switch c.shape {
+		case 0: return fmt.aprintf("roci.grow_factor(%s)", args[0], allocator = context.temp_allocator), false
+		case 1: return fmt.aprintf("roci.grow_xy(%s, %s)", args[0], args[1], allocator = context.temp_allocator), false
+		}
+		refuse(g, e.span, "`grow` in space")
+		return "", false
+	case "push":
+		refuse(g, e.span, "`push` used as a value") // as a statement it is written where it stands
+		return "", false
+
+	// ---- colours ----
+	case "rgb", "hsb":
+		alpha := ""
+		if a := option(c.options, "alpha"); a != nil {
+			alpha = fmt.tprintf(", rt.alpha_to_byte(%s)", expr(g, a.args[0]))
+		}
+		return fmt.aprintf("roci.%s(%s, %s, %s%s)", name, args[0], args[1], args[2], alpha, allocator = context.temp_allocator), true
+
+	// ---- maths ----
+	case "sin":   return fmt.aprintf("roci.sin_deg(%s)", args[0], allocator = context.temp_allocator), true
+	case "cos":   return fmt.aprintf("roci.cos_deg(%s)", args[0], allocator = context.temp_allocator), true
+	case "floor": return fmt.aprintf("roci.floor(%s)", args[0], allocator = context.temp_allocator), true
+	case "round": return fmt.aprintf("roci.round(%s)", args[0], allocator = context.temp_allocator), true
+	case "ceil":  return fmt.aprintf("roci.ceil(%s)", args[0], allocator = context.temp_allocator), true
+	case "abs":   return fmt.aprintf("roci.absolute(%s)", args[0], allocator = context.temp_allocator), true
+	case "sqrt":  return fmt.aprintf("roci.square_root(%s)", args[0], allocator = context.temp_allocator), true
+	case "min":   return fmt.aprintf("roci.smaller_of(%s, %s)", args[0], args[1], allocator = context.temp_allocator), true
+	case "max":   return fmt.aprintf("roci.larger_of(%s, %s)", args[0], args[1], allocator = context.temp_allocator), true
+	case "clamp": return fmt.aprintf("roci.clamp_between(%s, %s, %s)", args[0], args[1], args[2], allocator = context.temp_allocator), true
+	case "map":
+		return fmt.aprintf("roci.map_range(%s, %s, %s, %s, %s)", args[0], args[1], args[2], args[3], args[4], allocator = context.temp_allocator), true
+	case "dist":
+		if c.shape == 0 {
+			return fmt.aprintf("roci.dist_xy(%s, %s, %s, %s)", args[0], args[1], args[2], args[3], allocator = context.temp_allocator), true
+		}
+		return fmt.aprintf("roci.dist_v(%s, %s)", args[0], args[1], allocator = context.temp_allocator), true
+	case "random":
+		if c.shape == 0 {
+			return fmt.aprintf("roci.random(%s)", args[0], allocator = context.temp_allocator), true
+		}
+		low, high := option(c.options, "from"), option(c.options, "to")
+		if low == nil || high == nil {
+			refuse(g, e.span, "`random` without both its ends")
+			return "0.0", true
+		}
+		return fmt.aprintf("roci.random_between(%s, %s)", expr(g, low.args[0]), expr(g, high.args[0]), allocator = context.temp_allocator), true
+
+	// ---- lists and printing ----
+	case "print":
+		#partial switch kind_of(g, c.args[0]) {
+		case .Number, .Boolean, .Text, .Vector:
+			return fmt.aprintf("fmt.println(rt.show(%s, context.allocator))", args[0], allocator = context.temp_allocator), false
+		}
+		refuse(g, e.span, fmt.tprintf("`print` of %s", lang.describe(g.types, c.args[0].type)))
+		return "", false
+	case "count":
+		if kind_of(g, c.args[0]) == .List {
+			return fmt.aprintf("rt.count(%s)", args[0], allocator = context.temp_allocator), true
+		}
+		refuse(g, e.span, "`count` of something that is not a list")
+		return "0.0", true
+	case "item":
+		if c.shape == 0 {
+			if of := option(c.options, "of"); of != nil && kind_of(g, of.args[0]) == .List {
+				return fmt.aprintf("rt.item(%s, %s)", expr(g, of.args[0]), args[0], allocator = context.temp_allocator), true
+			}
+		}
+		refuse(g, e.span, "`item` of something that is not a list")
+		return "0.0", true
+	case "add":
+		if to := option(c.options, "to"); to != nil && kind_of(g, to.args[0]) == .List {
+			return fmt.aprintf("rt.add(%s, %s)", stored(g, c.args[0]), expr(g, to.args[0]), allocator = context.temp_allocator), false
+		}
+		refuse(g, e.span, "`add` to something that is not a list")
+		return "", false
+	case "keep", "skip", "collect":
+		return list_block_call(g, e, c, name), true
+	}
+	refuse(g, e.span, fmt.tprintf("`%s`, which compiled sketches cannot do yet", name))
+	return "", false
+}
+
+// `window size 800 600 title "x"`: a window, its title and where it sits.
+@(private)
+window_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> string {
+	at := ""
+	if o := option(c.options, "at"); o != nil {
+		if len(o.args) >= 2 {
+			at = fmt.tprintf("[2]int{{int(%s), int(%s)}}", expr(g, o.args[0]), expr(g, o.args[1]))
+		} else if kind_of(g, o.args[0]) == .Vector {
+			holder := expr(g, o.args[0])
+			at = fmt.tprintf("[2]int{{int(%s.x), int(%s.y)}}", holder, holder)
+		}
+	}
+	for o in c.options {
+		switch o.word {
+		case "at", "title":
+		case:
+			refuse(g, e.span, fmt.tprintf("`window` with `%s`", o.word))
+		}
+	}
+	made := fmt.tprintf("roci.window(int(%s), int(%s)%s)", args[0], args[1], fmt.tprintf(", %s", at) if at != "" else "")
+	if t := option(c.options, "title"); t != nil {
+		return fmt.aprintf("roci.title_window(%s, %s)", made, expr(g, t.args[0]), allocator = context.temp_allocator)
+	}
+	return made
+}
+
+// `keep list [ ... ]`, `skip` and `collect`: a procedure of their own made for the call, so the block is
+// a plain loop with no function value in it.
+@(private)
+list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> string {
+	if len(c.args) < 2 || kind_of(g, c.args[0]) != .List {
+		refuse(g, e.span, fmt.tprintf("`%s` of something that is not a list", name))
+		return "nil"
+	}
+	block, is_block := c.args[1].kind.(lang.IR_Block_Value)
+	if !is_block || len(block.block.stmts) != 1 {
+		refuse(g, e.span, fmt.tprintf("`%s` with a block of more than one thing", name))
+		return "nil"
+	}
+	stmt, is_expr := block.block.stmts[0].kind.(lang.IR_Expr_Stmt)
+	if !is_expr {
+		refuse(g, e.span, fmt.tprintf("`%s` with a block that is not one value", name))
+		return "nil"
+	}
+	for sym in block.block.captures {
+		if sym.scope != 0 && sym.kind != .Item {
+			refuse(g, e.span, fmt.tprintf("`%s` with a block that reads `%s`, a name of a taught verb", name, sym.name))
+			return "nil"
+		}
+	}
+	list_type, ok := odin_type(g, c.args[0].type, e.span, "a list")
+	if !ok {
+		return "nil"
+	}
+	id := g.next_id
+	g.next_id += 1
+	helper := fmt.aprintf("%s_%d", name, id, allocator = context.temp_allocator)
+	element := list_type[len("^[dynamic]"):]
+	// the block's own expression is written with `it` as the item
+	saved_body, saved_indent := g.body, g.indent
+	g.body = strings.builder_make(context.temp_allocator)
+	g.indent = 0
+	condition := expr(g, stmt.expr)
+	g.body, g.indent = saved_body, saved_indent
+	b := strings.builder_make(context.temp_allocator)
+	switch name {
+	case "keep", "skip":
+		test := condition if name == "keep" else fmt.tprintf("!%s", condition)
+		fmt.sbprintf(&b, "%s :: proc(list: %s) -> %s {{\n\tout := rt.new_list(%s)\n\tif list != nil {{\n\t\tfor it_ in list^ {{\n\t\t\tif %s {{ append(out, it_) }}\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, list_type, element, test)
+	case "collect":
+		made, made_ok := odin_type(g, stmt.expr.type, e.span, "what collect makes")
+		if !made_ok {
+			return "nil"
+		}
+		fmt.sbprintf(&b, "%s :: proc(list: %s) -> ^[dynamic]%s {{\n\tout := rt.new_list(%s)\n\tif list != nil {{\n\t\tfor it_ in list^ {{\n\t\t\tappend(out, %s)\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, made, made, condition)
+	}
+	strings.write_string(&g.procs, strings.to_string(b))
+	return fmt.aprintf("%s(%s)", helper, expr(g, c.args[0]), allocator = context.temp_allocator)
+}

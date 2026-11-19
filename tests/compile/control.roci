@@ -1,0 +1,65 @@
+total = 0
+repeat 5 [ total = total + 2 ]
+print total
+n = 0
+while n < 3 [ n = n + 1 ]
+print n
+for i from 1 to 4 [ total = total + i ]
+print total
+for i from 4 down to 1 [ print i ]
+for x from 0 to 1 by 0.25 [ print x ]
+for i from 3 to 1 [ print "never" ]
+if total > 100 [ print "big" ] else [ print "small" ]
+if total is 22 [ print "twenty-two" ]
+items = [ 3 1 4 1 5 ]
+print (count items)
+print (item 3 of items)
+print (item 9 of items)
+add 9 to items
+print (count items)
+sum = 0
+for each one in items [ sum = sum + one ]
+print sum
+big = keep items [ it > 3 ]
+print (count big)
+small = skip items [ it > 3 ]
+print (count small)
+doubled = collect items [ it * 2 ]
+print (item 5 of doubled)
+names = [ "a" "b" ]
+add "c" to names
+for each name in names [ print name ]
+learn double n [ give n * 2 ]
+learn greet who with greeting "hello" [ print (greeting + " " + who) ]
+learn early n [
+  if n > 2 [ stop ]
+  print n
+]
+learn fact n [
+  if n < 2 [ give 1 ] else [ give n * (fact (n - 1)) ]
+]
+print (double 21)
+greet "world"
+greet "there" greeting "hi"
+early 1
+early 5
+print (fact 5)
+pts = []
+add { x: 1, y: 2 } to pts
+add { x: 3, y: 4 } to pts
+for each p in pts [ p.x = p.x + 10 ]
+for each p in pts [ print (p.x + p.y) ]
+first = item 1 of pts
+first.y = 100
+p1 = item 1 of pts
+print p1.y
+v = { 1, 2 }
+vs = [ { 1, 2 } { 3, 4 } ]
+for each q in vs [ q.x = q.x * 10 ]
+print (item 1 of vs)
+print (item 2 of vs)
+mark = "start"
+learn tag t [ mark = mark + t ]
+tag "!"
+tag "?"
+print mark
