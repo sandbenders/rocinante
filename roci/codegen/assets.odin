@@ -201,6 +201,23 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 		return fmt.aprintf("rt.mask(%s, %s)", args[0], expr(g, by.args[0]), allocator = context.temp_allocator), true, true
 	case "canvas":
 		return fmt.aprintf("rt.canvas(%s, %s)", args[0], args[1], allocator = context.temp_allocator), true, true
+	case "svg":
+		// shapes 0 and 1 give the place, 2 and 3 the size too: (x y), (v), (x y w h), (v size)
+		switch c.shape {
+		case 0: return fmt.aprintf("rt.svg(%s, [2]f64{{%s, %s}}, nil)", args[0], args[1], args[2], allocator = context.temp_allocator), false, true
+		case 1: return fmt.aprintf("rt.svg(%s, %s, nil)", args[0], args[1], allocator = context.temp_allocator), false, true
+		case 2: return fmt.aprintf("rt.svg(%s, [2]f64{{%s, %s}}, [2]f64{{%s, %s}})", args[0], args[1], args[2], args[3], args[4], allocator = context.temp_allocator), false, true
+		case 3: return fmt.aprintf("rt.svg(%s, %s, %s)", args[0], args[1], args[2], allocator = context.temp_allocator), false, true
+		}
+	case "model":
+		if c.shape == 0 {
+			return fmt.aprintf("rt.model(%s, [3]f64{{%s, %s, %s}}, %s)", args[0], args[1], args[2], args[3], args[4], allocator = context.temp_allocator), false, true
+		}
+		if vector_size(g, c.args[1]) == 3 {
+			return fmt.aprintf("rt.model(%s, %s, %s)", args[0], args[1], args[2], allocator = context.temp_allocator), false, true
+		}
+		refuse(g, e.span, "`model` at a point that is not in space")
+		return "", false, true
 	case "tint":
 		return fmt.aprintf("roci.tint(%s)", args[0], allocator = context.temp_allocator), false, true
 	case "image":

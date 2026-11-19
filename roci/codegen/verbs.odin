@@ -357,7 +357,7 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		}
 		refuse(g, e.span, "`add` to something that is not a list")
 		return "", false
-	case "keep", "skip", "collect", "sort":
+	case "keep", "skip", "collect", "sort", "find":
 		return list_block_call(g, e, c, name), true
 	}
 	if made, handled := plain_call(g, e, c, args); handled {
@@ -372,31 +372,15 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 	return more_verbs(g, e, c, args)
 }
 
-// `window size 800 600 title "x"` used as a value: the window, with the words that can be given as values. A
-// window with more words is written as a statement (`emit_window`).
+// `window size 800 600 title "x"` used as a value: the lines that make the window come before the statement, and the
+// value is the window's name. Written where nothing is hoisted (a loop's test) it cannot be.
 @(private)
 window_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> string {
-	at := "nil"
-	if o := option(c.options, "at"); o != nil {
-		if len(o.args) >= 2 {
-			at = fmt.tprintf("[2]int{{int(%s), int(%s)}}", expr(g, o.args[0]), expr(g, o.args[1]))
-		} else if kind_of(g, o.args[0]) == .Vector {
-			holder := expr(g, o.args[0])
-			at = fmt.tprintf("[2]int{{int(%s.x), int(%s.y)}}", holder, holder)
-		}
+	if g.no_hoist > 0 {
+		refuse(g, e.span, "a window made where it is worked out more than once")
+		return "0"
 	}
-	hidden := "false"
-	if o := option(c.options, "visible"); o != nil {
-		hidden = fmt.tprintf("!(%s)", expr(g, o.args[0]))
-	}
-	for o in c.options {
-		switch o.word {
-		case "at", "title", "visible":
-		case:
-			refuse(g, e.span, fmt.tprintf("a window used as a value with `%s`", o.word))
-		}
-	}
-	return fmt.aprintf("rt.new_window(int(%s), int(%s), %s, %s, %s)", args[0], args[1], at, hidden, maybe(g, c.options, "title"), allocator = context.temp_allocator)
+	return window_lines(g, e, c)
 }
 
 // `keep list [ ... ]`, `skip`, `collect` and `sort list by [ ... ]`: a procedure of their own made for the call, so the
@@ -470,6 +454,8 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 		made_marker := item_marker(g, stmt.expr.type, made)
 		stored_value := fmt.tprintf("rt.keep(%s)", condition) if kind_of(g, stmt.expr) == .Text else condition
 		fmt.sbprintf(&b, "%s :: proc(list: %s%s) -> ^rt.List(%s) {{\n\tout := rt.new_list(%s, %s)\n\tif list != nil {{\n\t\tfor it_ in list.items {{\n\t\t\trt.add(%s, out)\n\t\t}}\n\t}}\n\treturn out\n}}\n\n", helper, list_type, extra, made, made, made_marker, stored_value)
+	case "find":
+		fmt.sbprintf(&b, "%s :: proc(list: %s%s) -> (found: %s) {{\n\tif list == nil {{ return }}\n\tfor it_ in list.items {{\n\t\tif %s {{ return it_ }}\n\t}}\n\treturn\n}}\n\n", helper, list_type, extra, element, condition)
 	case "sort":
 		key_kind := kind_of(g, stmt.expr)
 		if key_kind != .Number && key_kind != .Text {

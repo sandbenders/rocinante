@@ -11,6 +11,7 @@ package rt
 import "core:fmt"
 import "core:math"
 import "core:os"
+import "core:time"
 import "core:strings"
 import "../"
 import "../collide"
@@ -559,4 +560,93 @@ outline :: proc(points: ^List([2]f64)) -> collide.Shape {
 		return collide.polygon(nil)
 	}
 	return collide.polygon(points.items[:])
+}
+
+// ---- drawings and models ----
+
+@(thread_local) @(private) drawings: map[string]^gfx.Svg_Drawing
+@(thread_local) @(private) models: map[string]roci.Model
+@(thread_local) @(private) model_directory: string
+
+// `svg "badge.svg" at 10 20 size 100 100`: a drawing, at a place, as big as it is unless a size is given.
+svg :: proc(name: string, at: [2]f64, size: Maybe([2]f64)) {
+	drawing, known := drawings[name]
+	if !known {
+		path := find_file(name, "drawing")
+		if path != "" {
+			if bytes, err := os.read_entire_file(path, context.temp_allocator); err == nil {
+				read, error := gfx.svg_read(bytes)
+				if error == .None {
+					drawing = new(gfx.Svg_Drawing)
+					drawing^ = read
+				} else {
+					say_once(name, fmt.tprintf("`%s` is not a drawing I can read: %s.", name, gfx.svg_error_words(error)))
+				}
+			}
+		}
+		if drawings == nil {
+			drawings = make(map[string]^gfx.Svg_Drawing)
+		}
+		drawings[strings.clone(name)] = drawing
+	}
+	if drawing == nil {
+		return
+	}
+	dimensions := [2]f64{f64(drawing.width), f64(drawing.height)}
+	if given, ok := size.?; ok {
+		dimensions = given
+	}
+	roci.draw_svg(drawing, at.x, at.y, dimensions.x, dimensions.y)
+}
+
+@(private)
+model_neighbour :: proc(uri: string) -> ([]byte, bool) {
+	if uri == "" || strings.contains(uri, "..") || strings.has_prefix(uri, "/") || strings.contains(uri, ":") || strings.contains(uri, "\\") {
+		return nil, false
+	}
+	bytes, err := os.read_entire_file(strings.concatenate({model_directory, "/", uri}, context.temp_allocator), context.temp_allocator)
+	return bytes, err == nil
+}
+
+// A model of the assets by its name, read once. 0 after saying why not.
+load_model :: proc(name: string) -> roci.Model {
+	if known, ok := models[name]; ok {
+		return known
+	}
+	id: roci.Model
+	if path := find_file(name, "model"); path != "" {
+		if bytes, err := os.read_entire_file(path, context.temp_allocator); err == nil {
+			stamp := i64(0)
+			if info, stat_err := os.stat(path, context.temp_allocator); stat_err == nil {
+				stamp = time.to_unix_nanoseconds(info.modification_time)
+			}
+			slash := strings.last_index_byte(path, '/')
+			model_directory = strings.clone(path[:slash] if slash >= 0 else ".")
+			made, error := roci.add_model(path, stamp, bytes, model_neighbour)
+			if error == .None {
+				id = made
+			} else {
+				say_once(name, fmt.tprintf("`%s` is not a model I can read: %s.", name, gfx.gltf_error_words(error)))
+			}
+		}
+	}
+	if models == nil {
+		models = make(map[string]roci.Model)
+	}
+	models[strings.clone(name)] = id
+	return id
+}
+
+// `model "ship.glb" at 0 0 0 size 60`.
+model :: proc(name: string, at: [3]f64, size: f64) {
+	if id := load_model(name); id != 0 {
+		roci.model_xyz(id, at.x, at.y, at.z, size)
+	}
+}
+
+// `window ... cursor none`, `set w cursor arrow`.
+set_cursor :: proc(w: roci.Window, name: string) {
+	if c, known := roci.cursor_by_name(name); known {
+		roci.set_cursor(w, c)
+	}
 }

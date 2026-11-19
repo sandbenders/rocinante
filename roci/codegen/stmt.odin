@@ -228,6 +228,10 @@ emit_set :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) {
 				}
 			case "title":
 				line(g, "roci.title_window(%s, %s)", target, expr(g, o.args[0]))
+			case "cursor":
+				if word, ok := word_of(o.args[0]); ok {
+					line(g, "rt.set_cursor(%s, %q)", target, word)
+				}
 			case "resizable", "bordered", "topmost", "focusable", "grab", "modal", "fullscreen":
 				line(g, "roci.set_%s(%s, %s)", o.word, target, expr(g, o.args[0]))
 			case "smallest", "largest":
@@ -310,17 +314,22 @@ emit_with :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_With) {
 // `window size 800 600 title "x" resizable false`: the window, then each of the words that set it.
 @(private)
 emit_window :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) {
+	line(g, "{{")
+	g.indent += 1
+	window_lines(g, e, c)
+	g.indent -= 1
+	line(g, "}}")
+}
+
+// The lines that make a window and give it its words; the window is the name they give back.
+@(private)
+window_lines :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> string {
 	id := g.next_id
 	g.next_id += 1
-	made := fmt.tprintf("window_%d", id)
-	at, hidden := "", false
+	made := fmt.aprintf("window_%d", id, allocator = context.temp_allocator)
+	at, hidden := "nil", false
 	if o := option(c.options, "at"); o != nil {
-		if len(o.args) >= 2 {
-			at = fmt.tprintf("[2]int{{int(%s), int(%s)}}", expr(g, o.args[0]), expr(g, o.args[1]))
-		} else if kind_of(g, o.args[0]) == .Vector {
-			holder := expr(g, o.args[0])
-			at = fmt.tprintf("[2]int{{int(%s.x), int(%s.y)}}", holder, holder)
-		}
+		at = point2_int(g, o)
 	}
 	if o := option(c.options, "visible"); o != nil {
 		// a flag the interpreter reads as a value; only a written true or false is kept here
@@ -330,15 +339,9 @@ emit_window :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) {
 			refuse(g, e.span, "`window visible` that is not written as true or false")
 		}
 	}
-	args := make([]string, 2, context.temp_allocator)
-	for i in 0 ..< 2 {
-		args[i] = expr(g, c.args[i])
-	}
+	args := in_order(g, c.args[:2])
 	flags := "roci.Window_Flags{hidden = true}" if hidden else "{}"
-	line(g, "{{")
-	g.indent += 1
-	line(g, "%s := roci.window(int(%s), int(%s), %s, %s)", made, args[0], args[1], at if at != "" else "nil", flags)
-	line(g, "_ = %s", made)
+	line(g, "%s := roci.window(int(%s), int(%s), %s, %s)", made, args[0], args[1], at, flags)
 	for o in c.options {
 		if len(o.args) == 0 {
 			continue
@@ -350,18 +353,35 @@ emit_window :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) {
 		case "resizable", "bordered", "topmost", "focusable", "grab", "modal", "fullscreen":
 			line(g, "roci.set_%s(%s, %s)", o.word, made, expr(g, o.args[0]))
 		case "smallest", "largest":
-			holder := expr(g, o.args[0]) if len(o.args) == 1 else fmt.tprintf("[2]f64{{%s, %s}}", expr(g, o.args[0]), expr(g, o.args[1]))
+			holder := point2(g, o)
 			line(g, "roci.set_%s(%s, int((%s)[0]), int((%s)[1]))", o.word, made, holder, holder)
 		case "ratio":
 			line(g, "roci.set_ratio(%s, %s)", made, expr(g, o.args[0]))
 		case "alpha":
 			line(g, "roci.set_window_alpha(%s, rt.alpha_to_byte(%s))", made, expr(g, o.args[0]))
+		case "cursor":
+			if word, ok := word_of(o.args[0]); ok {
+				line(g, "rt.set_cursor(%s, %q)", made, word)
+			} else {
+				refuse(g, e.span, "`window cursor` that is not written as a word")
+			}
+		case "parent":
+			line(g, "roci.set_parent(%s, %s)", made, expr(g, o.args[0]))
 		case:
 			refuse(g, e.span, fmt.tprintf("`window` with `%s`", o.word))
 		}
 	}
-	g.indent -= 1
-	line(g, "}}")
+	return made
+}
+
+// A place written after `at` as a pair of whole numbers: two numbers or a vector.
+@(private)
+point2_int :: proc(g: ^Gen, o: ^lang.IR_Option) -> string {
+	if len(o.args) >= 2 {
+		return fmt.aprintf("[2]int{{int(%s), int(%s)}}", expr(g, o.args[0]), expr(g, o.args[1]), allocator = context.temp_allocator)
+	}
+	holder := expr(g, o.args[0])
+	return fmt.aprintf("[2]int{{int(%s.x), int(%s.y)}}", holder, holder, allocator = context.temp_allocator)
 }
 
 // `for i from 0 to 9 [by 2]`: the steps are counted, not added up, so a step of 0.1 does not drift.

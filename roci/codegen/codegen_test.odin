@@ -133,13 +133,13 @@ test_list_blocks_become_procedures_with_plain_loops :: proc(t: ^testing.T) {
 
 @(test)
 test_what_cannot_be_compiled_yet_is_refused_with_its_name_and_never_half_done :: proc(t: ^testing.T) {
-	refused_for(t, "svg \"logo.svg\" at 0 0\n", "svg")
+	refused_for(t, "record \"clip.apng\"\n", "record")
 	refused_for(t, "scene \"a\" [ draw [ circle at 1 1 radius 1 ] ]\n", "scene")
-	refused_for(t, "window size 100 100 cursor none\n", "cursor")
+	refused_for(t, "w = window size 100 100\nsend w 5\n", "send")
 	refused_for(t, "ui [ button \"x\" ]\n", "ui")
 	refused_for(t, "x = table\n", "table")
 	refused_for(t, "draw [ push [ circle at 1 1 radius 1 ] ]\nevery 1 second [ draw [ circle at 1 1 radius 1 ] ]\n", "inside another block")
-	refused_for(t, "model \"ship.glb\" at 0 0 0 size 1\n", "model")
+	refused_for(t, "poem = lines \"a\"\n", "lines")
 }
 
 @(test)
@@ -226,7 +226,9 @@ w = window size 100 100 title "x" at 1 2
 	testing.expect(t, strings.contains(source, "roci.play(rain, volume = 50.0, pan = nil"))
 	testing.expect(t, strings.contains(source, "roci.set_sound(rain, at = nil, volume = nil, pan = nil, speed = 2.0"))
 	testing.expect(t, strings.contains(source, "rt.crop(photo, [2]f64{0.0, 0.0}, [2]f64{5.0, 5.0})"))
-	testing.expect(t, strings.contains(source, "rt.new_window(int(100.0), int(100.0), [2]int{int(1.0), int(2.0)}, false, \"x\")"))
+	testing.expect(t, strings.contains(source, "window_0 := roci.window(int(100.0), int(100.0), [2]int{int(1.0), int(2.0)}, {})"), "a window used as a value is made on lines before the statement")
+	testing.expect(t, strings.contains(source, "roci.title_window(window_0, \"x\")"))
+	testing.expect(t, strings.contains(source, "w = window_0"))
 }
 
 @(test)

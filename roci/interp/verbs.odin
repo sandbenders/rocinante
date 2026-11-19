@@ -140,7 +140,7 @@ to_paint :: proc(it: ^Interp, v: Value, options: []lang.IR_Option = nil) -> (roc
 			return g^, true
 		}
 	case roci.Image:
-		return picture_fill(it, x, options), true
+		return picture_fill(it, roci.movie_frame(x), options), true // a movie fills with the picture of the moment
 	}
 	return nil, false
 }

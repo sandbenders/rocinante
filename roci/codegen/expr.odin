@@ -184,6 +184,10 @@ field :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Field) -> string {
 		switch k.name {
 		case "width":  return fmt.aprintf("roci.image_size(%s).x", expr(g, k.base), allocator = context.temp_allocator)
 		case "height": return fmt.aprintf("roci.image_size(%s).y", expr(g, k.base), allocator = context.temp_allocator)
+		case "playing": return fmt.aprintf("roci.movie_state(%s).playing", expr(g, k.base), allocator = context.temp_allocator)
+		case "loop":    return fmt.aprintf("roci.movie_state(%s).looping", expr(g, k.base), allocator = context.temp_allocator)
+		case "at", "length", "speed":
+			return fmt.aprintf("roci.movie_state(%s).%s", expr(g, k.base), k.name, allocator = context.temp_allocator)
 		}
 		refuse(g, e.span, fmt.tprintf("`.%s` of a picture", k.name))
 		return "0.0"
@@ -196,9 +200,20 @@ field :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Field) -> string {
 		refuse(g, e.span, fmt.tprintf("`.%s` of a sound", k.name))
 		return "0.0"
 	case .Window:
+		w := expr(g, k.base)
 		switch k.name {
-		case "width":  return fmt.aprintf("roci.window_size(%s).x", expr(g, k.base), allocator = context.temp_allocator)
-		case "height": return fmt.aprintf("roci.window_size(%s).y", expr(g, k.base), allocator = context.temp_allocator)
+		case "width":  return fmt.aprintf("roci.window_size(%s).x", w, allocator = context.temp_allocator)
+		case "height": return fmt.aprintf("roci.window_size(%s).y", w, allocator = context.temp_allocator)
+		case "title":  return fmt.aprintf("roci.window_title(%s)", w, allocator = context.temp_allocator)
+		case "at":     return fmt.aprintf("roci.window_position(%s)", w, allocator = context.temp_allocator)
+		case "mouse":  return fmt.aprintf("roci.window_mouse(%s)", w, allocator = context.temp_allocator)
+		case "alpha":  return fmt.aprintf("rt.byte_to_alpha(roci.window_alpha(%s))", w, allocator = context.temp_allocator)
+		case "ratio":  return fmt.aprintf("roci.window_ratio(%s)", w, allocator = context.temp_allocator)
+		case "smallest": return fmt.aprintf("roci.window_smallest(%s)", w, allocator = context.temp_allocator)
+		case "largest":  return fmt.aprintf("roci.window_largest(%s)", w, allocator = context.temp_allocator)
+		case "cursor":   return fmt.aprintf("roci.CURSOR_NAMES[roci.window_cursor(%s)]", w, allocator = context.temp_allocator)
+		case "fullscreen", "resizable", "bordered", "topmost", "visible", "focusable", "grab", "modal", "focused", "hovered", "maximized", "minimized", "covered":
+			return fmt.aprintf("roci.window_flag(%s, %q)", w, k.name, allocator = context.temp_allocator)
 		}
 		refuse(g, e.span, fmt.tprintf("`.%s` of a window", k.name))
 		return "0.0"
@@ -473,8 +488,10 @@ impure :: proc(e: ^lang.IR) -> bool {
 		return false
 	}
 	switch k in e.kind {
-	case lang.IR_Number, lang.IR_Text, lang.IR_Colour, lang.IR_Boolean, lang.IR_Word, lang.IR_Load, lang.IR_Builtin, lang.IR_Error:
+	case lang.IR_Number, lang.IR_Text, lang.IR_Colour, lang.IR_Boolean, lang.IR_Word, lang.IR_Load, lang.IR_Error:
 		return false
+	case lang.IR_Builtin:
+		return k.name == "anywhere" // a random point
 	case lang.IR_Swizzle:
 		return impure(k.base)
 	case lang.IR_Field:
