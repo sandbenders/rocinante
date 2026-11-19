@@ -134,7 +134,7 @@ test_list_blocks_become_procedures_with_plain_loops :: proc(t: ^testing.T) {
 test_what_cannot_be_compiled_yet_is_refused_with_its_name_and_never_half_done :: proc(t: ^testing.T) {
 	refused_for(t, "photo = load \"cat.png\"\nimage photo at 0 0\n", "picture")
 	refused_for(t, "scene \"a\" [ draw [ circle at 1 1 radius 1 ] ]\n", "scene")
-	refused_for(t, "window size 100 100 title \"x\" resizable false\n", "resizable")
+	refused_for(t, "window size 100 100 cursor none\n", "cursor")
 	refused_for(t, "ui [ button \"x\" ]\n", "ui")
 	refused_for(t, "x = table\n", "table")
 	refused_for(t, "draw [ push [ circle at 1 1 radius 1 ] ]\nevery 1 second [ draw [ circle at 1 1 radius 1 ] ]\n", "inside another block")
@@ -145,4 +145,30 @@ test_what_cannot_be_compiled_yet_is_refused_with_its_name_and_never_half_done ::
 test_every_problem_is_said_not_just_the_first :: proc(t: ^testing.T) {
 	result := compile("scene \"a\" [ ]\nx = table\nui [ ]\n")
 	testing.expect(t, len(result.problems) >= 3, "three things to say")
+}
+
+@(test)
+test_a_repeat_takes_its_count_once :: proc(t: ^testing.T) {
+	result := compile("xs = []\nrepeat 5 - (count xs) [ add 1 to xs ]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "times_0 := int("), "Odin works out the end of a range again each turn")
+	testing.expect(t, strings.contains(result.source, "for _ in 0 ..< times_0 {"))
+}
+
+@(test)
+test_the_verbs_in_space_and_the_window_words_are_written_as_calls :: proc(t: ^testing.T) {
+	result := compile("window size 400 300 title \"x\" resizable false at 10 20\nlight sun from 0 -1 1 fill white\nmaterial metallic 50\nbox at 0 0 0 size 5\nsphere at { 1, 2, 3 } radius 4\nmove 1 2 3\nturn 30 around y\ncamera at 0 5 10 fov 60\nwith fill red [ circle at 1 1 radius 1 ]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	source := result.source
+	testing.expect(t, strings.contains(source, "roci.set_resizable(window_0, false)"))
+	testing.expect(t, strings.contains(source, "roci.title_window(window_0, \"x\")"))
+	testing.expect(t, strings.contains(source, "_ = roci.light(.Sun, [3]f64{0.0, -1.0, 1.0}, nil, maths.Colour{"))
+	testing.expect(t, strings.contains(source, "roci.material(metallic = 50.0, roughness = nil, emissive = nil)"))
+	testing.expect(t, strings.contains(source, "roci.box_xyz_side(0.0, 0.0, 0.0, 5.0)"))
+	testing.expect(t, strings.contains(source, "roci.sphere_vr([3]f64{1.0, 2.0, 3.0}, 4.0)"))
+	testing.expect(t, strings.contains(source, "roci.move_xyz(1.0, 2.0, 3.0)"))
+	testing.expect(t, strings.contains(source, "roci.turn_about(30.0, .Y)"))
+	testing.expect(t, strings.contains(source, "roci.camera_xyz(0.0, 5.0, 10.0, 60.0)"))
+	testing.expect(t, strings.contains(source, "roci.push(.Style)"))
+	testing.expect(t, strings.contains(source, "roci.pop()"))
 }

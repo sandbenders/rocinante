@@ -56,8 +56,17 @@ emit_stmt :: proc(g: ^Gen, s: ^lang.IR_Stmt) {
 		line(g, "}}")
 	case lang.IR_Repeat:
 		comment(g, s.span)
-		line(g, "for _ in 0 ..< int(%s) {{", expr(g, k.count))
+		// the count is taken once, before the first turn: Odin works out the end of a range again each turn,
+		// so a count that the body changes (`repeat COUNT - count list [ add ... ]`) would shrink as it ran
+		id := g.next_id
+		g.next_id += 1
+		line(g, "{{")
+		g.indent += 1
+		line(g, "times_%d := int(%s)", id, expr(g, k.count))
+		line(g, "for _ in 0 ..< times_%d {{", id)
 		emit_block(g, k.body)
+		line(g, "}}")
+		g.indent -= 1
 		line(g, "}}")
 	case lang.IR_While:
 		comment(g, s.span)
@@ -71,7 +80,8 @@ emit_stmt :: proc(g: ^Gen, s: ^lang.IR_Stmt) {
 		comment(g, s.span)
 		emit_for_each(g, s, k)
 	case lang.IR_With:
-		refuse(g, s.span, "`with`, which styles a block")
+		comment(g, s.span)
+		emit_with(g, s, k)
 	case lang.IR_Every, lang.IR_On, lang.IR_Draw:
 		refuse(g, s.span, "`draw`, `every` or `on` inside another block (they go at the top of the sketch)")
 	case lang.IR_Scene:
@@ -135,6 +145,10 @@ emit_expr_stmt :: proc(g: ^Gen, e: ^lang.IR) {
 		emit_push(g, call_ir)
 		return
 	}
+	if call_ir.verb != nil && call_ir.instance == nil && call_ir.verb.name == "window" && len(call_ir.options) > 0 {
+		emit_window(g, e, call_ir)
+		return
+	}
 	text, gives := call(g, e, call_ir)
 	if text == "" {
 		return
@@ -156,6 +170,98 @@ emit_push :: proc(g: ^Gen, c: lang.IR_Call) {
 		}
 	}
 	line(g, "roci.pop()")
+}
+
+// `with fill red thickness 3 [ ... ]`: the style holds for the block and is put back after it.
+@(private)
+emit_with :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_With) {
+	if k.record != nil {
+		refuse(g, s.span, "`with` a named style")
+		return
+	}
+	line(g, "roci.push(.Style)")
+	for o in k.styles {
+		if len(o.args) == 0 {
+			continue
+		}
+		switch o.word {
+		case "fill":
+			line(g, "roci.fill_paint(%s)", paint(g, o.args[0]))
+		case "stroke":
+			line(g, "roci.stroke_paint(%s)", paint(g, o.args[0]))
+		case "thickness":
+			line(g, "roci.thickness(%s)", expr(g, o.args[0]))
+		case "alpha":
+			line(g, "roci.alpha(rt.alpha_to_byte(%s))", expr(g, o.args[0]))
+		case "blend":
+			if word, ok := word_of(o.args[0]); ok {
+				line(g, "if mode, found := roci.blend_named(%q); found {{ roci.blend(mode) }}", word)
+			} else {
+				refuse(g, s.span, "`with blend` that is not written as a word")
+			}
+		case:
+			refuse(g, s.span, fmt.tprintf("`with %s`", o.word))
+		}
+	}
+	emit_block(g, k.body)
+	line(g, "roci.pop()")
+}
+
+// `window size 800 600 title "x" resizable false`: the window, then each of the words that set it.
+@(private)
+emit_window :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) {
+	id := g.next_id
+	g.next_id += 1
+	made := fmt.tprintf("window_%d", id)
+	at, hidden := "", false
+	if o := option(c.options, "at"); o != nil {
+		if len(o.args) >= 2 {
+			at = fmt.tprintf("[2]int{{int(%s), int(%s)}}", expr(g, o.args[0]), expr(g, o.args[1]))
+		} else if kind_of(g, o.args[0]) == .Vector {
+			holder := expr(g, o.args[0])
+			at = fmt.tprintf("[2]int{{int(%s.x), int(%s.y)}}", holder, holder)
+		}
+	}
+	if o := option(c.options, "visible"); o != nil {
+		// a flag the interpreter reads as a value; only a written true or false is kept here
+		if b, is_bool := o.args[0].kind.(lang.IR_Boolean); is_bool {
+			hidden = !b.value
+		} else {
+			refuse(g, e.span, "`window visible` that is not written as true or false")
+		}
+	}
+	args := make([]string, 2, context.temp_allocator)
+	for i in 0 ..< 2 {
+		args[i] = expr(g, c.args[i])
+	}
+	flags := "roci.Window_Flags{hidden = true}" if hidden else "{}"
+	line(g, "{{")
+	g.indent += 1
+	line(g, "%s := roci.window(int(%s), int(%s), %s, %s)", made, args[0], args[1], at if at != "" else "nil", flags)
+	line(g, "_ = %s", made)
+	for o in c.options {
+		if len(o.args) == 0 {
+			continue
+		}
+		switch o.word {
+		case "at", "visible":
+		case "title":
+			line(g, "roci.title_window(%s, %s)", made, expr(g, o.args[0]))
+		case "resizable", "bordered", "topmost", "focusable", "grab", "modal", "fullscreen":
+			line(g, "roci.set_%s(%s, %s)", o.word, made, expr(g, o.args[0]))
+		case "smallest", "largest":
+			holder := expr(g, o.args[0]) if len(o.args) == 1 else fmt.tprintf("[2]f64{{%s, %s}}", expr(g, o.args[0]), expr(g, o.args[1]))
+			line(g, "roci.set_%s(%s, int((%s)[0]), int((%s)[1]))", o.word, made, holder, holder)
+		case "ratio":
+			line(g, "roci.set_ratio(%s, %s)", made, expr(g, o.args[0]))
+		case "alpha":
+			line(g, "roci.set_window_alpha(%s, rt.alpha_to_byte(%s))", made, expr(g, o.args[0]))
+		case:
+			refuse(g, e.span, fmt.tprintf("`window` with `%s`", o.word))
+		}
+	}
+	g.indent -= 1
+	line(g, "}}")
 }
 
 // `for i from 0 to 9 [by 2]`: the steps are counted, not added up, so a step of 0.1 does not drift.

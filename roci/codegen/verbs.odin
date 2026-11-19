@@ -189,6 +189,8 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		return fmt.aprintf("roci.title_text(%s)", args[0], allocator = context.temp_allocator), false
 	case "seed":
 		return fmt.aprintf("roci.seed(%s)", args[0], allocator = context.temp_allocator), false
+	case "quit":
+		return "roci.quit()", false
 	case "background":
 		if len(c.options) > 0 {
 			refuse(g, e.span, "`background` with a gradient or a picture")
@@ -274,11 +276,10 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		if c.shape == 1 && vector_size(g, c.args[0]) == 2 {
 			return fmt.aprintf("roci.move_v(%s)", args[0], allocator = context.temp_allocator), false
 		}
-		refuse(g, e.span, "`move` in space")
-		return "", false
+		return more_verbs(g, e, c, args) // in space
 	case "turn":
 		if len(c.options) > 0 {
-			refuse(g, e.span, "`turn around`")
+			return more_verbs(g, e, c, args) // `turn around x`
 		}
 		return fmt.aprintf("roci.turn(%s)", args[0], allocator = context.temp_allocator), false
 	case "grow":
@@ -286,8 +287,8 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		case 0: return fmt.aprintf("roci.grow_factor(%s)", args[0], allocator = context.temp_allocator), false
 		case 1: return fmt.aprintf("roci.grow_xy(%s, %s)", args[0], args[1], allocator = context.temp_allocator), false
 		}
-		refuse(g, e.span, "`grow` in space")
-		return "", false
+		made, _ := plain_call(g, e, c, args) // in space
+		return made, false
 	case "push":
 		refuse(g, e.span, "`push` used as a value") // as a statement it is written where it stands
 		return "", false
@@ -360,8 +361,10 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 	case "keep", "skip", "collect":
 		return list_block_call(g, e, c, name), true
 	}
-	refuse(g, e.span, fmt.tprintf("`%s`, which compiled sketches cannot do yet", name))
-	return "", false
+	if made, handled := plain_call(g, e, c, args); handled {
+		return made, false
+	}
+	return more_verbs(g, e, c, args)
 }
 
 // `window size 800 600 title "x"`: a window, its title and where it sits.

@@ -213,6 +213,9 @@ run :: proc() -> bool {
 	example_ran, example_failures := run_examples(update, only[:])
 	ran += example_ran
 	failures += example_failures
+	compiled_ran, compiled_failures := run_compiled_examples(update, only[:])
+	ran += compiled_ran
+	failures += compiled_failures
 	if ran == 0 {
 		fmt.eprintln("golden: no scene by that name")
 		return false
