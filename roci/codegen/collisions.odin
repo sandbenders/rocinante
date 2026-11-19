@@ -16,7 +16,76 @@ import "core:strings"
 // is none comes out as an outline with no points, which touches nothing, as the interpreter treats it.
 @(private)
 shape_of :: proc(g: ^Gen, e: ^lang.IR) -> (text: string, ok: bool) {
+	if in_space(g, e.type) {
+		return shape3_of_value(g, e.type, expr(g, e), e.span)
+	}
 	return shape_of_value(g, e.type, expr(g, e), e.span)
+}
+
+// Whether a type is in space: a vector of three, a record with a place of three numbers or `triangles`, or a list of them.
+@(private)
+in_space :: proc(g: ^Gen, t: lang.Type_Id) -> bool {
+	item := g.types.items[lang.resolve(g.types, t)]
+	#partial switch item.kind {
+	case .Vector:
+		return item.a == 3
+	case .List:
+		return in_space(g, lang.Type_Id(item.a))
+	case .Record:
+		for f in g.types.shapes[item.a].fields {
+			switch f.name {
+			case "pos", "from", "to":
+				v := g.types.items[lang.resolve(g.types, f.type)]
+				if v.kind == .Vector {
+					return v.a == 3
+				}
+			case "triangles":
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// A value in space as a `collide.Shape3`.
+@(private)
+shape3_of_value :: proc(g: ^Gen, t: lang.Type_Id, value: string, span: lang.Span) -> (text: string, ok: bool) {
+	item := g.types.items[lang.resolve(g.types, t)]
+	#partial switch item.kind {
+	case .Vector:
+		if item.a == 3 {
+			return fmt.aprintf("collide.point3(%s)", value, allocator = context.temp_allocator), true
+		}
+	case .Record:
+		names := make([dynamic]string, context.temp_allocator)
+		for f in g.types.shapes[item.a].fields {
+			append(&names, f.name)
+		}
+		class, _ := lang.shape_class(names[:])
+		#partial switch class {
+		case .Mesh:
+			return fmt.aprintf("rt.mesh_shape(%s.triangles)", value, allocator = context.temp_allocator), true
+		case .Segment:
+			return fmt.aprintf("collide.segment3(%s.from, %s.to)", value, value, allocator = context.temp_allocator), true
+		case .Circle:
+			return fmt.aprintf("collide.sphere(%s.pos, %s.radius)", value, value, allocator = context.temp_allocator), true
+		case .Box:
+			angle := fmt.tprintf("%s.angle", value) if lang_has(names[:], "angle") else "[3]f64{}"
+			return fmt.aprintf("collide.box3(%s.pos, %s.size, %s)", value, value, angle, allocator = context.temp_allocator), true
+		}
+	}
+	refuse(g, span, fmt.tprintf("%s as a shape in space", lang.describe(g.types, t)))
+	return "", false
+}
+
+@(private)
+lang_has :: proc(names: []string, label: string) -> bool {
+	for n in names {
+		if n == label {
+			return true
+		}
+	}
+	return false
 }
 
 @(private)
@@ -78,24 +147,35 @@ collision_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 		return "", false, true
 	}
 	g.uses_collide = true
+	space := in_space(g, c.args[0].type) || in_space(g, c.args[1].type)
 	switch name {
 	case "touching":
-		a, a_ok := shape_of(g, c.args[0])
-		b, b_ok := shape_of(g, c.args[1])
+		a, a_ok := space_shape(g, c.args[0], space)
+		b, b_ok := space_shape(g, c.args[1], space)
 		if !a_ok || !b_ok {
 			return "false", true, true
 		}
+		if space {
+			return fmt.aprintf("collide.touching3(%s, %s)", a, b, allocator = context.temp_allocator), true, true
+		}
 		return fmt.aprintf("collide.touching(%s, %s)", a, b, allocator = context.temp_allocator), true, true
 	case "inside":
-		b, ok := shape_of(g, c.args[1])
+		b, ok := space_shape(g, c.args[1], space)
+		if space {
+			if !ok || kind_of(g, c.args[0]) != .Vector || vector_size(g, c.args[0]) != 3 {
+				refuse(g, e.span, "`inside` of something that is not a point in space")
+				return "false", true, true
+			}
+			return fmt.aprintf("collide.inside3(%s, %s)", expr(g, c.args[0]), b, allocator = context.temp_allocator), true, true
+		}
 		if !ok || kind_of(g, c.args[0]) != .Vector || vector_size(g, c.args[0]) != 2 {
 			refuse(g, e.span, "`inside` of something that is not a point in the plane")
 			return "false", true, true
 		}
 		return fmt.aprintf("collide.inside(%s, %s)", expr(g, c.args[0]), b, allocator = context.temp_allocator), true, true
 	case "contact":
-		a, a_ok := shape_of(g, c.args[0])
-		b, b_ok := shape_of(g, c.args[1])
+		a, a_ok := space_shape(g, c.args[0], space)
+		b, b_ok := space_shape(g, c.args[1], space)
 		if !a_ok || !b_ok {
 			return "nil", true, true
 		}
@@ -103,7 +183,7 @@ collision_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 		if record == "" {
 			return "nil", true, true
 		}
-		return fmt.aprintf("rt_contact_%d(%s, %s)", contact_helper(g, record, e.type), a, b, allocator = context.temp_allocator), true, true
+		return fmt.aprintf("rt_contact_%d(%s, %s)", contact_helper(g, record, e.type, space), a, b, allocator = context.temp_allocator), true, true
 	case "hits":
 		if kind_of(g, c.args[1]) != .List {
 			refuse(g, e.span, "`hits` of something that is not a list")
@@ -118,31 +198,40 @@ collision_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 
 // A procedure that makes the record `contact` gives: every field 0 when the shapes do not touch.
 @(private)
-contact_helper :: proc(g: ^Gen, record: string, t: lang.Type_Id) -> int {
+contact_helper :: proc(g: ^Gen, record: string, t: lang.Type_Id, space: bool) -> int {
 	id := g.next_id
 	g.next_id += 1
 	filled := record_fields(g, t, {{"point", "c.point"}, {"normal", "c.normal"}, {"depth", "c.depth"}})
-	fmt.sbprintf(&g.procs, "rt_contact_%d :: proc(a, b: collide.Shape) -> ^%s {{\n\tc, touching := collide.contact(a, b)\n\tif !touching {{ return rt.new_record(%s{{}}%s) }}\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", id, record, record, trace_arg(g, record), record, filled, trace_arg(g, record))
+	shape_type, contact := "collide.Shape", "collide.contact"
+	if space {
+		shape_type, contact = "collide.Shape3", "collide.contact3"
+	}
+	fmt.sbprintf(&g.procs, "rt_contact_%d :: proc(a, b: %s) -> ^%s {{\n\tc, touching := %s(a, b)\n\tif !touching {{ return rt.new_record(%s{{}}%s) }}\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", id, shape_type, record, contact, record, trace_arg(g, record), record, filled, trace_arg(g, record))
 	return id
 }
 
 // `hits ball bricks`: the items of a list that touch a shape, in list order.
 @(private)
 hits_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> string {
-	a, a_ok := shape_of(g, c.args[0])
+	space := in_space(g, c.args[0].type) || in_space(g, c.args[1].type)
+	a, a_ok := space_shape(g, c.args[0], space)
 	list_type, list_ok := odin_type(g, c.args[1].type, e.span, "a list")
 	if !a_ok || !list_ok {
 		return "nil"
 	}
 	element := list_type[len("^rt.List("):len(list_type) - 1]
-	element_shape, shape_ok := shape_of_value(g, list_element(g, c.args[1].type), "item", e.span)
+	element_shape, shape_ok := space_shape_value(g, list_element(g, c.args[1].type), "item", e.span, space)
 	if !shape_ok {
 		return "nil"
 	}
 	id := g.next_id
 	g.next_id += 1
 	marker := item_marker(g, list_element(g, c.args[1].type), element)
-	fmt.sbprintf(&g.procs, "rt_hits_%d :: proc(shape: collide.Shape, list: %s) -> %s {{\n\tout := rt.new_list(%s, %s)\n\tif list == nil {{ return out }}\n\tbox := collide.bounds(shape)\n\tfor item in list.items {{\n\t\ts := %s\n\t\tif collide.bounds_overlap(box, collide.bounds(s)) && collide.touching(shape, s) {{ rt.add(item, out) }}\n\t}}\n\treturn out\n}}\n\n", id, list_type, list_type, element, marker, element_shape)
+	suffix, shape_type := "", "collide.Shape"
+	if space {
+		suffix, shape_type = "3", "collide.Shape3"
+	}
+	fmt.sbprintf(&g.procs, "rt_hits_%d :: proc(shape: %s, list: %s) -> %s {{\n\tout := rt.new_list(%s, %s)\n\tif list == nil {{ return out }}\n\tbox := collide.bounds%s(shape)\n\tfor item in list.items {{\n\t\ts := %s\n\t\tif collide.bounds%s_overlap(box, collide.bounds%s(s)) && collide.touching%s(shape, s) {{ rt.add(item, out) }}\n\t}}\n\treturn out\n}}\n\n", id, shape_type, list_type, list_type, element, marker, suffix, element_shape, suffix, suffix, suffix)
 	return fmt.aprintf("rt_hits_%d(%s, %s)", id, a, expr(g, c.args[1]), allocator = context.temp_allocator)
 }
 
@@ -159,7 +248,8 @@ cast_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> string {
 	if !line_ok || !list_ok || result == "" {
 		return "nil"
 	}
-	element_shape, shape_ok := shape_of_value(g, list_element(g, c.args[1].type), "item", e.span)
+	space := in_space(g, c.args[0].type) || in_space(g, c.args[1].type)
+	element_shape, shape_ok := space_shape_value(g, list_element(g, c.args[1].type), "item", e.span, space)
 	if !shape_ok {
 		return "nil"
 	}
@@ -167,7 +257,7 @@ cast_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> string {
 	g.next_id += 1
 	found := record_fields(g, e.type, {{"item", "found"}, {"point", "best.point"}, {"normal", "best.normal"}, {"distance", "distance"}})
 	element := list_type[len("^rt.List("):len(list_type) - 1]
-	fmt.sbprintf(&g.procs, "rt_cast_%d :: proc(line: %s, list: %s) -> ^%s {{\n\tif line == nil || list == nil {{ return rt.new_record(%s{{}}%s) }}\n\tbest: collide.Hit\n\tfound: %s\n\tmet := false\n\tfor item in list.items {{\n\t\ts := %s\n\t\tif h, hit := collide.cast_shape(line.from, line.to, s); hit && (!met || h.at < best.at) {{\n\t\t\tbest, found, met = h, item, true\n\t\t}}\n\t}}\n\tif !met {{ return rt.new_record(%s{{}}%s) }}\n\td := line.to - line.from\n\tdistance := best.at * math.sqrt(d.x * d.x + d.y * d.y)\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", id, line_type, list_type, result, result, trace_arg(g, result), element, element_shape, result, trace_arg(g, result), result, found, trace_arg(g, result))
+	fmt.sbprintf(&g.procs, "rt_cast_%d :: proc(line: %s, list: %s) -> ^%s {{\n\tif line == nil || list == nil {{ return rt.new_record(%s{{}}%s) }}\n\tbest: collide.Hit%s\n\tfound: %s\n\tmet := false\n\tfor item in list.items {{\n\t\ts := %s\n\t\tif h, hit := collide.cast_shape%s(line.from, line.to, s); hit && (!met || h.at < best.at) {{\n\t\t\tbest, found, met = h, item, true\n\t\t}}\n\t}}\n\tif !met {{ return rt.new_record(%s{{}}%s) }}\n\td := line.to - line.from\n\tdistance := best.at * math.sqrt(%s)\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", id, line_type, list_type, result, result, trace_arg(g, result), "3" if space else "", element, element_shape, "3" if space else "", result, trace_arg(g, result), "d.x * d.x + d.y * d.y + d.z * d.z" if space else "d.x * d.x + d.y * d.y", result, found, trace_arg(g, result))
 	return fmt.aprintf("rt_cast_%d(%s, %s)", id, expr(g, c.args[0]), expr(g, c.args[1]), allocator = context.temp_allocator)
 }
 
@@ -209,4 +299,21 @@ mixed_shape_helper :: proc(g: ^Gen, shape_index: int, names: []string) -> string
 	fmt.sbprintf(&b, "\t}}\n\treturn collide.polygon(nil)\n}}\n\n")
 	strings.write_string(&g.procs, strings.to_string(b))
 	return name
+}
+
+// A value as a shape of the plane or of space.
+@(private)
+space_shape :: proc(g: ^Gen, e: ^lang.IR, space: bool) -> (text: string, ok: bool) {
+	if space {
+		return shape3_of_value(g, e.type, expr(g, e), e.span)
+	}
+	return shape_of(g, e)
+}
+
+@(private)
+space_shape_value :: proc(g: ^Gen, t: lang.Type_Id, value: string, span: lang.Span, space: bool) -> (text: string, ok: bool) {
+	if space {
+		return shape3_of_value(g, t, value, span)
+	}
+	return shape_of_value(g, t, value, span)
 }

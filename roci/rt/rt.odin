@@ -29,7 +29,7 @@ format_number :: proc(n: f64, allocator := context.temp_allocator) -> string {
 }
 
 // How a value reads when it is joined to text with `+`.
-show :: proc{show_number, show_bool, show_text, show_vector}
+show :: proc{show_number, show_bool, show_text, show_vector, show_list, show_table}
 
 show_number :: proc(n: f64, allocator := context.temp_allocator) -> string {
 	return format_number(n, allocator)
@@ -51,6 +51,34 @@ show_vector :: proc(v: [$N]f64, allocator := context.temp_allocator) -> string {
 			strings.write_string(&b, ", ")
 		}
 		strings.write_string(&b, format_number(v[i], allocator))
+	}
+	strings.write_string(&b, " }")
+	return strings.to_string(b)
+}
+
+show_list :: proc(list: ^List($T), allocator := context.temp_allocator) -> string {
+	b := strings.builder_make(allocator)
+	strings.write_string(&b, "[")
+	if list != nil {
+		for item in list.items {
+			strings.write_string(&b, " ")
+			strings.write_string(&b, show(item, allocator))
+		}
+	}
+	strings.write_string(&b, " ]")
+	return strings.to_string(b)
+}
+
+show_table :: proc(table: ^Table($V), allocator := context.temp_allocator) -> string {
+	b := strings.builder_make(allocator)
+	strings.write_string(&b, "{")
+	if table != nil {
+		for name, i in table.keys {
+			strings.write_string(&b, ", " if i > 0 else " ")
+			strings.write_quoted_string(&b, name)
+			strings.write_string(&b, ": ")
+			strings.write_string(&b, show(table.values[i], allocator))
+		}
 	}
 	strings.write_string(&b, " }")
 	return strings.to_string(b)

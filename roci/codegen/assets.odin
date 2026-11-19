@@ -288,10 +288,42 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 			}
 			return fmt.aprintf("roci.forward_sound(%s, %s)", args[0], expr(g, by.args[0]), allocator = context.temp_allocator), false, true
 		}
+	case "numbers":
+		from, to := option(c.options, "from"), option(c.options, "to")
+		if from == nil || to == nil {
+			refuse(g, e.span, "`numbers` without both its ends")
+			return "nil", true, true
+		}
+		return fmt.aprintf("rt.numbers(%s, %s, %s)", expr(g, from.args[0]), expr(g, to.args[0]), maybe_or(g, c.options, "by", "1.0"), allocator = context.temp_allocator), true, true
+	case "outline":
+		at, size := "[2]f64{}", "nil"
+		if o := option(c.options, "at"); o != nil {
+			at = point2(g, o^)
+		}
+		if o := option(c.options, "size"); o != nil {
+			size = point2(g, o^)
+		}
+		return fmt.aprintf("rt.outline_of(%s, %s, %s, %s)", args[0], maybe_or(g, c.options, "alpha", "50.0"), at, size, allocator = context.temp_allocator), true, true
+	case "ray":
+		g.lenient += 1
+		record := record_name(g, e.type, e.span)
+		g.lenient -= 1
+		if record == "" {
+			return "nil", true, true
+		}
+		fields := record_fields(g, e.type, {{"from", "from"}, {"to", "to"}})
+		return fmt.aprintf("(proc(spot: [2]f64) -> ^%s {{\n\tfrom, to := roci.pixel_ray(spot.x, spot.y)\n\treturn rt.new_record(%s{{class__ = %d, %s}}%s)\n}})(%s)", record, record, int(lang.Shape_Class.Segment), fields, trace_arg(g, record), args[0], allocator = context.temp_allocator), true, true
 	case "synth":
 		if c.shape == 1 {
-			refuse(g, e.span, "`synth` from a SoundFont file")
-			return "", false, true
+			preset, preset_name := "nil", `""`
+			if o := option(c.options, "preset"); o != nil {
+				if kind_of(g, o.args[0]) == .Text {
+					preset_name = expr(g, o.args[0])
+				} else {
+					preset = expr(g, o.args[0])
+				}
+			}
+			return fmt.aprintf("rt.soundfont(%s, %s, %s, %s, %s, %s, %s)", args[0], preset, preset_name, maybe(g, c.options, "attack"), maybe(g, c.options, "decay"), maybe(g, c.options, "sustain"), maybe(g, c.options, "release"), allocator = context.temp_allocator), true, true
 		}
 		wave, ok := word_of(c.args[0])
 		if !ok {

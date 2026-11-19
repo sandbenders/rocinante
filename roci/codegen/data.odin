@@ -122,3 +122,52 @@ to_datum_proc :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span) -> (name: strin
 	refuse(g, span, "`save` of this kind of value")
 	return "", false
 }
+
+// The name of the procedure that makes a look from a record used as a named style: its fields `fill`, `stroke`,
+// `thickness` and `alpha`, written the first time for the record's type.
+@(private)
+style_proc :: proc(g: ^Gen, record: ^lang.IR, span: lang.Span) -> (name: string, ok: bool) {
+	resolved := lang.resolve(g.types, record.type)
+	item := g.types.items[resolved]
+	if item.kind != .Record {
+		refuse(g, span, "a style that is not a record")
+		return "", false
+	}
+	odin, type_ok := odin_type(g, resolved, span, "a style")
+	if !type_ok {
+		return "", false
+	}
+	key := fmt.tprintf("style:%s", odin)
+	if known, found := g.copiers[key]; found {
+		return known, true
+	}
+	proc_name := fmt.aprintf("style_%d", len(g.copiers) + 1, allocator = context.temp_allocator)
+	g.copiers[key] = proc_name
+	b := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&b, "%s :: proc(r: %s) -> roci.Look {{\n\tlook: roci.Look\n\tif r == nil {{ return look }}\n", proc_name, odin)
+	for f in g.types.shapes[item.a].fields {
+		kind := g.types.items[lang.resolve(g.types, f.type)].kind
+		switch f.name {
+		case "fill", "stroke":
+			#partial switch kind {
+			case .Colour:   fmt.sbprintf(&b, "\tlook.%s = r.%s\n", f.name, field_name(f.name))
+			case .Number:   fmt.sbprintf(&b, "\tlook.%s = roci.grey(r.%s)\n", f.name, field_name(f.name))
+			case .Gradient: fmt.sbprintf(&b, "\tlook.%s = rt.gradient_of(r.%s)\n", f.name, field_name(f.name))
+			case:
+				refuse(g, span, fmt.tprintf("a style whose `%s` is not a color, a number or a gradient", f.name))
+				return "", false
+			}
+		case "thickness":
+			if kind == .Number {
+				fmt.sbprintf(&b, "\tlook.thickness = r.%s\n", field_name(f.name))
+			}
+		case "alpha":
+			if kind == .Number {
+				fmt.sbprintf(&b, "\tlook.alpha = rt.alpha_to_byte(r.%s)\n", field_name(f.name))
+			}
+		}
+	}
+	fmt.sbprintf(&b, "\treturn look\n}}\n\n")
+	strings.write_string(&g.procs, strings.to_string(b))
+	return proc_name, true
+}

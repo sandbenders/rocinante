@@ -72,6 +72,7 @@ look_of :: proc(g: ^Gen, e: ^lang.IR, options: []lang.IR_Option) -> (look: strin
 	}
 	b := strings.builder_make(context.temp_allocator)
 	any := false
+	style := ""
 	put :: proc(b: ^strings.Builder, any: ^bool, text: string) {
 		if any^ {
 			strings.write_string(b, ", ")
@@ -108,6 +109,8 @@ look_of :: proc(g: ^Gen, e: ^lang.IR, options: []lang.IR_Option) -> (look: strin
 			switch {
 			case is_word && word.word == "center": origin = "roci.Origin.Center"
 			case is_word && word.word == "corner": origin = "roci.Origin.Corner"
+			case is_word && (word.word == "wireframe" || word.word == "solid"):
+				// said by the verb itself (`mesh`)
 			case:
 				refuse(g, e.span, "`as` with a word the compiler does not know here")
 			}
@@ -119,6 +122,15 @@ look_of :: proc(g: ^Gen, e: ^lang.IR, options: []lang.IR_Option) -> (look: strin
 			} else {
 				refuse(g, e.span, "`blend` that is not written as a word")
 			}
+		case "style":
+			style_expr, style_ok := style_proc(g, o.args[0], e.span)
+			if style_ok {
+				// what was written before it is under it, what is written after it is over it
+				before := fmt.tprintf("roci.Look{{%s}}", strings.to_string(b))
+				style = fmt.tprintf("rt.under(%s, %s(%s))", before if style == "" else style, style_expr, expr(g, o.args[0]))
+				strings.builder_reset(&b)
+				any = false
+			}
 		case "width", "height":
 			// the wrap width of a text and the size of a picture: said by the verb itself
 		case:
@@ -127,6 +139,14 @@ look_of :: proc(g: ^Gen, e: ^lang.IR, options: []lang.IR_Option) -> (look: strin
 	}
 	if any {
 		look = fmt.aprintf("roci.Look{{%s}}", strings.to_string(b), allocator = context.temp_allocator)
+	}
+	if style != "" {
+		// a named style under the words written after it (a word written wins)
+		if !any {
+			look = style
+		} else {
+			look = fmt.aprintf("rt.under(%s, %s)", style, look, allocator = context.temp_allocator)
+		}
 	}
 	return
 }
@@ -329,6 +349,11 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		#partial switch kind_of(g, c.args[0]) {
 		case .Number, .Boolean, .Text, .Vector:
 			return fmt.aprintf("fmt.println(rt.show(%s, context.allocator))", args[0], allocator = context.temp_allocator), false
+		case .List, .Table:
+			if !printable(g, c.args[0].type) {
+				break
+			}
+			return fmt.aprintf("fmt.println(rt.show(%s, context.allocator))", args[0], allocator = context.temp_allocator), false
 		}
 		refuse(g, e.span, fmt.tprintf("`print` of %s", lang.describe(g.types, c.args[0].type)))
 		return "", false
@@ -467,4 +492,17 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 	}
 	strings.write_string(&g.procs, strings.to_string(b))
 	return fmt.aprintf("%s(%s%s)", helper, expr(g, c.args[0]), strings.to_string(extra_args), allocator = context.temp_allocator)
+}
+
+// Whether a list or table holds only numbers, booleans, text and vectors, which `rt.show` reads.
+@(private)
+printable :: proc(g: ^Gen, t: lang.Type_Id) -> bool {
+	item := g.types.items[lang.resolve(g.types, t)]
+	#partial switch item.kind {
+	case .Number, .Boolean, .Text, .Vector:
+		return true
+	case .List, .Table:
+		return printable(g, lang.Type_Id(item.a))
+	}
+	return false
 }

@@ -169,6 +169,24 @@ more_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (te
 			return "", false
 		}
 		return shape_call(procedure, {args[0]}, look, ""), false
+	case "screen point":
+		if c.shape == 0 {
+			return fmt.aprintf("rt.screen_point(%s, %s, %s)", args[0], args[1], args[2], allocator = context.temp_allocator), true
+		}
+		return fmt.aprintf("rt.screen_point(%s[0], %s[1], %s[2])", args[0], args[0], args[0], allocator = context.temp_allocator), true
+	case "world point":
+		if c.shape == 0 {
+			return fmt.aprintf("rt.world_point(%s, %s)", args[0], args[1], allocator = context.temp_allocator), true
+		}
+		return fmt.aprintf("rt.world_point(%s[0], %s[1])", args[0], args[0], allocator = context.temp_allocator), true
+	case "mesh":
+		look, _ := look_of(g, e, c.options)
+		wireframe := "false"
+		if o := option(c.options, "as"); o != nil {
+			wireframe = fmt.tprintf("(%s == \"wireframe\")", expr(g, o.args[0]))
+		}
+		g.next_id += 1
+		return shape_call("rt.mesh", {fmt.tprintf("%d", g.next_id), args[0], wireframe}, look, ""), false
 	case "save":
 		if c.shape == 1 {
 			convert, ok := to_datum_proc(g, c.args[0].type, e.span)

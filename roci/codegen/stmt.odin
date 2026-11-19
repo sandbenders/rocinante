@@ -282,11 +282,12 @@ emit_draw_into :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) {
 // `with fill red thickness 3 [ ... ]`: the style holds for the block and is put back after it.
 @(private)
 emit_with :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_With) {
-	if k.record != nil {
-		refuse(g, s.span, "`with` a named style")
-		return
-	}
 	line(g, "roci.push(.Style)")
+	if k.record != nil {
+		if style, ok := style_proc(g, k.record, s.span); ok {
+			line(g, "rt.apply_look(%s(%s))", style, expr(g, k.record))
+		}
+	}
 	for o in k.styles {
 		if len(o.args) == 0 {
 			continue

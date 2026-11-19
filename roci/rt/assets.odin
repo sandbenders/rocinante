@@ -805,3 +805,189 @@ joystick_buttons :: proc(j: roci.Joystick_State) -> ^List(bool) {
 	}
 	return out
 }
+
+// ---- 3D points and meshes ----
+
+screen_point :: proc(x, y, z: f64) -> [2]f64 {
+	at, _ := roci.screen_point(x, y, z)
+	return at
+}
+
+world_point :: proc(x, y: f64) -> [3]f64 {
+	at, _ := roci.world_point(x, y)
+	return at
+}
+
+turtle_up :: proc(degrees: f64) {
+	if !roci.turtle_up(degrees) {
+		say_once("up", "`up` needs the turtle in space: write `turtle space` first.")
+	}
+}
+
+turtle_down :: proc(degrees: f64) {
+	if !roci.turtle_down(degrees) {
+		say_once("down", "`down` needs the turtle in space: write `turtle space` first.")
+	}
+}
+
+turtle_roll :: proc(degrees: f64) {
+	if !roci.turtle_roll(degrees) {
+		say_once("roll", "`roll` needs the turtle in space: write `turtle space` first.")
+	}
+}
+
+@(thread_local) @(private) mesh_frame: int
+@(thread_local) @(private) mesh_counts: map[int]int
+
+// `mesh corners`: the triangles of a list of corners, each call (and each time one call runs in a frame) keeping its own
+// mesh on the graphics card.
+mesh :: proc(site: int, corners: ^List([3]f64), wireframe: bool, look := roci.Look{}) {
+	if corners == nil || len(corners.items) < 3 {
+		return
+	}
+	frame := roci.frame_count()
+	if mesh_counts == nil {
+		mesh_counts = make(map[int]int)
+	}
+	if mesh_frame != frame {
+		clear(&mesh_counts)
+		mesh_frame = frame
+	}
+	n := mesh_counts[site]
+	mesh_counts[site] = n + 1
+	roci.mesh(fmt.tprintf("mesh:%d:%d", site, n), corners.items[:], wireframe, look)
+}
+
+// ---- named styles ----
+
+// `top` with whatever it leaves unsaid taken from `base`: a style word written after a named style wins over it.
+under :: proc(base, top: roci.Look) -> roci.Look {
+	out := top
+	if out.fill == nil {
+		out.fill = base.fill
+	}
+	if out.stroke == nil {
+		out.stroke = base.stroke
+	}
+	if out.thickness == nil {
+		out.thickness = base.thickness
+	}
+	if out.alpha == nil {
+		out.alpha = base.alpha
+	}
+	if out.font == nil {
+		out.font = base.font
+	}
+	if out.size == nil {
+		out.size = base.size
+	}
+	if out.align == nil {
+		out.align = base.align
+	}
+	if out.leading == nil {
+		out.leading = base.leading
+	}
+	if out.tint == nil {
+		out.tint = base.tint
+	}
+	if out.blend == nil {
+		out.blend = base.blend
+	}
+	out.no_fill ||= base.no_fill
+	out.no_stroke ||= base.no_stroke
+	return out
+}
+
+// Sets the current style from a look, until the enclosing scope ends.
+apply_look :: proc(look: roci.Look) {
+	if look.fill != nil {
+		roci.fill_paint(look.fill)
+	}
+	if look.stroke != nil {
+		roci.stroke_paint(look.stroke)
+	}
+	if t, ok := look.thickness.?; ok {
+		roci.thickness(t)
+	}
+	if a, ok := look.alpha.?; ok {
+		roci.alpha(a)
+	}
+	if mode, ok := look.blend.?; ok {
+		roci.blend(mode)
+	}
+}
+
+// ---- SoundFonts ----
+
+@(thread_local) @(private) fonts_made: map[string]roci.Sound
+
+// `synth "piano.sf2" preset 3`: an instrument from a SoundFont file, once for each file and preset.
+soundfont :: proc(name: string, preset: Maybe(f64), preset_name: string, attack, decay, sustain, release: Maybe(f64)) -> roci.Sound {
+	number := -1
+	if p, ok := preset.?; ok {
+		number = int(p)
+	}
+	if fonts_made == nil {
+		fonts_made = make(map[string]roci.Sound)
+	}
+	key := fmt.tprintf("%s\x00%s\x00%d", name, preset_name, number)
+	s: roci.Sound
+	if known, found := fonts_made[key]; found && known != 0 {
+		s = known
+	} else {
+		path := find_file(name, "SoundFont")
+		if path == "" {
+			return 0
+		}
+		bytes, err := os.read_entire_file(path, context.temp_allocator)
+		if err != nil {
+			say_once(name, fmt.tprintf("I could not read the SoundFont `%s`.", name))
+			return 0
+		}
+		made, has_preset, ok := roci.add_soundfont(bytes, number, preset_name)
+		if !ok {
+			say_once(name, fmt.tprintf("`%s` is not a SoundFont I can read.", name))
+			return 0
+		}
+		if !has_preset {
+			presets := roci.soundfont_presets(made)
+			say_once(key, fmt.tprintf("`%s` has no such preset, so the first one plays. It has: %s.", name, strings.join(presets, ", ", context.temp_allocator)))
+		}
+		fonts_made[strings.clone(key)] = made
+		s = made
+	}
+	if attack != nil || decay != nil || sustain != nil || release != nil {
+		roci.set_envelope(s, attack, decay, sustain, release)
+	}
+	return s
+}
+
+// A mesh as a shape in space: its triangles, three corners for each.
+mesh_shape :: proc(triangles: ^List([3]f64)) -> collide.Shape3 {
+	if triangles == nil {
+		return collide.mesh3(nil)
+	}
+	return collide.mesh3(triangles.items[:])
+}
+
+// `numbers from 1 to 10 by 2`.
+numbers :: proc(low, high, step: f64) -> ^List(f64) {
+	out := new_list(f64)
+	if step == 0 || low != low || high != high || step != step {
+		return out
+	}
+	count := min(int(math.floor((high - low) / step + 1e-9)) + 1, 1_000_000)
+	for n in 0 ..< max(count, 0) {
+		add(low + f64(n) * step, out)
+	}
+	return out
+}
+
+// `outline picture`: the corners of the solid part of a picture.
+outline_of :: proc(picture: roci.Image, alpha: f64, at: [2]f64, size: Maybe([2]f64)) -> ^List([2]f64) {
+	out := new_list([2]f64)
+	for c in roci.outline_of(picture, alpha, at, size, context.temp_allocator) {
+		add(c, out)
+	}
+	return out
+}
