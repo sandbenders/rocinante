@@ -70,3 +70,20 @@ print (count fill_up)
 shrinking = [ 1 2 3 4 5 6 ]
 repeat (count shrinking) [ add 0 to shrinking ]
 print (count shrinking)
+// give ends the verb: the first one that is reached is the answer
+learn sign n [
+  if n < 0 [ give "minus" ]
+  if n is 0 [ give "zero" ]
+  give "plus"
+]
+print (sign -3)
+print (sign 0)
+print (sign 8)
+learn first_big items [
+  for each x in items [
+    if x > 10 [ give x ]
+  ]
+  give 0
+]
+print (first_big [ 3 12 40 ])
+print (first_big [ 3 4 ])

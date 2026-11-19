@@ -30,11 +30,11 @@ taught_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (string, bool) {
 	}
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, "%s(", instance_name(g, inst))
-	for a, i in c.args {
+	for text, i in in_order(g, c.args) {
 		if i > 0 {
 			strings.write_string(&b, ", ")
 		}
-		strings.write_string(&b, expr(g, a))
+		strings.write_string(&b, text)
 	}
 	first := len(c.args) == 0
 	for d in inst.defaults {
@@ -162,11 +162,17 @@ shape_call :: proc(procedure: string, args: []string, look, origin: string) -> s
 @(private)
 verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives: bool) {
 	args := make([]string, len(c.args), context.temp_allocator)
+	values := make([dynamic]^lang.IR, context.temp_allocator)
+	places := make([dynamic]int, context.temp_allocator)
 	for a, i in c.args {
 		if _, is_block := a.kind.(lang.IR_Block_Value); is_block {
 			continue // run by the verb that takes it
 		}
-		args[i] = expr(g, a)
+		append(&values, a)
+		append(&places, i)
+	}
+	for ordered, i in in_order(g, values[:]) {
+		args[places[i]] = ordered
 	}
 	n :: proc(args: []string, i: int) -> string {
 		return args[i] if i < len(args) else "0.0"
@@ -282,7 +288,7 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		return "", false
 
 	// ---- colours ----
-	case "rgb", "hsb":
+	case "rgb", "hsb", "oklch":
 		alpha := ""
 		if a := option(c.options, "alpha"); a != nil {
 			alpha = fmt.tprintf(", rt.alpha_to_byte(%s)", expr(g, a.args[0]))
@@ -358,6 +364,9 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		return made, false
 	}
 	if made, gave, handled := asset_verbs(g, e, c, args); handled {
+		return made, gave
+	}
+	if made, gave, handled := collision_verbs(g, e, c, name); handled {
 		return made, gave
 	}
 	return more_verbs(g, e, c, args)
@@ -443,7 +452,9 @@ list_block_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, name: string) -> 
 	saved_body, saved_indent := g.body, g.indent
 	g.body = strings.builder_make(context.temp_allocator)
 	g.indent = 0
+	g.no_hoist += 1 // the block's expression is worked out inside a procedure of its own, once for each item
 	condition := expr(g, stmt.expr)
+	g.no_hoist -= 1
 	g.body, g.indent = saved_body, saved_indent
 	b := strings.builder_make(context.temp_allocator)
 	extra := strings.to_string(extra_params)

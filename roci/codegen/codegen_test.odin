@@ -266,3 +266,30 @@ test_a_list_block_that_reads_a_verbs_own_names_gets_them_as_arguments :: proc(t:
 	testing.expect(t, strings.contains(result.source, "sort_1 :: proc(list: ^rt.List(f64)) -> ^rt.List(f64) {"))
 	testing.expect(t, strings.contains(result.source, "rt.sorted(list, keys, nil)"))
 }
+
+@(test)
+test_a_give_ends_the_verb_and_what_follows_is_not_written :: proc(t: ^testing.T) {
+	result := compile("learn sign n [\n  if n < 0 [ give \"minus\" ]\n  give \"plus\"\n  print \"never\"\n]\nprint (sign 1)\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "result__ = \"minus\"\n\t\treturn\n"), "a give sets the result and returns")
+	testing.expect(t, !strings.contains(result.source, "never"), "a statement after a give is never reached")
+}
+
+@(test)
+test_two_calls_that_work_something_out_are_worked_out_in_the_order_written :: proc(t: ^testing.T) {
+	result := compile("c = hsb (random 255) 255 (random from 40 to 255)\nx = random 5 + random 5\nlearn pair [ give { random 3, random 3 } ]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	source := result.source
+	testing.expect(t, strings.contains(source, "order_1 := roci.random(255.0)\n"))
+	testing.expect(t, strings.contains(source, "order_2 := roci.random_between(40.0, 255.0)\n"))
+	testing.expect(t, strings.contains(source, "roci.hsb(order_1, 255.0, order_2)"))
+	testing.expect(t, strings.contains(source, "(order_3 + order_4)"), "the two sides of a sum too")
+}
+
+@(test)
+test_an_expression_asked_for_twice_is_written_once :: proc(t: ^testing.T) {
+	// `add` works out its item once, even though two parts of the generator look at it
+	result := compile("things = []\nadd { a: random 2, b: random 2 } to things\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect_value(t, strings.count(result.source, "roci.random(2.0)"), 2)
+}

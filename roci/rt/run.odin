@@ -100,6 +100,8 @@ execute :: proc(run: Run, setup: proc(), roots: proc(), hook: proc(w: roci.Windo
 	if run.stats {
 		roci.stats_start(run.frames == 0, run.no_vsync)
 	}
+	// what `remember` keeps goes in the sketch's folder, which is where the program runs (a headless run reads and never writes)
+	roci.keep_beside(".", run.frames == 0)
 	collector_roots = roots
 	roci.set_end_hook(end_of_frame)
 	if hook != nil {

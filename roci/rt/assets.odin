@@ -13,6 +13,7 @@ import "core:math"
 import "core:os"
 import "core:strings"
 import "../"
+import "../collide"
 import "../folder"
 import "../gfx"
 import "../maths"
@@ -550,4 +551,12 @@ begin_into :: proc(picture: roci.Image) -> bool {
 	}
 	say_once(why, why)
 	return false
+}
+
+// The corners of an outline as a slice of points for a collision shape (an outline with none touches nothing).
+outline :: proc(points: ^List([2]f64)) -> collide.Shape {
+	if points == nil {
+		return collide.polygon(nil)
+	}
+	return collide.polygon(points.items[:])
 }

@@ -30,6 +30,9 @@ emit_block :: proc(g: ^Gen, block: lang.IR_Block) {
 	g.dynamic_depth += 1
 	for s in block.stmts {
 		emit_stmt(g, s)
+		if ends_the_verb(s) {
+			break // what follows a `give` or a `stop` is never reached, and Odin says so
+		}
 	}
 	g.dynamic_depth -= 1
 	g.indent -= 1
@@ -70,7 +73,10 @@ emit_stmt :: proc(g: ^Gen, s: ^lang.IR_Stmt) {
 		line(g, "}}")
 	case lang.IR_While:
 		comment(g, s.span)
-		line(g, "for %s {{", expr(g, k.cond))
+		g.no_hoist += 1 // the test is worked out again each turn
+		test := expr(g, k.cond)
+		g.no_hoist -= 1
+		line(g, "for %s {{", test)
 		emit_block(g, k.body)
 		line(g, "}}")
 	case lang.IR_For:
@@ -92,12 +98,23 @@ emit_stmt :: proc(g: ^Gen, s: ^lang.IR_Stmt) {
 			return
 		}
 		line(g, "result__ = %s", stored(g, k.value))
+		line(g, "return") // `give` hands the value back and ends the verb
 	case lang.IR_Stop:
 		comment(g, s.span)
 		line(g, "return")
 	case lang.IR_Check, lang.IR_Expect, lang.IR_Unchecked, lang.IR_Error_Stmt:
 		// a check runs only for `roci test`, and a `learn` makes no code where it stands
 	}
+}
+
+// Whether a statement ends the verb it is in: `give` and `stop`.
+@(private)
+ends_the_verb :: proc(s: ^lang.IR_Stmt) -> bool {
+	#partial switch _ in s.kind {
+	case lang.IR_Give, lang.IR_Stop:
+		return true
+	}
+	return false
 }
 
 @(private)
@@ -435,11 +452,16 @@ emit_proc :: proc(g: ^Gen, name, signature: string, body: lang.IR_Block, locals:
 	}
 	saved_depth := g.dynamic_depth
 	g.dynamic_depth = 1
+	ended := false
 	for s in body.stmts {
 		emit_stmt(g, s)
+		if ends_the_verb(s) {
+			ended = true
+			break
+		}
 	}
 	g.dynamic_depth = saved_depth
-	if gives {
+	if gives && !ended {
 		line(g, "return") // hands back what `give` put in the result
 	}
 	text := strings.to_string(g.body)
@@ -616,7 +638,9 @@ emit_instance :: proc(g: ^Gen, instance: ^lang.IR_Instance) {
 			strings.write_string(&params, ", ")
 		}
 		type, _ := odin_type(g, d.symbol.type, d.symbol.first_write, d.word)
+		g.no_hoist += 1 // a default is worked out when the verb is called, in the call
 		fmt.sbprintf(&params, "%s: %s = %s", name_of(g, d.symbol), type, expr(g, d.value))
+		g.no_hoist -= 1
 	}
 	signature := fmt.aprintf("(%s)", strings.to_string(params), allocator = context.temp_allocator)
 	if instance.gives {

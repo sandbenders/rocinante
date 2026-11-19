@@ -307,6 +307,46 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 		return fmt.aprintf("rt.%s(%s, %s)", name, args[0], values, allocator = context.temp_allocator), false, true
 	case "no effect":
 		return fmt.aprintf("roci.no_sound_effect(%s, %s)", args[0], args[1], allocator = context.temp_allocator), false, true
+	case "remember":
+		vault := vault_option(c.options)
+		key := args[0]
+		#partial switch kind_of(g, c.args[1]) {
+		case .Number:  return fmt.aprintf("rt.remember_number(%s, %s, %s)", vault, key, args[1], allocator = context.temp_allocator), false, true
+		case .Boolean: return fmt.aprintf("rt.remember_bool(%s, %s, %s)", vault, key, args[1], allocator = context.temp_allocator), false, true
+		case .Text:    return fmt.aprintf("rt.remember_text(%s, %s, %s)", vault, key, args[1], allocator = context.temp_allocator), false, true
+		case .Vector:  return fmt.aprintf("rt.remember_vector(%s, %s, %s)", vault, key, args[1], allocator = context.temp_allocator), false, true
+		case .Colour:  return fmt.aprintf("rt.remember_colour(%s, %s, %s)", vault, key, args[1], allocator = context.temp_allocator), false, true
+		}
+		refuse(g, e.span, fmt.tprintf("`remember` of %s", lang.describe(g.types, c.args[1].type)))
+		return "", false, true
+	case "recall":
+		vault := vault_option(c.options)
+		key := args[0]
+		start := option(c.options, "start")
+		#partial switch kind_of(g, e) {
+		case .Number:  return fmt.aprintf("rt.recall_number(%s, %s, %s)", vault, key, expr(g, start.args[0]) if start != nil else "0.0", allocator = context.temp_allocator), true, true
+		case .Boolean: return fmt.aprintf("rt.recall_bool(%s, %s, %s)", vault, key, expr(g, start.args[0]) if start != nil else "false", allocator = context.temp_allocator), true, true
+		case .Text:    return fmt.aprintf("rt.recall_text(%s, %s, %s)", vault, key, expr(g, start.args[0]) if start != nil else `""`, allocator = context.temp_allocator), true, true
+		case .Vector:  return fmt.aprintf("rt.recall_vector(%s, %s, %s)", vault, key, expr(g, start.args[0]) if start != nil else fmt.tprintf("[%d]f64{{}}", vector_size(g, e)), allocator = context.temp_allocator), true, true
+		case .Colour:  return fmt.aprintf("rt.recall_colour(%s, %s, %s)", vault, key, expr(g, start.args[0]) if start != nil else "maths.Colour{}", allocator = context.temp_allocator), true, true
+		}
+		refuse(g, e.span, fmt.tprintf("`recall` of %s", lang.describe(g.types, e.type)))
+		return "", false, true
+	case "forget":
+		if word, is_word := word_of(c.args[0]); is_word && (word == "memory" || word == "vault") {
+			return fmt.aprintf("rt.forget_everything(%s)", "true" if word == "vault" else "false", allocator = context.temp_allocator), false, true
+		}
+		return fmt.aprintf("rt.forget(%s, %s)", vault_option(c.options), args[0], allocator = context.temp_allocator), false, true
+	case "shuffle":
+		if kind_of(g, c.args[0]) != .List {
+			refuse(g, e.span, "`shuffle` of something that is not a list")
+			return "", false, true
+		}
+		list_type, _ := odin_type(g, c.args[0].type, e.span, "a list")
+		element := list_type[len("^rt.List("):len(list_type) - 1]
+		return fmt.aprintf("rt.shuffle(%s, %s)", args[0], item_marker(g, list_element(g, c.args[0].type), element), allocator = context.temp_allocator), true, true
+	case "measure":
+		return fmt.aprintf("roci.measure(%s)", args[0], allocator = context.temp_allocator), true, true
 	case "gradient":
 		if kind_of(g, c.args[0]) == .List && kind_of_list_element(g, c.args[0]) == .Colour {
 			return fmt.aprintf("rt.new_gradient(%s)", gradient_arguments(g, c.args[0], c.options), allocator = context.temp_allocator), true, true
@@ -356,6 +396,19 @@ word_option :: proc(g: ^Gen, options: []lang.IR_Option, word: string) -> string 
 		refuse(g, o.args[0].span, fmt.tprintf("`%s` that is not written as a word", word))
 	}
 	return `""`
+}
+
+// Whether a call says `in vault`: the value is kept in the vault, not in `memory.toml`.
+@(private)
+vault_option :: proc(options: []lang.IR_Option) -> string {
+	for o in options {
+		if o.word == "in" && len(o.args) > 0 {
+			if word, ok := word_of(o.args[0]); ok && word == "vault" {
+				return "true"
+			}
+		}
+	}
+	return "false"
 }
 
 // An option's value, or what stands in when the word was not written.

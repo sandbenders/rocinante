@@ -73,6 +73,18 @@ expr :: proc(g: ^Gen, e: ^lang.IR) -> string {
 	if e == nil {
 		return "0.0"
 	}
+	// An expression is written once, even when asked for twice: what it hoists (the arguments that are worked out in order)
+	// goes on lines of its own, and a second writing would work them out a second time.
+	if known, ok := g.written[e]; ok {
+		return known
+	}
+	text := expr_fresh(g, e)
+	g.written[e] = text
+	return text
+}
+
+@(private)
+expr_fresh :: proc(g: ^Gen, e: ^lang.IR) -> string {
 	if folded, ok := constant_value(e); ok && kind_of(g, e) == .Number {
 		return number_text(folded)
 	}
@@ -135,6 +147,9 @@ builtin :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 	case "tau":     return "rt.TAU"
 	case "pressed": return "roci.pressed()"
 	case "anywhere": return "roci.anywhere()"
+	case "webcam":   return "roci.webcam()"
+	case "screens":  return builtin_list(g, e, name)
+	case "turtle":   return builtin_record(g, e, name)
 	case "mic":      return "roci.mic()"
 	case "speakers": return "roci.the_speakers()"
 	case "platform": return "roci.platform_name()"
@@ -199,6 +214,7 @@ field :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Field) -> string {
 vector_literal :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Vector) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, "[%d]f64{{", len(k.items))
+	texts := in_order(g, k.items)
 	for item, i in k.items {
 		if kind_of(g, item) != .Number {
 			refuse(g, item.span, "a vector made of something that is not a number")
@@ -206,7 +222,7 @@ vector_literal :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Vector) -> string {
 		if i > 0 {
 			strings.write_string(&b, ", ")
 		}
-		strings.write_string(&b, expr(g, item))
+		strings.write_string(&b, texts[i])
 	}
 	strings.write_string(&b, "}")
 	return strings.to_string(b)
@@ -225,9 +241,10 @@ list_literal :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_List) -> string {
 	}
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, "rt.list_of(%s, %s", element, marker)
-	for item in k.items {
+	texts := in_order(g, k.items)
+	for item, i in k.items {
 		strings.write_string(&b, ", ")
-		strings.write_string(&b, stored(g, item))
+		strings.write_string(&b, keep_wrapped(g, item, texts[i]))
 	}
 	strings.write_string(&b, ")")
 	return strings.to_string(b)
@@ -241,11 +258,15 @@ record_literal :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Record) -> string {
 	}
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, "rt.new_record(%s{{", name)
+	texts := in_order(g, k.values)
+	if k.class != .None {
+		fmt.sbprintf(&b, "class__ = %d", int(k.class))
+	}
 	for field_label, i in k.names {
-		if i > 0 {
+		if i > 0 || k.class != .None {
 			strings.write_string(&b, ", ")
 		}
-		fmt.sbprintf(&b, "%s = %s", field_name(field_label), stored(g, k.values[i]))
+		fmt.sbprintf(&b, "%s = %s", field_name(field_label), keep_wrapped(g, k.values[i], texts[i]))
 	}
 	strings.write_string(&b, "}")
 	if has_trace(g, name) {
@@ -271,7 +292,12 @@ list_element :: proc(g: ^Gen, list: lang.Type_Id) -> lang.Type_Id {
 // is copied into memory that lasts, the way the interpreter copies it into the sketch's long memory.
 @(private)
 stored :: proc(g: ^Gen, e: ^lang.IR) -> string {
-	text := expr(g, e)
+	return keep_wrapped(g, e, expr(g, e))
+}
+
+// The same for text already written.
+@(private)
+keep_wrapped :: proc(g: ^Gen, e: ^lang.IR, text: string) -> string {
 	if kind_of(g, e) == .Text {
 		if _, literal := e.kind.(lang.IR_Text); !literal {
 			return fmt.aprintf("rt.keep(%s)", text, allocator = context.temp_allocator)
@@ -294,7 +320,17 @@ shown :: proc(g: ^Gen, e: ^lang.IR) -> string {
 @(private)
 binary :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Binary) -> string {
 	lk, rk := kind_of(g, k.lhs), kind_of(g, k.rhs)
-	l, r := expr(g, k.lhs), expr(g, k.rhs)
+	l, r: string
+	if k.op == .And || k.op == .Or {
+		// the right side is worked out only when the left does not decide
+		l = expr(g, k.lhs)
+		g.no_hoist += 1
+		r = expr(g, k.rhs)
+		g.no_hoist -= 1
+	} else {
+		both := in_order(g, {k.lhs, k.rhs})
+		l, r = both[0], both[1]
+	}
 	both_numbers := lk == .Number && rk == .Number
 	arithmetic := (lk == .Number || lk == .Vector) && (rk == .Number || rk == .Vector)
 	text := proc(g: ^Gen, a: string, op: string, b: string) -> string {
@@ -353,4 +389,168 @@ binary :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Binary) -> string {
 	}
 	refuse(g, e.span, fmt.tprintf("this operation on %s and %s", lang.describe(g.types, k.lhs.type), lang.describe(g.types, k.rhs.type)))
 	return "0.0"
+}
+
+// How a record the language hands out is made: the fields of the checker's shape, each from what the core says.
+// `builtin_record` is one record (`turtle`), `builtin_list` a list of them (`screens`); each is a procedure made
+// the first time the sketch reads it, which makes the record or the list as a sketch would have made it.
+@(private)
+builtin_record :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
+	record := record_name(g, e.type, e.span)
+	if record == "" {
+		return "nil"
+	}
+	helper := fmt.aprintf("%s_value", name, allocator = context.temp_allocator)
+	if !strings.contains(strings.to_string(g.procs), fmt.tprintf("%s :: proc", helper)) {
+		b := strings.builder_make(context.temp_allocator)
+		fmt.sbprintf(&b, "%s :: proc() -> ^%s {{\n", helper, record)
+		switch name {
+		case "turtle":
+			fmt.sbprintf(&b, "\tstate := roci.turtle_state()\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"pos", "state.pos"}, {"angle", "state.angle"}, {"down", "state.down"}}), trace_arg(g, record))
+		}
+		strings.write_string(&g.procs, strings.to_string(b))
+	}
+	return fmt.aprintf("%s()", helper, allocator = context.temp_allocator)
+}
+
+@(private)
+builtin_list :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
+	element := list_element(g, e.type)
+	record := record_name(g, element, e.span)
+	list_type, ok := odin_type(g, e.type, e.span, name)
+	if !ok || record == "" {
+		return "nil"
+	}
+	item_type := list_type[len("^rt.List("):len(list_type) - 1]
+	helper := fmt.aprintf("%s_value", name, allocator = context.temp_allocator)
+	if !strings.contains(strings.to_string(g.procs), fmt.tprintf("%s :: proc", helper)) {
+		b := strings.builder_make(context.temp_allocator)
+		fmt.sbprintf(&b, "%s :: proc() -> %s {{\n\tout := rt.new_list(%s, %s)\n", helper, list_type, item_type, item_marker(g, element, item_type))
+		switch name {
+		case "screens":
+			fmt.sbprintf(&b, "\tfor s in roci.screens() {{\n\t\trt.add(rt.new_record(%s{{%s}}%s), out)\n\t}}\n", record, record_fields(g, element, {{"name", "rt.keep(s.name)"}, {"pos", "[2]f64{f64(s.x), f64(s.y)}"}, {"width", "f64(s.width)"}, {"height", "f64(s.height)"}, {"density", "s.density"}, {"refresh", "s.refresh"}, {"main", "s.main"}}), trace_arg(g, record))
+		}
+		fmt.sbprintf(&b, "\treturn out\n}}\n\n")
+		strings.write_string(&g.procs, strings.to_string(b))
+	}
+	return fmt.aprintf("%s()", helper, allocator = context.temp_allocator)
+}
+
+// The fields of a record literal, each named and given its Odin value, for the ones the shape has.
+@(private)
+record_fields :: proc(g: ^Gen, t: lang.Type_Id, values: [][2]string) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	shape := g.types.items[lang.resolve(g.types, t)].a
+	first := true
+	for pair in values {
+		if _, has := lang.shape_field(g.types, shape, pair[0]); !has {
+			continue
+		}
+		if !first {
+			strings.write_string(&b, ", ")
+		}
+		first = false
+		fmt.sbprintf(&b, "%s = %s", field_name(pair[0]), pair[1])
+	}
+	return strings.to_string(b)
+}
+
+// `, trace_Record_N` when the record has a procedure that marks what it holds.
+@(private)
+trace_arg :: proc(g: ^Gen, record: string) -> string {
+	if has_trace(g, record) {
+		return fmt.aprintf(", trace_%s", record, allocator = context.temp_allocator)
+	}
+	return ""
+}
+
+// Whether working out an expression changes something or gives a different answer each time: a random number,
+// a call of a taught verb (which may change a name). Two of these in one call or one sum have to be worked out in
+// the order they are written, which Odin does not promise for the operands of a call or an operator.
+@(private)
+impure :: proc(e: ^lang.IR) -> bool {
+	if e == nil {
+		return false
+	}
+	switch k in e.kind {
+	case lang.IR_Number, lang.IR_Text, lang.IR_Colour, lang.IR_Boolean, lang.IR_Word, lang.IR_Load, lang.IR_Builtin, lang.IR_Error:
+		return false
+	case lang.IR_Swizzle:
+		return impure(k.base)
+	case lang.IR_Field:
+		return impure(k.base)
+	case lang.IR_Unary:
+		return impure(k.operand)
+	case lang.IR_Binary:
+		return impure(k.lhs) || impure(k.rhs)
+	case lang.IR_Vector:
+		for item in k.items {
+			if impure(item) {
+				return true
+			}
+		}
+	case lang.IR_List:
+		for item in k.items {
+			if impure(item) {
+				return true
+			}
+		}
+	case lang.IR_Record:
+		for value in k.values {
+			if impure(value) {
+				return true
+			}
+		}
+	case lang.IR_Call:
+		if k.instance != nil {
+			return true
+		}
+		if k.verb != nil {
+			switch k.verb.name {
+			case "random", "pick", "shuffle", "gaussian", "anywhere":
+				return true
+			}
+		}
+		for a in k.args {
+			if impure(a) {
+				return true
+			}
+		}
+		for o in k.options {
+			for a in o.args {
+				if impure(a) {
+					return true
+				}
+			}
+		}
+	case lang.IR_Block_Value:
+		return false
+	}
+	return false
+}
+
+// The Odin texts of several expressions that are worked out in the order given. Where two or more of them are
+// impure the first ones are worked out into names on lines of their own (before the statement that uses them), so the
+// order is the sketch's and not the compiler's; where hoisting is not possible they are written as they are.
+@(private)
+in_order :: proc(g: ^Gen, items: []^lang.IR) -> []string {
+	out := make([]string, len(items), context.temp_allocator)
+	pure_count := 0
+	for item in items {
+		if impure(item) {
+			pure_count += 1
+		}
+	}
+	hoist := pure_count >= 2 && g.no_hoist == 0
+	for item, i in items {
+		text := expr(g, item)
+		if hoist && impure(item) {
+			g.next_id += 1
+			name := fmt.aprintf("order_%d", g.next_id, allocator = context.temp_allocator)
+			line(g, "%s := %s", name, text)
+			text = name
+		}
+		out[i] = text
+	}
+	return out
 }
