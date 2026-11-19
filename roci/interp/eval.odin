@@ -42,6 +42,7 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 		case "gamepad": return gamepad_value(it, e.type)
 		case "gamepads": return gamepads_list(it, e.type)
 		case "joysticks": return joysticks_list(it, e.type)
+		case "screens": return screens_list(it, e.type)
 		case "webcam":  return webcam_value(it, e.span)
 		}
 		return builtin_value(it, k.name)
@@ -217,6 +218,8 @@ builtin_value :: proc(it: ^Interp, name: string) -> Value {
 		return strings.clone(it.chosen, it.alloc)
 	case "clipboard":
 		return roci.clipboard(it.alloc)
+	case "platform":
+		return roci.platform_name()
 	case "pressed":
 		return roci.pressed()
 	case "true":

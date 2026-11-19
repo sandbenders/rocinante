@@ -1144,6 +1144,7 @@ type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
 	case "gamepad": return gamepad_type(c)
 	case "gamepads": return list_of(c.types, gamepad_type(c))
 	case "joysticks": return list_of(c.types, joystick_type(c))
+	case "screens": return list_of(c.types, screen_type(c))
 	}
 	if def.kind == .Vector {
 		return vector_of(c.types, def.size)
@@ -1475,6 +1476,26 @@ joystick_type :: proc(c: ^Checker) -> Type_Id {
 		add_field(c.types, shape, "name", T_TEXT)
 		add_field(c.types, shape, "axes", list_of(c.types, T_NUMBER))
 		add_field(c.types, shape, "buttons", list_of(c.types, T_BOOLEAN))
+	}
+	return record_of(c.types, shape)
+}
+
+// The record a screen is (an item of `screens`): its name, where it is on the desktop, its size,
+// density and refresh rate, and whether it is the main one; one shape for the whole sketch.
+@(private)
+screen_type :: proc(c: ^Checker) -> Type_Id {
+	SCREEN_SITE :: -11
+	shape, known := c.sites[SCREEN_SITE]
+	if !known {
+		shape = new_shape(c.types, c.alloc)
+		c.sites[SCREEN_SITE] = shape
+		add_field(c.types, shape, "name", T_TEXT)
+		add_field(c.types, shape, "pos", vector_of(c.types, 2))
+		add_field(c.types, shape, "width", T_NUMBER)
+		add_field(c.types, shape, "height", T_NUMBER)
+		add_field(c.types, shape, "density", T_NUMBER)
+		add_field(c.types, shape, "refresh", T_NUMBER)
+		add_field(c.types, shape, "main", T_BOOLEAN)
 	}
 	return record_of(c.types, shape)
 }

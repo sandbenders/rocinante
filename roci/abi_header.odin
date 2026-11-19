@@ -404,6 +404,7 @@ abi_table_init :: proc "contextless" () {
 	abi_misc_group(&all)
 	abi_sound_group(&all)
 	abi_pads_group(&all)
+	abi_screens_group(&all)
 	abi_memory_group(&all)
 	abi_files_group(&all)
 	abi_dialogs_group(&all)

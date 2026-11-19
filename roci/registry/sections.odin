@@ -78,7 +78,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"touching", "contact", "hits", "inside", "cast", "ray", "triangles", "outline",
 	}},
 	{"Windows", "Opening windows, changing them while they are open, and sending values between them.", {
-		"window", "title", "fullscreen", "set", "send", "width", "height", "quit",
+		"window", "title", "fullscreen", "set", "send", "width", "height", "screens", "platform", "quit",
 	}},
 	{"Teaching verbs", "New verbs of your own, and libraries of other people's.", {
 		"learn", "give", "stop", "use",

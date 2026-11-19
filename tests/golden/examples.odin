@@ -68,6 +68,7 @@ EXAMPLES := [?]Example{
 	{"webcam", 2, {1}}, // the dark picture a headless run has for the camera, in the mirror, a text filled with it and the invitation to click (the frames and the snapshots come in the interpreter's test)
 	{"fetch", 2, {1}}, // the sketch waiting for its answers: a headless run fetches nothing (the answers are given in the interpreter's test)
 	{"vault", 2, {1}}, // the level and the coins a first run starts with (what the vault keeps comes in the interpreter's test)
+	{"screens", 2, {1}}, // the one 1920 by 1080 screen a headless run has, drawn at a tenth of its size, with the system's name (the screens a computer really has come in the interpreter's test)
 	{"gamepad", 2, {1}}, // the invitation to plug a gamepad in (a headless run has none; the panels come in the interpreter's test)
 	{"particles", 60, {1}}, // the fountain a second after it starts: 10,000 records
 	{"logo", 3, {1}}, // rocinante's logo, drawn from its SVG's own numbers

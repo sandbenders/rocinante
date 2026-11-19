@@ -1,0 +1,10 @@
+draw [
+  background 20
+  fill white
+  text ("running on " + platform) at 20 20
+  if platform is "ios" or platform is "android" [
+    text "touch it" at 20 60
+  ] else [
+    text "move the mouse" at 20 60
+  ]
+]

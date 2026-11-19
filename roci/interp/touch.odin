@@ -168,3 +168,30 @@ joysticks_list :: proc(it: ^Interp, type: lang.Type_Id) -> Value {
 	}
 	return out
 }
+
+// `screens`: every screen, the main one first, as a list of the checker's screen type.
+screens_list :: proc(it: ^Interp, type: lang.Type_Id) -> Value {
+	out := new_list(it)
+	item := lang.Type_Id(it.types.items[lang.resolve(it.types, type)].a)
+	shape := lang.shape_of(it.types, item)
+	if shape < 0 {
+		return out
+	}
+	for s in roci.screens() {
+		r := new_record(it, shape)
+		set :: proc(it: ^Interp, r: ^Record, shape: int, name: string, v: Value) {
+			if at := field_index(it, shape, name); at >= 0 {
+				r.fields[at] = v
+			}
+		}
+		set(it, r, shape, "name", strings.clone(s.name, it.alloc))
+		set(it, r, shape, "pos", vec2({f64(s.x), f64(s.y)}))
+		set(it, r, shape, "width", f64(s.width))
+		set(it, r, shape, "height", f64(s.height))
+		set(it, r, shape, "density", s.density)
+		set(it, r, shape, "refresh", s.refresh)
+		set(it, r, shape, "main", s.main)
+		append(&out.items, r)
+	}
+	return out
+}

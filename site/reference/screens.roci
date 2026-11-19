@@ -1,0 +1,13 @@
+draw [
+  background 20
+  fill white
+  text ("screens: " + count screens) at 20 20
+  for each s in screens [
+    // each screen drawn at a tenth of its size, where it sits on the desktop
+    fill gray
+    if s.main [ fill gold ]
+    rect at (100 + s.pos.x / 10) (60 + s.pos.y / 10) size (s.width / 10) (s.height / 10)
+    fill black
+    text (s.name + " " + s.width + " x " + s.height) at (110 + s.pos.x / 10) (70 + s.pos.y / 10)
+  ]
+]

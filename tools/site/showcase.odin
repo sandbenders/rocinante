@@ -116,6 +116,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"studio", 6, "Studio", 60, 2},
 	{"windows", 6, "Windows", 5, 2},
 	{"two_windows", 6, "Two windows", 30, 2},
+	{"screens", 6, "Screens", 2, 1},
 	{"garden", 6, "Garden", 30, 2},
 
 	{"swarm", 9, "Swarm", 40, 1},

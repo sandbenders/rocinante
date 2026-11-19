@@ -6,7 +6,7 @@ import "core:slice"
 // Words that make a value differ from one run, one moment or one place to the next, so a constant
 // written with one is never moved.
 @(private = "file")
-IMPURE_WORDS :: [?]string{"random", "noise", "load", "recall", "read", "clipboard", "chosen", "time", "frame", "mouse", "now"}
+IMPURE_WORDS :: [?]string{"random", "noise", "load", "recall", "read", "clipboard", "chosen", "time", "frame", "mouse", "screens", "now"}
 
 // The top-level statements in the order they run: every constant whose value is made only of
 // literals and other constants comes first, in the order its own needs allow, then everything else

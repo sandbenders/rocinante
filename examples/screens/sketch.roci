@@ -1,0 +1,27 @@
+// The computer the sketch runs on: `platform` is the name of its system as text ("macos", "windows",
+// "linux", "freebsd", "openbsd", "ios" or "android") and `screens` is every screen that is plugged in,
+// the main one first. Each is a record with its `name`, its `pos` on the desktop all the screens share
+// (negative for a screen left of or above the main one), its `width` and `height` in the units a window
+// is sized in, its `density` (2 on a Retina screen, so the real pixels are `width * density`), its
+// `refresh` rate and `main`. Here the screens are drawn as they sit on the desk, a tenth of their size.
+// A headless run has one screen of 1920 by 1080. `platform` here only changes the hint (a computer or a phone), so the picture
+// is the same on every desktop system.
+window size 700 360 title "screens"
+
+draw [
+  background 25
+  fill white
+  hint = "on a computer"
+  if platform is "ios" or platform is "android" [ hint = "on a phone" ]
+  text (count screens + " screen, " + hint) at 20 20
+  for each s in screens [
+    fill gray
+    if s.main [ fill gold ]
+    origin = { 300, 190 } + s.pos / 10
+    rect at origin size (s.width / 10) (s.height / 10)
+    fill black
+    text s.name at (origin + { 10, 10 })
+    text ("" + s.width + " x " + s.height) at (origin + { 10, 30 })
+    text ("" + s.density + "x, " + s.refresh + " Hz") at (origin + { 10, 50 })
+  ]
+]

@@ -1390,6 +1390,30 @@ int roci_joystick_button(int index, int button);
 /* Shakes a gamepad as far as it can: `strength` 0 to 100, for `seconds`, on the pad at a place counting from 1 (0 for the first). Gives 1 when there was a pad to shake and 0 when there was none, or it cannot shake. */
 int roci_rumble(double strength, double seconds, int pad);
 
+/* The system the program runs on, as lowercase text: macos, windows, linux, freebsd, openbsd, ios or android. It stays valid until the next function that gives text back. */
+const char *roci_platform(void);
+
+/* How many screens are plugged in. A screen plugged in or out shows at the next frame. */
+int roci_screen_count(void);
+
+/* The name of a screen (counting from 0, the main screen first), or an empty text past the last. It stays valid until the next function that gives text back. */
+const char *roci_screen_name(int index);
+
+/* Where a screen's top left corner is on the desktop all the screens share: negative for a screen left of or above the main one. */
+roci_vec2 roci_screen_pos(int index);
+
+/* A screen's width and height in the units a window is sized in, so a window of that size covers it. */
+roci_vec2 roci_screen_size(int index);
+
+/* Device pixels for one unit of a screen's size: 2 on a Retina screen, so its real pixels are the size times this. 0 past the last screen. */
+double roci_screen_density(int index);
+
+/* Frames a second a screen shows, 0 when the system does not say and past the last screen. */
+double roci_screen_refresh(int index);
+
+/* 1 for the main screen, 0 for another one and past the last. */
+int roci_screen_main(int index);
+
 /* Keeps a number under a name, in memory.toml beside the program, for the next run to read with roci_recall_number. The file is written after a pause in the changes and when the program ends, so this may be called every frame. */
 void roci_remember_number(const char *key, double value);
 
