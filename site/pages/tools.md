@@ -10,10 +10,11 @@ Everything is done with one program, `roci`. Run it with no name to see this lis
 
 | Command | What it does |
 |---|---|
-| `roci run [file]` | opens the sketch in a window and reloads it each time you save. With `--frames N` it runs without a window, and `--screenshot out.png` saves the picture. `--stats` times the frames: a box in the top left corner shows the frame and the frame rate, and the run adds a line to `artifacts/log.json`; `--no-vsync` lets the window go as fast as the computer can. `--compile` turns the sketch into a program for this computer and runs it, to see how fast it is when it is compiled (`--debug` builds it for a debugger); it needs Odin and the source of rocinante beside `roci`, and it says so when a sketch uses something it cannot compile yet. |
+| `roci run [file]` | opens the sketch in a window and reloads it each time you save. With `--frames N` it runs without a window, and `--screenshot out.png` saves the picture. `--stats` times the frames: a box in the top left corner shows the frame and the frame rate, and the run adds a line to `artifacts/log.json`; `--no-vsync` lets the window go as fast as the computer can. `--compile` turns the sketch into a program for this computer and runs it, to see how fast it is when it is compiled (`--debug` builds it for a debugger); it needs Odin and the source of rocinante beside `roci`, and it says so when a sketch uses something it cannot compile yet. With `--target ios` or `--target android` it builds the sketch for a phone that is plugged in, installs it there with its `assets` and starts it ([compiling and phones](../guides/31-compiling-and-phones/)). |
 | [`roci check`](../roci-check/) | reads a sketch and says every mistake in plain words, without a window. |
 | [`roci fmt`](../roci-fmt/) | writes a sketch in the house style. |
 | [`roci man`](../roci-man/) | shows how a word is written. |
+| `roci doctor` | says which kinds of app this computer can build and which tools compiling a sketch lacks, with the line that gets each one. |
 | [`roci test`](../roci-test/) | runs the checks you wrote and compares the sketch's picture with the one you kept. |
 
 ## Folders and libraries
@@ -30,4 +31,4 @@ Everything is done with one program, `roci`. Run it with no name to see this lis
 
 ## Coming
 
-`roci package` will turn a sketch into an app for each platform, and `roci doctor` will say what a computer is missing to do it. They are not in the alpha.
+`roci package` will turn a sketch into an app for each platform, ready to give to other people. It is not in the alpha; for now `roci run --compile --target ios|android` puts a sketch on your own phone.

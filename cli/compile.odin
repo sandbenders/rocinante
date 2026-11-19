@@ -70,8 +70,8 @@ check_odin :: proc(err: ^strings.Builder) -> bool {
 // Compiles the sketch and runs it. `args` are what `roci run` was given, of which the ones a compiled
 // program takes go on to it.
 run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out, err: ^strings.Builder) -> int {
-	if parsed.target != "" {
-		fmt.sbprintf(err, "Compiling for %s and putting the app on a phone is not built yet. For now `roci run --compile` compiles for this computer.\n", parsed.target)
+	if parsed.target != "" && (parsed.frames > 0 || parsed.screenshot != "" || parsed.stats || parsed.no_vsync || parsed.debug) {
+		fmt.sbprintf(err, "`--frames`, `--screenshot`, `--stats`, `--no-vsync` and `--debug` are for a program on this computer and do not go with `--target`.\n")
 		return 2
 	}
 	if len(parsed.inputs) > 0 || parsed.window != 1 || parsed.json {
@@ -95,7 +95,7 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 		return 1
 	}
 	sketch := sketch_name(file)
-	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = sketch, source = file}, context.temp_allocator)
+	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = sketch, source = file, target = parsed.target}, context.temp_allocator)
 	if len(generated.problems) > 0 {
 		say_problems(generated.problems, p.src, err)
 		return 4
@@ -103,6 +103,9 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 	mode := "debug" if parsed.debug else "release"
 	artifacts := artifacts_folder(file)
 	folder_path := strings.concatenate({artifacts, "/", system_folder(), "/", mode}, context.temp_allocator)
+	if parsed.target != "" {
+		folder_path = strings.concatenate({artifacts, "/", parsed.target, "-source"}, context.temp_allocator)
+	}
 	source_folder := strings.concatenate({folder_path, "/source"}, context.temp_allocator)
 	if !folder.ensure_directory(source_folder) {
 		fmt.sbprintf(err, "I cannot make the folder `%s`.\n", source_folder)
@@ -111,6 +114,9 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 	if os.write_entire_file(strings.concatenate({source_folder, "/sketch.odin"}, context.temp_allocator), transmute([]byte)generated.source) != nil {
 		fmt.sbprintf(err, "I cannot write the program into `%s`.\n", source_folder)
 		return 2
+	}
+	if parsed.target != "" {
+		return put_on_phone(parsed, root, sketch, source_folder, folder.root_of(file), out, err)
 	}
 	// `ROCI_COMPILE_CHECK=1` only type-checks the program that was made, which is how a change to the generator is
 	// tried on every example in seconds (an example that passes is then built and compared for real).
@@ -243,4 +249,42 @@ say_problems :: proc(problems: []codegen.Problem, src: lang.Source, err: ^string
 		}
 	}
 	fmt.sbprintf(err, "\nA sketch runs the same either way, so I would rather say so than compile part of it. `roci run` without `--compile` runs it with the interpreter.\n")
+}
+
+// The script that builds the program for a phone, installs it and starts it. It talks to the person itself, as
+// the tools it runs do, so what it says is shown as it goes.
+put_on_phone :: proc(parsed: Run_Args, root, sketch, source_folder, sketch_folder: string, out, err: ^strings.Builder) -> int {
+	script := strings.concatenate({root, "/tools/mobile-", parsed.target, ".sh"}, context.temp_allocator)
+	command := make([dynamic]string, context.temp_allocator)
+	append(&command, "env")
+	append(&command, strings.concatenate({"ROCI_ROOT=", root}, context.temp_allocator))
+	if parsed.device != "" {
+		append(&command, strings.concatenate({parsed.target == "ios" ? "DEVICE=" : "ANDROID_SERIAL=", parsed.device}, context.temp_allocator))
+	}
+	if parsed.team != "" {
+		append(&command, strings.concatenate({"TEAM_ID=", parsed.team}, context.temp_allocator))
+	}
+	whole := source_folder
+	if !filepath.is_abs(whole) {
+		cwd, _ := os.get_working_directory(context.temp_allocator)
+		whole = strings.concatenate({strings.trim_right(cwd, "/"), "/", strings.trim_prefix(whole, "./")}, context.temp_allocator)
+	}
+	sketch_whole := sketch_folder
+	if !filepath.is_abs(sketch_whole) {
+		cwd, _ := os.get_working_directory(context.temp_allocator)
+		sketch_whole = strings.concatenate({strings.trim_right(cwd, "/"), "/", strings.trim_prefix(sketch_folder, "./")}, context.temp_allocator)
+	}
+	append(&command, "sh", script, whole, sketch_whole, sketch)
+	fmt.print(strings.to_string(out^))
+	strings.builder_reset(out)
+	process, start_err := os.process_start({command = command[:], stdout = os.stdout, stderr = os.stderr})
+	if start_err != nil {
+		fmt.sbprintf(err, "I could not start `%s`.\n", script)
+		return 5
+	}
+	state, wait_err := os.process_wait(process)
+	if wait_err != nil {
+		return 5
+	}
+	return state.exit_code
 }

@@ -252,7 +252,7 @@ draw into c [ circle at 5 5 radius 2 ]
 	testing.expect(t, strings.contains(source, "rt.tween_number(&level, 10.0, 1.0, \"\", nil)"))
 	testing.expect(t, strings.contains(source, "rt.step_tweens()"), "the frame hook steps the tweens")
 	testing.expect(t, strings.contains(source, "rt.effect(\"glow\", []roci.Effect_Value{rt.effect_number(\"amount\", 0.5)})"))
-	testing.expect(t, strings.contains(source, "if rt.begin_into(c) {"))
+	testing.expect(t, strings.contains(source, "if rt.begin_into(c_) {"))
 	testing.expect(t, strings.contains(source, "if counts != nil { rt.mark(&counts.gc__) }"), "a table held by a name is a root")
 }
 
@@ -380,4 +380,32 @@ test_files_in_a_folder_and_osc_lists_made_elsewhere_are_written_as_calls :: proc
 	testing.expect(t, strings.contains(source, "rt.osc_args_of_values("))
 	testing.expect(t, strings.contains(source, "rt.osc_bundle("))
 	testing.expect(t, strings.contains(source, "[]rt.Osc_Arg{rt.Osc_Arg(1.0), rt.Osc_Arg(\"a\"), rt.Osc_Arg(true)}"))
+}
+
+@(test)
+test_a_program_for_a_phone_ends_in_the_entry_its_app_runs :: proc(t: ^testing.T) {
+	text := "c = 1\ncircle at 100 100 radius 50\n"
+	src := lang.make_source("test.roci", text, 0, context.temp_allocator)
+	checked := lang.check(src, registry.ALL_VERBS, nil, context.temp_allocator)
+	lang.optimise(&checked.program, lang.ALL_PASSES, context.temp_allocator)
+	desktop := generate(&checked.program, src, Options{sketch = "test", source = "test.roci"}, context.temp_allocator)
+	testing.expect(t, strings.contains(desktop.source, "main :: proc() {\n\trun := rt.read_run(\"test\""))
+	testing.expect(t, !strings.contains(desktop.source, "sdl_main"))
+	testing.expect(t, !strings.contains(desktop.source, "vendor:sdl3"))
+
+	ios := generate(&checked.program, src, Options{sketch = "test", source = "test.roci", target = "ios"}, context.temp_allocator)
+	testing.expect_value(t, len(ios.problems), 0)
+	testing.expect(t, strings.contains(ios.source, "import sdl \"vendor:sdl3\""))
+	testing.expect(t, strings.contains(ios.source, "sdl_main :: proc \"c\" (argc: c.int, argv: [^]cstring) -> c.int {"))
+	testing.expect(t, strings.contains(ios.source, "rt.use_home(string(sdl.GetBasePath()), string(cstring(sdl.GetPrefPath(\"rocinante\", \"test\"))))"))
+	testing.expect(t, strings.contains(ios.source, "main :: proc() {\n\tsdl.RunApp(0, nil, sdl_main, nil)\n}"))
+	testing.expect(t, strings.contains(ios.source, "sketch_main :: proc() {"))
+	testing.expect(t, strings.contains(ios.source, "c_ = "), "a name of the sketch that is also an import of the program is renamed")
+
+	android := generate(&checked.program, src, Options{sketch = "test", source = "test.roci", target = "android"}, context.temp_allocator)
+	testing.expect_value(t, len(android.problems), 0)
+	testing.expect(t, strings.contains(android.source, "@(export, link_name = \"rocinante_main\")"))
+	testing.expect(t, strings.contains(android.source, "sdl.GetAndroidExternalStoragePath()"))
+	testing.expect(t, strings.contains(android.source, "@(export, link_name = \"android_main\")"))
+	testing.expect(t, !strings.contains(android.source, "\nmain :: proc() {"), "a library has no main")
 }

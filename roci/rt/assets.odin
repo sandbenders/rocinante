@@ -26,7 +26,16 @@ import oscp "../osc"
 @(thread_local) @(private) said: map[string]bool
 
 // Where the sketch's assets are: the folder the program runs in.
-ASSETS_ROOT :: "."
+// Where the sketch's `assets` folder is, and where what the sketch remembers is kept: the folder the program runs
+// in, until a phone's program says otherwise (its app has a folder for each).
+ASSETS_ROOT: string = "."
+HOME: string = "."
+
+// A phone's program calls this before it starts: the folder its `assets` were carried to, and the one it may write.
+use_home :: proc(assets, writable: string) {
+	ASSETS_ROOT = assets if assets != "" else "."
+	HOME = writable if writable != "" else "."
+}
 
 @(private)
 say_once :: proc(key, message: string) {

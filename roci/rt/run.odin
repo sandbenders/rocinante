@@ -37,7 +37,7 @@ RUN_USAGE :: `This program was made by roci from a sketch. It takes:
 // Reads the command line.
 read_run :: proc(sketch, odin: string) -> Run {
 	run := Run{sketch = sketch, odin = odin, seed = 1, mode = "compiled"}
-	args := os.args[1:]
+	args := os.args[1:] if len(os.args) > 0 else nil // a phone starts the program with none
 	for i := 0; i < len(args); i += 1 {
 		arg := args[i]
 		needs_value := arg == "--frames" || arg == "--seed" || arg == "--screenshot" || arg == "--log" || arg == "--mode"
@@ -101,7 +101,7 @@ execute :: proc(run: Run, setup: proc(), roots: proc(), hook: proc(w: roci.Windo
 		roci.stats_start(run.frames == 0, run.no_vsync)
 	}
 	// what `remember` keeps goes in the sketch's folder, which is where the program runs (a headless run reads and never writes)
-	roci.keep_beside(".", run.frames == 0)
+	roci.keep_beside(HOME, run.frames == 0)
 	collector_roots = roots
 	roci.set_end_hook(end_of_frame)
 	if hook != nil {

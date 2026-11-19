@@ -261,3 +261,18 @@ test_a_sketch_of_several_files_reads_what_it_remembers :: proc(t: ^testing.T) {
 	testing.expect_value(t, r.code, 0)
 	testing.expect_value(t, strings.join(r.printed, ",", context.temp_allocator), "10")
 }
+
+@(test)
+test_a_phone_is_chosen_with_target_and_the_device_and_team_go_with_it :: proc(t: ^testing.T) {
+	a := parse_run_args({"--compile", "--target", "ios", "--device", "ABC-123", "--team", "T1"})
+	testing.expect(t, a.ok)
+	testing.expect_value(t, a.target, "ios")
+	testing.expect_value(t, a.device, "ABC-123")
+	testing.expect_value(t, a.team, "T1")
+	b := parse_run_args({"--compile", "--target", "android"})
+	testing.expect(t, b.ok)
+	testing.expect_value(t, b.device, "")
+	for args in ([][]string{{"--compile", "--device", "x"}, {"--compile", "--team", "x"}, {"--target", "ios"}, {"--compile", "--target", "ios", "--device"}, {"--compile", "--target", "web"}}) {
+		testing.expectf(t, !parse_run_args(args).ok, "%v should be refused", args)
+	}
+}

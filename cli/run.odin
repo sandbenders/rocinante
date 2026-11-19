@@ -19,7 +19,7 @@ import "core:strings"
 
 RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [--seed N] [--errors json]
              [--press key@frame] [--hold key@from-to] [--stats] [--no-vsync]
-             [--compile [--debug] [--target ios|android]]
+             [--compile [--debug] [--target ios|android [--device id] [--team id]]]
 
   file        the sketch to run; sketch.roci when left out
   --frames N  run N frames with no window, then stop
@@ -44,7 +44,11 @@ RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [
   --debug     with --compile, build with debug information and no optimisation, so a debugger can
               follow it; without it the program is built as a released sketch is
   --target ios|android
-              with --compile, build for a phone and install it on one that is connected (not built yet)
+              with --compile, build the sketch for a phone, install it on the one that is connected and start
+              it there; the sketch's assets go with it. An iPhone is built for on a Mac with Xcode and
+              its developer trusted on the phone; an Android phone needs USB debugging on and its screen unlocked
+  --device id the iPhone to install on (xcrun devicectl list devices), when more than one is connected
+  --team id   the Apple development team that signs an iPhone app, when Xcode knows more than one
   --errors json
               print every message as one line of JSON on standard output, for tools; with
               --frames what the sketch prints goes to standard error, and in a window each
@@ -60,6 +64,8 @@ Run_Args :: struct {
 	compile:    bool, // build a program and run that
 	debug:      bool, // with compile: debug information, no optimisation
 	target:     string, // with compile: ios or android
+	device:     string, // with a target: the iPhone to install on
+	team:       string, // with an iPhone target: the team that signs
 	stats:      bool, // time the frames, show the box, and log the run
 	no_vsync:   bool,
 	inputs:     [dynamic]Input_Step, // the keys to press, from --press and --hold
@@ -137,6 +143,16 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 			}
 			result.target = args[i + 1]
 			i += 1
+		case arg == "--device" || arg == "--team":
+			if i + 1 >= len(args) {
+				return Run_Args{ok = false, bad = fmt.tprintf("%s takes a value", arg)}
+			}
+			if arg == "--device" {
+				result.device = args[i + 1]
+			} else {
+				result.team = args[i + 1]
+			}
+			i += 1
 		case arg == "--stats":
 			result.stats = true
 		case arg == "--no-vsync":
@@ -153,6 +169,9 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 	}
 	if result.screenshot != "" && result.frames == 0 {
 		return Run_Args{ok = false, bad = "--screenshot needs --frames"}
+	}
+	if (result.device != "" || result.team != "") && result.target == "" {
+		return Run_Args{ok = false, bad = "--device and --team go with --target"}
 	}
 	if (result.debug || result.target != "") && !result.compile {
 		return Run_Args{ok = false, bad = "--debug and --target go with --compile"}
