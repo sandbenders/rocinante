@@ -2,6 +2,7 @@
 package lang
 
 import "core:slice"
+import "core:strings"
 
 // Words that make a value differ from one run, one moment or one place to the next, so a constant
 // written with one is never moved.
@@ -48,7 +49,7 @@ hoist_constants :: proc(c: ^Checker, stmts: []^Stmt) -> []^Stmt {
 				if sym, found := c.globals[word]; found && sym.kind == .Variable {
 					movable = false
 				}
-				if _, taught := c.learns[word]; taught {
+				if is_taught(c, word) {
 					movable = false
 				}
 				for impure in IMPURE_WORDS {
@@ -117,6 +118,18 @@ hoist_constants :: proc(c: ^Checker, stmts: []^Stmt) -> []^Stmt {
 		}
 	}
 	return out[:]
+}
+
+// Whether a word is a verb the sketch or one of its libraries teaches. The verbs are kept under their
+// library and name (`learn_key`), so the word is looked for by its name in every library.
+@(private = "file")
+is_taught :: proc(c: ^Checker, word: string) -> bool {
+	for key in c.learns {
+		if name := key[strings.last_index_byte(key, '/') + 1:]; name == word {
+			return true
+		}
+	}
+	return false
 }
 
 @(private = "file")

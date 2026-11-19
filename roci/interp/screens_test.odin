@@ -94,3 +94,24 @@ test_the_platform_example_shows_each_mark_and_the_arrow_keys_move_between_them :
 	testing.expect_value(t, expected, start_at)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// A constant made by a verb reads the constants the verb names when the verb runs, so it is made where
+// it is written, after the constants that wait on `screens`: it was moved before them, and found them empty.
+@(test)
+test_a_constant_made_by_a_verb_finds_the_constants_it_reads_made_from_screens :: proc(t: ^testing.T) {
+	p := run_text(t, `
+MAIN_SCREEN = item 1 of screens
+SEEN = seen_height
+learn seen_height [ give MAIN_SCREEN.height ]
+LATER = 5
+L2 = uses_later
+learn uses_later [ give LATER + 1 ]
+BOTH = both_of
+learn both_of [ give MAIN_SCREEN.width + LATER ]
+`, 1)
+	defer finish(p)
+	testing.expect_value(t, as_number(global_named(p, "SEEN")), 1080)
+	testing.expect_value(t, as_number(global_named(p, "L2")), 6)
+	testing.expect_value(t, as_number(global_named(p, "BOTH")), 1925)
+	testing.expect_value(t, len(p.errors), 0)
+}
