@@ -292,6 +292,20 @@ test_three_brackets_deep_is_a_hint_not_an_error :: proc(t: ^testing.T) {
 	expect_ids(t, "x = ((1 + 2) * 3)", {})
 }
 
+@(test)
+test_the_deep_hint_inside_a_list_block_names_the_outer_value :: proc(t: ^testing.T) {
+	got := parse_text("learn near s [\n  give (count (keep L [ abs (it - s) < 2 ])) > 0\n]")
+	if testing.expect_value(t, len(got.result.diagnostics), 1) {
+		d := got.result.diagnostics[0]
+		testing.expect_value(t, d.id, Message_Id.Deep_Nesting)
+		testing.expect_value(t, d.args[1], "value = keep L [ abs (it - s) < 2 ]\ngive (count value) > 0")
+	}
+	// Nothing outside the block to name: no hint rather than one that does not check.
+	expect_ids(t, "x = keep L [ (((it + 1) * 2) + 3) > 0 ]", {})
+	// A field called `it` is not the block's `it`.
+	expect_ids(t, "x = (((1 + 2) * 3) + p.it)", {.Deep_Nesting})
+}
+
 // ---- the end of a statement ----
 
 @(test)

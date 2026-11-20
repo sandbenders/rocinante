@@ -46,6 +46,8 @@ parse :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		diags  = make([dynamic]Diagnostic, allocator),
 		groups = make([dynamic]Group_Kind, allocator),
 		wraps  = make([dynamic]Span, allocator),
+		round_opens = make([dynamic]int, allocator),
+		block_marks = make([dynamic]int, allocator),
 		shadowed = make([dynamic]string, allocator),
 		own      = own_names(src, lexed, verbs, allocator),
 	}
@@ -102,6 +104,8 @@ Parser :: struct {
 	wraps:       [dynamic]Span, // calls that need round brackets, in this statement
 	nest_depth:  int,
 	deep_shown:  bool,
+	round_opens: [dynamic]int, // token index of each round bracket open now
+	block_marks: [dynamic]int, // how many round brackets were open when each list block (`keep`, `collect`) began
 	last_closed: Maybe(Closed_Block),
 	last_value:  Maybe(Span), // the last argument of the last call, for wrapping arithmetic that follows it
 	last_call:   Maybe(Call_Info), // the call that ended the statement just parsed, to say what its words are

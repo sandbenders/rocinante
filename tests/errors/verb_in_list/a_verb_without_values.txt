@@ -1,0 +1,8 @@
+── A verb inside a list goes in round brackets ──────── sketch.roci:2:15
+
+2 │ beam_ends = [ crystal_spot ]
+  │               ^^^^^^^^^^^^
+
+`crystal_spot` is a verb, not a name that holds a value. Inside a list a word is only ever a name, so wrap the verb in round brackets and its result becomes the item.
+
+Write:  beam_ends = [ ( crystal_spot ) ]

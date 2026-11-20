@@ -1,0 +1,10 @@
+── Hint: Three brackets deep is hard to read ────────── sketch.roci:4:40
+
+4 │   give (count (keep FORMATION_AT [ abs (it - second) < FORMATION_APART ])) > 0
+  │                                        ^
+
+Give the inner value a name on the line above, and use the name here.
+
+Write:
+    value = keep FORMATION_AT [ abs (it - second) < FORMATION_APART ]
+    give (count value) > 0

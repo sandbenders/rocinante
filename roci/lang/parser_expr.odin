@@ -675,10 +675,66 @@ parse_nested_call :: proc(p: ^Parser, info: Call_Info, used: int) -> ^Expr {
 	append(&p.wraps, e.span)
 	if p.nest_depth >= 3 && !p.deep_shown {
 		p.deep_shown = true
-		named := fmt.aprintf("value = %s\n%s", text_of_span(p, e.span), line_with(p, e.span, "value"), allocator = p.alloc)
-		report(p, .Deep_Nesting, start, "", named)
+		report_deep(p, start, e.span, e.span)
 	}
 	return e
+}
+
+// The hint for brackets three deep: name `inner` on the line above and use the name in `whole`'s place. When `inner`
+// reads `it` or `result` it belongs to a list block (`keep`, `collect`), where the line above knows neither, so the
+// value to name is the round bracket that holds the block, written outside it.
+@(private)
+report_deep :: proc(p: ^Parser, anchor, inner, whole: Span) {
+	text := text_of_span(p, inner)
+	if len(p.block_marks) > 0 && mentions_block_name(text) {
+		mark := p.block_marks[len(p.block_marks) - 1]
+		if mark == 0 {
+			return
+		}
+		open_i := p.round_opens[mark - 1]
+		depth := 0
+		for i := open_i; i < len(p.tokens); i += 1 {
+			#partial switch p.tokens[i].kind {
+			case .Open_Round:
+				depth += 1
+			case .Close_Round:
+				depth -= 1
+				if depth == 0 {
+					outer := span_join(p.tokens[open_i].span, p.tokens[i].span)
+					inside := Span{file = outer.file, start = p.tokens[open_i].span.end, end = p.tokens[i].span.start}
+					named := fmt.aprintf("value = %s\n%s", strings.trim_space(text_of_span(p, inside)), line_with(p, outer, "value"), allocator = p.alloc)
+					report(p, .Deep_Nesting, anchor, "", named)
+					return
+				}
+			}
+		}
+		return
+	}
+	named := fmt.aprintf("value = %s\n%s", text, line_with(p, whole, "value"), allocator = p.alloc)
+	report(p, .Deep_Nesting, anchor, "", named)
+}
+
+// Whether `text` uses `it` or `result` as a name of its own.
+@(private)
+mentions_block_name :: proc(text: string) -> bool {
+	i := 0
+	for i < len(text) {
+		c := text[i]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= '0' && c <= '9') {
+			j := i
+			for j < len(text) && ((text[j] >= 'a' && text[j] <= 'z') || (text[j] >= 'A' && text[j] <= 'Z') || text[j] == '_' || (text[j] >= '0' && text[j] <= '9')) {
+				j += 1
+			}
+			word := text[i:j]
+			if (word == "it" || word == "result") && (i == 0 || text[i - 1] != '.') {
+				return true
+			}
+			i = j
+		} else {
+			i += 1
+		}
+	}
+	return false
 }
 
 @(private)
@@ -733,6 +789,8 @@ parse_path :: proc(p: ^Parser) -> ^Expr {
 
 @(private)
 parse_group :: proc(p: ^Parser) -> ^Expr {
+	append(&p.round_opens, p.at)
+	defer pop(&p.round_opens)
 	open := advance(p)
 	append(&p.groups, Group_Kind.Round)
 	defer pop(&p.groups)
@@ -751,8 +809,7 @@ parse_group :: proc(p: ^Parser) -> ^Expr {
 	group := new_expr(p, span_from(p, open.span), Group{inner = inner})
 	if rounds >= 3 && !p.deep_shown {
 		p.deep_shown = true
-		named := fmt.aprintf("value = %s\n%s", text_of_span(p, inner.span), line_with(p, group.span, "value"), allocator = p.alloc)
-		report(p, .Deep_Nesting, open.span, "", named)
+		report_deep(p, open.span, inner.span, group.span)
 	}
 	return group
 }
@@ -830,6 +887,8 @@ parse_vector_or_record :: proc(p: ^Parser) -> ^Expr {
 // 5.2). The tree keeps it as a block with one statement that is that expression.
 @(private)
 parse_expr_block :: proc(p: ^Parser) -> ^Expr {
+	append(&p.block_marks, len(p.round_opens))
+	defer pop(&p.block_marks)
 	open := advance(p)
 	append(&p.groups, Group_Kind.List)
 	defer pop(&p.groups)
@@ -1266,6 +1325,8 @@ parse_hole :: proc(p: ^Parser, from, to: int, hole: Span) -> ^Expr {
 		diags  = make([dynamic]Diagnostic, p.alloc),
 		groups = make([dynamic]Group_Kind, p.alloc),
 		wraps  = make([dynamic]Span, p.alloc),
+		round_opens = make([dynamic]int, p.alloc),
+		block_marks = make([dynamic]int, p.alloc),
 		shadowed = p.shadowed,
 	}
 	report_lexer_problems(&sub, Lexed{tokens = l.tokens[:], comments = l.comments[:], problems = l.problems[:]})

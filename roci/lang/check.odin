@@ -1112,6 +1112,11 @@ unknown_name :: proc(c: ^Checker, span: Span, word: string) {
 		note(c, .Reserved_Name, span, word, "", "", fix(c, span, fmt.tprintf("my%s", word)))
 		return
 	}
+	// A verb that takes nothing, written as an item of a list, is read as a name there.
+	if decl, taught := c.learns[learn_key(c, library_at(c, span.start), word)]; taught && len(decl.learn.params) == 0 {
+		note(c, .Verb_In_List, span, word, "", "", fix(c, span, fmt.tprintf("( %s )", word)))
+		return
+	}
 	if suggestion, ok := suggest_name(c, word); ok {
 		note(c, .Unknown_Name, span, word, "Check the spelling.", "Did you mean:", fix(c, span, suggestion))
 	} else {

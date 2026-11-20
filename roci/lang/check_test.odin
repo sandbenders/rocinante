@@ -1816,6 +1816,9 @@ test_a_name_that_is_a_word_is_said_once_and_its_uses_read_as_the_name :: proc(t:
 test_a_call_in_a_list_without_brackets_is_one_message :: proc(t: ^testing.T) {
 	expect_errors(t, "reef = [\n  resize (load \"x.png\") size 10 0 as nearest\n]", {.Call_In_List})
 	expect_errors(t, "L = [ random from 1 to 5 ]", {.Call_In_List})
+	expect_errors(t, "learn spot [ give { 1, 2 } ]\nL = [ spot ]", {.Verb_In_List})
+	expect_errors(t, "learn spot [ give { 1, 2 } ]\nL = [ ( spot ) ]", {})
+	expect_errors(t, "learn spot a [ give a ]\nL = [ spot ]", {.Unknown_Name})
 	// round brackets make it one item, and plain names and values are not calls
 	expect_errors(t, "L = [ (random from 1 to 5) 3 red ]", {})
 	expect_errors(t, "a = 1\nL = [ a a 2 ]", {})
