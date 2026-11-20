@@ -2,6 +2,7 @@
 package platform
 
 import "core:math"
+import "core:strings"
 import "core:testing"
 
 import sdl "vendor:sdl3"
@@ -81,4 +82,39 @@ test_no_pads :: proc(t: ^testing.T) {
 	testing.expect(t, !rumble_pad(nil, 1, 1, 1))
 	pads_update(nil)
 	close_pads(nil)
+}
+
+// A device with no buttons is a pad's motion sensors, not a pad.
+@(test)
+test_a_device_without_buttons_is_not_a_pad :: proc(t: ^testing.T) {
+	testing.expect(t, !has_buttons(0))
+	testing.expect(t, has_buttons(1))
+	testing.expect(t, has_buttons(13))
+	testing.expect(t, !has_buttons(-1))
+}
+
+// The DualShock 4's mapping on FreeBSD: the pad's own GUID first, the triggers on the axes the
+// kernel gives them and the right stick on the two after, never the same axis twice.
+@(test)
+test_the_ps4_mapping_puts_the_triggers_and_the_right_stick_where_freebsd_has_them :: proc(t: ^testing.T) {
+	guid := "0300e8fe4c050000c405000000010000"
+	for product in ([]u16{0x05c4, 0x09cc}) {
+		mapping, ok := ps4_evdev_mapping(0x054c, product, guid)
+		defer delete(mapping)
+		testing.expect(t, ok)
+		testing.expect(t, strings.has_prefix(mapping, "0300e8fe4c050000c405000000010000,PS4 Controller,"))
+		for want in ([]string{"leftx:a0,", "lefty:a1,", "lefttrigger:a2,", "rightx:a3,", "righty:a4,", "righttrigger:a5,", "dpup:h0.1,", "a:b1,"}) {
+			testing.expectf(t, strings.contains(mapping, want), "the mapping has %s", want)
+		}
+		testing.expect(t, strings.has_suffix(mapping, ","))
+	}
+}
+
+// Any other device keeps SDL's own mapping.
+@(test)
+test_other_devices_keep_sdls_mapping :: proc(t: ^testing.T) {
+	for pair in ([][2]u16{{0x054c, 0x0ce6}, {0x045e, 0x028e}, {0x0000, 0x05c4}, {0x054c, 0x0000}}) {
+		mapping, ok := ps4_evdev_mapping(pair[0], pair[1], "00")
+		testing.expectf(t, !ok && mapping == "", "%04x:%04x is left alone", pair[0], pair[1])
+	}
 }

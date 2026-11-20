@@ -78,6 +78,9 @@ Pads :: struct {
 	allocator: runtime.Allocator,
 	gamepads:  [dynamic]Pad_Open,
 	joysticks: [dynamic]Joy_Open,
+	// Devices SDL calls gamepads that are not one (a pad's motion sensors), kept so they are not
+	// opened again every frame; an id goes when SDL stops listing it.
+	rejected:  [dynamic]u32,
 	started:   bool,
 }
 
@@ -127,7 +130,54 @@ pad_dpad :: proc "contextless" (b: Pad_Buttons) -> [2]f32 {
 	return v
 }
 
+// A device with no buttons is not a gamepad, whatever SDL says: it is the motion sensors of a pad,
+// which the system lists as a device of their own (FreeBSD's evdev marks them as an accelerometer, but
+// SDL only learns that through udev, which FreeBSD does not have).
+has_buttons :: proc "contextless" (buttons: i32) -> bool {
+	return buttons > 0
+}
+
+// FreeBSD's driver for the DualShock 4 numbers the axes the evdev way: the left stick is 0 and 1, the
+// left trigger 2, the right stick 3 and 4 and the right trigger 5. SDL's own mapping for the pad has
+// the triggers on 3 and 4 and the right stick on 2 and 5, as Linux's older driver numbered them, so
+// L2 and R2 moved the right stick and the right stick read as two half-pressed triggers.
+PS4_EVDEV_BINDINGS :: "a:b1,b:b2,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12," +
+	"leftshoulder:b4,leftstick:b10,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11," +
+	"righttrigger:a5,rightx:a3,righty:a4,start:b9,x:b0,y:b3,"
+
+// The mapping line that puts the DualShock 4 right on FreeBSD, for the pad whose GUID is given, or
+// false for any other device. The first PlayStation 4 pad (product 05c4) and its second model (09cc)
+// share the driver and the layout.
+ps4_evdev_mapping :: proc(vendor, product: u16, guid: string, allocator := context.allocator) -> (mapping: string, ok: bool) {
+	if vendor != 0x054c || (product != 0x05c4 && product != 0x09cc) {
+		return
+	}
+	return strings.concatenate({guid, ",PS4 Controller,", PS4_EVDEV_BINDINGS}, allocator), true
+}
+
 // ---- SDL ----
+
+// Whether this system needs the DualShock 4's mapping set right by hand (see `ps4_evdev_mapping`).
+// Checked on FreeBSD with a wired pad; the other systems have SDL's own driver for it or untried.
+@(private)
+PADS_NEED_PS4_MAPPING :: ODIN_OS == .FreeBSD
+
+// Gives SDL the right mapping for a pad that is plugged in, before it is opened.
+@(private)
+fix_pad_mapping :: proc(id: sdl.JoystickID) {
+	when PADS_NEED_PS4_MAPPING {
+		guid: [33]u8
+		sdl.GUIDToString(sdl.GetJoystickGUIDForID(id), &guid[0], len(guid))
+		mapping, ok := ps4_evdev_mapping(sdl.GetJoystickVendorForID(id), sdl.GetJoystickProductForID(id), string(cstring(&guid[0])))
+		if !ok {
+			return
+		}
+		defer delete(mapping)
+		line := strings.clone_to_cstring(mapping)
+		defer delete(line)
+		sdl.AddGamepadMapping(line)
+	}
+}
 
 @(private)
 PAD_BUTTONS := [Pad_Button]sdl.GamepadButton {
@@ -163,6 +213,7 @@ open_pads :: proc(allocator := context.allocator) -> ^Pads {
 	p.allocator = allocator
 	p.gamepads = make([dynamic]Pad_Open, allocator)
 	p.joysticks = make([dynamic]Joy_Open, allocator)
+	p.rejected = make([dynamic]u32, allocator)
 	p.started = true
 	pads_update(p)
 	return p
@@ -180,6 +231,7 @@ close_pads :: proc(p: ^Pads) {
 	}
 	delete(p.gamepads)
 	delete(p.joysticks)
+	delete(p.rejected)
 	if p.started {
 		sdl.QuitSubSystem({.GAMEPAD, .JOYSTICK})
 	}
@@ -218,16 +270,31 @@ pads_update :: proc(p: ^Pads) {
 			ordered_remove(&p.gamepads, i)
 		}
 	}
+	// forget the rejected ones SDL no longer lists
+	for i := len(p.rejected) - 1; i >= 0; i -= 1 {
+		if !has_id(pad_ids, p.rejected[i]) {
+			unordered_remove(&p.rejected, i)
+		}
+	}
 	// open the new ones
 	for id in pad_ids {
 		known := false
 		for g in p.gamepads {
 			known ||= g.state.id == u32(id)
 		}
+		for r in p.rejected {
+			known ||= r == u32(id)
+		}
 		if known {
 			continue
 		}
+		fix_pad_mapping(id)
 		if handle := sdl.OpenGamepad(id); handle != nil {
+			if !has_buttons(sdl.GetNumJoystickButtons(sdl.GetGamepadJoystick(handle))) {
+				sdl.CloseGamepad(handle)
+				append(&p.rejected, u32(id))
+				continue
+			}
 			g := Pad_Open{handle = handle}
 			g.state.id = u32(id)
 			g.state.name = strings.clone(string(sdl.GetGamepadName(handle)), p.allocator)
