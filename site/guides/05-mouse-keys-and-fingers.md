@@ -117,7 +117,13 @@ on key "space" [ rumble 80 for 0.4 ]
 on key "2" [ rumble 80 for 0.4 player 2 ]
 ```
 
-What shakes depends on the pad and on the system. On a Mac the PlayStation 4 and 5 pads shake, the Logitech Dual Action has no motors, and the Xbox Series X pad did not shake when this was tried (it is not known yet whether it does on the other systems).
+What shakes depends on the pad and on the system. On a Mac the PlayStation 4 and 5 pads shake, the Logitech Dual Action has no motors, and the Xbox Series X pad did not shake when this was tried (it is not known yet whether it does on the other systems). On FreeBSD the PlayStation 5 pad does not shake, because the system's driver for it only reads the pad, and the PlayStation 4 pad was not tried.
+
+### Gamepads on FreeBSD
+
+FreeBSD keeps gamepads for its `games` group, so add yourself to it once, as root, and log in again: `pw groupmod games -m yourname`. Until you do, rocinante sees no gamepads.
+
+Tried over USB: the PlayStation 4 pad, the PlayStation 5 pad and the Logitech Dual Action all work, with every button, stick and trigger where `gamepad` says it is. Xbox One and Xbox Series pads do not work over USB, because FreeBSD has no driver for them, and the pad's logo keeps blinking. An Xbox 360 pad should work, since FreeBSD has a driver for those (`kldload xb360gp` loads it), but none was at hand to try.
 
 ## Actions
 
