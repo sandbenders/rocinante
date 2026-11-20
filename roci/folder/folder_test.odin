@@ -344,3 +344,25 @@ test_a_program_includes_the_libraries_it_uses_and_the_ones_those_use :: proc(t: 
 	testing.expect_value(t, program.files[len(program.files) - 1].library, "")
 	testing.expect_value(t, len(program.files), 4)
 }
+
+@(test)
+test_a_folder_with_a_sketch_of_its_own_is_not_part_of_the_program :: proc(t: ^testing.T) {
+	root := fresh("program_nested")
+	for dir in ([]string{"parts", "tools/icons", "tools/icons/deeper", "tools/shared"}) {
+		_ = os.make_directory_all(path_in(root, dir))
+	}
+	// `tools/icons` is a sketch of its own, with everything below it; `tools/shared` has no sketch, so its files are the game's.
+	for name in ([]string{"sketch.roci", "parts/b.roci", "tools/icons/sketch.roci", "tools/icons/art.roci", "tools/icons/deeper/d.roci", "tools/shared/s.roci"}) {
+		testing.expect(t, os.write_entire_file(path_in(root, name), transmute([]byte)string("x = 1\n")) == nil)
+	}
+	program, problem := read_program(path_in(root, "sketch.roci"))
+	testing.expect_value(t, problem, "")
+	names := make([dynamic]string, context.temp_allocator)
+	for f in program.files {
+		append(&names, strings.trim_prefix(f.name, strings.concatenate({root, "/"}, context.temp_allocator)))
+	}
+	testing.expect_value(t, strings.join(names[:], " ", context.temp_allocator), "parts/b.roci tools/shared/s.roci sketch.roci")
+	// Run from the inner folder, that sketch is the program, and the outer one is not part of it.
+	inner, _ := read_program(path_in(root, "tools/icons/sketch.roci"))
+	testing.expect_value(t, len(inner.files), 3)
+}

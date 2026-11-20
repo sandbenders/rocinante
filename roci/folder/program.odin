@@ -24,12 +24,19 @@ is_foreign_folder :: proc(name: string) -> bool {
 	return name == "assets" || name == "libs" || name == "output" || is_hidden(name)
 }
 
+// Whether a folder inside the sketch is left out of it: the foreign ones, and any that holds a `sketch.roci` of its own, which is a
+// program of its own (a tool or a test of the project), not part of this one.
+@(private)
+holds_other_sketch :: proc(folder: os.File_Info) -> bool {
+	return is_foreign_folder(folder.name) || os.is_file(strings.concatenate({folder.fullpath, "/sketch.roci"}, context.temp_allocator))
+}
+
 @(private)
 is_hidden :: proc(name: string) -> bool {
 	return strings.has_prefix(name, ".")
 }
 
-// Every .roci file in a folder and the folders inside it that the sketch owns, as
+// Every .roci file in a folder and the folders inside it that the sketch owns (not those that hold a sketch of their own), as
 // paths that start with `root`, in the order of their names.
 roci_files :: proc(root: string, allocator := context.temp_allocator) -> []string {
 	return walk_roci(root, true, allocator)
@@ -45,7 +52,8 @@ walk_roci :: proc(root: string, own_code_only: bool, allocator: runtime.Allocato
 	found := make([dynamic]string, allocator)
 	cwd, _ := os.get_working_directory(context.temp_allocator)
 	here := strings.concatenate({cwd, "/"}, context.temp_allocator)
-	for fi in walk_files(root, is_foreign_folder if own_code_only else is_hidden) {
+	walked := walk_files_by(root, holds_other_sketch) if own_code_only else walk_files(root, is_hidden)
+	for fi in walked {
 		if strings.has_suffix(fi.name, ".roci") {
 			// The walk gives full paths; show them from where we are.
 			shown := trim_folder(fi.fullpath, here)

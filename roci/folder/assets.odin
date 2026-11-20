@@ -266,3 +266,26 @@ is_outside_assets :: proc(literal: string) -> bool {
 	}
 	return false
 }
+
+// `walk_files` where the folders to leave out are chosen from what is known of each one (its full path too), not only its name.
+@(private)
+walk_files_by :: proc(dir: string, skip: proc(folder: os.File_Info) -> bool) -> []os.File_Info {
+	found := make([dynamic]os.File_Info, context.temp_allocator)
+	walk_into_by(&found, dir, skip)
+	return found[:]
+}
+
+@(private)
+walk_into_by :: proc(found: ^[dynamic]os.File_Info, dir: string, skip: proc(folder: os.File_Info) -> bool) {
+	entries, err := os.read_all_directory_by_path(dir, context.temp_allocator)
+	if err != nil {
+		return
+	}
+	for fi in entries {
+		if fi.type != .Directory {
+			append(found, fi)
+		} else if !skip(fi) {
+			walk_into_by(found, fi.fullpath, skip)
+		}
+	}
+}
