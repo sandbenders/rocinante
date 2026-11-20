@@ -23,7 +23,7 @@ PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--ve
   --name      what people call the app (asked the first time, then kept in sketch.toml)
   --id        its id, like org.example.wildvex
   --version   the version people see, up to three numbers (1.0.1), or date for the day of packaging
-  --icon      a PNG at least 512 by 512 pixels, from the sketch's folder
+  --icon      a PNG at least 512 by 512 pixels, or an .iconset folder of the ten pictures Apple's icons hold, from the sketch's folder
   --sign      on a Mac, the identity to sign the app with (else a Developer ID Application one found in
               the keychain, else the app is signed only so it runs here)
   --notarize  on a Mac, the keychain profile notarytool was given, to have Apple check the app

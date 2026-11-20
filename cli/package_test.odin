@@ -190,3 +190,11 @@ test_package_refuses_what_it_cannot_make_before_it_does_anything :: proc(t: ^tes
 	testing.expect_value(t, run_package({other}, &out, &err), 2)
 	testing.expect(t, strings.contains(strings.to_string(err), "cannot make a"), strings.to_string(err))
 }
+
+@(test)
+test_an_iconset_with_missing_pictures_is_refused :: proc(t: ^testing.T) {
+	err: strings.Builder
+	strings.builder_init(&err, context.temp_allocator)
+	testing.expect(t, !make_icns("output/tests/no-such/wild.iconset", "output/tests", "output/tests", &err))
+	testing.expect(t, strings.contains(strings.to_string(err), "icon_16x16.png"), strings.to_string(err))
+}

@@ -140,3 +140,12 @@ test_an_icon_is_a_png_that_is_there :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, check_icon(root, absolute), "")
 }
+
+@(test)
+test_an_icon_may_be_an_iconset_folder :: proc(t: ^testing.T) {
+	root := fresh("settings_iconset")
+	testing.expect(t, os.make_directory_all(path_in(root, "icons/macos/wild.iconset")) == nil)
+	testing.expect_value(t, check_icon(root, "icons/macos/wild.iconset"), "")
+	testing.expect(t, strings.contains(check_icon(root, "icons/macos/other.iconset"), "cannot find the icon folder"))
+	testing.expect(t, strings.contains(check_icon(root, "icons/macos/wild.jpg"), ".iconset"))
+}

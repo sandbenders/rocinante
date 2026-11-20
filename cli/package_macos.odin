@@ -346,8 +346,19 @@ probe_all :: proc(command: ..string) -> (text: string, ok: bool) {
 	return string(stdout), true
 }
 
-// Makes the app's `AppIcon.icns` from a PNG: the ten sizes an icon holds, scaled with `sips`, put together by `iconutil`.
+// Makes the app's `AppIcon.icns` with `iconutil`, from a PNG scaled to the ten sizes an icon holds with `sips`, or from an
+// `.iconset` folder that already holds the ten pictures, which are used as drawn.
 make_icns :: proc(source, work, resources: string, err: ^strings.Builder) -> bool {
+	if strings.has_suffix(strings.to_lower(source, context.temp_allocator), ".iconset") {
+		for size in ICON_SIZES {
+			if !os.is_file(strings.concatenate({source, "/", size.file}, context.temp_allocator)) {
+				fmt.sbprintf(err, "The icon folder `%s` has no `%s`. An .iconset holds ten pictures, from icon_16x16.png to icon_512x512@2x.png.\n", source, size.file)
+				return false
+			}
+		}
+		_, made := run_tool(err, "Making the icon", "iconutil", "-c", "icns", source, "-o", strings.concatenate({resources, "/AppIcon.icns"}, context.temp_allocator))
+		return made
+	}
 	iconset := strings.concatenate({work, "/AppIcon.iconset"}, context.temp_allocator)
 	if !folder.ensure_directory(iconset) {
 		fmt.sbprintf(err, "I cannot make the folder `%s`.\n", iconset)

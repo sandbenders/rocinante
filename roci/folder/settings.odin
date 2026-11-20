@@ -253,8 +253,15 @@ check_icon :: proc(root, icon: string) -> string {
 		return ""
 	}
 	path := icon if strings.has_prefix(icon, "/") else strings.concatenate({root, "/", icon}, context.temp_allocator)
-	if !strings.has_suffix(strings.to_lower(icon, context.temp_allocator), ".png") {
-		return fmt.tprintf("The icon `%s` should be a PNG picture, at least 512 by 512 pixels (1024 is best).", icon)
+	lower := strings.to_lower(icon, context.temp_allocator)
+	if strings.has_suffix(lower, ".iconset") {
+		if !os.is_dir(path) {
+			return fmt.tprintf("I cannot find the icon folder `%s`. It is looked for from the sketch's folder.", icon)
+		}
+		return ""
+	}
+	if !strings.has_suffix(lower, ".png") {
+		return fmt.tprintf("The icon `%s` should be a PNG picture, at least 512 by 512 pixels (1024 is best), or an .iconset folder of the ten pictures Apple's icons hold.", icon)
 	}
 	if !os.is_file(path) {
 		return fmt.tprintf("I cannot find the icon `%s`. It is looked for from the sketch's folder.", icon)

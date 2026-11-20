@@ -28,7 +28,7 @@ version = "1.0.1"
 build = 7
 ```
 
-The icon is a PNG at least 512 by 512 pixels (1024 is best). Without one the app wears the rocinante logo.
+The icon is a PNG at least 512 by 512 pixels (1024 is best), or an `.iconset` folder (`icon = "icons/macos/wildvex.iconset"`) when you have drawn each size yourself: its ten pictures, `icon_16x16.png` to `icon_512x512@2x.png`, are used as they are. Without one the app wears the rocinante logo.
 
 ## What you get
 
