@@ -569,6 +569,15 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 		if k.by != nil {
 			by = check_kind(c, k.by, T_NUMBER, "for")
 		}
+		if k.by == nil && !k.down {
+			from_value, from_known := written_number(k.from)
+			to_value, to_known := written_number(k.to)
+			if from_known && to_known && to_value < from_value {
+				from_text, to_text := text_at(c, k.from.span), text_at(c, k.to.span)
+				span := Span{k.from.span.file, k.from.span.start, k.to.span.end}
+				note(c, .Loop_Runs_No_Times, Span{s.span.file, s.span.start, k.to.span.end}, k.var, from_text, to_text, fix(c, span, fmt.tprintf("%s down to %s", from_text, to_text)))
+			}
+		}
 		check_hiding(c, k.var, s.span)
 		var := declare_local(c, k.var, .Loop, T_NUMBER, k.body.span)
 		mark := len(c.locals) - 1
@@ -1615,4 +1624,20 @@ check_check :: proc(c: ^Checker, k: Check) -> IR_Stmt_Kind {
 	c.deferred -= 1
 	c.locals, c.verb_locals, c.verb, c.walking, c.in_touch, c.in_midi, c.in_osc, c.in_udp, c.in_tcp = saved_locals, saved_verb_locals, saved_verb, saved_walking, saved_touch, saved_midi, saved_osc, saved_udp, saved_tcp
 	return IR_Check{name = k.name, body = body}
+}
+
+// The number a sketch writes out in full, `12` or `-3`, and whether it is one.
+@(private)
+written_number :: proc(e: ^Expr) -> (value: f64, ok: bool) {
+	#partial switch k in e.kind {
+	case Number_Lit:
+		return k.value, true
+	case Unary:
+		if k.op == .Negate {
+			if inner, is_number := k.operand.kind.(Number_Lit); is_number {
+				return -inner.value, true
+			}
+		}
+	}
+	return 0, false
 }

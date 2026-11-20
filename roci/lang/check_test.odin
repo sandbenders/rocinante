@@ -2001,3 +2001,35 @@ test_the_words_of_a_text_do_not_keep_a_constant_from_being_made_first :: proc(t:
 	}
 	testing.expect(t, found, "a text with a variable in a hole is not moved")
 }
+
+@(test)
+test_a_for_that_counts_up_to_a_number_below_its_start_is_a_hint :: proc(t: ^testing.T) {
+	hints :: proc(t: ^testing.T, text: string, want: int, loc := #caller_location) {
+		got := check_text(text)
+		count := 0
+		for d in got.checked.diagnostics {
+			if d.id == .Loop_Runs_No_Times {
+				count += 1
+			}
+		}
+		testing.expect_value(t, count, want, loc)
+		testing.expect(t, !has_errors(got.checked.diagnostics), loc = loc)
+	}
+	hints(t, "for i from 12 to 0 [ print i ]", 1)
+	hints(t, "for i from 3 to -1 [ print i ]", 1)
+	hints(t, "for i from -1 to -3 [ print i ]", 1)
+	// the loop that counts down, up, once, by a step, or by names that are not known until it runs
+	hints(t, "for i from 12 down to 0 [ print i ]", 0)
+	hints(t, "for i from 0 to 12 [ print i ]", 0)
+	hints(t, "for i from 4 to 4 [ print i ]", 0)
+	hints(t, "for i from 10 to 0 by -2 [ print i ]", 0)
+	hints(t, "n = 0\nfor i from 12 to n [ print i ]", 0)
+	hints(t, "for i from 1 to 2 + 3 [ print i ]", 0)
+	// the hint shows where the word goes
+	got := check_text("for i from 12 to 0 [ print i ]")
+	for d in got.checked.diagnostics {
+		if d.id == .Loop_Runs_No_Times {
+			testing.expect_value(t, d.args[3], "for i from 12 down to 0 [ print i ]")
+		}
+	}
+}

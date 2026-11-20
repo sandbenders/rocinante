@@ -1,0 +1,8 @@
+── Hint: This loop runs no times ─────────────────────── sketch.roci:1:1
+
+1 │ for i from 12 to 0 [
+  │ ^^^^^^^^^^^^^^^^^^
+
+`for i from 12 to 0` counts up, and 0 is already below 12, so the loop is never run. To count down, write `down`.
+
+Write:  for i from 12 down to 0 [
