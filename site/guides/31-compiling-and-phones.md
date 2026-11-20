@@ -65,7 +65,7 @@ The phone's copy of rocinante's libraries is built once on your computer, from s
 
 A finger is the mouse, so `on mouse down`, `mouse` and `touches` all work. There is no keyboard unless the phone shows one, and no window to resize. Sound, pictures, 3D, widgets and the network work; MIDI, the microphone and recording, and screen readers on the phones, are not checked yet. Only what is in `assets` is carried to the phone, so a sketch that reads a file by name finds it there as it does on the computer.
 
-A phone keeps strips of the screen for itself: the clock and the camera at the top, the home bar at the bottom, the rounded corners. `safe` says how wide each strip is, in the window's units: `safe.top`, `safe.bottom`, `safe.left` and `safe.right`, all 0 on a computer. Keep what must be seen inside them, and the numbers change by themselves when the phone turns:
+A phone keeps strips of the screen for itself: the clock and the camera at the top, the home bar at the bottom, the rounded corners. `safe` says how wide each strip is, in the window's units: `safe.top`, `safe.bottom`, `safe.left` and `safe.right`, all 0 on a computer. A sketch draws edge to edge on both phones, behind the clock, the camera and the navigation bar, so a background fills the whole screen and only what must be seen needs to stay inside the strips. The numbers change by themselves when the phone turns:
 
 ```
 text "score" at (safe.left + 20) (safe.top + 40)
