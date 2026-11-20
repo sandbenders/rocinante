@@ -501,3 +501,31 @@ test_osc_messages_are_made_from_boxes_and_sent_alone_or_in_a_bundle :: proc(t: ^
 	osc_send("/one", osc_args_of_boxes(items), "localhost", 1)
 	testing.expect_value(t, len(roci.osc_sent_messages()), 3)
 }
+
+// The files a bundle ships to start from are copied into the app's own folder once, and what the app has is never replaced.
+@(test)
+test_the_files_a_bundle_ships_are_copied_into_the_apps_folder_once :: proc(t: ^testing.T) {
+	bundle := "output/tests/rt_seed_bundle"
+	data := "output/tests/rt_seed_data"
+	_ = os.remove_all(bundle)
+	_ = os.remove_all(data)
+	testing.expect(t, os.make_directory_all(bundle) == nil)
+	testing.expect(t, os.make_directory_all(data) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/rt_seed_bundle/memory.toml", transmute([]byte)string("best = 9\n")) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/rt_seed_bundle/vault.key", transmute([]byte)string("key")) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/rt_seed_bundle/other.txt", transmute([]byte)string("not a seed")) == nil)
+	testing.expect(t, os.write_entire_file("output/tests/rt_seed_data/vault.key", transmute([]byte)string("mine")) == nil)
+	testing.expect_value(t, seed_home(bundle, data), 1) // memory.toml only: the key is there already
+	got, _ := os.read_entire_file("output/tests/rt_seed_data/memory.toml", context.temp_allocator)
+	testing.expect_value(t, string(got), "best = 9\n")
+	key, _ := os.read_entire_file("output/tests/rt_seed_data/vault.key", context.temp_allocator)
+	testing.expect_value(t, string(key), "mine")
+	testing.expect(t, !os.exists("output/tests/rt_seed_data/other.txt"))
+	// the player's own copy changes, and the next start leaves it alone
+	testing.expect(t, os.write_entire_file("output/tests/rt_seed_data/memory.toml", transmute([]byte)string("best = 12\n")) == nil)
+	testing.expect_value(t, seed_home("output/tests/rt_seed_bundle/", "output/tests/rt_seed_data/"), 0)
+	again, _ := os.read_entire_file("output/tests/rt_seed_data/memory.toml", context.temp_allocator)
+	testing.expect_value(t, string(again), "best = 12\n")
+	// a bundle with nothing to seed copies nothing
+	testing.expect_value(t, seed_home("output/tests/rt_seed_nowhere", data), 0)
+}

@@ -134,6 +134,10 @@ run_doctor :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		}
 		tool_line(out, "SDL3", "found", have_sdl, "Run: brew install sdl3 sdl3_ttf")
 		ok = have_sdl && ok
+		// only `roci package macos` needs these, once, to build the libraries an app carries: they do not fail the report
+		cmake, have_cmake := probe("cmake", "--version")
+		_, have_ninja := probe("ninja", "--version")
+		tool_line(out, "cmake and ninja, to package a Mac app", cmake if have_ninja else "", have_cmake && have_ninja, "Run: brew install cmake ninja")
 	} else when ODIN_OS == .Windows {
 		vswhere := `C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe`
 		path, have_msvc := probe(vswhere, "-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath")

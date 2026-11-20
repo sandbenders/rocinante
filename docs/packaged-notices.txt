@@ -1,0 +1,22 @@
+This app was made with rocinante (https://rocinante-lang.org), which is licensed under the Zero-Clause BSD licence (0BSD).
+
+An app made with rocinante carries the following software. Each is used under the licence named here; the licence texts are
+at the addresses given and in the source of each project.
+
+  SDL3                        Zlib                     https://github.com/libsdl-org/SDL
+  SDL3_ttf                    Zlib                     https://github.com/libsdl-org/SDL_ttf
+  FreeType (in SDL3_ttf)      FreeType Project Licence https://freetype.org/license.html
+  HarfBuzz (in SDL3_ttf)      MIT (the old MIT licence) https://github.com/harfbuzz/harfbuzz
+  Dear ImGui                  MIT                      https://github.com/ocornut/imgui
+  accesskit-c                 MIT (or Apache-2.0)      https://github.com/AccessKit/accesskit-c
+  shaderc and glslang         Apache-2.0 (with BSD-3-Clause and MIT parts) https://github.com/google/shaderc
+  SPIRV-Cross                 Apache-2.0               https://github.com/KhronosGroup/SPIRV-Cross
+  miniaudio                   MIT-0 or public domain   https://github.com/mackron/miniaudio
+  stb_vorbis                  MIT or public domain     https://github.com/nothings/stb
+  libopus                     BSD-3-Clause             https://opus-codec.org
+  pl_mpeg                     MIT                      https://github.com/phoboslab/pl_mpeg
+  libcurl                     the curl licence (MIT style) https://curl.se/docs/copyright.html
+  mbedTLS                     Apache-2.0               https://github.com/Mbed-TLS/mbedtls
+  Inter (the built-in font)   SIL Open Font Licence 1.1 https://rsms.me/inter/ (its licence is in Inter-LICENSE.txt, beside this file)
+
+The sketch's own files (its pictures, sounds, fonts and code) belong to whoever made the sketch.

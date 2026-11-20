@@ -34,6 +34,9 @@ RUN_USAGE :: `This program was made by roci from a sketch. It takes:
   --log file.json    with --stats, add a line about the run to this file
   --mode text        what the log calls this program (compiled, or compiled debug)`
 
+// Whether words the program does not know are left alone: a packaged app is started by the system, which may add its own.
+lenient_args := false
+
 // Reads the command line.
 read_run :: proc(sketch, odin: string) -> Run {
 	run := Run{sketch = sketch, odin = odin, seed = 1, mode = "compiled"}
@@ -76,6 +79,9 @@ read_run :: proc(sketch, odin: string) -> Run {
 		case "--no-vsync":
 			run.no_vsync = true
 		case:
+			if lenient_args {
+				continue
+			}
 			fmt.eprintfln("I don't know `%s`.\n\n%s", arg, RUN_USAGE)
 			os.exit(2)
 		}

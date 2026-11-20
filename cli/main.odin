@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
 // The `roci` command. It makes sketch folders (`new`, `init`, `add`) and can `check`, `run`, `fmt` and `man` a sketch and `get` and `update` its libraries;
-// package and the rest arrive with their phases.
+// `package` makes an app of a sketch; the rest arrive with their phases.
 //
 //     odin run cli -- check [file] [--tree]
 package main
@@ -25,6 +25,7 @@ COMMANDS :: `roci, a small language for sketches.
   roci fmt [file]      write a sketch in the house style
   roci man [word]      how a verb or statement is written
   roci doctor          say which targets this computer can build and which tools it lacks
+  roci package <target>  make the sketch an app to give to someone (macos so far)
   roci vault show     look into what a sketch keeps in its vault, or change it
 
 More commands arrive as the language does.`
@@ -69,6 +70,8 @@ main :: proc() {
 		code = run_vault(os.args[2:], &out, &err)
 	case "doctor":
 		code = run_doctor(os.args[2:], &out, &err)
+	case "package":
+		code = run_package(os.args[2:], &out, &err)
 	case "help", "--help", "-h":
 		fmt.println(COMMANDS)
 		code = 0

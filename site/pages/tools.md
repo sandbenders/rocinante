@@ -14,6 +14,7 @@ Everything is done with one program, `roci`. Run it with no name to see this lis
 | [`roci check`](../roci-check/) | reads a sketch and says every mistake in plain words, without a window. |
 | [`roci fmt`](../roci-fmt/) | writes a sketch in the house style. |
 | [`roci man`](../roci-man/) | shows how a word is written. |
+| [`roci package`](../guides/32-packaging-a-mac-app/) | turns a sketch into an app to give to other people. On a Mac, `roci package macos` makes the app and a zip of it. |
 | `roci doctor` | says which kinds of app this computer can build and which tools compiling a sketch lacks, with the line that gets each one. |
 | [`roci test`](../roci-test/) | runs the checks you wrote and compares the sketch's picture with the one you kept. |
 
@@ -31,4 +32,4 @@ Everything is done with one program, `roci`. Run it with no name to see this lis
 
 ## Coming
 
-`roci package` will turn a sketch into an app for each platform, ready to give to other people. It is not in the alpha; for now `roci run --compile --target ios|android` puts a sketch on your own phone.
+`roci package` makes Mac apps now; the other systems follow. For now `roci run --compile --target ios|android` puts a sketch on your own phone.

@@ -86,34 +86,16 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 		fmt.sbprintf(err, "I need the source of rocinante next to me to compile a sketch (the folder with `roci` and `ODIN_VERSION` in it), and I cannot find it. Set ROCI_SOURCE to that folder.\n")
 		return 2
 	}
-	p, ok := interp.load_files(files)
-	defer interp.destroy(p)
-	if len(p.checked.diagnostics) > 0 {
-		fmt.sbprintf(err, "%s\n", term.message(lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator), term.err_colour))
-	}
-	if !ok {
-		return 1
-	}
 	sketch := sketch_name(file)
-	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = sketch, source = file, target = phone_system(parsed.target)}, context.temp_allocator)
-	if len(generated.problems) > 0 {
-		say_problems(generated.problems, p.src, err)
-		return 4
-	}
 	mode := "debug" if parsed.debug else "release"
 	artifacts := artifacts_folder(file)
 	folder_path := strings.concatenate({artifacts, "/", system_folder(), "/", mode}, context.temp_allocator)
 	if parsed.target != "" {
 		folder_path = strings.concatenate({artifacts, "/", parsed.target, "-source"}, context.temp_allocator)
 	}
-	source_folder := strings.concatenate({folder_path, "/source"}, context.temp_allocator)
-	if !folder.ensure_directory(source_folder) {
-		fmt.sbprintf(err, "I cannot make the folder `%s`.\n", source_folder)
-		return 2
-	}
-	if os.write_entire_file(strings.concatenate({source_folder, "/sketch.odin"}, context.temp_allocator), transmute([]byte)generated.source) != nil {
-		fmt.sbprintf(err, "I cannot write the program into `%s`.\n", source_folder)
-		return 2
+	source_folder, code := make_source(file, files, phone_system(parsed.target), "", folder_path, err)
+	if code != 0 {
+		return code
 	}
 	if parsed.target != "" {
 		return put_on_phone(parsed, root, sketch, source_folder, folder.root_of(file), out, err)
@@ -175,6 +157,36 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 	return state.exit_code
 }
 
+// Checks a sketch, turns it into the Odin source of its program and writes it as `source/sketch.odin` in `folder_path`, which it
+// makes. `target` is "", "ios", "android" or "macos" (for an app, whose `app_id` names the folder it keeps its files in). Gives the
+// folder the source is in, and 0, or what went wrong said in `err` and a code to exit with: 1 the sketch has errors, 4 it uses
+// what cannot be compiled yet, 2 the files could not be written.
+make_source :: proc(file: string, files: []lang.File_Text, target, app_id, folder_path: string, err: ^strings.Builder) -> (source_folder: string, code: int) {
+	p, ok := interp.load_files(files)
+	defer interp.destroy(p)
+	if len(p.checked.diagnostics) > 0 {
+		fmt.sbprintf(err, "%s\n", term.message(lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator), term.err_colour))
+	}
+	if !ok {
+		return "", 1
+	}
+	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = sketch_name(file), source = file, target = target, app_id = app_id}, context.temp_allocator)
+	if len(generated.problems) > 0 {
+		say_problems(generated.problems, p.src, err)
+		return "", 4
+	}
+	source_folder = strings.concatenate({folder_path, "/source"}, context.temp_allocator)
+	if !folder.ensure_directory(source_folder) {
+		fmt.sbprintf(err, "I cannot make the folder `%s`.\n", source_folder)
+		return "", 2
+	}
+	if os.write_entire_file(strings.concatenate({source_folder, "/sketch.odin"}, context.temp_allocator), transmute([]byte)generated.source) != nil {
+		fmt.sbprintf(err, "I cannot write the program into `%s`.\n", source_folder)
+		return "", 2
+	}
+	return source_folder, 0
+}
+
 // The name of a sketch's folder, which names the program.
 sketch_name :: proc(file: string) -> string {
 	dir := folder.root_of(file)
@@ -188,7 +200,7 @@ sketch_name :: proc(file: string) -> string {
 
 // Builds the program. The output is kept in `build.log` beside it, and only the first lines of a failure are
 // shown, in the same plain style as everything else.
-build :: proc(root, source_folder, binary: string, debug: bool, folder_path: string, err: ^strings.Builder) -> bool {
+build :: proc(root, source_folder, binary: string, debug: bool, folder_path: string, err: ^strings.Builder, extra: []string = nil) -> bool {
 	command := make([dynamic]string, context.temp_allocator)
 	append(&command, "odin", "build", source_folder, strings.concatenate({"-collection:rocinante=", root}, context.temp_allocator), strings.concatenate({"-out:", binary}, context.temp_allocator))
 	if debug {
@@ -198,6 +210,7 @@ build :: proc(root, source_folder, binary: string, debug: bool, folder_path: str
 	} else {
 		append(&command, "-o:speed")
 	}
+	append(&command, ..extra)
 	state, stdout, stderr, run_err := os.process_exec({command = command[:]}, context.temp_allocator)
 	log := strings.concatenate({string(stdout), string(stderr)}, context.temp_allocator)
 	log_path := strings.concatenate({folder_path, "/build.log"}, context.temp_allocator)

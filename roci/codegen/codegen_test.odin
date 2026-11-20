@@ -408,4 +408,12 @@ test_a_program_for_a_phone_ends_in_the_entry_its_app_runs :: proc(t: ^testing.T)
 	testing.expect(t, strings.contains(android.source, "sdl.GetAndroidInternalStoragePath()"))
 	testing.expect(t, strings.contains(android.source, "@(export, link_name = \"android_main\")"))
 	testing.expect(t, !strings.contains(android.source, "\nmain :: proc() {"), "a library has no main")
+
+	// a packaged Mac app: an ordinary main that first points the program at its bundle and its own folder
+	mac := generate(&checked.program, src, Options{sketch = "test", source = "test.roci", target = "macos", app_id = "org.example.test"}, context.temp_allocator)
+	testing.expect_value(t, len(mac.problems), 0)
+	testing.expect(t, strings.contains(mac.source, "import sdl \"vendor:sdl3\""))
+	testing.expect(t, !strings.contains(mac.source, "import \"base:runtime\""), "only what a Mac app uses is imported")
+	testing.expect(t, strings.contains(mac.source, "main :: proc() {\n\trt.enter_app(string(sdl.GetBasePath()), string(cstring(sdl.GetPrefPath(\"\", \"org.example.test\"))))\n\trun := rt.read_run("))
+	testing.expect(t, !strings.contains(mac.source, "sdl_main"), "the system starts a Mac app the ordinary way")
 }

@@ -17,6 +17,17 @@ Where someone has a mid-range laptop, run `examples/benchmark` on it and note th
 
 On the iPhone, also play `examples/touch` with several fingers: they should be in the right places, numbered in order and never reused, and gone when they lift (checked on the Pixel 9 in Phase 2; the iPhone was moved here when Phase 2 closed).
 
+## Packaging a Mac app
+
+`roci package macos` is only tried by hand (the unit tests cover its plist, names, settings and the libraries it points a program at, not the tools it runs). On a Mac:
+
+- [ ] `output/roci package macos examples/circle --yes` makes `output/package/macos/circle.app` and its zip; `otool -L circle.app/Contents/MacOS/circle` lists only `/System`, `/usr/lib` and `@rpath` libraries; `codesign --verify --deep --strict circle.app` says nothing; double-clicking the app opens the window.
+- [ ] A sketch with assets, fonts and a vault (a copy of a game) shows its font and its sounds in the app, and its `vault.key` and `memory.toml` appear in `~/Library/Application Support/<its id>` the first time; `save` writes into that folder's `output`.
+- [ ] On a terminal, the first `roci package macos` asks the name, the id and the version, writes `sketch.toml`, and the second run asks nothing and raises `build` by one.
+- [ ] With a Developer ID in the keychain, the app is signed with it (`codesign -dv` shows the authority and the hardened runtime); with `--notarize <profile>` notarytool says Accepted, the app is stapled, and `spctl --assess --type execute -v` accepts it. Not tried yet: no Developer ID was available when it was written.
+- [ ] The app on another Mac (copy the zip, no rocinante installed) opens after Control-click, Open, and asks for the microphone with the sentence in its Info.plist when the sketch uses `mic`.
+- [ ] After a change to SDL or SDL_ttf in `tools/package-libs.sh`, delete `.cache/package/macos` so the libraries are built again.
+
 ## Linux and the BSDs: everything to try (CachyOS, FreeBSD, OpenBSD)
 
 These systems were last tried in full before text, shaders, canvases, export and the whole user interface. Go through all of it on each, and write down what differs in the results table's notes. Everything in the first list must pass before anything else is worth trying.
