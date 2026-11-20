@@ -103,10 +103,15 @@ test_the_ps4_mapping_puts_the_triggers_and_the_right_stick_where_freebsd_has_the
 		defer delete(mapping)
 		testing.expect(t, ok)
 		testing.expect(t, strings.has_prefix(mapping, "0300e8fe4c050000c405000000010000,PS4 Controller,"))
-		for want in ([]string{"leftx:a0,", "lefty:a1,", "lefttrigger:a2,", "rightx:a3,", "righty:a4,", "righttrigger:a5,", "dpup:h0.1,", "a:b1,"}) {
+		for want in ([]string{"leftx:a0,", "lefty:a1,", "lefttrigger:a2,", "rightx:a3,", "righty:a4,", "righttrigger:a5,", "dpup:h0.1,", "dpdown:h0.4,", "dpleft:h0.8,", "dpright:h0.2,"}) {
 			testing.expectf(t, strings.contains(mapping, want), "the mapping has %s", want)
 		}
 		testing.expect(t, strings.has_suffix(mapping, ","))
+		// the buttons by the order of their key codes: SOUTH, EAST, NORTH, WEST are cross, circle,
+		// triangle and square, which SDL calls a, b, y and x
+		for want in ([]string{"a:b0,", "b:b1,", "y:b2,", "x:b3,", "leftshoulder:b4,", "rightshoulder:b5,", "back:b8,", "start:b9,", "guide:b10,", "leftstick:b11,", "rightstick:b12,"}) {
+			testing.expectf(t, strings.contains(mapping, want), "the mapping has %s", want)
+		}
 	}
 }
 

@@ -137,13 +137,17 @@ has_buttons :: proc "contextless" (buttons: i32) -> bool {
 	return buttons > 0
 }
 
-// FreeBSD's driver for the DualShock 4 numbers the axes the evdev way: the left stick is 0 and 1, the
-// left trigger 2, the right stick 3 and 4 and the right trigger 5. SDL's own mapping for the pad has
-// the triggers on 3 and 4 and the right stick on 2 and 5, as Linux's older driver numbered them, so
-// L2 and R2 moved the right stick and the right stick read as two half-pressed triggers.
-PS4_EVDEV_BINDINGS :: "a:b1,b:b2,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12," +
-	"leftshoulder:b4,leftstick:b10,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11," +
-	"righttrigger:a5,rightx:a3,righty:a4,start:b9,x:b0,y:b3,"
+// FreeBSD's driver for the DualShock 4 numbers the axes and buttons the evdev way. Axes: the left stick
+// is 0 and 1, the left trigger 2, the right stick 3 and 4 and the right trigger 5. Buttons, in the
+// order of their key codes: 0 SOUTH (cross), 1 EAST (circle), 2 NORTH (triangle), 3 WEST (square),
+// 4 and 5 the shoulders, 6 and 7 the triggers as buttons, 8 Share, 9 Options, 10 the PS button, 11 and 12
+// the stick clicks. SDL's own mapping for the pad is for Linux's older driver, which numbered them
+// differently (the triggers on 3 and 4, the right stick on 2 and 5, the face buttons shifted by one), so
+// L2 and R2 moved the right stick, the right stick read as two half-pressed triggers and cross, circle,
+// triangle and square pressed the left, bottom, right and top buttons.
+PS4_EVDEV_BINDINGS :: "a:b0,b:b1,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b10," +
+	"leftshoulder:b4,leftstick:b11,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b12," +
+	"righttrigger:a5,rightx:a3,righty:a4,start:b9,x:b3,y:b2,"
 
 // The mapping line that puts the DualShock 4 right on FreeBSD, for the pad whose GUID is given, or
 // false for any other device. The first PlayStation 4 pad (product 05c4) and its second model (09cc)
