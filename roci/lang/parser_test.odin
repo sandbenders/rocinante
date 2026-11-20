@@ -283,27 +283,35 @@ test_a_missing_bracket_is_reported_once_per_statement_and_inside_blocks :: proc(
 
 @(test)
 test_three_brackets_deep_is_a_hint_not_an_error :: proc(t: ^testing.T) {
-	got := parse_text("x = (((1 + 2) * 3) + 4)")
+	got := parse_text("x = (abs (abs (abs (1 - 2))))")
 	if testing.expect_value(t, len(got.result.diagnostics), 1) {
 		testing.expect_value(t, got.result.diagnostics[0].id, Message_Id.Deep_Nesting)
 		testing.expect_value(t, severity_of(got.result.diagnostics[0]), Severity.Hint)
 	}
 	testing.expect(t, !has_errors(got.result.diagnostics))
-	expect_ids(t, "x = ((1 + 2) * 3)", {})
+	expect_ids(t, "x = (abs (abs (1 - 2)))", {})
+}
+
+@(test)
+test_brackets_that_only_group_arithmetic_are_not_counted_deep :: proc(t: ^testing.T) {
+	expect_ids(t, "x = (((1 + 2) * 3) + 4)", {})
+	expect_ids(t, "r = 3\ny = 1\ncy = 2\nx = sqrt (max 0 (r * r - (y - cy) * (y - cy)))", {})
+	// the calls inside still count: three verbs deep is a hint however much arithmetic is around them
+	expect_ids(t, "x = (1 + (abs (2 * (abs (3 - (abs (4 + 5)))))))", {.Deep_Nesting})
 }
 
 @(test)
 test_the_deep_hint_inside_a_list_block_names_the_outer_value :: proc(t: ^testing.T) {
-	got := parse_text("learn near s [\n  give (count (keep L [ abs (it - s) < 2 ])) > 0\n]")
+	got := parse_text("learn near s [\n  give (count (keep L [ abs (abs (it - s)) < 2 ])) > 0\n]")
 	if testing.expect_value(t, len(got.result.diagnostics), 1) {
 		d := got.result.diagnostics[0]
 		testing.expect_value(t, d.id, Message_Id.Deep_Nesting)
-		testing.expect_value(t, d.args[1], "value = keep L [ abs (it - s) < 2 ]\ngive (count value) > 0")
+		testing.expect_value(t, d.args[1], "value = keep L [ abs (abs (it - s)) < 2 ]\ngive (count value) > 0")
 	}
 	// Nothing outside the block to name: no hint rather than one that does not check.
 	expect_ids(t, "x = keep L [ (((it + 1) * 2) + 3) > 0 ]", {})
 	// A field called `it` is not the block's `it`.
-	expect_ids(t, "x = (((1 + 2) * 3) + p.it)", {.Deep_Nesting})
+	expect_ids(t, "x = (abs (abs (abs p.it)))", {.Deep_Nesting})
 }
 
 // ---- the end of a statement ----
@@ -834,7 +842,7 @@ test_the_caret_follows_columns_in_code_points_and_tabs_show_as_spaces :: proc(t:
 
 @(test)
 test_hints_and_warnings_are_labelled :: proc(t: ^testing.T) {
-	hint := parse_text("x = (((1)))")
+	hint := parse_text("x = (abs (abs (abs 1)))")
 	testing.expect(t, strings.contains(render_all(hint.src, hint.result.diagnostics, context.temp_allocator), "Hint: Three brackets deep"))
 	warning := parse_text("snapshot photo width 200")
 	testing.expect(t, strings.contains(render_all(warning.src, warning.result.diagnostics, context.temp_allocator), "Warning: `width` could be read two ways"))

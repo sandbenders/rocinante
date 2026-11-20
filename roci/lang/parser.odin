@@ -104,6 +104,7 @@ Parser :: struct {
 	wraps:       [dynamic]Span, // calls that need round brackets, in this statement
 	nest_depth:  int,
 	deep_shown:  bool,
+	call_rounds: int, // how many of the round brackets open now start with a verb: only those count toward the deep hint
 	round_opens: [dynamic]int, // token index of each round bracket open now
 	block_marks: [dynamic]int, // how many round brackets were open when each list block (`keep`, `collect`) began
 	last_closed: Maybe(Closed_Block),

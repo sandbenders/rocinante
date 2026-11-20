@@ -26,7 +26,7 @@ test_errors_are_counted_and_the_summary_says_how_many :: proc(t: ^testing.T) {
 
 @(test)
 test_one_error_is_not_plural_and_warnings_and_hints_are_counted_apart :: proc(t: ^testing.T) {
-	r := check_text("a.roci", "x = (((1)))\n", false)
+	r := check_text("a.roci", "x = (abs (abs (abs 1)))\n", false)
 	testing.expect_value(t, r.errors, 0)
 	testing.expect_value(t, r.hints, 1)
 	testing.expect_value(t, r.summary, "a.roci: 1 hint")
@@ -85,7 +85,7 @@ test_run_check_exit_codes :: proc(t: ^testing.T) {
 
 	// A hint or a warning alone is not a failure.
 	strings.builder_reset(&out)
-	hint := make_sketch("hint.roci", "x = (((1)))\n")
+	hint := make_sketch("hint.roci", "x = (abs (abs (abs 1)))\n")
 	testing.expect_value(t, run_check({hint}, &out, &err), 0)
 
 	strings.builder_reset(&out)

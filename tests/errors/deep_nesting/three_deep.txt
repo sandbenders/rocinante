@@ -1,10 +1,10 @@
-── Hint: Three brackets deep is hard to read ─────────── sketch.roci:1:7
+── Hint: Three brackets deep is hard to read ────────── sketch.roci:1:17
 
-1 │ x = (((1 + 2) * 3) + 4)
-  │       ^
+1 │ x = (abs (min 9 (max 1 (2 - 7))))
+  │                 ^
 
 Give the inner value a name on the line above, and use the name here.
 
 Write:
-    value = 1 + 2
-    x = ((value * 3) + 4)
+    value = max 1 (2 - 7)
+    x = (abs (min 9 value))

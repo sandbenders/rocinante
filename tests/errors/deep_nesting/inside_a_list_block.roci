@@ -1,5 +1,5 @@
 FORMATION_AT = [ 1 2 3 ]
 FORMATION_APART = 2
 learn too_near second [
-  give (count (keep FORMATION_AT [ abs (it - second) < FORMATION_APART ])) > 0
+  give (count (keep FORMATION_AT [ abs (abs (it - second)) < FORMATION_APART ])) > 0
 ]

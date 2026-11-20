@@ -794,12 +794,15 @@ parse_group :: proc(p: ^Parser) -> ^Expr {
 	open := advance(p)
 	append(&p.groups, Group_Kind.Round)
 	defer pop(&p.groups)
-	rounds := 0
-	for g in p.groups {
-		if g == .Round {
-			rounds += 1
-		}
+	// Only brackets that hold a call of a verb count toward the hint: the grouping of arithmetic reads well as it is.
+	holds_call := starts_with_verb(p)
+	if holds_call {
+		p.call_rounds += 1
 	}
+	defer if holds_call {
+		p.call_rounds -= 1
+	}
+	rounds := p.call_rounds
 	inner := parse_expression(p)
 	if cur(p).kind == .Close_Round {
 		advance(p)
@@ -807,7 +810,7 @@ parse_group :: proc(p: ^Parser) -> ^Expr {
 		report(p, .Missing_Close_Round, open.span, "", insertion(p, line_end_of(p, open.span), ")"))
 	}
 	group := new_expr(p, span_from(p, open.span), Group{inner = inner})
-	if rounds >= 3 && !p.deep_shown {
+	if holds_call && rounds >= 3 && !p.deep_shown {
 		p.deep_shown = true
 		report_deep(p, open.span, inner.span, group.span)
 	}
@@ -1339,4 +1342,23 @@ parse_hole :: proc(p: ^Parser, from, to: int, hole: Span) -> ^Expr {
 	}
 	append(&p.diags, ..sub.diags[:])
 	return e
+}
+
+// Whether the word at the cursor is a verb of the language or one the sketch teaches, so a bracket that opens here holds a
+// call. It looks only, and says nothing.
+@(private)
+starts_with_verb :: proc(p: ^Parser) -> bool {
+	if cur(p).kind != .Name {
+		return false
+	}
+	word := text_of(p, cur(p))
+	if _, is_verb := registry.find_in(p.verbs, word); is_verb {
+		return true
+	}
+	for &t in p.taught {
+		if t.name == word {
+			return true
+		}
+	}
+	return false
 }
