@@ -34,7 +34,8 @@ Ws_Endpoint :: struct {
 	stop:     bool, // told to end, as the sketch ends
 	closing:  bool, // told to close the connection and say so
 	done:     bool, // the connection ended or could not be made (atomic)
-	finished: bool, // the thread has done with the endpoint (atomic): it frees its own thread
+	finished: bool, // the thread has done with the endpoint (atomic)
+	worker:   ^thread.Thread, // joined and freed by ws_close_endpoint once finished
 }
 
 // Starts a connection to an address (`ws://host/path` or `wss://host/path`). The thread makes it, so nothing waits here:
@@ -44,7 +45,7 @@ ws_open :: proc(url: string, allocator := context.allocator) -> ^Ws_Endpoint {
 	e.url = strings.clone(url, allocator)
 	e.queue = make([dynamic]Tcp_Happened, 0, 16, allocator)
 	e.outbox = make([dynamic]Ws_Out, 0, 4, allocator)
-	thread.create_and_start_with_data(e, ws_thread, self_cleanup = true)
+	e.worker = thread.create_and_start_with_data(e, ws_thread)
 	return e
 }
 
@@ -60,6 +61,10 @@ ws_close_endpoint :: proc(e: ^Ws_Endpoint) {
 			break
 		}
 		time.sleep(time.Millisecond)
+	}
+	if sync.atomic_load(&e.finished) {
+		thread.join(e.worker)
+		thread.destroy(e.worker)
 	}
 	heap := runtime.heap_allocator()
 	for h in e.queue {
