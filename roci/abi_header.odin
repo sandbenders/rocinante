@@ -574,6 +574,9 @@ typedef struct roci_value {
 
 typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
 
+/* How far in from each side of a window the screen is free of what a phone keeps for itself, in the window's units. */
+typedef struct { double top, bottom, left, right; } roci_insets;
+
 /* One gamepad: its buttons are 1 while held and named by where they are on the pad. leftstick, rightstick and dpad are
  * vectors from -1 to 1 with up negative, lefttrigger and righttrigger go from 0 to 1, and extra holds the other buttons
  * (MISC1 to MISC6, four paddles and the touchpad press). connected is 0 for a pad that is not there. */

@@ -387,3 +387,18 @@ test_the_background_watch_is_called_for_the_events_that_go_only_to_watches :: pr
 	testing.expect(t, background_filter(nil, &event))
 	testing.expect_value(t, calls, 3)
 }
+
+@(test)
+test_the_insets_of_a_safe_rectangle_are_what_is_left_of_it_on_each_side :: proc(t: ^testing.T) {
+	// an iPhone held upright: the island above, the home bar below, nothing at the sides
+	testing.expect_value(t, insets_from(0, 59, 390, 751, 390, 844, 1), Insets{top = 59, right = 0, bottom = 34, left = 0})
+	// turned on its side, the sides carry the notch and the corners
+	testing.expect_value(t, insets_from(59, 0, 726, 390, 844, 390, 1), Insets{top = 0, right = 59, bottom = 0, left = 59})
+	// a window in pixels (Android, scale 2.5): the insets come back in logical pixels
+	testing.expect_value(t, insets_from(0, 100, 1000, 2000, 1000, 2400, 2.5), Insets{top = 40, right = 0, bottom = 120, left = 0})
+	// a computer's window: the whole of it is safe
+	testing.expect_value(t, insets_from(0, 0, 800, 600, 800, 600, 1), Insets{})
+	// no rectangle, or one that reaches outside the window, leaves no inset on that side
+	testing.expect_value(t, insets_from(0, 0, 0, 0, 800, 600, 1), Insets{})
+	testing.expect_value(t, insets_from(-10, -10, 900, 700, 800, 600, 1), Insets{})
+}

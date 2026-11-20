@@ -6,6 +6,10 @@
 // `refresh` rate and `main`. Here the screens are drawn as they sit on the desk, a tenth of their size.
 // A headless run has one screen of 1920 by 1080. `platform` here only changes the hint (a computer or a phone), so the picture
 // is the same on every desktop system.
+// `safe` is how far in from each side of the window the screen is free of what a phone keeps for itself (the
+// clock and camera at the top, the home bar at the bottom, the rounded corners), in the window's units: its `top`,
+// `bottom`, `left` and `right`. They are all 0 on a computer, so the frame that marks the safe area is drawn only
+// on a phone.
 window size 700 360 title "screens"
 
 draw [
@@ -23,5 +27,11 @@ draw [
     text s.name at (origin + { 10, 10 })
     text ("" + s.width + " x " + s.height) at (origin + { 10, 30 })
     text ("" + s.density + "x, " + s.refresh + " Hz") at (origin + { 10, 50 })
+  ]
+  if safe.top + safe.bottom + safe.left + safe.right > 0 [
+    no fill
+    stroke gold
+    thickness 2
+    rect at { safe.left, safe.top } size (width - safe.left - safe.right) (height - safe.top - safe.bottom)
   ]
 ]

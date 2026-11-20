@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "packet", "pi", "platform", "pmouse", "pressed", "received", "reply", "scene", "screens", "speakers", "tau", "time", "touches", "true", "turtle", "webcam", "wheel", "width",
+	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "packet", "pi", "platform", "pmouse", "pressed", "received", "reply", "safe", "scene", "screens", "speakers", "tau", "time", "touches", "true", "turtle", "webcam", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -113,6 +113,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"pi", .Number, 0, "Half a turn in radians, 3.14159…, for sketches that work in radians."},
 	{"platform", .Text, 0, "The system the sketch is running on, as lowercase text: \"macos\", \"windows\", \"linux\", \"freebsd\", \"openbsd\", \"ios\" or \"android\". It is the system the sketch runs on, not the one it was written on: `if platform is \"ios\" [ ... ]`."},
 	{"pmouse", .Vector, 2, "Where the mouse was a frame ago."},
+	{"safe", .Record, 0, "How far in from each side of the window the screen is free of what a phone keeps for itself (the clock and camera at the top, the home bar at the bottom, the rounded corners): a record with `top`, `bottom`, `left` and `right`, in the window's units, so a title put at `safe.top` is never under the notch. Every field is 0 on a computer and in a headless run, and the numbers change when the phone turns."},
 	{"scene", .Record, 0, "The scene the sketch is in: `scene.name`, its name as text (empty in a sketch with no scenes), `scene.time`, the seconds since it began, and `scene.frame`, the frames since. A scene that is visited over stops counting until it comes back."},
 	{"screens", .List, 0, "Every screen that is plugged in, the main one first, each a record with `name`, `pos` (where its top left corner is on the desktop all the screens share, negative for a screen left of or above the main one), `width` and `height` (in the units a window is sized in, so a window of that size covers the screen), `density` (device pixels for one of those units: 2 on a Retina screen, so its real pixels are `width * density`), `refresh` (frames a second, 0 when the system does not say) and `main` (true for the main screen). A screen plugged in or out shows at the next frame. A headless run has one screen of 1920 by 1080."},
 	{"speakers", .Sound, 0, "The whole mix, as a sound: `effect speakers \"reverb\" by { mix: 20 }` puts an effect on everything that plays, after each sound's own, and `level speakers` is how loud everything is."},

@@ -81,3 +81,29 @@ set_screens :: proc(list: []Screen) {
 		append(&screens_pretend, copy)
 	}
 }
+
+// How far in from each side of a window the screen is free of what a phone keeps for itself, in the window's units.
+Safe_Area :: struct {
+	top, bottom, left, right: f64,
+}
+
+@(thread_local) @(private) safe_pretend: Safe_Area
+
+// The safe area of the window the code runs in: all zeros on a desktop and in a headless run. It is read from the
+// system at each use, so it follows the phone as it turns.
+safe_area :: proc() -> Safe_Area {
+	if the.headless || graphics_refused {
+		return safe_pretend
+	}
+	w := current_win()
+	if w == nil || w.handle == nil {
+		return {}
+	}
+	insets := platform.safe_insets(w.handle)
+	return {top = f64(insets.top), bottom = f64(insets.bottom), left = f64(insets.left), right = f64(insets.right)}
+}
+
+// For tests: the safe area a headless run reports (zeros go back to the plain window).
+set_safe_area :: proc(area: Safe_Area) {
+	safe_pretend = area
+}

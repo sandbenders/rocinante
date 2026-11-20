@@ -155,7 +155,7 @@ builtin :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 	case "webcam":   return "roci.webcam()"
 	case "screens", "joysticks", "gamepads", "touches": return builtin_list(g, e, name)
 	case "gamepad": return builtin_record(g, e, name)
-	case "turtle", "midi", "osc", "packet", "received", "finger", "scene", "reply": return builtin_record(g, e, name)
+	case "turtle", "midi", "osc", "packet", "received", "finger", "scene", "reply", "safe": return builtin_record(g, e, name)
 	case "chosen":   return "rt.chosen_path"
 	case "clipboard": return "rt.keep(roci.clipboard(context.temp_allocator))"
 	case "mic":      return "roci.mic()"
@@ -549,6 +549,8 @@ builtin_record :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 		switch name {
 		case "turtle":
 			fmt.sbprintf(&b, "\tstate := roci.turtle_state()\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"pos", "state.pos"}, {"angle", "state.angle"}, {"down", "state.down"}}), trace_arg(g, record))
+		case "safe":
+			fmt.sbprintf(&b, "\ta := roci.safe_area()\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"top", "a.top"}, {"bottom", "a.bottom"}, {"left", "a.left"}, {"right", "a.right"}}), trace_arg(g, record))
 		case "scene":
 			fmt.sbprintf(&b, "\tname, seconds, frames := rt.scene_info()\n\treturn rt.new_record(%s{{%s}}%s)\n}}\n\n", record, record_fields(g, e.type, {{"name", "name"}, {"time", "seconds"}, {"frame", "f64(frames)"}}), trace_arg(g, record))
 		case "gamepad":

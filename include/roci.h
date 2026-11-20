@@ -47,6 +47,9 @@ typedef struct roci_value {
 
 typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
 
+/* How far in from each side of a window the screen is free of what a phone keeps for itself, in the window's units. */
+typedef struct { double top, bottom, left, right; } roci_insets;
+
 /* One gamepad: its buttons are 1 while held and named by where they are on the pad. leftstick, rightstick and dpad are
  * vectors from -1 to 1 with up negative, lefttrigger and righttrigger go from 0 to 1, and extra holds the other buttons
  * (MISC1 to MISC6, four paddles and the touchpad press). connected is 0 for a pad that is not there. */
@@ -1464,6 +1467,9 @@ double roci_screen_refresh(int index);
 
 /* 1 for the main screen, 0 for another one and past the last. */
 int roci_screen_main(int index);
+
+/* The safe area of the current window, in its units: how far in from each side the screen is free of a phone's notch, camera, status bar, home bar and rounded corners. All zeros on a desktop and in a headless run. It is read each time, so it follows the phone as it turns. */
+roci_insets roci_safe_area(void);
 
 /* Keeps a number under a name, in memory.toml beside the program, for the next run to read with roci_recall_number. The file is written after a pause in the changes and when the program ends, so this may be called every frame. */
 void roci_remember_number(const char *key, double value);

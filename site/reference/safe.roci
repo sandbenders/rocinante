@@ -1,0 +1,12 @@
+draw [
+  background 20
+  // the part of the window a phone leaves free, framed; on a computer that is all of it
+  no fill
+  stroke gold
+  thickness 4
+  rect at { safe.left + 2, safe.top + 2 } size (width - safe.left - safe.right - 4) (height - safe.top - safe.bottom - 4)
+  fill white
+  no stroke
+  text ("top " + safe.top + ", bottom " + safe.bottom) at (safe.left + 20) (safe.top + 30)
+  text ("left " + safe.left + ", right " + safe.right) at (safe.left + 20) (safe.top + 60)
+]

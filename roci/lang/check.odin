@@ -1150,6 +1150,7 @@ type_of_value :: proc(c: ^Checker, def: registry.Value_Def) -> Type_Id {
 	case "gamepads": return list_of(c.types, gamepad_type(c))
 	case "joysticks": return list_of(c.types, joystick_type(c))
 	case "screens": return list_of(c.types, screen_type(c))
+	case "safe":    return safe_type(c)
 	}
 	if def.kind == .Vector {
 		return vector_of(c.types, def.size)
@@ -1508,6 +1509,22 @@ screen_type :: proc(c: ^Checker) -> Type_Id {
 		add_field(c.types, shape, "density", T_NUMBER)
 		add_field(c.types, shape, "refresh", T_NUMBER)
 		add_field(c.types, shape, "main", T_BOOLEAN)
+	}
+	return record_of(c.types, shape)
+}
+
+// The record `safe` is: how far in from each side of the window the screen is free, one shape for the whole sketch.
+@(private)
+safe_type :: proc(c: ^Checker) -> Type_Id {
+	SAFE_SITE :: -12
+	shape, known := c.sites[SAFE_SITE]
+	if !known {
+		shape = new_shape(c.types, c.alloc)
+		c.sites[SAFE_SITE] = shape
+		add_field(c.types, shape, "top", T_NUMBER)
+		add_field(c.types, shape, "bottom", T_NUMBER)
+		add_field(c.types, shape, "left", T_NUMBER)
+		add_field(c.types, shape, "right", T_NUMBER)
 	}
 	return record_of(c.types, shape)
 }

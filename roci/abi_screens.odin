@@ -81,6 +81,19 @@ abi_screen_main :: proc "c" (index: c.int) -> c.int {
 	return 1 if s.main else 0
 }
 
+// The safe area of the current window, in its units: how far in from each side the screen is free of a phone's notch,
+// camera, status bar, home bar and rounded corners. All zeros on a desktop.
+@(export, link_name = "roci_safe_area")
+abi_safe_area :: proc "c" () -> Abi_Insets {
+	context = abi_context()
+	a := safe_area()
+	return {a.top, a.bottom, a.left, a.right}
+}
+
+Abi_Insets :: struct {
+	top, bottom, left, right: f64,
+}
+
 abi_screens_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_platform", typeid_of(type_of(abi_platform)), "const char *roci_platform(void)", "The system the program runs on, as lowercase text: macos, windows, linux, freebsd, openbsd, ios or android. It stays valid until the next function that gives text back."))
 	append(all, abi_entry("roci_screen_count", typeid_of(type_of(abi_screen_count)), "int roci_screen_count(void)", "How many screens are plugged in. A screen plugged in or out shows at the next frame."))
@@ -90,4 +103,5 @@ abi_screens_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_screen_density", typeid_of(type_of(abi_screen_density)), "double roci_screen_density(int index)", "Device pixels for one unit of a screen's size: 2 on a Retina screen, so its real pixels are the size times this. 0 past the last screen."))
 	append(all, abi_entry("roci_screen_refresh", typeid_of(type_of(abi_screen_refresh)), "double roci_screen_refresh(int index)", "Frames a second a screen shows, 0 when the system does not say and past the last screen."))
 	append(all, abi_entry("roci_screen_main", typeid_of(type_of(abi_screen_main)), "int roci_screen_main(int index)", "1 for the main screen, 0 for another one and past the last."))
+	append(all, abi_entry("roci_safe_area", typeid_of(type_of(abi_safe_area)), "roci_insets roci_safe_area(void)", "The safe area of the current window, in its units: how far in from each side the screen is free of a phone's notch, camera, status bar, home bar and rounded corners. All zeros on a desktop and in a headless run. It is read each time, so it follows the phone as it turns."))
 }

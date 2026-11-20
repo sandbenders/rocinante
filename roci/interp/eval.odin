@@ -43,6 +43,7 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 		case "gamepads": return gamepads_list(it, e.type)
 		case "joysticks": return joysticks_list(it, e.type)
 		case "screens": return screens_list(it, e.type)
+		case "safe":    return safe_record(it, e.type)
 		case "webcam":  return webcam_value(it, e.span)
 		}
 		return builtin_value(it, k.name)

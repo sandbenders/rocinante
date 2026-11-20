@@ -301,16 +301,41 @@ window_metrics :: proc(window: ^Window) -> Metrics {
 	return metrics_from(int(w), int(h), int(pw), int(ph), sdl.GetWindowDisplayScale(window.handle), WINDOW_IS_IN_PIXELS)
 }
 
-// How far in from the window's left and top edges the screen is free of what covers it (a phone's
-// notch and rounded corners, its status bar), in logical pixels; 0 where nothing does, which is
-// every desktop window.
-safe_inset :: proc(window: ^Window) -> [2]f32 {
+// How far in from each edge of the window the screen is free of what covers it (a phone's notch, camera, status
+// bar, home bar and rounded corners), in logical pixels; 0 where nothing does, which is every desktop window.
+Insets :: struct {
+	top, right, bottom, left: f32,
+}
+
+// The safe area's insets on all four sides; it is read from the system each time, so it follows a phone as it turns.
+safe_insets :: proc(window: ^Window) -> Insets {
 	area: sdl.Rect
 	if !sdl.GetWindowSafeArea(window.handle, &area) {
 		return {}
 	}
-	scale := f32(input_scale(window))
-	return {max(f32(area.x) / scale, 0), max(f32(area.y) / scale, 0)}
+	w, h: i32
+	sdl.GetWindowSize(window.handle, &w, &h)
+	return insets_from(area.x, area.y, area.w, area.h, w, h, f32(input_scale(window)))
+}
+
+// The insets of a safe rectangle inside a window of `width` by `height` system units, in logical pixels. A rectangle
+// that is empty (a system that gives none) or reaches outside the window leaves no inset on that side.
+insets_from :: proc "contextless" (x, y, w, h, width, height: i32, scale: f32) -> Insets {
+	if w <= 0 || h <= 0 {
+		return {}
+	}
+	return {
+		top    = max(f32(y) / scale, 0),
+		right  = max(f32(width - (x + w)) / scale, 0),
+		bottom = max(f32(height - (y + h)) / scale, 0),
+		left   = max(f32(x) / scale, 0),
+	}
+}
+
+// How far in from the window's left and top edges the screen is free of what covers it, in logical pixels.
+safe_inset :: proc(window: ^Window) -> [2]f32 {
+	insets := safe_insets(window)
+	return {insets.left, insets.top}
 }
 
 // Asks the system for typed text (and an input method's), which then arrives as `Text_Input`

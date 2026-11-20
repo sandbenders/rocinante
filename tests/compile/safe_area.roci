@@ -1,0 +1,5 @@
+// The safe area of a window: zeros in a run with no screen, as in the interpreter.
+print ("safe " + safe.top + " " + safe.bottom + " " + safe.left + " " + safe.right)
+draw [
+  if frame is 2 [ print ("inner " + (height - safe.top - safe.bottom) + " " + (width - safe.left - safe.right)) ]
+]

@@ -60,6 +60,26 @@ turtle_record :: proc(it: ^Interp, type: lang.Type_Id) -> Value {
 	return r
 }
 
+// `safe`: how far in from each side of the window the screen is free, as a record of the checker's type.
+safe_record :: proc(it: ^Interp, type: lang.Type_Id) -> Value {
+	shape := lang.shape_of(it.types, type)
+	if shape < 0 {
+		return nil
+	}
+	area := roci.safe_area()
+	r := new_record(it, shape)
+	set :: proc(it: ^Interp, r: ^Record, shape: int, name: string, v: Value) {
+		if at := field_index(it, shape, name); at >= 0 {
+			r.fields[at] = v
+		}
+	}
+	set(it, r, shape, "top", area.top)
+	set(it, r, shape, "bottom", area.bottom)
+	set(it, r, shape, "left", area.left)
+	set(it, r, shape, "right", area.right)
+	return r
+}
+
 // `midi`: the key or controller an `on midi` block runs for, as a record of the checker's type.
 midi_record :: proc(it: ^Interp, type: lang.Type_Id, m: roci.Midi_Message) -> Value {
 	shape := lang.shape_of(it.types, type)

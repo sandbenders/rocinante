@@ -70,3 +70,16 @@ test_c_reads_the_platform_and_the_screens_by_place :: proc(t: ^testing.T) {
 	testing.expect_value(t, abi_screen_density(-1), 0)
 	testing.expect_value(t, abi_screen_main(9), 0)
 }
+
+@(test)
+test_a_headless_run_has_no_safe_area_and_a_test_can_give_one :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	testing.expect_value(t, safe_area(), Safe_Area{})
+	set_safe_area({top = 54, bottom = 30, left = 12, right = 8})
+	defer set_safe_area({})
+	testing.expect_value(t, safe_area(), Safe_Area{top = 54, bottom = 30, left = 12, right = 8})
+	// C reads the same
+	insets := abi_safe_area()
+	testing.expect_value(t, insets, Abi_Insets{54, 30, 12, 8})
+}

@@ -115,3 +115,31 @@ learn both_of [ give MAIN_SCREEN.width + LATER ]
 	testing.expect_value(t, as_number(global_named(p, "BOTH")), 1925)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// `safe` is how far in from each side of the window the screen is free: zeros on a computer, and what the phone says
+// when it does, read again each frame.
+@(test)
+test_a_sketch_reads_the_safe_area_each_frame :: proc(t: ^testing.T) {
+	p := run_text(t, `
+draw [
+  top = safe.top
+  bottom = safe.bottom
+  left = safe.left
+  right = safe.right
+  inner = height - safe.top - safe.bottom
+]
+`)
+	defer finish(p)
+	defer roci.set_safe_area({})
+	roci.step()
+	testing.expect_value(t, as_number(global_named(p, "top")), 0)
+	testing.expect_value(t, as_number(global_named(p, "right")), 0)
+	roci.set_safe_area({top = 54, bottom = 30, left = 12, right = 8})
+	roci.step()
+	testing.expect_value(t, as_number(global_named(p, "top")), 54)
+	testing.expect_value(t, as_number(global_named(p, "bottom")), 30)
+	testing.expect_value(t, as_number(global_named(p, "left")), 12)
+	testing.expect_value(t, as_number(global_named(p, "right")), 8)
+	testing.expect(t, as_number(global_named(p, "inner")) > 0)
+	testing.expect_value(t, len(p.errors), 0)
+}
