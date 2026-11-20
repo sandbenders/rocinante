@@ -191,6 +191,8 @@ abi_table_init :: proc "contextless" () {
 	{"roci_title", "title", 0, typeid_of(type_of(abi_title)), "", ""},
 	{"roci_fullscreen", "fullscreen", 0, typeid_of(type_of(abi_fullscreen)), "", ""},
 	{"roci_quit", "quit", 0, typeid_of(type_of(abi_quit)), "", ""},
+	{"roci_vibrate", "vibrate", 0, typeid_of(type_of(abi_vibrate)), "", ""},
+	{"roci_vibrate_for", "vibrate", 1, typeid_of(type_of(abi_vibrate_for)), "", ""},
 	{"roci_current_window", "", 0, typeid_of(type_of(abi_current_window)), "roci_window_id roci_current_window(void)", "The window the verbs are drawing into now."},
 	{"roci_width", "", 0, typeid_of(type_of(abi_width)), "double roci_width(void)", "The width of the current window in logical pixels."},
 	{"roci_height", "", 0, typeid_of(type_of(abi_height)), "double roci_height(void)", "The height of the current window in logical pixels."},

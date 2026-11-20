@@ -26,6 +26,7 @@ API_NAMES := [?]Api_Entry{
 	{"measure", "measure"},
 	{"fullscreen", "fullscreen"},
 	{"quit", "quit"},
+	{"vibrate", "vibrate"},
 	{"background", "background"},
 	{"clear", "clear_window"},
 	{"box", "box"},

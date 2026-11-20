@@ -145,6 +145,12 @@ void roci_fullscreen(void);
 /* Closes the sketch. */
 void roci_quit(void);
 
+/* Makes a phone buzz, for a fifth of a second or for the seconds given (at most five). Nothing happens on a computer. An iPhone buzzes for as long as the system chooses, whatever the seconds say. */
+void roci_vibrate(void);
+
+/* Makes a phone buzz, for a fifth of a second or for the seconds given (at most five). Nothing happens on a computer. An iPhone buzzes for as long as the system chooses, whatever the seconds say. */
+void roci_vibrate_for(double seconds);
+
 /* The window the verbs are drawing into now. */
 roci_window_id roci_current_window(void);
 

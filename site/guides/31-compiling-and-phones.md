@@ -70,3 +70,7 @@ A phone keeps strips of the screen for itself: the clock and the camera at the t
 ```
 text "score" at (safe.left + 20) (safe.top + 40)
 ```
+
+`vibrate` makes a phone buzz, for a fifth of a second or for the seconds you give (at most five): `on touch down [ vibrate 0.1 ]`. An iPhone buzzes for as long as the system chooses, and a computer does nothing.
+
+When the app goes to the background the sketch stops: nothing is drawn, the clock (`time`, `every`, tweens) stands still, and what the sketch remembers is saved. When it comes back it goes on from where it was, as if no time had passed.

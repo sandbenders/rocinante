@@ -33,6 +33,19 @@ run :: proc(block: proc() = nil, frames := 0) -> bool {
 	events: [dynamic]platform.Event
 	defer delete(events)
 	for !the.quit && len(the.windows) > 0 && (frames <= 0 || the.frame < frames) {
+		// In the background nothing is built or drawn (the window's surface may be gone) and the clock stands
+		// still: the loop only waits, looking at what the system says, until the app is back.
+		if in_background() {
+			clear(&events)
+			platform.poll_events(&events)
+			for event in events {
+				if _, closing := event.(platform.Quit); closing {
+					the.quit = true
+				}
+			}
+			time.sleep(20 * time.Millisecond)
+			continue
+		}
 		start_late()
 		wait_for_screens()
 		clear(&events)
@@ -64,7 +77,7 @@ step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
 	if the.stepped {
 		the.clock += dt
 	} else {
-		the.clock = time.duration_seconds(time.tick_since(the.started_at))
+		the.clock = time.duration_seconds(time.tick_since(the.started_at)) - away_seconds(now_ns())
 	}
 	the.delta = the.clock - the.previous
 	the.previous = the.clock

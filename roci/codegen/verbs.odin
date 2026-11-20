@@ -208,6 +208,11 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		return fmt.aprintf("roci.seed(%s)", args[0], allocator = context.temp_allocator), false
 	case "quit":
 		return "roci.quit()", false
+	case "vibrate":
+		if len(args) == 0 {
+			return "roci.vibrate()", false
+		}
+		return fmt.aprintf("roci.vibrate(%s)", args[0], allocator = context.temp_allocator), false
 	case "background":
 		return fmt.aprintf("roci.background(%s)", paint(g, c.args[0], c.options), allocator = context.temp_allocator), false
 

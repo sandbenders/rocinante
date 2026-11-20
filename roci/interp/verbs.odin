@@ -409,6 +409,12 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.fullscreen()
 	case .Quit:
 		roci.quit()
+	case .Vibrate:
+		if len(a) > 0 {
+			roci.vibrate(n(a, 0))
+		} else {
+			roci.vibrate()
+		}
 	case .Background:
 		if paint, ok := to_paint(it, a[0], call.options); ok {
 			roci.background(paint)

@@ -1,0 +1,4 @@
+// A buzz asked for does nothing on a computer, compiled or interpreted.
+vibrate
+vibrate 0.3
+print "buzzed"

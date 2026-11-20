@@ -182,6 +182,10 @@ VERBS := []Verb{
 	{"title", {{{{"text", .Text}}, nil, .None}}, "Sets the title of the window the code runs in. Another window is changed with `set`."},
 	{"fullscreen", {{{}, nil, .None}}, "Makes the window fill the screen."},
 	{"quit", {{{}, nil, .None}}, "Closes the sketch."},
+	{"vibrate", {
+		{{}, nil, .None},
+		{{{"seconds", .Number}}, nil, .None},
+	}, "Makes a phone buzz, for a fifth of a second or for the seconds given (at most five). Nothing happens on a computer. An iPhone buzzes for as long as the system chooses, whatever the seconds say."},
 	{"background", {
 		{{{"color", .Colour}}, GRADIENT_OPTIONS, .None},
 		{{{"picture", .Image}}, FILL_IMAGE_OPTIONS, .None},

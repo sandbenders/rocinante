@@ -131,6 +131,18 @@ abi_quit :: proc "c" () {
 	quit()
 }
 
+@(export, link_name = "roci_vibrate")
+abi_vibrate :: proc "c" () {
+	context = abi_context()
+	vibrate()
+}
+
+@(export, link_name = "roci_vibrate_for")
+abi_vibrate_for :: proc "c" (seconds: f64) {
+	context = abi_context()
+	vibrate(seconds)
+}
+
 @(export, link_name = "roci_current_window")
 abi_current_window :: proc "c" () -> c.int {
 	context = abi_context()

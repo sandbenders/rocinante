@@ -1,0 +1,14 @@
+// a buzz when the screen is touched, on a phone; a computer has nothing to vibrate
+taps = 0
+
+on touch down [
+  vibrate 0.1
+  taps = taps + 1
+]
+
+draw [
+  background 20
+  fill white
+  text ("taps: " + taps) at 20 30
+  text "touch the screen to buzz" at 20 60
+]

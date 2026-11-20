@@ -84,13 +84,25 @@ set_background_watch :: proc "contextless" (watch: proc "c" ()) {
 	background_watch = watch
 }
 
-// SDL says these three only to a watch, never to the event queue.
+// What to do when the program is back in the foreground after the background. Set like `background_watch`.
+@(private)
+foreground_watch: proc "c" ()
+
+set_foreground_watch :: proc "contextless" (watch: proc "c" ()) {
+	foreground_watch = watch
+}
+
+// SDL says these only to a watch, never to the event queue.
 @(private)
 background_filter :: proc "c" (userdata: rawptr, event: ^sdl.Event) -> bool {
 	#partial switch event.type {
 	case .WILL_ENTER_BACKGROUND, .DID_ENTER_BACKGROUND, .TERMINATING:
 		if background_watch != nil {
 			background_watch()
+		}
+	case .WILL_ENTER_FOREGROUND, .DID_ENTER_FOREGROUND:
+		if foreground_watch != nil {
+			foreground_watch()
 		}
 	}
 	return true

@@ -143,3 +143,20 @@ draw [
 	testing.expect(t, as_number(global_named(p, "inner")) > 0)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// `vibrate` asks the phone for a buzz, a fifth of a second when no length is given; a computer does nothing.
+@(test)
+test_vibrate_asks_for_a_buzz_of_the_length_given :: proc(t: ^testing.T) {
+	roci.vibrations_forget()
+	defer roci.vibrations_forget()
+	p := run_text(t, `
+vibrate
+vibrate 0.5
+on touch down [ vibrate 0.1 ]
+`, 1)
+	defer finish(p)
+	count, last := roci.vibrations()
+	testing.expect_value(t, count, 2)
+	testing.expect_value(t, last, 0.5)
+	testing.expect_value(t, len(p.errors), 0)
+}

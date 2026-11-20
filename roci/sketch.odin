@@ -188,6 +188,7 @@ start :: proc() -> bool {
 		set_seed(u64(time.to_unix_nanoseconds(time.now())))
 	}
 	platform.set_background_watch(background_flush)
+	platform.set_foreground_watch(foreground_resume)
 	if !platform.init(&the.app) {
 		the.failed, the.headless = true, true
 		the.error = strings.clone(the.app.error)

@@ -402,3 +402,25 @@ test_the_insets_of_a_safe_rectangle_are_what_is_left_of_it_on_each_side :: proc(
 	testing.expect_value(t, insets_from(0, 0, 0, 0, 800, 600, 1), Insets{})
 	testing.expect_value(t, insets_from(-10, -10, 900, 700, 800, 600, 1), Insets{})
 }
+
+@(test)
+test_the_foreground_watch_is_called_when_the_app_comes_back :: proc(t: ^testing.T) {
+	@(static) calls: int
+	calls = 0
+	set_foreground_watch(proc "c" () {
+		calls += 1
+	})
+	defer set_foreground_watch(nil)
+	for type in ([]sdl.EventType{.WILL_ENTER_FOREGROUND, .DID_ENTER_FOREGROUND}) {
+		event := sdl.Event{type = type}
+		testing.expect(t, background_filter(nil, &event))
+	}
+	// leaving is not coming back
+	leaving := sdl.Event{type = .DID_ENTER_BACKGROUND}
+	testing.expect(t, background_filter(nil, &leaving))
+	testing.expect_value(t, calls, 2)
+	set_foreground_watch(nil)
+	back := sdl.Event{type = .DID_ENTER_FOREGROUND}
+	testing.expect(t, background_filter(nil, &back))
+	testing.expect_value(t, calls, 2)
+}

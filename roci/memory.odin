@@ -153,6 +153,7 @@ memory_flush :: proc() {
 @(private)
 background_flush :: proc "c" () {
 	context = abi_context()
+	away_begin(now_ns())
 	memory_flush()
 	vault_flush()
 	ui_flush()
