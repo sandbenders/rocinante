@@ -220,7 +220,7 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 	if command.style.fill_shader.shader != 0 && command.style.fill_on && image_fillable(command.kind) && has_area(command) {
 		// The fill goes through the typeset vertices as a mesh drawn by the sketch's own shader;
 		// the outline, if there is one, is the same command with the fill off, drawn after it.
-		append(&b.typeset, Typeset_Item{shaded = true, shader = command.style.fill_shader, shape = command, transform = command.transform, content = command.content})
+		append(&b.typeset, Typeset_Item{shaded = true, shader = command.style.fill_shader, shape = command, points = path_points(list, command), transform = command.transform, content = command.content})
 		extend_batch(b, .Typeset, len(b.typeset) - 1, 1, command, look)
 		outline := command
 		outline.style.fill_on = false
@@ -230,7 +230,7 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 	if command.style.fill_image.image != 0 && command.style.fill_on && image_fillable(command.kind) && has_area(command) {
 		// The fill goes through the typeset pipeline as a masked picture; the outline, if
 		// there is one, is the same command with the fill off, drawn after it.
-		append(&b.typeset, fill_item(command))
+		append(&b.typeset, fill_item(command, path_points(list, command)))
 		extend_batch(b, .Typeset, len(b.typeset) - 1, 1, command, look)
 		outline := command
 		outline.style.fill_on = false
@@ -432,6 +432,7 @@ Typeset_Item :: struct {
 	masked:    bool,     // a text whose letters are cut out of the picture `fill` (textfill.odin)
 	tint:      [4]f32,   // what a masked text's picture is drawn through, with the style's alpha
 	shape:     Command,  // for a fill: the shape that is the mask
+	points:    [][2]f32, // for a path: its stored points, in the command list
 	fill:      Image_Fill,
 	w, h:      f32,
 	text:      string,

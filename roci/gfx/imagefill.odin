@@ -18,9 +18,9 @@ import sdl "vendor:sdl3"
 // inside; text and pictures are drawn by their own rules.
 image_fillable :: proc "contextless" (kind: Kind) -> bool {
 	switch kind {
-	case .Circle, .Ellipse, .Rect, .Triangle, .Quad, .Arc:
+	case .Circle, .Ellipse, .Rect, .Triangle, .Quad, .Arc, .Path:
 		return true
-	case .Line, .Point, .Text, .Typeset, .Image, .Path:
+	case .Line, .Point, .Text, .Typeset, .Image:
 		return false
 	}
 	return false
@@ -28,8 +28,9 @@ image_fillable :: proc "contextless" (kind: Kind) -> bool {
 
 // The item for the fill of a shape: the shape, how the picture sits in it, and the
 // tint with the style's alpha.
-fill_item :: proc(c: Command) -> Typeset_Item {
+fill_item :: proc(c: Command, path_points: [][2]f32 = nil) -> Typeset_Item {
 	return Typeset_Item{
+		points        = path_points,
 		image         = c.style.fill_image.image,
 		premultiplied = canvas_of(c.style.fill_image.image) != nil,
 		filled        = true,
@@ -114,6 +115,29 @@ fill_polygon :: proc(c: Command, tolerance: f64, points: ^[dynamic]geom.Point) -
 	return false
 }
 
+// The contours a shape's fill covers, in its own space: a path's own (those with three corners or more, the even-odd rule
+// leaving a hole where one lies inside another), or the one polygon of any other shape. False when there is nothing to fill.
+@(private)
+fill_contours :: proc(item: Typeset_Item, tolerance: f64) -> (contours: [][]geom.Point, ok: bool) {
+	if item.shape.kind == .Path {
+		all, _ := path_geometry(item.points)
+		fillable := make([dynamic][]geom.Point, context.temp_allocator)
+		for contour in all {
+			if len(contour) >= 3 {
+				append(&fillable, contour)
+			}
+		}
+		return fillable[:], len(fillable) > 0
+	}
+	points := make([dynamic]geom.Point, context.temp_allocator)
+	if !fill_polygon(item.shape, tolerance, &points) {
+		return nil, false
+	}
+	one := make([][]geom.Point, 1, context.temp_allocator)
+	one[0] = points[:]
+	return one, true
+}
+
 // Adds the triangles of a shape filled with a picture to the frame.
 @(private)
 image_fill_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item_index: int, item: Typeset_Item) {
@@ -127,13 +151,13 @@ image_fill_vertices :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item_
 	if !(scale > 0) || math.is_inf(scale) {
 		return
 	}
-	points := make([dynamic]geom.Point, context.temp_allocator)
-	if !fill_polygon(item.shape, geom.DEFAULT_TOLERANCE / scale, &points) {
+	contours, has_fill := fill_contours(item, geom.DEFAULT_TOLERANCE / scale)
+	if !has_fill {
 		return
 	}
 	tri: geom.Triangulation
 	defer geom.triangulation_destroy(&tri)
-	geom.triangulate({points[:]}, &tri)
+	geom.triangulate(contours, &tri)
 	if len(tri.indices) == 0 {
 		return
 	}

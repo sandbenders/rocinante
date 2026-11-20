@@ -20,13 +20,13 @@ shader_fill_vertices :: proc(r: ^Renderer, item_index: int, item: Typeset_Item) 
 	if !(scale > 0) || math.is_inf(scale) {
 		return
 	}
-	points := make([dynamic]geom.Point, context.temp_allocator)
-	if !fill_polygon(item.shape, geom.DEFAULT_TOLERANCE / scale, &points) {
+	contours, has_fill := fill_contours(item, geom.DEFAULT_TOLERANCE / scale)
+	if !has_fill {
 		return
 	}
 	tri: geom.Triangulation
 	defer geom.triangulation_destroy(&tri)
-	geom.triangulate({points[:]}, &tri)
+	geom.triangulate(contours, &tri)
 	if len(tri.indices) == 0 {
 		return
 	}

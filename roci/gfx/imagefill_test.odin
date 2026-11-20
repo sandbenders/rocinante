@@ -226,3 +226,59 @@ the_polygon_of_a_fill_follows_the_shape_and_has_nothing_for_lines :: proc(t: ^te
 	testing.expect(t, !fill_polygon(command_at(&list, 6), 0.1, &points))
 	testing.expect(t, image_fillable(.Quad) && !image_fillable(.Line) && !image_fillable(.Typeset) && !image_fillable(.Image))
 }
+
+@(test)
+a_path_can_be_filled_with_a_picture_and_keeps_its_holes :: proc(t: ^testing.T) {
+	testing.expect(t, image_fillable(.Path))
+	list: Command_List
+	defer destroy(&list)
+	begin_frame(&list)
+	square :: proc(x, y, side: f32) -> [4][2]f32 {
+		return {{x, y}, {x + side, y}, {x + side, y + side}, {x, y + side}}
+	}
+	outer, inner := square(0, 0, 100), square(25, 25, 50)
+	contours := []Contour{{points = outer[:], closed = true}, {points = inner[:], closed = true}, {points = {{0, 0}, {5, 5}}, closed = false}}
+	testing.expect(t, path(&list, contours))
+	c := command_at(&list, 0)
+	item := fill_item(c, path_points(&list, c))
+	testing.expect_value(t, len(item.points), 4 + 1 + 4 + 1 + 2 + 1)
+	// the two squares are fillable contours (the open line of two points is not), and the hole stays a second contour
+	made, ok := fill_contours(item, 0.1)
+	testing.expect(t, ok)
+	testing.expect_value(t, len(made), 2)
+	tri: geom.Triangulation
+	defer geom.triangulation_destroy(&tri)
+	geom.triangulate(made, &tri)
+	area := 0.0
+	for i := 0; i + 2 < len(tri.indices); i += 3 {
+		a, b, d := tri.points[tri.indices[i]], tri.points[tri.indices[i + 1]], tri.points[tri.indices[i + 2]]
+		area += abs((b.x - a.x) * (d.y - a.y) - (d.x - a.x) * (b.y - a.y)) / 2
+	}
+	testing.expect(t, abs(area - (100 * 100 - 50 * 50)) < 1e-6, "the hole is not filled")
+	// nothing to fill: a path of open lines only
+	flat := []Contour{{points = {{0, 0}, {5, 5}, {9, 1}}, closed = false}, {points = {{0, 0}, {5, 5}}, closed = false}}
+	only := Command_List{}
+	defer destroy(&only)
+	begin_frame(&only)
+	testing.expect(t, path(&only, flat))
+	line := command_at(&only, 0)
+	one, one_ok := fill_contours(fill_item(line, path_points(&only, line)), 0.1)
+	testing.expect_value(t, len(one), 1) // an open contour of three corners is closed by the straight line back
+	testing.expect(t, one_ok)
+	two := []Contour{{points = {{0, 0}, {5, 5}}, closed = false}}
+	empty := Command_List{}
+	defer destroy(&empty)
+	begin_frame(&empty)
+	testing.expect(t, path(&empty, two))
+	dot := command_at(&empty, 0)
+	_, dot_ok := fill_contours(fill_item(dot, path_points(&empty, dot)), 0.1)
+	testing.expect(t, !dot_ok)
+	// a shape that is not a path still gives its one polygon
+	plain: Command_List
+	defer destroy(&plain)
+	begin_frame(&plain)
+	rect(&plain, 0, 0, 10, 10)
+	r := command_at(&plain, 0)
+	flat_made, flat_ok := fill_contours(fill_item(r), 0.1)
+	testing.expect(t, flat_ok && len(flat_made) == 1)
+}
