@@ -59,14 +59,21 @@ If the change is on purpose, run `roci test --accept` again. A few pixels along 
 
 ## Playing the sketch
 
-A game does nothing until a key is pressed, so a run can press keys by script. `--press key@frame` presses a key in one frame (the first frame is 0, as `frame` counts it) and `--hold key@from-to` holds it down from one frame to another, both included. The key is named as `on key` names it, and an action `bind` made from that key goes down with it:
+A game does nothing until a key is pressed or a finger is put down, so a run can play by script. `--press key@frame` presses a key in one frame (the first frame is 0, as `frame` counts it) and `--hold key@from-to` holds it down from one frame to another, both included. The key is named as `on key` names it, and an action `bind` made from that key goes down with it:
 
 ```
 roci run . --frames 600 --press "space@120" --hold "right@200-260" --screenshot out.png
 roci test --accept --frames 600 --press "space@120" --hold "right@200-260"
 ```
 
-With `roci test --accept` the keys are stored beside the picture, in `tests/snapshot.txt`, so `roci test` plays the same game each time. Keys are the only input a script can give so far: a mouse button or a gamepad is not pressed this way.
+A finger is scripted the same way, with places in the window's units. `--touch x,y@frame` taps one place for a frame, `--touch x,y@from-to` keeps the finger down there until the last frame, and `--drag x1,y1-x2,y2@from-to` puts it down at the first place and moves it in a straight line to the second by the last frame. They reach `on touch down`, `on touch up`, `finger` and `touches` as a real finger does, so a sketch steered by a held finger can be tested without a phone. A place is never negative, as it is inside the window:
+
+```
+roci run . --frames 120 --touch "100,300@10" --drag "50,400-250,400@30-60" --screenshot out.png
+roci test --accept --frames 120 --drag "50,400-250,400@30-60"
+```
+
+With `roci test --accept` the keys and fingers are stored beside the picture, in `tests/snapshot.txt`, so `roci test` plays the same game each time. A mouse button or a gamepad is not scripted this way.
 
 ## Many sketches at once
 

@@ -18,7 +18,8 @@ import "core:strconv"
 import "core:strings"
 
 RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [--seed N] [--errors json]
-             [--press key@frame] [--hold key@from-to] [--stats] [--no-vsync]
+             [--press key@frame] [--hold key@from-to]
+             [--touch x,y@frame] [--drag x1,y1-x2,y2@from-to] [--stats] [--no-vsync]
              [--compile [--debug] [--target ios|android [--device id] [--team id]]]
 
   file        the sketch to run; sketch.roci when left out
@@ -33,6 +34,13 @@ RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [
   --hold key@from-to
               with --frames, hold a key down from one frame to another, both included:
               --hold "right@200-260"
+  --touch x,y@frame
+              with --frames, put a finger down at a place of the window (in its units) for one frame:
+              --touch "100,300@50"; with a second frame it stays down until then, both included:
+              --touch "100,300@50-80". It feeds 'on touch down', 'on touch up', 'finger' and 'touches'
+  --drag x1,y1-x2,y2@from-to
+              with --frames, a finger that goes down at the first place and moves in a straight line
+              to the second by the last frame: --drag "50,400-250,400@60-90"
   --stats     time the frames: a black box in the top left corner of each window shows the frame
               and the frame rate, and when the run ends a line says how fast it was and is added
               to artifacts/log.json in the sketch's folder (with --frames there is no window, so no box)
@@ -68,7 +76,7 @@ Run_Args :: struct {
 	team:       string, // with an iPhone target: the team that signs
 	stats:      bool, // time the frames, show the box, and log the run
 	no_vsync:   bool,
-	inputs:     [dynamic]Input_Step, // the keys to press, from --press and --hold
+	inputs:     [dynamic]Input_Step, // the keys and fingers to script, from --press, --hold, --touch and --drag
 	ok:         bool,
 	bad:        string, // the word it did not understand, or what is missing after a flag
 }
@@ -91,6 +99,8 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 		     arg == "--window" ||
 		     arg == "--press" ||
 		     arg == "--hold" ||
+		     arg == "--touch" ||
+		     arg == "--drag" ||
 		     arg == "--errors":
 			if i + 1 >= len(args) {
 				return Run_Args{ok = false, bad = arg}
@@ -123,8 +133,8 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 				result.seed = n
 			case "--screenshot":
 				result.screenshot = value
-			case "--press", "--hold":
-				step, bad, step_ok := parse_input_step(value, arg == "--hold")
+			case "--press", "--hold", "--touch", "--drag":
+				step, bad, step_ok := parse_script_arg(arg, value)
 				if !step_ok {
 					return Run_Args{ok = false, bad = bad}
 				}
@@ -183,7 +193,7 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 		return Run_Args{ok = false, bad = "--no-vsync goes with --stats"}
 	}
 	if len(result.inputs) > 0 && result.frames == 0 {
-		return Run_Args{ok = false, bad = "--press and --hold need --frames"}
+		return Run_Args{ok = false, bad = "--press, --hold, --touch and --drag need --frames"}
 	}
 	return result
 }

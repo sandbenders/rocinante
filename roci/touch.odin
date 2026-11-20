@@ -7,6 +7,7 @@
 // can be tried without a touch screen (SDL does both, `platform.start`).
 package roci
 
+import "core:math"
 import "platform"
 import "ui"
 
@@ -45,7 +46,9 @@ handle_finger :: proc(e: platform.Finger_Changed) {
 	if w == nil {
 		return
 	}
-	pos := [2]f64{f64(e.x) * f64(w.width), f64(e.y) * f64(w.height)}
+	// The system gives a place as a fraction held in 32 bits, which does not come back to the units it was made from
+	// (a fifth of 100 is 20.0000003), so it is rounded to a thousandth of a unit, far finer than a finger.
+	pos := [2]f64{math.round(f64(e.x) * f64(w.width) * 1000) / 1000, math.round(f64(e.y) * f64(w.height) * 1000) / 1000}
 	at := -1
 	for f, i in w.fingers {
 		if f.key == e.finger {

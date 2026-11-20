@@ -26,7 +26,7 @@ test_test_arguments_are_names_and_the_flags_for_storing_a_picture :: proc(t: ^te
 @(test)
 test_test_arguments_say_what_they_did_not_understand :: proc(t: ^testing.T) {
 	cases := [][]string{{"--oops"}, {"--frames"}, {"--accept", "--frames", "x"}, {"--accept", "--frames", "0"}, {"--accept", "--seed", "-1"}, {"--frames", "3"}, {"--seed", "3"}}
-	wanted := []string{"--oops", "--frames", "x", "0", "-1", "--frames, --seed, --press and --hold go with --accept", "--frames, --seed, --press and --hold go with --accept"}
+	wanted := []string{"--oops", "--frames", "x", "0", "-1", "--frames, --seed, --press, --hold, --touch and --drag go with --accept", "--frames, --seed, --press, --hold, --touch and --drag go with --accept"}
 	for args, i in cases {
 		parsed := parse_test_args(args)
 		testing.expectf(t, !parsed.ok, "%v should not parse", args)
@@ -67,6 +67,27 @@ test_the_keys_pressed_are_stored_with_the_picture_and_read_back :: proc(t: ^test
 	testing.expect(t, strings.contains(text, "press space@120\n") && strings.contains(text, "hold right@200-260\n"), text)
 	again := parse_snapshot(text)
 	testing.expect_value(t, len(again.inputs), 2)
+}
+
+@(test)
+test_the_fingers_moved_are_stored_with_the_picture_and_read_back :: proc(t: ^testing.T) {
+	s := parse_snapshot("frames 300\nseed 1\nwindows 1\ntouch 100,300.5@50\ntouch 10,20@5-9\ndrag 50,400-250,400@60-90\ndrag nope@1-2\n")
+	if testing.expect_value(t, len(s.inputs), 3) {
+		testing.expect_value(t, s.inputs[0], Input_Step{kind = .Touch, pos = {100, 300.5}, end = {100, 300.5}, from = 50, to = 50})
+		testing.expect_value(t, s.inputs[2], Input_Step{kind = .Drag, pos = {50, 400}, end = {250, 400}, from = 60, to = 90})
+	}
+	text := snapshot_text(s)
+	for line in ([]string{"touch 100,300.5@50\n", "touch 10,20@5-9\n", "drag 50,400-250,400@60-90\n"}) {
+		testing.expectf(t, strings.contains(text, line), "%q is missing from %q", line, text)
+	}
+	again := parse_snapshot(text)
+	testing.expect_value(t, len(again.inputs), 3)
+	testing.expect_value(t, again.inputs[1], s.inputs[1])
+	// fingers go with --accept, as keys do
+	ok := parse_test_args({"--accept", "--frames", "60", "--touch", "1,2@10", "--drag", "1,2-3,4@5-9"})
+	testing.expect(t, ok.ok && len(ok.inputs) == 2)
+	testing.expect(t, !parse_test_args({"--touch", "1,2@10"}).ok)
+	testing.expect(t, !parse_test_args({"--accept", "--drag", "1,2@10"}).ok)
 }
 
 picture :: proc(width, height: int, colour: [4]u8) -> gfx.Image {

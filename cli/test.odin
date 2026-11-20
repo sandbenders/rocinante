@@ -20,6 +20,7 @@ import "core:strconv"
 import "core:strings"
 
 TEST_USAGE :: `roci test [folder or file] [--accept] [--frames N] [--seed N] [--press key@frame] [--hold key@from-to]
+             [--touch x,y@frame] [--drag x1,y1-x2,y2@from-to]
 
   With no name, the sketch in this folder, or every sketch in the folders inside it.
   It runs each check block, and when a sketch has a stored picture (tests/snapshot-1.png)
@@ -29,9 +30,9 @@ TEST_USAGE :: `roci test [folder or file] [--accept] [--frames N] [--seed N] [--
   --frames N  with --accept, how many frames the sketch runs before the picture is
               taken (1 by default; the number is remembered in tests/snapshot.txt)
   --seed N    with --accept, the seed of the random numbers (1 by default; remembered)
-  --press key@frame, --hold key@from-to
-              with --accept, keys pressed while the frames run, as roci run takes them
-              (--press "space@120" --hold "right@200-260"); remembered with the picture`
+  --press key@frame, --hold key@from-to, --touch x,y@frame, --drag x1,y1-x2,y2@from-to
+              with --accept, keys pressed and fingers moved while the frames run, as roci run takes them
+              (--press "space@120" --hold "right@200-260" --drag "50,400-250,400@60-90"); remembered with the picture`
 
 // How far a channel may be off before a pixel counts as changed, and how many pixels
 // of 120,000 may be: two computers' graphics drivers draw edges a little differently.
@@ -58,14 +59,14 @@ parse_test_args :: proc(args: []string) -> Test_Args {
 		switch {
 		case arg == "--accept":
 			result.accept = true
-		case arg == "--frames" || arg == "--seed" || arg == "--press" || arg == "--hold":
+		case arg == "--frames" || arg == "--seed" || arg == "--press" || arg == "--hold" || arg == "--touch" || arg == "--drag":
 			if i + 1 >= len(args) {
 				return Test_Args{ok = false, bad = arg}
 			}
 			value := args[i + 1]
 			i += 1
-			if arg == "--press" || arg == "--hold" {
-				step, bad, step_ok := parse_input_step(value, arg == "--hold")
+			if arg != "--frames" && arg != "--seed" {
+				step, bad, step_ok := parse_script_arg(arg, value)
 				if !step_ok {
 					return Test_Args{ok = false, bad = bad}
 				}
@@ -94,7 +95,7 @@ parse_test_args :: proc(args: []string) -> Test_Args {
 		i += 1
 	}
 	if (result.frames > 0 || result.seeded || len(result.inputs) > 0) && !result.accept {
-		return Test_Args{ok = false, bad = "--frames, --seed, --press and --hold go with --accept"}
+		return Test_Args{ok = false, bad = "--frames, --seed, --press, --hold, --touch and --drag go with --accept"}
 	}
 	if len(result.paths) == 0 {
 		append(&result.paths, ".")
@@ -145,8 +146,8 @@ parse_snapshot :: proc(text: string) -> Snapshot {
 			if n, ok := strconv.parse_u64(fields[1]); ok {
 				s.seed = n
 			}
-		case "press", "hold":
-			if step, _, ok := parse_input_step(fields[1], fields[0] == "hold"); ok {
+		case "press", "hold", "touch", "drag":
+			if step, _, ok := parse_script_arg(strings.concatenate({"--", fields[0]}, context.temp_allocator), fields[1]); ok {
 				append(&inputs, step)
 			}
 		case "windows":

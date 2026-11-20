@@ -217,6 +217,53 @@ test_keys_pressed_by_a_script_reach_the_sketch_in_their_frames :: proc(t: ^testi
 }
 
 @(test)
+test_touch_and_drag_name_a_place_and_its_frames :: proc(t: ^testing.T) {
+	a := parse_run_args({"--frames", "300", "--touch", "100,300.5@50", "--touch", "10,20@5-9", "--drag", "50,400-250,400@60-90"})
+	testing.expect(t, a.ok)
+	if testing.expect_value(t, len(a.inputs), 3) {
+		testing.expect_value(t, a.inputs[0], Input_Step{kind = .Touch, pos = {100, 300.5}, end = {100, 300.5}, from = 50, to = 50})
+		testing.expect_value(t, a.inputs[1], Input_Step{kind = .Touch, pos = {10, 20}, end = {10, 20}, from = 5, to = 9})
+		testing.expect_value(t, a.inputs[2], Input_Step{kind = .Drag, pos = {50, 400}, end = {250, 400}, from = 60, to = 90})
+	}
+	// no place, a place that is not two numbers or is outside the window, a drag with one place or one frame, a hold
+	// that goes backwards, and fingers with no frames to run
+	for bad, i in ([?][]string{
+		{"--frames", "3", "--touch", "100@5"},
+		{"--frames", "3", "--touch", "a,b@5"},
+		{"--frames", "3", "--touch", "-1,2@5"},
+		{"--frames", "3", "--touch", "1,2"},
+		{"--frames", "3", "--touch", "1,2@x"},
+		{"--frames", "3", "--touch", "1,2@5-2"},
+		{"--frames", "3", "--touch", "1,2@-5"},
+		{"--frames", "3", "--touch", ",2@5"},
+		{"--frames", "3", "--drag", "1,2@5-9"},
+		{"--frames", "3", "--drag", "1,2-3,4@5"},
+		{"--frames", "3", "--drag", "1,2-3,4@5-5"},
+		{"--frames", "3", "--drag", "1,2-@5-9"},
+		{"--touch", "1,2@1"},
+	}) {
+		parsed := parse_run_args(bad)
+		testing.expectf(t, !parsed.ok, "case %d should not parse: %v", i, bad)
+	}
+}
+
+@(test)
+test_fingers_moved_by_a_script_reach_the_sketch_in_their_frames :: proc(t: ^testing.T) {
+	text := "window size 100 50\non touch down [ print (\"down \" + frame + \" \" + finger.pos.x + \" \" + finger.pos.y) ]\non touch up [ print (\"up \" + frame + \" \" + finger.pos.x) ]\ndraw [\n  for each f in touches [ print (\"at \" + frame + \" \" + f.pos.x) ]\n]\n"
+	steps := []Input_Step{
+		{kind = .Touch, pos = {20, 10}, end = {20, 10}, from = 1, to = 1},
+		{kind = .Drag, pos = {0, 25}, end = {80, 25}, from = 3, to = 7},
+	}
+	result := run_text("test.roci", text, 10, 1, false, inputs = steps)
+	testing.expect_value(t, result.code, 0)
+	// the tap goes down in frame 1 and up in frame 2; the drag goes down in 3, moves a quarter of the way a frame, and
+	// is up in 8, where it was let go
+	wanted := "down 1 20 10|at 1 20|up 2 20|down 3 0 25|at 3 0|at 4 20|at 5 40|at 6 60|at 7 80|up 8 80"
+	got := strings.join(result.printed, "|", context.temp_allocator)
+	testing.expect_value(t, got, wanted)
+}
+
+@(test)
 test_run_args_take_stats_and_no_vsync_for_a_window :: proc(t: ^testing.T) {
 	a := parse_run_args({"--stats"})
 	testing.expect(t, a.ok && a.stats && !a.no_vsync)

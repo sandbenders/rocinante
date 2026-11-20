@@ -75,7 +75,7 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 		return 2
 	}
 	if len(parsed.inputs) > 0 || parsed.window != 1 || parsed.json {
-		fmt.sbprintf(err, "`--press`, `--hold`, `--window` and `--errors` are for the interpreter and do not go with `--compile`.\n")
+		fmt.sbprintf(err, "`--press`, `--hold`, `--touch`, `--drag`, `--window` and `--errors` are for the interpreter and do not go with `--compile`.\n")
 		return 2
 	}
 	if !check_odin(err) {
