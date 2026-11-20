@@ -1987,3 +1987,17 @@ test_websocket_blocks_read_received_and_the_verbs_need_a_label_and_an_address ::
 	expect_errors(t, "draw [ print received.text ]", {.Received_Outside_Event})
 	expect_errors(t, "websocket connect \"feed\"", {.Missing_Required_Word})
 }
+
+@(test)
+test_the_words_of_a_text_do_not_keep_a_constant_from_being_made_first :: proc(t: ^testing.T) {
+	// `ENGLISH` holds words that are also a variable (`ship`), a constant (`OCEAN`) and a word of the language (`time`), but only
+	// as text, so it is made first; a name in a hole of the text is code, so a variable there keeps the constant where it is
+	// written and a line above it still has no value to read.
+	expect_errors(t, "ship = 1\nprint ENGLISH.title\nENGLISH = { title: \"THE OCEAN time ship\" }", {})
+	waits := check_text("n = 2\nprint SHOWN\nSHOWN = \"n is {n}\"")
+	found := false
+	for d in waits.checked.diagnostics {
+		found ||= d.id == .No_Value_Yet
+	}
+	testing.expect(t, found, "a text with a variable in a hole is not moved")
+}

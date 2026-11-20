@@ -33,9 +33,29 @@ hoist_constants :: proc(c: ^Checker, stmts: []^Stmt) -> []^Stmt {
 		movable := true
 		text := span_text(c.src, k.value.span)
 		start := -1
+		in_words := false // inside the quotes of a text, where words are only words
+		hole := 0         // how many curly brackets of a text hole are open: what is inside one is read as code
 		for i := 0; i <= len(text); i += 1 {
 			in_name := i < len(text) && is_name_rune(rune(text[i]))
-			if in_name && start < 0 {
+			quoted := in_words && hole == 0 // before this character: words of a text are not names
+			if i < len(text) && !in_name {
+				switch ch := text[i]; {
+				case quoted:
+					switch ch {
+					case '\\': i += 1
+					case '{':  hole = 1
+					case '"':  in_words = false
+					}
+				case in_words:
+					switch ch {
+					case '{': hole += 1
+					case '}': hole -= 1
+					}
+				case ch == '"':
+					in_words = true
+				}
+			}
+			if in_name && start < 0 && !quoted {
 				start = i
 			} else if !in_name && start >= 0 {
 				word := text[start:i]
