@@ -1,5 +1,7 @@
 // Saving pictures: press s to save the window as output/shot.png, press v to save its shapes
 // as a vector drawing, output/shot.svg, and press p to save them as a PDF page, output/shot.pdf.
+// Press i to save a picture the sketch made, not the window: a four-color swatch grown to 64 by 64
+// pixels, output/swatch.png.
 // Press r to start or stop recording a frame sequence into output/frames, one numbered file
 // for each frame; m to start or stop recording a video, output/movie.mp4, which ffmpeg makes
 // (it has to be installed); and a to start or stop an animated PNG, output/movie.apng, which
@@ -9,11 +11,14 @@ recording = false
 filming = false
 animating = false
 saved = 0
+swatch = picture from [ tomato gold seagreen royalblue ] size 2 2
 
 on key "s" [
   save "shot.png"
   saved = saved + 1
 ]
+
+on key "i" [ save (resize swatch size 64 64 as nearest) "swatch.png" ]
 
 on key "v" [ save "shot.svg" ]
 

@@ -417,3 +417,11 @@ test_a_program_for_a_phone_ends_in_the_entry_its_app_runs :: proc(t: ^testing.T)
 	testing.expect(t, strings.contains(mac.source, "main :: proc() {\n\trt.enter_app(string(sdl.GetBasePath()), string(cstring(sdl.GetPrefPath(\"\", \"org.example.test\"))))\n\trun := rt.read_run("))
 	testing.expect(t, !strings.contains(mac.source, "sdl_main"), "the system starts a Mac app the ordinary way")
 }
+
+@(test)
+test_saving_a_picture_writes_a_png_and_saving_data_still_writes_data :: proc(t: ^testing.T) {
+	result := compile("swatch = picture from [ red blue ] size 2 1\nsave (resize swatch size 8 4) \"swatch.png\"\nsave swatch \"again.png\"\nsave [ 1 2 ] \"numbers.json\"\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect_value(t, strings.count(result.source, "rt.save_picture_file("), 2)
+	testing.expect(t, strings.contains(result.source, "rt.save_data("), "a list is still data")
+}

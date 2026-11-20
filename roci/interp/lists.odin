@@ -83,7 +83,12 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.set_clipboard(as_text(eval(it, call.args[0])))
 	case .Save:
 		if call.shape == 1 {
-			save_data(it, e, eval(it, call.args[0]), as_text(eval(it, call.args[1])))
+			value := eval(it, call.args[0])
+			if picture, is_picture := value.(roci.Image); is_picture {
+				save_image_file(it, e, roci.movie_frame(picture), as_text(eval(it, call.args[1])))
+			} else {
+				save_data(it, e, value, as_text(eval(it, call.args[1])))
+			}
 		} else {
 			save_picture(it, e, as_text(eval(it, call.args[0])))
 		}

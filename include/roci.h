@@ -952,6 +952,9 @@ int roci_outline(roci_image_id picture, double alpha, double at_x, double at_y, 
 /* Saves the current window as a PNG, SVG or PDF once the frame is drawn; a run of # in the name is the frame number. Gives 0 for a name that is none of those. What goes wrong later comes from roci_next_message. */
 int roci_save(const char *path);
 
+/* Saves a picture or a canvas as a PNG file at its own size, at once; a run of # in the name is the frame number. Gives 0 for a name that does not end in .png, a picture that is not there or a file that could not be written, and roci_next_message says why. */
+int roci_save_picture(roci_image_id picture, const char *path);
+
 /* Starts recording the current window into a movie: ".apng", or ".mp4", ".mov", ".webm", ".mkv" or ".gif" through the user's ffmpeg. Gives 1, or 0 with the reason in roci_record_problem. */
 int roci_record(const char *path);
 

@@ -251,6 +251,19 @@ abi_outline :: proc "c" (picture: c.int, alpha, at_x, at_y, width, height: f64, 
 
 // ---- saving and recording ----
 
+// Saves a picture as a PNG at its own size, at once. Gives 1 when it is written, and 0 for a name that does not end in .png, a picture that
+// is not there or a file that could not be written, which roci_next_message says.
+@(export, link_name = "roci_save_picture")
+abi_save_picture :: proc "c" (picture: c.int, path: cstring) -> c.int {
+	context = abi_context()
+	name := text_from_abi(path)
+	if why := save_image(Image(picture), name); why != "" {
+		note_save_problem(name, why)
+		return 0
+	}
+	return 1
+}
+
 @(export, link_name = "roci_save")
 abi_save :: proc "c" (path: cstring) -> c.int {
 	context = abi_context()
@@ -489,6 +502,7 @@ abi_pictures_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_mask", typeid_of(type_of(abi_mask)), "roci_image_id roci_mask(roci_image_id picture, roci_image_id stencil)", "A new picture whose alpha is multiplied by how much of the stencil shows at each place, the stencil stretched over it."))
 	append(all, abi_entry("roci_outline", typeid_of(type_of(abi_outline)), "int roci_outline(roci_image_id picture, double alpha, double at_x, double at_y, double width, double height, roci_vec2 *points, int capacity)", "The corners of the solid part of a picture (its biggest piece, without holes), copied into `points` as far as `capacity` allows (it may be NULL), and how many there are. `alpha` is how solid a pixel has to be in percent (below 0 for 50); `at_x` and `at_y` put the picture where it is drawn, and a `width` and `height` of 0 leave it its own size."))
 	append(all, abi_entry("roci_save", typeid_of(type_of(abi_save)), "int roci_save(const char *path)", "Saves the current window as a PNG, SVG or PDF once the frame is drawn; a run of # in the name is the frame number. Gives 0 for a name that is none of those. What goes wrong later comes from roci_next_message."))
+	append(all, abi_entry("roci_save_picture", typeid_of(type_of(abi_save_picture)), "int roci_save_picture(roci_image_id picture, const char *path)", "Saves a picture or a canvas as a PNG file at its own size, at once; a run of # in the name is the frame number. Gives 0 for a name that does not end in .png, a picture that is not there or a file that could not be written, and roci_next_message says why."))
 	append(all, abi_entry("roci_record", typeid_of(type_of(abi_record)), "int roci_record(const char *path)", "Starts recording the current window into a movie: \".apng\", or \".mp4\", \".mov\", \".webm\", \".mkv\" or \".gif\" through the user's ffmpeg. Gives 1, or 0 with the reason in roci_record_problem."))
 	append(all, abi_entry("roci_no_record", typeid_of(type_of(abi_no_record)), "void roci_no_record(void)", "Ends the current window's recording and writes the file."))
 	append(all, abi_entry("roci_record_problem", typeid_of(type_of(abi_record_problem)), "const char *roci_record_problem(void)", "Why the last roci_record gave 0, or an empty text. The text stays valid until the next function that gives text back."))

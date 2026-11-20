@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package roci
 
+import "core:c"
 import "core:os"
 import "core:strings"
 import "core:testing"
@@ -174,4 +175,46 @@ test_a_pdf_that_leaves_something_out_is_written_and_said_to_be_approximate :: pr
 		testing.expect(t, problems[0].approximate)
 		testing.expect_value(t, problems[0].why, "the add blend")
 	}
+}
+
+@(test)
+test_a_picture_is_saved_as_a_png_at_its_own_size :: proc(t: ^testing.T) {
+	defer shutdown()
+	_ = os.remove_all("output/tests/save_picture")
+	pixels := make([]u8, 5 * 3 * 4, context.temp_allocator)
+	for i in 0 ..< len(pixels) {
+		pixels[i] = u8(i * 7)
+	}
+	picture, _ := add_image_pixels(5, 3, pixels)
+	// no window, no graphics: a picture needs neither
+	testing.expect_value(t, save_image(picture, "output/tests/save_picture/five.png"), "")
+	bytes, err := os.read_entire_file("output/tests/save_picture/five.png", context.temp_allocator)
+	testing.expect(t, err == nil)
+	testing.expect(t, len(bytes) > 33)
+	testing.expect_value(t, string(bytes[1:4]), "PNG")
+	testing.expect_value(t, string(bytes[16:24]), "\x00\x00\x00\x05\x00\x00\x00\x03")
+	// a run of # is the frame number, in as many digits as the run has
+	the.frame = 42
+	testing.expect_value(t, save_image(picture, "output/tests/save_picture/f-####.png"), "")
+	testing.expect(t, os.exists("output/tests/save_picture/f-0042.png"))
+	// what cannot be done is said in words, and nothing is written
+	testing.expect(t, save_image(picture, "output/tests/save_picture/x.jpg") != "")
+	testing.expect(t, !os.exists("output/tests/save_picture/x.jpg"))
+	testing.expect(t, save_image(Image(0), "output/tests/save_picture/none.png") != "")
+	testing.expect(t, !os.exists("output/tests/save_picture/none.png"))
+}
+
+@(test)
+test_the_c_function_saves_a_picture_and_says_why_it_did_not :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	defer abi_text_stop()
+	_ = os.remove_all("output/tests/save_picture_c")
+	picture, _ := add_image_pixels(2, 2, make([]u8, 16, context.temp_allocator))
+	testing.expect_value(t, abi_save_picture(c.int(picture), "output/tests/save_picture_c/a.png"), 1)
+	testing.expect(t, os.exists("output/tests/save_picture_c/a.png"))
+	testing.expect_value(t, abi_save_picture(c.int(picture), "output/tests/save_picture_c/a.jpg"), 0)
+	message := abi_next_message()
+	testing.expect(t, message != nil && strings.contains(string(message), "PNG"))
+	testing.expect(t, abi_next_message() == nil)
 }

@@ -194,7 +194,29 @@ left_out_text :: proc(parts: []string) -> string {
 	return strings.concatenate({strings.join(parts[:len(parts) - 1], ", ", context.temp_allocator), " and ", parts[len(parts) - 1]}, context.temp_allocator)
 }
 
-@(private = "file")
+// Keeps a file that could not be written for the language (or for C) to say.
 note_save_problem :: proc(path, why: string, approximate := false) {
 	append(&the.save_problems, Save_Problem{strings.clone(path), strings.clone(why), approximate})
+}
+
+// Writes a picture or a canvas as a PNG file, at once: the pictures a sketch makes (`resize`, `crop`, a canvas it drew
+// into) are saved at their own size, whatever the window is. A run of `#` in the name is the frame number. Gives why it
+// could not, in plain words, or "" when the file is written. A canvas is read back from the graphics first, which stalls
+// the frame.
+save_image :: proc(picture: Image, path: string) -> string {
+	if !is_png_name(path) {
+		return "a picture is saved as a PNG file, so the name has to end in `.png`"
+	}
+	read := picture_pixels(picture)
+	if !read.ok {
+		if the.error != "" {
+			return strings.clone(the.error, context.temp_allocator)
+		}
+		return "there is no such picture to save"
+	}
+	png, encoded := gfx.png_encode(gfx.Image{pixels = read.pixels, width = read.width, height = read.height}, context.temp_allocator)
+	if !encoded {
+		return "the picture could not be turned into a PNG"
+	}
+	return write_file(expand_frame_pattern(path, the.frame, context.temp_allocator), png)
 }

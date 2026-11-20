@@ -5,6 +5,7 @@ import "../"
 import "../gfx"
 import "../lang"
 import "core:os"
+import "core:strings"
 import "core:testing"
 
 @(test)
@@ -70,6 +71,15 @@ test_the_export_example_saves_on_s_and_records_on_r :: proc(t: ^testing.T) {
 	roci.step({key_event(w, .S)})
 	roci.step({key_event(w, .S, false)})
 	testing.expect_value(t, as_number(global_named(p, "saved")), 1)
+	// i saves a picture the sketch made, at its own size, which needs no graphics
+	_ = os.remove("output/swatch.png")
+	roci.step({key_event(w, .I)})
+	roci.step({key_event(w, .I, false)})
+	swatch, swatch_read := os.read_entire_file("output/swatch.png", context.temp_allocator)
+	testing.expect(t, swatch_read == nil)
+	if len(swatch) > 24 {
+		testing.expect_value(t, string(swatch[16:24]), "\x00\x00\x00\x40\x00\x00\x00\x40") // the PNG header says 64 by 64
+	}
 	// v saves the shapes as a vector file, which needs no graphics
 	roci.step({key_event(w, .V)})
 	roci.step({key_event(w, .V, false)})
@@ -137,4 +147,29 @@ solid_frames :: proc(width, height: int) -> (gfx.Image, bool) {
 		p = 128
 	}
 	return gfx.Image{width, height, pixels}, true
+}
+
+@(test)
+test_a_picture_is_saved_as_a_png_by_save_and_a_wrong_name_is_said :: proc(t: ^testing.T) {
+	cwd, _ := os.get_working_directory(context.temp_allocator)
+	folder := strings.concatenate({cwd, "/output/tests/save_a_picture"}, context.temp_allocator)
+	_ = os.remove_all(folder)
+	sketch := strings.concatenate({"pic = picture from [ red blue ] size 2 1\nsave pic \"", folder, "/two.png\"\nsave (resize pic size 6 3) \"", folder, "/six-##.png\"\nsave pic \"", folder, "/bad.gif\"\nok = 1\n"}, context.temp_allocator)
+	p := run_text(t, sketch, 2)
+	defer finish(p)
+	testing.expect_value(t, as_number(global_named(p, "ok")), 1)
+	two, two_read := os.read_entire_file(strings.concatenate({folder, "/two.png"}, context.temp_allocator), context.temp_allocator)
+	testing.expect(t, two_read == nil && len(two) > 24)
+	if len(two) > 24 {
+		testing.expect_value(t, string(two[16:24]), "\x00\x00\x00\x02\x00\x00\x00\x01")
+	}
+	six, six_read := os.read_entire_file(strings.concatenate({folder, "/six-00.png"}, context.temp_allocator), context.temp_allocator)
+	testing.expect(t, six_read == nil && len(six) > 24)
+	if len(six) > 24 {
+		testing.expect_value(t, string(six[16:24]), "\x00\x00\x00\x06\x00\x00\x00\x03")
+	}
+	testing.expect(t, !os.exists(strings.concatenate({folder, "/bad.gif"}, context.temp_allocator)))
+	if testing.expect_value(t, len(p.errors), 1) {
+		testing.expect_value(t, p.errors[0].id, lang.Message_Id.Save_Failed)
+	}
 }

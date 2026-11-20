@@ -2,4 +2,5 @@ recording: true or false
 filming: true or false
 animating: true or false
 saved: a number
+swatch: a picture
 spin: a number

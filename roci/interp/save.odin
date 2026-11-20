@@ -57,3 +57,13 @@ say_save_problems :: proc(it: ^Interp) {
 		fail(it, .Save_Failed, it.save_span, problem.path, strings.concatenate({"The picture could not be saved: ", problem.why, "."}, context.temp_allocator), "", "save \"shot.png\"")
 	}
 }
+
+// `save picture "name.png"`: a picture or a canvas written as a PNG at its own size, at once, where a plain name goes in the
+// `output` folder like the window's.
+@(private)
+save_image_file :: proc(it: ^Interp, e: ^lang.IR, picture: roci.Image, name: string) {
+	example := "save (resize photo size 16 16) \"small.png\""
+	if why := roci.save_image(picture, save_path(it, name)); why != "" {
+		fail(it, .Save_Failed, e.span, name, strings.concatenate({"The picture could not be saved: ", why, "."}, context.temp_allocator), "", example)
+	}
+}

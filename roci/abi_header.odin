@@ -78,7 +78,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"effect", "roci_effect roci_builtin_effect roci_add_shader roci_update_shader roci_sound_effect roci_sound_effect_set roci_sound_effect_word", ""},
 	{"no effect", "roci_no_sound_effect", ""},
 	{"shade", "roci_shade roci_add_shader", ""},
-	{"save", "roci_save roci_write_file", ""},
+	{"save", "roci_save roci_save_picture roci_write_file", ""},
 	{"lines", "", "a text is a C string: C splits its own"},
 	{"numbers", "", "a list is a C array: C makes its own"},
 	{"files", "roci_file_count roci_file_name", ""},

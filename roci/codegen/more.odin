@@ -189,6 +189,9 @@ more_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (te
 		return shape_call("rt.mesh", {fmt.tprintf("%d", g.next_id), args[0], wireframe}, look, ""), false
 	case "save":
 		if c.shape == 1 {
+			if kind_of(g, c.args[0]) == .Image {
+				return fmt.aprintf("rt.save_picture_file(%s, %s)", args[0], args[1], allocator = context.temp_allocator), false
+			}
 			convert, ok := to_datum_proc(g, c.args[0].type, e.span)
 			if !ok {
 				return "", false

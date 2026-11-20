@@ -1116,3 +1116,15 @@ outline_of :: proc(picture: roci.Image, alpha: f64, at: [2]f64, size: Maybe([2]f
 	}
 	return out
 }
+
+// `save picture "name.png"`: a picture or a canvas written as a PNG at its own size, at once; a plain name goes in the `output`
+// folder of the sketch's folder.
+save_picture_file :: proc(picture: roci.Image, name: string) {
+	path := name
+	if !(strings.has_prefix(name, "/") || (len(name) > 2 && name[1] == ':')) {
+		path = strings.concatenate({"output/", name}, context.temp_allocator)
+	}
+	if why := roci.save_image(roci.movie_frame(picture), path); why != "" {
+		say_once(name, fmt.tprintf("I could not save `%s`: %s.", name, why))
+	}
+}

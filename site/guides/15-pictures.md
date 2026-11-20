@@ -239,7 +239,23 @@ draw [
 ]
 ```
 
-That writes `output/frames/frame-0000.png`, `frame-0001.png` and so on. `roci run sketch --frames 120` draws 120 frames with no window, which is the way to record a long sequence quickly. A name that does not end in `.png`, `.svg` or `.pdf` is said and nothing is written; a file that cannot be written is said on the next frame. `examples/export` saves a PNG with `s`, an SVG with `v`, a PDF with `p` and records with `r`.
+That writes `output/frames/frame-0000.png`, `frame-0001.png` and so on. `roci run sketch --frames 120` draws 120 frames with no window, which is the way to record a long sequence quickly. A name that does not end in `.png`, `.svg` or `.pdf` is said and nothing is written; a file that cannot be written is said on the next frame. `examples/export` saves a PNG with `s`, a picture of its own with `i`, an SVG with `v`, a PDF with `p` and records with `r`.
+
+### A picture of your own
+
+`save` with a picture or a canvas first writes that picture, at its own size, whatever the window is like. A sketch can make files of any size without changing its window:
+
+```roci
+badge = canvas 256 256
+draw into badge [
+  background gold
+  circle at 128 128 radius 90 fill tomato
+]
+save badge "badge.png"
+save (resize badge size 32 32) "badge-32.png"
+```
+
+It is written at once and goes where the window's pictures go (the `output` folder), a run of `#` is the frame number, and the name has to end in `.png`. Reading a canvas back from the graphics card stalls the frame, so save it once, not every frame. In C it is `roci_save_picture`.
 
 ### As a vector drawing
 
