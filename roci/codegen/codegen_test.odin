@@ -405,7 +405,7 @@ test_a_program_for_a_phone_ends_in_the_entry_its_app_runs :: proc(t: ^testing.T)
 	android := generate(&checked.program, src, Options{sketch = "test", source = "test.roci", target = "android"}, context.temp_allocator)
 	testing.expect_value(t, len(android.problems), 0)
 	testing.expect(t, strings.contains(android.source, "@(export, link_name = \"rocinante_main\")"))
-	testing.expect(t, strings.contains(android.source, "sdl.GetAndroidExternalStoragePath()"))
+	testing.expect(t, strings.contains(android.source, "sdl.GetAndroidInternalStoragePath()"))
 	testing.expect(t, strings.contains(android.source, "@(export, link_name = \"android_main\")"))
 	testing.expect(t, !strings.contains(android.source, "\nmain :: proc() {"), "a library has no main")
 }

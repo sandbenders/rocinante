@@ -43,7 +43,7 @@ Turn on USB debugging (Settings, Developer options), plug the phone in, unlock i
 roci run --compile --target android
 ```
 
-The sketch's `assets` go to the app's folder on the phone's storage, and the app starts. Keep the screen on and unlocked: Android draws nothing for a sleeping phone. With more than one phone connected, set `ANDROID_SERIAL` to the one you mean (`adb devices` lists them).
+The sketch's `assets` go into the app's own folder on the phone, and the app starts. Keep the screen on and unlocked: Android draws nothing for a sleeping phone. With more than one phone connected, set `ANDROID_SERIAL` to the one you mean (`adb devices` lists them).
 
 ## What the phone needs once
 

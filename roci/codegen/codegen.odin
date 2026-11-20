@@ -223,7 +223,7 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 		// SDL's Java activity finds `rocinante_main` by name in the library and calls it on its own thread; the
 		// sketch's assets were put in the app's folder on the phone's storage
 		fmt.sbprintf(&out, "sketch_main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n\n", options.sketch, ODIN_VERSION_PIN, hook)
-		fmt.sbprintf(&out, "@(export, link_name = \"rocinante_main\")\nrocinante_main :: proc \"c\" (argc: c.int, argv: [^]cstring) -> c.int {{\n\tcontext = runtime.default_context()\n\tfolder := string(sdl.GetAndroidExternalStoragePath())\n\trt.use_home(folder, folder)\n\tsketch_main()\n\treturn 0\n}}\n\n")
+		fmt.sbprintf(&out, "@(export, link_name = \"rocinante_main\")\nrocinante_main :: proc \"c\" (argc: c.int, argv: [^]cstring) -> c.int {{\n\tcontext = runtime.default_context()\n\tfolder := string(sdl.GetAndroidInternalStoragePath())\n\trt.use_home(folder, folder)\n\tsketch_main()\n\treturn 0\n}}\n\n")
 		fmt.sbprintf(&out, "// SDL's activity never goes through the NDK's native_app_glue, which wants this name defined.\n@(export, link_name = \"android_main\")\nandroid_main :: proc \"c\" (app: rawptr) {{}}\n")
 	case:
 		fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, hook)

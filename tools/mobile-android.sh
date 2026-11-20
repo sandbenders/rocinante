@@ -3,7 +3,7 @@
 #
 # Puts a compiled sketch on an Android phone: builds the Odin program `roci run --compile --target android` made as
 # a shared library, compiles SDL's Java glue and the activity, assembles and signs an APK with a debug key, copies the
-# sketch's `assets` to the app's folder on the phone's storage, installs the app and starts it. Needs the Android SDK
+# sketch's `assets` into the app's own folder, installs the app and starts it. Needs the Android SDK
 # and NDK (Android Studio's), a phone connected with USB debugging on, and the phone's libraries, which
 # `tools/mobile-sdl.sh android` and `spikes/mobile/android/libs.sh` build. The screen must be on and unlocked.
 #
@@ -99,12 +99,13 @@ say "== install"
     fail "The phone would not take the app."
   fi
 }
-files="/sdcard/Android/data/$PACKAGE/files"
-"$adb" shell rm -rf "$files/assets" > /dev/null 2>&1 || true
-"$adb" shell mkdir -p "$files" > /dev/null 2>&1 || true
+# The assets go into the app's own folder (`run-as` works because the debug app is debuggable): files `adb push`
+# puts on the shared storage belong to the shell user, and the app is not let read them.
+files="files"
+"$adb" shell run-as "$PACKAGE" sh -c "'rm -rf $files/assets; mkdir -p $files'" > /dev/null 2>&1 || true
 if [ -d "$sketch_folder/assets" ]; then
   say "== assets"
-  "$adb" push "$sketch_folder/assets" "$files/" > "$out/push.log" 2>&1 || { tail -5 "$out/push.log" >&2; fail "I could not copy the assets to the phone."; }
+  (cd "$sketch_folder" && COPYFILE_DISABLE=1 tar --no-xattrs -cf - assets) | "$adb" shell run-as "$PACKAGE" tar -xf - -C "$files" > "$out/push.log" 2>&1 || { tail -5 "$out/push.log" >&2; fail "I could not copy the assets to the phone."; }
 fi
 say "== start"
 "$adb" shell input keyevent KEYCODE_WAKEUP > /dev/null 2>&1 || true

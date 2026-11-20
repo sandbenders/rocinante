@@ -10,6 +10,7 @@
     <application android:label="@NAME@"
         android:hasCode="true"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:debuggable="true"
         android:hardwareAccelerated="true">
         <activity android:name=".SketchActivity"
             android:label="@NAME@"
