@@ -319,7 +319,24 @@ test_a_phone_is_chosen_with_target_and_the_device_and_team_go_with_it :: proc(t:
 	b := parse_run_args({"--compile", "--target", "android"})
 	testing.expect(t, b.ok)
 	testing.expect_value(t, b.device, "")
+	c := parse_run_args({"--compile", "--target", "android-emulator", "--device", "Pixel_9"})
+	testing.expect(t, c.ok && c.target == "android-emulator" && c.device == "Pixel_9")
+	// an iOS Simulator cannot run a sketch (its GPU is below what SDL's Metal driver needs)
+	testing.expect(t, !parse_run_args({"--compile", "--target", "ios-simulator"}).ok)
 	for args in ([][]string{{"--compile", "--device", "x"}, {"--compile", "--team", "x"}, {"--target", "ios"}, {"--compile", "--target", "ios", "--device"}, {"--compile", "--target", "web"}}) {
 		testing.expectf(t, !parse_run_args(args).ok, "%v should be refused", args)
 	}
+}
+
+@(test)
+test_an_emulator_is_an_android_phone_and_device_fills_the_right_variable :: proc(t: ^testing.T) {
+	testing.expect_value(t, phone_system("ios"), "ios")
+	testing.expect_value(t, phone_system("android"), "android")
+	testing.expect_value(t, phone_system("android-emulator"), "android")
+	testing.expect_value(t, phone_system(""), "")
+	testing.expect_value(t, device_variable("ios", "ABC"), "DEVICE")
+	testing.expect_value(t, device_variable("android", "54220DLAQ0019B"), "ANDROID_SERIAL")
+	testing.expect_value(t, device_variable("android-emulator", "Medium_Phone_API_36.1"), "AVD")
+	// a running emulator is picked by its serial
+	testing.expect_value(t, device_variable("android-emulator", "emulator-5556"), "ANDROID_SERIAL")
 }

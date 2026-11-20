@@ -20,7 +20,7 @@ import "core:strings"
 RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [--seed N] [--errors json]
              [--press key@frame] [--hold key@from-to]
              [--touch x,y@frame] [--drag x1,y1-x2,y2@from-to] [--stats] [--no-vsync]
-             [--compile [--debug] [--target ios|android [--device id] [--team id]]]
+             [--compile [--debug] [--target ios|android|android-emulator [--device id] [--team id]]]
 
   file        the sketch to run; sketch.roci when left out
   --frames N  run N frames with no window, then stop
@@ -51,11 +51,14 @@ RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [
               reload when the file changes). It needs Odin, the release this rocinante is pinned to
   --debug     with --compile, build with debug information and no optimisation, so a debugger can
               follow it; without it the program is built as a released sketch is
-  --target ios|android
+  --target ios|android|android-emulator
               with --compile, build the sketch for a phone, install it on the one that is connected and start
               it there; the sketch's assets go with it. An iPhone is built for on a Mac with Xcode and
-              its developer trusted on the phone; an Android phone needs USB debugging on and its screen unlocked
-  --device id the iPhone to install on (xcrun devicectl list devices), when more than one is connected
+              its developer trusted on the phone; an Android phone needs USB debugging on and its screen unlocked.
+              android-emulator puts it on Android's emulator instead, starting one when none is running, to
+              see the sketch on another screen shape; its speed says nothing about a phone
+  --device id the iPhone to install on (xcrun devicectl list devices), when more than one is connected; for an
+              emulator the name of its virtual device (emulator -list-avds) or its serial (adb devices)
   --team id   the Apple development team that signs an iPhone app, when Xcode knows more than one
   --errors json
               print every message as one line of JSON on standard output, for tools; with
@@ -71,7 +74,7 @@ Run_Args :: struct {
 	seed:       u64,
 	compile:    bool, // build a program and run that
 	debug:      bool, // with compile: debug information, no optimisation
-	target:     string, // with compile: ios or android
+	target:     string, // with compile: ios, android or android-emulator
 	device:     string, // with a target: the iPhone to install on
 	team:       string, // with an iPhone target: the team that signs
 	stats:      bool, // time the frames, show the box, and log the run
@@ -148,8 +151,8 @@ parse_run_args :: proc(args: []string) -> Run_Args {
 		case arg == "--debug":
 			result.debug = true
 		case arg == "--target":
-			if i + 1 >= len(args) || (args[i + 1] != "ios" && args[i + 1] != "android") {
-				return Run_Args{ok = false, bad = "--target takes ios or android"}
+			if i + 1 >= len(args) || !(args[i + 1] == "ios" || args[i + 1] == "android" || args[i + 1] == "android-emulator") {
+				return Run_Args{ok = false, bad = "--target takes ios, android or android-emulator"}
 			}
 			result.target = args[i + 1]
 			i += 1

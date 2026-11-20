@@ -95,7 +95,7 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 		return 1
 	}
 	sketch := sketch_name(file)
-	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = sketch, source = file, target = parsed.target}, context.temp_allocator)
+	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = sketch, source = file, target = phone_system(parsed.target)}, context.temp_allocator)
 	if len(generated.problems) > 0 {
 		say_problems(generated.problems, p.src, err)
 		return 4
@@ -251,15 +251,41 @@ say_problems :: proc(problems: []codegen.Problem, src: lang.Source, err: ^string
 	fmt.sbprintf(err, "\nA sketch runs the same either way, so I would rather say so than compile part of it. `roci run` without `--compile` runs it with the interpreter.\n")
 }
 
+// The system a phone target is for: `android-emulator` is an Android program.
+phone_system :: proc(target: string) -> string {
+	switch target {
+	case "android-emulator":
+		return "android"
+	}
+	return target
+}
+
+// The variable of the phone script that `--device` fills: an iPhone for iOS, a connected phone
+// (`ANDROID_SERIAL`) or an emulator's virtual device, found by its name (`AVD`), for Android; a serial that
+// begins with `emulator-` is a running emulator.
+device_variable :: proc(target, device: string) -> string {
+	switch target {
+	case "ios":
+		return "DEVICE"
+	case "android-emulator":
+		return "ANDROID_SERIAL" if strings.has_prefix(device, "emulator-") else "AVD"
+	}
+	return "ANDROID_SERIAL"
+}
+
 // The script that builds the program for a phone, installs it and starts it. It talks to the person itself, as
 // the tools it runs do, so what it says is shown as it goes.
 put_on_phone :: proc(parsed: Run_Args, root, sketch, source_folder, sketch_folder: string, out, err: ^strings.Builder) -> int {
-	script := strings.concatenate({root, "/tools/mobile-", parsed.target, ".sh"}, context.temp_allocator)
+	system := phone_system(parsed.target)
+	script := strings.concatenate({root, "/tools/mobile-", system, ".sh"}, context.temp_allocator)
 	command := make([dynamic]string, context.temp_allocator)
 	append(&command, "env")
 	append(&command, strings.concatenate({"ROCI_ROOT=", root}, context.temp_allocator))
+	if parsed.target == "android-emulator" {
+		append(&command, "EMULATOR=1")
+	}
 	if parsed.device != "" {
-		append(&command, strings.concatenate({parsed.target == "ios" ? "DEVICE=" : "ANDROID_SERIAL=", parsed.device}, context.temp_allocator))
+		append(&command, strings.concatenate({device_variable(parsed.target, parsed.device), "=", parsed.device}, context.temp_allocator))
 	}
 	if parsed.team != "" {
 		append(&command, strings.concatenate({"TEAM_ID=", parsed.team}, context.temp_allocator))

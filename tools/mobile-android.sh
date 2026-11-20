@@ -10,6 +10,9 @@
 #     tools/mobile-android.sh <source folder> <sketch folder> <name>
 # Environment: ANDROID_HOME, NDK_VERSION, API_LEVEL (default 28), ANDROID_SERIAL (else the one phone connected),
 # ROCI_ROOT (the source of rocinante, default the folder above this one), NO_INSTALL (build the APK and stop).
+# EMULATOR=1 puts the app on Android's emulator instead of a phone: a running one if there is one, else the virtual
+# device named by AVD (else the first `emulator -list-avds` gives), started and waited for. The APK is the same
+# arm64 one, which an arm64 virtual device runs as it is; the emulator is for seeing layouts, not for speed.
 set -eu
 
 source_folder="${1:?the folder with the program roci made}"
@@ -18,6 +21,7 @@ name="${3:-sketch}"
 root="${ROCI_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 here="$root/tools/mobile/android"
 out="$sketch_folder/artifacts/android"
+[ -z "${EMULATOR:-}" ] || out="$sketch_folder/artifacts/android-emulator"
 SDL_ANDROID_LIB="${SDL_ANDROID_LIB:-$root/.cache/mobile/android}"
 SDL_ANDROID_JAVA="${SDL_ANDROID_JAVA:-$root/.cache/mobile/SDL3-3.4.18/android-project/app/src/main/java}"
 PACKAGE=org.rocinante.sketch
@@ -43,11 +47,43 @@ adb="$ANDROID_HOME/platform-tools/adb"
 build_tools="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)"
 android_jar="$(ls -d "$ANDROID_HOME"/platforms/android-* | sort -V | tail -n 1)/android.jar"
 
+# The emulator to put the app on: one that is running, or a virtual device started now.
+use_emulator() {
+  running="$("$adb" devices | awk 'NR > 1 && $1 ~ /^emulator-/ && $2 == "device" { print $1; exit }')"
+  if [ -n "$running" ]; then
+    ANDROID_SERIAL="$running"
+    return 0
+  fi
+  emulator="$ANDROID_HOME/emulator/emulator"
+  [ -x "$emulator" ] || fail "I need Android's emulator in $ANDROID_HOME (Android Studio, SDK Manager, SDK Tools, Android Emulator)."
+  avd="${AVD:-$("$emulator" -list-avds | head -n 1)}"
+  [ -n "$avd" ] || fail "There is no virtual device. Make one in Android Studio (Device Manager), with an arm64 image."
+  say "== starting the emulator $avd"
+  mkdir -p "$out"
+  nohup "$emulator" -avd "$avd" -no-snapshot-save -no-boot-anim > "$out/emulator.log" 2>&1 &
+  waited=0
+  until [ "$("$adb" -e shell getprop sys.boot_completed 2> /dev/null | tr -d '\r')" = 1 ]; do
+    sleep 3
+    waited=$((waited + 3))
+    [ "$waited" -lt 240 ] || fail "The emulator did not finish starting in four minutes. Its messages are in $out/emulator.log."
+  done
+  ANDROID_SERIAL="$("$adb" devices | awk 'NR > 1 && $1 ~ /^emulator-/ && $2 == "device" { print $1; exit }')"
+  [ -n "$ANDROID_SERIAL" ] || fail "The emulator started and I cannot see it in adb devices."
+}
+
 if [ -z "${NO_INSTALL:-}" ]; then
-  count="$("$adb" devices | awk 'NR > 1 && $2 == "device" { n++ } END { print n + 0 }')"
-  [ "$count" -ge 1 ] || fail "I cannot find an Android phone. Connect it with its cable, turn on USB debugging (Settings, Developer options), unlock it and accept the computer."
-  if [ -z "${ANDROID_SERIAL:-}" ] && [ "$count" -gt 1 ]; then
-    fail "More than one phone is connected: set ANDROID_SERIAL to the one (adb devices)."
+  if [ -n "${EMULATOR:-}" ]; then
+    case "${ANDROID_SERIAL:-}" in
+      emulator-*) ;;
+      *) ANDROID_SERIAL=""; use_emulator ;;
+    esac
+    export ANDROID_SERIAL
+  else
+    count="$("$adb" devices | awk 'NR > 1 && $2 == "device" { n++ } END { print n + 0 }')"
+    [ "$count" -ge 1 ] || fail "I cannot find an Android phone. Connect it with its cable, turn on USB debugging (Settings, Developer options), unlock it and accept the computer."
+    if [ -z "${ANDROID_SERIAL:-}" ] && [ "$count" -gt 1 ]; then
+      fail "More than one phone is connected: set ANDROID_SERIAL to the one (adb devices)."
+    fi
   fi
 fi
 
@@ -111,4 +147,8 @@ say "== start"
 "$adb" shell input keyevent KEYCODE_WAKEUP > /dev/null 2>&1 || true
 "$adb" logcat -c > /dev/null 2>&1 || true
 "$adb" shell am start -n "$PACKAGE/.SketchActivity" > "$out/launch.log" 2>&1 || { tail -5 "$out/launch.log" >&2; fail "The app is on the phone and would not start."; }
-say "$name is running on the phone. Its messages: $adb logcat -s SDL"
+if [ -n "${EMULATOR:-}" ]; then
+  say "$name is running on the emulator ($ANDROID_SERIAL). A picture of it: $adb -s $ANDROID_SERIAL exec-out screencap -p > shot.png"
+else
+  say "$name is running on the phone. Its messages: $adb logcat -s SDL"
+fi

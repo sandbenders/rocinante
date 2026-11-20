@@ -45,6 +45,18 @@ roci run --compile --target android
 
 The sketch's `assets` go into the app's own folder on the phone, and the app starts. Keep the screen on and unlocked: Android draws nothing for a sleeping phone. With more than one phone connected, set `ANDROID_SERIAL` to the one you mean (`adb devices` lists them).
 
+## Without an Android phone
+
+Android's emulator runs a sketch on a screen of another shape, so a layout can be looked at without owning the phone:
+
+```
+roci run --compile --target android-emulator
+```
+
+It starts the emulator when none is running (`--device` picks a virtual device by name; `emulator -list-avds` lists them), installs the sketch with its `assets` and starts it. It needs an arm64 virtual device, which Android Studio's Device Manager makes. A picture of what is on the screen, for a script to read, is `adb exec-out screencap -p > shot.png`. It is for layout only: the speed of a sketch there says nothing about a phone, and the emulator has no real camera, microphone or sensors.
+
+There is no such target for the iPhone. Apple's iOS Simulator has a graphics device that is too small for the one rocinante draws with, so a sketch cannot open its window there; an iPhone has to be a real one.
+
 ## What the phone needs once
 
 The phone's copy of rocinante's libraries is built once on your computer, from source. For an iPhone, `tools/mobile-sdl.sh ios` builds SDL and `spikes/mobile/ios/libs.sh` the rest; for Android, `tools/mobile-sdl.sh android` and `spikes/mobile/android/libs.sh`. Both need `cmake` and `ninja`, an iPhone needs Xcode, and Android needs the Android SDK and NDK from Android Studio. `roci` tells you which of them is missing, and the line to run, when it needs one.
