@@ -238,7 +238,8 @@ generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Opti
 	if g.has_scenes {
 		emit_scene_procs(&g, &out)
 	}
-	fmt.sbprintf(&out, "setup :: proc() {{\n%s%s}}\n\n", source_line(&g), strings.to_string(setup))
+	source_declarations, source_call := source_lines(&g)
+	fmt.sbprintf(&out, "%ssetup :: proc() {{\n%s%s}}\n\n", source_declarations, source_call, strings.to_string(setup))
 	hook := ", hook" if len(g.handlers) > 0 || g.uses_tweens else ""
 	switch options.target {
 	case "ios":
@@ -565,20 +566,20 @@ new_site :: proc(g: ^Gen, span: lang.Span, name, fields: string) -> string {
 	return id
 }
 
-// The line that gives the program the text of its sketch, when it has a place that can warn, and nothing when it has none.
+// What gives the program the text of its sketch, when it has a place that can warn, and nothing when it has none: the text and
+// its parts as declarations of the package, and the line of `setup` that hands them over. The parts are a variable of the package
+// because `use_source` keeps them, and a literal in `setup` would be gone once it returns (Odin warns that it escapes, and printing
+// that warning under a line holding the whole sketch took all the memory of the computer); the text is a constant on a line of its own.
 @(private)
-source_line :: proc(g: ^Gen) -> string {
+source_lines :: proc(g: ^Gen) -> (declarations, call: string) {
 	if g.sites == 0 {
-		return ""
+		return "", ""
 	}
 	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, "\trt.use_source(%q, %q, []rt.Part{{", g.src.text, g.src.name)
-	for part, i in g.src.parts {
-		if i > 0 {
-			strings.write_string(&b, ", ")
-		}
-		fmt.sbprintf(&b, "{{name = %q, library = %q, start = %d, first_line = %d}}", part.name, part.library, part.start, part.first_line)
+	fmt.sbprintf(&b, "// The text of the sketch and its files, for the line under a warning.\nsource_text__ :: %q\n\nsource_parts__ := [?]rt.Part{{\n", g.src.text)
+	for part in g.src.parts {
+		fmt.sbprintf(&b, "\t{{name = %q, library = %q, start = %d, first_line = %d}},\n", part.name, part.library, part.start, part.first_line)
 	}
-	strings.write_string(&b, "})\n")
-	return strings.to_string(b)
+	strings.write_string(&b, "}\n\n")
+	return strings.to_string(b), fmt.tprintf("\trt.use_source(source_text__, %q, source_parts__[:])\n", g.src.name)
 }

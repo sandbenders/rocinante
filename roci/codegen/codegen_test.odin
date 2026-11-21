@@ -493,7 +493,11 @@ test_a_record_a_verb_makes_without_a_field_is_checked_when_the_field_is_read :: 
 	testing.expect(t, !strings.contains(result.source, "rt.checked(rt.live(e)"), "a is always given")
 	testing.expect(t, strings.contains(result.source, "r.unset__ &= ~u64(2)"), result.source)
 	testing.expect(t, strings.contains(result.source, "unset__ = r.unset__"), "a copy keeps what was left out")
-	testing.expect(t, strings.contains(result.source, "rt.use_source("), "the program carries its sketch's text to show the line")
+	testing.expect(t, strings.contains(result.source, "rt.use_source(source_text__, \"test.roci\", source_parts__[:])"), "the program carries its sketch's text to show the line")
+	// the parts outlive setup, which use_source keeps, and the text is a constant on its own line rather than inside the call
+	testing.expect(t, strings.contains(result.source, "\nsource_parts__ := [?]rt.Part{\n"), result.source)
+	testing.expect(t, strings.contains(result.source, "\nsource_text__ :: \"learn words language [\\n"), result.source)
+	testing.expect(t, !strings.contains(result.source, "[]rt.Part{"), "no slice literal on setup's stack")
 	// a record written in plain sight, and a sketch with no such place, are read directly and carry no text
 	plain := compile("r = { a: 1 }\ns = { b: 2 }\nprint r.a\nprint s.b\n")
 	testing.expect(t, !strings.contains(plain.source, "rt.checked"), plain.source)

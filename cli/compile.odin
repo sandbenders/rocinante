@@ -213,6 +213,9 @@ build :: proc(root, source_folder, binary: string, debug: bool, folder_path: str
 	append(&command, ..extra)
 	state, stdout, stderr, run_err := os.process_exec({command = command[:]}, context.temp_allocator)
 	log := strings.concatenate({string(stdout), string(stderr)}, context.temp_allocator)
+	if (run_err != nil || state.exit_code != 0) && strings.trim_space(log) == "" {
+		log = compiler_silent(state, run_err)
+	}
 	log_path := strings.concatenate({folder_path, "/build.log"}, context.temp_allocator)
 	_ = os.write_entire_file(log_path, transmute([]byte)log)
 	if run_err != nil || state.exit_code != 0 {
@@ -233,6 +236,18 @@ build :: proc(root, source_folder, binary: string, debug: bool, folder_path: str
 		return false
 	}
 	return true
+}
+
+// What to say when the compiler failed without a word: it could not be started, or the system ended it, which on Linux is
+// most often for taking all the memory (a signal's number is its exit code then, 9 for the kill the out-of-memory killer sends).
+compiler_silent :: proc(state: os.Process_State, run_err: os.Error) -> string {
+	if run_err != nil {
+		return fmt.tprintf("The compiler could not be started (%v). `roci doctor` says whether Odin is installed and on the PATH.\n", run_err)
+	}
+	if state.exit_code == 9 || state.exit_code == 137 {
+		return "The compiler was stopped by the system before it said anything, most often because it ran out of memory. Close other programs and try again; if it happens again, it is a bug worth reporting with this sketch.\n"
+	}
+	return fmt.tprintf("The compiler stopped with code %d and said nothing.\n", state.exit_code)
 }
 
 // What a sketch uses that cannot be compiled yet, a line at a time.

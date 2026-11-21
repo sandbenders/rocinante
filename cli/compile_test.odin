@@ -3,6 +3,7 @@ package main
 
 import "../roci/codegen"
 import "../roci/lang"
+import "core:os"
 import "core:strings"
 import "core:testing"
 
@@ -33,4 +34,17 @@ test_a_problem_of_a_sketch_of_one_file_names_only_the_line :: proc(t: ^testing.T
 	out := strings.builder_make(context.temp_allocator)
 	say_problems([]codegen.Problem{{span = lang.Span{start = at, end = at + 1}, what = "it"}}, src, &out)
 	testing.expect(t, strings.contains(strings.to_string(out), "  line 2, column 1: it"), strings.to_string(out))
+}
+
+@(test)
+test_a_compiler_that_fails_without_a_word_is_explained :: proc(t: ^testing.T) {
+	// ended by the system: the kill of the out-of-memory killer, as a signal or as a shell gives it
+	killed := compiler_silent(os.Process_State{exited = true, exit_code = 9}, nil)
+	testing.expect(t, strings.contains(killed, "ran out of memory"), killed)
+	testing.expect(t, strings.contains(compiler_silent(os.Process_State{exited = true, exit_code = 137}, nil), "ran out of memory"))
+	// not started at all
+	missing := compiler_silent(os.Process_State{}, os.General_Error.Not_Exist)
+	testing.expect(t, strings.contains(missing, "could not be started") && strings.contains(missing, "roci doctor"), missing)
+	// any other silent failure gives its code
+	testing.expect_value(t, compiler_silent(os.Process_State{exited = true, exit_code = 3}, nil), "The compiler stopped with code 3 and said nothing.\n")
 }
