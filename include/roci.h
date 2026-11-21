@@ -259,16 +259,16 @@ void roci_ellipse(double x, double y, double width, double height);
 /* Draws an ellipse. */
 void roci_ellipse_v(roci_vec2 position, roci_vec2 size);
 
-/* Draws a rectangle. */
+/* Draws a rectangle. Its corners are rounded by `round` pixels when asked: `rect at 20 20 size 200 100 round 12`. */
 void roci_rect(double x, double y, double width, double height);
 
-/* Draws a rectangle. */
+/* Draws a rectangle. Its corners are rounded by `round` pixels when asked: `rect at 20 20 size 200 100 round 12`. */
 void roci_rect_v(roci_vec2 position, roci_vec2 size);
 
-/* Draws a square. */
+/* Draws a square. Its corners are rounded by `round` pixels when asked: `square at 20 20 size 80 round 12`. */
 void roci_square(double x, double y, double side);
 
-/* Draws a square. */
+/* Draws a square. Its corners are rounded by `round` pixels when asked: `square at 20 20 size 80 round 12`. */
 void roci_square_v(roci_vec2 position, double side);
 
 /* Draws a line between two points. */
@@ -1236,6 +1236,9 @@ int roci_pop_style(void);
 
 /* Says what the position of the next shape means: "center" or "corner" ("default" for the shape's usual), as the language's `as center` and `as corner`. It is for the next circle, ellipse, rectangle, square, arc or picture only. */
 void roci_origin(const char *word);
+
+/* Rounds the corners of the next rectangle or square by this many pixels, as the language's `round` does. It is for the next rectangle or square only; 0 or less keeps the corners sharp. */
+void roci_round_corners(double radius);
 
 /* Draws text with its top at a point, broken into lines of at most `width` pixels. */
 void roci_text_wrapped(const char *text, double x, double y, double width);

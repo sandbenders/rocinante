@@ -362,3 +362,22 @@ test_c_no_smooth_and_smooth_set_the_picture_style :: proc(t: ^testing.T) {
 	abi_smooth()
 	testing.expect_value(t, current_list().style.nearest, false)
 }
+
+@(test)
+test_c_rounds_the_corners_of_the_next_rectangle_or_square_only :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	abi_round_corners(10)
+	abi_rect(0, 0, 100, 50)
+	abi_rect(0, 0, 100, 50)
+	abi_round_corners(8)
+	abi_square(0, 0, 40)
+	abi_round_corners(-3) // nothing to round
+	abi_square(0, 0, 40)
+	list := recorded(current_window())
+	testing.expect_value(t, len(list), 4)
+	testing.expect_value(t, list[0].kind, gfx.Kind.Path)
+	testing.expect_value(t, list[1].kind, gfx.Kind.Rect)
+	testing.expect_value(t, list[2].kind, gfx.Kind.Path)
+	testing.expect_value(t, list[3].kind, gfx.Kind.Rect)
+}

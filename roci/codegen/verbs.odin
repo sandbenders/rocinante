@@ -93,6 +93,8 @@ look_of :: proc(g: ^Gen, e: ^lang.IR, options: []lang.IR_Option) -> (look: strin
 			put(&b, &any, fmt.tprintf("alpha = rt.alpha_to_byte(%s)", expr(g, o.args[0])))
 		case "size":
 			put(&b, &any, fmt.tprintf("size = %s", expr(g, o.args[0])))
+		case "round":
+			put(&b, &any, fmt.tprintf("round = %s", expr(g, o.args[0])))
 		case "leading":
 			put(&b, &any, fmt.tprintf("leading = %s", expr(g, o.args[0])))
 		case "align":

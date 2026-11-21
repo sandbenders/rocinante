@@ -11,6 +11,7 @@ package roci
 import "geom"
 import "gfx"
 import "maths"
+import "core:math"
 
 Colour :: maths.Colour
 Gradient :: gfx.Gradient
@@ -46,6 +47,8 @@ Look :: struct {
 	// Pictures only: the colour they are drawn through.
 	tint:      Maybe(Colour),
 	blend:     Maybe(Blend),
+	// Rectangles and squares only: how far the corners are rounded, in pixels.
+	round:     Maybe(f64),
 }
 
 // ---- looks ----
@@ -134,6 +137,10 @@ ellipse_vs :: proc(position, size: [2]f64, look := Look{}, origin := Origin.Defa
 ellipse :: proc{ellipse_xywh, ellipse_vs}
 
 rect_xywh :: proc(x, y, width, height: f64, look := Look{}, origin := Origin.Default) {
+	if radius, ok := look.round.?; ok && radius > 0 {
+		rounded_rect(x, y, width, height, radius, look, origin)
+		return
+	}
 	list := current_list()
 	opened := begin_look(list, look)
 	gfx.rect(list, f32(x), f32(y), f32(width), f32(height), origin)
@@ -147,6 +154,10 @@ rect_vs :: proc(position, size: [2]f64, look := Look{}, origin := Origin.Default
 rect :: proc{rect_xywh, rect_vs}
 
 square_xys :: proc(x, y, side: f64, look := Look{}, origin := Origin.Default) {
+	if radius, ok := look.round.?; ok && radius > 0 {
+		rounded_rect(x, y, side, side, radius, look, origin)
+		return
+	}
 	list := current_list()
 	opened := begin_look(list, look)
 	gfx.square(list, f32(x), f32(y), f32(side), origin)
@@ -483,4 +494,32 @@ push :: proc(scope := Scope.Style_And_Transform) {
 // Puts back what the matching `push` saved. Gives false for a `pop` without a `push`.
 pop :: proc() -> bool {
 	return gfx.pop(current_list())
+}
+
+// A rectangle with its corners rounded by `radius` (never more than half the shorter side), drawn as a polygon
+// so it takes a fill, a stroke, a gradient and a picture as any shape does. A size of nothing draws nothing.
+@(private)
+rounded_rect :: proc(x, y, width, height, radius: f64, look: Look, origin: Origin) {
+	w, h := abs(width), abs(height)
+	if !(w > 0 && h > 0) || math.is_nan(radius) || math.is_inf(radius) {
+		return
+	}
+	left, top := x, y
+	if origin == .Center {
+		left, top = x - w / 2, y - h / 2
+	}
+	r := min(radius, min(w, h) / 2)
+	steps := clamp(int(math.ceil(r * 0.6)), 4, 40)
+	corners := make([dynamic][2]f64, 0, 4 * (steps + 1), context.temp_allocator)
+	// the four corners, each a quarter turn, clockwise from the top left
+	centres := [4][2]f64{{left + r, top + r}, {left + w - r, top + r}, {left + w - r, top + h - r}, {left + r, top + h - r}}
+	for centre, corner in centres {
+		for s in 0 ..= steps {
+			angle := (f64(corner) * 90 + 180 + f64(s) * 90 / f64(steps)) * math.PI / 180
+			append(&corners, [2]f64{centre.x + r * math.cos(angle), centre.y + r * math.sin(angle)})
+		}
+	}
+	plain := look
+	plain.round = nil
+	polygon(corners[:], plain)
 }

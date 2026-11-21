@@ -112,8 +112,9 @@ starts_statement :: proc(tokens: []Token, i: int) -> bool {
 	if i == 0 {
 		return true
 	}
+	// a value after `=` or an opening round bracket starts a call of a verb, as a statement does
 	#partial switch tokens[i - 1].kind {
-	case .Newline, .Open_Square:
+	case .Newline, .Open_Square, .Equals, .Open_Round:
 		return true
 	}
 	return tokens[i].spaces >= 2

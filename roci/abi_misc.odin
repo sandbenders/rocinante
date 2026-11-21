@@ -326,6 +326,7 @@ abi_misc_stop :: proc() {
 	delete(abi_tweens)
 	abi_tweens = nil
 	abi_pending_origin = .Default
+	abi_pending_round = 0
 }
 
 // The table rows of the functions above.
@@ -345,6 +346,7 @@ abi_misc_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_push_style", typeid_of(type_of(abi_push_style)), "void roci_push_style(void)", "Saves the style (fill, stroke, thickness, font and the rest, not the transform) until the matching roci_pop_style: what is set in between is for the shapes in between only, as the language's `with` is."))
 	append(all, abi_entry("roci_pop_style", typeid_of(type_of(abi_pop_style)), "int roci_pop_style(void)", "Puts back the style roci_push_style saved. Gives 0 for a pop without a push."))
 	append(all, abi_entry("roci_origin", typeid_of(type_of(abi_origin)), "void roci_origin(const char *word)", "Says what the position of the next shape means: \"center\" or \"corner\" (\"default\" for the shape's usual), as the language's `as center` and `as corner`. It is for the next circle, ellipse, rectangle, square, arc or picture only."))
+	append(all, abi_entry("roci_round_corners", typeid_of(type_of(abi_round_corners)), "void roci_round_corners(double radius)", "Rounds the corners of the next rectangle or square by this many pixels, as the language's `round` does. It is for the next rectangle or square only; 0 or less keeps the corners sharp."))
 	append(all, abi_entry("roci_text_wrapped", typeid_of(type_of(abi_text_wrapped)), "void roci_text_wrapped(const char *text, double x, double y, double width)", "Draws text with its top at a point, broken into lines of at most `width` pixels."))
 	append(all, abi_entry("roci_text_wrapped_v", typeid_of(type_of(abi_text_wrapped_v)), "void roci_text_wrapped_v(const char *text, roci_vec2 position, double width)", "The same at a point given as a vector."))
 	append(all, abi_entry("roci_measure_wrapped", typeid_of(type_of(abi_measure_wrapped)), "roci_vec2 roci_measure_wrapped(const char *text, double width)", "How big a text is in the current font when it is broken into lines of at most `width` pixels: its width and height."))
@@ -354,4 +356,25 @@ abi_misc_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_last_error", typeid_of(type_of(abi_last_error)), "const char *roci_last_error(void)", "What went wrong when the graphics could not start, or an empty text. The text stays valid until the next function that gives text back."))
 	append(all, abi_entry("roci_default_window_size", typeid_of(type_of(abi_default_window_size)), "void roci_default_window_size(double width, double height)", "Sets the size of the window a sketch gets when it never calls roci_window."))
 	append(all, abi_entry("roci_frame_hash", typeid_of(type_of(abi_frame_hash)), "unsigned long long roci_frame_hash(roci_window_id window)", "A number that is the same for two frames that look the same, for a window's last frame: what tests compare."))
+}
+
+// Rounds the corners of the next rectangle or square, in pixels: the language's `round`. It is used up by that shape; 0 or less keeps them sharp.
+@(export, link_name = "roci_round_corners")
+abi_round_corners :: proc "c" (radius: f64) {
+	context = abi_context()
+	abi_pending_round = radius
+}
+
+@(private, thread_local)
+abi_pending_round: f64
+
+// The rounding asked for the rectangle being drawn, which is then used up.
+@(private)
+abi_take_round :: proc() -> Look {
+	radius := abi_pending_round
+	abi_pending_round = 0
+	if radius > 0 {
+		return Look{round = radius}
+	}
+	return Look{}
 }

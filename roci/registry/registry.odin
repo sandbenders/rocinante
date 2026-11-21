@@ -66,7 +66,7 @@ Verb :: struct {
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
 	"align", "alpha", "angle", "around", "as", "at", "attack", "bend", "blend", "bordered", "buffer", "by", "channel", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "header", "height", "in",
-	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "player", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "sheet", "size", "smallest", "speed", "start", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "tube", "velocity", "vibrato", "visible", "volume", "width",
+	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "player", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "round", "sheet", "size", "smallest", "speed", "start", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "tube", "velocity", "vibrato", "visible", "volume", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.

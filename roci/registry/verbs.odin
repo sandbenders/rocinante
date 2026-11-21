@@ -21,6 +21,18 @@ STYLE_OPTIONS := []Option{
 	{"as", {.Name}, false},
 }
 
+// What a rectangle and a square take besides the style words: how far their corners are rounded, in pixels.
+RECT_OPTIONS := []Option{
+	{"fill", {.Paint}, false},
+	{"stroke", {.Paint}, false},
+	{"thickness", {.Number}, false},
+	{"alpha", {.Number}, false},
+	{"blend", {.Name}, false},
+	{"style", {.Any}, false},
+	{"as", {.Name}, false},
+	{"round", {.Number}, false},
+}
+
 // What a text takes besides the style words: its size in pixels, its font (a name),
 // where its lines sit against the point, and how wide a line may be before it wraps.
 // Where an OSC message goes: a computer's name or number, and a port.
@@ -202,13 +214,13 @@ VERBS := []Verb{
 		{{{"position", .Vector}, {"size", .Vector}}, STYLE_OPTIONS, .None},
 	}, "Draws an ellipse."},
 	{"rect", {
-		{{{"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}}, STYLE_OPTIONS, .None},
-		{{{"position", .Vector}, {"size", .Vector}}, STYLE_OPTIONS, .None},
-	}, "Draws a rectangle."},
+		{{{"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}}, RECT_OPTIONS, .None},
+		{{{"position", .Vector}, {"size", .Vector}}, RECT_OPTIONS, .None},
+	}, "Draws a rectangle. Its corners are rounded by `round` pixels when asked: `rect at 20 20 size 200 100 round 12`."},
 	{"square", {
-		{{{"x", .Number}, {"y", .Number}, {"side", .Number}}, STYLE_OPTIONS, .None},
-		{{{"position", .Vector}, {"side", .Number}}, STYLE_OPTIONS, .None},
-	}, "Draws a square."},
+		{{{"x", .Number}, {"y", .Number}, {"side", .Number}}, RECT_OPTIONS, .None},
+		{{{"position", .Vector}, {"side", .Number}}, RECT_OPTIONS, .None},
+	}, "Draws a square. Its corners are rounded by `round` pixels when asked: `square at 20 20 size 80 round 12`."},
 	{"line", {
 		{{{"x1", .Number}, {"y1", .Number}, {"x2", .Number}, {"y2", .Number}}, STYLE_OPTIONS, .None},
 		{{{"from", .Vector}, {"to", .Vector}}, STYLE_OPTIONS, .None},

@@ -266,6 +266,8 @@ make_look :: proc(it: ^Interp, options: []lang.IR_Option) -> (look: roci.Look, o
 			case "center": look.align = .Center
 			case "right":  look.align = .Right
 			}
+		case "round":
+			look.round = as_number(eval(it, o.args[0]))
 		case "leading":
 			look.leading = as_number(eval(it, o.args[0]))
 		case "tint":

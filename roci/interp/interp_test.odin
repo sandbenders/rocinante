@@ -2882,3 +2882,21 @@ test_a_constant_record_of_texts_is_made_before_a_constant_a_verb_reads_it_for ::
 	// being made first, so `TEXT`, written above it and made by a verb, reads the whole record.
 	expect_printed(t, "ship = 1\nLANGUAGE = \"en\"\nTEXT = words_in LANGUAGE\nENGLISH = { title: \"THE OCEAN\", line: \"time to read the ship\", other: \"say \\{ship}\" }\nlearn words_in language [\n  give ENGLISH\n]\nprint TEXT.title\nprint TEXT.line\nprint TEXT.other", "THE OCEAN\ntime to read the ship\nsay {ship}")
 }
+
+@(test)
+test_a_rect_and_a_square_with_round_are_drawn_as_paths_with_rounded_corners :: proc(t: ^testing.T) {
+	p := run_text(t, "rect at 10 20 size 100 50 round 12 fill red\nsquare at 0 0 size 40 round 100 as center\nrect at 0 0 size 30 30 round 0\nrect at 0 0 size 0 30 round 5\nrect at 5 5 size 20 20")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	// the empty one is nothing; a round of 0 and a rect with none are the plain rectangle
+	testing.expect_value(t, len(commands), 4)
+	testing.expect_value(t, commands[0].kind, gfx.Kind.Path)
+	testing.expect_value(t, [4]f32{commands[0].args[0], commands[0].args[1], commands[0].args[2], commands[0].args[3]}, [4]f32{10, 20, 100, 50})
+	testing.expect_value(t, commands[0].style.fill, [4]f32{255, 0, 0, 255})
+	// more than half the shorter side is half of it, and `as center` puts the middle at the point
+	testing.expect_value(t, commands[1].kind, gfx.Kind.Path)
+	testing.expect_value(t, [4]f32{commands[1].args[0], commands[1].args[1], commands[1].args[2], commands[1].args[3]}, [4]f32{-20, -20, 40, 40})
+	testing.expect_value(t, commands[2].kind, gfx.Kind.Rect)
+	testing.expect_value(t, commands[3].kind, gfx.Kind.Rect)
+	testing.expect_value(t, len(p.errors), 0)
+}

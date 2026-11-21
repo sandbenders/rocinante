@@ -332,25 +332,25 @@ abi_ellipse_v :: proc "c" (position, size: Abi_Vec2) {
 @(export, link_name = "roci_rect")
 abi_rect :: proc "c" (x, y, width, height: f64) {
 	context = abi_context()
-	rect(x, y, width, height, origin = abi_take_origin())
+	rect(x, y, width, height, abi_take_round(), origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_rect_v")
 abi_rect_v :: proc "c" (position, size: Abi_Vec2) {
 	context = abi_context()
-	rect(vec_from_abi(position), vec_from_abi(size), origin = abi_take_origin())
+	rect(vec_from_abi(position), vec_from_abi(size), abi_take_round(), origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_square")
 abi_square :: proc "c" (x, y, side: f64) {
 	context = abi_context()
-	square(x, y, side, origin = abi_take_origin())
+	square(x, y, side, abi_take_round(), origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_square_v")
 abi_square_v :: proc "c" (position: Abi_Vec2, side: f64) {
 	context = abi_context()
-	square(vec_from_abi(position), side, origin = abi_take_origin())
+	square(vec_from_abi(position), side, abi_take_round(), origin = abi_take_origin())
 }
 
 @(export, link_name = "roci_line")

@@ -1,7 +1,8 @@
 // Blend and clip. Each pair of circles is drawn with another blend, over the same gray:
 // normal covers, add and screen glow, multiply goes dark, subtract takes color away and
 // lighten keeps the brighter of the two. Below, a dim wall is drawn first and the
-// same wall again, bright, inside a clip box that follows the mouse when you press it.
+// same wall again, bright, inside a clip box that follows the mouse when you press it; the
+// frame round it has rounded corners.
 window size 640 420 title "blend and clip"
 spot = { 320, 310 }
 
@@ -42,5 +43,5 @@ draw [
   no clip
   no fill
   stroke white
-  rect at (spot.x - 80) (spot.y - 60) size 160 120
+  rect at (spot.x - 80) (spot.y - 60) size 160 120 round 16
 ]

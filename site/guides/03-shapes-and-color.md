@@ -68,6 +68,16 @@ fill gold
 rect at 200 150 size 120 80 as center
 ```
 
+`round` after a rectangle's or a square's numbers rounds its corners by that many pixels, for buttons, cards and icons. A number bigger than half the shorter side gives the roundest corners the shape can have, and `round 0` keeps them sharp. It takes a fill, a stroke, a gradient or a picture as any shape does:
+
+```roci picture
+fill gold
+rect at 60 60 size 280 180 round 28
+stroke 40
+thickness 6
+square at 200 150 size 100 round 50 as center
+```
+
 ## Fill and stroke
 
 `fill` colors the inside of shapes, `stroke` the line around them, and `thickness` how wide that line is. Each lasts until it is changed:

@@ -425,3 +425,11 @@ test_saving_a_picture_writes_a_png_and_saving_data_still_writes_data :: proc(t: 
 	testing.expect_value(t, strings.count(result.source, "rt.save_picture_file("), 2)
 	testing.expect(t, strings.contains(result.source, "rt.save_data("), "a list is still data")
 }
+
+@(test)
+test_round_after_a_rect_or_a_square_is_a_look_field :: proc(t: ^testing.T) {
+	result := compile("rect at 1 1 size 20 10 round 4\nsquare at 0 0 size 8 round 2 as center\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "roci.rect_xywh(1.0, 1.0, 20.0, 10.0, roci.Look{round = 4.0})"))
+	testing.expect(t, strings.contains(result.source, "roci.square_xys(0.0, 0.0, 8.0, roci.Look{round = 2.0}, roci.Origin.Center)"))
+}
