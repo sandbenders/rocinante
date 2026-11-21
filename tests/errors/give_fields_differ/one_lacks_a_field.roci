@@ -1,0 +1,5 @@
+learn words_for language [
+  if language is "en" [ give { hello: "hello", bye: "bye" } ]
+  give { hello: "ola" }
+]
+print (words_for "pt")

@@ -135,6 +135,7 @@ Message_Id :: enum u8 {
 	Changed_While_Walking,
 	Give_Missing_On_Path,
 	Give_Kinds_Differ,
+	Give_Fields_Differ,
 	Constant_Changed_By_Verb,
 	Result_Dropped,
 	Shared_Change,
@@ -160,6 +161,8 @@ Message_Id :: enum u8 {
 	Sound_Unreadable,
 	Soundfont_Unreadable,
 	Preset_Missing,
+	Field_Missing,
+	Constant_Not_Made,
 	Sound_Effect_Missing,
 	Effect_Setting_Unknown,
 	Model_Missing,
@@ -540,6 +543,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Give_Kinds_Differ = {.Error, "`{a}` gives two kinds of value",
 		"An earlier `give` in `{a}` hands back {b}, but this one hands back {c}. A verb gives one kind of value, and several results come back as a record.",
 		"Write:", "{d}"},
+	.Give_Fields_Differ = {.Hint, "The records `{a}` gives do not have the same fields",
+		"Another `give` in `{a}` hands back a record with different fields: {b}. A field a record lacks reads as empty, so where a line reads it nothing shows and nothing says so. Give every record all of the fields, even if one is empty.",
+		"Write:", "{d}"},
 	.Constant_Changed_By_Verb = {.Error, "`{b}` changes what `{a}` holds",
 		"`{a}` is written in capitals, so it is a constant and can never change, but `{b}` changes the list or record it is given. Give it a copy instead.",
 		"Write:", "{d}"},
@@ -603,6 +609,12 @@ CATALOGUE := [Message_Id]Entry{
 	.Preset_Missing = {.Warning, "`{a}` has no preset {b}",
 		"The presets in it are: {c}. The first one plays instead.",
 		"Ask for one that is there:", "{d}"},
+	.Field_Missing = {.Warning, "This record has no field `{a}`",
+		"The record this line reads was made without `{a}`, so what it reads is empty (0 for a number, nothing for text). The fields it has are: {b}. {c}",
+		"Read one that is there, or give the record the field:", "{d}"},
+	.Constant_Not_Made = {.Warning, "`{a}` has no value yet where it is read",
+		"`{a}` is a constant that is given its value further down than the line that runs first, so what reads it here gets an empty value: 0 for a number, nothing for text, a record with nothing in it. A constant that is made from numbers, text and other constants only is made before everything else; one that uses a variable, `time`, `random` or a verb you taught stays where it is written. {b}",
+		"Give it its value above the line that reads it:", "{d}"},
 	.Sound_Effect_Missing = {.Error, "There is no sound effect called `{a}`",
 		"The sound effects are {b}. The sound plays without it, and the sketch carries on.",
 		"Use one of them:", "{d}"},
@@ -785,7 +797,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Movie_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Tcp_Port_Busy, .Tcp_Host_Unknown, .Tcp_Unknown_Label, .Tcp_Refused, .Websocket_Address_Bad, .Websocket_Unknown_Label, .Websocket_Refused, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Webcam_Unavailable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Movie_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Field_Missing, .Constant_Not_Made, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Tcp_Port_Busy, .Tcp_Host_Unknown, .Tcp_Unknown_Label, .Tcp_Refused, .Websocket_Address_Bad, .Websocket_Unknown_Label, .Websocket_Refused, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Webcam_Unavailable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

@@ -266,8 +266,15 @@ check_give :: proc(c: ^Checker, k: Give) -> IR_Stmt_Kind {
 	if c.verb == nil || !c.verb.gives {
 		return IR_Give{value = value}
 	}
+	earlier, here := shape_of(c.types, c.verb.result), shape_of(c.types, value.type)
+	what, example := record_fields_differ(c, earlier, here, k.value.span)
+	if what != "" {
+		c.give_notes[k.value.span.start] = Give_Note{what, example}
+	}
 	if !unify(c.types, c.verb.result, value.type) {
 		note(c, .Give_Kinds_Differ, k.value.span, c.verb.name, describe(c.types, c.verb.result), describe(c.types, value.type), "" if kind_of(c.types, c.verb.result) == .List || kind_of(c.types, c.verb.result) == .Record else fix(c, k.value.span, sample_of(c, c.verb.result)))
+	} else if said, found := c.give_notes[k.value.span.start]; found {
+		note(c, .Give_Fields_Differ, k.value.span, c.verb.name, said.what, "", said.example)
 	}
 	return IR_Give{value = value}
 }
@@ -434,4 +441,42 @@ check_taught_visibility :: proc(c: ^Checker, e: ^Expr, k: Call, decl: ^Learn_Dec
 		return false
 	}
 	return true
+}
+
+// What two records that one verb gives do not share, in a sentence (`this one has no `bye``, `this one also has `x``, or both), and this
+// record written with the first of its missing fields added. Both empty when they are not records or are the same record already.
+@(private)
+record_fields_differ :: proc(c: ^Checker, earlier, here: int, span: Span) -> (what, example: string) {
+	if earlier < 0 || here < 0 || shape_root(c.types, earlier) == shape_root(c.types, here) {
+		return
+	}
+	lacking := make([dynamic]string, context.temp_allocator)
+	added := make([dynamic]string, context.temp_allocator)
+	for f in c.types.shapes[shape_root(c.types, earlier)].fields {
+		if _, has := shape_field(c.types, here, f.name); !has {
+			append(&lacking, f.name)
+		}
+	}
+	for f in c.types.shapes[shape_root(c.types, here)].fields {
+		if _, had := shape_field(c.types, earlier, f.name); !had {
+			append(&added, f.name)
+		}
+	}
+	if len(lacking) == 0 && len(added) == 0 {
+		return
+	}
+	parts := make([dynamic]string, context.temp_allocator)
+	if len(lacking) > 0 {
+		append(&parts, fmt.tprintf("this one has no `%s`", strings.join(lacking[:], "`, `", context.temp_allocator)))
+	}
+	if len(added) > 0 {
+		append(&parts, fmt.tprintf("this one also has `%s`", strings.join(added[:], "`, `", context.temp_allocator)))
+	}
+	what = strings.join(parts[:], " and ", context.temp_allocator)
+	text := text_at(c, span)
+	if len(lacking) > 0 && strings.has_suffix(text, "}") {
+		field, _ := shape_field(c.types, earlier, lacking[0])
+		example = fix(c, span, fmt.tprintf("%s, %s: %s }", strings.trim_right_space(text[:len(text) - 1]), lacking[0], sample_of(c, field.type)))
+	}
+	return
 }

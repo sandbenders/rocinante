@@ -1,0 +1,8 @@
+── Warning: `HELLO` has no value yet where it is read ─── sketch.roci:1:31
+
+1 │ learn pick_words [ give { hi: HELLO.hi } ]
+  │                               ^^^^^
+
+`HELLO` is a constant that is given its value further down than the line that runs first, so what reads it here gets an empty value: 0 for a number, nothing for text, a record with nothing in it. A constant that is made from numbers, text and other constants only is made before everything else; one that uses a variable, `time`, `random` or a verb you taught stays where it is written.
+
+Give it its value above the line that reads it:  HELLO = ...

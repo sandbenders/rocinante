@@ -1,0 +1,8 @@
+── Hint: The records `words_for` gives do not have the same fields ─── sketch.roci:3:8
+
+3 │   give { hello: "ola" }
+  │        ^^^^^^^^^^^^^^^^
+
+Another `give` in `words_for` hands back a record with different fields: this one has no `bye`. A field a record lacks reads as empty, so where a line reads it nothing shows and nothing says so. Give every record all of the fields, even if one is empty.
+
+Write:  give { hello: "ola", bye: "hello" }

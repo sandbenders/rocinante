@@ -8,6 +8,7 @@ package interp
 import "../"
 import "../lang"
 import "../maths"
+import "../registry"
 import "core:math"
 import "core:strings"
 
@@ -27,7 +28,7 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 	case lang.IR_Word:
 		return k.word
 	case lang.IR_Load:
-		return load_symbol(it, k.symbol)
+		return load_symbol(it, k.symbol, e.span)
 	case lang.IR_Builtin:
 		switch k.name {
 		case "finger":  return finger_record(it, e.type, it.finger)
@@ -57,7 +58,7 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 				return r.fields[k.at.slot - 1]
 			}
 		}
-		return read_field(it, base, k.name)
+		return read_field(it, base, k.name, e.span)
 	case lang.IR_Vector:
 		v := Vec{n = len(k.items)}
 		for item, i in k.items {
@@ -130,7 +131,7 @@ set_global :: proc(it: ^Interp, s: ^lang.Symbol, v: Value) {
 	}
 }
 
-load_symbol :: proc(it: ^Interp, s: ^lang.Symbol) -> Value {
+load_symbol :: proc(it: ^Interp, s: ^lang.Symbol, at := lang.Span{}) -> Value {
 	switch s.kind {
 	case .Variable, .Constant:
 		if v, found := global_value(it, s); found {
@@ -154,6 +155,10 @@ load_symbol :: proc(it: ^Interp, s: ^lang.Symbol) -> Value {
 				}
 			}
 		}
+	}
+	// A constant is the same wherever it is read, so one read before it has its value is a mistake worth saying.
+	if s.kind == .Constant && at.end != 0 {
+		fail(it, .Constant_Not_Made, at, s.name, "", "", strings.concatenate({s.name, " = ..."}, context.temp_allocator))
 	}
 	// A name read before it was ever given a value reads as the zero of its kind.
 	return zero_value(it, s.type, 0)
@@ -272,7 +277,7 @@ component :: proc(v: Vec, letter: u8) -> f64 {
 }
 
 @(private)
-read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
+read_field :: proc(it: ^Interp, base: Value, name: string, at := lang.Span{}) -> Value {
 	if w, is_window := base.(roci.Window); is_window {
 		switch name {
 		case "width":      return roci.window_size(w).x
@@ -311,8 +316,11 @@ read_field :: proc(it: ^Interp, base: Value, name: string) -> Value {
 		return nil
 	}
 	if r := as_record(base); r != nil {
-		if at := field_index(it, r.shape, name); at >= 0 {
-			return r.fields[at]
+		if place := field_index(it, r.shape, name); place >= 0 {
+			return r.fields[place]
+		}
+		if at.end != 0 {
+			say_field_missing(it, r, name, at)
 		}
 	}
 	// A vector or a color whose type the checker could not settle when it read this line (a list that starts
@@ -591,4 +599,31 @@ power :: proc(a, b: f64) -> f64 {
 		return 0
 	}
 	return result
+}
+
+// A field the record this line reads does not have: says which it has, and the nearest of them to what was written.
+@(private)
+say_field_missing :: proc(it: ^Interp, r: ^Record, name: string, at: lang.Span) {
+	names := make([dynamic]string, context.temp_allocator)
+	nearest := ""
+	for f in it.types.shapes[r.shape].fields {
+		append(&names, f.name)
+	}
+	if len(names) == 0 {
+		return // an empty record: there is nothing for it to have, and nothing was made to be read
+	}
+	nearest = registry.nearest_choice(name, names[:])
+	hint := ""
+	if nearest != "" {
+		hint = strings.concatenate({"Did you mean `", nearest, "`?"}, context.temp_allocator)
+	}
+	// the line as written, with the field it has that is nearest to the one asked for
+	read := lang.span_text(it.src, at)
+	instead := nearest if nearest != "" else names[0]
+	if dot := strings.last_index_byte(read, '.'); dot >= 0 {
+		read = strings.concatenate({read[:dot + 1], instead}, context.temp_allocator)
+	} else {
+		read = instead
+	}
+	fail(it, .Field_Missing, at, name, strings.join(names[:], ", ", context.temp_allocator), hint, fix_line(it, at, at, read))
 }

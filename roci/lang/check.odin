@@ -39,6 +39,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		types   = types,
 		diags   = make([dynamic]Diagnostic, allocator),
 		sites   = make(map[int]int, 8, allocator),
+		give_notes = make(map[int]Give_Note, 8, allocator),
 		site_names = make(map[int][]string, 8, allocator),
 		walking = make([dynamic]string, allocator),
 		learn_order = make([dynamic]string, allocator),
@@ -185,6 +186,7 @@ Checker :: struct {
 	in_tcp:   int,              // how many `on tcp` blocks deep, where `received` means something
 	report:   bool,             // false in the first pass, which only settles record shapes
 	sites:    map[int]int,      // where a record is made (its offset) to its shape
+	give_notes: map[int]Give_Note, // where a `give` hands back a record with other fields than the one before it (its offset), found in the pass that does not report and said in the one that does
 	site_names: map[int][]string, // the fields each place's `{ }` is written with, by its shape
 	walking:  [dynamic]string,  // lists a `for each` is walking right now
 	learns:        map[string]^Learn_Decl, // the verbs taught at the top of the sketch
@@ -1640,4 +1642,10 @@ written_number :: proc(e: ^Expr) -> (value: f64, ok: bool) {
 		}
 	}
 	return 0, false
+}
+
+// What a `give` of a record has to say about the fields: a sentence and the record written with the first missing field added.
+@(private)
+Give_Note :: struct {
+	what, example: string,
 }

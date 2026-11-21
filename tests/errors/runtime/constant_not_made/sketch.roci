@@ -1,0 +1,4 @@
+learn pick_words [ give { hi: HELLO.hi } ]
+TEXT = pick_words
+HELLO = { hi: "hello", moment: time }
+print TEXT.hi

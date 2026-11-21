@@ -1,0 +1,8 @@
+── Warning: This record has no field `b` ────────────── sketch.roci:2:30
+
+2 │ for each t in things [ print t.b ]
+  │                              ^^^
+
+The record this line reads was made without `b`, so what it reads is empty (0 for a number, nothing for text). The fields it has are: a. Did you mean `a`?
+
+Read one that is there, or give the record the field:  for each t in things [ print t.a ]

@@ -2042,3 +2042,34 @@ test_reverse_join_and_items_give_lists_of_what_they_are_given :: proc(t: ^testin
 	expect_errors(t, "a = [ 1 2 3 ]\nfor each n in (reverse a) [ circle at n n radius 2 ]\nfor each n in (items 2 to 3 of a) [ circle at n n radius 2 ]", {})
 	expect_errors(t, "a = [ \"x\" ]\nfor each n in (a + a) [ circle at n n radius 2 ]", {.Wrong_Argument_Kind})
 }
+
+@(test)
+test_a_verb_that_gives_records_with_different_fields_is_a_hint :: proc(t: ^testing.T) {
+	hints :: proc(t: ^testing.T, text: string, want: int, loc := #caller_location) {
+		got := check_text(text)
+		count := 0
+		for d in got.checked.diagnostics {
+			if d.id == .Give_Fields_Differ {
+				count += 1
+			}
+		}
+		testing.expect_value(t, count, want, loc)
+		testing.expect(t, !has_errors(got.checked.diagnostics), loc = loc)
+	}
+	// the second record lacks `bye`
+	hints(t, "learn words_for language [\n  if language is \"en\" [ give { hello: \"hello\", bye: \"bye\" } ]\n  give { hello: \"ola\" }\n]\nprint (words_for \"pt\")", 1)
+	// and the other way round: the second has a field the first lacks
+	hints(t, "learn words_for language [\n  if language is \"en\" [ give { hello: \"hello\" } ]\n  give { hello: \"ola\", bye: \"tchau\" }\n]\nprint (words_for \"pt\")", 1)
+	// the same fields, in any order, are nothing to say; so is one record, and so are two verbs
+	hints(t, "learn words_for language [\n  if language is \"en\" [ give { hello: \"hello\", bye: \"bye\" } ]\n  give { bye: \"tchau\", hello: \"ola\" }\n]\nprint (words_for \"pt\")", 0)
+	hints(t, "learn one [ give { a: 1 } ]\nlearn two [ give { b: 2 } ]\nprint (one)\nprint (two)", 0)
+	hints(t, "learn pair [ give { a: 1, b: 2 } ]\nprint (pair)", 0)
+	// the hint says what differs and shows the record with the field added
+	got := check_text("learn words_for language [\n  if language is \"en\" [ give { hello: \"hello\", bye: \"bye\" } ]\n  give { hello: \"ola\" }\n]\nprint (words_for \"pt\")")
+	for d in got.checked.diagnostics {
+		if d.id == .Give_Fields_Differ {
+			testing.expect_value(t, d.args[1], "this one has no `bye`")
+			testing.expect(t, strings.contains(d.args[3], "{ hello: \"ola\", bye: "), d.args[3])
+		}
+	}
+}
