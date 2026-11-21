@@ -100,7 +100,13 @@ expr_fresh :: proc(g: ^Gen, e: ^lang.IR) -> string {
 	case lang.IR_Word:
 		return fmt.aprintf("%q", k.word, allocator = context.temp_allocator)
 	case lang.IR_Load:
-		return name_of(g, k.symbol)
+		name := name_of(g, k.symbol)
+		if g.in_verb != nil && k.symbol in g.flagged {
+			// a verb may be called before the line that makes this constant has run
+			site := new_site(g, e.span, k.symbol.name, "")
+			return fmt.aprintf("(%s if rt.constant_made(%s_made__, &%s) else %s)", name, name, site, name, allocator = context.temp_allocator)
+		}
+		return name
 	case lang.IR_Builtin:
 		return builtin(g, e, k.name)
 	case lang.IR_Swizzle:
@@ -239,6 +245,18 @@ field :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Field) -> string {
 		refuse(g, e.span, fmt.tprintf("`.%s` of something that is not a record", k.name))
 		return "0.0"
 	}
+	shape := g.types.items[lang.resolve(g.types, k.base.type)].a
+	for f, at in g.types.shapes[shape].fields {
+		if f.name == k.name && at < 64 && g.unset_known[{shape, at}] {
+			// some record of this shape was made without this field: reading it is checked
+			names := make([dynamic]string, context.temp_allocator)
+			for each in g.types.shapes[shape].fields {
+				append(&names, each.name)
+			}
+			site := new_site(g, e.span, k.name, strings.join(names[:], ",", context.temp_allocator))
+			return fmt.aprintf("rt.checked(rt.live(%s), %d, &%s).%s", expr(g, k.base), u64(1) << u64(at), site, field_name(k.name), allocator = context.temp_allocator)
+		}
+	}
 	return fmt.aprintf("rt.live(%s).%s", expr(g, k.base), field_name(k.name), allocator = context.temp_allocator)
 }
 
@@ -299,6 +317,27 @@ record_literal :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Record) -> string {
 			strings.write_string(&b, ", ")
 		}
 		fmt.sbprintf(&b, "%s = %s", field_name(field_label), keep_wrapped(g, k.values[i], texts[i]))
+	}
+	if g.in_verb != nil {
+		// the fields this `{ }` leaves out: a record that a verb gives with a field missing says so when that field is read
+		mask := u64(0)
+		shape := g.types.items[lang.resolve(g.types, e.type)].a
+		for f, at in g.types.shapes[shape].fields {
+			given := false
+			for given_name in k.names {
+				given ||= given_name == f.name
+			}
+			if !given && at < 64 {
+				mask |= u64(1) << u64(at)
+				g.unset_found[{shape, at}] = true
+			}
+		}
+		if mask != 0 {
+			if len(k.names) > 0 || k.class != .None {
+				strings.write_string(&b, ", ")
+			}
+			fmt.sbprintf(&b, "unset__ = %d", mask)
+		}
 	}
 	strings.write_string(&b, "}")
 	if has_trace(g, name) {

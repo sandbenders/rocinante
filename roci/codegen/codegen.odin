@@ -103,6 +103,10 @@ Gen :: struct {
 	uses_data: bool,
 	lenient:  int, // above 0 while a record type the language hands out is made: a field of a type compiled sketches cannot hold is left out
 	no_hoist: int, // above 0 while writing something that is evaluated more than once or not at all (a loop's test, the right side of `and`)
+	unset_known: map[[2]int]bool, // the (record shape, field place) pairs that a `{ }` inside a taught verb leaves out somewhere in the sketch, found by an earlier pass: reading one of them is checked
+	unset_found: map[[2]int]bool, // the same, found by this pass
+	flagged:  map[^lang.Symbol]bool, // the constants that are made by a line that runs, and not before everything else: they carry a flag saying whether they have been made
+	sites:    int, // how many places that can warn were written
 }
 
 // What a compiled sketch cannot be (Odin keywords and the names the generated code uses itself).
@@ -120,7 +124,21 @@ RESERVED := [?]string{
 
 // Makes the Odin source for a checked sketch, or says every place it cannot.
 generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, allocator := context.allocator) -> Result {
-	g := Gen{program = program, types = program.types, src = src, options = options}
+	// A first pass finds the fields that a `{ }` inside a taught verb leaves out, which a read written before that `{ }` has to know about
+	first, found := generate_pass(program, src, options, nil, allocator)
+	if len(found) == 0 || len(first.problems) > 0 {
+		return first
+	}
+	second, _ := generate_pass(program, src, options, found, allocator)
+	return second
+}
+
+@(private)
+generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, known: map[[2]int]bool, allocator := context.allocator) -> (Result, map[[2]int]bool) {
+	g := Gen{program = program, types = program.types, src = src, options = options, unset_known = known}
+	g.unset_found = make(map[[2]int]bool, 4, context.temp_allocator)
+	g.flagged = make(map[^lang.Symbol]bool, 4, context.temp_allocator)
+	flag_constants(&g)
 	g.problems = make([dynamic]Problem, allocator)
 	g.names = make(map[^lang.Symbol]string, 16, context.temp_allocator)
 	g.taken = make(map[string]bool, 16, context.temp_allocator)
@@ -156,6 +174,9 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 			continue
 		}
 		fmt.sbprintf(&globals, "%s: %s\n", name, type)
+		if sym in g.flagged {
+			fmt.sbprintf(&globals, "%s_made__: bool\n", name)
+		}
 	}
 	find_receivers(&g, program.stmts)
 	// what the collector starts from: every name of the sketch that can hold a heap object
@@ -192,7 +213,7 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	setup = g.body
 
 	if len(g.problems) > 0 {
-		return Result{problems = g.problems[:]}
+		return Result{problems = g.problems[:]}, g.unset_found
 	}
 
 	out := strings.builder_make(allocator)
@@ -216,7 +237,7 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	if g.has_scenes {
 		emit_scene_procs(&g, &out)
 	}
-	fmt.sbprintf(&out, "setup :: proc() {{\n%s}}\n\n", strings.to_string(setup))
+	fmt.sbprintf(&out, "setup :: proc() {{\n%s%s}}\n\n", source_line(&g), strings.to_string(setup))
 	hook := ", hook" if len(g.handlers) > 0 || g.uses_tweens else ""
 	switch options.target {
 	case "ios":
@@ -237,7 +258,7 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	case:
 		fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, hook)
 	}
-	return Result{source = strings.to_string(out), problems = nil}
+	return Result{source = strings.to_string(out), problems = nil}, g.unset_found
 }
 
 // The release of Odin the sketch was generated for, said in the header of a build log.
@@ -378,7 +399,7 @@ record_type :: proc(g: ^Gen, t: lang.Type_Id, span: lang.Span, what: string) -> 
 		}
 	}
 	// `class__` is what shape the record was written as (`lang.Shape_Class`), for a list that mixes lines, circles and rectangles
-	fmt.sbprintf(&g.defs, "%s :: struct {{\n\tusing gc__: rt.Header,\n\tclass__: u8,\n%s}}\n\n", name, strings.to_string(fields))
+	fmt.sbprintf(&g.defs, "%s :: struct {{\n\tusing gc__: rt.Header,\n\tclass__: u8,\n\tunset__: u64,\n%s}}\n\n", name, strings.to_string(fields))
 	if strings.to_string(marks) != "" {
 		fmt.sbprintf(&g.defs, "trace_%s :: proc(h: ^rt.Header) {{\n\tr := (^%s)(h)\n%s}}\n\n", name, name, strings.to_string(marks))
 	}
@@ -471,4 +492,86 @@ comment :: proc(g: ^Gen, span: lang.Span) {
 position :: proc(src: lang.Source, span: lang.Span) -> (line, column: int) {
 	p := lang.position_of(src, span.start)
 	return p.line, p.column
+}
+
+// The constants made by a line that runs in its turn: the ones whose value is not only written down. A constant of numbers, text and
+// colours is made before everything else, so nothing reads it early; one that uses a name, a verb or the clock is made where it is
+// written, and a verb called before that reads it empty. Each of those carries a flag, and a read inside a verb checks it.
+@(private)
+flag_constants :: proc(g: ^Gen) {
+	for s in g.program.stmts {
+		assign, is_assign := s.kind.(lang.IR_Assign)
+		if is_assign && assign.target.kind == .Constant && len(assign.fields) == 0 && !written_down(assign.value) {
+			g.flagged[assign.target] = true
+		}
+	}
+}
+
+// Whether an expression is only written down: numbers, text, colours, words, and vectors, lists, records and sums of those.
+@(private)
+written_down :: proc(e: ^lang.IR) -> bool {
+	if e == nil {
+		return true
+	}
+	switch k in e.kind {
+	case lang.IR_Number, lang.IR_Text, lang.IR_Colour, lang.IR_Boolean, lang.IR_Word:
+		return true
+	case lang.IR_Vector:
+		for item in k.items {
+			if !written_down(item) {
+				return false
+			}
+		}
+		return true
+	case lang.IR_List:
+		for item in k.items {
+			if !written_down(item) {
+				return false
+			}
+		}
+		return true
+	case lang.IR_Record:
+		for value in k.values {
+			if !written_down(value) {
+				return false
+			}
+		}
+		return true
+	case lang.IR_Unary:
+		return written_down(k.operand)
+	case lang.IR_Binary:
+		return written_down(k.lhs) && written_down(k.rhs)
+	case lang.IR_Convert:
+		return written_down(k.value)
+	case lang.IR_Load, lang.IR_Builtin, lang.IR_Swizzle, lang.IR_Field, lang.IR_Call, lang.IR_Block_Value, lang.IR_Error:
+		return false
+	}
+	return false
+}
+
+// A place that can warn, written once at package level: `rt.Site`. Gives its name.
+@(private)
+new_site :: proc(g: ^Gen, span: lang.Span, name, fields: string) -> string {
+	g.sites += 1
+	id := fmt.aprintf("site_%d", g.sites, allocator = context.temp_allocator)
+	fmt.sbprintf(&g.procs, "%s := rt.Site{{start = %d, end = %d, name = %q, fields = %q}}\n\n", id, span.start, span.end, name, fields)
+	return id
+}
+
+// The line that gives the program the text of its sketch, when it has a place that can warn, and nothing when it has none.
+@(private)
+source_line :: proc(g: ^Gen) -> string {
+	if g.sites == 0 {
+		return ""
+	}
+	b := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&b, "\trt.use_source(%q, %q, []rt.Part{{", g.src.text, g.src.name)
+	for part, i in g.src.parts {
+		if i > 0 {
+			strings.write_string(&b, ", ")
+		}
+		fmt.sbprintf(&b, "{{name = %q, library = %q, start = %d, first_line = %d}}", part.name, part.library, part.start, part.first_line)
+	}
+	strings.write_string(&b, "})\n")
+	return strings.to_string(b)
 }

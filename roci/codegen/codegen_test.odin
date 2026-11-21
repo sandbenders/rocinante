@@ -476,3 +476,31 @@ test_save_in_sketch_says_so_to_the_runtime :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(result.source, "\"c.json\", true)"), result.source)
 	testing.expect(t, strings.contains(result.source, "rt.save(\"s.png\", true)"), result.source)
 }
+
+@(test)
+test_a_record_a_verb_makes_without_a_field_is_checked_when_the_field_is_read :: proc(t: ^testing.T) {
+	result := compile("learn words language [\n  if language is \"en\" [ give { a: \"A\", b: \"B\" } ]\n  give { a: \"A\" }\n]\nr = words \"pt\"\nprint r.b\nr.b = \"late\"\ne = copy r\nprint e.a\n")
+	testing.expect_value(t, len(result.problems), 0)
+	// the `{ }` that leaves `b` out says so, the read of `b` is checked and the read of `a` is not, and giving `b` a value clears it
+	testing.expect(t, strings.contains(result.source, "unset__ = 2"), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.checked(rt.live(r), 2, &site_"), result.source)
+	testing.expect(t, !strings.contains(result.source, "rt.checked(rt.live(e)"), "a is always given")
+	testing.expect(t, strings.contains(result.source, "r.unset__ &= ~u64(2)"), result.source)
+	testing.expect(t, strings.contains(result.source, "unset__ = r.unset__"), "a copy keeps what was left out")
+	testing.expect(t, strings.contains(result.source, "rt.use_source("), "the program carries its sketch's text to show the line")
+	// a record written in plain sight, and a sketch with no such place, are read directly and carry no text
+	plain := compile("r = { a: 1 }\ns = { b: 2 }\nprint r.a\nprint s.b\n")
+	testing.expect(t, !strings.contains(plain.source, "rt.checked"), plain.source)
+	testing.expect(t, !strings.contains(plain.source, "rt.use_source"), plain.source)
+}
+
+@(test)
+test_a_constant_that_is_made_by_a_line_that_runs_is_checked_when_a_verb_reads_it :: proc(t: ^testing.T) {
+	result := compile("learn grab [ give HELLO.hi ]\nHELLO = { hi: \"x\", n: time }\nLOOK = { hi: \"y\" }\nlearn other [ give LOOK.hi ]\nprint (grab)\nprint (other)\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "HELLO_made__: bool"), result.source)
+	testing.expect(t, strings.contains(result.source, "HELLO_made__ = true"), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.constant_made(HELLO_made__, &site_"), result.source)
+	// a constant that is only written down is made before everything else, so it has no flag
+	testing.expect(t, !strings.contains(result.source, "LOOK_made__"), result.source)
+}

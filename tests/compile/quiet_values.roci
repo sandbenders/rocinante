@@ -1,0 +1,15 @@
+learn words language [
+  if language is "en" [ give { a: "A", b: "B" } ]
+  give { a: "A" }
+]
+r = words "pt"
+print r.a
+print r.b
+print r.b
+r.b = "late"
+print r.b
+learn pick_words [ give { hi: HELLO.hi } ]
+TEXT = pick_words
+HELLO = { hi: "hello", moment: time }
+print TEXT.hi
+print "end"

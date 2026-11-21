@@ -8,7 +8,6 @@ package interp
 import "../"
 import "../lang"
 import "../maths"
-import "../registry"
 import "core:math"
 import "core:strings"
 
@@ -169,7 +168,8 @@ load_symbol :: proc(it: ^Interp, s: ^lang.Symbol, at := lang.Span{}) -> Value {
 	}
 	// A constant is the same wherever it is read, so one read before it has its value is a mistake worth saying.
 	if s.kind == .Constant && at.end != 0 {
-		fail(it, .Constant_Not_Made, at, s.name, "", "", strings.concatenate({s.name, " = ..."}, context.temp_allocator))
+		words := lang.constant_not_made_args(s.name, context.temp_allocator)
+		fail(it, .Constant_Not_Made, at, words[0], words[1], words[2], words[3])
 	}
 	// A name read before it was ever given a value reads as the zero of its kind.
 	return zero_value(it, s.type, 0)
@@ -624,7 +624,6 @@ power :: proc(a, b: f64) -> f64 {
 @(private)
 say_field_missing :: proc(it: ^Interp, r: ^Record, name: string, at: lang.Span) {
 	names := make([dynamic]string, context.temp_allocator)
-	nearest := ""
 	shape_fields := it.types.shapes[r.shape].fields
 	for f, i in shape_fields {
 		// the fields that were never given a value are not ones it has
@@ -636,25 +635,8 @@ say_field_missing :: proc(it: ^Interp, r: ^Record, name: string, at: lang.Span) 
 	if len(shape_fields) == 0 {
 		return // an empty record: there is nothing for it to have, and nothing was made to be read
 	}
-	if len(names) == 0 {
-		// nothing was ever given to it: there is no field to point at
-		fail(it, .Field_Missing, at, name, "none", "", fix_line(it, at, at, lang.span_text(it.src, at)))
-		return
-	}
-	nearest = registry.nearest_choice(name, names[:])
-	hint := ""
-	if nearest != "" {
-		hint = strings.concatenate({"Did you mean `", nearest, "`?"}, context.temp_allocator)
-	}
-	// the line as written, with the field it has that is nearest to the one asked for
-	read := lang.span_text(it.src, at)
-	instead := nearest if nearest != "" else names[0]
-	if dot := strings.last_index_byte(read, '.'); dot >= 0 {
-		read = strings.concatenate({read[:dot + 1], instead}, context.temp_allocator)
-	} else {
-		read = instead
-	}
-	fail(it, .Field_Missing, at, name, strings.join(names[:], ", ", context.temp_allocator), hint, fix_line(it, at, at, read))
+	words := lang.field_missing_args(it.src, at, name, names[:], context.temp_allocator)
+	fail(it, .Field_Missing, at, words[0], words[1], words[2], words[3])
 }
 
 // The fields of a record of `count` fields that a `{ }` left out, as the bits of `unset`: the places (counted from 1) it gave are not.

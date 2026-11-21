@@ -133,12 +133,16 @@ emit_assign :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Assign) {
 	value := stored(g, k.value)
 	if len(k.fields) == 0 {
 		line(g, "%s = %s", name, value)
+		if k.target in g.flagged {
+			line(g, "%s_made__ = true", name)
+		}
 		return
 	}
 	path := strings.builder_make(context.temp_allocator)
 	strings.write_string(&path, name)
 	// a record that is not there (`find` found nothing) is not changed: each record on the way is looked at first
 	guards := make([dynamic]string, context.temp_allocator)
+	clears := make([dynamic]string, context.temp_allocator) // the fields this gives a value that a record was made without
 	// the fields of a record, or the part of a vector at the end
 	holder := k.target.type
 	for part, i in k.fields {
@@ -147,6 +151,9 @@ emit_assign :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Assign) {
 		#partial switch item.kind {
 		case .Record:
 			append(&guards, fmt.aprintf("%s != nil", strings.to_string(path), allocator = context.temp_allocator))
+			if at, has := field_place(g, item.a, part); has && g.unset_known[{item.a, at}] {
+				append(&clears, fmt.aprintf("%s.unset__ &= ~u64(%d)", strings.to_string(path), u64(1) << u64(at), allocator = context.temp_allocator))
+			}
 			strings.write_string(&path, ".")
 			strings.write_string(&path, field_name(part))
 			if shape_field, found := lang.shape_field(g.types, item.a, part); found {
@@ -172,7 +179,22 @@ emit_assign :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Assign) {
 		}
 		_ = i
 	}
-	guarded(g, guards[:], fmt.tprintf("%s = %s", strings.to_string(path), value))
+	statement := fmt.tprintf("%s = %s", strings.to_string(path), value)
+	if len(clears) > 0 {
+		statement = fmt.tprintf("%s; %s", statement, strings.join(clears[:], "; ", context.temp_allocator))
+	}
+	guarded(g, guards[:], statement)
+}
+
+// The place of a field in a record shape, from 0, when it is among the first 64.
+@(private)
+field_place :: proc(g: ^Gen, shape: int, name: string) -> (at: int, ok: bool) {
+	for f, i in g.types.shapes[shape].fields {
+		if f.name == name && i < 64 {
+			return i, true
+		}
+	}
+	return 0, false
 }
 
 // A statement that runs only when each of the records on its way is there.

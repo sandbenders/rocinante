@@ -54,7 +54,7 @@ copy_value :: proc(g: ^Gen, t: lang.Type_Id, value: string, span: lang.Span) -> 
 				first = false
 				fmt.sbprintf(&fields, "%s = %s", field_name(f.name), inner)
 			}
-			fmt.sbprintf(&b, "%s :: proc(r: %s) -> %s {{\n\tif r == nil {{ return nil }}\n\treturn rt.new_record(%s{{class__ = r.class__%s%s}}%s)\n}}\n\n", name, odin, odin, record, ", " if !first else "", strings.to_string(fields), trace_arg(g, record))
+			fmt.sbprintf(&b, "%s :: proc(r: %s) -> %s {{\n\tif r == nil {{ return nil }}\n\treturn rt.new_record(%s{{class__ = r.class__, unset__ = r.unset__%s%s}}%s)\n}}\n\n", name, odin, odin, record, ", " if !first else "", strings.to_string(fields), trace_arg(g, record))
 		} else {
 			element := odin[len("^rt.List("):len(odin) - 1]
 			inner, inner_ok := copy_value(g, lang.Type_Id(item.a), "x", span)

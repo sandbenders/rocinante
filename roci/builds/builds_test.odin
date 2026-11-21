@@ -23,7 +23,7 @@ import "core:testing"
 FRAMES :: 40
 
 // What the interpreter prints for a sketch in headless frames.
-interpreted_lines :: proc(t: ^testing.T, name, text: string) -> []string {
+interpreted_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string, warnings: int) {
 	roci.start_headless(1)
 	defer roci.shutdown()
 	p, ok := interp.load_files({lang.File_Text{name = name, text = text}})
@@ -31,7 +31,7 @@ interpreted_lines :: proc(t: ^testing.T, name, text: string) -> []string {
 	defer interp.forget_decoded_pictures()
 	defer interp.forget_decoded_sounds()
 	if !testing.expectf(t, ok, "%s: the interpreter found errors:\n%s", name, lang.render_all(p.src, p.checked.diagnostics, context.temp_allocator)) {
-		return nil
+		return nil, 0
 	}
 	interp.start(p)
 	for _ in 0 ..< FRAMES {
@@ -41,11 +41,16 @@ interpreted_lines :: proc(t: ^testing.T, name, text: string) -> []string {
 	for line, i in p.printed {
 		out[i] = strings.clone(line, context.temp_allocator)
 	}
-	return out
+	for e in p.errors {
+		if lang.severity_of(lang.Diagnostic{id = e.id}) == .Warning {
+			warnings += 1
+		}
+	}
+	return out, warnings
 }
 
 // What the compiled program prints for the same sketch.
-compiled_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string, ok: bool) {
+compiled_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string, warnings: int, ok: bool) {
 	roci.start_headless(1)
 	p, loaded := interp.load_files({lang.File_Text{name = name, text = text}})
 	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = name, source = name}, context.temp_allocator)
@@ -53,7 +58,7 @@ compiled_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string, o
 	interp.forget_decoded_pictures()
 	roci.shutdown()
 	if !testing.expectf(t, loaded && len(generated.problems) == 0, "%s: could not be compiled: %v", name, generated.problems) {
-		return nil, false
+		return nil, 0, false
 	}
 	folder_path := fmt.tprintf("output/tests/compiled/%s", name)
 	_ = os.remove_all(folder_path)
@@ -62,15 +67,16 @@ compiled_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string, o
 	binary := fmt.tprintf("output/tests/compiled/%s_program%s", name, ".exe" when ODIN_OS == .Windows else "")
 	state, _, build_err, err := os.process_exec({command = {"odin", "build", folder_path, "-collection:rocinante=.", fmt.tprintf("-out:%s", binary)}}, context.temp_allocator)
 	if !testing.expectf(t, err == nil && state.exit_code == 0, "%s: the generated program did not build:\n%s", name, string(build_err)) {
-		return nil, false
+		return nil, 0, false
 	}
 	run_state, stdout, run_err, run_start_err := os.process_exec({command = {binary, "--frames", fmt.tprint(FRAMES)}}, context.temp_allocator)
 	testing.expectf(t, run_start_err == nil && run_state.exit_code == 0, "%s: the program failed (%d):\n%s", name, run_state.exit_code, string(run_err))
+	warnings = strings.count(string(run_err), "── Warning:")
 	text_out := strings.trim_right(string(stdout), "\n")
 	if text_out == "" {
-		return {}, true
+		return {}, warnings, true
 	}
-	return strings.split(text_out, "\n", context.temp_allocator), true
+	return strings.split(text_out, "\n", context.temp_allocator), warnings, true
 }
 
 @(test)
@@ -90,12 +96,14 @@ test_compiled_sketches_print_what_interpreted_ones_do :: proc(t: ^testing.T) {
 			continue
 		}
 		text := string(data)
-		expected := interpreted_lines(t, name, text)
-		got, ok := compiled_lines(t, name, text)
+		expected, expected_warnings := interpreted_lines(t, name, text)
+		got, got_warnings, ok := compiled_lines(t, name, text)
 		if !ok {
 			continue
 		}
 		checked += 1
+		// the warnings a sketch earns while it runs are said by the compiled program too, as many as the interpreter says
+		testing.expectf(t, expected_warnings == got_warnings, "%s: the interpreter said %d warnings while it ran, the compiled program %d", name, expected_warnings, got_warnings)
 		if !testing.expectf(t, len(expected) == len(got), "%s: the interpreter printed %d lines, the compiled program %d", name, len(expected), len(got)) {
 			continue
 		}
