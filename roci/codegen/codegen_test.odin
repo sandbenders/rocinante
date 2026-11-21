@@ -421,6 +421,12 @@ test_a_program_for_a_phone_ends_in_the_entry_its_app_runs :: proc(t: ^testing.T)
 	linux := generate(&checked.program, src, Options{sketch = "test", source = "test.roci", target = "linux", app_id = "org.example.test"}, context.temp_allocator)
 	testing.expect_value(t, len(linux.problems), 0)
 	testing.expect_value(t, linux.source, strings.clone(mac.source, context.temp_allocator))
+	testing.expect(t, !strings.contains(linux.source, "PROP_APP_METADATA_NAME_STRING"), "with no name, SDL keeps its own")
+
+	// the app's name, for volume controls, given to SDL after the id; a quote in it is escaped in the Odin source
+	named := generate(&checked.program, src, Options{sketch = "test", source = "test.roci", target = "linux", app_id = "org.example.test", app_name = "Wild \"Vex\""}, context.temp_allocator)
+	testing.expect_value(t, len(named.problems), 0)
+	testing.expect(t, strings.contains(named.source, "IDENTIFIER_STRING, \"org.example.test\")\n\t_ = sdl.SetAppMetadataProperty(sdl.PROP_APP_METADATA_NAME_STRING, \"Wild \\\"Vex\\\"\")\n\trt.enter_app("), named.source)
 }
 
 @(test)

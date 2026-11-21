@@ -93,7 +93,7 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 	if parsed.target != "" {
 		folder_path = strings.concatenate({artifacts, "/", parsed.target, "-source"}, context.temp_allocator)
 	}
-	source_folder, code := make_source(file, files, phone_system(parsed.target), "", folder_path, err)
+	source_folder, code := make_source(file, files, phone_system(parsed.target), "", "", folder_path, err)
 	if code != 0 {
 		return code
 	}
@@ -158,10 +158,10 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 }
 
 // Checks a sketch, turns it into the Odin source of its program and writes it as `source/sketch.odin` in `folder_path`, which it
-// makes. `target` is "", "ios", "android" or "macos" (for an app, whose `app_id` names the folder it keeps its files in). Gives the
-// folder the source is in, and 0, or what went wrong said in `err` and a code to exit with: 1 the sketch has errors, 4 it uses
-// what cannot be compiled yet, 2 the files could not be written.
-make_source :: proc(file: string, files: []lang.File_Text, target, app_id, folder_path: string, err: ^strings.Builder) -> (source_folder: string, code: int) {
+// makes. `target` is "", "ios", "android", or "macos" or "linux" for an app, whose `app_id` names the folder it keeps its files in
+// and its windows, and whose `app_name` is what volume controls show. Gives the folder the source is in, and 0, or what went wrong
+// said in `err` and a code to exit with: 1 the sketch has errors, 4 it uses what cannot be compiled yet, 2 the files could not be written.
+make_source :: proc(file: string, files: []lang.File_Text, target, app_id, app_name, folder_path: string, err: ^strings.Builder) -> (source_folder: string, code: int) {
 	p, ok := interp.load_files(files)
 	defer interp.destroy(p)
 	if len(p.checked.diagnostics) > 0 {
@@ -170,7 +170,7 @@ make_source :: proc(file: string, files: []lang.File_Text, target, app_id, folde
 	if !ok {
 		return "", 1
 	}
-	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = sketch_name(file), source = file, target = target, app_id = app_id}, context.temp_allocator)
+	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = sketch_name(file), source = file, target = target, app_id = app_id, app_name = app_name}, context.temp_allocator)
 	if len(generated.problems) > 0 {
 		say_problems(generated.problems, p.src, err)
 		return "", 4

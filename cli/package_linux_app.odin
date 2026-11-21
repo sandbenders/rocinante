@@ -117,7 +117,7 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 
 	// ---- the program ----
 	say_step("compiling the sketch")
-	source_folder, code := make_source(file, files, "linux", settings.id, work, err)
+	source_folder, code := make_source(file, files, "linux", settings.id, settings.name, work, err)
 	if code != 0 {
 		return code
 	}

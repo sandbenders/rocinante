@@ -92,7 +92,7 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 
 	// ---- the program ----
 	say_step("compiling the sketch")
-	source_folder, code := make_source(file, files, "macos", settings.id, work, err)
+	source_folder, code := make_source(file, files, "macos", settings.id, settings.name, work, err)
 	if code != 0 {
 		return code
 	}

@@ -26,10 +26,11 @@ Problem :: struct {
 }
 
 Options :: struct {
-	sketch: string, // the sketch's name, for the header and the log
-	source: string, // the file it was written in, for the comments that say which line
-	target: string, // "ios" or "android" for a program an app runs, "macos" or "linux" for one that is packaged as an app; empty for this computer
-	app_id: string, // with target "macos" or "linux": the app's id, which names the folder it keeps what it writes in
+	sketch:   string, // the sketch's name, for the header and the log
+	source:   string, // the file it was written in, for the comments that say which line
+	target:   string, // "ios" or "android" for a program an app runs, "macos" or "linux" for one that is packaged as an app; empty for this computer
+	app_id:   string, // with target "macos" or "linux": the app's id, which names the folder it keeps what it writes in
+	app_name: string, // with target "macos" or "linux": what people call the app, which volume controls and the like show (the program's name when empty)
 }
 
 Result :: struct {
@@ -254,9 +255,13 @@ generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Opti
 	case "macos", "linux":
 		// A packaged app starts with no folder of its own: the assets are beside the program (in the bundle of a Mac app), and what the sketch writes
 		// goes in the app's folder (Application Support on a Mac, ~/.local/share on Linux), which is where the program works from.
-		// The id is given to SDL before it starts, so a Wayland or X11 desktop matches the window to the app's desktop file and icon
-		// (with none, SDL names the window after the program)
-		fmt.sbprintf(&out, "main :: proc() {{\n\t_ = sdl.SetAppMetadataProperty(sdl.PROP_APP_METADATA_IDENTIFIER_STRING, %q)\n\trt.enter_app(string(sdl.GetBasePath()), string(cstring(sdl.GetPrefPath(\"\", %q))))\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.app_id, options.app_id, options.sketch, ODIN_VERSION_PIN, hook)
+		// The id and the name are given to SDL before it starts, so a Wayland or X11 desktop matches the window to the app's desktop file
+		// and icon, and volume controls say the app's name (with neither, SDL uses the program's name for both)
+		fmt.sbprintf(&out, "main :: proc() {{\n\t_ = sdl.SetAppMetadataProperty(sdl.PROP_APP_METADATA_IDENTIFIER_STRING, %q)\n", options.app_id)
+		if options.app_name != "" {
+			fmt.sbprintf(&out, "\t_ = sdl.SetAppMetadataProperty(sdl.PROP_APP_METADATA_NAME_STRING, %q)\n", options.app_name)
+		}
+		fmt.sbprintf(&out, "\trt.enter_app(string(sdl.GetBasePath()), string(cstring(sdl.GetPrefPath(\"\", %q))))\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.app_id, options.sketch, ODIN_VERSION_PIN, hook)
 	case:
 		fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, hook)
 	}
