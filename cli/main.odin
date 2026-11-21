@@ -25,7 +25,7 @@ COMMANDS :: `roci, a small language for sketches.
   roci fmt [file]      write a sketch in the house style
   roci man [word]      how a verb or statement is written
   roci doctor          say which targets this computer can build and which tools it lacks
-  roci package <target>  make the sketch an app to give to someone (macos so far)
+  roci package <target>  make the sketch an app to give to someone (macos and linux so far)
   roci vault show     look into what a sketch keeps in its vault, or change it
 
 More commands arrive as the language does.`
@@ -45,6 +45,10 @@ main :: proc() {
 	strings.builder_init(&out, context.temp_allocator)
 	strings.builder_init(&err, context.temp_allocator)
 	code := 2
+	if usage, asked := help_asked(os.args[1], os.args[2:]); asked {
+		fmt.println(usage)
+		os.exit(0)
+	}
 	switch os.args[1] {
 	case "check":
 		code = run_check(os.args[2:], &out, &err)
@@ -83,4 +87,46 @@ main :: proc() {
 		fmt.eprint(term.err(text, .Red))
 	}
 	os.exit(code)
+}
+
+// `--help` or `-h` after a command asks how the command is written, as people expect of any command: gives its usage,
+// and false for a command `roci` does not know (which says so itself) or when neither word was written.
+help_asked :: proc(command: string, args: []string) -> (usage: string, asked: bool) {
+	for arg in args {
+		if arg == "--help" || arg == "-h" {
+			asked = true
+		}
+	}
+	if !asked {
+		return "", false
+	}
+	switch command {
+	case "check":
+		return USAGE, true
+	case "new":
+		return NEW_USAGE, true
+	case "init":
+		return INIT_USAGE, true
+	case "add":
+		return ADD_USAGE, true
+	case "get":
+		return GET_USAGE, true
+	case "update":
+		return UPDATE_USAGE, true
+	case "run":
+		return RUN_USAGE, true
+	case "fmt":
+		return FMT_USAGE, true
+	case "test":
+		return TEST_USAGE, true
+	case "man":
+		return MAN_USAGE, true
+	case "vault":
+		return VAULT_USAGE, true
+	case "doctor":
+		return DOCTOR_USAGE, true
+	case "package":
+		return PACKAGE_USAGE, true
+	}
+	return "", false
 }

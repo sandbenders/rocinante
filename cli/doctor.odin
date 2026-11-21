@@ -106,10 +106,13 @@ odin_line :: proc(b: ^strings.Builder, version: string, have: bool) -> bool {
 }
 
 // The rest of the report is for the computer this runs on.
+DOCTOR_USAGE :: `roci doctor            say which targets this computer can build and which tools it lacks
+roci doctor <host>     the same as another computer would see it: macos-arm64, linux-amd64, windows-amd64`
+
 run_doctor :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	host := host_id()
-	if len(args) > 1 || (len(args) == 1 && args[0] == "--help") {
-		fmt.sbprintf(out, "roci doctor            say which targets this computer can build and which tools it lacks\nroci doctor <host>     the same as another computer would see it: macos-arm64, linux-amd64, windows-amd64\n")
+	if len(args) > 1 || (len(args) == 1 && (args[0] == "--help" || args[0] == "-h")) {
+		fmt.sbprintf(out, "%s\n", DOCTOR_USAGE)
 		return 0 if len(args) == 1 else 2
 	}
 	pretend := len(args) == 1
