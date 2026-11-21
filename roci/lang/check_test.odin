@@ -2033,3 +2033,12 @@ test_a_for_that_counts_up_to_a_number_below_its_start_is_a_hint :: proc(t: ^test
 		}
 	}
 }
+
+@(test)
+test_reverse_join_and_items_give_lists_of_what_they_are_given :: proc(t: ^testing.T) {
+	expect_errors(t, "a = [ 1 2 3 ]\nb = [ 4 ]\nr = reverse a\nj = join a b\nk = a + b\ni = items 1 to 2 of a\nprint (item 1 of j + item 1 of i)", {})
+	expect_errors(t, "a = [ 1 2 3 ]\nj = join a [ \"x\" ]", {.Wrong_Argument_Kind})
+	// the result is a list of the same thing, so a verb that wants numbers can use it
+	expect_errors(t, "a = [ 1 2 3 ]\nfor each n in (reverse a) [ circle at n n radius 2 ]\nfor each n in (items 2 to 3 of a) [ circle at n n radius 2 ]", {})
+	expect_errors(t, "a = [ \"x\" ]\nfor each n in (a + a) [ circle at n n radius 2 ]", {.Wrong_Argument_Kind})
+}

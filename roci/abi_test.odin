@@ -416,3 +416,36 @@ test_c_clips_to_a_shape_and_the_origin_and_round_words_are_used_up :: proc(t: ^t
 	testing.expect_value(t, last.kind, gfx.Kind.Clip_Shape)
 	testing.expect_value(t, len(list), 12)
 }
+
+@(test)
+test_c_reverses_joins_and_cuts_arrays :: proc(t: ^testing.T) {
+	items := [5]c.int{1, 2, 3, 4, 5}
+	abi_reverse(&items[0], 5, size_of(c.int))
+	testing.expect_value(t, items, [5]c.int{5, 4, 3, 2, 1})
+	even := [4]c.int{1, 2, 3, 4}
+	abi_reverse(&even[0], 4, size_of(c.int))
+	testing.expect_value(t, even, [4]c.int{4, 3, 2, 1})
+	one := [1]c.int{9}
+	abi_reverse(&one[0], 1, size_of(c.int)) // nothing to turn
+	abi_reverse(nil, 5, size_of(c.int))
+	testing.expect_value(t, one[0], 9)
+	// join
+	a := [3]c.int{1, 2, 3}
+	b := [2]c.int{10, 20}
+	out: [5]c.int
+	testing.expect_value(t, abi_join(&out[0], &a[0], 3, &b[0], 2, size_of(c.int)), 5)
+	testing.expect_value(t, out, [5]c.int{1, 2, 3, 10, 20})
+	testing.expect_value(t, abi_join(&out[0], nil, 0, &b[0], 2, size_of(c.int)), 2)
+	testing.expect_value(t, abi_join(&out[0], &a[0], 3, nil, 0, size_of(c.int)), 3)
+	testing.expect_value(t, abi_join(nil, &a[0], 3, &b[0], 2, size_of(c.int)), 0)
+	// items
+	whole := [5]c.int{1, 2, 3, 4, 5}
+	cut: [5]c.int
+	testing.expect_value(t, abi_items(&cut[0], &whole[0], 5, size_of(c.int), 2, 4), 3)
+	testing.expect_value(t, [3]c.int{cut[0], cut[1], cut[2]}, [3]c.int{2, 3, 4})
+	testing.expect_value(t, abi_items(&cut[0], &whole[0], 5, size_of(c.int), -3, 2), 2) // a place before the start is the start
+	testing.expect_value(t, abi_items(&cut[0], &whole[0], 5, size_of(c.int), 4, 99), 2) // and one after the end is the end
+	testing.expect_value(t, abi_items(&cut[0], &whole[0], 5, size_of(c.int), 4, 2), 0)
+	testing.expect_value(t, abi_items(&cut[0], &whole[0], 0, size_of(c.int), 1, 2), 0)
+	testing.expect_value(t, abi_items(&cut[0], &whole[0], 5, size_of(c.int), math.nan_f64(), 2), 0)
+}

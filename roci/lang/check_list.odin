@@ -184,8 +184,22 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 			return T_ERROR, true
 		}
 		return element_of(c, list.type), true
-	case "copy", "shuffle":
+	case "copy", "shuffle", "reverse":
 		return args[0].type, true
+	case "join":
+		if len(args) < 2 {
+			return T_ERROR, true
+		}
+		if args[0].type != T_ERROR && args[1].type != T_ERROR && !unify(c.types, args[0].type, args[1].type) {
+			note(c, .Wrong_Argument_Kind, k.args[1].span, "join", fmt.tprintf("a list of %s, as the first one is", describe(c.types, element_of(c, args[0].type))), describe(c.types, args[1].type), fix(c, k.args[1].span, "[ ]"))
+		}
+		return args[0].type, true
+	case "items":
+		list := option_arg(options, "of", 0)
+		if list == nil {
+			return T_ERROR, true
+		}
+		return list.type, true
 	case "keep", "skip", "find", "collect":
 		if len(args) < 2 {
 			return T_ERROR, true

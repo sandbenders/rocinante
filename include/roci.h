@@ -1252,6 +1252,15 @@ int roci_pick_index(int count);
 /* Mixes the `count` items of an array, each `size` bytes, by the sketch's own random numbers, so a seed repeats it. */
 void roci_shuffle(void *items, int count, size_t size);
 
+/* Turns an array of `count` items, each `size` bytes, the other way round, in place. */
+void roci_reverse(void *items, int count, size_t size);
+
+/* Puts the `count_a` items of one array and then the `count_b` of another, each `size` bytes, into `out`, which has room for both, and gives how many there are in it. */
+int roci_join(void *out, const void *a, int count_a, const void *b, int count_b, size_t size);
+
+/* Copies the items from the place `first` to the place `last` of an array of `count` items, each `size` bytes, into `out`, and gives how many it copied. Places count from 1 and both are included; one outside the array is the nearest end, and nothing is copied when none is between them. */
+int roci_items(void *out, const void *items, int count, size_t size, double first, double last);
+
 /* Writes a line to the console. */
 void roci_print(const char *text);
 

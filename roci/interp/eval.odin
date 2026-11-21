@@ -455,6 +455,13 @@ binary :: proc(it: ^Interp, e: ^lang.IR, k: lang.IR_Binary) -> Value {
 	case .Add, .Subtract, .Multiply, .Divide, .Modulo, .Power:
 	}
 	if k.op == .Add {
+		if a, is_list := left.(^List); is_list {
+			if b, other := right.(^List); other {
+				return joined(it, a, b)
+			}
+		}
+	}
+	if k.op == .Add {
 		_, left_text := left.(string)
 		_, right_text := right.(string)
 		if left_text || right_text {

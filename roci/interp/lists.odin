@@ -318,6 +318,27 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			}
 		}
 		return out
+	case .Reverse:
+		out := new_list(it)
+		if list := as_list(eval(it, call.args[0])); list != nil {
+			for i := len(list.items) - 1; i >= 0; i -= 1 {
+				append(&out.items, list.items[i])
+			}
+		}
+		return out
+	case .Join:
+		return joined(it, as_list(eval(it, call.args[0])), as_list(eval(it, call.args[1])))
+	case .Items:
+		out := new_list(it)
+		first := as_number(eval(it, call.args[0]))
+		last := as_number(option_or_nil(it, call.options, "to"))
+		if list := as_list(option_or_nil(it, call.options, "of")); list != nil {
+			from, to := item_range(first, last, len(list.items))
+			for i in from ..< to {
+				append(&out.items, list.items[i])
+			}
+		}
+		return out
 	case .Send:
 		send_message(it, eval(it, call.args[0]), eval(it, call.args[1]))
 	case .Set:
@@ -467,4 +488,33 @@ put_in_list :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) {
 	name := lang.span_text(it.src, call.args[0].span)
 	line := strings.trim_space(lang.line_text(it.src, lang.position_of(it.src, e.span.start).line))
 	fail(it, .Index_Out_Of_Range, e.span, name, has, format_number(index), strings.concatenate({"if count ", name, " >= ", format_number(max(maths.floor(index), 1)), " [ ", line, " ]"}, context.temp_allocator))
+}
+
+// A new list of the items of the first and then those of the second; a list that is not there is empty.
+@(private)
+joined :: proc(it: ^Interp, a, b: ^List) -> ^List {
+	out := new_list(it)
+	if a != nil {
+		append(&out.items, ..a.items[:])
+	}
+	if b != nil {
+		append(&out.items, ..b.items[:])
+	}
+	return out
+}
+
+// Where `items first to last of a list of n` starts and stops, as a range of places counted from 0: both ends
+// are counted from 1 and included, one outside the list is the nearest end, and numbers that are not numbers
+// or an end before the start give nothing.
+@(private)
+item_range :: proc(first, last: f64, n: int) -> (from, to: int) {
+	if first != first || last != last || n == 0 {
+		return 0, 0
+	}
+	lo := max(first, 1)
+	hi := min(last, f64(n))
+	if lo > hi {
+		return 0, 0
+	}
+	return int(lo) - 1, int(hi)
 }

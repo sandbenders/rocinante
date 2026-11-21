@@ -228,6 +228,9 @@ LANGUAGE_VERBS := []Verb{
 	{"find", {{LIST_AND_BLOCK, nil, .Any}}, "The first item that passes a test, or an empty value."},
 	{"held", {{{{"key", .Text}}, nil, .Boolean}}, "Whether an action, a key or a mouse button is held down right now. A name that `bind` made is an action, held while any input bound to it is: held \"fire\". Any other name is a key or a button: held \"space\", held \"left\" (the arrow key), held \"mouse right\". Keys have the names of on key; buttons are mouse left, middle, right, back and forward."},
 	{"shuffle", {{LIST_PARAM, nil, .List}}, "A new list with the same items in a random order: `shuffle colors`."},
+	{"reverse", {{LIST_PARAM, nil, .List}}, "A new list with the same items the other way round: `reverse colors`. The list it is given is left alone."},
+	{"join", {{{{"first", .List}, {"second", .List}}, nil, .List}}, "A new list of the items of the first list and then those of the second: `join warm cool`, or `warm + cool`. Both lists hold the same kind of thing, and both are left alone."},
+	{"items", {{{{"from", .Number}}, {{"to", {.Number}, true}, {"of", {.List}, true}}, .List}}, "A new list of the items from a place to another, both counted from 1 and both included: `items 2 to 4 of scores`. A place outside the list is the nearest end of it, and a list with nothing between them is empty."},
 	{"sort", {{LIST_PARAM, {{"by", {.Expr_Block}, true}}, .List}}, "A list in order of what the block gives for each item: `sort particles by [ it.size ]`."},
 
 	{"tween", {{{{"place", .Any}}, {{"to", {.Any}, true}, {"over", {.Number}, true}, {"as", {.Name}, false}}, .None}}, "Moves a number, vector or color to a value over some seconds, a little each frame: `tween ball.pos to mouse over 0.5 as out`. A new tween of the same place replaces the old."},

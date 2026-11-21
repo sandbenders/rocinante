@@ -445,3 +445,12 @@ test_a_clip_to_a_shape_is_a_call_with_the_same_words :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(result.source, "rt.clip_polygon("), result.source)
 	testing.expect(t, strings.contains(result.source, "rt.clip_polygons("), result.source)
 }
+
+@(test)
+test_reverse_join_items_and_plus_on_lists_call_the_runtime :: proc(t: ^testing.T) {
+	result := compile("a = [ 1 2 3 ]\nb = reverse a\nc = join a b\nd = items 2 to 3 of c\ne = a + b\nprint (count e)\nprint (count d)\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "rt.reverse("), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.join_lists("), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.items_between("), result.source)
+}

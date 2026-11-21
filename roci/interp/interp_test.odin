@@ -1716,6 +1716,25 @@ test_the_sorting_example_keeps_and_skips_the_tall_bars :: proc(t: ^testing.T) {
 	testing.expect_value(t, shown(p), 24 - tall)
 	roci.step({key_event(w, .S, false), key_event(w, .SPACE)})
 	testing.expect_value(t, shown(p), 24)
+	// r turns the row round, t keeps the first eight, j puts the first color before the others
+	first := as_list(global_named(p, "shown")).items[0]
+	roci.step({key_event(w, .SPACE, false), key_event(w, .R)})
+	testing.expect_value(t, shown(p), 24)
+	testing.expect(t, as_list(global_named(p, "shown")).items[23] == first, "the first is now the last")
+	roci.step({key_event(w, .R, false), key_event(w, .T)})
+	testing.expect_value(t, shown(p), 8)
+	roci.step({key_event(w, .T, false), key_event(w, .SPACE)})
+	roci.step({key_event(w, .SPACE, false), key_event(w, .J)})
+	testing.expect_value(t, shown(p), 24)
+	groups := as_list(global_named(p, "shown")).items
+	seen_other := false
+	for bar in groups {
+		group := as_number(as_record(bar).fields[1])
+		if group != 1 {
+			seen_other = true
+		}
+		testing.expect(t, !seen_other || group != 1, "no bar of the first color comes after another")
+	}
 	for _ in 0 ..< 200 {
 		roci.step()
 	}
@@ -2935,4 +2954,36 @@ test_a_clip_to_a_shape_keeps_drawing_inside_it_until_the_next_clip :: proc(t: ^t
 @(private = "file")
 near :: proc(a, b: [4]f32) -> bool {
 	return abs(a[0] - b[0]) < 0.1 && abs(a[1] - b[1]) < 0.1 && abs(a[2] - b[2]) < 0.1 && abs(a[3] - b[3]) < 0.1
+}
+
+@(test)
+test_reverse_join_and_items_make_new_lists_and_plus_joins_two :: proc(t: ^testing.T) {
+	p := run_text(t, "a = [ 1 2 3 4 5 ]\nb = [ 10 20 ]\nr = reverse a\nj = join a b\nk = a + b\ni = items 2 to 4 of a\nlow = items -3 to 2 of a\nhigh = items 4 to 99 of a\nnone = items 4 to 2 of a\nwhole = items 1 to 5 of a\nempty = reverse []\nsame = a + []\nmore = join [] []\nstill = a\n")
+	defer finish(p)
+	numbers := proc(p: ^Interp, name: string) -> string {
+		list := as_list(global_named(p, name))
+		b := strings.builder_make(context.temp_allocator)
+		for item, i in list.items {
+			if i > 0 {
+				strings.write_byte(&b, ' ')
+			}
+			fmt.sbprintf(&b, "%v", as_number(item))
+		}
+		return strings.to_string(b)
+	}
+	testing.expect_value(t, numbers(p, "r"), "5 4 3 2 1")
+	testing.expect_value(t, numbers(p, "j"), "1 2 3 4 5 10 20")
+	testing.expect_value(t, numbers(p, "k"), "1 2 3 4 5 10 20")
+	testing.expect_value(t, numbers(p, "i"), "2 3 4")
+	testing.expect_value(t, numbers(p, "low"), "1 2")
+	testing.expect_value(t, numbers(p, "high"), "4 5")
+	testing.expect_value(t, numbers(p, "none"), "")
+	testing.expect_value(t, numbers(p, "whole"), "1 2 3 4 5")
+	testing.expect_value(t, numbers(p, "empty"), "")
+	testing.expect_value(t, numbers(p, "same"), "1 2 3 4 5")
+	testing.expect_value(t, numbers(p, "more"), "")
+	// the lists they were made from are left alone
+	testing.expect_value(t, numbers(p, "a"), "1 2 3 4 5")
+	testing.expect_value(t, numbers(p, "b"), "10 20")
+	testing.expect_value(t, len(p.errors), 0)
 }

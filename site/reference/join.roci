@@ -1,0 +1,8 @@
+warm = [ tomato orange gold ]
+cool = [ teal navy ]
+x = 60
+for each c in join warm cool [
+  fill c
+  circle at x 150 radius 40
+  x = x + 70
+]

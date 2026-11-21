@@ -216,6 +216,9 @@ binary_type :: proc(c: ^Checker, op: Binary_Op, l, r: Type_Id) -> (Type_Id, bool
 	if op == .Add && (lk == .Text || rk == .Text) {
 		return T_TEXT, true
 	}
+	if op == .Add && lk == .List && rk == .List {
+		return resolve(c.types, l), unify(c.types, l, r)
+	}
 	switch {
 	case lk == .Number && rk == .Number:
 		return T_NUMBER, true

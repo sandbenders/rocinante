@@ -63,7 +63,7 @@ REFERENCE_SECTIONS := []Reference_Section{
 		"random", "pick", "anywhere", "gaussian", "seed", "noise", "fbm", "shuffle",
 	}},
 	{"Lists", "Many things in order: making, changing and walking through lists.", {
-		"add", "remove", "count", "item", "keep", "skip", "collect", "combine", "find", "sort", "copy",
+		"add", "remove", "count", "item", "keep", "skip", "collect", "combine", "find", "sort", "reverse", "join", "items", "copy",
 	}},
 	{"Tables", "Text names with a value each, in the order they were put.", {
 		"table", "put", "get", "keys",

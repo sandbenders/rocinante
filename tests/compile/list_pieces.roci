@@ -1,0 +1,16 @@
+a = [ 1 2 3 4 5 ]
+b = [ 10 20 ]
+print (reverse a)
+print (join a b)
+print (a + b)
+print (items 2 to 4 of a)
+print (items -2 to 2 of a)
+print (items 4 to 99 of a)
+print (items 4 to 2 of a)
+words = [ "x" "y" "z" ]
+print (reverse words)
+print (words + [ "w" ])
+points = [ { 1, 2 } { 3, 4 } { 5, 6 } ]
+print (items 2 to 3 of points)
+print (reverse points)
+print a

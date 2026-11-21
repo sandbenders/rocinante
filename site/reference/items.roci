@@ -1,0 +1,7 @@
+colors = [ tomato orange gold teal navy ]
+x = 100
+for each c in items 2 to 4 of colors [
+  fill c
+  circle at x 150 radius 40
+  x = x + 100
+]

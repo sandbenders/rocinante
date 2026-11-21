@@ -157,3 +157,39 @@ shuffle :: proc(list: ^List($T), mark_item: proc(item: T)) -> ^List(T) {
 	}
 	return out
 }
+
+// `reverse list`: a new list with the items the other way round.
+reverse :: proc(list: ^List($T), mark_item: proc(item: T)) -> ^List(T) {
+	out := new_list(T, mark_item)
+	if list != nil {
+		for i := len(list.items) - 1; i >= 0; i -= 1 {
+			add(list.items[i], out)
+		}
+	}
+	return out
+}
+
+// `join a b` and `a + b` on lists: a new list of the items of the first and then those of the second.
+join_lists :: proc(a, b: ^List($T), mark_item: proc(item: T)) -> ^List(T) {
+	out := new_list(T, mark_item)
+	for list in ([2]^List(T){a, b}) {
+		if list != nil {
+			for item in list.items {
+				add(item, out)
+			}
+		}
+	}
+	return out
+}
+
+// `items first to last of list`: both places counted from 1 and included, one outside the list the nearest end of it.
+items_between :: proc(list: ^List($T), first, last: f64, mark_item: proc(item: T)) -> ^List(T) {
+	out := new_list(T, mark_item)
+	if list != nil && first == first && last == last {
+		lo, hi := max(first, 1), min(last, f64(len(list.items)))
+		for i := int(lo); f64(i) <= hi; i += 1 {
+			add(list.items[i - 1], out)
+		}
+	}
+	return out
+}

@@ -65,6 +65,19 @@ print adults
 
 In `combine`, `result` is the value so far.
 
+Three more make lists out of lists, and leave the ones they are given alone. `reverse` turns a list round, `join` puts one list after another (so does `+`), and `items 2 to 4 of` takes the pieces from a place to another, both counted from 1 and both included:
+
+```roci
+scores = [ 3 8 5 9 1 ]
+backwards = reverse scores
+all = join scores backwards
+same = scores + backwards
+middle = items 2 to 4 of scores
+print middle
+```
+
+The two lists of a `join` hold the same kind of thing. A place outside the list is the nearest end of it, so `items 4 to 99 of scores` is the last two, and a list with nothing between the places is empty.
+
 ## Shared, or copied
 
 Numbers, text, vectors and colors are copied when they are given to a new name. Lists and records are **shared**: `b = a` makes `b` another name for the same list, and changing one changes the other.

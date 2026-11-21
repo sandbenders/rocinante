@@ -461,6 +461,14 @@ binary :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Binary) -> string {
 		case .Less, .Less_Equal, .Greater, .Greater_Equal, .Modulo, .Power, .And, .Or:
 		}
 	}
+	if k.op == .Add && lk == .List && rk == .List {
+		list_type, _ := odin_type(g, k.lhs.type, e.span, "a list")
+		if len(list_type) <= len("^rt.List(") {
+			return "0.0"
+		}
+		element := list_type[len("^rt.List("):len(list_type) - 1]
+		return fmt.aprintf("rt.join_lists(%s, %s, %s)", l, r, item_marker(g, list_element(g, k.lhs.type), element), allocator = context.temp_allocator)
+	}
 	both_numbers := lk == .Number && rk == .Number
 	arithmetic := (lk == .Number || lk == .Vector) && (rk == .Number || rk == .Vector)
 	text := proc(g: ^Gen, a: string, op: string, b: string) -> string {

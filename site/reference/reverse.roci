@@ -1,0 +1,7 @@
+colors = [ tomato gold teal navy ]
+x = 60
+for each c in reverse colors [
+  fill c
+  circle at x 150 radius 40
+  x = x + 90
+]

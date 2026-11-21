@@ -193,6 +193,62 @@ abi_shuffle :: proc "c" (items: rawptr, count: c.int, size: c.size_t) {
 	}
 }
 
+// Turns an array of `count` items, each `size` bytes, the other way round, in place.
+@(export, link_name = "roci_reverse")
+abi_reverse :: proc "c" (items: rawptr, count: c.int, size: c.size_t) {
+	context = abi_context()
+	if items == nil || count < 2 || size == 0 {
+		return
+	}
+	bytes := ([^]u8)(items)
+	spare := make([]u8, size, context.temp_allocator)
+	for i in 0 ..< int(count) / 2 {
+		j := int(count) - 1 - i
+		a, b := bytes[uintptr(i) * uintptr(size):][:size], bytes[uintptr(j) * uintptr(size):][:size]
+		mem.copy(raw_data(spare), raw_data(a), int(size))
+		mem.copy(raw_data(a), raw_data(b), int(size))
+		mem.copy(raw_data(b), raw_data(spare), int(size))
+	}
+}
+
+// Puts the `count_a` items of one array and then the `count_b` of another, each `size` bytes, into `out`, which has room
+// for both, and gives how many there are in it. The arrays it reads are left alone.
+@(export, link_name = "roci_join")
+abi_join :: proc "c" (out: rawptr, a: rawptr, count_a: c.int, b: rawptr, count_b: c.int, size: c.size_t) -> c.int {
+	context = abi_context()
+	if out == nil || size == 0 {
+		return 0
+	}
+	taken := 0
+	if a != nil && count_a > 0 {
+		mem.copy(out, a, int(count_a) * int(size))
+		taken = int(count_a)
+	}
+	if b != nil && count_b > 0 {
+		mem.copy(rawptr(uintptr(out) + uintptr(taken) * uintptr(size)), b, int(count_b) * int(size))
+		taken += int(count_b)
+	}
+	return c.int(taken)
+}
+
+// Copies the items from the place `first` to the place `last` of an array of `count` items, each `size` bytes, into `out`, and
+// gives how many it copied. Places are counted from 1 and both are included, as the language's `items`; one outside the array is
+// the nearest end of it, and nothing is copied when no place is between them.
+@(export, link_name = "roci_items")
+abi_items :: proc "c" (out: rawptr, items: rawptr, count: c.int, size: c.size_t, first, last: f64) -> c.int {
+	context = abi_context()
+	if out == nil || items == nil || count < 1 || size == 0 || first != first || last != last {
+		return 0
+	}
+	lo, hi := max(first, 1), min(last, f64(count))
+	if lo > hi {
+		return 0
+	}
+	from, to := int(lo) - 1, int(hi)
+	mem.copy(out, rawptr(uintptr(items) + uintptr(from) * uintptr(size)), (to - from) * int(size))
+	return c.int(to - from)
+}
+
 // ---- small verbs ----
 
 // Writes a line to the console.
@@ -341,6 +397,9 @@ abi_misc_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_anywhere", typeid_of(type_of(abi_anywhere)), "roci_vec2 roci_anywhere(void)", "A random place in the current window."))
 	append(all, abi_entry("roci_pick_index", typeid_of(type_of(abi_pick_index)), "int roci_pick_index(int count)", "A random place in a list of `count` items, from 0, by the sketch's own random numbers (so a seed repeats it); -1 for an empty list."))
 	append(all, abi_entry("roci_shuffle", typeid_of(type_of(abi_shuffle)), "void roci_shuffle(void *items, int count, size_t size)", "Mixes the `count` items of an array, each `size` bytes, by the sketch's own random numbers, so a seed repeats it."))
+	append(all, abi_entry("roci_reverse", typeid_of(type_of(abi_reverse)), "void roci_reverse(void *items, int count, size_t size)", "Turns an array of `count` items, each `size` bytes, the other way round, in place."))
+	append(all, abi_entry("roci_join", typeid_of(type_of(abi_join)), "int roci_join(void *out, const void *a, int count_a, const void *b, int count_b, size_t size)", "Puts the `count_a` items of one array and then the `count_b` of another, each `size` bytes, into `out`, which has room for both, and gives how many there are in it."))
+	append(all, abi_entry("roci_items", typeid_of(type_of(abi_items)), "int roci_items(void *out, const void *items, int count, size_t size, double first, double last)", "Copies the items from the place `first` to the place `last` of an array of `count` items, each `size` bytes, into `out`, and gives how many it copied. Places count from 1 and both are included; one outside the array is the nearest end, and nothing is copied when none is between them."))
 	append(all, abi_entry("roci_print", typeid_of(type_of(abi_print)), "void roci_print(const char *text)", "Writes a line to the console."))
 	append(all, abi_entry("roci_held", typeid_of(type_of(abi_held)), "int roci_held(const char *name)", "1 while an action made with roci_bind is held, or a key, by its name (\"space\", \"a\", \"left\"), or a mouse button of the current window, as \"mouse right\"."))
 	append(all, abi_entry("roci_push_style", typeid_of(type_of(abi_push_style)), "void roci_push_style(void)", "Saves the style (fill, stroke, thickness, font and the rest, not the transform) until the matching roci_pop_style: what is set in between is for the shapes in between only, as the language's `with` is."))

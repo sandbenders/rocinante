@@ -459,6 +459,30 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 		list_type, _ := odin_type(g, c.args[0].type, e.span, "a list")
 		element := list_type[len("^rt.List("):len(list_type) - 1]
 		return fmt.aprintf("rt.shuffle(%s, %s)", args[0], item_marker(g, list_element(g, c.args[0].type), element), allocator = context.temp_allocator), true, true
+	case "reverse", "join", "items":
+		of := c.args[0]
+		if name == "items" {
+			if list := option_value(c.options, "of"); list != nil {
+				of = list
+			}
+		}
+		if kind_of(g, of) != .List {
+			refuse(g, e.span, fmt.tprintf("`%s` of something that is not a list", name))
+			return "", false, true
+		}
+		list_type, _ := odin_type(g, of.type, e.span, "a list")
+		if len(list_type) <= len("^rt.List(") {
+			return "", false, true // odin_type said why
+		}
+		element := list_type[len("^rt.List("):len(list_type) - 1]
+		marker := item_marker(g, list_element(g, of.type), element)
+		switch name {
+		case "reverse":
+			return fmt.aprintf("rt.reverse(%s, %s)", args[0], marker, allocator = context.temp_allocator), true, true
+		case "join":
+			return fmt.aprintf("rt.join_lists(%s, %s, %s)", args[0], args[1], marker, allocator = context.temp_allocator), true, true
+		}
+		return fmt.aprintf("rt.items_between(%s, %s, %s, %s)", maybe_or(g, c.options, "of", "nil"), args[0], maybe_or(g, c.options, "to", "0.0"), marker, allocator = context.temp_allocator), true, true
 	case "files":
 		return fmt.aprintf("rt.files_in(%s)", maybe_or(g, c.options, "in", `""`), allocator = context.temp_allocator), true, true
 	case "lines":

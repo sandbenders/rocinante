@@ -3,7 +3,8 @@
 // key: `shuffle` (space), `sort … by` height (h) or color (c), `keep` the tall ones
 // (k) and `skip` the tall ones (s). `collect` and `combine` work out the average,
 // drawn as a line across, `find` picks out the first bar taller than that, and
-// p prints the heights.
+// p prints the heights. `reverse` turns the row round (r), `items 1 to 8 of` keeps the
+// first eight (t) and `join` puts the bars of the first color before all the others (j).
 window size 640 400 title "sorting" resizable false
 
 PALETTE = [ tomato orange gold yellowgreen mediumturquoise cornflowerblue orchid ]
@@ -51,6 +52,9 @@ on key "h" [ shown = sort bars by [ it.height ]  arrange ]
 on key "c" [ shown = sort bars by [ it.group ]  arrange ]
 on key "k" [ shown = keep bars [ it.height > 150 ]  arrange ]
 on key "s" [ shown = skip bars [ it.height > 150 ]  arrange ]
+on key "r" [ shown = reverse shown  arrange ]
+on key "t" [ shown = items 1 to 8 of shown  arrange ]
+on key "j" [ shown = join (keep bars [ it.group is 1 ]) (skip bars [ it.group is 1 ])  arrange ]
 on key "p" [ print (collect shown [ it.height ]) ]
 
 draw [
