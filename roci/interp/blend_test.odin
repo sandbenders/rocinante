@@ -153,10 +153,16 @@ test_the_blend_example_draws_each_pair_blended_and_moves_its_clip_with_the_mouse
 	}
 	box, found := clip_of()
 	testing.expect(t, found)
-	testing.expect_value(t, box, [4]f32{240, 250, 400, 370}) // around the spot it starts at
+	testing.expect(t, near_box(box, {240, 250, 400, 370}), "around the spot it starts at")
 	w := first_window()
 	roci.step({platform.Mouse_Moved{window = platform.Window_Id(w), x = 100, y = 300}, click_event(w, 100, 300)})
 	box, found = clip_of()
 	testing.expect(t, found)
-	testing.expect_value(t, box, [4]f32{20, 240, 180, 360})
+	testing.expect(t, near_box(box, {20, 240, 180, 360}), "around the click")
+}
+
+// Whether two boxes are the same to a tenth of a pixel: the box round a clip shape is made of the corners of its outline.
+@(private = "file")
+near_box :: proc(a, b: [4]f32) -> bool {
+	return abs(a[0] - b[0]) < 0.1 && abs(a[1] - b[1]) < 0.1 && abs(a[2] - b[2]) < 0.1 && abs(a[3] - b[3]) < 0.1
 }
