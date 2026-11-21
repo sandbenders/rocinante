@@ -82,15 +82,19 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	case .Copy_To_Clipboard:
 		roci.set_clipboard(as_text(eval(it, call.args[0])))
 	case .Save:
+		in_sketch := false
+		if place, found := option_value(it, call.options, "in"); found {
+			in_sketch = as_text(place) == "sketch"
+		}
 		if call.shape == 1 {
 			value := eval(it, call.args[0])
 			if picture, is_picture := value.(roci.Image); is_picture {
-				save_image_file(it, e, roci.movie_frame(picture), as_text(eval(it, call.args[1])))
+				save_image_file(it, e, roci.movie_frame(picture), as_text(eval(it, call.args[1])), in_sketch)
 			} else {
-				save_data(it, e, value, as_text(eval(it, call.args[1])))
+				save_data(it, e, value, as_text(eval(it, call.args[1])), in_sketch)
 			}
 		} else {
-			save_picture(it, e, as_text(eval(it, call.args[0])))
+			save_picture(it, e, as_text(eval(it, call.args[0])), in_sketch)
 		}
 	case .Record:
 		if call.shape == 1 {

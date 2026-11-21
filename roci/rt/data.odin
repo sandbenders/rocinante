@@ -250,7 +250,7 @@ datum_leave :: proc() {
 }
 
 // Writes the data to the file named, in the kind the name ends in.
-save_data :: proc(d: data.Datum, name: string) {
+save_data :: proc(d: data.Datum, name: string, in_sketch := false) {
 	format := data.format_of(name)
 	if datum_looped {
 		datum_looped = false
@@ -266,7 +266,7 @@ save_data :: proc(d: data.Datum, name: string) {
 		say_once(name, fmt.tprintf("I could not save `%s`: this value cannot be written as that kind of file: %s.", name, why))
 		return
 	}
-	path := output_path(name)
+	path := output_path(name, in_sketch)
 	if !roci.write_text_file(path, text) {
 		say_once(name, fmt.tprintf("I could not save `%s`: the file could not be written.", path))
 	}

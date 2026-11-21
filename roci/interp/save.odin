@@ -12,14 +12,14 @@ import "../lang"
 import "core:strings"
 
 @(private)
-save_picture :: proc(it: ^Interp, e: ^lang.IR, name: string) {
+save_picture :: proc(it: ^Interp, e: ^lang.IR, name: string, in_sketch := false) {
 	it.save_span = e.span
 	example := "save \"shot.png\""
 	if !roci.is_save_name(name) {
 		fail(it, .Save_Failed, e.span, name, "I save PNG pictures, and SVG and PDF drawings, so the name has to end in `.png`, `.svg` or `.pdf`.", "", example)
 		return
 	}
-	if !roci.save(save_path(it, name)) {
+	if !roci.save(save_path(it, name, in_sketch)) {
 		fail(it, .Save_Failed, e.span, name, "There is no window to take a picture of.", "", example)
 	}
 }
@@ -27,11 +27,15 @@ save_picture :: proc(it: ^Interp, e: ^lang.IR, name: string) {
 // Where a name is saved: an absolute path as it is, anything else in the `output`
 // folder of the sketch (beside the file for a lone one).
 @(private)
-save_path :: proc(it: ^Interp, name: string) -> string {
+save_path :: proc(it: ^Interp, name: string, in_sketch := false) -> string {
 	if is_absolute_path(name) {
 		return name
 	}
 	root, _ := assets_root(it)
+	if in_sketch {
+		// the sketch's own folder, which for a lone file is where it is run from
+		return name if root == "" else strings.concatenate({root, "/", name}, context.temp_allocator)
+	}
 	if root == "" {
 		return strings.concatenate({"output/", name}, context.temp_allocator)
 	}
@@ -61,9 +65,9 @@ say_save_problems :: proc(it: ^Interp) {
 // `save picture "name.png"`: a picture or a canvas written as a PNG at its own size, at once, where a plain name goes in the
 // `output` folder like the window's.
 @(private)
-save_image_file :: proc(it: ^Interp, e: ^lang.IR, picture: roci.Image, name: string) {
+save_image_file :: proc(it: ^Interp, e: ^lang.IR, picture: roci.Image, name: string, in_sketch := false) {
 	example := "save (resize photo size 16 16) \"small.png\""
-	if why := roci.save_image(picture, save_path(it, name)); why != "" {
+	if why := roci.save_image(picture, save_path(it, name, in_sketch)); why != "" {
 		fail(it, .Save_Failed, e.span, name, strings.concatenate({"The picture could not be saved: ", why, "."}, context.temp_allocator), "", example)
 	}
 }

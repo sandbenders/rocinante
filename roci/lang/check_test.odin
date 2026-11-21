@@ -2073,3 +2073,9 @@ test_a_verb_that_gives_records_with_different_fields_is_a_hint :: proc(t: ^testi
 		}
 	}
 }
+
+@(test)
+test_save_takes_in_sketch_or_in_output_and_no_other_place :: proc(t: ^testing.T) {
+	expect_errors(t, "swatch = picture from [ red ] size 1 1\nsave swatch \"a.png\" in sketch\nsave swatch \"b.png\" in output\nsave [ 1 2 ] \"c.json\" in sketch\ncircle at 1 1 radius 1\nsave \"s.png\" in sketch", {})
+	testing.expect(t, has_errors(check_text("swatch = picture from [ red ] size 1 1\nsave swatch \"a.png\" in nowhere").checked.diagnostics))
+}

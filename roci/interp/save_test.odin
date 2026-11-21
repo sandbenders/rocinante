@@ -173,3 +173,27 @@ test_a_picture_is_saved_as_a_png_by_save_and_a_wrong_name_is_said :: proc(t: ^te
 		testing.expect_value(t, p.errors[0].id, lang.Message_Id.Save_Failed)
 	}
 }
+
+@(test)
+test_in_sketch_puts_a_name_in_the_sketchs_own_folder_and_in_output_puts_it_where_it_always_went :: proc(t: ^testing.T) {
+	p := run_block_sketch(t, "save_in_sketch", `print 1`)
+	defer finish(p)
+	testing.expect_value(t, save_path(p, "icons/a.png", true), "output/tests/save_in_sketch/icons/a.png")
+	testing.expect_value(t, save_path(p, "icons/a.png", false), "output/tests/save_in_sketch/output/icons/a.png")
+	// an absolute path is the one it is, whatever place is said
+	testing.expect_value(t, save_path(p, "/tmp/a.png", true), "/tmp/a.png")
+}
+
+@(test)
+test_a_picture_and_data_are_saved_in_the_sketchs_folder_when_it_says_in_sketch :: proc(t: ^testing.T) {
+	root := "output/tests/save_here"
+	_ = os.remove_all(root)
+	p := run_block_sketch(t, "save_here", "swatch = picture from [ red blue ] size 2 1\nsave swatch \"icons/swatch.png\" in sketch\nsave swatch \"icons/swatch-too.png\" in output\nsave [ 1 2 ] \"data/list.json\" in sketch\nsave swatch \"plain.png\"")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect(t, os.exists("output/tests/save_here/icons/swatch.png"), "in sketch")
+	testing.expect(t, os.exists("output/tests/save_here/data/list.json"), "data in sketch")
+	testing.expect(t, !os.exists("output/tests/save_here/output/icons/swatch.png"), "not in output")
+	testing.expect(t, os.exists("output/tests/save_here/output/icons/swatch-too.png"), "in output")
+	testing.expect(t, os.exists("output/tests/save_here/output/plain.png"), "the plain name as before")
+}

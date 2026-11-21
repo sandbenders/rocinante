@@ -255,6 +255,16 @@ save badge "badge.png"
 save (resize badge size 32 32) "badge-32.png"
 ```
 
+A file can go into the sketch's own folder instead, which is how a sketch that makes the icons of a project puts them where the project keeps them. Say `in sketch` after the name; `in output` is what happens without it:
+
+```roci
+badge = canvas 256 256
+draw into badge [ background gold ]
+save badge "icons/ios/badge.png" in sketch
+```
+
+The folders are made. A name that starts from the root of the disk is used as it is, whatever place is said. In a packaged app the sketch's folder is the app's own, the one that is writable, so `in sketch` writes there and not into the app.
+
 It is written at once and goes where the window's pictures go (the `output` folder), a run of `#` is the frame number, and the name has to end in `.png`. Reading a canvas back from the graphics card stalls the frame, so save it once, not every frame. In C it is `roci_save_picture`.
 
 ### As a vector drawing

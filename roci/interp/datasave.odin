@@ -18,7 +18,7 @@ import "core:strings"
 DATA_DEPTH :: 64
 
 @(private)
-save_data :: proc(it: ^Interp, e: ^lang.IR, value: Value, name: string) {
+save_data :: proc(it: ^Interp, e: ^lang.IR, value: Value, name: string, in_sketch := false) {
 	example := "save scores \"scores.json\""
 	format := data.format_of(name)
 	if format == .None {
@@ -36,7 +36,7 @@ save_data :: proc(it: ^Interp, e: ^lang.IR, value: Value, name: string) {
 		fail(it, .Save_Failed, e.span, name, strings.concatenate({"This value cannot be written as that kind of file: ", why, "."}, context.temp_allocator), "", example)
 		return
 	}
-	path := save_path(it, name)
+	path := save_path(it, name, in_sketch)
 	if !roci.write_text_file(path, text) {
 		fail(it, .Save_Failed, e.span, path, "The file could not be written.", "", example)
 	}

@@ -47,6 +47,7 @@ WORD_CHOICES := []Word_Choices{
 	{"tween", "as", EASE_WORDS},
 	{"ui theme", "look", UI_THEME_WORDS},
 	{"forget", "place", {"memory", "vault"}},
+	{"save", "in", {"sketch", "output"}},
 	{"remember", "in", {"memory", "vault"}},
 	{"recall", "in", {"memory", "vault"}},
 	{"forget", "in", {"memory", "vault"}},

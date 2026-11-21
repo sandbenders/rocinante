@@ -466,3 +466,13 @@ test_language_is_read_from_the_system :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(result.problems), 0)
 	testing.expect(t, strings.contains(result.source, "roci.language_name("), result.source)
 }
+
+@(test)
+test_save_in_sketch_says_so_to_the_runtime :: proc(t: ^testing.T) {
+	result := compile("swatch = picture from [ red blue ] size 2 1\nsave swatch \"a.png\" in sketch\nsave swatch \"b.png\"\nsave [ 1 2 ] \"c.json\" in sketch\ncircle at 1 1 radius 1\nsave \"s.png\" in sketch\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "rt.save_picture_file(swatch, \"a.png\", true)"), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.save_picture_file(swatch, \"b.png\", false)"), result.source)
+	testing.expect(t, strings.contains(result.source, "\"c.json\", true)"), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.save(\"s.png\", true)"), result.source)
+}

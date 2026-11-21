@@ -751,3 +751,16 @@ sound_settings :: proc(g: ^Gen, e: ^lang.IR) -> (text: string, ok: bool) {
 	strings.write_string(&b, "}")
 	return strings.to_string(b), true
 }
+
+// "true" when a `save` says `in sketch`, "false" for the output folder it otherwise uses.
+@(private)
+sketch_option :: proc(options: []lang.IR_Option) -> string {
+	for o in options {
+		if o.word == "in" && len(o.args) > 0 {
+			if word, ok := word_of(o.args[0]); ok && word == "sketch" {
+				return "true"
+			}
+		}
+	}
+	return "false"
+}

@@ -417,15 +417,12 @@ polygons :: proc(contours: ^List(^List([2]f64)), look := roci.Look{}) {
 }
 
 // `save "shot.png"`: a plain name goes in the `output` folder of the sketch's folder.
-save :: proc(name: string) {
+save :: proc(name: string, in_sketch := false) {
 	if !roci.is_save_name(name) {
 		say_once(name, fmt.tprintf("I save PNG pictures, and SVG and PDF drawings, so `%s` has to end in `.png`, `.svg` or `.pdf`.", name))
 		return
 	}
-	path := name
-	if !(strings.has_prefix(name, "/") || (len(name) > 2 && name[1] == ':')) {
-		path = strings.concatenate({"output/", name}, context.temp_allocator)
-	}
+	path := output_path(name, in_sketch)
 	if !roci.save(path) {
 		say_once(name, fmt.tprintf("I could not save `%s`: there is no window to take a picture of.", name))
 	}
@@ -878,9 +875,9 @@ lines :: proc(text: string) -> ^List(string) {
 // ---- recording ----
 
 @(private)
-output_path :: proc(name: string) -> string {
-	if strings.has_prefix(name, "/") || (len(name) > 2 && name[1] == ':') {
-		return name
+output_path :: proc(name: string, in_sketch := false) -> string {
+	if strings.has_prefix(name, "/") || (len(name) > 2 && name[1] == ':') || in_sketch {
+		return name // in the sketch's folder, which is where the program works from (a packaged app's own folder)
 	}
 	return strings.concatenate({"output/", name}, context.temp_allocator)
 }
@@ -1131,11 +1128,8 @@ outline_of :: proc(picture: roci.Image, alpha: f64, at: [2]f64, size: Maybe([2]f
 
 // `save picture "name.png"`: a picture or a canvas written as a PNG at its own size, at once; a plain name goes in the `output`
 // folder of the sketch's folder.
-save_picture_file :: proc(picture: roci.Image, name: string) {
-	path := name
-	if !(strings.has_prefix(name, "/") || (len(name) > 2 && name[1] == ':')) {
-		path = strings.concatenate({"output/", name}, context.temp_allocator)
-	}
+save_picture_file :: proc(picture: roci.Image, name: string, in_sketch := false) {
+	path := output_path(name, in_sketch)
 	if why := roci.save_image(roci.movie_frame(picture), path); why != "" {
 		say_once(name, fmt.tprintf("I could not save `%s`: %s.", name, why))
 	}

@@ -198,15 +198,15 @@ more_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (te
 	case "save":
 		if c.shape == 1 {
 			if kind_of(g, c.args[0]) == .Image {
-				return fmt.aprintf("rt.save_picture_file(%s, %s)", args[0], args[1], allocator = context.temp_allocator), false
+				return fmt.aprintf("rt.save_picture_file(%s, %s, %s)", args[0], args[1], sketch_option(c.options), allocator = context.temp_allocator), false
 			}
 			convert, ok := to_datum_proc(g, c.args[0].type, e.span)
 			if !ok {
 				return "", false
 			}
-			return fmt.aprintf("rt.save_data(%s(%s), %s)", convert, args[0], args[1], allocator = context.temp_allocator), false
+			return fmt.aprintf("rt.save_data(%s(%s), %s, %s)", convert, args[0], args[1], sketch_option(c.options), allocator = context.temp_allocator), false
 		}
-		return fmt.aprintf("rt.save(%s)", args[0], allocator = context.temp_allocator), false
+		return fmt.aprintf("rt.save(%s, %s)", args[0], sketch_option(c.options), allocator = context.temp_allocator), false
 	case "remove":
 		if from := option(c.options, "from"); from != nil {
 			#partial switch kind_of(g, from.args[0]) {
