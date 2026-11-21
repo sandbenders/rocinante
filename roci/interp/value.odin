@@ -37,6 +37,7 @@ Record :: struct {
 	long:   bool,
 	class:  lang.Shape_Class, // the collision shape its `{ }` made it, kept by copies
 	stamp:  u64, // when a field was last changed (`Interp.writes`)
+	unset:  u64, // the fields (the first 64) that no line has given a value, by their place: a bit each, set when the `{ }` of a taught verb that made the record left the field out and cleared by the first assignment to it
 }
 
 // nil is the empty value.
@@ -257,6 +258,7 @@ copier_shell :: proc(c: ^Copier, v: Value) -> Value {
 		r := new(Record, alloc)
 		r.shape = x.shape
 		r.class = x.class
+		r.unset = x.unset
 		r.long = alloc == it.long
 		r.fields = make([]Value, len(x.fields), alloc)
 		c.copies[x] = r

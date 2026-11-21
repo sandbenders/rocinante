@@ -3037,3 +3037,33 @@ test_a_file_of_another_folder_is_watched_and_reloads_the_sketch :: proc(t: ^test
 	kept := poll(next)
 	testing.expect(t, kept.problem_title != "", "the mistake is said")
 }
+
+@(test)
+test_a_field_that_a_record_was_made_without_says_so_when_it_is_read :: proc(t: ^testing.T) {
+	// two records of one shape (one verb gives both): the second never sets `b`
+	p := run_text(t, "learn words language [\n  if language is \"en\" [ give { a: \"A\", b: \"B\" } ]\n  give { a: \"A\" }\n]\nr = words \"pt\"\nprint r.a\nprint r.b\nprint r.b\ne = words \"en\"\nprint e.b\n")
+	defer finish(p)
+	testing.expect_value(t, printed(p), "A\n\n\nB")
+	said := 0
+	for e in p.errors {
+		if e.id == .Field_Missing {
+			said += 1
+		}
+	}
+	// each place says it once (two lines read it), and the record that has the field says nothing
+	testing.expect_value(t, said, 2)
+}
+
+@(test)
+test_a_field_given_later_or_by_a_literal_is_not_missing_and_a_copy_keeps_what_was_left_out :: proc(t: ^testing.T) {
+	p := run_text(t, "learn words language [\n  if language is \"en\" [ give { a: \"A\", b: \"B\" } ]\n  give { a: \"A\" }\n]\nr = words \"pt\"\nr.b = \"late\"\nprint r.b\ns = words \"pt\"\nt2 = copy s\nprint t2.b\nprint r.a\nu = { x: 1, y: 2 }\nprint u.y\n")
+	defer finish(p)
+	said := 0
+	for e in p.errors {
+		if e.id == .Field_Missing {
+			said += 1
+		}
+	}
+	testing.expect_value(t, printed(p), "late\n\nA\n2")
+	testing.expect_value(t, said, 1) // only the copy of the one that never had `b`
+}

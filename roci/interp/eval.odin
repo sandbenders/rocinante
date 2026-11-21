@@ -55,6 +55,9 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 		if k.at.slot != 0 {
 			// a record of the shape the pass found the place in: no names to compare
 			if r, is_record := base.(^Record); is_record && r != nil && r.shape == k.at.shape {
+				if r.unset != 0 && k.at.slot <= 64 && r.unset & (u64(1) << u64(k.at.slot - 1)) != 0 {
+					say_field_missing(it, r, k.name, e.span)
+				}
 				return r.fields[k.at.slot - 1]
 			}
 		}
@@ -81,12 +84,20 @@ eval :: proc(it: ^Interp, e: ^lang.IR) -> Value {
 			for slot, i in k.slots {
 				r.fields[slot - 1] = eval(it, k.values[i])
 			}
+			if it.depth > 0 {
+				r.unset = fields_left_out(len(r.fields), k.slots)
+			}
 			return r
 		}
+		given := make([dynamic]int, 0, len(k.names), context.temp_allocator)
 		for name, i in k.names {
 			if at := field_index(it, shape, name); at >= 0 {
 				r.fields[at] = eval(it, k.values[i])
+				append(&given, at + 1)
 			}
+		}
+		if it.depth > 0 {
+			r.unset = fields_left_out(len(r.fields), given[:])
 		}
 		return r
 	case lang.IR_Unary:
@@ -319,6 +330,9 @@ read_field :: proc(it: ^Interp, base: Value, name: string, at := lang.Span{}) ->
 	}
 	if r := as_record(base); r != nil {
 		if place := field_index(it, r.shape, name); place >= 0 {
+			if r.unset != 0 && place < 64 && r.unset & (u64(1) << u64(place)) != 0 && at.end != 0 {
+				say_field_missing(it, r, name, at)
+			}
 			return r.fields[place]
 		}
 		if at.end != 0 {
@@ -367,6 +381,9 @@ assign_path :: proc(it: ^Interp, base: Value, path: []string, value: Value, firs
 			changed = promote(it, changed)
 		}
 		b.fields[at] = changed
+		if at < 64 {
+			b.unset &= ~(u64(1) << u64(at))
+		}
 		b.stamp = next_write(it)
 		return base
 	case Vec:
@@ -608,11 +625,21 @@ power :: proc(a, b: f64) -> f64 {
 say_field_missing :: proc(it: ^Interp, r: ^Record, name: string, at: lang.Span) {
 	names := make([dynamic]string, context.temp_allocator)
 	nearest := ""
-	for f in it.types.shapes[r.shape].fields {
+	shape_fields := it.types.shapes[r.shape].fields
+	for f, i in shape_fields {
+		// the fields that were never given a value are not ones it has
+		if i < 64 && r.unset & (u64(1) << u64(i)) != 0 {
+			continue
+		}
 		append(&names, f.name)
 	}
-	if len(names) == 0 {
+	if len(shape_fields) == 0 {
 		return // an empty record: there is nothing for it to have, and nothing was made to be read
+	}
+	if len(names) == 0 {
+		// nothing was ever given to it: there is no field to point at
+		fail(it, .Field_Missing, at, name, "none", "", fix_line(it, at, at, lang.span_text(it.src, at)))
+		return
 	}
 	nearest = registry.nearest_choice(name, names[:])
 	hint := ""
@@ -628,4 +655,22 @@ say_field_missing :: proc(it: ^Interp, r: ^Record, name: string, at: lang.Span) 
 		read = instead
 	}
 	fail(it, .Field_Missing, at, name, strings.join(names[:], ", ", context.temp_allocator), hint, fix_line(it, at, at, read))
+}
+
+// The fields of a record of `count` fields that a `{ }` left out, as the bits of `unset`: the places (counted from 1) it gave are not.
+@(private)
+fields_left_out :: proc(count: int, given: []int) -> u64 {
+	if len(given) >= count {
+		return 0 // the common case: every field was written
+	}
+	left: u64
+	for i in 0 ..< min(count, 64) {
+		left |= u64(1) << u64(i)
+	}
+	for place in given {
+		if place >= 1 && place <= 64 {
+			left &= ~(u64(1) << u64(place - 1))
+		}
+	}
+	return left
 }

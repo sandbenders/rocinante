@@ -132,7 +132,7 @@ move_shell :: proc(p: ^Interp, v: Value, moved: ^map[rawptr]rawptr, work: ^[dyna
 			return (^Record)(to)
 		}
 		r := new(Record, p.long)
-		r^ = {shape = x.shape, long = x.long, class = x.class, stamp = x.stamp}
+		r^ = {shape = x.shape, long = x.long, class = x.class, stamp = x.stamp, unset = x.unset}
 		moved[x] = r
 		r.fields = make([]Value, len(x.fields), p.long)
 		append(work, Container{from = x, to = r})

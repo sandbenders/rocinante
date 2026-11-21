@@ -29,7 +29,7 @@ ball.pos = ball.pos + ball.vel
 circle at ball.pos radius ball.radius
 ```
 
-A field that is given a value anywhere in the sketch belongs to every record made in the same place, and reads 0 until it is set. A field nothing ever sets is a typo, and rocinante says which fields there are.
+A field that is given a value anywhere in the sketch belongs to every record made in the same place, and reads 0 until it is set. A field nothing ever sets is a typo, and rocinante says which fields there are. A record that a taught verb gives with a field left out says so, once, the first time that field is read, because there it is usually a forgotten one (a language that lacks a word); records written in plain sight, such as a list of shapes of different fields, read 0 without a word.
 
 ## Many things: a list of records
 
