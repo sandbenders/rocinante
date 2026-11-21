@@ -28,8 +28,8 @@ Problem :: struct {
 Options :: struct {
 	sketch: string, // the sketch's name, for the header and the log
 	source: string, // the file it was written in, for the comments that say which line
-	target: string, // "ios" or "android" for a program an app runs, "macos" for one that is packaged as an app; empty for this computer
-	app_id: string, // with target "macos": the app's id, which names the folder it keeps what it writes in
+	target: string, // "ios" or "android" for a program an app runs, "macos" or "linux" for one that is packaged as an app; empty for this computer
+	app_id: string, // with target "macos" or "linux": the app's id, which names the folder it keeps what it writes in
 }
 
 Result :: struct {
@@ -200,7 +200,7 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 	fmt.sbprintf(&out, "#+feature dynamic-literals\npackage sketch\n\nimport \"core:fmt\"\nimport \"core:math\"\nimport \"rocinante:roci\"\nimport \"rocinante:roci/collide\"\nimport \"rocinante:roci/data\"\nimport \"rocinante:roci/maths\"\nimport \"rocinante:roci/rt\"\n")
 	switch options.target {
 	case "":
-	case "macos":
+	case "macos", "linux":
 		fmt.sbprintf(&out, "import sdl \"vendor:sdl3\"\n")
 	case:
 		fmt.sbprintf(&out, "import \"base:runtime\"\nimport \"core:c\"\nimport sdl \"vendor:sdl3\"\n")
@@ -230,9 +230,9 @@ generate :: proc(program: ^lang.IR_Program, src: lang.Source, options: Options, 
 		fmt.sbprintf(&out, "sketch_main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n\n", options.sketch, ODIN_VERSION_PIN, hook)
 		fmt.sbprintf(&out, "@(export, link_name = \"rocinante_main\")\nrocinante_main :: proc \"c\" (argc: c.int, argv: [^]cstring) -> c.int {{\n\tcontext = runtime.default_context()\n\tfolder := string(sdl.GetAndroidInternalStoragePath())\n\trt.use_home(folder, folder)\n\tsketch_main()\n\treturn 0\n}}\n\n")
 		fmt.sbprintf(&out, "// SDL's activity never goes through the NDK's native_app_glue, which wants this name defined.\n@(export, link_name = \"android_main\")\nandroid_main :: proc \"c\" (app: rawptr) {{}}\n")
-	case "macos":
-		// A packaged Mac app starts with no folder of its own: the assets are in the bundle, and what the sketch writes
-		// goes in the app's folder under Application Support, which is where the program works from
+	case "macos", "linux":
+		// A packaged app starts with no folder of its own: the assets are beside the program (in the bundle of a Mac app), and what the sketch writes
+		// goes in the app's folder (Application Support on a Mac, ~/.local/share on Linux), which is where the program works from
 		fmt.sbprintf(&out, "main :: proc() {{\n\trt.enter_app(string(sdl.GetBasePath()), string(cstring(sdl.GetPrefPath(\"\", %q))))\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.app_id, options.sketch, ODIN_VERSION_PIN, hook)
 	case:
 		fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, hook)

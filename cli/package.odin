@@ -5,7 +5,7 @@
 // the sketch does not say (the app's name, id and version, kept in `sketch.toml` so it asks once), and it refuses a sketch that
 // has errors, as `roci check` would.
 //
-// Only the Mac is written so far (`package_macos.odin`).
+// The Mac (`package_macos.odin`) and Linux (`package_linux_app.odin`) are written so far.
 package main
 
 import "../roci/folder"
@@ -15,7 +15,8 @@ import "core:os"
 import "core:strings"
 import "core:time"
 
-PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--version text] [--icon file] [--sign identity] [--notarize profile] [--yes]
+PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--version text] [--icon file] [--sign identity] [--notarize profile]
+                            [--format list] [--maintainer text] [--description text] [--category text] [--yes]
 
   target      the system the app is for: linux, freebsd, openbsd, macos, windows, android or ios. It is
               built on this computer only if this computer can build it (roci doctor says)
@@ -27,6 +28,11 @@ PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--ve
   --sign      on a Mac, the identity to sign the app with (else a Developer ID Application one found in
               the keychain, else the app is signed only so it runs here)
   --notarize  on a Mac, the keychain profile notarytool was given, to have Apple check the app
+  --format    on Linux, what to make, separated by commas: tar (a .tar.gz, the default), deb, arch (an Arch
+              package), appimage, or all. Kept in sketch.toml
+  --maintainer  on Linux, who looks after the package, as Name <address> (a .deb and an Arch package say it)
+  --description on Linux, one line about the app, for package managers and menus
+  --category  on Linux, the menu categories a desktop file puts the app in, such as Game; or Graphics;Music;
   --yes       do not ask: take what is in sketch.toml and the defaults
 
 The result is in the sketch's output/package folder.`
@@ -42,6 +48,10 @@ Package_Args :: struct {
 	icon:    string,
 	sign:    string,
 	notary:  string,
+	format:  string,
+	maintainer: string,
+	description: string,
+	category: string,
 	yes:     bool,
 }
 
@@ -53,7 +63,7 @@ parse_package_args :: proc(args: []string) -> Package_Args {
 		switch arg {
 		case "--yes":
 			result.yes = true
-		case "--name", "--id", "--version", "--icon", "--sign", "--notarize":
+		case "--name", "--id", "--version", "--icon", "--sign", "--notarize", "--format", "--maintainer", "--description", "--category":
 			if i + 1 >= len(args) {
 				return Package_Args{ok = false, bad = arg}
 			}
@@ -66,6 +76,10 @@ parse_package_args :: proc(args: []string) -> Package_Args {
 			case "--icon":      result.icon = value
 			case "--sign":      result.sign = value
 			case "--notarize":  result.notary = value
+			case "--format":     result.format = value
+			case "--maintainer": result.maintainer = value
+			case "--description": result.description = value
+			case "--category":   result.category = value
 			}
 		case:
 			if strings.has_prefix(arg, "-") {
@@ -112,6 +126,18 @@ resolve_settings :: proc(current: folder.Settings, a: Package_Args, sketch_folde
 	if a.notary != "" {
 		r.settings.notary = a.notary
 	}
+	if a.format != "" {
+		r.settings.formats = a.format
+	}
+	if a.maintainer != "" {
+		r.settings.maintainer = a.maintainer
+	}
+	if a.description != "" {
+		r.settings.description = a.description
+	}
+	if a.category != "" {
+		r.settings.desktop = a.category
+	}
 	return r
 }
 
@@ -124,6 +150,65 @@ settings_problems_apple :: proc(s: folder.Settings, sketch_folder: string) -> []
 		}
 	}
 	return found[:]
+}
+
+
+// Finds what the app is called, its id and its version: from the options, else `sketch.toml`, else a default, asking on a
+// terminal about what nothing chose, and keeps the answers in `sketch.toml` so they are asked once. False, with what is wrong
+// said in `err`, when they do not make a package.
+ask_settings :: proc(a: Package_Args, sketch_folder: string, err: ^strings.Builder) -> (settings: folder.Settings, ok: bool) {
+	current, problems := folder.read_settings(sketch_folder, context.temp_allocator)
+	for problem in problems {
+		fmt.eprintfln("%s %s", term.err("rocinante:", .Yellow), term.err(problem, .Yellow))
+	}
+	resolved := resolve_settings(current, a, sketch_folder)
+	settings = resolved.settings
+	if term.in_terminal() && !a.yes {
+		if resolved.defaulted.name {
+			for {
+				settings.name = ask("What is the app called?", settings.name)
+				if folder.check_name(settings.name) == "" {
+					break
+				}
+				fmt.println(term.out(folder.check_name(settings.name), .Yellow))
+			}
+			if resolved.defaulted.id {
+				settings.id = folder.default_id(settings.name, context.temp_allocator)
+			}
+		}
+		if resolved.defaulted.id {
+			for {
+				settings.id = ask("Its id (a domain you own, backwards, like org.example.wildvex)?", settings.id)
+				if folder.check_id(settings.id) == "" {
+					break
+				}
+				fmt.println(term.out(folder.check_id(settings.id), .Yellow))
+			}
+		}
+		if resolved.defaulted.version {
+			for {
+				settings.version = ask("Its version (up to three numbers, or date)?", settings.version)
+				if version_problem(settings.version) == "" {
+					break
+				}
+				fmt.println(term.out(version_problem(settings.version), .Yellow))
+			}
+		}
+	}
+	if issues := settings_problems_apple(settings, sketch_folder); len(issues) > 0 {
+		for issue in issues {
+			fmt.sbprintf(err, "%s\n", issue)
+		}
+		fmt.sbprintf(err, "Change it in %s/%s, or with the options of `roci package` (roci package --help).\n", sketch_folder, folder.SETTINGS_FILE)
+		return {}, false
+	}
+	// kept at once, so the answers are asked once; the build number moves only when an app was made
+	if !current.found || settings != current {
+		if !folder.write_settings(sketch_folder, settings) {
+			fmt.eprintfln("%s %s", term.err("rocinante:", .Yellow), term.err(fmt.tprintf("I could not write %s/%s.", sketch_folder, folder.SETTINGS_FILE), .Yellow))
+		}
+	}
+	return settings, true
 }
 
 // The version `date` stands for is always fit; any other is checked.
@@ -197,10 +282,12 @@ run_package :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	switch target.name {
 	case "macos":
 		return package_macos(a, out, err)
+	case "linux":
+		return package_linux(a, out, err)
 	case "ios", "android":
 		fmt.sbprintf(err, "`roci package %s` is not written yet. `roci run --compile --target %s` puts a sketch on a phone that is plugged in.\n", target.name, target.name)
 	case:
-		fmt.sbprintf(err, "`roci package %s` is not written yet: the Mac is the first system it makes apps for.\n", target.name)
+		fmt.sbprintf(err, "`roci package %s` is not written yet: the Mac and Linux are the systems it makes apps for so far.\n", target.name)
 	}
 	return 2
 }

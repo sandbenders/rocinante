@@ -150,6 +150,17 @@ run_doctor :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		sdl, have_sdl := probe("pkg-config", "--modversion", "sdl3")
 		tool_line(out, "SDL3", sdl, have_sdl, "Install SDL3 and SDL3_ttf with your package manager, for example: sudo pacman -S sdl3 sdl3_ttf")
 		ok = have_sdl && ok
+		when ODIN_OS == .Linux {
+			// only `roci package linux` needs these, and only for the formats asked for: they do not fail the report
+			needed := [?][3]string{{"tar", "--version", "tar"}, {"readelf", "--version", "binutils"}, {"ar", "--version", "binutils"}, {"cmake", "--version", "cmake"}, {"git", "--version", "git"}, {"curl", "--version", "curl"}, {"zstd", "--version", "zstd"}, {"mksquashfs", "-version", "squashfs-tools"}}
+			missing := make([dynamic]string, context.temp_allocator)
+			for tool in needed {
+				if _, here := probe(tool[0], tool[1]); !here {
+					append(&missing, tool[2])
+				}
+			}
+			tool_line(out, "tar, binutils, cmake, git, curl, zstd and squashfs-tools, to package a Linux app", "all there" if len(missing) == 0 else "", len(missing) == 0, fmt.tprintf("Install %s with your package manager, for example: sudo pacman -S binutils tar cmake git curl zstd squashfs-tools", strings.join(missing[:], ", ", context.temp_allocator)))
+		}
 	}
 	root, found := find_source()
 	tool_line(out, "the source of rocinante", root, found, "A compiled sketch is built together with the core: keep the folder with `roci` and `ODIN_VERSION` next to this program, or set ROCI_SOURCE to it.")

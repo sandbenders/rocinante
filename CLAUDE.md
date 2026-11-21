@@ -53,6 +53,7 @@ odin run cli -- fmt [file or folder]          # write sketches in the house styl
 odin run cli -- man [word]                    # how a verb or statement is written, made from the registry
 odin run cli -- test [folder or file] [--accept [--frames N] [--seed N]]   # run the checks of a sketch and compare its picture with tests/snapshot-1.png; --accept stores the picture
 odin run cli -- package macos [folder] [--name n --id id --version v --icon file --sign identity --notarize profile --yes]   # make a Mac app of a sketch in output/package/macos: asks name, id and version once (sketch.toml), builds the libraries it carries (tools/package-libs.sh macos, once), compiles, bundles, signs, tries it and zips it
+odin run cli -- package linux [folder] [--format tar,deb,arch,appimage|all --maintainer "Name <address>" --description text --category Game; --name n --id id --version v --icon file --yes]   # make a Linux app of a sketch in output/package/linux: a .tar.gz, a .deb, an Arch package or an AppImage (by --format, the plain tar by default); only on Linux, and tried in a container from a Mac with `docker run --platform linux/amd64 rocinante-linux` (see docs/building.md)
 odin run cli -- new <name> | init | add <file>   # a sketch folder, its files in this folder, a file into assets/
 odin run cli -- get <git address> [--as name] | update [name]   # copy a library into libs/ from git, and fetch newer copies (run in a sketch folder)
 ROCI_UPDATE_TREES=1 odin test roci/interp      # write tests/ui-tree/*.txt again: the screen-reader trees of the examples that have widgets (review them like code)
@@ -374,6 +375,7 @@ Taken in this order (decided 2026-11-16):
 
 ### Phase 8: Packaging
 - `roci package` for all seven targets (generate, build, bundle, sign where needed); `roci doctor` for every target.
+  - **Linux next (2026-11-21):** `roci package linux` makes a `.tar.gz`, a `.deb`, an Arch package and an AppImage (`--format`), tried in a container; see the code map entry in `docs/design.md` for what was and was not tried.
   - **Started 2026-11-20 with the Mac**: `roci package macos` and `sketch.toml` are built (app, ad-hoc or Developer ID signature, notarisation, zip; `docs/design.md`'s code map entry for packaging says what was found); untried: a Developer ID and notarisation, another Mac, other processors. The other five targets are next.
 - `sketch.toml` (§4.9): the packaging questions, the version schemes checked against each store's limits, and the build number. Apple's version rules are read from its documentation first.
 - Mobile behaviour for multiple windows, touch-first defaults, orientation.

@@ -14,6 +14,12 @@
 //     [macos]
 //     identity = "Developer ID Application: Your Name (TEAMID)"
 //     notary-profile = "roci-notary"
+//
+//     [linux]
+//     maintainer = "Your Name <you@example.org>"
+//     description = "A short line about the app"
+//     category = "Graphics;"
+//     formats = "tar, deb, arch, appimage"
 package folder
 
 import "../toml"
@@ -35,6 +41,10 @@ Settings :: struct {
 	identity: string, // [macos] the signing identity; empty for an ad-hoc signature
 	notary:   string, // [macos] the keychain profile `notarytool` was given
 	category: string, // [macos] the App Store category, such as public.app-category.graphics-design
+	maintainer:  string, // [linux] who looks after the package: `Name <address>`
+	description: string, // [linux] one line about the app, for package managers and menus
+	desktop:     string, // [linux] the menu categories the desktop files it in, as the desktop entry spec writes them: Graphics;
+	formats:     string, // [linux] what to make, separated by commas: tar, deb, arch, appimage
 	found:    bool,   // there was a sketch.toml
 }
 
@@ -47,6 +57,10 @@ destroy_settings :: proc(s: ^Settings, allocator := context.allocator) {
 	delete(s.identity, allocator)
 	delete(s.notary, allocator)
 	delete(s.category, allocator)
+	delete(s.maintainer, allocator)
+	delete(s.description, allocator)
+	delete(s.desktop, allocator)
+	delete(s.formats, allocator)
 	s^ = {}
 }
 
@@ -102,6 +116,10 @@ read_settings :: proc(root: string, allocator := context.allocator) -> (s: Setti
 	s.identity = text(&doc, "macos", "identity", &found, allocator)
 	s.notary = text(&doc, "macos", "notary-profile", &found, allocator)
 	s.category = text(&doc, "macos", "category", &found, allocator)
+	s.maintainer = text(&doc, "linux", "maintainer", &found, allocator)
+	s.description = text(&doc, "linux", "description", &found, allocator)
+	s.desktop = text(&doc, "linux", "category", &found, allocator)
+	s.formats = text(&doc, "linux", "formats", &found, allocator)
 	if len(found) > 0 {
 		problems = make([]string, len(found), allocator)
 		for line, i in found {
@@ -133,6 +151,10 @@ write_settings :: proc(root: string, s: Settings) -> bool {
 	put(&doc, "macos", "identity", s.identity)
 	put(&doc, "macos", "notary-profile", s.notary)
 	put(&doc, "macos", "category", s.category)
+	put(&doc, "linux", "maintainer", s.maintainer)
+	put(&doc, "linux", "description", s.description)
+	put(&doc, "linux", "category", s.desktop)
+	put(&doc, "linux", "formats", s.formats)
 	text := toml.write(&doc, context.temp_allocator)
 	return os.write_entire_file(path, transmute([]byte)text) == nil
 }

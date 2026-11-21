@@ -1,0 +1,6 @@
+# What a docker build does not need to be sent: the caches and builds of this computer (a Mac's are no use in a Linux image)
+.git
+.cache
+output
+artifacts
+**/artifacts

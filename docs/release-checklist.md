@@ -28,6 +28,20 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [ ] The app on another Mac (copy the zip, no rocinante installed) opens after Control-click, Open, and asks for the microphone with the sentence in its Info.plist when the sketch uses `mic`.
 - [ ] After a change to SDL or SDL_ttf in `tools/package-libs.sh`, delete `.cache/package/macos` so the libraries are built again.
 
+## Packaging a Linux app
+
+`roci package linux` is tried by hand on a real Linux computer (the unit tests cover the names, the control files, the desktop entry and what the libraries are read from; a container under emulation checked the files and a run with no window, 2026-11-21). On CachyOS, and again on an older Debian or Ubuntu with the packages of an older build (see the glibc note it prints):
+
+- [ ] `roci package linux examples/circle --yes --format all --maintainer "Name <you@example.org>"` makes the four files in `output/package/linux`, and says which glibc and libstdc++ they need.
+- [ ] The `.tar.gz` unpacked on another computer (no rocinante, no SDL) opens a window with its program, with the picture drawn; Wayland and X11 both.
+- [ ] `sudo pacman -U` the Arch package: the app is in the menu with its icon, `circle` starts it, `pacman -Qk circle` is clean and `sudo pacman -R circle` takes it away.
+- [ ] `sudo apt install ./circle_1.0.0_amd64.deb` on a Debian or Ubuntu new enough for its `libc6` dependency: the app is in the menu with its icon, `circle` starts it, `apt remove circle` takes it away.
+- [ ] The AppImage: `chmod +x` and run it (with FUSE), and with `APPIMAGE_EXTRACT_AND_RUN=1` without; it opens a window; `--appimage-extract` shows the same files as the tar.
+- [ ] A sketch with assets, fonts, sounds and a vault (a copy of a game) shows its font and plays its sounds in each of the four, and its `vault.key` and `memory.toml` appear in `~/.local/share/<its id>` the first time.
+- [ ] A sketch that uses `effect "x.hlsl"` or `shade` (so shaderc and SPIRV-Cross are used at run time) works in the tar and the AppImage with none of them installed, and in the Arch package with its dependencies.
+- [ ] `roci package linux --format deb --maintainer oops` is refused with a message about the maintainer; `--format rpm` says the formats; a missing tool (`mksquashfs`) is named with how to get it.
+- [ ] `tools/package-linux-docker.sh` from a Mac makes the same files from a sketch folder.
+
 ## Linux and the BSDs: everything to try (CachyOS, FreeBSD, OpenBSD)
 
 These systems were last tried in full before text, shaders, canvases, export and the whole user interface. Go through all of it on each, and write down what differs in the results table's notes. Everything in the first list must pass before anything else is worth trying.

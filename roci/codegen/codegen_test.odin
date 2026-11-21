@@ -416,6 +416,11 @@ test_a_program_for_a_phone_ends_in_the_entry_its_app_runs :: proc(t: ^testing.T)
 	testing.expect(t, !strings.contains(mac.source, "import \"base:runtime\""), "only what a Mac app uses is imported")
 	testing.expect(t, strings.contains(mac.source, "main :: proc() {\n\trt.enter_app(string(sdl.GetBasePath()), string(cstring(sdl.GetPrefPath(\"\", \"org.example.test\"))))\n\trun := rt.read_run("))
 	testing.expect(t, !strings.contains(mac.source, "sdl_main"), "the system starts a Mac app the ordinary way")
+
+	// a packaged Linux app starts the same way: its assets beside the program, what it writes in the app's folder under the user's data
+	linux := generate(&checked.program, src, Options{sketch = "test", source = "test.roci", target = "linux", app_id = "org.example.test"}, context.temp_allocator)
+	testing.expect_value(t, len(linux.problems), 0)
+	testing.expect_value(t, linux.source, strings.clone(mac.source, context.temp_allocator))
 }
 
 @(test)

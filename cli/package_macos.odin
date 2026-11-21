@@ -59,56 +59,9 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 
 	// ---- what the app is called ----
-	current, problems := folder.read_settings(sketch_folder, context.temp_allocator)
-	for problem in problems {
-		fmt.eprintfln("%s %s", term.err("rocinante:", .Yellow), term.err(problem, .Yellow))
-	}
-	resolved := resolve_settings(current, a, sketch_folder)
-	settings := resolved.settings
-	if term.in_terminal() && !a.yes {
-		if resolved.defaulted.name {
-			for {
-				settings.name = ask("What is the app called?", settings.name)
-				if folder.check_name(settings.name) == "" {
-					break
-				}
-				fmt.println(term.out(folder.check_name(settings.name), .Yellow))
-			}
-			if resolved.defaulted.id {
-				settings.id = folder.default_id(settings.name, context.temp_allocator)
-			}
-		}
-		if resolved.defaulted.id {
-			for {
-				settings.id = ask("Its id (a domain you own, backwards, like org.example.wildvex)?", settings.id)
-				if folder.check_id(settings.id) == "" {
-					break
-				}
-				fmt.println(term.out(folder.check_id(settings.id), .Yellow))
-			}
-		}
-		if resolved.defaulted.version {
-			for {
-				settings.version = ask("Its version (up to three numbers, or date)?", settings.version)
-				if version_problem(settings.version) == "" {
-					break
-				}
-				fmt.println(term.out(version_problem(settings.version), .Yellow))
-			}
-		}
-	}
-	if issues := settings_problems_apple(settings, sketch_folder); len(issues) > 0 {
-		for issue in issues {
-			fmt.sbprintf(err, "%s\n", issue)
-		}
-		fmt.sbprintf(err, "Change it in %s/%s, or with the options of `roci package` (roci package --help).\n", sketch_folder, folder.SETTINGS_FILE)
+	settings, asked := ask_settings(a, sketch_folder, err)
+	if !asked {
 		return 2
-	}
-	// kept at once, so the answers are asked once; the build number moves only when an app was made
-	if !current.found || settings != current {
-		if !folder.write_settings(sketch_folder, settings) {
-			fmt.eprintfln("%s %s", term.err("rocinante:", .Yellow), term.err(fmt.tprintf("I could not write %s/%s.", sketch_folder, folder.SETTINGS_FILE), .Yellow))
-		}
 	}
 	now := time.now()
 	version := version_for_app(settings.version, now)
