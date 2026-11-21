@@ -17,7 +17,9 @@ test_a_field_a_record_was_made_without_is_said_once_when_it_is_read :: proc(t: ^
 	forget_said()
 	defer forget_said()
 	defer forget_source()
-	use_source("print r.b\nprint r.b\n", "t.roci", []Part{{name = "t.roci", start = 0, first_line = 1}})
+	parts := make([]Part, 1, context.temp_allocator)
+	parts[0] = Part{name = "t.roci", start = 0, first_line = 1}
+	use_source("print r.b\nprint r.b\n", "t.roci", parts)
 	site := Site{start = 6, end = 9, name = "b", fields = "a,b"}
 	other := Site{start = 16, end = 19, name = "b", fields = "a,b"}
 	whole := Pair{a = 1, b = 2}
@@ -41,7 +43,9 @@ test_a_constant_not_yet_made_is_said_once_and_still_read :: proc(t: ^testing.T) 
 	forget_said()
 	defer forget_said()
 	defer forget_source()
-	use_source("learn v [ give HELLO ]\n", "t.roci", []Part{{name = "t.roci", start = 0, first_line = 1}})
+	parts := make([]Part, 1, context.temp_allocator)
+	parts[0] = Part{name = "t.roci", start = 0, first_line = 1}
+	use_source("learn v [ give HELLO ]\n", "t.roci", parts)
 	site := Site{start = 16, end = 21, name = "HELLO"}
 	testing.expect(t, constant_made(true, &site))
 	testing.expect(t, said == nil || !said[fmt.tprintf("warning %d at %d", int(lang.Message_Id.Constant_Not_Made), 16)])
