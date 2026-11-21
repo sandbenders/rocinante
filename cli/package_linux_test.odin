@@ -69,8 +69,8 @@ test_a_desktop_entry_and_its_categories :: proc(t: ^testing.T) {
 	testing.expect_value(t, deb_section("Graphics;"), "graphics")
 	testing.expect_value(t, deb_section("AudioVideo;Audio;"), "sound")
 	testing.expect_value(t, deb_section("Utility;"), "misc")
-	entry := desktop_entry(Desktop_Info{name = "Wild Vex", comment = "A game", exec = "wild-vex", icon = "wild-vex", categories = "Game", wm_class = "wild-vex"})
-	testing.expect_value(t, entry, "[Desktop Entry]\nType=Application\nVersion=1.0\nName=Wild Vex\nComment=A game\nExec=wild-vex\nIcon=wild-vex\nCategories=Game;\nTerminal=false\nStartupNotify=true\nStartupWMClass=wild-vex\n")
+	entry := desktop_entry(Desktop_Info{name = "Wild Vex", comment = "A game", exec = "wild-vex", icon = "wild-vex", categories = "Game", wm_class = "org.example.wildvex"})
+	testing.expect_value(t, entry, "[Desktop Entry]\nType=Application\nVersion=1.0\nName=Wild Vex\nComment=A game\nExec=wild-vex\nIcon=wild-vex\nCategories=Game;\nTerminal=false\nStartupNotify=true\nStartupWMClass=org.example.wildvex\n")
 	// no comment, no icon and no class say nothing; a line break in a name cannot make a line of its own
 	bare := desktop_entry(Desktop_Info{name = "A\nB", exec = "x"})
 	testing.expect(t, !strings.contains(bare, "Comment") && !strings.contains(bare, "Icon") && !strings.contains(bare, "StartupWMClass"))

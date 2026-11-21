@@ -136,7 +136,7 @@ Desktop_Info :: struct {
 	exec:       string, // the command: the program's name, or its path
 	icon:       string, // the icon's name without its extension, or a path
 	categories: string,
-	wm_class:   string, // the program's name, so the window and the launcher are one icon
+	wm_class:   string, // the app's id, which the program gives its windows, so the window and the launcher are one icon
 }
 
 desktop_entry :: proc(info: Desktop_Info, allocator := context.temp_allocator) -> string {

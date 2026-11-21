@@ -168,7 +168,7 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 
 	// ---- the formats ----
 	made := make([dynamic][2]string, context.temp_allocator) // each file and what it is
-	desktop := Desktop_Info{name = settings.name, comment = description, icon = names.pkg, categories = categories, wm_class = names.executable}
+	desktop := Desktop_Info{name = settings.name, comment = description, icon = names.pkg, categories = categories, wm_class = settings.id}
 	for format in formats {
 		switch format {
 		case .Tar:

@@ -253,8 +253,10 @@ generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Opti
 		fmt.sbprintf(&out, "// SDL's activity never goes through the NDK's native_app_glue, which wants this name defined.\n@(export, link_name = \"android_main\")\nandroid_main :: proc \"c\" (app: rawptr) {{}}\n")
 	case "macos", "linux":
 		// A packaged app starts with no folder of its own: the assets are beside the program (in the bundle of a Mac app), and what the sketch writes
-		// goes in the app's folder (Application Support on a Mac, ~/.local/share on Linux), which is where the program works from
-		fmt.sbprintf(&out, "main :: proc() {{\n\trt.enter_app(string(sdl.GetBasePath()), string(cstring(sdl.GetPrefPath(\"\", %q))))\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.app_id, options.sketch, ODIN_VERSION_PIN, hook)
+		// goes in the app's folder (Application Support on a Mac, ~/.local/share on Linux), which is where the program works from.
+		// The id is given to SDL before it starts, so a Wayland or X11 desktop matches the window to the app's desktop file and icon
+		// (with none, SDL names the window after the program)
+		fmt.sbprintf(&out, "main :: proc() {{\n\t_ = sdl.SetAppMetadataProperty(sdl.PROP_APP_METADATA_IDENTIFIER_STRING, %q)\n\trt.enter_app(string(sdl.GetBasePath()), string(cstring(sdl.GetPrefPath(\"\", %q))))\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.app_id, options.app_id, options.sketch, ODIN_VERSION_PIN, hook)
 	case:
 		fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, hook)
 	}
