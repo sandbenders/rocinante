@@ -40,3 +40,21 @@ test_system_name_is_a_known_lowercase_word :: proc(t: ^testing.T) {
 		testing.expect(t, r >= 'a' && r <= 'z')
 	}
 }
+
+@(test)
+test_a_locale_is_written_as_a_language_code :: proc(t: ^testing.T) {
+	for want in ([?][3]string{{"en", "", "en"}, {"pt", "BR", "pt-BR"}, {"ja", "JP", "ja-JP"}, {"", "US", ""}, {"", "", ""}}) {
+		code := locale_code(want[0], want[1])
+		defer delete(code)
+		testing.expect_value(t, code, want[2])
+	}
+}
+
+@(test)
+test_the_preferred_language_is_a_code_or_nothing :: proc(t: ^testing.T) {
+	code := preferred_language()
+	defer delete(code)
+	for r in code {
+		testing.expect(t, (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '-' || r == '_', "letters and a hyphen")
+	}
+}

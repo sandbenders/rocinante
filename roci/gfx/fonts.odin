@@ -34,6 +34,7 @@ Face :: struct {
 	data:  []u8, // kept alive for as long as the face is open
 	io:    ^sdl.IOStream,
 	base:  ^ttf.Font,
+	stack: []u16, // for a face made of several (`font "Aileron, NotoSansJP"`): the faces after the first, which draw the characters it has not
 }
 
 Font_Key :: struct {
@@ -106,11 +107,14 @@ fonts_stop :: proc() {
 	delete(fonts.opened)
 	for face in fonts.faces {
 		ttf.CloseFont(face.base)
-		sdl.CloseIO(face.io)
+		if face.io != nil {
+			sdl.CloseIO(face.io)
+		}
 		if face.data != nil && raw_data(face.data) != raw_data(INTER_REGULAR) && raw_data(face.data) != raw_data(INTER_BOLD) {
 			delete(face.data)
 		}
 		delete(face.name)
+		delete(face.stack)
 	}
 	for fallback in fonts.fallbacks {
 		ttf.CloseFont(fallback)
@@ -170,6 +174,35 @@ add_face :: proc(name: string, bytes: []u8, index := 0) -> (face: u16, ok: bool)
 	return u16(len(fonts.faces) - 1), true
 }
 
+// Makes a face of several faces that are there: it is drawn with the first, and a character the first has not comes from the
+// next that has it, then the system's fallbacks. It is known by `name`. Gives false when there are fewer than two, or one is not a face.
+add_face_stack :: proc(name: string, members: []string) -> (face: u16, ok: bool) {
+	context.allocator = runtime.heap_allocator()
+	if len(members) < 2 || !fonts_start() {
+		return 0, false
+	}
+	numbers := make([]u16, len(members))
+	for member, i in members {
+		number, found := find_face(member)
+		if !found {
+			delete(numbers)
+			return 0, false
+		}
+		numbers[i] = number
+	}
+	first := fonts.faces[numbers[0]]
+	base := ttf.CopyFont(first.base)
+	if base == nil {
+		delete(numbers)
+		return 0, false
+	}
+	rest := make([]u16, len(numbers) - 1)
+	copy(rest, numbers[1:])
+	delete(numbers)
+	append(&fonts.faces, Face{name = strings.clone(name), index = first.index, base = base, stack = rest})
+	return u16(len(fonts.faces) - 1), true
+}
+
 // The number of the face with this name, or false. Names compare as written.
 find_face :: proc(name: string) -> (face: u16, ok: bool) {
 	if !fonts_start() {
@@ -201,6 +234,19 @@ font_for :: proc(face: u16, pixels: f32, align: Align, leading: f32 = 0) -> ^ttf
 	ttf.SetFontWrapAlignment(font, ttf.HorizontalAlignment(int(align)))
 	if leading > 0 {
 		ttf.SetFontLineSkip(font, i32(max(leading * max(pixels, 1), 1) + 0.5))
+	}
+	// the other faces of a stack come first, in the order they were named, then the system's
+	for member in fonts.faces[face].stack {
+		extra := ttf.CopyFont(fonts.faces[member].base)
+		if extra == nil {
+			continue
+		}
+		ttf.SetFontSize(extra, max(pixels, 1))
+		if ttf.AddFallbackFont(font, extra) {
+			append(&fonts.fallbacks, extra)
+		} else {
+			ttf.CloseFont(extra)
+		}
 	}
 	add_fallbacks(font, max(pixels, 1))
 	fonts.opened[key] = font

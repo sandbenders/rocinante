@@ -146,6 +146,18 @@ ensure_font :: proc(name: string) -> bool {
 	if said[strings.concatenate({"font ", name}, context.temp_allocator)] {
 		return false
 	}
+	if strings.contains_rune(name, ',') {
+		// several fonts, the first drawing and the others standing in for what it lacks
+		names := strings.split(name, ",", context.temp_allocator)
+		for &part in names {
+			part = strings.trim_space(part)
+			if part == "" || !ensure_font(part) {
+				say_once(strings.concatenate({"font ", name}, context.temp_allocator), fmt.tprintf("I could not find every font of `%s`.", name))
+				return false
+			}
+		}
+		return roci.add_font_stack(name, names)
+	}
 	for extension in FONT_EXTENSIONS {
 		wanted := name if extension == "" else strings.concatenate({name, extension}, context.temp_allocator)
 		path, status, _ := folder.find_asset(ASSETS_ROOT, wanted, context.temp_allocator)

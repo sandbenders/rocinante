@@ -1,0 +1,6 @@
+ENGLISH = { hello: "Hello" }
+PORTUGUESE = { hello: "Olá" }
+words = ENGLISH
+if language is "pt-BR" [ words = PORTUGUESE ]
+font "Inter Bold" size 40
+text words.hello at 60 100

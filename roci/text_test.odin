@@ -117,3 +117,27 @@ test_the_c_functions_for_text_draw_and_measure :: proc(t: ^testing.T) {
 	size := abi_measure("from c")
 	testing.expect(t, size.x > 0 && size.y > 0)
 }
+
+@(test)
+test_a_font_of_several_is_drawn_in_the_first_and_names_must_all_be_fonts :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	// two copies of the built-in face stand for two fonts of a sketch
+	testing.expect(t, add_font("First", gfx.INTER_REGULAR))
+	testing.expect(t, add_font("Second", gfx.INTER_BOLD))
+	testing.expect(t, add_font_stack("First, Second", {"First", "Second"}))
+	testing.expect(t, has_font("First, Second"))
+	testing.expect(t, font("First, Second", 24))
+	text("hello", 10, 10)
+	stacked := gfx.command_at(&the.windows[0].list, 0).style.font
+	first, _ := gfx.find_face("First")
+	testing.expect(t, stacked != first, "the stack is a face of its own")
+	// it measures as its first font does
+	single := measure("hello")
+	testing.expect(t, font("First", 24))
+	testing.expect_value(t, measure("hello"), single)
+	// fewer than two names, or one that is not a font, make none
+	testing.expect(t, !add_font_stack("Alone", {"First"}))
+	testing.expect(t, !add_font_stack("Lost, First", {"Lost", "First"}))
+	testing.expect(t, !has_font("Alone"))
+}

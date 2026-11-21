@@ -96,6 +96,7 @@ Abi_Insets :: struct {
 
 abi_screens_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_platform", typeid_of(type_of(abi_platform)), "const char *roci_platform(void)", "The system the program runs on, as lowercase text: macos, windows, linux, freebsd, openbsd, ios or android. It stays valid until the next function that gives text back."))
+	append(all, abi_entry("roci_language", typeid_of(type_of(abi_language)), "const char *roci_language(void)", "The language the player prefers, as a code such as en, pt-BR or ja, from the system's own list; empty when the system does not say, and in a headless run. The text stays valid until the next function that gives text back."))
 	append(all, abi_entry("roci_screen_count", typeid_of(type_of(abi_screen_count)), "int roci_screen_count(void)", "How many screens are plugged in. A screen plugged in or out shows at the next frame."))
 	append(all, abi_entry("roci_screen_name", typeid_of(type_of(abi_screen_name)), "const char *roci_screen_name(int index)", "The name of a screen (counting from 0, the main screen first), or an empty text past the last. It stays valid until the next function that gives text back."))
 	append(all, abi_entry("roci_screen_pos", typeid_of(type_of(abi_screen_pos)), "roci_vec2 roci_screen_pos(int index)", "Where a screen's top left corner is on the desktop all the screens share: negative for a screen left of or above the main one."))
@@ -104,4 +105,12 @@ abi_screens_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_screen_refresh", typeid_of(type_of(abi_screen_refresh)), "double roci_screen_refresh(int index)", "Frames a second a screen shows, 0 when the system does not say and past the last screen."))
 	append(all, abi_entry("roci_screen_main", typeid_of(type_of(abi_screen_main)), "int roci_screen_main(int index)", "1 for the main screen, 0 for another one and past the last."))
 	append(all, abi_entry("roci_safe_area", typeid_of(type_of(abi_safe_area)), "roci_insets roci_safe_area(void)", "The safe area of the current window, in its units: how far in from each side the screen is free of a phone's notch, camera, status bar, home bar and rounded corners. All zeros on a desktop and in a headless run. It is read each time, so it follows the phone as it turns."))
+}
+
+// The language the player prefers, as a code: en, pt-BR, ja. Empty when the system does not say, and in a headless run. It stays
+// valid until the next function that gives text back.
+@(export, link_name = "roci_language")
+abi_language :: proc "c" () -> cstring {
+	context = abi_context()
+	return abi_give_text(language_name(context.temp_allocator))
 }

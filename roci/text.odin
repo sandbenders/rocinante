@@ -81,3 +81,10 @@ has_font :: proc(name: string) -> bool {
 	_, ok := gfx.find_face(name)
 	return ok
 }
+
+// Makes a font of several that are there, known from now on by `name`: text is drawn in the first, and a character it has not
+// comes from the next that has it. Gives false when there are fewer than two names or one of them is not a font.
+add_font_stack :: proc(name: string, members: []string) -> bool {
+	_, ok := gfx.add_face_stack(name, members)
+	return ok
+}

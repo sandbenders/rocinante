@@ -160,3 +160,18 @@ on touch down [ vibrate 0.1 ]
 	testing.expect_value(t, last, 0.5)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// `language` is the player's language as a code: empty in a headless run, and what the system lists first when it does.
+@(test)
+test_a_sketch_reads_the_language :: proc(t: ^testing.T) {
+	p := run_text(t, "said = language\nsame = language is \"\"\n", 1)
+	testing.expect_value(t, as_text(global_named(p, "said")), "")
+	testing.expect_value(t, as_bool(global_named(p, "same")), true)
+	finish(p)
+	roci.language_pretend_as("pt-BR")
+	defer roci.language_pretend_as("", false)
+	p2 := run_text(t, "said = language\nportuguese = language is \"pt-BR\"\n", 1)
+	defer finish(p2)
+	testing.expect_value(t, as_text(global_named(p2, "said")), "pt-BR")
+	testing.expect_value(t, as_bool(global_named(p2, "portuguese")), true)
+}

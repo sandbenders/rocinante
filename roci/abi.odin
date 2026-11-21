@@ -1609,3 +1609,19 @@ abi_svg_lost :: proc "c" (svg: c.int) -> c.int {
 	context = abi_context()
 	return c.int(transmute(u8)svg_lost(Svg(svg)))
 }
+
+// Makes a font of several that are there, known from now on by `name`: text is drawn in the first of `members`, a comma-separated
+// list of font names, and a character it has not comes from the next that has it. Gives 1, or 0 when there are fewer than two
+// names or one is not a font that roci_add_font made or the program has built in.
+@(export, link_name = "roci_add_font_stack")
+abi_add_font_stack :: proc "c" (name, members: cstring) -> c.int {
+	context = abi_context()
+	if name == nil || members == nil {
+		return 0
+	}
+	names := strings.split(text_from_abi(members), ",", context.temp_allocator)
+	for &part in names {
+		part = strings.trim_space(part)
+	}
+	return 1 if add_font_stack(text_from_abi(name), names) else 0
+}

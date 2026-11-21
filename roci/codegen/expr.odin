@@ -161,6 +161,7 @@ builtin :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 	case "mic":      return "roci.mic()"
 	case "speakers": return "roci.the_speakers()"
 	case "platform": return "roci.platform_name()"
+	case "language": return "rt.keep(roci.language_name(context.temp_allocator))"
 	case "key":     return "roci.last_key()"
 	case "true":    return "true"
 	case "false":   return "false"

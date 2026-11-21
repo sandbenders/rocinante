@@ -83,3 +83,20 @@ test_a_headless_run_has_no_safe_area_and_a_test_can_give_one :: proc(t: ^testing
 	insets := abi_safe_area()
 	testing.expect_value(t, insets, Abi_Insets{54, 30, 12, 8})
 }
+
+@(test)
+test_the_language_is_empty_when_headless_and_what_a_test_says_otherwise :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	defer abi_text_stop()
+	said := language_name()
+	defer delete(said)
+	testing.expect_value(t, said, "")
+	testing.expect_value(t, string(abi_language()), "")
+	language_pretend_as("ja")
+	defer language_pretend_as("", false)
+	pretended := language_name()
+	defer delete(pretended)
+	testing.expect_value(t, pretended, "ja")
+	testing.expect_value(t, string(abi_language()), "ja")
+}

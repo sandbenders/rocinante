@@ -2987,3 +2987,19 @@ test_reverse_join_and_items_make_new_lists_and_plus_joins_two :: proc(t: ^testin
 	testing.expect_value(t, numbers(p, "b"), "10 20")
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_a_font_of_several_names_is_found_name_by_name :: proc(t: ^testing.T) {
+	p := run_text(t, "font \"Inter, Inter Bold\" size 30\ntext \"hello\" at 10 10\nfont \"Inter, Nothing There\" size 30\ntext \"again\" at 10 50\n")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	testing.expect_value(t, len(commands), 2)
+	// the first line makes a face of the two built-in ones; the second names one that is nowhere, which is said once
+	testing.expect(t, commands[0].style.font > gfx.FACE_BOLD, "a face made of the two")
+	testing.expect_value(t, commands[1].style.font, commands[0].style.font)
+	found := false
+	for e in p.errors {
+		found ||= e.id == .Font_Missing
+	}
+	testing.expect(t, found, "the missing name is said")
+}

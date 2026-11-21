@@ -205,7 +205,7 @@ void roci_text(const char *words, double x, double y);
 /* Draws text with its top at a point, in the current font. */
 void roci_text_v(const char *words, roci_vec2 position);
 
-/* Sets the font, and its size, for the text drawn from now on: Inter or Inter Bold, a font file in assets/fonts, or a font installed on the computer, which is copied into assets/fonts. */
+/* Sets the font, and its size, for the text drawn from now on: Inter or Inter Bold, a font file in assets/fonts, or a font installed on the computer, which is copied into assets/fonts. Several names with commas between them, `font "Aileron, NotoSansJP"`, are drawn in the first, with a character it lacks taken from the next that has it. */
 void roci_font(const char *name);
 
 /* Sets where a text sits against its point from now on: left, center or right. */
@@ -1276,6 +1276,9 @@ int roci_pop_style(void);
 /* Says what the position of the next shape means: "center" or "corner" ("default" for the shape's usual), as the language's `as center` and `as corner`. It is for the next circle, ellipse, rectangle, square, arc or picture only. */
 void roci_origin(const char *word);
 
+/* Makes a font of several that are there, known from now on by `name`, as the language's `font "A, B"` does: text is drawn in the first of `members`, a comma-separated list of font names, and a character it has not comes from the next that has it. Gives 1, or 0 when there are fewer than two names or one is not a font. */
+int roci_add_font_stack(const char *name, const char *members);
+
 /* Rounds the corners of the next rectangle or square by this many pixels, as the language's `round` does. It is for the next rectangle or square only; 0 or less keeps the corners sharp. */
 void roci_round_corners(double radius);
 
@@ -1497,6 +1500,9 @@ int roci_rumble(double strength, double seconds, int pad);
 
 /* The system the program runs on, as lowercase text: macos, windows, linux, freebsd, openbsd, ios or android. It stays valid until the next function that gives text back. */
 const char *roci_platform(void);
+
+/* The language the player prefers, as a code such as en, pt-BR or ja, from the system's own list; empty when the system does not say, and in a headless run. The text stays valid until the next function that gives text back. */
+const char *roci_language(void);
 
 /* How many screens are plugged in. A screen plugged in or out shows at the next frame. */
 int roci_screen_count(void);

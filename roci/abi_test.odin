@@ -449,3 +449,16 @@ test_c_reverses_joins_and_cuts_arrays :: proc(t: ^testing.T) {
 	testing.expect_value(t, abi_items(&cut[0], &whole[0], 0, size_of(c.int), 1, 2), 0)
 	testing.expect_value(t, abi_items(&cut[0], &whole[0], 5, size_of(c.int), math.nan_f64(), 2), 0)
 }
+
+@(test)
+test_c_makes_a_font_of_several :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	testing.expect(t, add_font("Bold again", gfx.INTER_BOLD))
+	testing.expect_value(t, abi_add_font_stack("Both", "Inter,  Bold again"), 1)
+	testing.expect(t, has_font("Both"))
+	testing.expect_value(t, abi_add_font_stack("Neither", "Inter, nothing"), 0)
+	testing.expect_value(t, abi_add_font_stack("Neither", "Inter"), 0)
+	testing.expect_value(t, abi_add_font_stack(nil, "Inter, Inter Bold"), 0)
+	testing.expect_value(t, abi_add_font_stack("x", nil), 0)
+}

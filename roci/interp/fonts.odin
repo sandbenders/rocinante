@@ -29,6 +29,9 @@ ensure_font :: proc(it: ^Interp, name: string, span: lang.Span) -> bool {
 	if it.fonts_missed[name] {
 		return false
 	}
+	if strings.contains_rune(name, ',') {
+		return font_stack(it, name, span)
+	}
 	root, found := assets_root(it)
 	if found && font_from_assets(it, root, name) {
 		return true
@@ -161,4 +164,23 @@ concat :: proc(parts: ..string) -> string {
 		at += len(p)
 	}
 	return string(buffer)
+}
+
+// `font "Aileron, NotoSansJP"`: each name is a font of its own, found as a single one is, and the text is drawn in the first with the
+// others standing in for the characters it has not, in the order they are written. A name that is no font, or an empty one, is
+// the whole name unanswered.
+@(private)
+font_stack :: proc(it: ^Interp, name: string, span: lang.Span) -> bool {
+	names := strings.split(name, ",", context.temp_allocator)
+	for &part in names {
+		part = strings.trim_space(part)
+		if part == "" || !ensure_font(it, part, span) {
+			if it.fonts_missed == nil {
+				it.fonts_missed = make(map[string]bool)
+			}
+			it.fonts_missed[strings.clone(name)] = true
+			return false
+		}
+	}
+	return roci.add_font_stack(name, names)
 }

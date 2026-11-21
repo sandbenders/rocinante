@@ -454,3 +454,10 @@ test_reverse_join_items_and_plus_on_lists_call_the_runtime :: proc(t: ^testing.T
 	testing.expect(t, strings.contains(result.source, "rt.join_lists("), result.source)
 	testing.expect(t, strings.contains(result.source, "rt.items_between("), result.source)
 }
+
+@(test)
+test_language_is_read_from_the_system :: proc(t: ^testing.T) {
+	result := compile("said = language\nprint said\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "roci.language_name("), result.source)
+}

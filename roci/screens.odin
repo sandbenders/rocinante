@@ -23,10 +23,31 @@ HEADLESS_SCREENS := [1]Screen{{name = "Screen", width = 1920, height = 1080, den
 @(thread_local) @(private) screens_seen_at: int // the frame (counting from 1) of the last look; 0 for none
 @(thread_local) @(private) screens_pretend: [dynamic]Screen // what a test says the system lists
 @(thread_local) @(private) screens_pretending: bool
+@(thread_local) @(private) language_pretend: string
+@(thread_local) @(private) language_pretending: bool
 
 // The name of the operating system: macos, windows, linux, freebsd, openbsd, ios or android.
 platform_name :: proc() -> string {
 	return platform.system_name()
+}
+
+// The language the player prefers, as a code (`en`, `pt-BR`, `ja`): what the system says first, and empty when it does not say. A
+// headless run has no system to ask, so it gives empty and a sketch draws the same text on every computer, as the golden pictures
+// and the tests need; a test can say what the system lists with `language_pretend`.
+language_name :: proc(allocator := context.allocator) -> string {
+	if language_pretending {
+		return strings.clone(language_pretend, allocator)
+	}
+	if the.headless || graphics_refused {
+		return strings.clone("", allocator)
+	}
+	return platform.preferred_language(allocator)
+}
+
+// Makes `language_name` give this code (for a test), or the real one again when `pretend` is false.
+language_pretend_as :: proc(code: string, pretend := true) {
+	language_pretend = code
+	language_pretending = pretend
 }
 
 // The screens that are plugged in, the main one first. The list is valid until the next frame.

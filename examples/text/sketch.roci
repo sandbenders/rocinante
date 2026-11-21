@@ -1,6 +1,7 @@
 // Words in Inter, in two weights and many sizes. A line is aligned against its x, a long
 // one wraps at a width with the lines as far apart as leading says, and measure says how big a text is, so a caption can have a
-// box that fits it exactly.
+// box that fits it exactly. Below, `language` is the player's language as the system gives it (a window
+// shows what it says, a headless run nothing), and a font named with commas is drawn in the first with the others behind it.
 window size 640 420 title "text"
 
 learn caption words spot with hue 160 [
@@ -42,4 +43,11 @@ draw [
   caption "any text" { 220, 320 } hue 120
   font "Inter Bold" size 26
   caption "at any size" { 330, 316 } hue 210
+
+  // several fonts in one name: the first draws, the next stands in for what it has not; `language` is what the player's system says
+  font "Inter Bold, Inter" size 15
+  fill gray
+  said = language
+  if said is "" [ said = "not said" ]
+  text ("your language: " + said) at 36 380
 ]

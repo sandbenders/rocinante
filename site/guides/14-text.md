@@ -134,6 +134,27 @@ Emoji are drawn at the size of the text around them, one em wide, and measured t
 
 Inter covers the Latin alphabets, Greek and Cyrillic. For other scripts and emoji, rocinante looks for a font on the computer (Hiragino and Apple Color Emoji on a Mac, Noto or Segoe UI elsewhere), and shapes the text properly: Arabic joins and runs right to left, Devanagari gathers its marks. Those fonts belong to the computer, so they are never copied into your sketch: where there is none, a missing character shows as an empty box. To be sure a script looks the same everywhere, put a font that has it in `assets/fonts` and name it.
 
+A font that has only some of the characters can be given help. Write several names in one, with commas between them, and the text is drawn in the first, each character it lacks coming from the next font that has it:
+
+```roci
+font "Aileron, NotoSansJP" size 24
+text "Hello, こんにちは" at 20 40
+```
+
+Every name is found as a single one is: built in, in `assets/fonts` or installed. If one of them is nowhere, the whole line is a font that is missing, and the text keeps the font it had. The computer's own fonts still stand behind the last one.
+
+## Which language
+
+`language` is what the player's system says it speaks, as a code: `"en"`, `"pt-BR"`, `"ja"`. It is empty when the system does not say, and in a headless run. A sketch keeps its words in one record for each language and picks by it, falling back to one it has:
+
+```roci
+ENGLISH = { hello: "Hello" }
+PORTUGUESE = { hello: "Olá" }
+words = ENGLISH
+if language is "pt-BR" [ words = PORTUGUESE ]
+print words.hello
+```
+
 ## Putting it together
 
 A whole sketch of words: two weights, a line aligned against its x, a paragraph that wraps, and labels whose boxes are made from `measure`. It is `examples/text`, and runs with `roci run examples/text`.

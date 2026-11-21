@@ -114,3 +114,30 @@ screens_free :: proc(screens: []Screen_Info, allocator := context.allocator) {
 	}
 	delete(screens, allocator)
 }
+
+// How a locale SDL lists is written as a language code: the language, and a hyphen and the country when there is one, as
+// `en`, `pt-BR` or `ja`. Nothing for a locale with no language.
+locale_code :: proc(language, country: string, allocator := context.allocator) -> string {
+	if language == "" {
+		return ""
+	}
+	if country == "" {
+		return strings.clone(language, allocator)
+	}
+	return strings.concatenate({language, "-", country}, allocator)
+}
+
+// The language the player prefers, as the system says it, as a code: `en`, `pt-BR`, `ja`. Empty when the system does not say.
+// SDL lists the languages in order of preference and the first is the one that counts.
+preferred_language :: proc(allocator := context.allocator) -> string {
+	count: c.int
+	locales := sdl.GetPreferredLocales(&count)
+	if locales == nil {
+		return ""
+	}
+	defer sdl.free(rawptr(locales))
+	if count < 1 || locales[0] == nil {
+		return ""
+	}
+	return locale_code(string(locales[0].language), string(locales[0].country) if locales[0].country != nil else "", allocator)
+}

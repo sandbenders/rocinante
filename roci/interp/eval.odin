@@ -228,6 +228,8 @@ builtin_value :: proc(it: ^Interp, name: string) -> Value {
 		return roci.clipboard(it.alloc)
 	case "platform":
 		return roci.platform_name()
+	case "language":
+		return roci.language_name(it.alloc)
 	case "pressed":
 		return roci.pressed()
 	case "true":

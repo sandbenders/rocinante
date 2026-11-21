@@ -77,7 +77,7 @@ KEYWORDS := [?]string{
 
 // Built-in values: names that stand for a value and take no arguments.
 VALUES := [?]string{
-	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "mic", "midi", "mouse", "osc", "packet", "pi", "platform", "pmouse", "pressed", "received", "reply", "safe", "scene", "screens", "speakers", "tau", "time", "touches", "true", "turtle", "webcam", "wheel", "width",
+	"anywhere", "chosen", "clipboard", "false", "finger", "fps", "frame", "gamepad", "gamepads", "height", "joysticks", "key", "language", "mic", "midi", "mouse", "osc", "packet", "pi", "platform", "pmouse", "pressed", "received", "reply", "safe", "scene", "screens", "speakers", "tau", "time", "touches", "true", "turtle", "webcam", "wheel", "width",
 }
 
 // What each built-in value is, for the checker. `size` is
@@ -111,6 +111,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"mouse", .Vector, 2, "Where the mouse is in the window: `mouse.x` and `mouse.y`."},
 	{"pressed", .Boolean, 0, "Whether a mouse button is held down in this window."},
 	{"pi", .Number, 0, "Half a turn in radians, 3.14159…, for sketches that work in radians."},
+	{"language", .Text, 0, "The language the player prefers, as a code the system gives: \"en\", \"pt-BR\", \"ja\", and an empty text when it does not say (a headless run does not). A sketch picks its words by it: `if language is \"pt-BR\" [ ... ]`."},
 	{"platform", .Text, 0, "The system the sketch is running on, as lowercase text: \"macos\", \"windows\", \"linux\", \"freebsd\", \"openbsd\", \"ios\" or \"android\". It is the system the sketch runs on, not the one it was written on: `if platform is \"ios\" [ ... ]`."},
 	{"pmouse", .Vector, 2, "Where the mouse was a frame ago."},
 	{"safe", .Record, 0, "How far in from each side of the window the screen is free of what a phone keeps for itself (the clock and camera at the top, the home bar at the bottom, the rounded corners): a record with `top`, `bottom`, `left` and `right`, in the window's units, so a title put at `safe.top` is never under the notch. Every field is 0 on a computer and in a headless run, and the numbers change when the phone turns."},
