@@ -371,12 +371,12 @@ VERBS := []Verb{
 	{"clip", {
 		{{{"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}}, nil, .None},
 		{{{"position", .Vector}, {"size", .Vector}}, nil, .None},
-	}, "Keeps drawing from now on inside a box, in the transform of the moment: `clip at 20 20 size 200 100`. A turned box clips to the upright box round it. A new clip replaces the old one, and `no clip` takes it away."},
-	{"no clip", {{{}, nil, .None}}, "Takes the clip away, so drawing reaches the whole window again."},
+	}, "Keeps drawing from now on inside a box, in the transform of the moment: `clip at 20 20 size 200 100`. A turned box clips to the upright box round it. A clip made while another is in force keeps only what is inside both, and `no clip` goes back to the one it was made inside (and takes the last one away)."},
+	{"no clip", {{{}, nil, .None}}, "Takes the clip away: drawing goes back to the clip it was made inside, or to the whole window when there is none. Two clips written one after the other are one inside the other, so `no clip` twice takes both away."},
 	{"clip circle", {
 		{{{"x", .Number}, {"y", .Number}, {"radius", .Number}}, CLIP_OPTIONS, .None},
 		{{{"position", .Vector}, {"radius", .Number}}, CLIP_OPTIONS, .None},
-	}, "Keeps drawing from now on inside a circle, in the transform of the moment: `clip circle at 100 100 radius 50`. It is a clip like the box: a new clip replaces it, and `no clip` takes it away. The edge is as smooth as a circle's."},
+	}, "Keeps drawing from now on inside a circle, in the transform of the moment: `clip circle at 100 100 radius 50`. It is a clip like the box: a clip made inside it keeps only what is inside both, and `no clip` takes it away. The edge is as smooth as a circle's."},
 	{"clip ellipse", {
 		{{{"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}}, CLIP_OPTIONS, .None},
 		{{{"position", .Vector}, {"size", .Vector}}, CLIP_OPTIONS, .None},

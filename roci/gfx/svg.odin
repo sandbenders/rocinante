@@ -312,50 +312,61 @@ svg_command :: proc(s: ^Svg, c: Command, width, height: int) {
 	if !is_visible(c) {
 		return
 	}
-	// a clip or a blend is a group round the element
+	// a clip or a blend is a group round the element, and a clip made inside another is a group inside its group
 	st := c.style
-	grouped := st.clip.on || st.blend != .Normal
+	levels := clip_chain(s.list, st.clip)
 	b := &s.body
-	if grouped {
-		strings.write_string(b, "<g")
-		if st.clip.on {
-			id := new_id(s, "c")
-			strings.write_string(&s.defs, `<clipPath id="`)
-			strings.write_string(&s.defs, id)
-			strings.write_string(&s.defs, `">`)
-			if outline, shaped := clip_shape_of(s.list, st.clip); shaped {
-				// the outline of the shape, in the transform it was made under
-				strings.write_string(&s.defs, `<path clip-rule="evenodd" d="`)
-				write_path_data(&s.defs, path_points(s.list, outline))
-				strings.write_byte(&s.defs, '"')
-				write_transform(&s.defs, outline.transform)
-				strings.write_string(&s.defs, "/>")
-			} else {
-				strings.write_string(&s.defs, `<rect`)
-				attr_number(&s.defs, "x", st.clip.rect[0])
-				attr_number(&s.defs, "y", st.clip.rect[1])
-				attr_number(&s.defs, "width", max(st.clip.rect[2] - st.clip.rect[0], 0))
-				attr_number(&s.defs, "height", max(st.clip.rect[3] - st.clip.rect[1], 0))
-				strings.write_string(&s.defs, "/>")
-			}
-			strings.write_string(&s.defs, "</clipPath>\n")
-			strings.write_string(b, ` clip-path="url(#`)
-			strings.write_string(b, id)
-			strings.write_string(b, `)"`)
+	for level, i in levels {
+		id := new_id(s, "c")
+		strings.write_string(&s.defs, `<clipPath id="`)
+		strings.write_string(&s.defs, id)
+		strings.write_string(&s.defs, `">`)
+		if outline, shaped := clip_shape_of(s.list, level); shaped && clip_is_shape(s.list, level) {
+			// the outline of the shape, in the transform it was made under
+			strings.write_string(&s.defs, `<path clip-rule="evenodd" d="`)
+			write_path_data(&s.defs, path_points(s.list, outline))
+			strings.write_byte(&s.defs, '"')
+			write_transform(&s.defs, outline.transform)
+			strings.write_string(&s.defs, "/>")
+		} else {
+			strings.write_string(&s.defs, `<rect`)
+			attr_number(&s.defs, "x", level.rect[0])
+			attr_number(&s.defs, "y", level.rect[1])
+			attr_number(&s.defs, "width", max(level.rect[2] - level.rect[0], 0))
+			attr_number(&s.defs, "height", max(level.rect[3] - level.rect[1], 0))
+			strings.write_string(&s.defs, "/>")
 		}
-		switch st.blend {
-		case .Normal:
-		case .Add: strings.write_string(b, ` style="mix-blend-mode:plus-lighter"`)
-		case .Multiply: strings.write_string(b, ` style="mix-blend-mode:multiply"`)
-		case .Screen: strings.write_string(b, ` style="mix-blend-mode:screen"`)
-		case .Lighten: strings.write_string(b, ` style="mix-blend-mode:lighten"`)
-		case .Subtract: note(s, "the subtract blend")
+		strings.write_string(&s.defs, "</clipPath>\n")
+		strings.write_string(b, `<g clip-path="url(#`)
+		strings.write_string(b, id)
+		strings.write_string(b, `)"`)
+		if i == len(levels) - 1 {
+			svg_blend_style(s, st.blend)
 		}
 		strings.write_string(b, ">\n")
 	}
+	if len(levels) == 0 && st.blend != .Normal {
+		strings.write_string(b, "<g")
+		svg_blend_style(s, st.blend)
+		strings.write_string(b, ">\n")
+	}
 	svg_shape(s, c)
-	if grouped {
+	for _ in 0 ..< max(len(levels), 1 if st.blend != .Normal else 0) {
 		strings.write_string(b, "</g>\n")
+	}
+}
+
+// How a group mixes with what is behind it, as an attribute of the group being written.
+@(private = "file")
+svg_blend_style :: proc(s: ^Svg, blend: Blend_Mode) {
+	b := &s.body
+	switch blend {
+	case .Normal:
+	case .Add: strings.write_string(b, ` style="mix-blend-mode:plus-lighter"`)
+	case .Multiply: strings.write_string(b, ` style="mix-blend-mode:multiply"`)
+	case .Screen: strings.write_string(b, ` style="mix-blend-mode:screen"`)
+	case .Lighten: strings.write_string(b, ` style="mix-blend-mode:lighten"`)
+	case .Subtract: note(s, "the subtract blend")
 	}
 }
 

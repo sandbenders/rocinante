@@ -72,7 +72,8 @@ Batch :: struct {
 	pipeline: Pipeline,
 	blend:    Blend_Mode, // how it mixes with what is behind it; a change of blend or clip starts a new batch
 	clip:     Clip,
-	stencil:  Stencil_Role, // what a batch of `Paths` does to the stencil: nothing, or it writes or erases the outline of a clip shape and draws no color
+	stencil:  Stencil_Role, // what a batch of `Paths` does to the stencil: nothing, or it adds or takes away one level where the outline of a clip shape is, and draws no color
+	reference: u8, // the stencil value a batch meets: the levels that must be there for it to draw or to change them (0 for a batch outside every clip shape)
 	first:    int,
 	count:    int,
 	hash:     u64, // changes when anything in the batch changes
@@ -101,7 +102,7 @@ Batcher :: struct {
 	look_hashes: [dynamic]u64, // this frame's `look_hash` of each of the list's looks
 	atlas:     Gradient_Atlas, // the gradients drawn so far, baked; kept between frames
 	stats:     Stats,
-	owner:     u32,  // the clip shape whose outline the stencil holds now, 0 for none (this frame)
+	owner:     u32,  // the innermost clip shape the stencil holds now, whose parents it holds too, 0 for none (this frame)
 	shaped:    bool, // this frame draws inside a shape, so its pass needs a stencil
 }
 
@@ -234,7 +235,7 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 		// The fill goes through the typeset vertices as a mesh drawn by the sketch's own shader;
 		// the outline, if there is one, is the same command with the fill off, drawn after it.
 		append(&b.typeset, Typeset_Item{shaded = true, shader = command.style.fill_shader, shape = command, points = path_points(list, command), transform = command.transform, content = command.content})
-		extend_batch(b, .Typeset, len(b.typeset) - 1, 1, command, look)
+		extend_batch(b, list, .Typeset, len(b.typeset) - 1, 1, command, look)
 		outline := command
 		outline.style.fill_on = false
 		outline.style.fill_shader = {}
@@ -244,7 +245,7 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 		// The fill goes through the typeset pipeline as a masked picture; the outline, if
 		// there is one, is the same command with the fill off, drawn after it.
 		append(&b.typeset, fill_item(command, path_points(list, command)))
-		extend_batch(b, .Typeset, len(b.typeset) - 1, 1, command, look)
+		extend_batch(b, list, .Typeset, len(b.typeset) - 1, 1, command, look)
 		outline := command
 		outline.style.fill_on = false
 		outline.style.fill_image = {}
@@ -260,7 +261,7 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 			return false
 		}
 		append(&b.typeset, stroke_item(command))
-		extend_batch(b, .Typeset, len(b.typeset) - 1, 1, command, look)
+		extend_batch(b, list, .Typeset, len(b.typeset) - 1, 1, command, look)
 		return true
 	}
 	pipeline := pipeline_for(command)
@@ -290,7 +291,7 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 		}
 		b.stats.path_commands += 1
 	}
-	extend_batch(b, pipeline, first, added, command, look)
+	extend_batch(b, list, pipeline, first, added, command, look)
 	if pipeline == .Shapes {
 		append(&b.instances, to_instance(command, fill_row, stroke_row))
 	}
@@ -300,10 +301,10 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 // Puts `added` entries starting at `first` into the last batch, or a new one when the
 // pipeline changes.
 @(private)
-extend_batch :: proc(b: ^Batcher, pipeline: Pipeline, first, added: int, command: Command, look: u64) {
+extend_batch :: proc(b: ^Batcher, list: ^Command_List, pipeline: Pipeline, first, added: int, command: Command, look: u64) {
 	last := len(b.batches) - 1
-	if last < 0 || b.batches[last].stencil != .None || b.batches[last].pipeline != pipeline || b.batches[last].blend != command.style.blend || b.batches[last].clip != command.style.clip {
-		append(&b.batches, Batch{pipeline = pipeline, blend = command.style.blend, clip = command.style.clip, first = first, hash = FNV_OFFSET})
+	if last < 0 || b.batches[last].stencil != .None || b.batches[last].pipeline != pipeline || b.batches[last].blend != command.style.blend || !same_clip(b.batches[last].clip, command.style.clip) {
+		append(&b.batches, Batch{pipeline = pipeline, blend = command.style.blend, clip = command.style.clip, reference = u8(clip_depth(list, command.style.clip.shape)), first = first, hash = FNV_OFFSET})
 	}
 	batch := &b.batches[len(b.batches) - 1]
 	batch.count += added
@@ -311,22 +312,54 @@ extend_batch :: proc(b: ^Batcher, pipeline: Pipeline, first, added: int, command
 	batch.hash = hash_u64(batch.hash, hash_u64(shape_hash(command), look))
 }
 
-// What a batch does to the stencil buffer, which holds the outline of the clip shape that is in force.
-Stencil_Role :: enum u8 {
-	None,  // it draws as it is
-	Write, // it sets the stencil where its triangles are, and draws no color
-	Erase, // it puts the stencil back to 0 where its triangles are, and draws no color
+// Two clips cut the same part of the picture when their box and shape are the same; which clip each was made inside does not matter to a batch.
+@(private)
+same_clip :: proc "contextless" (a, b: Clip) -> bool {
+	return a.on == b.on && a.rect == b.rect && a.shape == b.shape
 }
 
-// Makes the stencil hold the outline of clip shape `shape` and nothing else: the outline that was in it is
-// erased by drawing it again as it was written, the new one is written.
+// What a batch does to the stencil buffer, which holds, for each pixel, how many of the nested clip shapes in force cover it.
+Stencil_Role :: enum u8 {
+	None,  // it draws as it is
+	Write, // where the stencil is one below its depth and its triangles are, it adds one, and draws no color
+	Erase, // where the stencil is at its depth and its triangles are, it takes one away, and draws no color
+}
+
+// Makes the stencil hold the clip shape `shape` and the shapes it was made inside, and no other: the shapes
+// that were in it and are not any more are taken away, innermost first, by drawing them again as they were
+// written, and the new ones are added, outermost first.
 @(private)
 switch_stencil_owner :: proc(b: ^Batcher, list: ^Command_List, shape: u32) {
-	if b.owner != 0 {
-		stencil_outline(b, list, b.owner, .Erase)
+	// The innermost shape the two chains share, found by walking the deeper one up to the other's depth, then both together.
+	common: u32
+	{
+		x, y := b.owner, shape
+		dx, dy := clip_depth(list, x), clip_depth(list, y)
+		for dx > dy {x, dx = clip_parent(list, x), dx - 1}
+		for dy > dx {y, dy = clip_parent(list, y), dy - 1}
+		for x != y {x, y = clip_parent(list, x), clip_parent(list, y)}
+		common = x
 	}
-	stencil_outline(b, list, shape, .Write)
+	for s := b.owner; s != common; s = clip_parent(list, s) {
+		stencil_outline(b, list, s, .Erase)
+	}
+	added := make([dynamic]u32, context.temp_allocator)
+	for s := shape; s != common; s = clip_parent(list, s) {
+		append(&added, s)
+	}
+	for i := len(added) - 1; i >= 0; i -= 1 {
+		stencil_outline(b, list, added[i], .Write)
+	}
 	b.owner = shape
+}
+
+// The shape a clip shape was made inside, 0 for none.
+@(private)
+clip_parent :: proc(list: ^Command_List, shape: u32) -> u32 {
+	if shape == 0 || int(shape) > len(list.clip_parents) {
+		return 0
+	}
+	return list.clip_parents[shape - 1]
 }
 
 // One batch of the triangles of a clip shape, drawn into the stencil only.
@@ -350,7 +383,9 @@ stencil_outline :: proc(b: ^Batcher, list: ^Command_List, shape: u32, role: Sten
 	if added == 0 {
 		return
 	}
-	append(&b.batches, Batch{pipeline = .Paths, blend = .Normal, clip = outline.style.clip, stencil = role, first = first, count = added, hash = hash_u64(hash_u64(FNV_OFFSET, u64(role)), shape_hash(outline))})
+	depth := clip_depth(list, shape)
+	reference := u8(depth - 1) if role == .Write else u8(depth)
+	append(&b.batches, Batch{pipeline = .Paths, blend = .Normal, clip = outline.style.clip, stencil = role, reference = reference, first = first, count = added, hash = hash_u64(hash_u64(hash_u64(FNV_OFFSET, u64(role)), u64(reference)), shape_hash(outline))})
 }
 
 // Which pipeline draws a command.

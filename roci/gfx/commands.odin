@@ -16,6 +16,7 @@ import "../geom"
 import "../maths"
 import "core:hash"
 import "core:math"
+import "core:slice"
 
 Kind :: enum u8 {
 	Circle,
@@ -125,6 +126,8 @@ Command_List :: struct {
 	gradient_hashes: [dynamic]u64, // the hash of each of them, in step with `gradients`
 	text:       [dynamic]u8,       // the characters of this frame's text commands, end to end
 	points:     [dynamic][2]f32,   // the points of this frame's path commands, end to end, a contour ends at a break (path.odin)
+	clip_outers: [dynamic]Clip,    // the clips that were in force when another was made inside them, so `no clip` can go back (`Clip.outer` is one more than its place here)
+	clip_parents: [dynamic]u32,    // for each clip shape, the shape it was made inside (0 for none), in step with `clip_shapes`
 	clip_shapes: [dynamic]int,     // the index of each `Clip_Shape` command of the frame, so a clip can find its outline (`Clip.shape` is one more than its place here)
 	background_paint: Gradient_Ref, // a gradient behind everything, when set
 	background_image: Image_Fill,   // a picture behind everything, when its id is not 0
@@ -154,6 +157,8 @@ begin_frame :: proc(list: ^Command_List) {
 	clear(&list.text)
 	clear(&list.points)
 	clear(&list.clip_shapes)
+	clear(&list.clip_parents)
+	clear(&list.clip_outers)
 	clear(&list.effects)
 	clear(&list.effect_values)
 	list.background_paint = {}
@@ -185,6 +190,8 @@ destroy :: proc(list: ^Command_List) {
 	delete(list.text)
 	delete(list.points)
 	delete(list.clip_shapes)
+	delete(list.clip_parents)
+	delete(list.clip_outers)
 	delete(list.effects)
 	delete(list.effect_values)
 	list^ = {}
@@ -502,14 +509,19 @@ set_smooth :: proc(list: ^Command_List, smooth: bool) {
 	list.style.nearest = !smooth
 }
 
+// The deepest a clip shape may nest: a stencil buffer counts to 255, and this leaves room.
+MAX_CLIP_DEPTH :: 200
+
 // Keeps later drawing inside the box `x y width height`, which is worked out in the
-// current transform and kept as its bounding box on the canvas: a turned or sheared box
-// clips to the smallest upright box round it. A box with no size, or numbers that are not
-// numbers, clips everything away. Replaces any clip there was.
+// current transform and kept as its bounding box on the canvas: a turned box clips to the
+// smallest upright box round it. A box with no size, or numbers that are not numbers, clips
+// everything away. Made inside another clip it keeps only what is inside both, and `no clip`
+// goes back to that one.
 set_clip :: proc(list: ^Command_List, x, y, width, height: f32) {
 	list.look_changed = true
+	outer := list.style.clip
 	if !finite(x, y, width, height) {
-		list.style.clip = Clip{on = true}
+		list.style.clip = clip_inside(list, outer, {}, outer.shape)
 		return
 	}
 	corners := [4][2]f32{{x, y}, {x + width, y}, {x + width, y + height}, {x, y + height}}
@@ -519,18 +531,44 @@ set_clip :: proc(list: ^Command_List, x, y, width, height: f32) {
 		lo = {min(lo.x, px), min(lo.y, py)}
 		hi = {max(hi.x, px), max(hi.y, py)}
 	}
-	list.style.clip = Clip{on = true, rect = {lo.x, lo.y, hi.x, hi.y}}
+	list.style.clip = clip_inside(list, outer, {lo.x, lo.y, hi.x, hi.y}, outer.shape)
 }
 
+// The clip made inside `outer` with the box `rect` and the shape `shape` (the outer one's, or a new one): its
+// box is where the two boxes meet, an empty one when they do not, and it remembers `outer` for `no clip`.
+@(private)
+clip_inside :: proc(list: ^Command_List, outer: Clip, rect: [4]f32, shape: u32) -> Clip {
+	made := Clip{on = true, rect = rect, shape = shape}
+	if outer.on {
+		made.outer = u32(len(list.clip_outers) + 1)
+		append(&list.clip_outers, outer)
+		made.rect = {max(rect[0], outer.rect[0]), max(rect[1], outer.rect[1]), min(rect[2], outer.rect[2]), min(rect[3], outer.rect[3])}
+		made.rect[2] = max(made.rect[2], made.rect[0])
+		made.rect[3] = max(made.rect[3], made.rect[1])
+	}
+	return made
+}
+
+// How many clip shapes are inside one another down to `shape`, itself included: what the stencil buffer
+// holds where the whole chain covers the picture.
+clip_depth :: proc(list: ^Command_List, shape: u32) -> int {
+	depth := 0
+	for s := shape; s != 0 && int(s) <= len(list.clip_parents); s = list.clip_parents[s - 1] {
+		depth += 1
+	}
+	return depth
+}
 
 // Keeps later drawing inside the shape the contours make, worked out in the current transform: the
-// same rule as a filled path, so a contour inside another is a hole. Replaces any clip there was; a
-// shape with nothing in it (no contour of three points, or a number that is not a number) clips
-// everything away, as a box with no size does. The outline is kept in a command of its own that is
-// never drawn; the clip says which, and its box (the box round the shape) is what cuts the picture
-// off in the renderer before the shape does.
+// same rule as a filled path, so a contour inside another is a hole. Made inside another clip it
+// keeps only what is inside both, and `no clip` goes back to that one. A shape with nothing in it (no
+// contour of three points, or a number that is not a number) clips everything away, as a box with no
+// size does. The outline is kept in a command of its own that is never drawn; the clip says which, and
+// its box (the box round the shape, cut to the clips it is inside) is what cuts the picture off in the
+// renderer before the shape does.
 set_clip_shape :: proc(list: ^Command_List, contours: []Contour) {
 	list.look_changed = true
+	outer := list.style.clip
 	made := make([dynamic]Contour, 0, len(contours), context.temp_allocator)
 	lo, hi := [2]f32{max(f32), max(f32)}, [2]f32{-max(f32), -max(f32)}
 	for c in contours {
@@ -539,7 +577,7 @@ set_clip_shape :: proc(list: ^Command_List, contours: []Contour) {
 		}
 		for p in c.points {
 			if !finite(p.x, p.y) {
-				list.style.clip = Clip{on = true}
+				list.style.clip = clip_inside(list, outer, {}, outer.shape)
 				return
 			}
 			px, py := transform_apply(list.transform, p.x, p.y)
@@ -548,28 +586,66 @@ set_clip_shape :: proc(list: ^Command_List, contours: []Contour) {
 		}
 		append(&made, Contour{points = c.points, closed = true})
 	}
-	if len(made) == 0 {
-		list.style.clip = Clip{on = true}
+	if len(made) == 0 || clip_depth(list, outer.shape) >= MAX_CLIP_DEPTH {
+		list.style.clip = clip_inside(list, outer, {}, outer.shape)
 		return
 	}
-	list.style.clip = Clip{on = true, rect = {lo.x, lo.y, hi.x, hi.y}, shape = u32(len(list.clip_shapes) + 1)}
+	shape := u32(len(list.clip_shapes) + 1)
+	list.style.clip = clip_inside(list, outer, {lo.x, lo.y, hi.x, hi.y}, shape)
 	at := len(list.commands)
 	if !path_of_kind(list, .Clip_Shape, made[:]) {
-		list.style.clip = Clip{on = true}
+		list.style.clip = clip_inside(list, outer, {}, outer.shape)
 		return
 	}
 	append(&list.clip_shapes, at)
+	append(&list.clip_parents, outer.shape)
 }
 
 // The outline a clip to a shape keeps drawing inside, as the path command that holds it; nothing when
-// the clip is a plain box.
+// the clip has no shape.
 clip_shape_of :: proc(list: ^Command_List, clip: Clip) -> (command: Command, ok: bool) {
 	if clip.shape == 0 || int(clip.shape) > len(list.clip_shapes) {
 		return {}, false
 	}
 	return command_at(list, list.clip_shapes[clip.shape - 1]), true
 }
+
+// Whether a clip is itself a clip to a shape, and not a box made inside one: its shape is not the one of the clip it was made inside.
+clip_is_shape :: proc(list: ^Command_List, clip: Clip) -> bool {
+	if clip.shape == 0 {
+		return false
+	}
+	outer := clip_outer_of(list, clip)
+	return !outer.on || outer.shape != clip.shape
+}
+
+// The clip this one was made inside, or none.
+clip_outer_of :: proc(list: ^Command_List, clip: Clip) -> Clip {
+	if clip.outer == 0 || int(clip.outer) > len(list.clip_outers) {
+		return {}
+	}
+	return list.clip_outers[clip.outer - 1]
+}
+
+// The clips a clip was made inside and the clip itself, the outermost first, for a writer that applies them one after the other.
+clip_chain :: proc(list: ^Command_List, clip: Clip) -> []Clip {
+	levels := make([dynamic]Clip, context.temp_allocator)
+	for c := clip; c.on && len(levels) <= len(list.clip_outers); c = clip_outer_of(list, c) {
+		append(&levels, c)
+	}
+	slice.reverse(levels[:])
+	return levels[:]
+}
+
+// Takes the clip away, so drawing goes back to the clip this one was made inside, or to the whole
+// window when there is none.
 no_clip :: proc(list: ^Command_List) {
+	list.look_changed = true
+	list.style.clip = clip_outer_of(list, list.style.clip)
+}
+
+// Takes every clip away, however many are inside one another.
+clear_clip :: proc(list: ^Command_List) {
 	list.look_changed = true
 	list.style.clip = {}
 }
@@ -751,6 +827,7 @@ typeset :: proc(list: ^Command_List, text: string, x, y: f32, wrap: f32 = 0) -> 
 // a scene that was visited over drew stays, and what a scene on top draws is taken away again each frame.
 Hold_Marks :: struct {
 	commands, looks, gradients, text, points, effects, effect_values, items, lights: int,
+	clip_shapes, clip_outers: int,
 }
 
 // Notes how much of the finished frame there is now.
@@ -765,6 +842,8 @@ hold :: proc(list: ^Command_List) -> Hold_Marks {
 		effect_values = len(list.effect_values),
 		items         = len(list.scene.items),
 		lights        = len(list.scene.lights),
+		clip_shapes   = len(list.clip_shapes),
+		clip_outers   = len(list.clip_outers),
 	}
 }
 
@@ -781,6 +860,9 @@ begin_frame_from :: proc(list: ^Command_List, marks: Hold_Marks) {
 	resize(&list.effect_values, min(marks.effect_values, len(list.effect_values)))
 	resize(&list.scene.items, min(marks.items, len(list.scene.items)))
 	resize(&list.scene.lights, min(marks.lights, len(list.scene.lights)))
+	resize(&list.clip_shapes, min(marks.clip_shapes, len(list.clip_shapes)))
+	resize(&list.clip_parents, min(marks.clip_shapes, len(list.clip_parents)))
+	resize(&list.clip_outers, min(marks.clip_outers, len(list.clip_outers)))
 	clear(&list.saved)
 	list.style = DEFAULT_STYLE
 	list.transform = IDENTITY

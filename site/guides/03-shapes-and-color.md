@@ -219,7 +219,24 @@ stroke navy
 rect at 120 60 size 160 180
 ```
 
-The box is placed by the transform of the moment, so `move` before it and it moves too. A box that has been turned clips to the smallest upright box round it, because the window cuts along straight lines. A new `clip` replaces the old one, and a `push [ ]` or a `with [ ]` puts the clip back as it was when it ends. `examples/blend` shows both.
+The box is placed by the transform of the moment, so `move` before it and it moves too. A box that has been turned clips to the smallest upright box round it, because the window cuts along straight lines. A `push [ ]` or a `with [ ]` puts the clip back as it was when it ends. `examples/blend` shows that, and the next part.
+
+A clip written while another is in force is inside it, and keeps only what is inside both. `no clip` goes back to the clip it was inside, one at a time, so a picture can be cut to a rounded square as a whole and have a part of it cut to a circle too:
+
+```roci picture
+clip square at 100 60 size 200 round 40
+fill gold
+circle at 200 150 radius 130
+clip circle at 280 90 radius 70
+fill tomato
+circle at 200 150 radius 130
+no clip
+fill navy
+rect at 100 200 size 200 30
+no clip
+```
+
+The circle shows only where it is inside the square, the navy bar is cut by the square alone, and the last `no clip` ends the square. A sketch that wants one clip to replace another writes `no clip` between them.
 
 A clip can be a shape instead of a box. `clip circle`, `clip ellipse`, `clip rect`, `clip square` and `clip polygon` take the words of the shapes they are named for, and `clip rect` and `clip square` take `round` as well:
 
@@ -235,5 +252,5 @@ stroke navy
 circle at 200 150 radius 90
 ```
 
-A shape clip is worked out in the transform of the moment too, a turned one is turned, and `clip polygon [ ... ]` takes the corners of any shape, with a second list for a hole. The rest works as for the box: a new clip replaces the old one, `no clip` takes it away, and `push [ ]` and `with [ ]` put the old one back.
+A shape clip is worked out in the transform of the moment too, a turned one is turned, and `clip polygon [ ... ]` takes the corners of any shape, with a second list for a hole. The rest works as for the box: a clip inside it keeps only what is inside both, `no clip` takes it away, and `push [ ]` and `with [ ]` put the old one back.
 

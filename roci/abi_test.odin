@@ -388,6 +388,7 @@ test_c_clips_to_a_shape_and_the_origin_and_round_words_are_used_up :: proc(t: ^t
 	defer shutdown()
 	abi_clip_circle(50, 50, 20)
 	abi_rect(0, 0, 10, 10)
+	abi_no_clip() // a clip made inside another keeps only where they meet
 	abi_origin("corner")
 	abi_clip_circle_v({10, 10}, 5)
 	abi_rect(0, 0, 10, 10)

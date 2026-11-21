@@ -2921,8 +2921,8 @@ test_a_rect_and_a_square_with_round_are_drawn_as_paths_with_rounded_corners :: p
 }
 
 @(test)
-test_a_clip_to_a_shape_keeps_drawing_inside_it_until_the_next_clip :: proc(t: ^testing.T) {
-	p := run_text(t, "clip circle at 50 50 radius 20\nrect at 0 0 size 100 100\nno clip\nclip rect at 0 0 size 10 10 round 3\nclip ellipse at 5 5 size 6 4\nclip square at 0 0 size 8 as center\nclip polygon [ { 0, 0 } { 10, 0 } { 5, 8 } ]\nrect at 1 1 size 2 2\nclip polygon [ { 0, 0 } ]\nrect at 1 1 size 2 2\nclip circle at 10 10 radius 5 as corner\nrect at 1 1 size 2 2\nclip circle at 1 1 radius 0\nrect at 1 1 size 2 2")
+test_a_clip_to_a_shape_keeps_drawing_inside_it_until_no_clip :: proc(t: ^testing.T) {
+	p := run_text(t, "clip circle at 50 50 radius 20\nrect at 0 0 size 100 100\nno clip\nclip rect at 0 0 size 10 10 round 3\nno clip\nclip ellipse at 5 5 size 6 4\nno clip\nclip square at 0 0 size 8 as center\nno clip\nclip polygon [ { 0, 0 } { 10, 0 } { 5, 8 } ]\nrect at 1 1 size 2 2\nno clip\nclip polygon [ { 0, 0 } ]\nrect at 1 1 size 2 2\nno clip\nclip circle at 10 10 radius 5 as corner\nrect at 1 1 size 2 2\nno clip\nclip circle at 1 1 radius 0\nrect at 1 1 size 2 2")
 	defer finish(p)
 	commands := roci.recorded(first_window())
 	kinds := make([dynamic]gfx.Kind, context.temp_allocator)
@@ -2940,7 +2940,7 @@ test_a_clip_to_a_shape_keeps_drawing_inside_it_until_the_next_clip :: proc(t: ^t
 	// the circle clips to its box and names its shape; the rectangle after it carries both
 	testing.expect_value(t, commands[1].style.clip.shape, u32(1))
 	testing.expect(t, near(commands[1].style.clip.rect, {30, 30, 70, 70}), "the box round the circle")
-	// a rectangle, an ellipse, a square and a triangle: each replaces the one before, so the rectangle is in the triangle
+	// a rectangle, an ellipse, a square and a triangle, each after a `no clip`, so the rectangle is in the triangle alone
 	testing.expect_value(t, commands[6].style.clip.shape, u32(5))
 	testing.expect_value(t, commands[6].style.clip.rect, [4]f32{0, 0, 10, 8})
 	// a polygon of one corner, and a circle of nothing, clip everything away
@@ -3066,4 +3066,20 @@ test_a_field_given_later_or_by_a_literal_is_not_missing_and_a_copy_keeps_what_wa
 	}
 	testing.expect_value(t, printed(p), "late\n\nA\n2")
 	testing.expect_value(t, said, 1) // only the copy of the one that never had `b`
+}
+
+@(test)
+test_a_clip_inside_a_clip_keeps_what_is_inside_both_and_no_clip_goes_back_one :: proc(t: ^testing.T) {
+	p := run_text(t, "clip circle at 50 50 radius 20\nclip square at 40 40 size 30\nrect at 0 0 size 100 100\nno clip\nrect at 0 0 size 100 100\nno clip\nrect at 0 0 size 100 100")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	commands := roci.recorded(first_window())
+	if !testing.expect_value(t, len(commands), 5) {
+		return
+	}
+	testing.expect_value(t, commands[2].kind, gfx.Kind.Rect)
+	testing.expect_value(t, commands[2].style.clip.shape, u32(2)) // the square, inside the circle
+	testing.expect(t, near(commands[2].style.clip.rect, {40, 40, 70, 70}), "the box where the circle and the square meet")
+	testing.expect_value(t, commands[3].style.clip.shape, u32(1)) // the circle alone
+	testing.expect(t, !commands[4].style.clip.on)
 }

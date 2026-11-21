@@ -87,6 +87,7 @@ test_a_change_of_blend_or_clip_starts_a_new_batch_of_the_same_pipeline :: proc(t
 	circle(&list, 30, 0, 5)
 	set_clip(&list, 0, 0, 50, 50)
 	circle(&list, 40, 0, 5)
+	no_clip(&list)
 	set_clip(&list, 0, 0, 60, 50)
 	circle(&list, 50, 0, 5)
 	no_clip(&list)

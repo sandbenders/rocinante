@@ -4,6 +4,8 @@
 // same wall again, bright, inside a clip box that follows the mouse when you press it; the
 // frame round it has rounded corners. A clip can be a shape too: the bright wall shows through the circle
 // and the ellipse at the sides, each with a thick outline over its edge, so the picture does not depend on how a graphics card rounds the edge of a clip.
+// A clip made inside another keeps only what is inside both, and `no clip` goes back to the one it was inside: the rounded
+// square and the circle that sticks out of it show it, the circle bright only where it is inside the square.
 window size 640 420 title "blend and clip"
 spot = { 320, 310 }
 
@@ -41,16 +43,26 @@ draw [
   wall 110
   clip at (spot.x - 80) (spot.y - 60) size 160 120
   wall 255
+  no clip
   clip circle at 70 340 radius 50
   wall 255
+  no clip
   clip ellipse at 560 340 size 120 80
   wall 255
+  no clip
+  clip square at 150 300 size 80 round 20
+  wall 40
+  clip circle at 200 312 radius 36
+  wall 255
+  no clip
   no clip
   no fill
   stroke white
   thickness 4
   circle at 70 340 radius 50
   ellipse at 560 340 size 120 80
+  square at 150 300 size 80 round 20
+  circle at 200 312 radius 36
   thickness 1
   rect at (spot.x - 80) (spot.y - 60) size 160 120 round 16
 ]

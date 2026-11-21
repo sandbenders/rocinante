@@ -358,19 +358,19 @@ void roci_joins(const char *style);
 /* Sets how what is drawn from now on mixes with what is behind it: normal (the default), add, multiply, screen, subtract or lighten. It lasts like fill does, and one shape can say it too: `circle at 100 100 radius 50 blend add`. */
 void roci_blend(const char *mode);
 
-/* Keeps drawing from now on inside a box, in the transform of the moment: `clip at 20 20 size 200 100`. A turned box clips to the upright box round it. A new clip replaces the old one, and `no clip` takes it away. */
+/* Keeps drawing from now on inside a box, in the transform of the moment: `clip at 20 20 size 200 100`. A turned box clips to the upright box round it. A clip made while another is in force keeps only what is inside both, and `no clip` goes back to the one it was made inside (and takes the last one away). */
 void roci_clip(double x, double y, double width, double height);
 
-/* Keeps drawing from now on inside a box, in the transform of the moment: `clip at 20 20 size 200 100`. A turned box clips to the upright box round it. A new clip replaces the old one, and `no clip` takes it away. */
+/* Keeps drawing from now on inside a box, in the transform of the moment: `clip at 20 20 size 200 100`. A turned box clips to the upright box round it. A clip made while another is in force keeps only what is inside both, and `no clip` goes back to the one it was made inside (and takes the last one away). */
 void roci_clip_v(roci_vec2 position, roci_vec2 size);
 
-/* Takes the clip away, so drawing reaches the whole window again. */
+/* Takes the clip away: drawing goes back to the clip it was made inside, or to the whole window when there is none. Two clips written one after the other are one inside the other, so `no clip` twice takes both away. */
 void roci_no_clip(void);
 
-/* Keeps drawing from now on inside a circle, in the transform of the moment: `clip circle at 100 100 radius 50`. It is a clip like the box: a new clip replaces it, and `no clip` takes it away. The edge is as smooth as a circle's. */
+/* Keeps drawing from now on inside a circle, in the transform of the moment: `clip circle at 100 100 radius 50`. It is a clip like the box: a clip made inside it keeps only what is inside both, and `no clip` takes it away. The edge is as smooth as a circle's. */
 void roci_clip_circle(double x, double y, double radius);
 
-/* Keeps drawing from now on inside a circle, in the transform of the moment: `clip circle at 100 100 radius 50`. It is a clip like the box: a new clip replaces it, and `no clip` takes it away. The edge is as smooth as a circle's. */
+/* Keeps drawing from now on inside a circle, in the transform of the moment: `clip circle at 100 100 radius 50`. It is a clip like the box: a clip made inside it keeps only what is inside both, and `no clip` takes it away. The edge is as smooth as a circle's. */
 void roci_clip_circle_v(roci_vec2 position, double radius);
 
 /* Keeps drawing from now on inside an ellipse: `clip ellipse at 100 100 size 160 80`. */

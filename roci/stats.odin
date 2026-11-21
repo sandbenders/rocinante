@@ -119,7 +119,7 @@ draw_stats :: proc(w: ^Win) {
 	gfx.no_stroke(list)
 	gfx.set_alpha(list, 255)
 	gfx.set_blend(list, .Normal)
-	gfx.no_clip(list)
+	gfx.clear_clip(list)
 	gfx.set_fill(list, {0, 0, 0, 255})
 	gfx.rect(list, 8, 8, width, height)
 	gfx.set_fill(list, {255, 255, 255, 255})

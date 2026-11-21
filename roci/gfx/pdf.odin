@@ -443,12 +443,13 @@ pdf_command :: proc(p: ^Pdf, c: Command) {
 	st := c.style
 	out := &p.content
 	strings.write_string(out, "q\n")
-	if st.clip.on {
-		if outline, shaped := clip_shape_of(p.list, st.clip); shaped {
+	// each clip a clip was made inside, outermost first: every one cuts what the last left
+	for level in clip_chain(p.list, st.clip) {
+		if outline, shaped := clip_shape_of(p.list, level); shaped && clip_is_shape(p.list, level) {
 			// the outline of the shape, carried to the page by the transform it was made under
 			pdf_clip_outline(out, outline, path_points(p.list, outline))
 		} else {
-			write_rect(out, st.clip.rect[0], st.clip.rect[1], max(st.clip.rect[2] - st.clip.rect[0], 0), max(st.clip.rect[3] - st.clip.rect[1], 0))
+			write_rect(out, level.rect[0], level.rect[1], max(level.rect[2] - level.rect[0], 0), max(level.rect[3] - level.rect[1], 0))
 			strings.write_string(out, "W n\n")
 		}
 	}

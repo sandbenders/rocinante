@@ -385,8 +385,8 @@ blend_named :: proc(word: string) -> (mode: Blend, ok: bool) {
 }
 
 // Keeps drawing from now on inside the box `x y width height`, which is placed by the
-// transform of the moment (a turned box clips to the upright box round it). Replaces the
-// clip there was; the box is `clip_v` with a position and a size as vectors.
+// transform of the moment (a turned box clips to the upright box round it). Made inside another
+// clip it keeps only what is inside both; the box is `clip_v` with a position and a size as vectors.
 clip_xywh :: proc(x, y, width, height: f64) {
 	gfx.set_clip(current_list(), f32(x), f32(y), f32(width), f32(height))
 }
@@ -397,7 +397,7 @@ clip_v :: proc(position, size: [2]f64) {
 
 clip :: proc{clip_xywh, clip_v}
 
-// Takes the clip away: drawing reaches the whole window again.
+// Takes the clip away: drawing goes back to the clip it was made inside, or to the whole window when there is none.
 no_clip :: proc() {
 	gfx.no_clip(current_list())
 }
@@ -533,7 +533,7 @@ rounded_corners :: proc(left, top, w, h, radius: f64) -> [][2]f64 {
 
 // ---- clipping to a shape ----
 
-// Keeps later drawing inside a shape instead of a box, until `no clip` or another clip: the same rule as `clip`, the shape
+// Keeps later drawing inside a shape instead of a box, until `no clip`: the same rule as `clip`, the shape
 // worked out in the transform of the moment. Its edges are as smooth as a drawn shape's (a polygon of short steps).
 // A shape with nothing in it clips everything away.
 @(private)

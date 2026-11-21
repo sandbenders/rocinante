@@ -112,8 +112,8 @@ Program :: enum {
 Stencil_Mode :: enum u8 {
 	Off,      // the pass has no stencil
 	Attached, // it has one, and this pipeline leaves it alone
-	Write,    // sets it to the reference where it draws, and draws no color
-	Erase,    // sets it to 0 where it draws, and draws no color
+	Write,    // where it equals the reference it adds one, and draws no color
+	Erase,    // where it equals the reference it takes one away, and draws no color
 	Test,     // draws only where it equals the reference
 }
 
@@ -522,7 +522,7 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 	return pipeline
 }
 
-// The stencil state of a pipeline: it writes the reference where it draws, erases it, or draws only where it is.
+// The stencil state of a pipeline: where the stencil equals the reference it adds one, or takes one away, or draws only there.
 @(private)
 stencil_state_for :: proc(mode: Stencil_Mode) -> sdl.GPUDepthStencilState {
 	state := sdl.GPUDepthStencilState{compare_mask = 0xFF, write_mask = 0xFF}
@@ -531,9 +531,11 @@ stencil_state_for :: proc(mode: Stencil_Mode) -> sdl.GPUDepthStencilState {
 	case .Off, .Attached:
 		return {}
 	case .Write:
-		ops.pass_op = .REPLACE
+		ops.compare_op = .EQUAL
+		ops.pass_op = .INCREMENT_AND_CLAMP
 	case .Erase:
-		ops.pass_op = .ZERO
+		ops.compare_op = .EQUAL
+		ops.pass_op = .DECREMENT_AND_CLAMP
 	case .Test:
 		ops.compare_op = .EQUAL
 		state.write_mask = 0
@@ -999,9 +1001,6 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 	if !ok {
 		return false
 	}
-	if stencil_texture_ptr != nil {
-		sdl.SetGPUStencilReference(pass, 1)
-	}
 	uniforms := Frame_Uniforms{canvas_size = canvas}
 	gradients := sdl.GPUTextureSamplerBinding{texture = r.gradient_texture, sampler = r.gradient_sampler}
 	bound: Pipeline = .Shapes
@@ -1021,6 +1020,9 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 		} else if clipped {
 			sdl.SetGPUScissor(pass, sdl.Rect{0, 0, i32(pixels.x), i32(pixels.y)})
 			clipped = false
+		}
+		if b.shaped {
+			sdl.SetGPUStencilReference(pass, batch.reference)
 		}
 		if !have_bound || batch.pipeline != bound || batch.blend != bound_blend || stencil_mode_of(batch, b.shaped) != bound_stencil {
 			bound, bound_blend, have_bound = batch.pipeline, batch.blend, true

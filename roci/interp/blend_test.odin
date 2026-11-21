@@ -73,7 +73,7 @@ test_a_picture_is_blended_by_its_own_word :: proc(t: ^testing.T) {
 
 @(test)
 test_clip_keeps_drawing_in_a_box_until_no_clip :: proc(t: ^testing.T) {
-	p := run_text(t, "circle at 1 1 radius 1\nclip at 10 20 size 30 40\ncircle at 2 2 radius 1\nclip at { 5, 6 } size { 7, 8 }\ncircle at 3 3 radius 1\nclip at 1 2 size 3 4\ncircle at 4 4 radius 1\nno clip\ncircle at 5 5 radius 1")
+	p := run_text(t, "circle at 1 1 radius 1\nclip at 10 20 size 30 40\ncircle at 2 2 radius 1\nclip at { 15, 25 } size { 100, 100 }\ncircle at 3 3 radius 1\nno clip\ncircle at 4 4 radius 1\nno clip\ncircle at 5 5 radius 1")
 	defer finish(p)
 	testing.expect_value(t, len(p.errors), 0)
 	found := drawn_commands()
@@ -82,8 +82,10 @@ test_clip_keeps_drawing_in_a_box_until_no_clip :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, !found[0].style.clip.on)
 	testing.expect_value(t, found[1].style.clip, gfx.Clip{on = true, rect = {10, 20, 40, 60}})
-	testing.expect_value(t, found[2].style.clip, gfx.Clip{on = true, rect = {5, 6, 12, 14}})
-	testing.expect_value(t, found[3].style.clip, gfx.Clip{on = true, rect = {1, 2, 4, 6}})
+	// a clip inside another keeps only where the two meet, and `no clip` goes back to the one it was inside
+	testing.expect(t, found[2].style.clip.on)
+	testing.expect_value(t, found[2].style.clip.rect, [4]f32{15, 25, 40, 60})
+	testing.expect_value(t, found[3].style.clip, found[1].style.clip)
 	testing.expect(t, !found[4].style.clip.on)
 }
 

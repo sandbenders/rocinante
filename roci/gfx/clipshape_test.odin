@@ -46,6 +46,7 @@ test_a_clip_shape_with_nothing_in_it_clips_everything_away :: proc(t: ^testing.T
 	nan := transmute(f32)u32(0x7fc00000)
 	two := [][2]f32{{0, 0}, {5, 5}}
 	for contours in ([?][]Contour{{}, {Contour{points = two, closed = true}}, {Contour{points = {{nan, 0}, {1, 1}, {2, 2}}, closed = true}}}) {
+		clear_clip(&list)
 		set_clip_shape(&list, contours)
 		testing.expect_value(t, list.style.clip, Clip{on = true})
 		testing.expect_value(t, scissor_for(list.style.clip, 1, {100, 100}).w, i32(0))
@@ -105,6 +106,7 @@ test_changing_the_clip_shape_erases_the_old_outline_and_writes_the_new_one :: pr
 	set_clip_shape(&list, square_contour(0, 0))
 	circle(&list, 10, 10, 4)
 	push(&list, .Style)
+	clear_clip(&list)
 	set_clip_shape(&list, square_contour(40, 0))
 	circle(&list, 50, 10, 4)
 	pop(&list) // the first shape is in force again, and the stencil holds the second
