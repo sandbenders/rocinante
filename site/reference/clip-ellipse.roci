@@ -1,0 +1,9 @@
+clip ellipse at 200 150 size 280 140
+fill gold
+circle at 200 150 radius 130
+fill tomato
+rect at 90 190 size 220 30
+no clip
+no fill
+stroke navy
+ellipse at 200 150 size 280 140

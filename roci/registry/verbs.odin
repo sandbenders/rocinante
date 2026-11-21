@@ -33,6 +33,17 @@ RECT_OPTIONS := []Option{
 	{"round", {.Number}, false},
 }
 
+// What the clips to a shape take: where the position sits (`as center` or `as corner`), and for a rectangle or a square
+// how far its corners are rounded.
+CLIP_OPTIONS := []Option{
+	{"as", {.Name}, false},
+}
+
+CLIP_RECT_OPTIONS := []Option{
+	{"as", {.Name}, false},
+	{"round", {.Number}, false},
+}
+
 // What a text takes besides the style words: its size in pixels, its font (a name),
 // where its lines sit against the point, and how wide a line may be before it wraps.
 // Where an OSC message goes: a computer's name or number, and a port.
@@ -362,6 +373,22 @@ VERBS := []Verb{
 		{{{"position", .Vector}, {"size", .Vector}}, nil, .None},
 	}, "Keeps drawing from now on inside a box, in the transform of the moment: `clip at 20 20 size 200 100`. A turned box clips to the upright box round it. A new clip replaces the old one, and `no clip` takes it away."},
 	{"no clip", {{{}, nil, .None}}, "Takes the clip away, so drawing reaches the whole window again."},
+	{"clip circle", {
+		{{{"x", .Number}, {"y", .Number}, {"radius", .Number}}, CLIP_OPTIONS, .None},
+		{{{"position", .Vector}, {"radius", .Number}}, CLIP_OPTIONS, .None},
+	}, "Keeps drawing from now on inside a circle, in the transform of the moment: `clip circle at 100 100 radius 50`. It is a clip like the box: a new clip replaces it, and `no clip` takes it away. The edge is as smooth as a circle's."},
+	{"clip ellipse", {
+		{{{"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}}, CLIP_OPTIONS, .None},
+		{{{"position", .Vector}, {"size", .Vector}}, CLIP_OPTIONS, .None},
+	}, "Keeps drawing from now on inside an ellipse: `clip ellipse at 100 100 size 160 80`."},
+	{"clip rect", {
+		{{{"x", .Number}, {"y", .Number}, {"width", .Number}, {"height", .Number}}, CLIP_RECT_OPTIONS, .None},
+		{{{"position", .Vector}, {"size", .Vector}}, CLIP_RECT_OPTIONS, .None},
+	}, "Keeps drawing from now on inside a rectangle, with its corners rounded by `round` pixels when asked: `clip rect at 20 20 size 200 100 round 16`. A turned rectangle clips to the turned shape, where `clip` keeps to the box round it."},
+	{"clip square", {
+		{{{"x", .Number}, {"y", .Number}, {"side", .Number}}, CLIP_RECT_OPTIONS, .None},
+		{{{"position", .Vector}, {"side", .Number}}, CLIP_RECT_OPTIONS, .None},
+	}, "Keeps drawing from now on inside a square, with its corners rounded by `round` pixels when asked: `clip square at 20 20 size 100 round 20`."},
 	{"joins", {{{{"style", .Name}}, nil, .None}}, "Sets how outlines turn corners from now on: miter, round or bevel."},
 
 	// Colour

@@ -28,6 +28,7 @@ kind_name :: proc "contextless" (kind: Kind) -> string {
 	case .Arc:      return "arc"
 	case .Text, .Typeset: return "text"
 	case .Image:    return "image"
+	case .Clip_Shape: return "clip shape"
 	}
 	return ""
 }
@@ -54,7 +55,7 @@ local_bounds :: proc "contextless" (c: Command) -> (x, y, w, h: f32) {
 		x, y = a[0], a[1]
 		if is_centred(c) {x, y = a[0] - a[2], a[1] - a[2]}
 		return x, y, d, d
-	case .Path:
+	case .Path, .Clip_Shape:
 		return a[0], a[1], a[2], a[3]
 	case .Ellipse, .Rect, .Arc, .Image:
 		x, y = a[0], a[1]
@@ -93,7 +94,7 @@ has_area :: proc "contextless" (c: Command) -> bool {
 	case .Quad:
 		_, _, w, h := local_bounds(c)
 		return w > 0 && h > 0
-	case .Path:
+	case .Path, .Clip_Shape:
 		return a[5] > 1
 	case .Text, .Typeset:
 		return a[3] > 0 && a[4] > 0
@@ -120,6 +121,8 @@ is_visible :: proc "contextless" (c: Command) -> bool {
 		return c.style.fill_on && has_area(c) // text is drawn in the fill colour
 	case .Image:
 		return c.style.tint.a > 0 && has_area(c) // a picture shows through its tint, not the fill
+	case .Clip_Shape:
+		return false // it is the outline of a clip, never drawn itself
 	case .Circle, .Ellipse, .Rect, .Triangle, .Quad, .Arc, .Path:
 		return (c.style.fill_on && has_area(c)) || has_outline
 	}

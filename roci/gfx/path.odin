@@ -28,6 +28,12 @@ is_path_break :: proc "contextless" (p: [2]f32) -> bool {
 // Records a path of the contours, in the current style and transform. Gives false (and records nothing)
 // when a number is not finite or the path has no points; a contour of one point is a dot, as a point is.
 path :: proc(list: ^Command_List, contours: []Contour) -> bool {
+	return path_of_kind(list, .Path, contours)
+}
+
+// The same for a command of another kind that holds a path (`Clip_Shape`).
+@(private)
+path_of_kind :: proc(list: ^Command_List, kind: Kind, contours: []Contour) -> bool {
 	total := 0
 	for c in contours {
 		total += len(c.points) + 1
@@ -55,7 +61,7 @@ path :: proc(list: ^Command_List, contours: []Contour) -> bool {
 		append(&list.points, [2]f32{math.nan_f32(), 1 if c.closed else 0})
 	}
 	stored := list.points[offset:]
-	if !record(list, .Path, .Corner, {lo.x, lo.y, hi.x - lo.x, hi.y - lo.y, f32(offset), f32(total), 0, 0}, hash.fnv64a(path_bytes(stored))) {
+	if !record(list, kind, .Corner, {lo.x, lo.y, hi.x - lo.x, hi.y - lo.y, f32(offset), f32(total), 0, 0}, hash.fnv64a(path_bytes(stored))) {
 		resize(&list.points, offset)
 		return false
 	}
@@ -70,7 +76,7 @@ path_bytes :: proc(points: [][2]f32) -> []u8 {
 // The points a path command holds, break markers included, in the list's storage.
 path_points :: proc(list: ^Command_List, c: Command) -> [][2]f32 {
 	offset, count := int(c.args[4]), int(c.args[5])
-	if c.kind != .Path || offset < 0 || count <= 0 || offset + count > len(list.points) {
+	if (c.kind != .Path && c.kind != .Clip_Shape) || offset < 0 || count <= 0 || offset + count > len(list.points) {
 		return nil
 	}
 	return list.points[offset:offset + count]

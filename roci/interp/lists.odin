@@ -151,6 +151,8 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		mesh_verb(it, e, call)
 	case .Polygon:
 		polygon_verb(it, call)
+	case .Clip_Polygon:
+		roci.clip_polygons(polygon_contours(it, call))
 	case .Pixel, .Pixels, .Picture, .Crop, .Resize, .Flip, .Filter, .Mask:
 		return picture_verb(it, e, call, code)
 	case .Label, .Button, .Toggle, .Slider, .Number, .Textbox, .Dropdown, .Choice, .Progress, .Separator, .Controls, .Tip, .List, .Colorpicker, .Knob, .Range, .Xypad, .Image_Button:

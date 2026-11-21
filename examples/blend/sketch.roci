@@ -2,7 +2,8 @@
 // normal covers, add and screen glow, multiply goes dark, subtract takes color away and
 // lighten keeps the brighter of the two. Below, a dim wall is drawn first and the
 // same wall again, bright, inside a clip box that follows the mouse when you press it; the
-// frame round it has rounded corners.
+// frame round it has rounded corners. A clip can be a shape too: the bright wall shows through the circle
+// and the ellipse at the sides.
 window size 640 420 title "blend and clip"
 spot = { 320, 310 }
 
@@ -40,8 +41,14 @@ draw [
   wall 110
   clip at (spot.x - 80) (spot.y - 60) size 160 120
   wall 255
+  clip circle at 70 340 radius 50
+  wall 255
+  clip ellipse at 560 340 size 120 80
+  wall 255
   no clip
   no fill
   stroke white
+  circle at 70 340 radius 50
+  ellipse at 560 340 size 120 80
   rect at (spot.x - 80) (spot.y - 60) size 160 120 round 16
 ]

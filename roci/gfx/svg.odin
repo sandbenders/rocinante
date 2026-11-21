@@ -322,12 +322,23 @@ svg_command :: proc(s: ^Svg, c: Command, width, height: int) {
 			id := new_id(s, "c")
 			strings.write_string(&s.defs, `<clipPath id="`)
 			strings.write_string(&s.defs, id)
-			strings.write_string(&s.defs, `"><rect`)
-			attr_number(&s.defs, "x", st.clip.rect[0])
-			attr_number(&s.defs, "y", st.clip.rect[1])
-			attr_number(&s.defs, "width", max(st.clip.rect[2] - st.clip.rect[0], 0))
-			attr_number(&s.defs, "height", max(st.clip.rect[3] - st.clip.rect[1], 0))
-			strings.write_string(&s.defs, "/></clipPath>\n")
+			strings.write_string(&s.defs, `">`)
+			if outline, shaped := clip_shape_of(s.list, st.clip); shaped {
+				// the outline of the shape, in the transform it was made under
+				strings.write_string(&s.defs, `<path clip-rule="evenodd" d="`)
+				write_path_data(&s.defs, path_points(s.list, outline))
+				strings.write_byte(&s.defs, '"')
+				write_transform(&s.defs, outline.transform)
+				strings.write_string(&s.defs, "/>")
+			} else {
+				strings.write_string(&s.defs, `<rect`)
+				attr_number(&s.defs, "x", st.clip.rect[0])
+				attr_number(&s.defs, "y", st.clip.rect[1])
+				attr_number(&s.defs, "width", max(st.clip.rect[2] - st.clip.rect[0], 0))
+				attr_number(&s.defs, "height", max(st.clip.rect[3] - st.clip.rect[1], 0))
+				strings.write_string(&s.defs, "/>")
+			}
+			strings.write_string(&s.defs, "</clipPath>\n")
 			strings.write_string(b, ` clip-path="url(#`)
 			strings.write_string(b, id)
 			strings.write_string(b, `)"`)
@@ -431,6 +442,8 @@ svg_shape :: proc(s: ^Svg, c: Command) {
 		// the overlay's own text, which a sketch never writes
 	case .Image:
 		image_element(s, c)
+	case .Clip_Shape:
+		// the outline of a clip, written where the clip is used
 	}
 }
 
@@ -729,6 +742,17 @@ path_element :: proc(s: ^Svg, c: Command, box: [4]f32) {
 		return
 	}
 	strings.write_string(b, `<path fill-rule="evenodd" d="`)
+	write_path_data(b, points)
+	strings.write_byte(b, '"')
+	fill_attrs(s, c, box)
+	stroke_attrs(s, c, box)
+	write_transform(b, c.transform)
+	strings.write_string(b, "/>\n")
+}
+
+// The `d` of a path: a sub-path for each contour of the stored points, closed ones ending in Z.
+@(private = "file")
+write_path_data :: proc(b: ^strings.Builder, points: [][2]f32) {
 	at, first := 0, true
 	for {
 		contour, closed, after, ok := next_contour(points, at)
@@ -750,9 +774,4 @@ path_element :: proc(s: ^Svg, c: Command, box: [4]f32) {
 			strings.write_string(b, " Z")
 		}
 	}
-	strings.write_byte(b, '"')
-	fill_attrs(s, c, box)
-	stroke_attrs(s, c, box)
-	write_transform(b, c.transform)
-	strings.write_string(b, "/>\n")
 }

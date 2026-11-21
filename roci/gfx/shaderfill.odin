@@ -50,6 +50,7 @@ Fill_Key :: struct {
 	version: int,
 	format:  sdl.GPUTextureFormat,
 	samples: sdl.GPUSampleCount,
+	stencil: Stencil_Mode,
 }
 
 // The vertex shader every fill shares, translated once for the program.
@@ -62,12 +63,12 @@ fill_vertex_stop :: proc() {
 // The pipeline that draws shapes with a fill shader into a target of this format and sample
 // count, made the first time. Nil, with `r.effects.error` saying why, when it cannot be.
 @(private)
-fill_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount) -> ^sdl.GPUGraphicsPipeline {
+fill_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount, stencil: Stencil_Mode) -> ^sdl.GPUGraphicsPipeline {
 	data := shader_data(id)
 	if data == nil || len(data.code) == 0 || data.kind != .Fill {
 		return nil
 	}
-	key := Fill_Key{id, data.version, format, samples}
+	key := Fill_Key{id, data.version, format, samples, stencil}
 	if existing, found := r.effects.fills[key]; found {
 		return existing
 	}
@@ -108,6 +109,11 @@ fill_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureFormat,
 		{location = 2, format = .FLOAT4, offset = u32(offset_of(Typeset_Vertex, colour))},
 		{location = 3, format = .FLOAT, offset = u32(offset_of(Typeset_Vertex, coloured))},
 	}
+	target_info := sdl.GPUGraphicsPipelineTargetInfo{color_target_descriptions = &target, num_color_targets = 1}
+	if stencil != .Off {
+		target_info.depth_stencil_format = STENCIL_FORMAT
+		target_info.has_depth_stencil_target = true
+	}
 	pipeline := sdl.CreateGPUGraphicsPipeline(r.device, {
 		vertex_shader      = vertex,
 		fragment_shader    = fragment,
@@ -119,7 +125,8 @@ fill_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureFormat,
 			num_vertex_attributes      = len(attributes),
 		},
 		multisample_state  = {sample_count = samples},
-		target_info        = {color_target_descriptions = &target, num_color_targets = 1},
+		target_info        = target_info,
+		depth_stencil_state = stencil_state_for(stencil),
 	})
 	if pipeline == nil {
 		effect_say(r, fmt.tprintf("the graphics system refused the shader: %s", sdl.GetError()))
@@ -133,12 +140,12 @@ fill_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureFormat,
 // size for the vertices and the box's size, the clock and its own values for the fragments,
 // and draws the shape's triangles.
 @(private)
-draw_shader_fill :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, pass: ^sdl.GPURenderPass, list: ^Command_List, item: Typeset_Item, draw: Typeset_Draw, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount, canvas: [2]f32) -> bool {
+draw_shader_fill :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, pass: ^sdl.GPURenderPass, list: ^Command_List, item: Typeset_Item, draw: Typeset_Draw, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount, canvas: [2]f32, stencil: Stencil_Mode) -> bool {
 	data := shader_data(item.shader.shader)
 	if data == nil || data.version != item.shader.version {
 		return false
 	}
-	pipeline := fill_pipeline(r, item.shader.shader, format, samples)
+	pipeline := fill_pipeline(r, item.shader.shader, format, samples, stencil)
 	if pipeline == nil {
 		return false
 	}

@@ -726,6 +726,30 @@ call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		} else {
 			roci.clip(p(a, 0), p(a, 1))
 		}
+	case .Clip_Circle:
+		if call.shape == 0 {
+			roci.clip_circle_xyr(n(a, 0), n(a, 1), n(a, 2), origin)
+		} else {
+			roci.clip_circle_vr(p(a, 0), n(a, 1), origin)
+		}
+	case .Clip_Ellipse:
+		if call.shape == 0 {
+			roci.clip_ellipse_xywh(n(a, 0), n(a, 1), n(a, 2), n(a, 3), origin)
+		} else {
+			roci.clip_ellipse_vs(p(a, 0), p(a, 1), origin)
+		}
+	case .Clip_Rect:
+		if call.shape == 0 {
+			roci.clip_rect_xywh(n(a, 0), n(a, 1), n(a, 2), n(a, 3), look^, origin)
+		} else {
+			roci.clip_rect_vs(p(a, 0), p(a, 1), look^, origin)
+		}
+	case .Clip_Square:
+		if call.shape == 0 {
+			roci.clip_square_xys(n(a, 0), n(a, 1), n(a, 2), look^, origin)
+		} else {
+			roci.clip_square_vs(p(a, 0), n(a, 1), look^, origin)
+		}
 	case .No_Clip:
 		roci.no_clip()
 

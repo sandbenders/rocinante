@@ -1,0 +1,9 @@
+clip square at 200 150 size 160 round 50 as center
+fill gold
+circle at 200 150 radius 130
+fill tomato
+rect at 90 190 size 220 30
+no clip
+no fill
+stroke navy
+square at 200 150 size 160 round 50 as center

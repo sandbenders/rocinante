@@ -1128,3 +1128,42 @@ save_picture_file :: proc(picture: roci.Image, name: string) {
 		say_once(name, fmt.tprintf("I could not save `%s`: %s.", name, why))
 	}
 }
+
+// `clip circle` and `clip ellipse` take no look; the code generator calls every shape the same way, so these take the one
+// it writes and leave it unused.
+clip_circle_xyr :: proc(x, y, radius: f64, _ := roci.Look{}, origin := roci.Origin.Default) {
+	roci.clip_circle_xyr(x, y, radius, origin)
+}
+
+clip_circle_vr :: proc(position: [2]f64, radius: f64, _ := roci.Look{}, origin := roci.Origin.Default) {
+	roci.clip_circle_vr(position, radius, origin)
+}
+
+clip_ellipse_xywh :: proc(x, y, width, height: f64, _ := roci.Look{}, origin := roci.Origin.Default) {
+	roci.clip_ellipse_xywh(x, y, width, height, origin)
+}
+
+clip_ellipse_vs :: proc(position, size: [2]f64, _ := roci.Look{}, origin := roci.Origin.Default) {
+	roci.clip_ellipse_vs(position, size, origin)
+}
+
+// `clip polygon [ corners ]`: a list of vectors, or a list of such lists, the contours of one shape.
+clip_polygon :: proc(corners: ^List([2]f64)) {
+	if corners == nil || len(corners.items) == 0 {
+		roci.clip_polygons({})
+		return
+	}
+	roci.clip_polygon(corners.items[:])
+}
+
+clip_polygons :: proc(contours: ^List(^List([2]f64))) {
+	made := make([dynamic][][2]f64, 0, len(contours.items) if contours != nil else 0, context.temp_allocator)
+	if contours != nil {
+		for inner in contours.items {
+			if inner != nil {
+				append(&made, inner.items[:])
+			}
+		}
+	}
+	roci.clip_polygons(made[:])
+}

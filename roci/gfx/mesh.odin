@@ -47,7 +47,7 @@ mesh_destroy :: proc(m: ^Mesh) {
 needs_mesh :: proc "contextless" (c: Command) -> bool {
 	outline := c.style.stroke_on && c.style.thickness > 0
 	switch c.kind {
-	case .Quad, .Arc, .Path:
+	case .Quad, .Arc, .Path, .Clip_Shape:
 		return true
 	case .Circle, .Ellipse, .Text, .Typeset, .Image:
 		return false
@@ -106,7 +106,7 @@ outline_of :: proc(c: Command, tolerance: f64, points: ^[dynamic]geom.Point) -> 
 	case .Point:
 		append(points, P(a[0], a[1]))
 		return false
-	case .Circle, .Ellipse, .Arc, .Text, .Typeset, .Image, .Path:
+	case .Circle, .Ellipse, .Arc, .Text, .Typeset, .Image, .Path, .Clip_Shape:
 		// Not outlines of straight corners; arcs are handled apart.
 		return false
 	}

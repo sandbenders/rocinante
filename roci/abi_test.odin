@@ -381,3 +381,38 @@ test_c_rounds_the_corners_of_the_next_rectangle_or_square_only :: proc(t: ^testi
 	testing.expect_value(t, list[2].kind, gfx.Kind.Path)
 	testing.expect_value(t, list[3].kind, gfx.Kind.Rect)
 }
+
+@(test)
+test_c_clips_to_a_shape_and_the_origin_and_round_words_are_used_up :: proc(t: ^testing.T) {
+	start_headless(1)
+	defer shutdown()
+	abi_clip_circle(50, 50, 20)
+	abi_rect(0, 0, 10, 10)
+	abi_origin("corner")
+	abi_clip_circle_v({10, 10}, 5)
+	abi_rect(0, 0, 10, 10)
+	abi_round_corners(2)
+	abi_clip_rect(0, 0, 10, 10)
+	abi_clip_square(0, 0, 10) // the round word was used up by the rectangle
+	corners := [4]Abi_Vec2{{0, 0}, {50, 0}, {50, 40}, {0, 40}}
+	abi_clip_polygon(&corners[0], 4)
+	abi_rect(0, 0, 10, 10)
+	counts := [2]c.int{4, 3}
+	holes := [7]Abi_Vec2{{0, 0}, {50, 0}, {50, 40}, {0, 40}, {10, 10}, {20, 10}, {15, 20}}
+	abi_clip_polygons(&holes[0], &counts[0], 2)
+	abi_clip_polygon(nil, 4) // nothing to clip to: everything is cut away
+	abi_rect(0, 0, 10, 10)
+	abi_no_clip()
+	abi_clip_ellipse(5, 5, 6, 4)
+	abi_clip_ellipse_v({5, 5}, {6, 4})
+	list := recorded(current_window())
+	testing.expect_value(t, list[1].style.clip.shape, u32(1))
+	testing.expect(t, abs(list[1].style.clip.rect[0] - 30) < 0.1 && abs(list[1].style.clip.rect[2] - 70) < 0.1, "the box round the circle")
+	testing.expect(t, abs(list[3].style.clip.rect[0] - 10) < 0.1 && abs(list[3].style.clip.rect[2] - 20) < 0.1, "`corner` was for the one circle")
+	for c in list {
+		testing.expect(t, c.kind == .Clip_Shape || c.kind == .Rect, "only outlines and rectangles")
+	}
+	last := list[len(list) - 1]
+	testing.expect_value(t, last.kind, gfx.Kind.Clip_Shape)
+	testing.expect_value(t, len(list), 12)
+}

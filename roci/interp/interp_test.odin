@@ -2900,3 +2900,39 @@ test_a_rect_and_a_square_with_round_are_drawn_as_paths_with_rounded_corners :: p
 	testing.expect_value(t, commands[3].kind, gfx.Kind.Rect)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_a_clip_to_a_shape_keeps_drawing_inside_it_until_the_next_clip :: proc(t: ^testing.T) {
+	p := run_text(t, "clip circle at 50 50 radius 20\nrect at 0 0 size 100 100\nno clip\nclip rect at 0 0 size 10 10 round 3\nclip ellipse at 5 5 size 6 4\nclip square at 0 0 size 8 as center\nclip polygon [ { 0, 0 } { 10, 0 } { 5, 8 } ]\nrect at 1 1 size 2 2\nclip polygon [ { 0, 0 } ]\nrect at 1 1 size 2 2\nclip circle at 10 10 radius 5 as corner\nrect at 1 1 size 2 2\nclip circle at 1 1 radius 0\nrect at 1 1 size 2 2")
+	defer finish(p)
+	commands := roci.recorded(first_window())
+	kinds := make([dynamic]gfx.Kind, context.temp_allocator)
+	for c in commands {
+		append(&kinds, c.kind)
+	}
+	// every shape that is one is an outline command, then the rectangles drawn after it
+	testing.expect_value(t, len(commands), 11)
+	want := [?]gfx.Kind{.Clip_Shape, .Rect, .Clip_Shape, .Clip_Shape, .Clip_Shape, .Clip_Shape, .Rect, .Rect, .Clip_Shape, .Rect, .Rect}
+	for kind, i in want {
+		if i < len(kinds) {
+			testing.expect_value(t, kinds[i], kind)
+		}
+	}
+	// the circle clips to its box and names its shape; the rectangle after it carries both
+	testing.expect_value(t, commands[1].style.clip.shape, u32(1))
+	testing.expect(t, near(commands[1].style.clip.rect, {30, 30, 70, 70}), "the box round the circle")
+	// a rectangle, an ellipse, a square and a triangle: each replaces the one before, so the rectangle is in the triangle
+	testing.expect_value(t, commands[6].style.clip.shape, u32(5))
+	testing.expect_value(t, commands[6].style.clip.rect, [4]f32{0, 0, 10, 8})
+	// a polygon of one corner, and a circle of nothing, clip everything away
+	testing.expect_value(t, commands[7].style.clip, gfx.Clip{on = true})
+	testing.expect_value(t, commands[10].style.clip, gfx.Clip{on = true})
+	// `as corner` puts the circle's box at the point
+	testing.expect(t, near(commands[9].style.clip.rect, {10, 10, 20, 20}), "the box round the circle")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(private = "file")
+near :: proc(a, b: [4]f32) -> bool {
+	return abs(a[0] - b[0]) < 0.1 && abs(a[1] - b[1]) < 0.1 && abs(a[2] - b[2]) < 0.1 && abs(a[3] - b[3]) < 0.1
+}

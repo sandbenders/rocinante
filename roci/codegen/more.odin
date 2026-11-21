@@ -169,6 +169,14 @@ more_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (te
 			return "", false
 		}
 		return shape_call(procedure, {args[0]}, look, ""), false
+	case "clip polygon":
+		inner := kind_of_list_element(g, c.args[0])
+		procedure := "rt.clip_polygon" if inner == .Vector else "rt.clip_polygons"
+		if inner != .Vector && inner != .List {
+			refuse(g, e.span, "`clip polygon` of something that is not a list of corners")
+			return "", false
+		}
+		return fmt.aprintf("%s(%s)", procedure, args[0], allocator = context.temp_allocator), false
 	case "screen point":
 		if c.shape == 0 {
 			return fmt.aprintf("rt.screen_point(%s, %s, %s)", args[0], args[1], args[2], allocator = context.temp_allocator), true

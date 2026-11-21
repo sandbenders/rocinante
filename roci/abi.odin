@@ -429,6 +429,85 @@ abi_polygons :: proc "c" (corners: [^]Abi_Vec2, counts: [^]c.int, contours: c.in
 	polygons(made[:])
 }
 
+// Keeps drawing inside a circle, an ellipse, a rectangle or a square from now on, as the language's `clip circle` and the rest:
+// `roci_origin` and `roci_round_corners` apply to the next one of these as to the next shape.
+@(export, link_name = "roci_clip_circle")
+abi_clip_circle :: proc "c" (x, y, radius: f64) {
+	context = abi_context()
+	clip_circle(x, y, radius, abi_take_origin())
+}
+
+@(export, link_name = "roci_clip_circle_v")
+abi_clip_circle_v :: proc "c" (position: Abi_Vec2, radius: f64) {
+	context = abi_context()
+	clip_circle(vec_from_abi(position), radius, abi_take_origin())
+}
+
+@(export, link_name = "roci_clip_ellipse")
+abi_clip_ellipse :: proc "c" (x, y, width, height: f64) {
+	context = abi_context()
+	clip_ellipse(x, y, width, height, abi_take_origin())
+}
+
+@(export, link_name = "roci_clip_ellipse_v")
+abi_clip_ellipse_v :: proc "c" (position, size: Abi_Vec2) {
+	context = abi_context()
+	clip_ellipse(vec_from_abi(position), vec_from_abi(size), abi_take_origin())
+}
+
+@(export, link_name = "roci_clip_rect")
+abi_clip_rect :: proc "c" (x, y, width, height: f64) {
+	context = abi_context()
+	clip_rect(x, y, width, height, abi_take_round(), abi_take_origin())
+}
+
+@(export, link_name = "roci_clip_rect_v")
+abi_clip_rect_v :: proc "c" (position, size: Abi_Vec2) {
+	context = abi_context()
+	clip_rect(vec_from_abi(position), vec_from_abi(size), abi_take_round(), abi_take_origin())
+}
+
+@(export, link_name = "roci_clip_square")
+abi_clip_square :: proc "c" (x, y, side: f64) {
+	context = abi_context()
+	clip_square(x, y, side, abi_take_round(), abi_take_origin())
+}
+
+@(export, link_name = "roci_clip_square_v")
+abi_clip_square_v :: proc "c" (position: Abi_Vec2, side: f64) {
+	context = abi_context()
+	clip_square(vec_from_abi(position), side, abi_take_round(), abi_take_origin())
+}
+
+// Keeps drawing inside the shape through `count` corners, joined in order and closed. Fewer than three clips everything away.
+@(export, link_name = "roci_clip_polygon")
+abi_clip_polygon :: proc "c" (corners: [^]Abi_Vec2, count: c.int) {
+	context = abi_context()
+	if corners == nil || count < 0 {
+		clip_polygons({})
+		return
+	}
+	clip_polygon(([^][2]f64)(corners)[:count])
+}
+
+// Several contours in one shape, as roci_polygons has them: a contour inside another is a hole.
+@(export, link_name = "roci_clip_polygons")
+abi_clip_polygons :: proc "c" (corners: [^]Abi_Vec2, counts: [^]c.int, contours: c.int) {
+	context = abi_context()
+	if corners == nil || counts == nil || contours < 1 {
+		clip_polygons({})
+		return
+	}
+	made := make([dynamic][][2]f64, 0, int(contours), context.temp_allocator)
+	at := 0
+	for i in 0 ..< int(contours) {
+		n := int(max(counts[i], 0))
+		append(&made, ([^][2]f64)(corners)[at:][:n])
+		at += n
+	}
+	clip_polygons(made[:])
+}
+
 @(export, link_name = "roci_arc")
 abi_arc :: proc "c" (x, y, width, height, start, stop: f64) {
 	context = abi_context()

@@ -48,9 +48,32 @@ mesh_verb :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) {
 // shape (a list inside another is a hole).
 @(private)
 polygon_verb :: proc(it: ^Interp, call: lang.IR_Call) {
+	contours := polygon_contours(it, call)
+	if len(contours) == 0 {
+		return
+	}
+	look := &NO_LOOK
+	own_look: roci.Look
+	origin: roci.Origin
+	if len(call.options) > 0 {
+		own_look, origin = make_look(it, call.options)
+		look = &own_look
+	}
+	roci.polygons(contours[:], look^)
+}
+
+@(private)
+drop_meshes :: proc(it: ^Interp) {
+	delete(it.mesh_calls.counts)
+	it.mesh_calls = {}
+}
+
+// The contours of a `polygon` or a `clip polygon`: one list of corners, or a list of such lists. Nothing for an empty list.
+@(private)
+polygon_contours :: proc(it: ^Interp, call: lang.IR_Call) -> [][][2]f64 {
 	list := as_list(eval(it, call.args[0]))
 	if list == nil || len(list.items) == 0 {
-		return
+		return nil
 	}
 	contours := make([dynamic][][2]f64, 0, 4, context.temp_allocator)
 	if _, nested := list.items[0].(^List); nested {
@@ -72,18 +95,5 @@ polygon_verb :: proc(it: ^Interp, call: lang.IR_Call) {
 		}
 		append(&contours, corners[:])
 	}
-	look := &NO_LOOK
-	own_look: roci.Look
-	origin: roci.Origin
-	if len(call.options) > 0 {
-		own_look, origin = make_look(it, call.options)
-		look = &own_look
-	}
-	roci.polygons(contours[:], look^)
-}
-
-@(private)
-drop_meshes :: proc(it: ^Interp) {
-	delete(it.mesh_calls.counts)
-	it.mesh_calls = {}
+	return contours[:]
 }

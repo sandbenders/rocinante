@@ -444,8 +444,13 @@ pdf_command :: proc(p: ^Pdf, c: Command) {
 	out := &p.content
 	strings.write_string(out, "q\n")
 	if st.clip.on {
-		write_rect(out, st.clip.rect[0], st.clip.rect[1], max(st.clip.rect[2] - st.clip.rect[0], 0), max(st.clip.rect[3] - st.clip.rect[1], 0))
-		strings.write_string(out, "W n\n")
+		if outline, shaped := clip_shape_of(p.list, st.clip); shaped {
+			// the outline of the shape, carried to the page by the transform it was made under
+			pdf_clip_outline(out, outline, path_points(p.list, outline))
+		} else {
+			write_rect(out, st.clip.rect[0], st.clip.rect[1], max(st.clip.rect[2] - st.clip.rect[0], 0), max(st.clip.rect[3] - st.clip.rect[1], 0))
+			strings.write_string(out, "W n\n")
+		}
 	}
 	blend := st.blend
 	switch blend {
@@ -587,6 +592,8 @@ pdf_shape :: proc(p: ^Pdf, c: Command) {
 	case .Text:
 	case .Image:
 		pdf_image(p, c)
+	case .Clip_Shape:
+		// the outline of a clip, written where the clip is used
 	}
 }
 
@@ -881,4 +888,29 @@ pdf_path :: proc(p: ^Pdf, c: Command, box: [4]f32) {
 	case: strings.write_string(out, op)
 	}
 	strings.write_byte(out, '\n')
+}
+
+// Sets the clip of the page to the outline of a clip shape: its contours moved by the transform they were made
+// under, closed, and cut by the even-odd rule.
+@(private = "file")
+pdf_clip_outline :: proc(out: ^strings.Builder, outline: Command, points: [][2]f32) {
+	at := 0
+	for {
+		contour, _, after, ok := next_contour(points, at)
+		if !ok {
+			break
+		}
+		at = after
+		for q, i in contour {
+			x, y := transform_apply(outline.transform, q.x, q.y)
+			number(out, x)
+			strings.write_byte(out, ' ')
+			number(out, y)
+			strings.write_string(out, " m\n" if i == 0 else " l\n")
+		}
+		if len(contour) > 1 {
+			strings.write_string(out, "h\n")
+		}
+	}
+	strings.write_string(out, "W* n\n")
 }

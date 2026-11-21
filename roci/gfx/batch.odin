@@ -72,6 +72,7 @@ Batch :: struct {
 	pipeline: Pipeline,
 	blend:    Blend_Mode, // how it mixes with what is behind it; a change of blend or clip starts a new batch
 	clip:     Clip,
+	stencil:  Stencil_Role, // what a batch of `Paths` does to the stencil: nothing, or it writes or erases the outline of a clip shape and draws no color
 	first:    int,
 	count:    int,
 	hash:     u64, // changes when anything in the batch changes
@@ -100,6 +101,8 @@ Batcher :: struct {
 	look_hashes: [dynamic]u64, // this frame's `look_hash` of each of the list's looks
 	atlas:     Gradient_Atlas, // the gradients drawn so far, baked; kept between frames
 	stats:     Stats,
+	owner:     u32,  // the clip shape whose outline the stencil holds now, 0 for none (this frame)
+	shaped:    bool, // this frame draws inside a shape, so its pass needs a stencil
 }
 
 batcher_destroy :: proc(b: ^Batcher) {
@@ -156,6 +159,8 @@ build_commands :: proc(b: ^Batcher, list: ^Command_List, canvas: [2]f32, may_res
 	clear(&b.mesh.vertices)
 	clear(&b.mesh.indices)
 	clear(&b.batches)
+	b.owner = 0
+	b.shaped = false
 	b.stats = {commands = len(list.commands)}
 	// Each look hashed once, however many commands share it.
 	resize(&b.look_hashes, len(list.looks))
@@ -211,6 +216,14 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 	if !is_visible(command) {
 		b.stats.skipped += 1
 		return true
+	}
+	// Inside a clip shape the stencil must hold that shape's outline: the one that was there is erased and
+	// this one written, whenever the shape changes, so a clip put back by `pop` is whole again.
+	if shape := command.style.clip.shape; shape != 0 {
+		b.shaped = true
+		if shape != b.owner {
+			switch_stencil_owner(b, list, shape)
+		}
 	}
 	fill_row, fill_reset := paint_row(b, list, command.style.fill_paint, may_reset)
 	stroke_row, stroke_reset := paint_row(b, list, command.style.stroke_paint, may_reset)
@@ -289,13 +302,55 @@ add_command :: proc(b: ^Batcher, list: ^Command_List, command: Command, look: u6
 @(private)
 extend_batch :: proc(b: ^Batcher, pipeline: Pipeline, first, added: int, command: Command, look: u64) {
 	last := len(b.batches) - 1
-	if last < 0 || b.batches[last].pipeline != pipeline || b.batches[last].blend != command.style.blend || b.batches[last].clip != command.style.clip {
+	if last < 0 || b.batches[last].stencil != .None || b.batches[last].pipeline != pipeline || b.batches[last].blend != command.style.blend || b.batches[last].clip != command.style.clip {
 		append(&b.batches, Batch{pipeline = pipeline, blend = command.style.blend, clip = command.style.clip, first = first, hash = FNV_OFFSET})
 	}
 	batch := &b.batches[len(b.batches) - 1]
 	batch.count += added
 	// command_hash, with the look hashed once for every command that shares it
 	batch.hash = hash_u64(batch.hash, hash_u64(shape_hash(command), look))
+}
+
+// What a batch does to the stencil buffer, which holds the outline of the clip shape that is in force.
+Stencil_Role :: enum u8 {
+	None,  // it draws as it is
+	Write, // it sets the stencil where its triangles are, and draws no color
+	Erase, // it puts the stencil back to 0 where its triangles are, and draws no color
+}
+
+// Makes the stencil hold the outline of clip shape `shape` and nothing else: the outline that was in it is
+// erased by drawing it again as it was written, the new one is written.
+@(private)
+switch_stencil_owner :: proc(b: ^Batcher, list: ^Command_List, shape: u32) {
+	if b.owner != 0 {
+		stencil_outline(b, list, b.owner, .Erase)
+	}
+	stencil_outline(b, list, shape, .Write)
+	b.owner = shape
+}
+
+// One batch of the triangles of a clip shape, drawn into the stencil only.
+@(private)
+stencil_outline :: proc(b: ^Batcher, list: ^Command_List, shape: u32, role: Stencil_Role) {
+	clip := Clip{shape = shape}
+	outline, found := clip_shape_of(list, clip)
+	if !found {
+		return
+	}
+	drawn := outline
+	drawn.kind = .Path
+	drawn.style.fill = {255, 255, 255, 255}
+	drawn.style.fill_on = true
+	drawn.style.fill_paint = {}
+	drawn.style.stroke_on = false
+	drawn.style.alpha = 255
+	first := len(b.mesh.indices)
+	mesh_add_command(&b.mesh, drawn, 0, 0, path_points(list, outline))
+	added := len(b.mesh.indices) - first
+	if added == 0 {
+		return
+	}
+	append(&b.batches, Batch{pipeline = .Paths, blend = .Normal, clip = outline.style.clip, stencil = role, first = first, count = added, hash = hash_u64(hash_u64(FNV_OFFSET, u64(role)), shape_hash(outline))})
 }
 
 // Which pipeline draws a command.
@@ -375,7 +430,7 @@ to_instance :: proc "contextless" (c: Command, fill_row := u32(0), stroke_row :=
 		i.kind = .Triangle
 		i.shape = {a[0] - cx, a[1] - cy, a[2] - cx, a[3] - cy, a[4] - cx, a[5] - cy}
 		hw, hh = (hi_x - lo_x) / 2, (hi_y - lo_y) / 2
-	case .Quad, .Arc, .Text, .Typeset, .Image, .Path:
+	case .Quad, .Arc, .Text, .Typeset, .Image, .Path, .Clip_Shape:
 		return {}
 	}
 	t := transform_move(c.transform, cx, cy)

@@ -39,6 +39,10 @@ scene_gpu_destroy :: proc(r: ^Renderer) {
 		sdl.ReleaseGPUTexture(r.device, texture)
 	}
 	delete(r.depth)
+	for _, texture in r.stencils {
+		sdl.ReleaseGPUTexture(r.device, texture)
+	}
+	delete(r.stencils)
 	for _, gpu in r.model_gpu {
 		for buffer in ([?]Gpu_Buffer{gpu.vertices, gpu.indices}) {
 			if buffer.buffer != nil {sdl.ReleaseGPUBuffer(r.device, buffer.buffer)}

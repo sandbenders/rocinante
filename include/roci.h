@@ -367,6 +367,36 @@ void roci_clip_v(roci_vec2 position, roci_vec2 size);
 /* Takes the clip away, so drawing reaches the whole window again. */
 void roci_no_clip(void);
 
+/* Keeps drawing from now on inside a circle, in the transform of the moment: `clip circle at 100 100 radius 50`. It is a clip like the box: a new clip replaces it, and `no clip` takes it away. The edge is as smooth as a circle's. */
+void roci_clip_circle(double x, double y, double radius);
+
+/* Keeps drawing from now on inside a circle, in the transform of the moment: `clip circle at 100 100 radius 50`. It is a clip like the box: a new clip replaces it, and `no clip` takes it away. The edge is as smooth as a circle's. */
+void roci_clip_circle_v(roci_vec2 position, double radius);
+
+/* Keeps drawing from now on inside an ellipse: `clip ellipse at 100 100 size 160 80`. */
+void roci_clip_ellipse(double x, double y, double width, double height);
+
+/* Keeps drawing from now on inside an ellipse: `clip ellipse at 100 100 size 160 80`. */
+void roci_clip_ellipse_v(roci_vec2 position, roci_vec2 size);
+
+/* Keeps drawing from now on inside a rectangle, with its corners rounded by `round` pixels when asked: `clip rect at 20 20 size 200 100 round 16`. A turned rectangle clips to the turned shape, where `clip` keeps to the box round it. */
+void roci_clip_rect(double x, double y, double width, double height);
+
+/* Keeps drawing from now on inside a rectangle, with its corners rounded by `round` pixels when asked: `clip rect at 20 20 size 200 100 round 16`. A turned rectangle clips to the turned shape, where `clip` keeps to the box round it. */
+void roci_clip_rect_v(roci_vec2 position, roci_vec2 size);
+
+/* Keeps drawing from now on inside a square, with its corners rounded by `round` pixels when asked: `clip square at 20 20 size 100 round 20`. */
+void roci_clip_square(double x, double y, double side);
+
+/* Keeps drawing from now on inside a square, with its corners rounded by `round` pixels when asked: `clip square at 20 20 size 100 round 20`. */
+void roci_clip_square_v(roci_vec2 position, double side);
+
+/* Keeps drawing inside the shape through `count` corners (three or more), joined in order and closed, until roci_no_clip or another clip. Fewer than three corners clip everything away. */
+void roci_clip_polygon(const roci_vec2 *corners, int count);
+
+/* Keeps drawing inside a shape of several contours, laid out as roci_polygons has them: a contour inside another is a hole. */
+void roci_clip_polygons(const roci_vec2 *corners, const int *counts, int contours);
+
 /* Makes a color from red, green and blue, each 0 to 255. */
 roci_color roci_rgb(double red, double green, double blue);
 

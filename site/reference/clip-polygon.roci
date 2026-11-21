@@ -1,0 +1,9 @@
+clip polygon [ { 200, 40 } { 320, 250 } { 80, 250 } ]
+fill gold
+circle at 200 150 radius 130
+fill tomato
+rect at 90 190 size 220 30
+no clip
+no fill
+stroke navy
+polygon [ { 200, 40 } { 320, 250 } { 80, 250 } ]

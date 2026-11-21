@@ -221,3 +221,19 @@ rect at 120 60 size 160 180
 
 The box is placed by the transform of the moment, so `move` before it and it moves too. A box that has been turned clips to the smallest upright box round it, because the window cuts along straight lines. A new `clip` replaces the old one, and a `push [ ]` or a `with [ ]` puts the clip back as it was when it ends. `examples/blend` shows both.
 
+A clip can be a shape instead of a box. `clip circle`, `clip ellipse`, `clip rect`, `clip square` and `clip polygon` take the words of the shapes they are named for, and `clip rect` and `clip square` take `round` as well:
+
+```roci picture
+clip circle at 200 150 radius 90
+fill gold
+circle at 200 150 radius 130
+fill tomato
+rect at 90 190 size 220 30
+no clip
+no fill
+stroke navy
+circle at 200 150 radius 90
+```
+
+A shape clip is worked out in the transform of the moment too, a turned one is turned, and `clip polygon [ ... ]` takes the corners of any shape, with a second list for a hole. The rest works as for the box: a new clip replaces the old one, `no clip` takes it away, and `push [ ]` and `with [ ]` put the old one back.
+

@@ -354,7 +354,7 @@ box_call :: proc(b: ^Boxer, e: ^lang.IR, c: ^lang.IR_Call) {
 	}
 	// what goes into a list or a table is of the kind it holds
 	switch name {
-	case "polygon":
+	case "polygon", "clip polygon":
 		// corners worked out from boxes are read as vectors (a list of lists of them stays as it is)
 		if len(c.args) == 1 && kind_of_type(g, c.args[0].type) == .List && kind_of_type(g, holds_of(g, c.args[0].type)) == .Boxed {
 			list := lang.list_of(g.types, lang.vector_of(g.types, 2))

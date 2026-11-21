@@ -20,7 +20,7 @@ image_fillable :: proc "contextless" (kind: Kind) -> bool {
 	switch kind {
 	case .Circle, .Ellipse, .Rect, .Triangle, .Quad, .Arc, .Path:
 		return true
-	case .Line, .Point, .Text, .Typeset, .Image:
+	case .Line, .Point, .Text, .Typeset, .Image, .Clip_Shape:
 		return false
 	}
 	return false
@@ -80,7 +80,7 @@ fill_polygon :: proc(c: Command, tolerance: f64, points: ^[dynamic]geom.Point) -
 	switch c.kind {
 	case .Rect, .Triangle, .Quad:
 		return outline_of(c, tolerance, points)
-	case .Path:
+	case .Path, .Clip_Shape:
 		return false
 	case .Circle, .Ellipse:
 		x, y, w, h := local_bounds(c)
@@ -183,7 +183,7 @@ image_strokable :: proc "contextless" (kind: Kind) -> bool {
 	switch kind {
 	case .Circle, .Ellipse, .Rect, .Line, .Point, .Triangle, .Quad, .Arc:
 		return true
-	case .Text, .Typeset, .Image, .Path:
+	case .Text, .Typeset, .Image, .Path, .Clip_Shape:
 		return false
 	}
 	return false
@@ -236,7 +236,7 @@ stroke_triangulation :: proc(c: Command, tolerance: f64, tri: ^geom.Triangulatio
 		if closed && len(points) > 1 {
 			resize(&points, len(points) - 1) // the last point repeats the first
 		}
-	case .Text, .Typeset, .Image, .Path:
+	case .Text, .Typeset, .Image, .Path, .Clip_Shape:
 		return false
 	}
 	if len(points) == 0 {

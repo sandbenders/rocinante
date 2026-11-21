@@ -433,3 +433,15 @@ test_round_after_a_rect_or_a_square_is_a_look_field :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(result.source, "roci.rect_xywh(1.0, 1.0, 20.0, 10.0, roci.Look{round = 4.0})"))
 	testing.expect(t, strings.contains(result.source, "roci.square_xys(0.0, 0.0, 8.0, roci.Look{round = 2.0}, roci.Origin.Center)"))
 }
+
+@(test)
+test_a_clip_to_a_shape_is_a_call_with_the_same_words :: proc(t: ^testing.T) {
+	result := compile("clip circle at 50 50 radius 20\nclip ellipse at 5 5 size 6 4 as corner\nclip rect at 0 0 size 10 10 round 3\nclip square at 0 0 size 8\nclip polygon [ { 0, 0 } { 10, 0 } { 5, 8 } ]\nclip polygon [ [ { 0, 0 } { 9, 0 } { 5, 8 } ] [ { 2, 1 } { 6, 1 } { 4, 4 } ] ]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "rt.clip_circle_xyr(50.0, 50.0, 20.0)"), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.clip_ellipse_xywh(5.0, 5.0, 6.0, 4.0, roci.Look{}, roci.Origin.Corner)"), result.source)
+	testing.expect(t, strings.contains(result.source, "roci.clip_rect_xywh(0.0, 0.0, 10.0, 10.0, roci.Look{round = 3.0})"), result.source)
+	testing.expect(t, strings.contains(result.source, "roci.clip_square_xys(0.0, 0.0, 8.0)"), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.clip_polygon("), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.clip_polygons("), result.source)
+}

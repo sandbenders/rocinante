@@ -63,10 +63,14 @@ Blend_Mode :: enum u8 {
 }
 
 // The rectangle drawing is kept inside, in canvas pixels: from its top left corner to its
-// bottom right. Off means no limit.
+// bottom right. Off means no limit. A clip to a shape keeps the box round the shape here, which
+// cuts most of the picture off cheaply, and says which shape in `shape`: the number of the
+// `Clip_Shape` command that holds its outline (`Command_List.clip_shapes`), counted from 1, and 0
+// for a plain box.
 Clip :: struct {
-	on:   bool,
-	rect: [4]f32, // x0 y0 x1 y1
+	on:    bool,
+	rect:  [4]f32, // x0 y0 x1 y1
+	shape: u32,
 }
 
 // A shader that fills shapes and the values it was given: where they are in the list's

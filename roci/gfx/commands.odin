@@ -30,6 +30,7 @@ Kind :: enum u8 {
 	Typeset, // real text, laid out and drawn through SDL_ttf (fonts.odin, typeset.odin); see `typeset`
 	Image,   // a loaded picture (images.odin), drawn as a textured quad through the typeset pipeline; see `draw_image`
 	Path,    // contours of straight pieces, filled and stroked (path.odin); see `path`
+	Clip_Shape, // the outline a `clip` to a shape keeps drawing inside: a path that is never drawn itself (path.odin); see `set_clip_shape`
 }
 
 // What a position means. `Default` is each shape's own
@@ -124,6 +125,7 @@ Command_List :: struct {
 	gradient_hashes: [dynamic]u64, // the hash of each of them, in step with `gradients`
 	text:       [dynamic]u8,       // the characters of this frame's text commands, end to end
 	points:     [dynamic][2]f32,   // the points of this frame's path commands, end to end, a contour ends at a break (path.odin)
+	clip_shapes: [dynamic]int,     // the index of each `Clip_Shape` command of the frame, so a clip can find its outline (`Clip.shape` is one more than its place here)
 	background_paint: Gradient_Ref, // a gradient behind everything, when set
 	background_image: Image_Fill,   // a picture behind everything, when its id is not 0
 	background_set:   bool,         // `background` or `clear` was written since the frame (or, for a canvas, the last render) began
@@ -151,6 +153,7 @@ begin_frame :: proc(list: ^Command_List) {
 	clear(&list.gradient_hashes)
 	clear(&list.text)
 	clear(&list.points)
+	clear(&list.clip_shapes)
 	clear(&list.effects)
 	clear(&list.effect_values)
 	list.background_paint = {}
@@ -181,6 +184,7 @@ destroy :: proc(list: ^Command_List) {
 	delete(list.gradient_hashes)
 	delete(list.text)
 	delete(list.points)
+	delete(list.clip_shapes)
 	delete(list.effects)
 	delete(list.effect_values)
 	list^ = {}
@@ -518,6 +522,53 @@ set_clip :: proc(list: ^Command_List, x, y, width, height: f32) {
 	list.style.clip = Clip{on = true, rect = {lo.x, lo.y, hi.x, hi.y}}
 }
 
+
+// Keeps later drawing inside the shape the contours make, worked out in the current transform: the
+// same rule as a filled path, so a contour inside another is a hole. Replaces any clip there was; a
+// shape with nothing in it (no contour of three points, or a number that is not a number) clips
+// everything away, as a box with no size does. The outline is kept in a command of its own that is
+// never drawn; the clip says which, and its box (the box round the shape) is what cuts the picture
+// off in the renderer before the shape does.
+set_clip_shape :: proc(list: ^Command_List, contours: []Contour) {
+	list.look_changed = true
+	made := make([dynamic]Contour, 0, len(contours), context.temp_allocator)
+	lo, hi := [2]f32{max(f32), max(f32)}, [2]f32{-max(f32), -max(f32)}
+	for c in contours {
+		if len(c.points) < 3 {
+			continue
+		}
+		for p in c.points {
+			if !finite(p.x, p.y) {
+				list.style.clip = Clip{on = true}
+				return
+			}
+			px, py := transform_apply(list.transform, p.x, p.y)
+			lo = {min(lo.x, px), min(lo.y, py)}
+			hi = {max(hi.x, px), max(hi.y, py)}
+		}
+		append(&made, Contour{points = c.points, closed = true})
+	}
+	if len(made) == 0 {
+		list.style.clip = Clip{on = true}
+		return
+	}
+	list.style.clip = Clip{on = true, rect = {lo.x, lo.y, hi.x, hi.y}, shape = u32(len(list.clip_shapes) + 1)}
+	at := len(list.commands)
+	if !path_of_kind(list, .Clip_Shape, made[:]) {
+		list.style.clip = Clip{on = true}
+		return
+	}
+	append(&list.clip_shapes, at)
+}
+
+// The outline a clip to a shape keeps drawing inside, as the path command that holds it; nothing when
+// the clip is a plain box.
+clip_shape_of :: proc(list: ^Command_List, clip: Clip) -> (command: Command, ok: bool) {
+	if clip.shape == 0 || int(clip.shape) > len(list.clip_shapes) {
+		return {}, false
+	}
+	return command_at(list, list.clip_shapes[clip.shape - 1]), true
+}
 no_clip :: proc(list: ^Command_List) {
 	list.look_changed = true
 	list.style.clip = {}

@@ -107,11 +107,25 @@ Program :: enum {
 	Shadow3, // the scene as a light sees it (renderer_scene.odin)
 }
 
+// How a pipeline meets the stencil buffer. A frame that draws inside a clip shape has one on its 2D pass, and
+// every pipeline of that pass is made to fit it; a frame that does not has none, and `Off` is what it uses.
+Stencil_Mode :: enum u8 {
+	Off,      // the pass has no stencil
+	Attached, // it has one, and this pipeline leaves it alone
+	Write,    // sets it to the reference where it draws, and draws no color
+	Erase,    // sets it to 0 where it draws, and draws no color
+	Test,     // draws only where it equals the reference
+}
+
+// The stencil buffer's format: 32 bits of depth beside the 8 of stencil, which Vulkan, Metal and Direct3D 12 all have.
+STENCIL_FORMAT :: sdl.GPUTextureFormat.D32_FLOAT_S8_UINT
+
 Pipeline_Key :: struct {
 	program: Program,
 	format:  sdl.GPUTextureFormat,
 	samples: sdl.GPUSampleCount,
 	blend:   Blend_Mode,
+	stencil: Stencil_Mode,
 }
 
 Msaa_Key :: struct {
@@ -152,6 +166,7 @@ Renderer :: struct {
 	scene_ranges:  [Shape3]Shape_Range, // where each shape's triangles are
 	scene_ready:   bool,
 	depth:         map[Depth_Key]^sdl.GPUTexture,
+	stencils:      map[Depth_Key]^sdl.GPUTexture, // the stencil buffers of the 2D passes that draw inside a clip shape
 	transfer:      ^sdl.GPUTransferBuffer,
 	transfer_capacity: int,
 
@@ -206,6 +221,7 @@ renderer_init :: proc(r: ^Renderer, device: ^sdl.GPUDevice) {
 	r.pipelines = make(map[Pipeline_Key]^sdl.GPUGraphicsPipeline)
 	r.msaa = make(map[Msaa_Key]^sdl.GPUTexture)
 	r.depth = make(map[Depth_Key]^sdl.GPUTexture)
+	r.stencils = make(map[Depth_Key]^sdl.GPUTexture)
 	r.model_gpu = make(map[Model_Id]Model_Gpu)
 	image_reader_add(&r.released_seen)
 }
@@ -375,8 +391,8 @@ blend_state_for :: proc(mode: Blend_Mode) -> sdl.GPUColorTargetBlendState {
 
 // The pipeline for drawing a program into a target of this format and sample
 // count, made on first use. Gives nil, with `r.error` set, when it cannot be made.
-get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount, blend_mode := Blend_Mode.Normal) -> ^sdl.GPUGraphicsPipeline {
-	key := Pipeline_Key{program, format, samples, blend_mode}
+get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount, blend_mode := Blend_Mode.Normal, stencil := Stencil_Mode.Off) -> ^sdl.GPUGraphicsPipeline {
+	key := Pipeline_Key{program, format, samples, blend_mode, stencil}
 	if existing, found := r.pipelines[key]; found {
 		return existing
 	}
@@ -406,6 +422,10 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 	defer sdl.ReleaseGPUShader(r.device, fragment)
 
 	blend := blend_state_for(blend_mode)
+	if stencil == .Write || stencil == .Erase {
+		blend.enable_color_write_mask = true // the outline of a clip is not drawn, only kept
+		blend.color_write_mask = {}
+	}
 	target := sdl.GPUColorTargetDescription{format = format, blend_state = blend}
 	info := sdl.GPUGraphicsPipelineCreateInfo{
 		vertex_shader     = vertex,
@@ -413,6 +433,11 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 		primitive_type    = .TRIANGLELIST,
 		multisample_state = {sample_count = samples},
 		target_info       = {color_target_descriptions = &target, num_color_targets = 1},
+	}
+	if stencil != .Off {
+		info.target_info.depth_stencil_format = STENCIL_FORMAT
+		info.target_info.has_depth_stencil_target = true
+		info.depth_stencil_state = stencil_state_for(stencil)
 	}
 	// The vertex layouts are the structs Instance (batch.odin) and Mesh_Vertex
 	// (mesh.odin); the shaders read them as TEXCOORD0, 1, 2 ... in order.
@@ -495,6 +520,58 @@ get_pipeline :: proc(r: ^Renderer, program: Program, format: sdl.GPUTextureForma
 	}
 	r.pipelines[key] = pipeline
 	return pipeline
+}
+
+// The stencil state of a pipeline: it writes the reference where it draws, erases it, or draws only where it is.
+@(private)
+stencil_state_for :: proc(mode: Stencil_Mode) -> sdl.GPUDepthStencilState {
+	state := sdl.GPUDepthStencilState{compare_mask = 0xFF, write_mask = 0xFF}
+	ops := sdl.GPUStencilOpState{fail_op = .KEEP, pass_op = .KEEP, depth_fail_op = .KEEP, compare_op = .ALWAYS}
+	switch mode {
+	case .Off, .Attached:
+		return {}
+	case .Write:
+		ops.pass_op = .REPLACE
+	case .Erase:
+		ops.pass_op = .ZERO
+	case .Test:
+		ops.compare_op = .EQUAL
+		state.write_mask = 0
+	}
+	state.front_stencil_state = ops
+	state.back_stencil_state = ops
+	state.enable_stencil_test = true
+	return state
+}
+
+// The stencil buffer for a target of this size, kept for the next frame like the depth buffer of a 3D scene.
+@(private)
+stencil_texture :: proc(r: ^Renderer, width, height: u32, samples: sdl.GPUSampleCount) -> ^sdl.GPUTexture {
+	key := Depth_Key{width, height, samples}
+	if existing, found := r.stencils[key]; found {
+		return existing
+	}
+	if len(r.stencils) >= 8 {
+		for _, texture in r.stencils {
+			sdl.ReleaseGPUTexture(r.device, texture)
+		}
+		clear(&r.stencils)
+	}
+	texture := sdl.CreateGPUTexture(r.device, {
+		type                 = .D2,
+		format               = STENCIL_FORMAT,
+		usage                = {.DEPTH_STENCIL_TARGET},
+		width                = width,
+		height               = height,
+		layer_count_or_depth = 1,
+		num_levels           = 1,
+		sample_count         = samples,
+	})
+	if texture == nil {
+		return nil
+	}
+	r.stencils[key] = texture
+	return texture
 }
 
 // ---- the gradient atlas ----
@@ -869,7 +946,7 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 	for batch in b.batches {
 		if !ok {break}
 		if batch.pipeline == .Typeset && !typeset_ready {continue}
-		if batch_pipeline(r, batch, format, samples) == nil {
+		if batch_pipeline(r, batch, format, samples, b.shaped) == nil {
 			ok = false
 		}
 	}
@@ -906,15 +983,30 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 		colour_target.resolve_texture = target
 		colour_target.store_op = .RESOLVE
 	}
-	pass := sdl.BeginGPURenderPass(commands, &colour_target, 1, nil)
+	// A frame that draws inside a clip shape has a stencil buffer, cleared to 0, that holds the outline of the shape in force.
+	stencil_target: sdl.GPUDepthStencilTargetInfo
+	stencil_texture_ptr: ^sdl.GPUTexture
+	if ok && b.shaped {
+		stencil_texture_ptr = stencil_texture(r, pixels.x, pixels.y, samples)
+		if stencil_texture_ptr == nil {
+			set_error(r, "creating the stencil buffer a clip to a shape needs")
+			ok = false
+		}
+		stencil_target = {texture = stencil_texture_ptr, load_op = .DONT_CARE, store_op = .DONT_CARE, stencil_load_op = .CLEAR, stencil_store_op = .DONT_CARE}
+	}
+	pass := sdl.BeginGPURenderPass(commands, &colour_target, 1, &stencil_target if stencil_texture_ptr != nil else nil)
 	defer sdl.EndGPURenderPass(pass)
 	if !ok {
 		return false
+	}
+	if stencil_texture_ptr != nil {
+		sdl.SetGPUStencilReference(pass, 1)
 	}
 	uniforms := Frame_Uniforms{canvas_size = canvas}
 	gradients := sdl.GPUTextureSamplerBinding{texture = r.gradient_texture, sampler = r.gradient_sampler}
 	bound: Pipeline = .Shapes
 	bound_blend := Blend_Mode.Normal
+	bound_stencil := Stencil_Mode.Off
 	have_bound := false
 	clipped := false // a scissor smaller than the target is set
 	other_bound := false // a sketch's own shader fill was drawn since the batch's pipeline was bound
@@ -930,9 +1022,10 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 			sdl.SetGPUScissor(pass, sdl.Rect{0, 0, i32(pixels.x), i32(pixels.y)})
 			clipped = false
 		}
-		if !have_bound || batch.pipeline != bound || batch.blend != bound_blend {
+		if !have_bound || batch.pipeline != bound || batch.blend != bound_blend || stencil_mode_of(batch, b.shaped) != bound_stencil {
 			bound, bound_blend, have_bound = batch.pipeline, batch.blend, true
-			pipeline := batch_pipeline(r, batch, format, samples)
+			bound_stencil = stencil_mode_of(batch, b.shaped)
+			pipeline := batch_pipeline(r, batch, format, samples, b.shaped)
 			switch batch.pipeline {
 			case .Shapes:
 				sdl.BindGPUGraphicsPipeline(pass, pipeline)
@@ -976,7 +1069,7 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 				if d.item < batch.first || d.item >= batch.first + batch.count {continue}
 				if item := b.typeset[d.item]; item.shaded {
 					// The sketch's own pipeline draws this one; whatever comes next binds its own again.
-					if draw_shader_fill(r, commands, pass, list, item, d, format, samples, canvas) {
+					if draw_shader_fill(r, commands, pass, list, item, d, format, samples, canvas, stencil_mode_of(batch, b.shaped)) {
 						r.stats.draws += 1
 					}
 					have_bound = false
@@ -985,7 +1078,7 @@ render_scene :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, target: ^sdl
 				}
 				if other_bound {
 					other_bound = false
-					sdl.BindGPUGraphicsPipeline(pass, batch_pipeline(r, batch, format, samples))
+					sdl.BindGPUGraphicsPipeline(pass, batch_pipeline(r, batch, format, samples, b.shaped))
 					sdl.PushGPUVertexUniformData(commands, 0, &uniforms, size_of(Frame_Uniforms))
 					glyph_vertices := sdl.GPUBufferBinding{buffer = r.typeset.vertex_buffer.buffer}
 					sdl.BindGPUVertexBuffers(pass, 0, &glyph_vertices, 1)
@@ -1021,7 +1114,7 @@ release_stale_textures :: proc(r: ^Renderer) {
 // The pipeline a batch is drawn with, in the blend it asks for: the program of its
 // pipeline, made on first use. Nil, with `r.error` set, when it cannot be made.
 @(private)
-batch_pipeline :: proc(r: ^Renderer, batch: Batch, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount) -> ^sdl.GPUGraphicsPipeline {
+batch_pipeline :: proc(r: ^Renderer, batch: Batch, format: sdl.GPUTextureFormat, samples: sdl.GPUSampleCount, stenciled: bool) -> ^sdl.GPUGraphicsPipeline {
 	program: Program
 	switch batch.pipeline {
 	case .Shapes:  program = .Shapes
@@ -1029,7 +1122,19 @@ batch_pipeline :: proc(r: ^Renderer, batch: Batch, format: sdl.GPUTextureFormat,
 	case .Text:    program = .Text
 	case .Typeset: program = .Typeset
 	}
-	return get_pipeline(r, program, format, samples, batch.blend)
+	return get_pipeline(r, program, format, samples, batch.blend, stencil_mode_of(batch, stenciled))
+}
+
+// How a batch meets the stencil: not at all when the pass has none, otherwise by what it does to it.
+@(private)
+stencil_mode_of :: proc "contextless" (batch: Batch, stenciled: bool) -> Stencil_Mode {
+	switch {
+	case !stenciled:                return .Off
+	case batch.stencil == .Write:    return .Write
+	case batch.stencil == .Erase:    return .Erase
+	case batch.clip.shape != 0:      return .Test
+	}
+	return .Attached
 }
 
 // A clip's box in device pixels, cut to the target: `scale` is device pixels per canvas

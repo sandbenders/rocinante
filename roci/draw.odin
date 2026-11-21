@@ -508,6 +508,15 @@ rounded_rect :: proc(x, y, width, height, radius: f64, look: Look, origin: Origi
 	if origin == .Center {
 		left, top = x - w / 2, y - h / 2
 	}
+	plain := look
+	plain.round = nil
+	polygon(rounded_corners(left, top, w, h, radius), plain)
+}
+
+// The corners of a rectangle with its corners rounded by `radius` (never more than half the shorter side), four quarter
+// turns of 4 to 40 steps each by how big the radius is, clockwise from the top left.
+@(private)
+rounded_corners :: proc(left, top, w, h, radius: f64) -> [][2]f64 {
 	r := min(radius, min(w, h) / 2)
 	steps := clamp(int(math.ceil(r * 0.6)), 4, 40)
 	corners := make([dynamic][2]f64, 0, 4 * (steps + 1), context.temp_allocator)
@@ -519,7 +528,123 @@ rounded_rect :: proc(x, y, width, height, radius: f64, look: Look, origin: Origi
 			append(&corners, [2]f64{centre.x + r * math.cos(angle), centre.y + r * math.sin(angle)})
 		}
 	}
-	plain := look
-	plain.round = nil
-	polygon(corners[:], plain)
+	return corners[:]
+}
+
+// ---- clipping to a shape ----
+
+// Keeps later drawing inside a shape instead of a box, until `no clip` or another clip: the same rule as `clip`, the shape
+// worked out in the transform of the moment. Its edges are as smooth as a drawn shape's (a polygon of short steps).
+// A shape with nothing in it clips everything away.
+@(private)
+clip_to_contours :: proc(contours: [][][2]f64) {
+	made := make([dynamic]gfx.Contour, 0, len(contours), context.temp_allocator)
+	for corners in contours {
+		points := make([][2]f32, len(corners), context.temp_allocator)
+		for c, i in corners {
+			points[i] = {f32(c.x), f32(c.y)}
+		}
+		append(&made, gfx.Contour{points = points, closed = true})
+	}
+	gfx.set_clip_shape(current_list(), made[:])
+}
+
+// The corners of an ellipse in steps about two pixels long, but never fewer than 24 or more than 400.
+@(private)
+ellipse_corners :: proc(cx, cy, rx, ry: f64) -> [][2]f64 {
+	steps := clamp(int(math.ceil(math.PI * max(rx, ry))), 24, 400)
+	corners := make([][2]f64, steps, context.temp_allocator)
+	for i in 0 ..< steps {
+		angle := 2 * math.PI * f64(i) / f64(steps)
+		corners[i] = {cx + rx * math.cos(angle), cy + ry * math.sin(angle)}
+	}
+	return corners
+}
+
+// A shape that is not a shape: no size, or a number that is not one.
+@(private)
+clip_nothing :: proc() {
+	clip_to_contours({})
+}
+
+clip_circle_xyr :: proc(x, y, radius: f64, origin := Origin.Default) {
+	r := abs(radius)
+	if !(r > 0) || math.is_inf(r) {
+		clip_nothing()
+		return
+	}
+	cx, cy := x, y
+	if origin == .Corner {
+		cx, cy = x + r, y + r
+	}
+	clip_to_contours({ellipse_corners(cx, cy, r, r)})
+}
+
+clip_circle_vr :: proc(position: [2]f64, radius: f64, origin := Origin.Default) {
+	clip_circle_xyr(position.x, position.y, radius, origin)
+}
+
+clip_circle :: proc{clip_circle_xyr, clip_circle_vr}
+
+clip_ellipse_xywh :: proc(x, y, width, height: f64, origin := Origin.Default) {
+	w, h := abs(width), abs(height)
+	if !(w > 0 && h > 0) || math.is_inf(w) || math.is_inf(h) {
+		clip_nothing()
+		return
+	}
+	cx, cy := x, y
+	if origin == .Corner {
+		cx, cy = x + w / 2, y + h / 2
+	}
+	clip_to_contours({ellipse_corners(cx, cy, w / 2, h / 2)})
+}
+
+clip_ellipse_vs :: proc(position, size: [2]f64, origin := Origin.Default) {
+	clip_ellipse_xywh(position.x, position.y, size.x, size.y, origin)
+}
+
+clip_ellipse :: proc{clip_ellipse_xywh, clip_ellipse_vs}
+
+// Rectangles are placed by their corner, as drawn ones are; `look.round` rounds the corners.
+clip_rect_xywh :: proc(x, y, width, height: f64, look := Look{}, origin := Origin.Default) {
+	w, h := abs(width), abs(height)
+	if !(w > 0 && h > 0) || math.is_inf(w) || math.is_inf(h) {
+		clip_nothing()
+		return
+	}
+	left, top := x, y
+	if origin == .Center {
+		left, top = x - w / 2, y - h / 2
+	}
+	if radius, ok := look.round.?; ok && radius > 0 && !math.is_nan(radius) && !math.is_inf(radius) {
+		clip_to_contours({rounded_corners(left, top, w, h, radius)})
+		return
+	}
+	clip_to_contours({{{left, top}, {left + w, top}, {left + w, top + h}, {left, top + h}}})
+}
+
+clip_rect_vs :: proc(position, size: [2]f64, look := Look{}, origin := Origin.Default) {
+	clip_rect_xywh(position.x, position.y, size.x, size.y, look, origin)
+}
+
+clip_rect :: proc{clip_rect_xywh, clip_rect_vs}
+
+clip_square_xys :: proc(x, y, side: f64, look := Look{}, origin := Origin.Default) {
+	clip_rect_xywh(x, y, side, side, look, origin)
+}
+
+clip_square_vs :: proc(position: [2]f64, side: f64, look := Look{}, origin := Origin.Default) {
+	clip_rect_xywh(position.x, position.y, side, side, look, origin)
+}
+
+clip_square :: proc{clip_square_xys, clip_square_vs}
+
+// Any number of corners, joined in order and closed. Fewer than three, or a corner that is not a number, clips everything away.
+clip_polygon :: proc(corners: [][2]f64) {
+	clip_polygons({corners})
+}
+
+// Several contours, a contour inside another leaving a hole as a drawn polygon's do.
+clip_polygons :: proc(contours: [][][2]f64) {
+	clip_to_contours(contours)
 }
