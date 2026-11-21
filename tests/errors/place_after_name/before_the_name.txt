@@ -1,0 +1,8 @@
+── `in output` goes after the name ──────────────────── sketch.roci:1:16
+
+1 │ save in output "shot.png"
+  │                ^^^^^^^^^^
+
+`save` takes the name first and the place after it: `in sketch` or `in output` is the last thing on the line.
+
+Write:  save "shot.png" in output

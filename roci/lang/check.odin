@@ -96,7 +96,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 	// parser's fix is made, so what the checker says about the half call on that line is an echo.
 	cut_lines := make([dynamic]int, context.temp_allocator)
 	for d in parsed.diagnostics {
-		if d.id == .Word_Outside_Brackets || d.id == .Title_Of_Window {
+		if d.id == .Word_Outside_Brackets || d.id == .Title_Of_Window || d.id == .Place_After_Name {
 			append(&cut_lines, position_of(src, d.span.start).line)
 		}
 	}
@@ -115,7 +115,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 				continue
 			}
 		}
-		if len(cut_lines) > 0 && slice.contains(cut_lines[:], position_of(src, d.span.start).line) && d.id != .Word_Outside_Brackets && d.id != .Title_Of_Window {
+		if len(cut_lines) > 0 && slice.contains(cut_lines[:], position_of(src, d.span.start).line) && d.id != .Word_Outside_Brackets && d.id != .Title_Of_Window && d.id != .Place_After_Name {
 			continue
 		}
 		duplicate := false

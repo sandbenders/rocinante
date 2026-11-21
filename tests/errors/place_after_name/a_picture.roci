@@ -1,0 +1,2 @@
+pic = picture from [ red ] size 1 1
+save pic in sketch "icons/a.png"

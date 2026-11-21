@@ -347,6 +347,23 @@ finish_statement :: proc(p: ^Parser, in_block: bool, mark: int) {
 			return
 		}
 	}
+	// `save pic in sketch "a.png"`: the place goes after the name.
+	if call, has := call_of_statement.?; has && call.name == "save" && t.kind == .Text && p.at >= 2 {
+		place := p.tokens[p.at - 1]
+		word := p.tokens[p.at - 2]
+		if place.kind == .Name && word.kind == .Name && text_of(p, word) == "in" && (text_of(p, place) == "sketch" || text_of(p, place) == "output") {
+			line := position_of(p.src, t.span.start).line
+			start := p.src.line_starts[line - 1]
+			text := line_text(p.src, line)
+			before := strings.trim_right_space(text[:word.span.start - start])
+			name := text_of(p, t)
+			rest := strings.trim_space(text[t.span.end - start:])
+			fixed := strings.concatenate({before, " ", name, " in ", text_of(p, place), rest == "" ? "" : " ", rest}, context.temp_allocator)
+			report(p, .Place_After_Name, t.span, text_of(p, place), strings.trim_space(fixed))
+			skip_line(p)
+			return
+		}
+	}
 	// A word that follows a call and is not one of its words, but is near one (or means one).
 	if call, has := call_of_statement.?; has && t.kind == .Name {
 		word := text_of(p, t)
