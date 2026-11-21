@@ -66,7 +66,7 @@ project/
   icon/sketch.roci   use "../look.roci"
 ```
 
-The path starts in the folder of the file that says `use`, with `..` for the folder above. A file named this way is one more file of the program, as if it stood in the folder, so the same rules hold: it holds verbs and constants, not drawing, and it may name other files, or libraries, in turn. Name a file twice and it is read once. If it is not there, the message says where it looked. `roci run` watches the files of the sketch's own folder, so a change in the shared file shows the next time the sketch starts. `examples/project` is a small one.
+The path starts in the folder of the file that says `use`, with `..` for the folder above. A file named this way is one more file of the program, as if it stood in the folder, so the same rules hold: it holds verbs and constants, not drawing, and it may name other files, or libraries, in turn. Name a file twice and it is read once. If it is not there, the message says where it looked. `roci run` watches the shared file as it watches the files of the sketch's own folder, so saving it reloads the sketch. `examples/project` is a small one.
 
 ## Libraries
 

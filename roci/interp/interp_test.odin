@@ -3003,3 +3003,37 @@ test_a_font_of_several_names_is_found_name_by_name :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, found, "the missing name is said")
 }
+
+@(test)
+test_a_file_of_another_folder_is_watched_and_reloads_the_sketch :: proc(t: ^testing.T) {
+	root := "output/tests/interp_shared"
+	_ = os.remove_all(root)
+	_ = os.make_directory_all("output/tests/interp_shared/game")
+	sketch, look := "output/tests/interp_shared/game/sketch.roci", "output/tests/interp_shared/look.roci"
+	write_sketch(t, look, "STEP = 1\n")
+	write_sketch(t, sketch, "use \"../look.roci\"\nn = 0\ndraw [\n  n = n + STEP\n  print n\n]\n")
+	roci.start_headless(1)
+	program, problem := folder.read_program(sketch)
+	testing.expect_value(t, problem, "")
+	p, ok := load_files(program.files)
+	testing.expect(t, ok)
+	watch(p, sketch)
+	start(p)
+	defer finish_all()
+	roci.step()
+	testing.expect_value(t, len(p.watched), 2)
+	testing.expect(t, poll(p) == p) // nothing changed
+	// the shared file is saved with another value: the sketch reloads with it, as it does for a file of its own folder
+	time.sleep(20 * time.Millisecond)
+	write_sketch(t, look, "STEP = 5\n")
+	next := poll(p)
+	testing.expect(t, next != p)
+	testing.expect(t, !next.has_errors)
+	roci.step()
+	testing.expect_value(t, printed(next), "6") // n kept its 1, as when a file of the sketch'"'"'s own folder changes
+	// and a shared file saved with a mistake says so on the screen, and the sketch keeps running as it was
+	time.sleep(20 * time.Millisecond)
+	write_sketch(t, look, "STEP = \n")
+	kept := poll(next)
+	testing.expect(t, kept.problem_title != "", "the mistake is said")
+}
