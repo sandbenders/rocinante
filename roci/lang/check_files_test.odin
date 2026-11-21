@@ -126,6 +126,22 @@ program_source :: proc(t: ^testing.T, base: string, sketch_text: string) -> Sour
 		after := slashed(fi.fullpath)[strings.index(slashed(fi.fullpath), "/libs/") + len("/libs/"):]
 		append(&files, File_Text{name = strings.clone(fmt.tprintf("libs/%s", after), context.temp_allocator), library = strings.clone(after[:strings.index_byte(after, '/')], context.temp_allocator), text = string(data)})
 	}
+	// The files of other places that a `use "../look.roci"` names, read from the folder, each once.
+	for i := 0; i < len(files); i += 1 {
+		for path in file_uses_in(files[i].name, files[i].text, context.temp_allocator) {
+			known := false
+			for f in files {
+				known ||= use_file_path("", f.name, context.temp_allocator) == path
+			}
+			if known {
+				continue
+			}
+			data, read_err := os.read_entire_file(fmt.tprintf("%s/%s", folder, path), context.temp_allocator)
+			if read_err == nil {
+				append(&files, File_Text{name = strings.clone(path, context.temp_allocator), text = string(data)})
+			}
+		}
+	}
 	order_files(files[:])
 	return join_sources(files[:], context.temp_allocator)
 }

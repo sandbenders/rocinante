@@ -75,6 +75,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"webcam", 1, "Webcam", 2, 1},
 	{"fetch", 1, "Fetching", 2, 1},
 	{"city", 1, "City", 2, 1},
+	{"project", 1, "Sharing between programs", 3, 1},
 
 	{"flocking", 2, "Flocking", 100, 1},
 	{"life", 2, "Game of life", 120, 1},

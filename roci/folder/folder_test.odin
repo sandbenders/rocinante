@@ -366,3 +366,40 @@ test_a_folder_with_a_sketch_of_its_own_is_not_part_of_the_program :: proc(t: ^te
 	inner, _ := read_program(path_in(root, "tools/icons/sketch.roci"))
 	testing.expect_value(t, len(inner.files), 3)
 }
+
+@(test)
+test_a_use_of_a_file_of_another_folder_makes_it_a_file_of_the_program :: proc(t: ^testing.T) {
+	root := fresh("program_use_file")
+	for dir in ([]string{"game", "tool", "shared"}) {
+		_ = os.make_directory_all(path_in(root, dir))
+	}
+	write :: proc(t: ^testing.T, root, name, text: string) {
+		testing.expect(t, os.write_entire_file(path_in(root, name), transmute([]byte)text) == nil)
+	}
+	// a project's two programs share `look.roci`, which itself uses another file and a library
+	write(t, root, "look.roci", "use \"shared/ink.roci\"\nuse \"flocking\"\nSHIP = 1\n")
+	write(t, root, "shared/ink.roci", "INK = 2\n")
+	write(t, root, "game/sketch.roci", "use \"../look.roci\"\nuse \"../look.roci\"\nuse \"../game/extra.roci\"\nprint SHIP\n")
+	write(t, root, "game/extra.roci", "EXTRA = 3\n")
+	write(t, root, "tool/sketch.roci", "use \"../look.roci\"\nuse \"../missing.roci\"\nuse \"../game/sketch.roci\"\nprint INK\n")
+	make_library :: proc(t: ^testing.T, root: string) {
+		_ = os.make_directory_all(path_in(root, "game/libs/flocking"))
+		testing.expect(t, os.write_entire_file(path_in(root, "game/libs/flocking/flock.roci"), transmute([]byte)string("learn flock [ ]\n")) == nil)
+	}
+	make_library(t, root)
+	shown :: proc(root: string, program: Program) -> string {
+		names := make([dynamic]string, context.temp_allocator)
+		for f in program.files {
+			append(&names, strings.trim_prefix(f.name, strings.concatenate({root, "/"}, context.temp_allocator)))
+		}
+		return strings.join(names[:], " ", context.temp_allocator)
+	}
+	game, problem := read_program(path_in(root, "game/sketch.roci"))
+	testing.expect_value(t, problem, "")
+	// the files of another place come once each, the library of the sketch that asked for it is read, and the sketch runs last
+	testing.expect_value(t, shown(root, game), "game/libs/flocking/flock.roci game/extra.roci look.roci shared/ink.roci game/sketch.roci")
+	// a file that is not there is left to the checker, and the sketch of another program is never taken in
+	tool, tool_problem := read_program(path_in(root, "tool/sketch.roci"))
+	testing.expect_value(t, tool_problem, "")
+	testing.expect_value(t, shown(root, tool), "look.roci shared/ink.roci tool/sketch.roci")
+}

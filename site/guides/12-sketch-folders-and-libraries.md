@@ -55,6 +55,19 @@ repeat 40 [ star (random 400) (random 300) (1 + random 3) ]
 
 Constants (names in capitals) exist for every file from the start, whatever the order of the files' names, and a constant can use another constant of any file: `GLOW = SKY` works wherever each is written. A name in small letters is a variable, which gets its value when the line that gives it runs, and files are read in the order of their names, so a variable of a later file has no value yet for a line of an earlier one. Constants made from a variable, or from `random` and the other words that differ from one run to the next, are made where they are written.
 
+## One file for several sketches
+
+A project can have more than one program: a game, a tool that makes its icon, a folder of tests. Each is a sketch folder with its own `sketch.roci`, and a folder that holds a `sketch.roci` is never part of the sketch around it. What they share goes in a file of its own, outside both, and each names it with `use` and a path:
+
+```
+project/
+  look.roci          colors and the ship, taught once
+  game/sketch.roci   use "../look.roci"
+  icon/sketch.roci   use "../look.roci"
+```
+
+The path starts in the folder of the file that says `use`, with `..` for the folder above. A file named this way is one more file of the program, as if it stood in the folder, so the same rules hold: it holds verbs and constants, not drawing, and it may name other files, or libraries, in turn. Name a file twice and it is read once. If it is not there, the message says where it looked. `roci run` watches the files of the sketch's own folder, so a change in the shared file shows the next time the sketch starts. `examples/project` is a small one.
+
 ## Libraries
 
 A library is a folder of `.roci` files someone has shared in a git repository. `roci get` copies it into the sketch's `libs/` folder, where it stays, so the sketch keeps working even if the library changes or disappears:

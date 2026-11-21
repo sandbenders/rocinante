@@ -1,0 +1,2 @@
+use "../gone.roci"
+circle at 100 100 radius 20

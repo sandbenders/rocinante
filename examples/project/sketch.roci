@@ -1,0 +1,11 @@
+// Sharing between programs. This sketch gets its colors and its ship from ../project_look/look.roci, a file of another folder, with
+// `use`: the game and a tool that makes its icon can both read it, so their copies never drift apart. The file is read from the
+// folder of the sketch that says `use`, and only teachings and constants go in it.
+use "../project_look/look.roci"
+window size 400 300 title "project"
+
+draw [
+  background SKY
+  ship { 120, 150 } 1
+  ship { 280, 150 } 2.5
+]

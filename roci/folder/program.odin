@@ -80,8 +80,39 @@ read_program :: proc(sketch: string, allocator := context.temp_allocator) -> (pr
 	}
 	// The libraries the files ask for with `use`, and the ones those ask for in turn.
 	wanted := make([dynamic]string, allocator)
+	shared := make([dynamic]string, allocator) // files of other places, by their paths
 	for f in files {
 		append(&wanted, ..lang.uses_in(f.name, f.text, allocator))
+		append(&shared, ..lang.file_uses_in(f.name, f.text, allocator))
+	}
+	seen := make(map[string]bool, 4, allocator)
+	// The files of other places that `use "../look.roci"` names, and the ones those name in turn: each is one file of the program, as
+	// if it were in the folder, and read once however many files name it. Libraries they ask for are the sketch's own.
+	for i := 0; i < len(shared); i += 1 {
+		path := shared[i]
+		if seen[path] {
+			continue
+		}
+		seen[path] = true
+		if strings.has_suffix(path, "/sketch.roci") || path == "sketch.roci" {
+			continue // another program's own file, which the checker says is not one to use
+		}
+		already := false
+		for f in files {
+			already ||= lang.use_file_path("", f.name, allocator) == path
+		}
+		if already {
+			continue
+		}
+		data, err := os.read_entire_file(path, allocator)
+		if err != nil {
+			continue // a `use` of a file that is not there is the checker's to report
+		}
+		append(&files, lang.File_Text{name = path, text = string(data)})
+		append(&shared, ..lang.file_uses_in(path, string(data), allocator))
+		for library in lang.uses_in(path, string(data), allocator) {
+			append(&wanted, library)
+		}
 	}
 	visited := make(map[string]bool, 4, allocator)
 	for i := 0; i < len(wanted); i += 1 {

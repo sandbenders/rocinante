@@ -104,10 +104,13 @@ taught_in :: proc(name, text: string, allocator := context.allocator, library :=
 // program can be gathered before it is checked.
 uses_in :: proc(name, text: string, allocator := context.allocator) -> []string {
 	texts := use_texts_in(name, text, allocator)
-	for &t in texts {
-		t = library_name(t)
+	kept := make([dynamic]string, allocator)
+	for t in texts {
+		if !is_file_use(t) {
+			append(&kept, library_name(t))
+		}
 	}
-	return texts
+	return kept[:]
 }
 
 // The same, with each `use` line's text as it was written (a name or a git URL).
@@ -194,4 +197,55 @@ own_names :: proc(src: Source, lexed: Lexed, verbs: []registry.Verb, allocator :
 		}
 	}
 	return found
+}
+
+// Whether a `use` names a file of another place (`use "../../look.roci"`) and not a library: it ends in `.roci`. A library is a
+// folder, found in `libs/`, so no library's name ends that way.
+is_file_use :: proc(use: string) -> bool {
+	return strings.has_suffix(use, ".roci")
+}
+
+// The files a file asks for with `use "../look.roci"`, as paths from where the program was read: each written path joined to the
+// folder of the file that has the `use`, with `.` and `..` worked out.
+file_uses_in :: proc(name, text: string, allocator := context.allocator) -> []string {
+	found := make([dynamic]string, allocator)
+	for written in use_texts_in(name, text, allocator) {
+		if is_file_use(written) {
+			append(&found, use_file_path(name, written, allocator))
+		}
+	}
+	return found[:]
+}
+
+// The path a `use "../look.roci"` written in the file `from` means: the folder of `from`, then the written path, then `.` and
+// `..` taken out. An absolute written path stays as it is. A path that goes above where it starts keeps its `..`.
+use_file_path :: proc(from, written: string, allocator := context.allocator) -> string {
+	joined := written
+	if !strings.has_prefix(written, "/") {
+		folder := "."
+		if slash := strings.last_index_byte(from, '/'); slash >= 0 {
+			folder = from[:slash] if slash > 0 else "/"
+		}
+		joined = strings.concatenate({folder, "/", written}, context.temp_allocator)
+	}
+	absolute := strings.has_prefix(joined, "/")
+	parts := make([dynamic]string, context.temp_allocator)
+	for piece in strings.split(joined, "/", context.temp_allocator) {
+		switch {
+		case piece == "" || piece == ".":
+		case piece == "..":
+			if len(parts) > 0 && parts[len(parts) - 1] != ".." {
+				pop(&parts)
+			} else if !absolute {
+				append(&parts, piece)
+			}
+		case:
+			append(&parts, piece)
+		}
+	}
+	text := strings.join(parts[:], "/", context.temp_allocator)
+	if absolute {
+		text = strings.concatenate({"/", text}, context.temp_allocator)
+	}
+	return strings.clone(text, allocator)
 }

@@ -319,6 +319,14 @@ taught_by_siblings :: proc(path: string) -> []Taught_Verb {
 			append(&taught, ..taught_in(other, string(data), context.temp_allocator))
 		}
 	}
+	// And the files of other places it names with `use`.
+	if own, own_err := os.read_entire_file(path, context.temp_allocator); own_err == nil && strings.contains(folder, "examples") {
+		for other in file_uses_in(path, string(own), context.temp_allocator) {
+			if data, err := os.read_entire_file(other, context.temp_allocator); err == nil {
+				append(&taught, ..taught_in(other, string(data), context.temp_allocator))
+			}
+		}
+	}
 	// And the libraries of its libs folder.
 	w: os.Walker
 	os.walker_init(&w, fmt.tprintf("%s/libs", folder))

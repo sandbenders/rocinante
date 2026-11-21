@@ -1386,6 +1386,21 @@ check_definitions_only :: proc(c: ^Checker, stmts: []^Stmt) {
 // `use "name"`: the library has to be in the program, which is to say in `libs/`.
 @(private)
 check_use :: proc(c: ^Checker, s: ^Stmt, k: Use) {
+	if is_file_use(k.name) {
+		// a file of another place: the path is read from the folder of the file that has the `use`, and the file is one of the program's
+		from, _ := place_of(c.src, s.span.start)
+		wanted := use_file_path(from, k.name, context.temp_allocator)
+		for part in c.src.parts {
+			if use_file_path("", part.name, context.temp_allocator) == wanted {
+				return
+			}
+		}
+		if len(c.src.parts) == 0 {
+			return // one file alone, with nothing to join
+		}
+		note(c, .Use_File_Missing, s.span, k.name, wanted)
+		return
+	}
 	name := library_name(k.name)
 	if !is_library_name(c, name) {
 		note(c, .Library_Missing, s.span, k.name, name)

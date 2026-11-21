@@ -81,6 +81,7 @@ EXAMPLES := [?]Example{
 	{"vector", 20, {1}}, // an SVG badge of paths, curves, arcs, a ring cut out by a hole, groups, a use and a style, drawn at its own size, stretched, turned and growing and shrinking
 	{"export", 5, {1}}, // a ring of dots; s and r save pictures, which a golden run never presses
 	{"blend", 3, {1}}, // seven blends over the same gray, and a bright wall clipped to a box
+	{"project", 3, {1}}, // a ship and its colors read from a file of another folder with use
 	{"paint", 3, {1}}, // a picture as the window, the letters of a text and the outlines of shapes
 	{"pixels", 3, {1}}, // pixel, crop, resize and filter: a magnifier and six filtered thumbnails
 	{"effects", 3, {1}}, // two shaders of its own over five stripes: a wave with a tint, and a vignette

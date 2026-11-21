@@ -1,0 +1,15 @@
+// The look of a project, shared: every program of the project (the game, the tool that draws its icon, the tests) names this file
+// with `use` and so draws with the same colors and the same ship. Only teachings and constants go in a file like this.
+INK = crimson
+SKY = [ midnightblue steelblue ]
+SHIP = [ { 0, -30 } { 22, 24 } { 0, 12 } { -22, 24 } ]
+
+learn ship where scale [
+  push [
+    move where.x where.y
+    grow scale scale
+    fill INK
+    no stroke
+    polygon SHIP
+  ]
+]

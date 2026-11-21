@@ -1,0 +1,8 @@
+── I cannot find the file `../gone.roci` ─────────────── sketch.roci:1:1
+
+1 │ use "../gone.roci"
+  │ ^^^^^^^^^^^^^^^^^^
+
+`use "../gone.roci"` names a file by where it is from the folder of the file that says it, and there is no readable `.roci` file at `../gone.roci`. A file for `use` holds only teachings and constants, and its name is not `sketch.roci`.
+
+Check the path, which starts in the folder of this file:  use "../shared.roci"
