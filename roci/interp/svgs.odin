@@ -173,7 +173,6 @@ say_svg_lost :: proc(it: ^Interp, name: string, entry: Svg_Entry, span: lang.Spa
 		switch part {
 		case .Text:     append(&parts, "text")
 		case .Picture:  append(&parts, "pictures")
-		case .Gradient: append(&parts, "gradients (each is drawn in the first color of its stops)")
 		case .Clip:     append(&parts, "clips")
 		case .Mask:     append(&parts, "masks")
 		case .Filter:   append(&parts, "filters")

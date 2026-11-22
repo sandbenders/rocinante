@@ -1,7 +1,16 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
 #include <metal_stdlib>
 #include <simd/simd.h>
 
 using namespace metal;
+
+// Implementation of the GLSL mod() function, which is slightly different than Metal fmod()
+template<typename Tx, typename Ty>
+inline Tx mod(Tx x, Ty y)
+{
+    return x - y * floor(x / y);
+}
 
 struct main0_out
 {
@@ -19,43 +28,92 @@ struct main0_in
 fragment main0_out main0(main0_in in [[stage_in]], texture2d<float> gradient_texture [[texture(0)]], sampler gradient_textureSmplr [[sampler(0)]])
 {
     main0_out out = {};
-    float4 _242 = in.input_colour;
+    float4 _423 = in.input_colour;
     if (in.input_gradient != 0u)
     {
-        uint _301 = in.input_gradient - 1u;
-        float4 _316 = gradient_texture.read(uint2(int3(0, int((_301 * 2u) + 1u), 0).xy), 0);
-        float4 _286 = _316;
-        uint _320 = uint(_286.x + 0.5);
-        float2 _325 = fast::max(in.input_box_half * 2.0, float2(9.9999997473787516355514526367188e-05));
-        float2 _289 = _325;
-        float2 _331 = (_316.zw - float2(0.5)) * _325;
-        float _424;
-        if (_320 == 0u)
+        uint _494 = in.input_gradient - 1u;
+        float4 _509 = gradient_texture.read(uint2(int3(0, int((_494 * 2u) + 1u), 0).xy), 0);
+        float4 _467 = _509;
+        uint _513 = uint(_467.x + 0.5);
+        float2 _518 = fast::max(in.input_box_half * 2.0, float2(9.9999997473787516355514526367188e-05));
+        float2 _470 = _518;
+        float2 _524 = (_509.zw - float2(0.5)) * _518;
+        float _785;
+        if (_513 == 0u)
         {
-            float _336 = _286.y * 6.283185482025146484375;
-            float2 _341 = float2(cos(_336), sin(_336));
-            float2 _293 = _341;
-            _424 = (dot(in.input_local, _341) / fast::max(abs(_289.x * _293.x) + abs(_289.y * _293.y), 9.9999997473787516355514526367188e-05)) + 0.5;
+            float _529 = _467.y * 6.283185482025146484375;
+            float2 _534 = float2(cos(_529), sin(_529));
+            float2 _474 = _534;
+            _785 = (dot(in.input_local, _534) / fast::max(abs(_470.x * _474.x) + abs(_470.y * _474.y), 9.9999997473787516355514526367188e-05)) + 0.5;
         }
         else
         {
-            float _425;
-            if (_320 == 1u)
+            float _786;
+            if (_513 == 1u)
             {
-                _425 = length((in.input_local - _331) / (_325 * 0.5));
+                _786 = length((in.input_local - _524) / (_518 * 0.5));
             }
             else
             {
-                float2 _295 = in.input_local - _331;
-                _425 = fract((precise::atan2(_295.y, _295.x) * 0.15915493667125701904296875) - _286.y);
+                float _787;
+                if (_513 == 2u)
+                {
+                    float2 _476 = in.input_local - _524;
+                    _787 = fract((precise::atan2(_476.y, _476.x) * 0.15915493667125701904296875) - _467.y);
+                }
+                else
+                {
+                    float4 _477 = gradient_texture.read(uint2(int3(1, int((_494 * 2u) + 1u), 0).xy), 0);
+                    float4 _478 = gradient_texture.read(uint2(int3(2, int((_494 * 2u) + 1u), 0).xy), 0);
+                    float4 _479 = gradient_texture.read(uint2(int3(3, int((_494 * 2u) + 1u), 0).xy), 0);
+                    float2 _480 = in.input_local / fast::max(in.input_box_half, float2(9.9999997473787516355514526367188e-05));
+                    float2 _678 = float2((((_477.x + _477.y) * _480.x) + ((_478.x + _478.y) * _480.y)) + (_479.x + _479.y), (((_477.z + _477.w) * _480.x) + ((_478.z + _478.w) * _480.y)) + (_479.z + _479.w));
+                    float2 _481 = _678;
+                    float _784;
+                    if (_513 == 4u)
+                    {
+                        float2 _685 = _509.zw;
+                        float2 _688 = _678 - _685;
+                        float _691 = dot(_688, _688);
+                        float _694 = dot(_685, _688);
+                        float _712 = (sqrt(fast::max((_694 * _694) - (_691 * (dot(_685, _685) - 1.0)), 0.0)) - _694) / fast::max(_691, 9.9999996826552253889678874634872e-21);
+                        _784 = (_691 <= 0.0) ? 0.0 : ((_712 > 0.0) ? (1.0 / _712) : 1.0);
+                    }
+                    else
+                    {
+                        _784 = _481.x;
+                    }
+                    uint _724 = uint(_467.y + 0.5);
+                    float _788;
+                    if (_724 == 2u)
+                    {
+                        _788 = fract(_784);
+                    }
+                    else
+                    {
+                        float _789;
+                        if (_724 == 1u)
+                        {
+                            float _736 = mod(abs(_784), 2.0);
+                            _789 = (_736 > 1.0) ? (2.0 - _736) : _736;
+                        }
+                        else
+                        {
+                            _789 = _784;
+                        }
+                        _788 = _789;
+                    }
+                    _787 = _788;
+                }
+                _786 = _787;
             }
-            _424 = _425;
+            _785 = _786;
         }
-        float4 _402 = gradient_texture.sample(gradient_textureSmplr, float2(((fast::clamp(_424, 0.0, 1.0) * 255.0) + 0.5) * 0.00390625, ((float(_301) * 2.0) + 0.5) * 0.001953125), level(0.0));
-        float4 _243 = _402;
-        _242 = float4(_402.xyz, _243.w * in.input_colour.w);
+        float4 _762 = gradient_texture.sample(gradient_textureSmplr, float2(((fast::clamp(_785, 0.0, 1.0) * 255.0) + 0.5) * 0.00390625, ((float(_494) * 2.0) + 0.5) * 0.001953125), level(0.0));
+        float4 _424 = _762;
+        _423 = float4(_762.xyz, _424.w * in.input_colour.w);
     }
-    out._entryPointOutput = float4(_242.xyz * _242.w, _242.w);
+    out._entryPointOutput = float4(_423.xyz * _423.w, _423.w);
     return out;
 }
 

@@ -146,14 +146,14 @@ test_the_ramp_runs_from_the_first_colour_to_the_last :: proc(t: ^testing.T) {
 @(test)
 test_params_carry_the_kind_the_angle_in_turns_and_the_centre :: proc(t: ^testing.T) {
 	g, _ := gradient_make({RED, BLUE}, .Conic, 90, centre = {30, 80})
-	testing.expect_value(t, gradient_params(g), [4]f32{2, 0.25, 0.3, 0.8})
+	testing.expect_value(t, gradient_params(g)[0], [4]f32{2, 0.25, 0.3, 0.8})
 	rad, _ := gradient_make({RED, BLUE}, .Radial)
-	testing.expect_value(t, gradient_params(rad)[0], f32(1))
+	testing.expect_value(t, gradient_params(rad)[0][0], f32(1))
 	// Angles wrap: -90 is the same as 270, 450 the same as 90.
 	neg, _ := gradient_make({RED, BLUE}, .Linear, -90)
-	testing.expect(t, math.abs(gradient_params(neg)[1] - 0.75) < 1e-6)
+	testing.expect(t, math.abs(gradient_params(neg)[0][1] - 0.75) < 1e-6)
 	big, _ := gradient_make({RED, BLUE}, .Linear, 450)
-	testing.expect(t, math.abs(gradient_params(big)[1] - 0.25) < 1e-6)
+	testing.expect(t, math.abs(gradient_params(big)[0][1] - 0.25) < 1e-6)
 }
 
 @(test)
@@ -217,7 +217,8 @@ test_the_baked_row_holds_the_ramp_and_the_parameters :: proc(t: ^testing.T) {
 	baked := a.rows[row]
 	testing.expect_value(t, baked.ramp[0], [4]f16{1, 0, 0, 1})
 	testing.expect_value(t, baked.ramp[RAMP_WIDTH - 1], [4]f16{0, 0, 1, 1})
-	testing.expect_value(t, baked.params, [4]f16{1, 0, 0.25, 0.75})
+	testing.expect_value(t, baked.params[0], [4]f16{1, 0, 0.25, 0.75})
+	testing.expect_value(t, baked.params[1], [4]f16{}) // only a placed gradient has more
 }
 
 @(test)

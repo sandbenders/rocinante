@@ -179,6 +179,37 @@ gradient_def :: proc(s: ^Svg, ref: Gradient_Ref, box: [4]f32) -> string {
 		attr_number(b, "cx", g.centre.x / 100)
 		attr_number(b, "cy", g.centre.y / 100)
 		attr_number(b, "r", 0.5)
+	case .Placed_Linear, .Placed_Radial:
+		// in the gradient's own space, carried to the shape's by the transform undone
+		to_shape, ok := transform_invert(placed_from_shape(g, box))
+		if !ok {
+			return ""
+		}
+		radial := g.kind == .Placed_Radial
+		strings.write_string(b, `<radialGradient id="` if radial else `<linearGradient id="`)
+		strings.write_string(b, id)
+		strings.write_string(b, `" gradientUnits="userSpaceOnUse"`)
+		if radial {
+			strings.write_string(b, ` cx="0" cy="0" r="1"`)
+			attr_number(b, "fx", g.focus.x)
+			attr_number(b, "fy", g.focus.y)
+		} else {
+			strings.write_string(b, ` x1="0" y1="0" x2="1" y2="0"`)
+		}
+		switch g.spread {
+		case .Pad:
+		case .Reflect: strings.write_string(b, ` spreadMethod="reflect"`)
+		case .Repeat:  strings.write_string(b, ` spreadMethod="repeat"`)
+		}
+		strings.write_string(b, ` gradientTransform="matrix(`)
+		values := [6]f32{to_shape.a, to_shape.b, to_shape.c, to_shape.d, to_shape.e, to_shape.f}
+		for v, i in values {
+			if i > 0 {
+				strings.write_byte(b, ' ')
+			}
+			number(b, v)
+		}
+		strings.write_string(b, `)"`)
 	case .Conic:
 	}
 	strings.write_string(b, ">\n")
@@ -197,7 +228,7 @@ gradient_def :: proc(s: ^Svg, ref: Gradient_Ref, box: [4]f32) -> string {
 		}
 		strings.write_string(b, "/>\n")
 	}
-	strings.write_string(b, g.kind == .Linear ? "</linearGradient>\n" : "</radialGradient>\n")
+	strings.write_string(b, g.kind == .Linear || g.kind == .Placed_Linear ? "</linearGradient>\n" : "</radialGradient>\n")
 	return id
 }
 

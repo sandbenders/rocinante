@@ -3,14 +3,28 @@
   <title>A badge</title>
   <defs>
     <path id="ray" d="M100 18 L104 40 L96 40 Z"/>
+    <!-- a glow from a point above the middle, a hill darker at its foot, and foam mirrored along the wave -->
+    <radialGradient id="dusk" cx="0.5" cy="0.45" r="0.55" fx="0.5" fy="0.3">
+      <stop offset="0" stop-color="#ffb35c"/>
+      <stop offset="0.55" stop-color="#e7704b"/>
+      <stop offset="1" stop-color="#9c3324"/>
+    </radialGradient>
+    <linearGradient id="hill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f4a48"/>
+      <stop offset="1" stop-color="#121c1c"/>
+    </linearGradient>
+    <linearGradient id="foam" gradientUnits="userSpaceOnUse" x1="34" y1="0" x2="54" y2="0" spreadMethod="reflect">
+      <stop offset="0" stop-color="#7fd1c7"/>
+      <stop offset="1" stop-color="#f2fbf9"/>
+    </linearGradient>
     <style>
       .ring { fill: #f3e9c6; fill-rule: evenodd }
-      .hill { fill: #1d2a2a }
-      .wave { fill: none; stroke: #7fd1c7; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round }
+      .hill { fill: url(#hill) }
+      .wave { fill: none; stroke: url(#foam); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round }
     </style>
   </defs>
   <!-- the disc, and a ring cut out of it by a second contour going the other way -->
-  <circle cx="100" cy="100" r="96" fill="#e7704b"/>
+  <circle cx="100" cy="100" r="96" fill="url(#dusk)"/>
   <path class="ring" d="M100 6 A94 94 0 1 1 99.9 6 Z M100 14 A86 86 0 1 0 100.1 14 Z"/>
   <!-- the sun, with its rays turned about the middle -->
   <g fill="#ffd166" transform="translate(0 4)">

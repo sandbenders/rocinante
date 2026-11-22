@@ -289,7 +289,7 @@ test_a_use_that_names_itself_does_not_run_for_ever :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_a_gradient_is_its_first_color_and_what_cannot_be_drawn_is_counted :: proc(t: ^testing.T) {
+test_a_gradient_keeps_its_first_color_and_what_cannot_be_drawn_is_counted :: proc(t: ^testing.T) {
 	d, _ := read(wrap(`<defs><linearGradient id="g"><stop offset="0" stop-color="#102030"/><stop offset="1" stop-color="red"/></linearGradient>
 	  <linearGradient id="h" href="#g"/><pattern id="p"/></defs>
 	  <rect width="5" height="5" fill="url(#g)"/><rect width="5" height="5" fill="url(#h)"/><rect width="5" height="5" fill="url(#p)" stroke="black"/>
@@ -298,7 +298,7 @@ test_a_gradient_is_its_first_color_and_what_cannot_be_drawn_is_counted :: proc(t
 	testing.expect_value(t, d.items[0].fill, [4]f32{16, 32, 48, 255})
 	testing.expect_value(t, d.items[1].fill, [4]f32{16, 32, 48, 255}) // a gradient that borrows another's stops
 	testing.expect(t, !d.items[2].fill_on, "a pattern is not drawn")
-	testing.expect_value(t, d.lost, bit_set[Svg_Lost]{.Gradient, .Pattern, .Text, .Picture, .Clip, .Mask, .Filter, .Marker})
+	testing.expect_value(t, d.lost, bit_set[Svg_Lost]{.Pattern, .Text, .Picture, .Clip, .Mask, .Filter, .Marker})
 }
 
 @(test)

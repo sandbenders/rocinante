@@ -11,6 +11,10 @@
 // with the other gradients of the frame; the shader works out where in the ramp
 // each pixel is. This file is the CPU half: the description, the ramp, and the
 // atlas that gives every distinct gradient a row.
+//
+// Two more kinds come only from SVG drawings (`svg`), whose gradients are laid by end points, a circle and
+// a focal point, and transforms, rather than by the box: `Placed_Linear` and `Placed_Radial` carry the
+// transform from the shape's box to the gradient's own space and how the colors go on past its ends.
 package gfx
 
 import "../maths"
@@ -27,7 +31,13 @@ Gradient_Kind :: enum u8 {
 	Linear, // along a line at `angle` (0 runs left to right, angles turn clockwise)
 	Radial, // from the middle outwards, reaching the edge of the box on each side
 	Conic,  // sweeping round the middle, starting at `angle` (0 is the right)
+	Placed_Linear, // SVG's: the place along the way is x in the gradient's own space (`place`)
+	Placed_Radial, // SVG's: from the focal point (`focus`) out to the circle of radius 1 round 0, 0 in that space
 }
+
+// How many texels of its row a gradient's parameters take: the first holds the kind and three numbers, the
+// next three a placed gradient's transform, each number split in two 16-bit halves so it keeps its precision.
+PARAM_TEXELS :: 4
 
 Gradient :: struct {
 	kind:      Gradient_Kind,
@@ -38,6 +48,10 @@ Gradient :: struct {
 	has_stops: bool,           // false spreads the colours evenly
 	angle:     f32,            // degrees
 	centre:    [2]f32,         // percent of the box, radial and conic; 50, 50 is the middle
+	// the placed kinds only
+	place:     [6]f32,         // x' = a x + c y + e, y' = b x + d y + f, from the point measured from the middle of the box over its half size
+	focus:     [2]f32,         // a placed radial one's focal point, inside the circle
+	spread:    Svg_Spread,     // what lies past the ends: the end colors, the ramp mirrored, or the ramp again
 }
 
 // A gradient registered with a command list: its number there (1 and up; 0 means
@@ -122,14 +136,79 @@ gradient_ramp :: proc "contextless" (g: Gradient) -> (ramp: [RAMP_WIDTH]maths.Co
 	return
 }
 
-// What the shader needs besides the ramp, in the order it reads them: the kind,
-// the angle as a fraction of a turn, and the centre as fractions of the box.
-gradient_params :: proc "contextless" (g: Gradient) -> [4]f32 {
+// What the shader needs besides the ramp, texel by texel, in the order it reads them: the kind, the angle as a
+// fraction of a turn, and the centre as fractions of the box; for a placed one the kind, the spread and the focal
+// point, then the six numbers of its transform, each as a 16-bit number and what that leaves over.
+gradient_params :: proc "contextless" (g: Gradient) -> (params: [PARAM_TEXELS][4]f32) {
+	if g.kind == .Placed_Linear || g.kind == .Placed_Radial {
+		params[0] = {f32(g.kind), f32(g.spread), g.focus.x, g.focus.y}
+		for i in 0 ..< 3 {
+			for j in 0 ..< 2 {
+				v := g.place[i * 2 + j]
+				high := f32(f16(v))
+				params[1 + i][j * 2] = high
+				params[1 + i][j * 2 + 1] = v - high
+			}
+		}
+		return
+	}
 	turns := math.mod(f64(g.angle) / 360, 1)
 	if turns < 0 {
 		turns += 1
 	}
-	return {f32(g.kind), f32(turns), g.centre.x / 100, g.centre.y / 100}
+	params[0] = {f32(g.kind), f32(turns), g.centre.x / 100, g.centre.y / 100}
+	return
+}
+
+// The transform from a shape's own space to a placed gradient's, for a shape whose box is `box` (x, y, width,
+// height): the box's middle and half size first, then the gradient's `place`. The vector writers use it.
+placed_from_shape :: proc "contextless" (g: Gradient, box: [4]f32) -> Transform {
+	half := [2]f32{max(box[2] / 2, 1e-4), max(box[3] / 2, 1e-4)}
+	m := g.place
+	place := Transform{m[0], m[1], m[2], m[3], m[4], m[5]}
+	return transform_mul(place, Transform{1 / half.x, 0, 0, 1 / half.y, -(box[0] + box[2] / 2) / half.x, -(box[1] + box[3] / 2) / half.y})
+}
+
+// The transform that undoes `t`, and false when it flattens everything onto a line.
+transform_invert :: proc "contextless" (t: Transform) -> (Transform, bool) {
+	det := f64(t.a) * f64(t.d) - f64(t.b) * f64(t.c)
+	if abs(det) < 1e-20 || math.is_nan(det) {
+		return {}, false
+	}
+	a, b, c, d := f64(t.d) / det, -f64(t.b) / det, -f64(t.c) / det, f64(t.a) / det
+	return Transform{f32(a), f32(b), f32(c), f32(d), f32(-(a * f64(t.e) + c * f64(t.f))), f32(-(b * f64(t.e) + d * f64(t.f)))}, true
+}
+
+// Where in the ramp (0 to 1) a placed gradient is at the point `p`, measured from the middle of a box whose half
+// size is `box_half`: what the shader works out, written here too so it can be tested.
+placed_gradient_at :: proc "contextless" (g: Gradient, p, box_half: [2]f32) -> f32 {
+	u := [2]f32{p.x / max(box_half.x, 1e-4), p.y / max(box_half.y, 1e-4)}
+	m := g.place
+	q := [2]f32{m[0] * u.x + m[2] * u.y + m[4], m[1] * u.x + m[3] * u.y + m[5]}
+	t := q.x
+	if g.kind == .Placed_Radial {
+		e := g.focus
+		d := q - e
+		dd := d.x * d.x + d.y * d.y
+		if dd <= 0 {
+			t = 0
+		} else {
+			ed := e.x * d.x + e.y * d.y
+			ee := e.x * e.x + e.y * e.y
+			k := (-ed + math.sqrt(max(ed * ed - dd * (ee - 1), 0))) / dd
+			t = 1 / k if k > 0 else 1
+		}
+	}
+	switch g.spread {
+	case .Pad:
+		return clamp(t, 0, 1)
+	case .Repeat:
+		return t - math.floor(t)
+	case .Reflect:
+		r := math.mod(abs(t), 2)
+		return 2 - r if r > 1 else r
+	}
+	return clamp(t, 0, 1)
 }
 
 // A hash of everything that shapes the gradient's look.
@@ -138,6 +217,14 @@ gradient_hash :: proc "contextless" (g: Gradient) -> u64 {
 	h = hash_f32(h, g.angle)
 	h = hash_f32(h, g.centre.x)
 	h = hash_f32(h, g.centre.y)
+	if g.kind == .Placed_Linear || g.kind == .Placed_Radial {
+		for v in g.place {
+			h = hash_f32(h, v)
+		}
+		h = hash_f32(h, g.focus.x)
+		h = hash_f32(h, g.focus.y)
+		h = hash_u64(h, u64(g.spread))
+	}
 	positions := gradient_positions(g)
 	for i in 0 ..< g.count {
 		for v in g.colours[i] {
@@ -158,6 +245,9 @@ gradient_same :: proc "contextless" (a, b: Gradient) -> bool {
 	if a.angle != b.angle || a.centre != b.centre {
 		return false
 	}
+	if (a.kind == .Placed_Linear || a.kind == .Placed_Radial) && (a.place != b.place || a.focus != b.focus || a.spread != b.spread) {
+		return false
+	}
 	pa, pb := gradient_positions(a), gradient_positions(b)
 	for i in 0 ..< a.count {
 		if a.colours[i] != b.colours[i] || pa[i] != pb[i] {
@@ -173,7 +263,7 @@ gradient_same :: proc "contextless" (a, b: Gradient) -> bool {
 // parameters, in 16-bit floats from 0 to 1.
 Baked_Gradient :: struct {
 	ramp:   [RAMP_WIDTH][4]f16,
-	params: [4]f16,
+	params: [PARAM_TEXELS][4]f16,
 }
 
 // Every distinct gradient of the frames drawn so far, baked and numbered. Row `n`
@@ -214,8 +304,9 @@ atlas_row :: proc(a: ^Gradient_Atlas, g: Gradient, may_reset := true) -> (row: i
 	for c, i in ramp {
 		baked.ramp[i] = {f16(c.r / 255), f16(c.g / 255), f16(c.b / 255), f16(c.a / 255)}
 	}
-	p := gradient_params(g)
-	baked.params = {f16(p[0]), f16(p[1]), f16(p[2]), f16(p[3])}
+	for texel, i in gradient_params(g) {
+		baked.params[i] = {f16(texel[0]), f16(texel[1]), f16(texel[2]), f16(texel[3])}
+	}
 	append(&a.rows, baked)
 	if a.lookup == nil {
 		a.lookup = make(map[u64]int)

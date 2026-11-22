@@ -4,7 +4,11 @@
 // The CPU bakes every gradient of the frame into one texture (roci/gfx/gradient.odin):
 // gradient n has a row of 256 colours at row 2n and its parameters at row 2n + 1,
 // texel 0: the kind (0 linear, 1 radial, 2 conic), the angle as a fraction of a
-// turn, and the centre as fractions of the box. A pixel's place in the ramp is
+// turn, and the centre as fractions of the box. An SVG drawing's gradients are
+// kinds 3 (linear) and 4 (radial with a focal point): texel 0 then holds the kind,
+// how the colors go on past the ends (0 the end colors, 1 mirrored, 2 again) and
+// the focal point, and texels 1 to 3 the transform from the box to the gradient's
+// own space, each number as two halves to add. A pixel's place in the ramp is
 // worked out here from where it is in the shape's own space.
 //
 // Resources follow SDL's GPU rules: the fragment stage's first sampler is texture
@@ -42,11 +46,43 @@ float4 gradient_colour(uint gradient, float2 p, float2 box_half)
         // From the centre out to the edge of the box on each side.
         t = length((p - centre) / (size * 0.5));
     }
-    else
+    else if (kind == 2)
     {
         // Round the centre, clockwise (y points down) from the start angle.
         float2 q = p - centre;
         t = frac(atan2(q.y, q.x) / 6.28318530718 - turns);
+    }
+    else
+    {
+        // An SVG gradient: the point is carried into the gradient's own space, where a linear one is x and a
+        // radial one runs from the focal point out to the circle of radius 1 round the origin.
+        float4 m0 = gradient_texture.Load(int3(1, row * 2 + 1, 0));
+        float4 m1 = gradient_texture.Load(int3(2, row * 2 + 1, 0));
+        float4 m2 = gradient_texture.Load(int3(3, row * 2 + 1, 0));
+        float2 u = p / max(box_half, 1e-4);
+        float2 q = float2((m0.x + m0.y) * u.x + (m1.x + m1.y) * u.y + (m2.x + m2.y),
+                          (m0.z + m0.w) * u.x + (m1.z + m1.w) * u.y + (m2.z + m2.w));
+        t = q.x;
+        if (kind == 4)
+        {
+            // the point on the circle along the ray from the focal point through q is focus + k d
+            float2 e = params.zw;
+            float2 d = q - e;
+            float dd = dot(d, d);
+            float ed = dot(e, d);
+            float k = (-ed + sqrt(max(ed * ed - dd * (dot(e, e) - 1.0), 0.0))) / max(dd, 1e-20);
+            t = dd <= 0.0 ? 0.0 : (k > 0.0 ? 1.0 / k : 1.0);
+        }
+        uint spread = uint(turns + 0.5);
+        if (spread == 2)
+        {
+            t = frac(t);
+        }
+        else if (spread == 1)
+        {
+            float r = fmod(abs(t), 2.0);
+            t = r > 1.0 ? 2.0 - r : r;
+        }
     }
     float u = (saturate(t) * (RAMP_WIDTH - 1.0) + 0.5) / RAMP_WIDTH;
     float v = (float(row) * 2.0 + 0.5) / (GRADIENT_ROWS * 2.0);

@@ -361,6 +361,27 @@ gradient_pattern :: proc(p: ^Pdf, g: Gradient, box: [4]f32, transform: Transform
 		strings.write_string(&b, "<< /Type /Pattern /PatternType 2 /Matrix ")
 		write_matrix(&b, stretched)
 		strings.write_string(&b, " /Shading << /ShadingType 3 /ColorSpace /DeviceRGB /Coords [0 0 0 0 0 1")
+	case .Placed_Linear, .Placed_Radial:
+		// drawn in the gradient's own space, carried to the shape's by its transform undone; past its ends a PDF
+		// shading can only carry on in the end colors
+		to_shape, ok := transform_invert(placed_from_shape(g, box))
+		if !ok {
+			return 0
+		}
+		if g.spread != .Pad {
+			pdf_note(p, "a gradient that repeats or reflects past its ends")
+		}
+		strings.write_string(&b, "<< /Type /Pattern /PatternType 2 /Matrix ")
+		write_matrix(&b, transform_mul(to_page, to_shape))
+		if g.kind == .Placed_Radial {
+			strings.write_string(&b, " /Shading << /ShadingType 3 /ColorSpace /DeviceRGB /Coords [")
+			number(&b, g.focus.x, 5)
+			strings.write_byte(&b, ' ')
+			number(&b, g.focus.y, 5)
+			strings.write_string(&b, " 0 0 0 1")
+		} else {
+			strings.write_string(&b, " /Shading << /ShadingType 2 /ColorSpace /DeviceRGB /Coords [0 0 1 0")
+		}
 	case .Conic:
 	}
 	strings.write_string(&b, "] /Function ")

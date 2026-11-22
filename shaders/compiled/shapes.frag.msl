@@ -1,7 +1,16 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
 #include <metal_stdlib>
 #include <simd/simd.h>
 
 using namespace metal;
+
+// Implementation of the GLSL mod() function, which is slightly different than Metal fmod()
+template<typename Tx, typename Ty>
+inline Tx mod(Tx x, Ty y)
+{
+    return x - y * floor(x / y);
+}
 
 struct main0_out
 {
@@ -25,165 +34,263 @@ struct main0_in
 fragment main0_out main0(main0_in in [[stage_in]], texture2d<float> gradient_texture [[texture(0)]], sampler gradient_textureSmplr [[sampler(0)]])
 {
     main0_out out = {};
-    float _1422;
+    float _1960;
     switch (in.input_kind)
     {
         case 0u:
         {
-            _1422 = length(in.input_local) - in.input_shape_0123.x;
+            _1960 = length(in.input_local) - in.input_shape_0123.x;
             break;
         }
         case 1u:
         {
-            float2 _878 = fast::max(in.input_shape_0123.xy, float2(9.9999999747524270787835121154785e-07));
-            float2 _839 = _878;
-            float _882 = length(in.input_local / _878);
-            float _888 = length(in.input_local / (_878 * _878));
-            _1422 = (_888 > 9.9999999600419720025001879548654e-13) ? ((_882 * (_882 - 1.0)) / _888) : (-fast::min(_839.x, _839.y));
+            float2 _1058 = fast::max(in.input_shape_0123.xy, float2(9.9999999747524270787835121154785e-07));
+            float2 _1019 = _1058;
+            float _1062 = length(in.input_local / _1058);
+            float _1068 = length(in.input_local / (_1058 * _1058));
+            _1960 = (_1068 > 9.9999999600419720025001879548654e-13) ? ((_1062 * (_1062 - 1.0)) / _1068) : (-fast::min(_1019.x, _1019.y));
             break;
         }
         case 2u:
         {
-            float2 _910 = abs(in.input_local) - in.input_shape_0123.xy;
-            float2 _842 = _910;
-            _1422 = length(fast::max(_910, float2(0.0))) + fast::min(fast::max(_842.x, _842.y), 0.0);
+            float2 _1090 = abs(in.input_local) - in.input_shape_0123.xy;
+            float2 _1022 = _1090;
+            _1960 = length(fast::max(_1090, float2(0.0))) + fast::min(fast::max(_1022.x, _1022.y), 0.0);
             break;
         }
         case 3u:
         {
-            float2 _1085 = in.input_local - in.input_shape_0123.xy;
-            float2 _1088 = in.input_shape_0123.zw - in.input_shape_0123.xy;
-            _1422 = length(_1085 - (_1088 * fast::clamp(dot(_1085, _1088) / fast::max(dot(_1088, _1088), 9.9999999600419720025001879548654e-13), 0.0, 1.0)));
+            float2 _1265 = in.input_local - in.input_shape_0123.xy;
+            float2 _1268 = in.input_shape_0123.zw - in.input_shape_0123.xy;
+            _1960 = length(_1265 - (_1268 * fast::clamp(dot(_1265, _1268) / fast::max(dot(_1268, _1268), 9.9999999600419720025001879548654e-13), 0.0, 1.0)));
             break;
         }
         default:
         {
-            float2 _950 = in.input_shape_0123.zw - in.input_shape_0123.xy;
-            float2 _935 = _950;
-            float2 _953 = in.input_shape_45 - in.input_shape_0123.zw;
-            float2 _936 = _953;
-            float2 _956 = in.input_shape_0123.xy - in.input_shape_45;
-            float2 _937 = _956;
-            float2 _959 = in.input_local - in.input_shape_0123.xy;
-            float2 _938 = _959;
-            float2 _962 = in.input_local - in.input_shape_0123.zw;
-            float2 _939 = _962;
-            float2 _965 = in.input_local - in.input_shape_45;
-            float2 _940 = _965;
-            float2 _978 = _959 - (_950 * fast::clamp(dot(_959, _950) / fast::max(dot(_950, _950), 9.9999999600419720025001879548654e-13), 0.0, 1.0));
-            float2 _991 = _962 - (_953 * fast::clamp(dot(_962, _953) / fast::max(dot(_953, _953), 9.9999999600419720025001879548654e-13), 0.0, 1.0));
-            float2 _1004 = _965 - (_956 * fast::clamp(dot(_965, _956) / fast::max(dot(_956, _956), 9.9999999600419720025001879548654e-13), 0.0, 1.0));
-            float _1016 = sign((_935.x * _937.y) - (_935.y * _937.x));
-            float2 _945 = fast::min(fast::min(float2(dot(_978, _978), _1016 * ((_938.x * _935.y) - (_938.y * _935.x))), float2(dot(_991, _991), _1016 * ((_939.x * _936.y) - (_939.y * _936.x)))), float2(dot(_1004, _1004), _1016 * ((_940.x * _937.y) - (_940.y * _937.x))));
-            _1422 = (-sqrt(_945.x)) * sign(_945.y);
+            float2 _1130 = in.input_shape_0123.zw - in.input_shape_0123.xy;
+            float2 _1115 = _1130;
+            float2 _1133 = in.input_shape_45 - in.input_shape_0123.zw;
+            float2 _1116 = _1133;
+            float2 _1136 = in.input_shape_0123.xy - in.input_shape_45;
+            float2 _1117 = _1136;
+            float2 _1139 = in.input_local - in.input_shape_0123.xy;
+            float2 _1118 = _1139;
+            float2 _1142 = in.input_local - in.input_shape_0123.zw;
+            float2 _1119 = _1142;
+            float2 _1145 = in.input_local - in.input_shape_45;
+            float2 _1120 = _1145;
+            float2 _1158 = _1139 - (_1130 * fast::clamp(dot(_1139, _1130) / fast::max(dot(_1130, _1130), 9.9999999600419720025001879548654e-13), 0.0, 1.0));
+            float2 _1171 = _1142 - (_1133 * fast::clamp(dot(_1142, _1133) / fast::max(dot(_1133, _1133), 9.9999999600419720025001879548654e-13), 0.0, 1.0));
+            float2 _1184 = _1145 - (_1136 * fast::clamp(dot(_1145, _1136) / fast::max(dot(_1136, _1136), 9.9999999600419720025001879548654e-13), 0.0, 1.0));
+            float _1196 = sign((_1115.x * _1117.y) - (_1115.y * _1117.x));
+            float2 _1125 = fast::min(fast::min(float2(dot(_1158, _1158), _1196 * ((_1118.x * _1115.y) - (_1118.y * _1115.x))), float2(dot(_1171, _1171), _1196 * ((_1119.x * _1116.y) - (_1119.y * _1116.x)))), float2(dot(_1184, _1184), _1196 * ((_1120.x * _1117.y) - (_1120.y * _1117.x))));
+            _1960 = (-sqrt(_1125.x)) * sign(_1125.y);
             break;
         }
     }
-    float _715 = fwidth(_1422);
-    float _716 = fast::max(_715, 9.9999999747524270787835121154785e-07);
-    float4 _690 = in.input_fill;
+    float _895 = fwidth(_1960);
+    float _896 = fast::max(_895, 9.9999999747524270787835121154785e-07);
+    float4 _870 = in.input_fill;
     if (in.input_gradients.x != 0u)
     {
-        uint _1120 = in.input_gradients.x - 1u;
-        float4 _1135 = gradient_texture.read(uint2(int3(0, int((_1120 * 2u) + 1u), 0).xy), 0);
-        float4 _1105 = _1135;
-        uint _1139 = uint(_1105.x + 0.5);
-        float2 _1144 = fast::max(in.input_box_half * 2.0, float2(9.9999997473787516355514526367188e-05));
-        float2 _1108 = _1144;
-        float2 _1150 = (_1135.zw - float2(0.5)) * _1144;
-        float _1423;
-        if (_1139 == 0u)
+        uint _1312 = in.input_gradients.x - 1u;
+        float4 _1327 = gradient_texture.read(uint2(int3(0, int((_1312 * 2u) + 1u), 0).xy), 0);
+        float4 _1285 = _1327;
+        uint _1331 = uint(_1285.x + 0.5);
+        float2 _1336 = fast::max(in.input_box_half * 2.0, float2(9.9999997473787516355514526367188e-05));
+        float2 _1288 = _1336;
+        float2 _1342 = (_1327.zw - float2(0.5)) * _1336;
+        float _1962;
+        if (_1331 == 0u)
         {
-            float _1155 = _1105.y * 6.283185482025146484375;
-            float2 _1160 = float2(cos(_1155), sin(_1155));
-            float2 _1112 = _1160;
-            _1423 = (dot(in.input_local, _1160) / fast::max(abs(_1108.x * _1112.x) + abs(_1108.y * _1112.y), 9.9999997473787516355514526367188e-05)) + 0.5;
+            float _1347 = _1285.y * 6.283185482025146484375;
+            float2 _1352 = float2(cos(_1347), sin(_1347));
+            float2 _1292 = _1352;
+            _1962 = (dot(in.input_local, _1352) / fast::max(abs(_1288.x * _1292.x) + abs(_1288.y * _1292.y), 9.9999997473787516355514526367188e-05)) + 0.5;
         }
         else
         {
-            float _1424;
-            if (_1139 == 1u)
+            float _1963;
+            if (_1331 == 1u)
             {
-                _1424 = length((in.input_local - _1150) / (_1144 * 0.5));
+                _1963 = length((in.input_local - _1342) / (_1336 * 0.5));
             }
             else
             {
-                float2 _1114 = in.input_local - _1150;
-                _1424 = fract((precise::atan2(_1114.y, _1114.x) * 0.15915493667125701904296875) - _1105.y);
+                float _1964;
+                if (_1331 == 2u)
+                {
+                    float2 _1294 = in.input_local - _1342;
+                    _1964 = fract((precise::atan2(_1294.y, _1294.x) * 0.15915493667125701904296875) - _1285.y);
+                }
+                else
+                {
+                    float4 _1295 = gradient_texture.read(uint2(int3(1, int((_1312 * 2u) + 1u), 0).xy), 0);
+                    float4 _1296 = gradient_texture.read(uint2(int3(2, int((_1312 * 2u) + 1u), 0).xy), 0);
+                    float4 _1297 = gradient_texture.read(uint2(int3(3, int((_1312 * 2u) + 1u), 0).xy), 0);
+                    float2 _1298 = in.input_local / fast::max(in.input_box_half, float2(9.9999997473787516355514526367188e-05));
+                    float2 _1496 = float2((((_1295.x + _1295.y) * _1298.x) + ((_1296.x + _1296.y) * _1298.y)) + (_1297.x + _1297.y), (((_1295.z + _1295.w) * _1298.x) + ((_1296.z + _1296.w) * _1298.y)) + (_1297.z + _1297.w));
+                    float2 _1299 = _1496;
+                    float _1961;
+                    if (_1331 == 4u)
+                    {
+                        float2 _1503 = _1327.zw;
+                        float2 _1506 = _1496 - _1503;
+                        float _1509 = dot(_1506, _1506);
+                        float _1512 = dot(_1503, _1506);
+                        float _1530 = (sqrt(fast::max((_1512 * _1512) - (_1509 * (dot(_1503, _1503) - 1.0)), 0.0)) - _1512) / fast::max(_1509, 9.9999996826552253889678874634872e-21);
+                        _1961 = (_1509 <= 0.0) ? 0.0 : ((_1530 > 0.0) ? (1.0 / _1530) : 1.0);
+                    }
+                    else
+                    {
+                        _1961 = _1299.x;
+                    }
+                    uint _1542 = uint(_1285.y + 0.5);
+                    float _1965;
+                    if (_1542 == 2u)
+                    {
+                        _1965 = fract(_1961);
+                    }
+                    else
+                    {
+                        float _1966;
+                        if (_1542 == 1u)
+                        {
+                            float _1554 = mod(abs(_1961), 2.0);
+                            _1966 = (_1554 > 1.0) ? (2.0 - _1554) : _1554;
+                        }
+                        else
+                        {
+                            _1966 = _1961;
+                        }
+                        _1965 = _1966;
+                    }
+                    _1964 = _1965;
+                }
+                _1963 = _1964;
             }
-            _1423 = _1424;
+            _1962 = _1963;
         }
-        float4 _1221 = gradient_texture.sample(gradient_textureSmplr, float2(((fast::clamp(_1423, 0.0, 1.0) * 255.0) + 0.5) * 0.00390625, ((float(_1120) * 2.0) + 0.5) * 0.001953125), level(0.0));
-        float4 _691 = _1221;
-        _690 = float4(_1221.xyz, _691.w * in.input_fill.w);
+        float4 _1580 = gradient_texture.sample(gradient_textureSmplr, float2(((fast::clamp(_1962, 0.0, 1.0) * 255.0) + 0.5) * 0.00390625, ((float(_1312) * 2.0) + 0.5) * 0.001953125), level(0.0));
+        float4 _871 = _1580;
+        _870 = float4(_1580.xyz, _871.w * in.input_fill.w);
     }
-    float4 _695 = in.input_stroke;
+    float4 _875 = in.input_stroke;
     if (in.input_gradients.y != 0u)
     {
-        uint _1238 = in.input_gradients.y - 1u;
-        float4 _1253 = gradient_texture.read(uint2(int3(0, int((_1238 * 2u) + 1u), 0).xy), 0);
-        float4 _1223 = _1253;
-        uint _1257 = uint(_1223.x + 0.5);
-        float2 _1262 = fast::max(in.input_box_half * 2.0, float2(9.9999997473787516355514526367188e-05));
-        float2 _1226 = _1262;
-        float2 _1268 = (_1253.zw - float2(0.5)) * _1262;
-        float _1425;
-        if (_1257 == 0u)
+        uint _1609 = in.input_gradients.y - 1u;
+        float4 _1624 = gradient_texture.read(uint2(int3(0, int((_1609 * 2u) + 1u), 0).xy), 0);
+        float4 _1582 = _1624;
+        uint _1628 = uint(_1582.x + 0.5);
+        float2 _1633 = fast::max(in.input_box_half * 2.0, float2(9.9999997473787516355514526367188e-05));
+        float2 _1585 = _1633;
+        float2 _1639 = (_1624.zw - float2(0.5)) * _1633;
+        float _1968;
+        if (_1628 == 0u)
         {
-            float _1273 = _1223.y * 6.283185482025146484375;
-            float2 _1278 = float2(cos(_1273), sin(_1273));
-            float2 _1230 = _1278;
-            _1425 = (dot(in.input_local, _1278) / fast::max(abs(_1226.x * _1230.x) + abs(_1226.y * _1230.y), 9.9999997473787516355514526367188e-05)) + 0.5;
+            float _1644 = _1582.y * 6.283185482025146484375;
+            float2 _1649 = float2(cos(_1644), sin(_1644));
+            float2 _1589 = _1649;
+            _1968 = (dot(in.input_local, _1649) / fast::max(abs(_1585.x * _1589.x) + abs(_1585.y * _1589.y), 9.9999997473787516355514526367188e-05)) + 0.5;
         }
         else
         {
-            float _1426;
-            if (_1257 == 1u)
+            float _1969;
+            if (_1628 == 1u)
             {
-                _1426 = length((in.input_local - _1268) / (_1262 * 0.5));
+                _1969 = length((in.input_local - _1639) / (_1633 * 0.5));
             }
             else
             {
-                float2 _1232 = in.input_local - _1268;
-                _1426 = fract((precise::atan2(_1232.y, _1232.x) * 0.15915493667125701904296875) - _1223.y);
+                float _1970;
+                if (_1628 == 2u)
+                {
+                    float2 _1591 = in.input_local - _1639;
+                    _1970 = fract((precise::atan2(_1591.y, _1591.x) * 0.15915493667125701904296875) - _1582.y);
+                }
+                else
+                {
+                    float4 _1592 = gradient_texture.read(uint2(int3(1, int((_1609 * 2u) + 1u), 0).xy), 0);
+                    float4 _1593 = gradient_texture.read(uint2(int3(2, int((_1609 * 2u) + 1u), 0).xy), 0);
+                    float4 _1594 = gradient_texture.read(uint2(int3(3, int((_1609 * 2u) + 1u), 0).xy), 0);
+                    float2 _1595 = in.input_local / fast::max(in.input_box_half, float2(9.9999997473787516355514526367188e-05));
+                    float2 _1793 = float2((((_1592.x + _1592.y) * _1595.x) + ((_1593.x + _1593.y) * _1595.y)) + (_1594.x + _1594.y), (((_1592.z + _1592.w) * _1595.x) + ((_1593.z + _1593.w) * _1595.y)) + (_1594.z + _1594.w));
+                    float2 _1596 = _1793;
+                    float _1967;
+                    if (_1628 == 4u)
+                    {
+                        float2 _1800 = _1624.zw;
+                        float2 _1803 = _1793 - _1800;
+                        float _1806 = dot(_1803, _1803);
+                        float _1809 = dot(_1800, _1803);
+                        float _1827 = (sqrt(fast::max((_1809 * _1809) - (_1806 * (dot(_1800, _1800) - 1.0)), 0.0)) - _1809) / fast::max(_1806, 9.9999996826552253889678874634872e-21);
+                        _1967 = (_1806 <= 0.0) ? 0.0 : ((_1827 > 0.0) ? (1.0 / _1827) : 1.0);
+                    }
+                    else
+                    {
+                        _1967 = _1596.x;
+                    }
+                    uint _1839 = uint(_1582.y + 0.5);
+                    float _1971;
+                    if (_1839 == 2u)
+                    {
+                        _1971 = fract(_1967);
+                    }
+                    else
+                    {
+                        float _1972;
+                        if (_1839 == 1u)
+                        {
+                            float _1851 = mod(abs(_1967), 2.0);
+                            _1972 = (_1851 > 1.0) ? (2.0 - _1851) : _1851;
+                        }
+                        else
+                        {
+                            _1972 = _1967;
+                        }
+                        _1971 = _1972;
+                    }
+                    _1970 = _1971;
+                }
+                _1969 = _1970;
             }
-            _1425 = _1426;
+            _1968 = _1969;
         }
-        float4 _1339 = gradient_texture.sample(gradient_textureSmplr, float2(((fast::clamp(_1425, 0.0, 1.0) * 255.0) + 0.5) * 0.00390625, ((float(_1238) * 2.0) + 0.5) * 0.001953125), level(0.0));
-        float4 _696 = _1339;
-        _695 = float4(_1339.xyz, _696.w * in.input_stroke.w);
+        float4 _1877 = gradient_texture.sample(gradient_textureSmplr, float2(((fast::clamp(_1968, 0.0, 1.0) * 255.0) + 0.5) * 0.00390625, ((float(_1609) * 2.0) + 0.5) * 0.001953125), level(0.0));
+        float4 _876 = _1877;
+        _875 = float4(_1877.xyz, _876.w * in.input_stroke.w);
     }
-    float _1427;
-    float _1430;
+    float _1973;
+    float _1976;
     if (in.input_kind == 3u)
     {
-        _1430 = 0.0;
-        _1427 = _695.w * fast::clamp(0.5 - ((_1422 - (in.input_thickness * 0.5)) / _716), 0.0, 1.0);
+        _1976 = 0.0;
+        _1973 = _875.w * fast::clamp(0.5 - ((_1960 - (in.input_thickness * 0.5)) / _896), 0.0, 1.0);
     }
     else
     {
-        float _1432;
+        float _1978;
         if ((in.input_flags & 1u) != 0u)
         {
-            _1432 = _690.w * fast::clamp(0.5 - (_1422 / _716), 0.0, 1.0);
+            _1978 = _870.w * fast::clamp(0.5 - (_1960 / _896), 0.0, 1.0);
         }
         else
         {
-            _1432 = 0.0;
+            _1978 = 0.0;
         }
-        float _1428;
+        float _1974;
         if ((in.input_flags & 2u) != 0u)
         {
-            _1428 = _695.w * fast::clamp(0.5 - ((abs(_1422) - (in.input_thickness * 0.5)) / _716), 0.0, 1.0);
+            _1974 = _875.w * fast::clamp(0.5 - ((abs(_1960) - (in.input_thickness * 0.5)) / _896), 0.0, 1.0);
         }
         else
         {
-            _1428 = 0.0;
+            _1974 = 0.0;
         }
-        _1430 = _1432;
-        _1427 = _1428;
+        _1976 = _1978;
+        _1973 = _1974;
     }
-    out._entryPointOutput = float4((_695.xyz * _1427) + ((_690.xyz * _1430) * (1.0 - _1427)), _1427 + (_1430 * (1.0 - _1427)));
+    out._entryPointOutput = float4((_875.xyz * _1973) + ((_870.xyz * _1976) * (1.0 - _1973)), _1973 + (_1976 * (1.0 - _1973)));
     return out;
 }
 

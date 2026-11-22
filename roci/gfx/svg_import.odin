@@ -8,13 +8,15 @@
 // simple rules of a `<style>` (`tag`, `.class` and `#id`), in the order SVG gives them. A group's
 // opacity multiplies down into what it holds. Fills are even-odd, whatever `fill-rule` says.
 //
-// What a drawing cannot show is not drawn and is counted in `lost`: text, embedded pictures, clip
-// paths, masks, filters, patterns and markers; a gradient is drawn as the first color of its stops.
+// Linear and radial gradients are read whole (stops, units, `gradientTransform`, focal point, spread,
+// `href` chains) and drawn by both renderers: `svg` lays each on the GPU as a placed gradient, mixed in
+// RGB as SVG mixes. What a drawing cannot show is not drawn and is counted in `lost`: text, embedded
+// pictures, clip paths, masks, filters, patterns and markers.
 //
 // The drawing also keeps what the picture renderer (`raster.odin`, which draws a drawing into pixels with
-// no GPU, for app icons) shows and `svg` does not: each item's fill rule, its linear and radial gradients
-// (stops, units, `gradientTransform`, spread, `href` chains) and the clip paths it is cut by (in user
-// units, any shapes, either clip rule). What even that renderer leaves out is counted in `raster_lost`.
+// no GPU, for app icons) shows and `svg` does not: each item's fill rule and the clip paths it is cut by
+// (in user units, any shapes, either clip rule). What even that renderer leaves out is counted in
+// `raster_lost`.
 package gfx
 
 import "../geom"
@@ -80,7 +82,6 @@ Svg_Clip :: struct {
 Svg_Lost :: enum u8 {
 	Text,
 	Picture,
-	Gradient,
 	Clip,
 	Mask,
 	Filter,
@@ -738,7 +739,6 @@ read_paint :: proc(r: ^Reader, text: string, state: Paint_State) -> (colour: mat
 		}
 		name := strings.trim(value[4:close], " \"'#")
 		if g, found := r.gradients[name]; found {
-			r.lost += {.Gradient}
 			return g, true, true, name
 		}
 		// a pattern or a gradient with no stops: left out; the fallback after the url, if any, is not used
@@ -1596,7 +1596,7 @@ attribute_text :: proc(r: ^Reader, id: xml.Element_ID, name: string) -> string {
 }
 
 // Draws a drawing with its top left at (x, y), stretched to `width` by `height`, in the current transform,
-// from the drawing's own colors (the current style is not used and is put back afterwards).
+// from the drawing's own colors and gradients (the current style is not used and is put back afterwards).
 svg_draw :: proc(list: ^Command_List, d: ^Svg_Drawing, x, y, width, height: f32) {
 	if len(d.items) == 0 || !(d.width > 0) || !(d.height > 0) || !finite(x, y, width, height) {
 		return
@@ -1606,13 +1606,22 @@ svg_draw :: proc(list: ^Command_List, d: ^Svg_Drawing, x, y, width, height: f32)
 	move(list, x, y)
 	grow(list, width / d.width, height / d.height)
 	for item in d.items {
+		box := contours_box(item.contours)
 		if item.fill_on {
-			set_fill(list, item.fill)
+			if g, ok := svg_gpu_gradient(d, item.fill_gradient, item.fill_alpha, box); ok {
+				set_fill_gradient(list, g)
+			} else {
+				set_fill(list, item.fill)
+			}
 		} else {
 			no_fill(list)
 		}
 		if item.stroke_on {
-			set_stroke(list, item.stroke)
+			if g, ok := svg_gpu_gradient(d, item.stroke_gradient, item.stroke_alpha, box); ok {
+				set_stroke_gradient(list, g)
+			} else {
+				set_stroke(list, item.stroke)
+			}
 			set_thickness(list, item.width)
 			set_caps(list, item.cap)
 			set_joins(list, item.join)
@@ -1621,6 +1630,95 @@ svg_draw :: proc(list: ^Command_List, d: ^Svg_Drawing, x, y, width, height: f32)
 		}
 		path(list, item.contours)
 	}
+}
+
+// The box round some contours, as `path` measures it for the shape it makes: x, y, width and height.
+@(private = "file")
+contours_box :: proc(contours: []Contour) -> [4]f32 {
+	lo := [2]f32{max(f32), max(f32)}
+	hi := [2]f32{min(f32), min(f32)}
+	for c in contours {
+		for p in c.points {
+			lo = {min(lo.x, p.x), min(lo.y, p.y)}
+			hi = {max(hi.x, p.x), max(hi.y, p.y)}
+		}
+	}
+	if lo.x > hi.x {
+		return {}
+	}
+	return {lo.x, lo.y, hi.x - lo.x, hi.y - lo.y}
+}
+
+// One of a drawing's gradients as the GPU draws it on a shape whose box (in the drawing's units) is `box`: a placed
+// gradient whose transform starts from the box, with its colors' alpha multiplied by `alpha`. False for no gradient
+// (-1) or one whose numbers the GPU cannot hold; the item's color is drawn then.
+svg_gpu_gradient :: proc(d: ^Svg_Drawing, index: i32, alpha: f32, box: [4]f32) -> (g: Gradient, ok: bool) {
+	if index < 0 || int(index) >= len(d.gradients) {
+		return {}, false
+	}
+	sg := d.gradients[index]
+	if len(sg.stops) == 0 {
+		return {}, false
+	}
+	// the stops, at most MAX_STOPS of them: a gradient with more is sampled evenly between its first and last stop
+	colours: [MAX_STOPS]maths.Colour
+	offsets: [MAX_STOPS]f32
+	count := len(sg.stops)
+	if count <= MAX_STOPS {
+		for stop, i in sg.stops {
+			colours[i], offsets[i] = stop.colour, stop.offset * 100
+		}
+	} else {
+		count = MAX_STOPS
+		first, last := sg.stops[0].offset, sg.stops[len(sg.stops) - 1].offset
+		for i in 0 ..< MAX_STOPS {
+			at := first + (last - first) * f32(i) / (MAX_STOPS - 1)
+			colours[i], offsets[i] = raster_stop_colour(sg.stops, f64(at)), at * 100
+		}
+	}
+	for i in 0 ..< count {
+		colours[i].a *= clamp(alpha, 0, 1)
+	}
+	g, ok = gradient_make(colours[:count], .Placed_Linear, space = .Rgb, stops = offsets[:count])
+	if !ok {
+		return {}, false
+	}
+	g.spread = sg.spread
+	// from the point measured from the middle of the box over its half size, to the drawing's units, to the
+	// gradient's own space, and on to the space the shader measures in
+	half := [2]f64{max(f64(box[2]) / 2, 1e-4), max(f64(box[3]) / 2, 1e-4)}
+	from_box := Affine{half.x, 0, 0, half.y, f64(box[0]) + f64(box[2]) / 2, f64(box[1]) + f64(box[3]) / 2}
+	to_gradient := affine_mul(sg.to_gradient, from_box)
+	finish: Affine
+	dx, dy := sg.x2 - sg.x1, sg.y2 - sg.y1
+	length := dx * dx + dy * dy
+	if (!sg.radial && !(length > 0)) || (sg.radial && !(sg.r > 0)) {
+		// two ends at one point, or a circle of no size: the last color everywhere
+		g.colours[0], g.stops[0], g.count = g.colours[count - 1], 0, 1
+		g.place = {1, 0, 0, 1, 0, 0}
+		return g, true
+	}
+	if !sg.radial {
+		// x along the way from the first end (0) to the second (1), y across it, so the transform can be undone
+		finish = {dx / length, -dy / length, dy / length, dx / length, -(sg.x1 * dx + sg.y1 * dy) / length, (sg.x1 * dy - sg.y1 * dx) / length}
+	} else {
+		g.kind = .Placed_Radial
+		finish = {1 / sg.r, 0, 0, 1 / sg.r, -sg.cx / sg.r, -sg.cy / sg.r}
+		// the focal point is kept a little inside the circle, as SVG 1.1 says
+		focus := [2]f64{(sg.fx - sg.cx) / sg.r, (sg.fy - sg.cy) / sg.r}
+		if reach := math.sqrt(focus.x * focus.x + focus.y * focus.y); reach > 0.99 {
+			focus *= 0.99 / reach
+		}
+		g.focus = {f32(focus.x), f32(focus.y)}
+	}
+	place := affine_mul(finish, to_gradient)
+	for v, i in place {
+		if !(abs(v) < 60000) {
+			return {}, false // past what the GPU's 16-bit numbers hold
+		}
+		g.place[i] = f32(v)
+	}
+	return g, true
 }
 
 // A file that is not XML is an error the sketch says in words, not a line on the console.

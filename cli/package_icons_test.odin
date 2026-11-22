@@ -126,7 +126,7 @@ test_a_picture_that_is_not_square_or_too_small_or_unreadable_is_refused_in_words
 	testing.expect_value(t, len(left), 1)
 	testing.expect(t, len(left) == 1 && strings.contains(left[0], "text"))
 	icon_source_destroy(&with_text)
-	testing.expect_value(t, len(left_out_words(~bit_set[gfx.Svg_Lost]{})), 8)
+	testing.expect_value(t, len(left_out_words(~bit_set[gfx.Svg_Lost]{})), 7)
 	testing.expect_value(t, len(left_out_words({})), 0)
 }
 

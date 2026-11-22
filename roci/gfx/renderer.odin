@@ -846,7 +846,7 @@ upload :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, b: ^Batcher) -> bo
 			mem.copy(base[ramp:], &ramp_data, row_bytes)
 			mem.zero(base[params:], row_bytes)
 			params_data := gradient.params
-			mem.copy(base[params:], &params_data, size_of([4]f16))
+			mem.copy(base[params:], &params_data, size_of(params_data))
 		}
 	}
 	if need_glyphs {

@@ -199,7 +199,6 @@ left_out_words :: proc(lost: bit_set[gfx.Svg_Lost]) -> []string {
 		switch kind {
 		case .Text:     append(&words, "text (turn it into paths)")
 		case .Picture:  append(&words, "pictures inside it")
-		case .Gradient: append(&words, "some gradients")
 		case .Clip:     append(&words, "clips measured by their shape's box or clipped again")
 		case .Mask:     append(&words, "masks")
 		case .Filter:   append(&words, "filters")
