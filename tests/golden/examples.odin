@@ -93,7 +93,7 @@ EXAMPLES := [?]Example{
 	{"imagebuttons", 6, {1}}, // two buttons that show a picture, and the badges they stamp
 	{"dials", 6, {1}}, // a color box, a knob, a range with two handles and a pad, steering a line of circles
 	{"ui", 6, {1}}, // a slider, a check box and a button in a ui block, drawn over a dot and its ring
-	{"tunnel", 20, {1}}, // a raymarched tunnel made by one shader, the sketch's own dots and word laid over it, and a lens effect on top
+	{"tunnel", 20, {1}}, // a raymarched tunnel made by one shader, and a lens effect on top
 	{"bounce", 90, {1}}, // Processing's Bounce: a ball turning round at the edges, a shadow and a highlight on it
 	{"sinewave", 20, {1}}, // Processing's Sine Wave: a row of dots on a sliding sine, bigger and brighter at the crests
 	{"rope", 150, {1}}, // Processing's Follow: a rope of segments that leads itself round the window once the mouse has been still a second
