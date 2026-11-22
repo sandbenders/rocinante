@@ -111,7 +111,7 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	if !os.exists(strings.concatenate({libs, "/libSDL3_ttf.so.0"}, context.temp_allocator)) {
 		say_step(.Libraries, "Building the libraries the app carries (once)")
 		if _, built := run_tool(err, "Building the libraries", "sh", strings.concatenate({root, "/tools/package-libs.sh"}, context.temp_allocator), "linux"); !built {
-			fmt.sbprintf(err, "It needs SDL3 installed (Arch: pacman -S sdl3), cmake, git, curl and a C++ compiler. `roci doctor` checks the tools.\n")
+			fmt.sbprintf(err, "It needs SDL3 installed (Arch: pacman -S sdl3), cmake, git, curl and a C++ compiler with its static library (Fedora: dnf install libstdc++-static). `roci doctor` checks the tools.\n")
 			return 5
 		}
 	}
