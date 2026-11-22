@@ -36,6 +36,8 @@ terminal=""
 exec docker run --rm $terminal --platform linux/amd64 -v "$work/src:/src" -v "$sketch:/work/$(basename "$sketch")" -w /src "$image" sh -c '
   set -e
   [ -f .cache/ui/libroci_ui.a ] || odin run build -- ui-libs
+  # the screen-reader bridge: without it the app builds and runs, but says nothing to a screen reader
+  [ -f .cache/ui/accesskit/libaccesskit.a ] || sh tools/ui-libs.sh accesskit
   [ -f .cache/sound/libroci_sound.a ] || odin run build -- sound-libs
   [ -d .cache/net ] || odin run build -- net-libs
   mkdir -p output
