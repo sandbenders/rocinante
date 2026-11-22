@@ -104,6 +104,19 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 	begin_packaging(fmt.tprintf("Packaging %s %s (build %d) for Linux %s", settings.name, version, build_number, arch.arch))
 
+	// ---- the icons, first, so a picture that cannot be used stops the packaging before anything is compiled ----
+	say_step(.Bundle, "Making the icons")
+	icons, icons_ok := prepare_icons(sketch_folder, root, slug, work, a.icon, err)
+	if !icons_ok {
+		return 2
+	}
+	hicolor := strings.concatenate({icons.folder, "/freedesktop"}, context.temp_allocator)
+	icon, icon_found := largest_linux_icon(hicolor, slug)
+	if !icon_found {
+		fmt.sbprintf(err, "The icons in %s have no picture for Linux: put one in %s/hicolor/512x512/apps/%s.png, or delete the folder to have them made again.\n", hicolor, hicolor, slug)
+		return 2
+	}
+
 	// ---- the libraries the app carries ----
 	// SDL3_ttf is built here, with FreeType and HarfBuzz inside it, because the distribution's pulls in an LGPL glib; the others the
 	// program asks for are copied from where this computer keeps them, once it is built and it is known which they are
@@ -151,10 +164,6 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	if !fill_stage(stage, binary, names.executable, carried[:], sketch_folder, root, true, err) {
 		return 5
 	}
-	icon, icon_size, icon_ok := linux_icon(settings.icon, sketch_folder, root, work, err)
-	if !icon_ok {
-		return 5
-	}
 	if _, copied := run_tool(err, "Copying the icon", "cp", icon, strings.concatenate({stage, "/", slug, ".png"}, context.temp_allocator)); !copied {
 		return 5
 	}
@@ -181,21 +190,21 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 			append(&made, [2]string{path, "tar.gz"})
 		case .Deb:
 			say_step(.Bundle, "Making the .deb")
-			path := make_deb(work, stage, names, settings, maintainer, description, categories, desktop, glibc, icon, icon_size, version, err)
+			path := make_deb(work, stage, names, settings, maintainer, description, categories, desktop, glibc, hicolor, version, err)
 			if path == "" {
 				return 5
 			}
 			append(&made, [2]string{path, "deb"})
 		case .Rpm:
 			say_step(.Bundle, "Making the RPM")
-			path := make_rpm(work, stage, names, settings, maintainer, description, desktop, glibc, cxx, icon, icon_size, version, now, err)
+			path := make_rpm(work, stage, names, settings, maintainer, description, desktop, glibc, cxx, hicolor, version, now, err)
 			if path == "" {
 				return 5
 			}
 			append(&made, [2]string{path, "rpm"})
 		case .Arch:
 			say_step(.Bundle, "Making the Arch package")
-			path := make_arch(work, stage, names, settings, maintainer, description, desktop, icon, icon_size, version, now, carried[:], err)
+			path := make_arch(work, stage, names, settings, maintainer, description, desktop, hicolor, version, now, carried[:], err)
 			if path == "" {
 				return 5
 			}
@@ -236,6 +245,7 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 		fmt.println(term.out("The packages name no maintainer yet: add `maintainer = \"Your Name <you@example.org>\"` to the [linux] part of sketch.toml.", .Dim))
 	}
 	fmt.println(term.out("Nothing here is signed: Linux does not ask for it, and package managers keep their own keys.", .Dim))
+	say_icons(icons)
 	_ = out
 	return 0
 }
@@ -356,30 +366,35 @@ fill_stage :: proc(into, binary, executable: string, carried: []Carried_File, sk
 	return true
 }
 
-// The icon as a PNG: the sketch's own (a PNG, or the biggest picture of an .iconset), or the rocinante logo until it has one.
-// Gives its path and its size, as `192x192`.
-linux_icon :: proc(icon, sketch_folder, root, work: string, err: ^strings.Builder) -> (path, size: string, ok: bool) {
-	source := icon
-	switch {
-	case source == "":
-		source = strings.concatenate({root, "/docs/logo/rocinante-logo-192.png"}, context.temp_allocator)
-	case !strings.has_prefix(source, "/"):
-		source = strings.concatenate({sketch_folder, "/", source}, context.temp_allocator)
+// An icon of the Linux folder of the icons: its path, its size folder (`48x48`, `scalable`) and what the file ends in.
+Linux_Icon :: struct {
+	path, size, extension: string,
+}
+
+// The icons the Linux folder holds for the app called `name`: every size there is, and the drawing.
+linux_icon_files :: proc(hicolor, name: string) -> []Linux_Icon {
+	found := make([dynamic]Linux_Icon, context.temp_allocator)
+	for s in ICON_LINUX_SIZES {
+		size := fmt.tprintf("%dx%d", s, s)
+		path := fmt.tprintf("%s/hicolor/%s/apps/%s.png", hicolor, size, name)
+		if os.is_file(path) {
+			append(&found, Linux_Icon{path, size, ".png"})
+		}
 	}
-	if strings.has_suffix(strings.to_lower(source, context.temp_allocator), ".iconset") {
-		source = strings.concatenate({source, "/icon_512x512.png"}, context.temp_allocator)
+	if path := fmt.tprintf("%s/scalable/apps/%s.svg", hicolor, name); os.is_file(path) {
+		append(&found, Linux_Icon{path, "scalable", ".svg"})
 	}
-	bytes, read_err := os.read_entire_file(source, context.temp_allocator)
-	if read_err != nil {
-		fmt.sbprintf(err, "I cannot read the icon `%s`.\n", source)
-		return "", "", false
+	return found[:]
+}
+
+// The largest PNG of the Linux icons, for the tar and the AppImage.
+largest_linux_icon :: proc(hicolor, name: string) -> (path: string, found: bool) {
+	#reverse for icon in linux_icon_files(hicolor, name) {
+		if icon.extension == ".png" {
+			return icon.path, true
+		}
 	}
-	width, height, is_png := png_size(bytes)
-	if !is_png || width < 16 || height != width {
-		fmt.sbprintf(err, "The icon `%s` should be a square PNG picture, 512 by 512 pixels or more.\n", source)
-		return "", "", false
-	}
-	return source, fmt.tprintf("%dx%d", width, height), true
+	return "", false
 }
 
 // Copies the folder every format is made from into a place of a package's tree, and returns false after saying why not.
@@ -427,8 +442,9 @@ tree_size :: proc(base: string) -> int {
 }
 
 // Makes the tree a package puts under `/usr`: the app's folder in `usr/lib/<package>`, a command in `usr/bin`, the desktop entry,
-// the icon and a note about the licences. `libraries` is whether SDL goes with the app. Gives the root of the tree.
-make_usr_tree :: proc(work, kind, stage: string, names: Linux_Names, desktop: Desktop_Info, id, icon, icon_size: string, libraries: bool, err: ^strings.Builder) -> (root: string, ok: bool) {
+// the icons (every size of `hicolor`, the icons' Linux folder, and its drawing) and a note about the licences. `libraries` is
+// whether SDL goes with the app. Gives the root of the tree.
+make_usr_tree :: proc(work, kind, stage: string, names: Linux_Names, desktop: Desktop_Info, id, hicolor: string, libraries: bool, err: ^strings.Builder) -> (root: string, ok: bool) {
 	root = strings.concatenate({work, "/", kind, "/root"}, context.temp_allocator)
 	app := strings.concatenate({root, "/usr/lib/", names.pkg}, context.temp_allocator)
 	if !copy_into(stage, app, err) {
@@ -439,7 +455,7 @@ make_usr_tree :: proc(work, kind, stage: string, names: Linux_Names, desktop: De
 	}
 	// the icon has its place under share, and the tar's copy of it is not needed here
 	_ = os.remove(strings.concatenate({app, "/", names.executable, ".png"}, context.temp_allocator))
-	for dir in ([]string{"/usr/bin", "/usr/share/applications", fmt.tprintf("/usr/share/icons/hicolor/%s/apps", icon_size), fmt.tprintf("/usr/share/doc/%s", names.pkg)}) {
+	for dir in ([]string{"/usr/bin", "/usr/share/applications", fmt.tprintf("/usr/share/doc/%s", names.pkg)}) {
 		if !folder.ensure_directory(strings.concatenate({root, dir}, context.temp_allocator)) {
 			fmt.sbprintf(err, "I cannot make the folder `%s%s`.\n", root, dir)
 			return "", false
@@ -455,8 +471,15 @@ make_usr_tree :: proc(work, kind, stage: string, names: Linux_Names, desktop: De
 		fmt.sbprintf(err, "I cannot write the desktop entry.\n")
 		return "", false
 	}
-	if _, copied := run_tool(err, "Copying the icon", "cp", icon, strings.concatenate({root, "/usr/share/icons/hicolor/", icon_size, "/apps/", names.pkg, ".png"}, context.temp_allocator)); !copied {
-		return "", false
+	for found in linux_icon_files(hicolor, names.executable) {
+		to := fmt.tprintf("%s/usr/share/icons/hicolor/%s/apps/%s%s", root, found.size, names.pkg, found.extension)
+		if os.make_directory_all(parent_of(to)) != nil && !os.is_directory(parent_of(to)) {
+			fmt.sbprintf(err, "I cannot make the folder `%s`.\n", parent_of(to))
+			return "", false
+		}
+		if _, copied := run_tool(err, "Copying the icon", "cp", found.path, to); !copied {
+			return "", false
+		}
 	}
 	licence := strings.concatenate({root, "/usr/share/doc/", names.pkg, "/copyright"}, context.temp_allocator)
 	note := fmt.tprintf("The licences of what this app carries are in /usr/lib/%s/Licences.txt and Inter-LICENSE.txt.\n", names.pkg)
@@ -466,8 +489,8 @@ make_usr_tree :: proc(work, kind, stage: string, names: Linux_Names, desktop: De
 }
 
 // The `.deb`: `debian-binary`, then `control.tar.gz` with the control file and the sums, then `data.tar.gz`, in an `ar` archive.
-make_deb :: proc(work, stage: string, names: Linux_Names, settings: folder.Settings, maintainer, description, categories: string, desktop: Desktop_Info, glibc, icon, icon_size, version: string, err: ^strings.Builder) -> string {
-	root, built := make_usr_tree(work, "deb", stage, names, desktop, settings.id, icon, icon_size, true, err)
+make_deb :: proc(work, stage: string, names: Linux_Names, settings: folder.Settings, maintainer, description, categories: string, desktop: Desktop_Info, glibc, hicolor, version: string, err: ^strings.Builder) -> string {
+	root, built := make_usr_tree(work, "deb", stage, names, desktop, settings.id, hicolor, true, err)
 	if !built {
 		return ""
 	}
@@ -509,8 +532,8 @@ make_deb :: proc(work, stage: string, names: Linux_Names, settings: folder.Setti
 // The RPM: the same tree as the `.deb`, with SDL carried, its files listed in a header and packed in a cpio archive compressed
 // by zstd, written by `rpm_package`. It asks for the C and C++ libraries by the names Fedora gives them, so `dnf` says what is
 // missing on a computer that is too old.
-make_rpm :: proc(work, stage: string, names: Linux_Names, settings: folder.Settings, maintainer, description: string, desktop: Desktop_Info, glibc: string, glibcxx: int, icon, icon_size, version: string, now: time.Time, err: ^strings.Builder) -> string {
-	root, built := make_usr_tree(work, "rpm", stage, names, desktop, settings.id, icon, icon_size, true, err)
+make_rpm :: proc(work, stage: string, names: Linux_Names, settings: folder.Settings, maintainer, description: string, desktop: Desktop_Info, glibc: string, glibcxx: int, hicolor, version: string, now: time.Time, err: ^strings.Builder) -> string {
+	root, built := make_usr_tree(work, "rpm", stage, names, desktop, settings.id, hicolor, true, err)
 	if !built {
 		return ""
 	}
@@ -619,8 +642,8 @@ rpm_owns_folder :: proc(path, pkg: string) -> bool {
 }
 
 // The Arch package: a compressed tar of `.PKGINFO` and the files, asking for Arch's own SDL3 and SDL3_ttf.
-make_arch :: proc(work, stage: string, names: Linux_Names, settings: folder.Settings, maintainer, description: string, desktop: Desktop_Info, icon, icon_size, version: string, now: time.Time, carried: []Carried_File, err: ^strings.Builder) -> string {
-	root, built := make_usr_tree(work, "arch", stage, names, desktop, settings.id, icon, icon_size, false, err)
+make_arch :: proc(work, stage: string, names: Linux_Names, settings: folder.Settings, maintainer, description: string, desktop: Desktop_Info, hicolor, version: string, now: time.Time, carried: []Carried_File, err: ^strings.Builder) -> string {
+	root, built := make_usr_tree(work, "arch", stage, names, desktop, settings.id, hicolor, false, err)
 	if !built {
 		return ""
 	}

@@ -45,11 +45,10 @@ test_a_package_uses_the_flag_then_the_file_then_a_default :: proc(t: ^testing.T)
 	testing.expect_value(t, d.settings.version, "1.0.0")
 	testing.expect(t, d.defaulted.name && d.defaulted.id && d.defaulted.version)
 	// the id follows a name given by flag, and the options of a signing identity and a profile are taken
-	f := resolve_settings(folder.Settings{}, Package_Args{name = "Other", sign = "Me", notary = "p", icon = "i.png", version = "date"}, "x")
+	f := resolve_settings(folder.Settings{}, Package_Args{name = "Other", sign = "Me", notary = "p", version = "date"}, "x")
 	testing.expect_value(t, f.settings.id, "local.other")
 	testing.expect_value(t, f.settings.identity, "Me")
 	testing.expect_value(t, f.settings.notary, "p")
-	testing.expect_value(t, f.settings.icon, "i.png")
 	testing.expect(t, !f.defaulted.name && !f.defaulted.version && f.defaulted.id)
 }
 
@@ -59,11 +58,11 @@ test_the_problems_of_settings_for_an_apple_app_are_each_said :: proc(t: ^testing
 	testing.expect_value(t, len(settings_problems_apple(good, "/nowhere")), 0)
 	good.version = "date"
 	testing.expect_value(t, len(settings_problems_apple(good, "/nowhere")), 0)
-	bad := folder.Settings{name = "", id = "wildvex", version = "1.0-beta", icon = "missing.jpg"}
+	bad := folder.Settings{name = "", id = "wildvex", version = "1.0-beta"}
 	problems := settings_problems_apple(bad, "/nowhere")
-	testing.expect_value(t, len(problems), 4)
+	testing.expect_value(t, len(problems), 3)
 	joined := strings.join(problems, "\n", context.temp_allocator)
-	for needle in ([]string{"needs a name", "is one word", "does not fit macOS", "should be a PNG"}) {
+	for needle in ([]string{"needs a name", "is one word", "does not fit macOS"}) {
 		testing.expectf(t, strings.contains(joined, needle), "%q is missing from %q", needle, joined)
 	}
 }
@@ -195,6 +194,6 @@ test_package_refuses_what_it_cannot_make_before_it_does_anything :: proc(t: ^tes
 test_an_iconset_with_missing_pictures_is_refused :: proc(t: ^testing.T) {
 	err: strings.Builder
 	strings.builder_init(&err, context.temp_allocator)
-	testing.expect(t, !make_icns("output/tests/no-such/wild.iconset", "output/tests", "output/tests", &err))
+	testing.expect(t, !make_icns("output/tests/no-such/wild.iconset", "output/tests", &err))
 	testing.expect(t, strings.contains(strings.to_string(err), "icon_16x16.png"), strings.to_string(err))
 }

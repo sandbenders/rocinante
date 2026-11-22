@@ -24,7 +24,8 @@ PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--ve
   --name      what people call the app (asked the first time, then kept in sketch.toml)
   --id        its id, like org.example.wildvex
   --version   the version people see, up to three numbers (1.0.1), or date for the day of packaging
-  --icon      a PNG at least 512 by 512 pixels, or an .iconset folder of the ten pictures Apple's icons hold, from the sketch's folder
+  --icon      a square SVG drawing, or a PNG of 1024 by 1024 pixels or more, to make every system's icons from:
+              it is copied into the sketch's icons/ folder as icon.svg or icon.png, where later packages find it
   --sign      on a Mac, the identity to sign the app with (else a Developer ID Application one found in
               the keychain, else the app is signed only so it runs here)
   --notarize  on a Mac, the keychain profile notarytool was given, to have Apple check the app
@@ -117,9 +118,6 @@ resolve_settings :: proc(current: folder.Settings, a: Package_Args, sketch_folde
 	r.settings.name, r.defaulted.name = pick(a.name, current.name, folder.default_name(sketch_folder, context.temp_allocator))
 	r.settings.id, r.defaulted.id = pick(a.id, current.id, folder.default_id(r.settings.name, context.temp_allocator))
 	r.settings.version, r.defaulted.version = pick(a.version, current.version, "1.0.0")
-	if a.icon != "" {
-		r.settings.icon = a.icon
-	}
 	if a.sign != "" {
 		r.settings.identity = a.sign
 	}
@@ -144,7 +142,7 @@ resolve_settings :: proc(current: folder.Settings, a: Package_Args, sketch_folde
 // Why the settings cannot make an app for Apple's systems, one problem a line; empty when they can.
 settings_problems_apple :: proc(s: folder.Settings, sketch_folder: string) -> []string {
 	found := make([dynamic]string, context.temp_allocator)
-	for problem in ([]string{folder.check_name(s.name), folder.check_id(s.id), version_problem(s.version), folder.check_icon(sketch_folder, s.icon)}) {
+	for problem in ([]string{folder.check_name(s.name), folder.check_id(s.id), version_problem(s.version)}) {
 		if problem != "" {
 			append(&found, problem)
 		}

@@ -107,6 +107,13 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 	begin_packaging(fmt.tprintf("Packaging %s %s (build %d) for macOS %s", settings.name, version, build_number, arch))
 
+	// ---- the icons, first, so a picture that cannot be used stops the packaging before anything is compiled ----
+	say_step(.Bundle, "Making the icons")
+	icons, icons_ok := prepare_icons(sketch_folder, root, slug, work, a.icon, err)
+	if !icons_ok {
+		return 2
+	}
+
 	// ---- the libraries the app carries ----
 	libs := strings.concatenate({root, "/.cache/package/macos/lib"}, context.temp_allocator)
 	if !os.exists(strings.concatenate({libs, "/libSDL3.0.dylib"}, context.temp_allocator)) || !os.exists(strings.concatenate({libs, "/libSDL3_ttf.0.dylib"}, context.temp_allocator)) {
@@ -210,14 +217,8 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	if os.is_file(inter) {
 		_, _ = run_tool(err, "Copying the font's licence", "cp", inter, strings.concatenate({resources, "/Inter-LICENSE.txt"}, context.temp_allocator))
 	}
-	// the icon: the sketch's own, or the rocinante logo until it has one
-	icon_source := settings.icon
-	if icon_source == "" {
-		icon_source = strings.concatenate({root, "/docs/logo/rocinante-logo-192.png"}, context.temp_allocator)
-	} else if !strings.has_prefix(icon_source, "/") {
-		icon_source = strings.concatenate({sketch_folder, "/", icon_source}, context.temp_allocator)
-	}
-	if !make_icns(icon_source, work, resources, err) {
+	// the icon: the ten pictures of the Mac's icon set in icons/
+	if !make_icns(fmt.tprintf("%s/macos/%s.iconset", icons.folder, slug), resources, err) {
 		return 5
 	}
 	plist := info_plist(Plist_Info{name = settings.name, executable = names.executable, id = settings.id, version = version, build = build_number, icon = "AppIcon", category = settings.category, minimum = minimum})
@@ -315,6 +316,7 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	fmt.println()
 	fmt.println(gatekeeper_note(real_identity, notarised))
 	fmt.println(term.out(fmt.tprintf("It runs on macOS %s or newer: the libraries it is made with are built for this Mac's system.", minimum), .Dim))
+	say_icons(icons)
 	_ = out
 	return 0
 }
@@ -328,27 +330,11 @@ probe_all :: proc(command: ..string) -> (text: string, ok: bool) {
 	return string(stdout), true
 }
 
-// Makes the app's `AppIcon.icns` with `iconutil`, from a PNG scaled to the ten sizes an icon holds with `sips`, or from an
-// `.iconset` folder that already holds the ten pictures, which are used as drawn.
-make_icns :: proc(source, work, resources: string, err: ^strings.Builder) -> bool {
-	if strings.has_suffix(strings.to_lower(source, context.temp_allocator), ".iconset") {
-		for size in ICON_SIZES {
-			if !os.is_file(strings.concatenate({source, "/", size.file}, context.temp_allocator)) {
-				fmt.sbprintf(err, "The icon folder `%s` has no `%s`. An .iconset holds ten pictures, from icon_16x16.png to icon_512x512@2x.png.\n", source, size.file)
-				return false
-			}
-		}
-		_, made := run_tool(err, "Making the icon", "iconutil", "-c", "icns", source, "-o", strings.concatenate({resources, "/AppIcon.icns"}, context.temp_allocator))
-		return made
-	}
-	iconset := strings.concatenate({work, "/AppIcon.iconset"}, context.temp_allocator)
-	if !folder.ensure_directory(iconset) {
-		fmt.sbprintf(err, "I cannot make the folder `%s`.\n", iconset)
-		return false
-	}
+// Makes the app's `AppIcon.icns` with `iconutil` from an `.iconset` folder of the ten pictures a Mac icon holds.
+make_icns :: proc(iconset, resources: string, err: ^strings.Builder) -> bool {
 	for size in ICON_SIZES {
-		pixels := fmt.tprintf("%d", size.pixels)
-		if _, scaled := run_tool(err, "Scaling the icon", "sips", "-z", pixels, pixels, source, "--out", strings.concatenate({iconset, "/", size.file}, context.temp_allocator)); !scaled {
+		if !os.is_file(strings.concatenate({iconset, "/", size.file}, context.temp_allocator)) {
+			fmt.sbprintf(err, "The icon folder `%s` has no `%s`. An .iconset holds ten pictures, from icon_16x16.png to icon_512x512@2x.png.\n", iconset, size.file)
 			return false
 		}
 	}
