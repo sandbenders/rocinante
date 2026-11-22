@@ -19,7 +19,7 @@ test_a_sketch_without_a_sketch_toml_has_empty_settings :: proc(t: ^testing.T) {
 test_settings_are_written_and_read_back_and_a_key_that_is_not_ours_stays :: proc(t: ^testing.T) {
 	root := fresh("settings_round")
 	testing.expect(t, os.make_directory_all(root) == nil)
-	written := Settings{name = "Wild Vex", id = "org.example.wildvex", icon = "assets/icon.png", version = "1.0.1", build = 7, identity = "Developer ID Application: Me (ABC123)", notary = "roci-notary", category = "public.app-category.games", maintainer = "Ada <ada@example.org>", description = "A game about ships", desktop = "Game;", formats = "tar, deb"}
+	written := Settings{name = "Wild Vex", id = "org.example.wildvex", version = "1.0.1", build = 7, identity = "Developer ID Application: Me (ABC123)", notary = "roci-notary", category = "public.app-category.games", maintainer = "Ada <ada@example.org>", description = "A game about ships", desktop = "Game;", formats = "tar, deb"}
 	testing.expect(t, write_settings(root, written))
 	got, problems := read_settings(root, context.temp_allocator)
 	testing.expect_value(t, len(problems), 0)
@@ -125,27 +125,18 @@ test_a_version_for_apple_is_up_to_three_whole_numbers :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_an_icon_is_a_png_that_is_there :: proc(t: ^testing.T) {
+test_an_icon_named_in_sketch_toml_is_said_to_be_no_longer_read_and_is_taken_out :: proc(t: ^testing.T) {
 	root := fresh("settings_icon")
-	testing.expect(t, os.make_directory_all(path_in(root, "assets")) == nil)
-	testing.expect(t, os.write_entire_file(path_in(root, "assets/icon.png"), transmute([]byte)string("x")) == nil)
-	testing.expect_value(t, check_icon(root, ""), "")
-	testing.expect_value(t, check_icon(root, "assets/icon.png"), "")
-	testing.expect_value(t, check_icon(root, "assets/ICON.PNG"), check_icon(root, "assets/ICON.PNG")) // case of the name only
-	testing.expect(t, strings.contains(check_icon(root, "assets/missing.png"), "cannot find"))
-	testing.expect(t, strings.contains(check_icon(root, "assets/icon.jpg"), "should be a PNG"))
-	absolute := path_in(root, "assets/icon.png")
-	if !strings.has_prefix(absolute, "/") {
-		return
-	}
-	testing.expect_value(t, check_icon(root, absolute), "")
-}
-
-@(test)
-test_an_icon_may_be_an_iconset_folder :: proc(t: ^testing.T) {
-	root := fresh("settings_iconset")
-	testing.expect(t, os.make_directory_all(path_in(root, "icons/macos/wild.iconset")) == nil)
-	testing.expect_value(t, check_icon(root, "icons/macos/wild.iconset"), "")
-	testing.expect(t, strings.contains(check_icon(root, "icons/macos/other.iconset"), "cannot find the icon folder"))
-	testing.expect(t, strings.contains(check_icon(root, "icons/macos/wild.jpg"), ".iconset"))
+	testing.expect(t, os.make_directory_all(root) == nil)
+	file := path_in(root, SETTINGS_FILE)
+	testing.expect(t, os.write_entire_file(file, transmute([]byte)string("name = \"Wild\"\nicon = \"assets/icon.png\"\n")) == nil)
+	got, problems := read_settings(root, context.temp_allocator)
+	testing.expect_value(t, got.name, "Wild")
+	testing.expect_value(t, len(problems), 1)
+	testing.expect(t, len(problems) == 1 && strings.contains(problems[0], "icons/icon.svg"), "it says where the icon is now")
+	testing.expect(t, write_settings(root, got))
+	text := read(file)
+	testing.expect(t, !strings.contains(text, "icon"), text)
+	_, after := read_settings(root, context.temp_allocator)
+	testing.expect_value(t, len(after), 0)
 }

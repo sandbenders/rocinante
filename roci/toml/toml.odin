@@ -117,6 +117,23 @@ set :: proc(d: ^Document, table_name, key: string, value: Value) {
 	append(&table.entries, Entry{key = strings.clone(key), value = copy_value(value)})
 }
 
+// Takes an entry out of a table; true when it was there.
+remove :: proc(d: ^Document, table_name, key: string) -> bool {
+	table := find_table(d, table_name)
+	if table == nil {
+		return false
+	}
+	for entry, i in table.entries {
+		if entry.key == key {
+			delete(entry.key)
+			free_value(entry.value)
+			ordered_remove(&table.entries, i)
+			return true
+		}
+	}
+	return false
+}
+
 get :: proc(d: ^Document, table_name, key: string) -> (value: Value, found: bool) {
 	if table := find_table(d, table_name); table != nil {
 		for entry in table.entries {

@@ -2,6 +2,7 @@
 package toml
 
 import "core:math"
+import "core:strings"
 import "core:testing"
 
 number_of :: proc(v: Value) -> f64 {
@@ -239,4 +240,18 @@ test_set_copies_lists_and_tables :: proc(t: ^testing.T) {
 	text := write(&d)
 	defer delete(text)
 	testing.expect_value(t, text, "[t]\nlist = [\"a\", { k = \"v\" }]\n")
+}
+
+@(test)
+test_an_entry_is_taken_out_and_one_that_is_not_there_is_said_so :: proc(t: ^testing.T) {
+	d := parse("a = 1\nb = \"two\"\n[t]\nc = 3\n")
+	defer destroy(&d)
+	testing.expect(t, remove(&d, "", "b"))
+	_, still := get(&d, "", "b")
+	testing.expect(t, !still)
+	testing.expect(t, !remove(&d, "", "b"), "not there any more")
+	testing.expect(t, !remove(&d, "nowhere", "c"), "no such table")
+	testing.expect(t, remove(&d, "t", "c"))
+	text := write(&d, context.temp_allocator)
+	testing.expect(t, strings.contains(text, "a = 1") && !strings.contains(text, "two"), text)
 }

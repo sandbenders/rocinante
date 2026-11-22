@@ -11,6 +11,9 @@ package folder
 import "core:os"
 import "core:strings"
 
+// The folder of the app's icons, beside `assets/`: the picture they are made from and the icons `roci package` makes.
+ICONS_FOLDER :: "icons"
+
 // The folders of `assets/`, which `roci add` and the loading verbs know by name.
 ASSET_FOLDERS := [?]string{"images", "sounds", "videos", "fonts", "3d-models", "ml-models", "shaders", "data"}
 
@@ -111,6 +114,10 @@ fill :: proc(result: ^Scaffold, options: Options, allocator := context.allocator
 	}
 	// Vendored libraries go here (`roci get`); the folder is committed, so it is kept with a `.keep`.
 	if !put_file(result, root, "libs/.keep", "") {
+		return result^, .Cannot_Create
+	}
+	// The app's icon: `roci package` makes every system's icons from icons/icon.svg or icons/icon.png, and keeps them here.
+	if !put_file(result, root, ICONS_FOLDER + "/.keep", "") {
 		return result^, .Cannot_Create
 	}
 	if !put_directory(result, root, "output") {

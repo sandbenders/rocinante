@@ -34,6 +34,7 @@ test_a_new_sketch_has_the_starting_sketch_the_asset_folders_and_the_gitignore ::
 	}
 	testing.expect(t, os.is_directory(path_in(root, "output")))
 	testing.expect(t, os.exists(path_in(root, "libs/.keep")))
+	testing.expect(t, os.exists(path_in(root, "icons/.keep")), "the folder the icon goes in")
 	testing.expect(t, len(result.created) > 10)
 	testing.expect_value(t, len(result.kept), 0)
 	testing.expect_value(t, result.git, Git_Outcome.Not_Wanted)

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: 0BSD
 //
 // `sketch.toml`: what `roci package` needs to know about a sketch that its code does not say: the name of the app, its
-// id, its icon, the version people see and the build number `roci` keeps. It sits beside `sketch.roci`, is made by
+// id, the version people see and the build number `roci` keeps (the icon is the picture in the sketch's `icons/` folder). It sits beside `sketch.roci`, is made by
 // `roci package` and may be written by hand; a sketch without it runs the same. It holds packaging details only,
 // never anything that changes what the sketch does.
 //
 //     name = "Wildvex"
 //     id = "org.example.wildvex"
-//     icon = "assets/icon.png"
 //     version = "1.0.1"
 //     build = 7
 //
@@ -35,7 +34,6 @@ NAME_LONGEST :: 64
 Settings :: struct {
 	name:     string, // what people call the app
 	id:       string, // reverse-domain id: org.example.wildvex
-	icon:     string, // a PNG, from the sketch's folder
 	version:  string, // the version people see: 1.0.1, or `date`
 	build:    int,    // rises by one on every package
 	identity: string, // [macos] the signing identity; empty for an ad-hoc signature
@@ -52,7 +50,6 @@ Settings :: struct {
 destroy_settings :: proc(s: ^Settings, allocator := context.allocator) {
 	delete(s.name, allocator)
 	delete(s.id, allocator)
-	delete(s.icon, allocator)
 	delete(s.version, allocator)
 	delete(s.identity, allocator)
 	delete(s.notary, allocator)
@@ -92,7 +89,10 @@ read_settings :: proc(root: string, allocator := context.allocator) -> (s: Setti
 	s.found = true
 	s.name = text(&doc, "", "name", &found, allocator)
 	s.id = text(&doc, "", "id", &found, allocator)
-	s.icon = text(&doc, "", "icon", &found, allocator)
+	// the icon was once named here; it is the picture in icons/ now, and the key is taken out when the file is written
+	if _, named := toml.get(&doc, "", "icon"); named {
+		append(&found, fmt.aprintf("%s: `icon` is no longer read: the icon is made from icons/icon.svg or icons/icon.png in the sketch's folder (`roci package --icon file` puts one there).", SETTINGS_FILE, allocator = context.temp_allocator))
+	}
 	// a version may be written as a number (`version = 2`) or as text: it is kept as text
 	if value, ok := toml.get(&doc, "", "version"); ok {
 		switch v in value {
@@ -145,7 +145,7 @@ write_settings :: proc(root: string, s: Settings) -> bool {
 	}
 	put(&doc, "", "name", s.name)
 	put(&doc, "", "id", s.id)
-	put(&doc, "", "icon", s.icon)
+	toml.remove(&doc, "", "icon")
 	put(&doc, "", "version", s.version)
 	toml.set(&doc, "", "build", i64(s.build))
 	put(&doc, "macos", "identity", s.identity)
@@ -265,28 +265,6 @@ check_version_apple :: proc(version: string) -> string {
 				return fmt.tprintf("`%s` does not fit macOS, which wants whole numbers only. %s", version, example)
 			}
 		}
-	}
-	return ""
-}
-
-// Why an icon cannot be used, or "": it must be a PNG file that is there.
-check_icon :: proc(root, icon: string) -> string {
-	if icon == "" {
-		return ""
-	}
-	path := icon if strings.has_prefix(icon, "/") else strings.concatenate({root, "/", icon}, context.temp_allocator)
-	lower := strings.to_lower(icon, context.temp_allocator)
-	if strings.has_suffix(lower, ".iconset") {
-		if !os.is_dir(path) {
-			return fmt.tprintf("I cannot find the icon folder `%s`. It is looked for from the sketch's folder.", icon)
-		}
-		return ""
-	}
-	if !strings.has_suffix(lower, ".png") {
-		return fmt.tprintf("The icon `%s` should be a PNG picture, at least 512 by 512 pixels (1024 is best), or an .iconset folder of the ten pictures Apple's icons hold.", icon)
-	}
-	if !os.is_file(path) {
-		return fmt.tprintf("I cannot find the icon `%s`. It is looked for from the sketch's folder.", icon)
 	}
 	return ""
 }
