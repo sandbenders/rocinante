@@ -9,6 +9,11 @@
 #     PATH="/c/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64:$PATH" shaders/compile-dxil.sh
 # Run it in Git Bash
 # on Windows after compile.sh changed anything, and commit the results.
+# Linux works as well (checked 2026-11-22 with v1.9.2609): the release's
+# linux_dxc_*.tar.gz has bin/dxc and lib/libdxil.so, which signs the shaders, so
+#     PATH="<unpacked>/bin:$PATH" LD_LIBRARY_PATH="<unpacked>/lib" shaders/compile-dxil.sh
+# and bin/dxv checks a file (`dxv compiled/mesh.frag.dxil`). Its output differs
+# byte for byte from the Windows SDK's DXC, so remake only the shaders that changed.
 set -eu
 cd "$(dirname "$0")"
 mkdir -p compiled
