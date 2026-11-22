@@ -19,6 +19,9 @@
 //     description = "A short line about the app"
 //     category = "Graphics;"
 //     formats = "tar, deb, rpm, arch, appimage"
+//
+//     [freebsd]
+//     formats = "pkg, tar"
 package folder
 
 import "../toml"
@@ -43,6 +46,7 @@ Settings :: struct {
 	description: string, // [linux] one line about the app, for package managers and menus
 	desktop:     string, // [linux] the menu categories the desktop files it in, as the desktop entry spec writes them: Graphics;
 	formats:     string, // [linux] what to make, separated by commas: tar, deb, rpm, arch, appimage
+	bsd_formats: string, // [freebsd] what to make, separated by commas: pkg, tar
 	found:    bool,   // there was a sketch.toml
 }
 
@@ -58,6 +62,7 @@ destroy_settings :: proc(s: ^Settings, allocator := context.allocator) {
 	delete(s.description, allocator)
 	delete(s.desktop, allocator)
 	delete(s.formats, allocator)
+	delete(s.bsd_formats, allocator)
 	s^ = {}
 }
 
@@ -120,6 +125,7 @@ read_settings :: proc(root: string, allocator := context.allocator) -> (s: Setti
 	s.description = text(&doc, "linux", "description", &found, allocator)
 	s.desktop = text(&doc, "linux", "category", &found, allocator)
 	s.formats = text(&doc, "linux", "formats", &found, allocator)
+	s.bsd_formats = text(&doc, "freebsd", "formats", &found, allocator)
 	if len(found) > 0 {
 		problems = make([]string, len(found), allocator)
 		for line, i in found {
@@ -155,6 +161,7 @@ write_settings :: proc(root: string, s: Settings) -> bool {
 	put(&doc, "linux", "description", s.description)
 	put(&doc, "linux", "category", s.desktop)
 	put(&doc, "linux", "formats", s.formats)
+	put(&doc, "freebsd", "formats", s.bsd_formats)
 	text := toml.write(&doc, context.temp_allocator)
 	return os.write_entire_file(path, transmute([]byte)text) == nil
 }

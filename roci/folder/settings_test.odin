@@ -19,7 +19,7 @@ test_a_sketch_without_a_sketch_toml_has_empty_settings :: proc(t: ^testing.T) {
 test_settings_are_written_and_read_back_and_a_key_that_is_not_ours_stays :: proc(t: ^testing.T) {
 	root := fresh("settings_round")
 	testing.expect(t, os.make_directory_all(root) == nil)
-	written := Settings{name = "Wild Vex", id = "org.example.wildvex", version = "1.0.1", build = 7, identity = "Developer ID Application: Me (ABC123)", notary = "roci-notary", category = "public.app-category.games", maintainer = "Ada <ada@example.org>", description = "A game about ships", desktop = "Game;", formats = "tar, deb"}
+	written := Settings{name = "Wild Vex", id = "org.example.wildvex", version = "1.0.1", build = 7, identity = "Developer ID Application: Me (ABC123)", notary = "roci-notary", category = "public.app-category.games", maintainer = "Ada <ada@example.org>", description = "A game about ships", desktop = "Game;", formats = "tar, deb", bsd_formats = "pkg"}
 	testing.expect(t, write_settings(root, written))
 	got, problems := read_settings(root, context.temp_allocator)
 	testing.expect_value(t, len(problems), 0)
