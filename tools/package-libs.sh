@@ -48,9 +48,9 @@ if [ "$target" = linux ]; then
   # have to be installed here for SDL3_ttf to be built against
   command -v pkg-config > /dev/null 2>&1 && ! pkg-config --exists sdl3 2> /dev/null && { echo "package-libs: SDL3 is not installed (Arch: pacman -S sdl3)" >&2; exit 1; }
   echo "== SDL3_ttf $SDL_TTF_TAG"
-  ttf_src="$root/.cache/ios/src/SDL_ttf"
+  ttf_src="$root/.cache/ios/src/SDL_ttf-$SDL_TTF_TAG"
   if [ ! -d "$ttf_src" ]; then
-    ttf_src="$cache/src/SDL_ttf"
+    ttf_src="$cache/src/SDL_ttf-$SDL_TTF_TAG"
     [ -d "$ttf_src" ] || git clone -q --depth 1 --branch "$SDL_TTF_TAG" --recurse-submodules --shallow-submodules https://github.com/libsdl-org/SDL_ttf "$ttf_src"
   fi
   ttf_build="$cache/ttf-build"
@@ -97,9 +97,9 @@ name=$(otool -D "$lib/libSDL3.0.dylib" | tail -n 1)
 
 echo "== SDL3_ttf $SDL_TTF_TAG"
 # the phones' build has fetched it already when it was made there
-ttf_src="$root/.cache/ios/src/SDL_ttf"
+ttf_src="$root/.cache/ios/src/SDL_ttf-$SDL_TTF_TAG"
 if [ ! -d "$ttf_src" ]; then
-  ttf_src="$cache/src/SDL_ttf"
+  ttf_src="$cache/src/SDL_ttf-$SDL_TTF_TAG"
   [ -d "$ttf_src" ] || git clone -q --depth 1 --branch "$SDL_TTF_TAG" --recurse-submodules --shallow-submodules https://github.com/libsdl-org/SDL_ttf "$ttf_src"
 fi
 ttf_build="$cache/ttf-build"

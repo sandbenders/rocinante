@@ -27,7 +27,16 @@ fail() { printf '%s\n' "$*" >&2; exit 1; }
 
 [ "$(uname -s)" = Darwin ] || fail "An iPhone app can only be built on a Mac, because Apple's tools only run there."
 [ -f "$SDL_IOS_LIB/libSDL3.a" ] || fail "SDL for the iPhone is not built yet. Run: tools/mobile-sdl.sh ios"
-[ -f "$root/.cache/ios/lib/libSDL3_ttf.a" ] || fail "The iPhone's libraries are not built yet. Run: SDL_IOS_LIB=$SDL_IOS_LIB SDL_IOS_SRC=$root/.cache/mobile/SDL3-3.4.18 spikes/mobile/ios/libs.sh"
+# The phone's libraries, built when one is missing or what it is made from changed (the first time takes a while); its
+# output goes to a log, shown only when it fails.
+say "== the phone's libraries"
+mkdir -p "$sketch_folder/artifacts"
+libs_log="$sketch_folder/artifacts/phone-libs.log"
+if ! MIN_IOS="$MIN_IOS" SDL_IOS_LIB="$SDL_IOS_LIB" SDL_IOS_SRC="${SDL_IOS_SRC:-$root/.cache/mobile/SDL3-3.4.18}" \
+  sh "$root/spikes/mobile/ios/libs.sh" > "$libs_log" 2>&1; then
+  tail -n 20 "$libs_log" >&2
+  fail "The iPhone's libraries could not be built; the whole of it is in $libs_log."
+fi
 sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
 
 if [ -z "${TEAM_ID:-}" ]; then

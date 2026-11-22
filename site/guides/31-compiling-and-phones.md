@@ -59,7 +59,7 @@ There is no such target for the iPhone. Apple's iOS Simulator has a graphics dev
 
 ## What the phone needs once
 
-The phone's copy of rocinante's libraries is built once on your computer, from source. For an iPhone, `tools/mobile-sdl.sh ios` builds SDL and `spikes/mobile/ios/libs.sh` the rest; for Android, `tools/mobile-sdl.sh android` and `spikes/mobile/android/libs.sh`. Both need `cmake` and `ninja`, an iPhone needs Xcode, and Android needs the Android SDK and NDK from Android Studio. `roci` tells you which of them is missing, and the line to run, when it needs one.
+The phone's copy of rocinante's libraries is built on your computer, from source. SDL comes first, once: `tools/mobile-sdl.sh ios` for an iPhone, `tools/mobile-sdl.sh android` for Android. `roci` builds the rest itself the first time it puts a sketch on a phone, which takes a while, and again only when a newer rocinante changes one of them. Both need `cmake` and `ninja`, an iPhone needs Xcode, and Android needs the Android SDK and NDK from Android Studio. `roci` tells you which of them is missing, and the line to run, when it needs one.
 
 ## What is different on a phone
 

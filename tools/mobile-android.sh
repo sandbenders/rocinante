@@ -42,7 +42,16 @@ ndk="$ANDROID_HOME/ndk/$NDK_VERSION"
 adb="$ANDROID_HOME/platform-tools/adb"
 [ -d "$ndk" ] || fail "I need the Android NDK $NDK_VERSION in $ANDROID_HOME (Android Studio, SDK Manager, SDK Tools, NDK), or set ANDROID_HOME."
 [ -f "$SDL_ANDROID_LIB/libSDL3.so" ] || fail "SDL for Android is not built yet. Run: tools/mobile-sdl.sh android"
-[ -f "$root/.cache/android/lib/libSDL3_ttf.so" ] || fail "Android's libraries are not built yet. Run: SDL_ANDROID_LIB=$SDL_ANDROID_LIB SDL_ANDROID_SRC=$root/.cache/mobile/SDL3-3.4.18 spikes/mobile/android/libs.sh"
+# The phone's libraries, built when one is missing or what it is made from changed (the first time takes a while); its
+# output goes to a log, shown only when it fails.
+say "== the phone's libraries"
+mkdir -p "$sketch_folder/artifacts"
+libs_log="$sketch_folder/artifacts/phone-libs.log"
+if ! ANDROID_HOME="$ANDROID_HOME" NDK_VERSION="$NDK_VERSION" API_LEVEL="$API_LEVEL" SDL_ANDROID_LIB="$SDL_ANDROID_LIB" \
+  SDL_ANDROID_SRC="${SDL_ANDROID_SRC:-$root/.cache/mobile/SDL3-3.4.18}" sh "$root/spikes/mobile/android/libs.sh" > "$libs_log" 2>&1; then
+  tail -n 20 "$libs_log" >&2
+  fail "Android's libraries could not be built; the whole of it is in $libs_log."
+fi
 [ -d "$SDL_ANDROID_JAVA" ] || fail "SDL's Java glue is not where I looked ($SDL_ANDROID_JAVA)."
 build_tools="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)"
 android_jar="$(ls -d "$ANDROID_HOME"/platforms/android-* | sort -V | tail -n 1)/android.jar"

@@ -69,8 +69,8 @@ odin run spikes/codegen -- check              # Spike 3: interpret, generate Odi
 odin run spikes/codegen -- doctor [host]      # which targets this computer can build, and the toolchain
 odin run spikes/mobile/macos                  # the phones' sketch on the desktop, 5 seconds
 spikes/mobile/android/build.sh --install      # needs SDL_ANDROID_LIB and SDL_ANDROID_JAVA
-SDL_ANDROID_LIB=... SDL_ANDROID_SRC=... spikes/mobile/android/libs.sh   # once: Dear ImGui, SDL3_ttf, shaderc and SPIRV-Cross for arm64 Android into .cache/android/lib (git, cmake, ninja), which build.sh links
-SDL_IOS_LIB=... SDL_IOS_SRC=... spikes/mobile/ios/libs.sh   # once: SDL3_ttf, shaderc, SPIRV-Cross, Dear ImGui and the sound decoders for the iPhone into .cache/ios/lib (git, cmake, ninja, Xcode)
+SDL_ANDROID_LIB=... SDL_ANDROID_SRC=... spikes/mobile/android/libs.sh   # Dear ImGui, SDL3_ttf, shaderc, SPIRV-Cross, libcurl and the sound decoders for arm64 Android into .cache/android/lib (git, cmake, ninja), each built when missing or when a stamp in .cache/android/stamps says its sources changed; tools/mobile-android.sh runs it every time
+SDL_IOS_LIB=... SDL_IOS_SRC=... spikes/mobile/ios/libs.sh   # the same for the iPhone into .cache/ios/lib (git, cmake, ninja, Xcode); tools/mobile-ios.sh runs it every time
 spikes/mobile/ios/build.sh --install          # needs SDL_IOS_LIB, TEAM_ID and DEVICE
 odin run build -- sound-libs                  # the sound decoders (miniaudio's and stb_vorbis from the vendor folder of the Odin on the PATH, and libopus fetched by tools/fetch-opus.sh with curl and tar) into .cache/sound; ci and docs build them when missing (needs cc, or MSVC on Windows)
 odin run build -- net-libs                    # (tools/net-libs.sh ios | android builds them for the phones; the phones' libs.sh call it) libcurl and mbedTLS, static and HTTP(S)-only, fetched by tools/fetch-net.sh (curl and tar; checksums checked) and built by tools/net-libs.sh into .cache/net (needs cmake and cc; Windows uses Schannel and MSVC, not yet run); ci and docs build them when missing
