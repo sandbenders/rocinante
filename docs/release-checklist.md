@@ -46,6 +46,18 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [ ] `tools/package-linux-docker.sh` from a Mac makes the same files from a sketch folder.
 - [ ] `tools/ci/package-linux-distros.sh examples/circle` makes the Debian 12, Ubuntu 24.04, Fedora 43 and Arch packages, and each installs and runs on the newest release of its distribution.
 
+## Packaging a FreeBSD app
+
+`roci package freebsd` is tried by hand on a FreeBSD computer (the unit tests cover the names, the manifest, the checksums, the library owners and the tree; written 2026-11-22 and run on FreeBSD 15.1 amd64 up to reading the package back with `pkg info -F` and starting the unpacked program):
+
+- [ ] `roci package freebsd examples/circle --yes --maintainer "Name <you@example.org>"` makes the `.pkg` and the `.tar.gz` in `output/package/freebsd`, and prints the ABI and the packages the app depends on.
+- [ ] `doas pkg add circle-1.0.0.pkg` installs it (with `sdl3`, `sdl3_ttf`, `shaderc` and `spirv-cross` fetched when missing): `pkg info circle` and `pkg info -l circle` list what is expected, `circle` starts it from a terminal, and `pkg check -s circle` and `pkg delete circle` leave nothing behind.
+- [ ] The menu entry and its icon show in a desktop (X11 and Wayland), and the window's app id is the sketch's id.
+- [ ] The `.tar.gz` unpacked on a FreeBSD with nothing of rocinante installed runs its program after the `pkg install` line of its `README.txt`.
+- [ ] A sketch with assets, fonts, sounds and a vault shows its font and plays its sounds from the package, and its `vault.key` and `memory.toml` appear in `~/.local/share/<its id>` the first time.
+- [ ] `roci package freebsd --format rpm` is refused with the formats said; on a computer with `pkg` taken out the missing tool is named.
+- [ ] A package made on FreeBSD 15 is refused by `pkg add` on 14 (the ABI), and one made on 14 is tried on 15.
+
 ## Linux and the BSDs: everything to try (CachyOS, FreeBSD, OpenBSD)
 
 These systems were last tried in full before text, shaders, canvases, export and the whole user interface. Go through all of it on each, and write down what differs in the results table's notes. Everything in the first list must pass before anything else is worth trying.
