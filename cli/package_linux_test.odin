@@ -142,6 +142,8 @@ test_only_libraries_with_a_known_licence_may_be_carried :: proc(t: ^testing.T) {
 	testing.expect(t, ttf_ok && ttf.arch_pkg == "sdl3_ttf") // not mistaken for SDL3
 	glslang, glslang_ok := carriable_for("libglslang.so.16")
 	testing.expect(t, glslang_ok && glslang.arch_pkg == "glslang")
+	debian, debian_ok := carriable_for("libshaderc.so.1")
+	testing.expect(t, debian_ok && debian.arch_pkg == "shaderc")
 	_, glib := carriable_for("libglib-2.0.so.0")
 	testing.expect(t, !glib, "glib is LGPL")
 	_, curl := carriable_for("libcurl.so.4")

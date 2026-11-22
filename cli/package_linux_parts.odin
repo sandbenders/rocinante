@@ -380,6 +380,7 @@ CARRIABLE := [?]Carriable{
 	{"libSDL3.so", "Zlib", "sdl3"},
 	{"libSDL3_ttf.so", "Zlib, with FreeType and HarfBuzz built in", "sdl3_ttf"},
 	{"libshaderc_shared.so", "Apache-2.0", "shaderc"},
+	{"libshaderc.so", "Apache-2.0", "shaderc"}, // Debian and Ubuntu's name for it, with glslang and SPIRV-Tools inside
 	{"libspirv-cross-c-shared.so", "Apache-2.0", "spirv-cross"},
 	{"libSPIRV-Tools.so", "Apache-2.0", "spirv-tools"},
 	{"libSPIRV-Tools-opt.so", "Apache-2.0", "spirv-tools"},
