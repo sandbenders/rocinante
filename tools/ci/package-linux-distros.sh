@@ -7,31 +7,34 @@
 #   debian   Debian 12: the .deb and the AppImage (glibc 2.36, so the AppImage runs on the others too)
 #   ubuntu   Ubuntu 24.04 LTS: a .deb
 #   fedora   Fedora 43: the RPM (the oldest Fedora still updated in 2026-11; move it to 44 when 43 ends)
+#   arch     Arch Linux as it is today (it has no older releases): the Arch package, which asks for Arch's own SDL3 and
+#            shader libraries instead of carrying them
 #
-#   tools/ci/package-linux-distros.sh <sketch folder> [debian] [ubuntu] [fedora] [-- roci package linux options]
+#   tools/ci/package-linux-distros.sh <sketch folder> [debian] [ubuntu] [fedora] [arch] [-- roci package linux options]
 #
-# With no distribution named it makes all three, side by side. Each is packaged from its own copy of this repository and of the
+# With no distribution named it makes all four, side by side. Each is packaged from its own copy of this repository and of the
 # sketch, kept in ~/.cache/rocinante-distros/<name> (ROCI_DISTROS_WORK) so the libraries it builds are built once, and what it
 # makes is copied to the sketch's output/package/linux-<name>; the sketch's sketch.toml gets the raised build number back.
-# The images are built the first time from tools/ci/package-debian.Containerfile and package-fedora.Containerfile (a few
-# minutes each; the Debian one builds shaderc too). Needs podman (or docker) and rsync; on an Apple silicon Mac they run
-# under x86-64 emulation, slowly. The base images can be changed with ROCI_DEBIAN_BASE, ROCI_UBUNTU_BASE and ROCI_FEDORA_BASE.
+# The images are built the first time from tools/ci/package-debian.Containerfile, package-fedora.Containerfile and
+# package-linux.Dockerfile (a few minutes each; the Debian one builds shaderc too). A --format among the options takes the
+# place of each distribution's formats (`-- --format all` makes all five on each). Needs podman (or docker) and rsync; on an Apple silicon Mac they run
+# under x86-64 emulation, slowly. The base images can be changed with ROCI_DEBIAN_BASE, ROCI_UBUNTU_BASE, ROCI_FEDORA_BASE and ROCI_ARCH_BASE.
 set -eu
 
 sketch="${1:-}"
-[ -n "$sketch" ] && [ -d "$sketch" ] || { echo "usage: tools/ci/package-linux-distros.sh <sketch folder> [debian] [ubuntu] [fedora] [-- options]" >&2; exit 2; }
+[ -n "$sketch" ] && [ -d "$sketch" ] || { echo "usage: tools/ci/package-linux-distros.sh <sketch folder> [debian] [ubuntu] [fedora] [arch] [-- options]" >&2; exit 2; }
 shift
 sketch=$(cd "$sketch" && pwd)
 names=""
 while [ $# -gt 0 ] && [ "$1" != "--" ]; do
   case "$1" in
-    debian | ubuntu | fedora) names="$names $1" ;;
-    *) echo "package-linux-distros: no distribution called $1 (debian, ubuntu or fedora)" >&2; exit 2 ;;
+    debian | ubuntu | fedora | arch) names="$names $1" ;;
+    *) echo "package-linux-distros: no distribution called $1 (debian, ubuntu, fedora or arch)" >&2; exit 2 ;;
   esac
   shift
 done
 [ "${1:-}" = "--" ] && shift
-[ -n "$names" ] || names="debian ubuntu fedora"
+[ -n "$names" ] || names="debian ubuntu fedora arch"
 
 engine=""
 for tool in podman docker; do
@@ -85,7 +88,7 @@ package() { # name, formats, then the options for roci package
   out="$sketch/output/package/linux-$name"
   rm -rf "$out"
   mkdir -p "$out"
-  for made in "$here"/sketch/output/package/linux/*.deb "$here"/sketch/output/package/linux/*.rpm "$here"/sketch/output/package/linux/*.AppImage; do
+  for made in "$here"/sketch/output/package/linux/*.deb "$here"/sketch/output/package/linux/*.rpm "$here"/sketch/output/package/linux/*.pkg.tar.zst "$here"/sketch/output/package/linux/*.tar.gz "$here"/sketch/output/package/linux/*.AppImage; do
     [ -f "$made" ] && cp "$made" "$out/"
   done
   grep -E '^(It runs|It also needs)' "$here/package.log" | sed "s/^/$name: /"
@@ -98,6 +101,7 @@ for name in $names; do
     debian) image debian "${ROCI_DEBIAN_BASE:-docker.io/library/debian:12}" package-debian.Containerfile --build-arg SHADERC=source ;;
     ubuntu) image ubuntu "${ROCI_UBUNTU_BASE:-docker.io/library/ubuntu:24.04}" package-debian.Containerfile --build-arg SHADERC=system ;;
     fedora) image fedora "${ROCI_FEDORA_BASE:-docker.io/library/fedora:43}" package-fedora.Containerfile ;;
+    arch) image arch "${ROCI_ARCH_BASE:-docker.io/library/archlinux:latest}" package-linux.Dockerfile ;;
   esac
 done
 
@@ -108,6 +112,7 @@ for name in $names; do
     debian) package debian deb,appimage "$@" & ;;
     ubuntu) package ubuntu deb "$@" & ;;
     fedora) package fedora rpm "$@" & ;;
+    arch) package arch arch "$@" & ;;
   esac
   pids="$pids $!"
 done
