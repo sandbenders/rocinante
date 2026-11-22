@@ -9,22 +9,26 @@
 #
 #   tools/package-linux-docker.sh ~/code/mysketch --format all --maintainer "Ada <ada@example.org>"
 #
-# Needs docker running. The image is built the first time (a few minutes).
+# Needs podman, or docker running. The image is built the first time (a few minutes).
 set -eu
 
 sketch="${1:-}"
 [ -n "$sketch" ] && [ -d "$sketch" ] || { echo "usage: tools/package-linux-docker.sh <sketch folder> [roci package linux options]" >&2; exit 2; }
 shift
-command -v docker > /dev/null 2>&1 || { echo "package-linux-docker: docker is not installed" >&2; exit 1; }
-docker info > /dev/null 2>&1 || { echo "package-linux-docker: docker is not running" >&2; exit 1; }
+engine=""
+for tool in podman docker; do
+  command -v "$tool" > /dev/null 2>&1 && { engine=$tool; break; }
+done
+[ -n "$engine" ] || { echo "package-linux-docker: neither podman nor docker is installed" >&2; exit 1; }
+"$engine" info > /dev/null 2>&1 || { echo "package-linux-docker: $engine is not running" >&2; exit 1; }
 root=$(cd "$(dirname "$0")/.." && pwd)
 sketch=$(cd "$sketch" && pwd)
 work="${ROCI_LINUX_WORK:-$HOME/.cache/rocinante-linux}"
 image="${ROCI_LINUX_IMAGE:-rocinante-linux}"
 
-if ! docker image inspect "$image" > /dev/null 2>&1; then
+if ! "$engine" image inspect "$image" > /dev/null 2>&1; then
   echo "== building the image $image (once)"
-  docker build --platform linux/amd64 -t "$image" -f "$root/tools/ci/package-linux.Dockerfile" "$root"
+  "$engine" build --platform linux/amd64 -t "$image" -f "$root/tools/ci/package-linux.Dockerfile" "$root"
 fi
 
 # the source, without what this computer built; the container's own builds stay in the copy from one run to the next
@@ -33,7 +37,7 @@ rsync -a --delete --exclude .git --exclude .cache --exclude output --exclude art
 
 terminal=""
 [ -t 0 ] && terminal="-it"
-exec docker run --rm $terminal --platform linux/amd64 -v "$work/src:/src" -v "$sketch:/work/$(basename "$sketch")" -w /src "$image" sh -c '
+exec "$engine" run --rm $terminal --platform linux/amd64 -v "$work/src:/src:Z" -v "$sketch:/work/$(basename "$sketch"):Z" -w /src "$image" sh -c '
   set -e
   [ -f .cache/ui/libroci_ui.a ] || odin run build -- ui-libs
   # the screen-reader bridge: without it the app builds and runs, but says nothing to a screen reader
