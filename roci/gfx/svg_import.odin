@@ -9,20 +9,20 @@
 // opacity multiplies down into what it holds. Fills are even-odd, whatever `fill-rule` says.
 //
 // Linear and radial gradients are read whole (stops, units, `gradientTransform`, focal point, spread,
-// `href` chains) and drawn by both renderers: `svg` lays each on the GPU as a placed gradient, mixed in
-// RGB as SVG mixes. What a drawing cannot show is not drawn and is counted in `lost`: text, embedded
-// pictures, clip paths, masks, filters, patterns and markers.
-//
-// The drawing also keeps what the picture renderer (`raster.odin`, which draws a drawing into pixels with
-// no GPU, for app icons) shows and `svg` does not: each item's fill rule and the clip paths it is cut by
-// (in user units, any shapes, either clip rule). What even that renderer leaves out is counted in
-// `raster_lost`.
+// `href` chains), and so are fill rules and the clip paths each item is cut by (in user units, any shapes,
+// either clip rule). Both renderers draw them: `svg` on the GPU (a placed gradient mixed in RGB as SVG
+// mixes; the contours that cover by even-odd nesting what the fill rule covers; a clip shape of the clip
+// path's shapes, nested once for each clip), and the picture renderer (`raster.odin`, which draws a
+// drawing into pixels with no GPU, for app icons) exactly. What a drawing cannot show is not drawn and
+// is counted in `lost` and `raster_lost`: text, embedded pictures, masks, filters, patterns, markers,
+// and clips measured by the box or clipped again.
 package gfx
 
 import "../geom"
 import "../maths"
 import "core:encoding/xml"
 import "core:math"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 
@@ -32,12 +32,13 @@ SVG_MAX_DEPTH :: 48
 
 Svg_Item :: struct {
 	contours:           []Contour, // in the drawing's units, with its top left at 0, 0
+	fill_contours:      []Contour, // the ones the GPU fills (even-odd by nesting) to cover what the fill rule covers: `contours` itself, or some of them
 	fill_on, stroke_on: bool,
 	fill, stroke:       maths.Colour, // with the opacities in their alpha; a gradient's first color
 	width:              f32, // of the outline, in the drawing's units
 	cap:                geom.Cap,
 	join:               geom.Join,
-	nonzero:            bool, // the fill rule SVG names (`svg` fills even-odd whatever it says)
+	nonzero:            bool, // the fill rule SVG names
 	fill_gradient:      i32, // which of the drawing's gradients fills it, or -1 for its color
 	stroke_gradient:    i32,
 	fill_alpha:         f32, // what a gradient's colors are multiplied by: the opacities, 0 to 1
@@ -71,8 +72,9 @@ Svg_Gradient :: struct {
 
 // A clip: the shapes a clip path holds, in the drawing's units. What is inside any of them is kept.
 Svg_Clip_Shape :: struct {
-	contours: []Contour,
-	nonzero:  bool,
+	contours:      []Contour,
+	nonzero:       bool,
+	fill_contours: []Contour, // as an item's
 }
 
 Svg_Clip :: struct {
@@ -815,9 +817,9 @@ update_state :: proc(r: ^Reader, id: xml.Element_ID, state: ^Paint_State) {
 		kind: Svg_Lost,
 	}{{"clip-path", .Clip}, {"mask", .Mask}, {"filter", .Filter}, {"marker-start", .Marker}, {"marker-mid", .Marker}, {"marker-end", .Marker}}) {
 		if value, found := property(r, id, name.name); found && strings.trim_space(value) != "none" {
-			r.lost += {name.kind}
-			// a clip path is cut by the picture renderer, in `draw_element`, which says when it cannot
+			// a clip path is cut by both renderers, read in `draw_element` by `read_clip`, which says when it cannot
 			if name.kind != .Clip {
+				r.lost += {name.kind}
 				r.raster_lost += {name.kind}
 			}
 		}
@@ -1000,7 +1002,8 @@ emit :: proc(r: ^Reader, b: ^Builder, state: Paint_State, m: Affine) {
 		}
 	}
 	if r.capture != nil {
-		append(r.capture, Svg_Clip_Shape{contours = keep_contours(r, b, m), nonzero = state.clip_nonzero})
+		contours := keep_contours(r, b, m)
+		append(r.capture, Svg_Clip_Shape{contours = contours, nonzero = state.clip_nonzero, fill_contours = even_odd_contours(r, contours, state.clip_nonzero)})
 		return
 	}
 	fill_gradient, stroke_gradient := i32(-1), i32(-1)
@@ -1021,8 +1024,10 @@ emit :: proc(r: ^Reader, b: ^Builder, state: Paint_State, m: Affine) {
 	if !fill_on && !stroke_on {
 		return
 	}
+	contours := keep_contours(r, b, m)
 	item := Svg_Item{
-		contours        = keep_contours(r, b, m),
+		contours        = contours,
+		fill_contours   = even_odd_contours(r, contours, state.nonzero),
 		fill_on         = fill_on,
 		stroke_on       = stroke_on,
 		width           = f32(state.stroke_width * affine_scale(m)),
@@ -1062,6 +1067,33 @@ keep_contours :: proc(r: ^Reader, b: ^Builder, m: Affine) -> []Contour {
 	}
 	append(&r.arena.contours, contours)
 	return contours
+}
+
+// The contours the GPU fills by its rule (even-odd by how deeply each sits in the others) so as to cover what `rule`
+// covers: all of them for even-odd, and for nonzero those that are edges of the filled area, kept in the arena when
+// that leaves some out.
+@(private = "file")
+even_odd_contours :: proc(r: ^Reader, contours: []Contour, nonzero: bool) -> []Contour {
+	if !nonzero || len(contours) < 2 {
+		return contours
+	}
+	points := make([][]geom.Point, len(contours), context.temp_allocator)
+	for c, i in contours {
+		points[i] = make([]geom.Point, len(c.points), context.temp_allocator)
+		for p, j in c.points {
+			points[i][j] = {f64(p.x), f64(p.y)}
+		}
+	}
+	kept := geom.nonzero_boundaries(points, context.temp_allocator)
+	if len(kept) == len(contours) {
+		return contours
+	}
+	chosen := make([]Contour, len(kept))
+	for k, i in kept {
+		chosen[i] = contours[k]
+	}
+	append(&r.arena.contours, chosen)
+	return chosen
 }
 
 // A coordinate of a gradient: a number, or a percentage of the box (its units) or of the view (user units).
@@ -1241,14 +1273,17 @@ read_clip :: proc(r: ^Reader, text: string, m: Affine, depth: int) -> i32 {
 	}
 	target, known := r.ids[strings.trim(value[4:close], " \"'#")]
 	if !known || local_name(r.doc.elements[target].ident) != "clipPath" {
+		r.lost += {.Clip}
 		r.raster_lost += {.Clip}
 		return -1
 	}
 	if units, has := attribute(r, target, "clipPathUnits"); has && strings.trim_space(units) == "objectBoundingBox" {
+		r.lost += {.Clip}
 		r.raster_lost += {.Clip}
 		return -1
 	}
 	if _, nested := attribute(r, target, "clip-path"); nested {
+		r.lost += {.Clip}
 		r.raster_lost += {.Clip} // a clip path cut by another: its own clip is left out
 	}
 	place := m
@@ -1605,7 +1640,24 @@ svg_draw :: proc(list: ^Command_List, d: ^Svg_Drawing, x, y, width, height: f32)
 	defer pop(list)
 	move(list, x, y)
 	grow(list, width / d.width, height / d.height)
+	outside := list.style.clip // the sketch's own clip, which every item's clips are made inside
+	// the clip made for each list of clips (by its bytes), so items cut by the same ones, or by more inside them, share it
+	made := make(map[string]Clip, 16, context.temp_allocator)
 	for item in d.items {
+		// from the longest start of its clips made already, the rest made inside it
+		list.style.clip = outside
+		start := 0
+		for k := len(item.clips); k > 0; k -= 1 {
+			if clip, known := made[string(slice.to_bytes(item.clips[:k]))]; known {
+				list.style.clip, start = clip, k
+				break
+			}
+		}
+		for i in start ..< len(item.clips) {
+			set_svg_clip(list, d, item.clips[i])
+			made[string(slice.to_bytes(item.clips[:i + 1]))] = list.style.clip
+		}
+		list.look_changed = true
 		box := contours_box(item.contours)
 		if item.fill_on {
 			if g, ok := svg_gpu_gradient(d, item.fill_gradient, item.fill_alpha, box); ok {
@@ -1628,8 +1680,35 @@ svg_draw :: proc(list: ^Command_List, d: ^Svg_Drawing, x, y, width, height: f32)
 		} else {
 			no_stroke(list)
 		}
-		path(list, item.contours)
+		if item.fill_on && item.stroke_on && len(item.fill_contours) != len(item.contours) {
+			// the fill leaves some contours out and the outline does not: one shape for each
+			stroke_on := list.style.stroke_on
+			list.style.stroke_on = false
+			path(list, item.fill_contours)
+			list.style.stroke_on, list.style.fill_on = stroke_on, false
+			list.look_changed = true
+			path(list, item.contours)
+		} else if item.fill_on {
+			path(list, item.fill_contours)
+		} else {
+			path(list, item.contours)
+		}
 	}
+}
+
+// Keeps what is drawn next inside an SVG clip path as well as the clip in force: the union of its shapes, each by its
+// own rule; one with no shapes hides everything.
+@(private = "file")
+set_svg_clip :: proc(list: ^Command_List, d: ^Svg_Drawing, index: i32) {
+	if index < 0 || int(index) >= len(d.clips) {
+		return
+	}
+	clip := d.clips[index]
+	parts := make([][]Contour, len(clip.shapes), context.temp_allocator)
+	for shape, i in clip.shapes {
+		parts[i] = shape.fill_contours if len(shape.fill_contours) > 0 else shape.contours
+	}
+	set_clip_union(list, parts)
 }
 
 // The box round some contours, as `path` measures it for the shape it makes: x, y, width and height.

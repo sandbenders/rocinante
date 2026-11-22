@@ -352,13 +352,16 @@ svg_command :: proc(s: ^Svg, c: Command, width, height: int) {
 		strings.write_string(&s.defs, `<clipPath id="`)
 		strings.write_string(&s.defs, id)
 		strings.write_string(&s.defs, `">`)
-		if outline, shaped := clip_shape_of(s.list, level); shaped && clip_is_shape(s.list, level) {
-			// the outline of the shape, in the transform it was made under
-			strings.write_string(&s.defs, `<path clip-rule="evenodd" d="`)
-			write_path_data(&s.defs, path_points(s.list, outline))
-			strings.write_byte(&s.defs, '"')
-			write_transform(&s.defs, outline.transform)
-			strings.write_string(&s.defs, "/>")
+		if first, parts := clip_shape_parts(s.list, level); parts > 0 && clip_is_shape(s.list, level) {
+			// the outline of each part of the shape, in the transform it was made under; a clip path keeps what any of them covers
+			for at in first ..< first + parts {
+				outline := command_at(s.list, at)
+				strings.write_string(&s.defs, `<path clip-rule="evenodd" d="`)
+				write_path_data(&s.defs, path_points(s.list, outline))
+				strings.write_byte(&s.defs, '"')
+				write_transform(&s.defs, outline.transform)
+				strings.write_string(&s.defs, "/>")
+			}
 		} else {
 			strings.write_string(&s.defs, `<rect`)
 			attr_number(&s.defs, "x", level.rect[0])

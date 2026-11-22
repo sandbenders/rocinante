@@ -92,7 +92,7 @@ test_a_drawing_is_painted_with_its_fills_strokes_gradients_and_clips :: proc(t: 
 	testing.expect_value(t, len(d.gradients), 1)
 	testing.expect_value(t, len(d.clips), 1)
 	testing.expect_value(t, d.raster_lost, bit_set[Svg_Lost]{})
-	testing.expect(t, .Clip in d.lost, "the svg verb does not cut clips")
+	testing.expect_value(t, d.lost, bit_set[Svg_Lost]{})
 	r := raster_make(10, 10, context.temp_allocator)
 	raster_svg(&r, &d, 0, 0, 10, 10)
 	img := raster_to_image(r, context.temp_allocator)

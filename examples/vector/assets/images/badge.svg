@@ -17,6 +17,14 @@
       <stop offset="0" stop-color="#7fd1c7"/>
       <stop offset="1" stop-color="#f2fbf9"/>
     </linearGradient>
+    <!-- the inside of the ring, which keeps the hills in the disc, and two overlapping strips the wave is kept in -->
+    <clipPath id="inside">
+      <circle cx="100" cy="100" r="86"/>
+    </clipPath>
+    <clipPath id="strips">
+      <rect x="20" y="146" width="80" height="24"/>
+      <rect x="84" y="146" width="80" height="24"/>
+    </clipPath>
     <style>
       .ring { fill: #f3e9c6; fill-rule: evenodd }
       .hill { fill: url(#hill) }
@@ -41,8 +49,10 @@
     </g>
   </g>
   <!-- hills, a curve and a wave -->
-  <path class="hill" d="M14 140 C 40 110, 70 112, 96 138 S 150 150, 186 128 L186 150 A90 90 0 0 1 14 150 Z"/>
-  <path class="wave" d="M34 158 q 10 -12 20 0 t 20 0 t 20 0 t 20 0 t 20 0 t 20 0"/>
+  <g clip-path="url(#inside)">
+    <path class="hill" d="M14 140 C 40 110, 70 112, 96 138 S 150 150, 186 128 L186 150 A90 90 0 0 1 14 150 Z"/>
+    <path class="wave" clip-path="url(#strips)" d="M34 158 q 10 -12 20 0 t 20 0 t 20 0 t 20 0 t 20 0 t 20 0"/>
+  </g>
   <rect x="86" y="110" width="28" height="22" rx="4" fill="#c1440e" stroke="#f3e9c6" stroke-width="2"/>
   <polygon points="86,110 100,96 114,110" fill="#8c2f0b" stroke="#f3e9c6" stroke-width="2" stroke-linejoin="round"/>
 </svg>

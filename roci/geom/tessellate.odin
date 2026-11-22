@@ -151,6 +151,39 @@ triangulate :: proc(contours: [][]Point, out: ^Triangulation) -> (triangles: int
 	return (len(out.indices) - before) / 3
 }
 
+// Which of `contours` (their places) to fill by `triangulate`'s rule so as to cover what all of them cover by the
+// nonzero rule: a contour stays when the winding just inside it and just outside it differ in being 0, which is when
+// it is an edge of the filled area. Two contours wound the same way, one inside the other, are then the outer one
+// alone, where the even-odd rule would make a hole. Exact for contours that cross neither themselves nor each other;
+// a contour of fewer than three points or no area is kept, and changes nothing. In `allocator`.
+nonzero_boundaries :: proc(contours: [][]Point, allocator := context.allocator) -> []int {
+	n := len(contours)
+	sign := make([]int, n, context.temp_allocator)
+	for c, i in contours {
+		if len(c) >= 3 {
+			area := signed_area(c)
+			sign[i] = 1 if area > 0 else (-1 if area < 0 else 0)
+		}
+	}
+	kept := make([dynamic]int, 0, n, allocator)
+	for c, i in contours {
+		if sign[i] == 0 {
+			append(&kept, i)
+			continue
+		}
+		inside := sign[i]
+		for other, j in contours {
+			if j != i && sign[j] != 0 && point_in_polygon(c[0], other) {
+				inside += sign[j]
+			}
+		}
+		if (inside != 0) != (inside - sign[i] != 0) {
+			append(&kept, i)
+		}
+	}
+	return kept[:]
+}
+
 // One outline and its holes, as one polygon cut into triangles.
 @(private)
 triangulate_with_holes :: proc(outline: []Point, holes: [][]Point, out: ^Triangulation) {

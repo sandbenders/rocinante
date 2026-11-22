@@ -19,10 +19,12 @@
 package gfx
 
 import "core:math"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 
 import "../../vendor/sancho/deflate"
+import "../geom"
 import "../maths"
 
 @(private = "file")
@@ -466,9 +468,9 @@ pdf_command :: proc(p: ^Pdf, c: Command) {
 	strings.write_string(out, "q\n")
 	// each clip a clip was made inside, outermost first: every one cuts what the last left
 	for level in clip_chain(p.list, st.clip) {
-		if outline, shaped := clip_shape_of(p.list, level); shaped && clip_is_shape(p.list, level) {
+		if first, parts := clip_shape_parts(p.list, level); parts > 0 && clip_is_shape(p.list, level) {
 			// the outline of the shape, carried to the page by the transform it was made under
-			pdf_clip_outline(out, outline, path_points(p.list, outline))
+			pdf_clip_outline(out, p.list, first, parts)
 		} else {
 			write_rect(out, level.rect[0], level.rect[1], max(level.rect[2] - level.rect[0], 0), max(level.rect[3] - level.rect[1], 0))
 			strings.write_string(out, "W n\n")
@@ -912,27 +914,55 @@ pdf_path :: proc(p: ^Pdf, c: Command, box: [4]f32) {
 	strings.write_byte(out, '\n')
 }
 
-// Sets the clip of the page to the outline of a clip shape: its contours moved by the transform they were made
-// under, closed, and cut by the even-odd rule.
+// Sets the clip of the page to the outline of a clip shape, the `parts` commands from `first`: their contours moved by
+// the transform they were made under and closed. One part is cut by the even-odd rule; several are one clip path cut
+// by the nonzero rule, each contour turned one way when it is an outline and the other when it is a hole (by how
+// deep it sits in its own part), so the parts add up to their union, as on the screen.
 @(private = "file")
-pdf_clip_outline :: proc(out: ^strings.Builder, outline: Command, points: [][2]f32) {
-	at := 0
-	for {
-		contour, _, after, ok := next_contour(points, at)
-		if !ok {
-			break
+pdf_clip_outline :: proc(out: ^strings.Builder, list: ^Command_List, first, parts: int) {
+	for i in first ..< first + parts {
+		outline := command_at(list, i)
+		points := path_points(list, outline)
+		contours := make([dynamic][]geom.Point, context.temp_allocator)
+		at := 0
+		for {
+			contour, _, after, ok := next_contour(points, at)
+			if !ok {
+				break
+			}
+			at = after
+			moved := make([]geom.Point, len(contour), context.temp_allocator)
+			for q, j in contour {
+				x, y := transform_apply(outline.transform, q.x, q.y)
+				moved[j] = {f64(x), f64(y)}
+			}
+			append(&contours, moved)
 		}
-		at = after
-		for q, i in contour {
-			x, y := transform_apply(outline.transform, q.x, q.y)
-			number(out, x)
-			strings.write_byte(out, ' ')
-			number(out, y)
-			strings.write_string(out, " m\n" if i == 0 else " l\n")
-		}
-		if len(contour) > 1 {
-			strings.write_string(out, "h\n")
+		for contour, j in contours {
+			if len(contour) == 0 {
+				continue
+			}
+			if parts > 1 {
+				depth := 0
+				for other, k in contours {
+					if k != j && len(other) > 2 && geom.point_in_polygon(contour[0], other) {
+						depth += 1
+					}
+				}
+				if (geom.signed_area(contour) > 0) != (depth % 2 == 0) {
+					slice.reverse(contour)
+				}
+			}
+			for q, n in contour {
+				number(out, f32(q.x))
+				strings.write_byte(out, ' ')
+				number(out, f32(q.y))
+				strings.write_string(out, " m\n" if n == 0 else " l\n")
+			}
+			if len(contour) > 1 {
+				strings.write_string(out, "h\n")
+			}
 		}
 	}
-	strings.write_string(out, "W* n\n")
+	strings.write_string(out, "W* n\n" if parts == 1 else "W n\n")
 }

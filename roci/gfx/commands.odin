@@ -129,6 +129,7 @@ Command_List :: struct {
 	clip_outers: [dynamic]Clip,    // the clips that were in force when another was made inside them, so `no clip` can go back (`Clip.outer` is one more than its place here)
 	clip_parents: [dynamic]u32,    // for each clip shape, the shape it was made inside (0 for none), in step with `clip_shapes`
 	clip_shapes: [dynamic]int,     // the index of each `Clip_Shape` command of the frame, so a clip can find its outline (`Clip.shape` is one more than its place here)
+	clip_parts: [dynamic]int,      // for each clip shape, how many `Clip_Shape` commands from that one on it is the union of (an SVG clip path's shapes), in step with `clip_shapes`
 	background_paint: Gradient_Ref, // a gradient behind everything, when set
 	background_image: Image_Fill,   // a picture behind everything, when its id is not 0
 	background_set:   bool,         // `background` or `clear` was written since the frame (or, for a canvas, the last render) began
@@ -158,6 +159,7 @@ begin_frame :: proc(list: ^Command_List) {
 	clear(&list.points)
 	clear(&list.clip_shapes)
 	clear(&list.clip_parents)
+	clear(&list.clip_parts)
 	clear(&list.clip_outers)
 	clear(&list.effects)
 	clear(&list.effect_values)
@@ -191,6 +193,7 @@ destroy :: proc(list: ^Command_List) {
 	delete(list.points)
 	delete(list.clip_shapes)
 	delete(list.clip_parents)
+	delete(list.clip_parts)
 	delete(list.clip_outers)
 	delete(list.effects)
 	delete(list.effect_values)
@@ -567,24 +570,36 @@ clip_depth :: proc(list: ^Command_List, shape: u32) -> int {
 // its box (the box round the shape, cut to the clips it is inside) is what cuts the picture off in the
 // renderer before the shape does.
 set_clip_shape :: proc(list: ^Command_List, contours: []Contour) {
+	set_clip_union(list, {contours})
+}
+
+// The same for the union of several shapes, each filled by that rule on its own, so where they overlap is
+// kept and not cut away: an SVG clip path, whose shapes are each a part. No part at all clips everything away.
+set_clip_union :: proc(list: ^Command_List, parts: [][]Contour) {
 	list.look_changed = true
 	outer := list.style.clip
-	made := make([dynamic]Contour, 0, len(contours), context.temp_allocator)
+	made := make([dynamic][]Contour, 0, len(parts), context.temp_allocator)
 	lo, hi := [2]f32{max(f32), max(f32)}, [2]f32{-max(f32), -max(f32)}
-	for c in contours {
-		if len(c.points) < 3 {
-			continue
-		}
-		for p in c.points {
-			if !finite(p.x, p.y) {
-				list.style.clip = clip_inside(list, outer, {}, outer.shape)
-				return
+	for contours in parts {
+		part := make([dynamic]Contour, 0, len(contours), context.temp_allocator)
+		for c in contours {
+			if len(c.points) < 3 {
+				continue
 			}
-			px, py := transform_apply(list.transform, p.x, p.y)
-			lo = {min(lo.x, px), min(lo.y, py)}
-			hi = {max(hi.x, px), max(hi.y, py)}
+			for p in c.points {
+				if !finite(p.x, p.y) {
+					list.style.clip = clip_inside(list, outer, {}, outer.shape)
+					return
+				}
+				px, py := transform_apply(list.transform, p.x, p.y)
+				lo = {min(lo.x, px), min(lo.y, py)}
+				hi = {max(hi.x, px), max(hi.y, py)}
+			}
+			append(&part, Contour{points = c.points, closed = true})
 		}
-		append(&made, Contour{points = c.points, closed = true})
+		if len(part) > 0 {
+			append(&made, part[:])
+		}
 	}
 	if len(made) == 0 || clip_depth(list, outer.shape) >= MAX_CLIP_DEPTH {
 		list.style.clip = clip_inside(list, outer, {}, outer.shape)
@@ -592,13 +607,29 @@ set_clip_shape :: proc(list: ^Command_List, contours: []Contour) {
 	}
 	shape := u32(len(list.clip_shapes) + 1)
 	list.style.clip = clip_inside(list, outer, {lo.x, lo.y, hi.x, hi.y}, shape)
-	at := len(list.commands)
-	if !path_of_kind(list, .Clip_Shape, made[:]) {
-		list.style.clip = clip_inside(list, outer, {}, outer.shape)
-		return
+	at, points_at := len(list.commands), len(list.points)
+	for part in made {
+		if !path_of_kind(list, .Clip_Shape, part) {
+			resize(&list.commands, at)
+			resize(&list.points, points_at)
+			list.style.clip = clip_inside(list, outer, {}, outer.shape)
+			return
+		}
 	}
 	append(&list.clip_shapes, at)
 	append(&list.clip_parents, outer.shape)
+	append(&list.clip_parts, len(made))
+}
+
+// The commands that hold the parts of a clip's shape: `count` of them from the index `first`; none when the
+// clip has no shape.
+clip_shape_parts :: proc(list: ^Command_List, clip: Clip) -> (first, count: int) {
+	if clip.shape == 0 || int(clip.shape) > len(list.clip_shapes) {
+		return 0, 0
+	}
+	first = list.clip_shapes[clip.shape - 1]
+	count = list.clip_parts[clip.shape - 1] if int(clip.shape) <= len(list.clip_parts) else 1
+	return first, min(count, len(list.commands) - first)
 }
 
 // The outline a clip to a shape keeps drawing inside, as the path command that holds it; nothing when
@@ -862,6 +893,7 @@ begin_frame_from :: proc(list: ^Command_List, marks: Hold_Marks) {
 	resize(&list.scene.lights, min(marks.lights, len(list.scene.lights)))
 	resize(&list.clip_shapes, min(marks.clip_shapes, len(list.clip_shapes)))
 	resize(&list.clip_parents, min(marks.clip_shapes, len(list.clip_parents)))
+	resize(&list.clip_parts, min(marks.clip_shapes, len(list.clip_parts)))
 	resize(&list.clip_outers, min(marks.clip_outers, len(list.clip_outers)))
 	clear(&list.saved)
 	list.style = DEFAULT_STYLE

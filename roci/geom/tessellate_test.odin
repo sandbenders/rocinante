@@ -390,3 +390,39 @@ test_random_star_shaped_outlines_with_holes_are_covered_exactly :: proc(t: ^test
 		delete(hole)
 	}
 }
+
+@(test)
+test_the_nonzero_rule_keeps_the_edges_of_what_it_fills :: proc(t: ^testing.T) {
+	square :: proc(x0, y0, x1, y1: f64, clockwise: bool) -> []Point {
+		points := make([]Point, 4, context.temp_allocator)
+		points[0], points[1], points[2], points[3] = {x0, y0}, {x1, y0}, {x1, y1}, {x0, y1}
+		if clockwise {
+			reverse_points(points)
+		}
+		return points
+	}
+	expect :: proc(t: ^testing.T, contours: [][]Point, want: []int, loc := #caller_location) {
+		kept := nonzero_boundaries(contours, context.temp_allocator)
+		testing.expectf(t, len(kept) == len(want), "kept %v, want %v", kept, want, loc = loc)
+		for k, i in kept {
+			if i < len(want) {
+				testing.expect_value(t, k, want[i], loc = loc)
+			}
+		}
+	}
+	outer, middle, inner := square(0, 0, 10, 10, false), square(2, 2, 8, 8, false), square(4, 4, 6, 6, false)
+	middle_back, inner_back := square(2, 2, 8, 8, true), square(4, 4, 6, 6, true)
+	// wound the same way, the inner one is no hole: the outer one alone
+	expect(t, {outer, middle}, {0})
+	expect(t, {middle, outer}, {1})
+	// wound the other way it is a hole, and an island inside the hole is filled again
+	expect(t, {outer, middle_back}, {0, 1})
+	expect(t, {outer, middle_back, inner}, {0, 1, 2})
+	// windings 1, 2 and 1: nothing inside the outer one is an edge
+	expect(t, {outer, middle, inner_back}, {0})
+	// apart, both; empty and flat contours are kept and change nothing
+	expect(t, {square(0, 0, 1, 1, false), square(5, 5, 6, 6, true)}, {0, 1})
+	expect(t, {}, {})
+	flat := []Point{{0, 0}, {1, 1}, {2, 2}}
+	expect(t, {outer, flat, middle}, {0, 1})
+}

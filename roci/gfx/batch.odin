@@ -365,27 +365,33 @@ clip_parent :: proc(list: ^Command_List, shape: u32) -> u32 {
 // One batch of the triangles of a clip shape, drawn into the stencil only.
 @(private)
 stencil_outline :: proc(b: ^Batcher, list: ^Command_List, shape: u32, role: Stencil_Role) {
-	clip := Clip{shape = shape}
-	outline, found := clip_shape_of(list, clip)
-	if !found {
+	// every part in one batch: the stencil changes only where it is not changed yet, so overlapping parts make their union
+	at, parts := clip_shape_parts(list, Clip{shape = shape})
+	if parts == 0 {
 		return
 	}
-	drawn := outline
-	drawn.kind = .Path
-	drawn.style.fill = {255, 255, 255, 255}
-	drawn.style.fill_on = true
-	drawn.style.fill_paint = {}
-	drawn.style.stroke_on = false
-	drawn.style.alpha = 255
+	outline := command_at(list, at)
 	first := len(b.mesh.indices)
-	mesh_add_command(&b.mesh, drawn, 0, 0, path_points(list, outline))
+	content := FNV_OFFSET
+	for i in at ..< at + parts {
+		part := command_at(list, i)
+		drawn := part
+		drawn.kind = .Path
+		drawn.style.fill = {255, 255, 255, 255}
+		drawn.style.fill_on = true
+		drawn.style.fill_paint = {}
+		drawn.style.stroke_on = false
+		drawn.style.alpha = 255
+		mesh_add_command(&b.mesh, drawn, 0, 0, path_points(list, part))
+		content = hash_u64(content, shape_hash(part))
+	}
 	added := len(b.mesh.indices) - first
 	if added == 0 {
 		return
 	}
 	depth := clip_depth(list, shape)
 	reference := u8(depth - 1) if role == .Write else u8(depth)
-	append(&b.batches, Batch{pipeline = .Paths, blend = .Normal, clip = outline.style.clip, stencil = role, reference = reference, first = first, count = added, hash = hash_u64(hash_u64(hash_u64(FNV_OFFSET, u64(role)), u64(reference)), shape_hash(outline))})
+	append(&b.batches, Batch{pipeline = .Paths, blend = .Normal, clip = outline.style.clip, stencil = role, reference = reference, first = first, count = added, hash = hash_u64(hash_u64(hash_u64(FNV_OFFSET, u64(role)), u64(reference)), content)})
 }
 
 // Which pipeline draws a command.
