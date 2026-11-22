@@ -101,14 +101,14 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 		fmt.sbprintf(err, "I cannot make the folder `%s`.\n", work)
 		return 2
 	}
-	fmt.printfln("%s %s", term.out("packaging", .Bold_Cyan), term.out(fmt.tprintf("%s %s (build %d) for Linux %s", settings.name, version, build_number, arch.arch), .Cyan))
+	begin_packaging(fmt.tprintf("Packaging %s %s (build %d) for Linux %s", settings.name, version, build_number, arch.arch))
 
 	// ---- the libraries the app carries ----
 	// SDL3_ttf is built here, with FreeType and HarfBuzz inside it, because the distribution's pulls in an LGPL glib; the others the
 	// program asks for are copied from where this computer keeps them, once it is built and it is known which they are
 	libs := strings.concatenate({root, "/.cache/package/linux/lib"}, context.temp_allocator)
 	if !os.exists(strings.concatenate({libs, "/libSDL3_ttf.so.0"}, context.temp_allocator)) {
-		say_step("building SDL3_ttf for the app to carry (once; it takes a minute)")
+		say_step(.Libraries, "Building the libraries the app carries (once)")
 		if _, built := run_tool(err, "Building the libraries", "sh", strings.concatenate({root, "/tools/package-libs.sh"}, context.temp_allocator), "linux"); !built {
 			fmt.sbprintf(err, "It needs SDL3 installed (Arch: pacman -S sdl3), cmake, git, curl and a C++ compiler. `roci doctor` checks the tools.\n")
 			return 5
@@ -116,7 +116,7 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 
 	// ---- the program ----
-	say_step("compiling the sketch")
+	say_step(.Compile, "Compiling the sketch")
 	source_folder, code := make_source(file, files, "linux", settings.id, settings.name, work, err)
 	if code != 0 {
 		return code
@@ -141,7 +141,7 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	cxx := newest_glibcxx(err, ..paths[:])
 
 	// ---- the folder everything is made from ----
-	say_step("making the app")
+	say_step(.Bundle, "Making the app")
 	stage := strings.concatenate({work, "/stage/", names.folder}, context.temp_allocator)
 	if !folder.ensure_directory(strings.concatenate({work, "/stage"}, context.temp_allocator)) || !folder.ensure_directory(stage) {
 		fmt.sbprintf(err, "I cannot make the folder `%s`.\n", stage)
@@ -159,7 +159,7 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 
 	// ---- a first run ----
-	say_step("trying the app")
+	say_step(.Try, "Trying the app")
 	installed := strings.concatenate({stage, "/", names.executable}, context.temp_allocator)
 	if _, ran := run_tool(err, "Running the app", installed, "--frames", "2"); !ran {
 		fmt.sbprintf(err, "The app was made but would not run. The program is %s; run it from a terminal to see what it says.\n", installed)
@@ -172,28 +172,28 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	for format in formats {
 		switch format {
 		case .Tar:
-			say_step("making the .tar.gz")
+			say_step(.Bundle, "Making the .tar.gz")
 			path := strings.concatenate({work, "/", names.tar}, context.temp_allocator)
 			if _, packed := run_tool(err, "Making the .tar.gz", "tar", "--owner=0", "--group=0", "--numeric-owner", "-czf", path, "-C", strings.concatenate({work, "/stage"}, context.temp_allocator), names.folder); !packed {
 				return 5
 			}
 			append(&made, [2]string{path, "tar.gz"})
 		case .Deb:
-			say_step("making the .deb")
+			say_step(.Bundle, "Making the .deb")
 			path := make_deb(work, stage, names, settings, maintainer, description, categories, desktop, glibc, icon, icon_size, version, err)
 			if path == "" {
 				return 5
 			}
 			append(&made, [2]string{path, "deb"})
 		case .Arch:
-			say_step("making the Arch package")
+			say_step(.Bundle, "Making the Arch package")
 			path := make_arch(work, stage, names, settings, maintainer, description, desktop, icon, icon_size, version, now, carried[:], err)
 			if path == "" {
 				return 5
 			}
 			append(&made, [2]string{path, "arch"})
 		case .Appimage:
-			say_step("making the AppImage")
+			say_step(.Bundle, "Making the AppImage")
 			path := make_appimage(work, stage, root, names, settings, description, desktop, icon, version, arch, err)
 			if path == "" {
 				return 5
@@ -209,13 +209,15 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	// the build number is spent now that an app exists
 	settings.build = build_number
 	_ = folder.write_settings(sketch_folder, settings)
+	end_packaging(true)
 	for m in made {
 		size := 0
 		if info, stat_err := os.stat(m[0], context.temp_allocator); stat_err == nil {
 			size = int(info.size)
 		}
-		fmt.printfln("%s %s %s", term.out(term.pad(m[1], 9), .Bold_Cyan), term.out(m[0], .Cyan), term.out(fmt.tprintf("(%.1f MB)", f64(size) / 1048576), .Dim))
+		term.progress_result(&packaging, m[1], fmt.tprintf("%s (%.1f MB)", m[0], f64(size) / 1048576))
 	}
+	fmt.println()
 	if glibc != "" {
 		fmt.println(term.out(fmt.tprintf("It runs on Linux with glibc %s or newer, which is what this computer had to build it. Make packages on an older Linux to run on more.", glibc), .Dim))
 	}
@@ -592,7 +594,7 @@ appimage_runtime :: proc(root: string, arch: Linux_Arch, err: ^strings.Builder) 
 	}
 	if !os.exists(path) {
 		url := fmt.tprintf("https://github.com/AppImage/type2-runtime/releases/download/%s/runtime-%s", APPIMAGE_RUNTIME_RELEASE, arch.arch)
-		say_step("fetching the AppImage runtime (once)")
+		say_step(.Fetch, "Fetching the AppImage runtime (once)")
 		if _, fetched := run_tool(err, "Fetching the AppImage runtime", "curl", "-fsSL", "-o", path, url); !fetched {
 			_ = os.remove(path)
 			return "", false

@@ -22,14 +22,19 @@ SDL_IOS_LIB="${SDL_IOS_LIB:-$root/.cache/mobile/ios}"
 BUNDLE_ID="${BUNDLE_ID:-org.rocinante.sketch}"
 MIN_IOS="${MIN_IOS:-15.0}"
 
-say() { printf '%s\n' "$*"; }
-fail() { printf '%s\n' "$*" >&2; exit 1; }
+# What it says is read by roci, which draws the steps: `step <kind> <words>` starts one (kinds: libraries, phone, compile,
+# bundle, sign, install, start), `result <name> <detail>` is something made, `finished <words>` the last word and
+# `problem <words>` what went wrong; any other line is what a tool said, kept in a log.
+step() { printf "step %s %s\n" "$1" "$2"; }
+result() { printf "result %s %s\n" "$1" "$2"; }
+finished() { printf "finished %s\n" "$*"; }
+fail() { printf "problem %s\n" "$*" >&2; exit 1; }
 
 [ "$(uname -s)" = Darwin ] || fail "An iPhone app can only be built on a Mac, because Apple's tools only run there."
 [ -f "$SDL_IOS_LIB/libSDL3.a" ] || fail "SDL for the iPhone is not built yet. Run: tools/mobile-sdl.sh ios"
 # The phone's libraries, built when one is missing or what it is made from changed (the first time takes a while); its
 # output goes to a log, shown only when it fails.
-say "== the phone's libraries"
+step libraries "Getting the phone's libraries ready"
 mkdir -p "$sketch_folder/artifacts"
 libs_log="$sketch_folder/artifacts/phone-libs.log"
 if ! MIN_IOS="$MIN_IOS" SDL_IOS_LIB="$SDL_IOS_LIB" SDL_IOS_SRC="${SDL_IOS_SRC:-$root/.cache/mobile/SDL3-3.4.18}" \
@@ -45,6 +50,7 @@ fi
 [ -n "${TEAM_ID:-}" ] || fail "I need your Apple development team to sign the app. Open Xcode, Settings, Accounts, and add your Apple ID, or set TEAM_ID."
 
 if [ -z "${NO_INSTALL:-}" ] && [ -z "${DEVICE:-}" ]; then
+  step phone "Finding the iPhone"
   DEVICE="$(xcrun devicectl list devices 2>/dev/null | awk '/physical/ && (/available/ || /connected/) { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9A-F]+-[0-9A-F]+$/) { print $i; exit } }')"
   [ -n "${DEVICE:-}" ] || fail "I cannot find an iPhone. Connect it with its cable, unlock it and trust this computer, or set DEVICE (xcrun devicectl list devices)."
 fi
@@ -52,11 +58,11 @@ fi
 rm -rf "$out"
 mkdir -p "$out/proj"
 
-say "== odin: the sketch as a static library"
+step compile "Compiling the sketch for the iPhone"
 odin build "$source_folder" -collection:rocinante="$root" -target:darwin_arm64 -subtarget:iphone -build-mode:lib \
   -out:"$out/libsketch.a" -minimum-os-version:"$MIN_IOS" -o:speed
 
-say "== link"
+step bundle "Making the app"
 lib="$root/.cache/ios/lib"
 libs="$lib/libroci_ui.a $lib/libroci_sound.a $lib/libcurl.a $lib/libmbedtls.a $lib/libmbedx509.a $lib/libmbedcrypto.a $lib/libtfpsacrypto.a $lib/libSDL3_ttf.a $(ls "$lib"/libfreetype*.a "$lib"/libharfbuzz*.a) $lib/libshaderc_combined.a $(ls "$lib"/libspirv-cross-*.a)"
 xcrun --sdk iphoneos clang -target "arm64-apple-ios$MIN_IOS" -isysroot "$sdk" \
@@ -72,7 +78,7 @@ if [ -d "$sketch_folder/assets" ]; then
   cp -R "$sketch_folder/assets" "$out/proj/assets"
 fi
 
-say "== xcode: wrap, sign"
+step sign "Signing the app"
 mkdir -p "$out/proj/Sketch.xcodeproj"
 cat > "$out/proj/Sketch.xcodeproj/project.pbxproj" <<PBX
 // !\$*UTF8*\$!
@@ -206,14 +212,14 @@ PBX
 (cd "$out/proj" && xcodebuild -project Sketch.xcodeproj -target RocinanteSketch \
   -configuration Debug -sdk iphoneos -allowProvisioningUpdates \
   CONFIGURATION_BUILD_DIR="$out/app" build > "$out/xcode.log" 2>&1) || { tail -25 "$out/xcode.log" >&2; fail "Xcode could not sign the app. The whole of it is in $out/xcode.log."; }
-say "built $out/app/RocinanteSketch.app"
+result app "$out/app/RocinanteSketch.app"
 
 [ -z "${NO_INSTALL:-}" ] || exit 0
-say "== install"
+step install "Installing the app"
 xcrun devicectl device install app --device "$DEVICE" "$out/app/RocinanteSketch.app" > "$out/install.log" 2>&1 \
   || xcrun devicectl device install app --device "$DEVICE" "$out/app/RocinanteSketch.app" > "$out/install.log" 2>&1 \
   || { tail -15 "$out/install.log" >&2; fail "The iPhone would not take the app. If it says the developer is not trusted: on the phone, Settings, General, VPN & Device Management, trust your Apple ID, and run this again."; }
-say "== start"
+step start "Starting the sketch"
 xcrun devicectl device process launch --device "$DEVICE" --terminate-existing "$BUNDLE_ID" > "$out/launch.log" 2>&1 \
   || { tail -10 "$out/launch.log" >&2; fail "The app is on the phone and would not start: unlock the phone, and trust the developer (Settings, General, VPN & Device Management)."; }
-say "$name is running on the iPhone."
+finished "$name is running on the iPhone."

@@ -14,9 +14,36 @@ import "core:os"
 import "core:strings"
 import "core:time"
 
-// Prints a step as it starts, in the colour of the rest of `roci`.
-say_step :: proc(text: string) {
-	fmt.println(term.out(text, .Bold_Cyan))
+// The progress of the app being made: begun with the line that names it, a step for each part, finished with what was made,
+// and marked failed by `run_package` when the packaging returns with an error.
+@(thread_local)
+packaging: term.Progress
+@(thread_local)
+packaging_on: bool
+
+begin_packaging :: proc(title: string) {
+	term.progress_begin(&packaging, .Bundle, title)
+	packaging_on = true
+}
+
+// Starts a step of the packaging, ending the one before as done.
+say_step :: proc(kind: term.Step_Kind, text: string) {
+	if packaging_on {
+		term.progress_step(&packaging, kind, text)
+	}
+}
+
+// Ends the packaging: as done, with what it made listed by the caller after, or as failed, for what went wrong to be said after.
+end_packaging :: proc(ok: bool) {
+	if !packaging_on {
+		return
+	}
+	packaging_on = false
+	if ok {
+		term.progress_finish(&packaging)
+	} else {
+		term.progress_fail(&packaging)
+	}
 }
 
 // Runs a tool, keeping what it says. When it fails, says so in `err` with the last of what it printed.
@@ -78,12 +105,12 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 		fmt.sbprintf(err, "I cannot make the folder `%s`.\n", work)
 		return 2
 	}
-	fmt.printfln("%s %s", term.out("packaging", .Bold_Cyan), term.out(fmt.tprintf("%s %s (build %d) for macOS %s", settings.name, version, build_number, arch), .Cyan))
+	begin_packaging(fmt.tprintf("Packaging %s %s (build %d) for macOS %s", settings.name, version, build_number, arch))
 
 	// ---- the libraries the app carries ----
 	libs := strings.concatenate({root, "/.cache/package/macos/lib"}, context.temp_allocator)
 	if !os.exists(strings.concatenate({libs, "/libSDL3.0.dylib"}, context.temp_allocator)) || !os.exists(strings.concatenate({libs, "/libSDL3_ttf.0.dylib"}, context.temp_allocator)) {
-		say_step("building the libraries the app carries (once; it takes a minute)")
+		say_step(.Libraries, "Building the libraries the app carries (once)")
 		if _, built := run_tool(err, "Building the libraries", "sh", strings.concatenate({root, "/tools/package-libs.sh"}, context.temp_allocator), "macos"); !built {
 			fmt.sbprintf(err, "It needs cmake and ninja (brew install cmake ninja), git and curl. `roci doctor` checks the tools.\n")
 			return 5
@@ -91,7 +118,7 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 
 	// ---- the program ----
-	say_step("compiling the sketch")
+	say_step(.Compile, "Compiling the sketch")
 	source_folder, code := make_source(file, files, "macos", settings.id, settings.name, work, err)
 	if code != 0 {
 		return code
@@ -106,7 +133,7 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 
 	// ---- the bundle ----
-	say_step("making the app")
+	say_step(.Bundle, "Making the app")
 	app := strings.concatenate({work, "/", names.app}, context.temp_allocator)
 	contents := strings.concatenate({app, "/Contents"}, context.temp_allocator)
 	resources := strings.concatenate({contents, "/Resources"}, context.temp_allocator)
@@ -213,7 +240,7 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 		fmt.sbprintf(err, "A notary profile is set (`%s`), and notarising needs the app signed with a Developer ID. Add `identity` to the [macos] part of sketch.toml, or pass --sign.\n", settings.notary)
 		return 2
 	}
-	say_step(fmt.tprintf("signing the app (%s)", identity if real_identity else "so it runs on this Mac"))
+	say_step(.Sign, "Signing the app" if real_identity else "Signing the app for this Mac")
 	entitlements := strings.concatenate({work, "/entitlements.plist"}, context.temp_allocator)
 	_ = os.write_entire_file(entitlements, transmute([]byte)entitlements_plist())
 	sign_with := identity if real_identity else "-"
@@ -245,7 +272,7 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 
 	// ---- a first run ----
-	say_step("trying the app")
+	say_step(.Try, "Trying the app")
 	smoke, ran := run_tool(err, "Running the app", installed, "--frames", "2")
 	_ = smoke
 	if !ran {
@@ -260,7 +287,7 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 	notarised := false
 	if settings.notary != "" {
-		say_step("asking Apple to check the app (this waits for the answer)")
+		say_step(.Check, "Asking Apple to check the app")
 		if text, accepted := run_tool(err, "Notarising", "xcrun", "notarytool", "submit", zip, "--keychain-profile", settings.notary, "--wait"); !accepted || !strings.contains(text, "status: Accepted") {
 			fmt.sbprintf(err, "Apple did not accept the app.\n%s\n", text)
 			return 5
@@ -282,8 +309,10 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	if info, stat_err := os.stat(zip, context.temp_allocator); stat_err == nil {
 		size = int(info.size)
 	}
-	fmt.printfln("%s %s", term.out("made", .Bold_Cyan), term.out(app, .Cyan))
-	fmt.printfln("%s %s %s", term.out("zip", .Bold_Cyan), term.out(zip, .Cyan), term.out(fmt.tprintf("(%.1f MB)", f64(size) / 1048576), .Dim))
+	end_packaging(true)
+	term.progress_result(&packaging, "app", app)
+	term.progress_result(&packaging, "zip", fmt.tprintf("%s (%.1f MB)", zip, f64(size) / 1048576))
+	fmt.println()
 	fmt.println(gatekeeper_note(real_identity, notarised))
 	fmt.println(term.out(fmt.tprintf("It runs on macOS %s or newer: the libraries it is made with are built for this Mac's system.", minimum), .Dim))
 	_ = out

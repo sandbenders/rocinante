@@ -281,9 +281,13 @@ run_package :: proc(args: []string, out, err: ^strings.Builder) -> int {
 	}
 	switch target.name {
 	case "macos":
-		return package_macos(a, out, err)
+		code := package_macos(a, out, err)
+		end_packaging(code == 0) // a failure partway marks the step that ran; a finished one has ended it already
+		return code
 	case "linux":
-		return package_linux(a, out, err)
+		code := package_linux(a, out, err)
+		end_packaging(code == 0)
+		return code
 	case "ios", "android":
 		fmt.sbprintf(err, "`roci package %s` is not written yet. `roci run --compile --target %s` puts a sketch on a phone that is plugged in.\n", target.name, target.name)
 	case:

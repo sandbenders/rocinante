@@ -75,9 +75,10 @@ err :: proc(text: string, style: Style) -> string {
 }
 
 // Pads to a width before painting, because escape codes would count as
-// characters. Text longer than the width is not cut.
+// characters. Text longer than the width is not cut. The width counts characters,
+// not bytes, so a name with accents lines up.
 pad :: proc(text: string, width: int) -> string {
-	n := len(text)
+	n := strings.rune_count(text)
 	if n >= width {
 		return text
 	}

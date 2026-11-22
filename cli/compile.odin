@@ -93,31 +93,48 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 	if parsed.target != "" {
 		folder_path = strings.concatenate({artifacts, "/", parsed.target, "-source"}, context.temp_allocator)
 	}
+	// what has been said so far comes first, then the steps, drawn as they go
+	fmt.print(strings.to_string(out^))
+	strings.builder_reset(out)
+	p: term.Progress
+	title := sketch_title(file)
+	if parsed.target != "" {
+		term.progress_begin(&p, .Phone, fmt.tprintf("Putting %s on %s", title, phone_name(parsed.target)))
+	} else {
+		term.progress_begin(&p, .Compile, fmt.tprintf("Compiling %s%s", title, " for debugging" if parsed.debug else ""))
+	}
+	term.progress_step(&p, .Check, "Reading the sketch")
 	source_folder, code := make_source(file, files, phone_system(parsed.target), "", "", folder_path, err)
 	if code != 0 {
+		term.progress_fail(&p)
 		return code
 	}
 	if parsed.target != "" {
-		return put_on_phone(parsed, root, sketch, source_folder, folder.root_of(file), out, err)
+		return put_on_phone(&p, parsed, root, title, source_folder, folder.root_of(file), err)
 	}
 	// `ROCI_COMPILE_CHECK=1` only type-checks the program that was made, which is how a change to the generator is
 	// tried on every example in seconds (an example that passes is then built and compared for real).
 	if os.get_env("ROCI_COMPILE_CHECK", context.temp_allocator) != "" {
+		term.progress_step(&p, .Check, "Checking the program")
 		state, _, check_err, check_run_err := os.process_exec({command = {"odin", "check", source_folder, strings.concatenate({"-collection:rocinante=", root}, context.temp_allocator)}}, context.temp_allocator)
 		_ = check_run_err
 		if state.exit_code != 0 {
+			term.progress_fail(&p)
 			fmt.sbprintf(err, "The compiler could not build the program.\n%s\n", string(check_err))
 			return 5
 		}
-		fmt.sbprintf(out, "checked\n")
+		term.progress_finish(&p, "Checked")
 		return 0
 	}
 	binary := strings.concatenate({folder_path, "/", sketch, ".exe" if ODIN_OS == .Windows else ""}, context.temp_allocator)
-	fmt.sbprintf(out, "%s %s\n", term.out("compiling", .Bold_Cyan), term.out(fmt.tprintf("%s (%s) with Odin %s", sketch, mode, ODIN_VERSION), .Cyan))
+	term.progress_step(&p, .Compile, "Compiling the sketch")
 	if !build(root, source_folder, binary, parsed.debug, folder_path, err) {
+		term.progress_fail(&p)
 		return 5
 	}
-	fmt.sbprintf(out, "%s %s\n", term.out("made", .Bold_Cyan), term.out(binary, .Cyan))
+	term.progress_finish(&p)
+	term.progress_result(&p, "program", binary)
+	fmt.println()
 	// what the program is told: the words of `roci run` it understands, and where its log goes
 	// the program runs in the sketch's folder, so every path it is given is made whole first
 	whole :: proc(path: string) -> string {
@@ -185,6 +202,24 @@ make_source :: proc(file: string, files: []lang.File_Text, target, app_id, app_n
 		return "", 2
 	}
 	return source_folder, 0
+}
+
+// The name a sketch is called by in what roci says: its folder's when the file is the `sketch.roci` of a folder (run as
+// `roci run` inside it, the file has no folder in its name), else the file's own.
+sketch_title :: proc(file: string) -> string {
+	name := sketch_name(file)
+	if name != "sketch" {
+		return name
+	}
+	whole, abs_err := filepath.abs(folder.root_of(file), context.temp_allocator)
+	if abs_err != nil {
+		return name
+	}
+	whole = strings.trim_right(whole, "/")
+	if slash := strings.last_index_byte(whole, '/'); slash >= 0 && slash + 1 < len(whole) {
+		return whole[slash + 1:]
+	}
+	return name
 }
 
 // The name of a sketch's folder, which names the program.
@@ -301,9 +336,81 @@ device_variable :: proc(target, device: string) -> string {
 	return "ANDROID_SERIAL"
 }
 
-// The script that builds the program for a phone, installs it and starts it. It talks to the person itself, as
-// the tools it runs do, so what it says is shown as it goes.
-put_on_phone :: proc(parsed: Run_Args, root, sketch, source_folder, sketch_folder: string, out, err: ^strings.Builder) -> int {
+// The phone a target names, for the line that says where the sketch is going.
+phone_name :: proc(target: string) -> string {
+	switch target {
+	case "ios":
+		return "the iPhone"
+	case "android":
+		return "the Android phone"
+	case "android-emulator":
+		return "the Android emulator"
+	}
+	return target
+}
+
+// One line the phone script says: a step it starts, something it made, its last word, what went wrong, or anything
+// else, which is what one of the tools it runs said (kept in the log).
+Phone_Line_Kind :: enum {
+	Other,
+	Step,
+	Result,
+	Finished,
+	Problem,
+}
+
+Phone_Line :: struct {
+	kind: Phone_Line_Kind,
+	step: term.Step_Kind,
+	name: string, // a result's name
+	text: string,
+}
+
+parse_phone_line :: proc(line: string) -> Phone_Line {
+	word, rest := line, ""
+	if space := strings.index_byte(line, ' '); space >= 0 {
+		word, rest = line[:space], line[space + 1:]
+	}
+	switch word {
+	case "step":
+		kind_word, words := rest, ""
+		if space := strings.index_byte(rest, ' '); space >= 0 {
+			kind_word, words = rest[:space], rest[space + 1:]
+		}
+		kind: term.Step_Kind
+		switch kind_word {
+		case "libraries": kind = .Libraries
+		case "phone": kind = .Phone
+		case "compile": kind = .Compile
+		case "bundle": kind = .Bundle
+		case "sign": kind = .Sign
+		case "install": kind = .Install
+		case "start": kind = .Start
+		case: return {kind = .Other, text = line}
+		}
+		if words != "" {
+			return {kind = .Step, step = kind, text = words}
+		}
+	case "result":
+		if space := strings.index_byte(rest, ' '); space > 0 {
+			return {kind = .Result, name = rest[:space], text = rest[space + 1:]}
+		}
+	case "finished":
+		if rest != "" {
+			return {kind = .Finished, text = rest}
+		}
+	case "problem":
+		if rest != "" {
+			return {kind = .Problem, text = rest}
+		}
+	}
+	return {kind = .Other, text = line}
+}
+
+// The script that builds the program for a phone, installs it and starts it. What it says comes through a pipe: its
+// steps are drawn in `p` as they come, and what the tools it runs say is kept in the sketch's `artifacts/<target>.log`,
+// shown only when something goes wrong.
+put_on_phone :: proc(p: ^term.Progress, parsed: Run_Args, root, sketch, source_folder, sketch_folder: string, err: ^strings.Builder) -> int {
 	system := phone_system(parsed.target)
 	script := strings.concatenate({root, "/tools/mobile-", system, ".sh"}, context.temp_allocator)
 	command := make([dynamic]string, context.temp_allocator)
@@ -328,17 +435,113 @@ put_on_phone :: proc(parsed: Run_Args, root, sketch, source_folder, sketch_folde
 		cwd, _ := os.get_working_directory(context.temp_allocator)
 		sketch_whole = strings.concatenate({strings.trim_right(cwd, "/"), "/", strings.trim_prefix(sketch_folder, "./")}, context.temp_allocator)
 	}
+	// without a `/./` in them, since the paths the script makes from them are shown
+	if cleaned, clean_err := filepath.clean(whole, context.temp_allocator); clean_err == nil {
+		whole = cleaned
+	}
+	if cleaned, clean_err := filepath.clean(sketch_whole, context.temp_allocator); clean_err == nil {
+		sketch_whole = cleaned
+	}
 	append(&command, "sh", script, whole, sketch_whole, sketch)
-	fmt.print(strings.to_string(out^))
-	strings.builder_reset(out)
-	process, start_err := os.process_start({command = command[:], stdout = os.stdout, stderr = os.stderr})
-	if start_err != nil {
+	_ = folder.ensure_directory(strings.concatenate({sketch_whole, "/artifacts"}, context.temp_allocator))
+	log_path := strings.concatenate({sketch_whole, "/artifacts/", parsed.target, ".log"}, context.temp_allocator)
+	if cleaned, clean_err := filepath.clean(log_path, context.temp_allocator); clean_err == nil {
+		log_path = cleaned
+	}
+	log, log_err := os.create(log_path)
+	defer if log_err == nil {
+		os.close(log)
+	}
+	reader, writer, pipe_err := os.pipe()
+	if pipe_err != nil {
+		term.progress_fail(p)
 		fmt.sbprintf(err, "I could not start `%s`.\n", script)
 		return 5
 	}
-	state, wait_err := os.process_wait(process)
-	if wait_err != nil {
+	defer os.close(reader)
+	process, start_err := os.process_start({command = command[:], stdout = writer, stderr = writer})
+	os.close(writer) // the script holds its own end now, so the reading ends when it does
+	if start_err != nil {
+		term.progress_fail(p)
+		fmt.sbprintf(err, "I could not start `%s`.\n", script)
 		return 5
 	}
-	return state.exit_code
+	problems := make([dynamic]string, context.temp_allocator)
+	results := make([dynamic]Phone_Line, context.temp_allocator)
+	tail := make([dynamic]string, context.temp_allocator) // the last lines the tools said, for a failure
+	finished := ""
+	handle :: proc(line: string, p: ^term.Progress, log: ^os.File, problems, tail: ^[dynamic]string, results: ^[dynamic]Phone_Line, finished: ^string) {
+		said := parse_phone_line(line)
+		switch said.kind {
+		case .Step:
+			term.progress_step(p, said.step, said.text)
+		case .Result:
+			append(results, Phone_Line{kind = .Result, name = strings.clone(said.name, context.temp_allocator), text = strings.clone(said.text, context.temp_allocator)})
+		case .Finished:
+			finished^ = strings.clone(said.text, context.temp_allocator)
+		case .Problem:
+			append(problems, strings.clone(said.text, context.temp_allocator))
+		case .Other:
+			if log != nil {
+				_, _ = os.write_string(log, line)
+				_, _ = os.write_string(log, "\n")
+			}
+			append(tail, strings.clone(line, context.temp_allocator))
+			if len(tail) > 15 {
+				ordered_remove(tail, 0)
+			}
+		}
+	}
+	pending := strings.builder_make(context.temp_allocator)
+	buffer: [4096]byte
+	for {
+		n, read_err := os.read(reader, buffer[:])
+		if n > 0 {
+			strings.write_bytes(&pending, buffer[:n])
+			text := strings.to_string(pending)
+			for {
+				newline := strings.index_byte(text, '\n')
+				if newline < 0 {
+					break
+				}
+				handle(text[:newline], p, log if log_err == nil else nil, &problems, &tail, &results, &finished)
+				text = text[newline + 1:]
+			}
+			rest := strings.clone(text, context.temp_allocator)
+			strings.builder_reset(&pending)
+			strings.write_string(&pending, rest)
+		}
+		if read_err != nil || n == 0 {
+			break
+		}
+	}
+	if left := strings.to_string(pending); left != "" {
+		handle(left, p, log if log_err == nil else nil, &problems, &tail, &results, &finished)
+	}
+	state, wait_err := os.process_wait(process)
+	if wait_err != nil || state.exit_code != 0 {
+		term.progress_fail(p)
+		for problem in problems {
+			fmt.sbprintf(err, "%s\n", problem)
+		}
+		if len(problems) == 0 {
+			fmt.sbprintf(err, "Something went wrong on the way to the phone. The last of what the tools said:\n")
+			for line in tail {
+				fmt.sbprintf(err, "  %s\n", line)
+			}
+		}
+		// the log holds what the tools said, worth pointing at only when they said something
+		if len(tail) > 0 {
+			fmt.sbprintf(err, "The whole of it is in %s.\n", log_path)
+		}
+		return state.exit_code if state.exit_code != 0 else 5
+	}
+	term.progress_finish(p)
+	for r in results {
+		term.progress_result(p, r.name, r.text)
+	}
+	if finished != "" {
+		fmt.printfln("\n%s", finished)
+	}
+	return 0
 }
