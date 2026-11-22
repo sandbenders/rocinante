@@ -378,7 +378,7 @@ Taken in this order (decided 2026-11-16):
 ### Phase 8: Packaging
 - `roci package` for all seven targets (generate, build, bundle, sign where needed); `roci doctor` for every target.
   - **Linux next (2026-11-21):** `roci package linux` makes a `.tar.gz`, a `.deb`, an RPM (2026-11-22), an Arch package and an AppImage (`--format`), tried in a container; see the code map entry in `docs/design.md` for what was and was not tried.
-  - **FreeBSD (2026-11-22):** `roci package freebsd` makes a `.pkg` (written by `roci` in `pkg create`'s format) and a `.tar.gz`, depending on the ports' libraries instead of carrying any; `pkg add` as root, the menu entry and another release are untried (`docs/design.md` code map). OpenBSD, Windows, Android and iOS are next.
+  - **FreeBSD (2026-11-22):** `roci package freebsd` makes a `.pkg` (written by `roci` in `pkg create`'s format) and a `.tar.gz`, depending on the ports' libraries instead of carrying any; installed with `pkg add` and working with its icons and command (Fabrizio, 2026-11-22); another release and arm64 are untried (`docs/design.md` code map). OpenBSD, Windows, Android and iOS are next.
   - **Started 2026-11-20 with the Mac**: `roci package macos` and `sketch.toml` are built (app, ad-hoc or Developer ID signature, notarisation, zip; `docs/design.md`'s code map entry for packaging says what was found); untried: a Developer ID and notarisation, another Mac, other processors. The other five targets are next.
 - `sketch.toml` (§4.9): the packaging questions, the version schemes checked against each store's limits, and the build number. Apple's version rules are read from its documentation first.
 - Mobile behaviour for multiple windows, touch-first defaults, orientation.
