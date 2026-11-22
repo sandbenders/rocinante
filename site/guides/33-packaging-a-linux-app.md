@@ -1,6 +1,6 @@
 ---
 title: "Making a Linux app"
-summary: "Turn a sketch into a .tar.gz, a .deb, an Arch package or an AppImage with roci package linux: the options, what goes inside, and how to try it."
+summary: "Turn a sketch into a .tar.gz, a .deb, an RPM, an Arch package or an AppImage with roci package linux: the options, what goes inside, and how to try it."
 weight: 33
 ---
 
@@ -8,7 +8,7 @@ On a Linux computer, `roci package linux` makes an app of a sketch in the format
 
 ```
 roci package linux
-roci package linux --format deb,arch
+roci package linux --format deb,rpm,arch
 roci package linux --format all
 ```
 
@@ -22,10 +22,11 @@ It works in the sketch's folder (or give it a folder), refuses a sketch that has
 |---|---|---|
 | `tar` | `name-1.0.0-linux-amd64.tar.gz`: a folder to unpack anywhere and run | `tar xzf`, then run the program in it |
 | `deb` | `name_1.0.0_amd64.deb` for Debian, Ubuntu and what comes from them | `sudo apt install ./name_1.0.0_amd64.deb` |
+| `rpm` | `name-1.0.0-1.x86_64.rpm` for Fedora, openSUSE, RHEL and what comes from them | `sudo dnf install ./name-1.0.0-1.x86_64.rpm` (openSUSE: `sudo zypper install`) |
 | `arch` | `name-1.0.0-1-x86_64.pkg.tar.zst` for Arch, CachyOS and Manjaro | `sudo pacman -U name-1.0.0-1-x86_64.pkg.tar.zst` |
 | `appimage` | `Name-1.0.0-x86_64.AppImage`: one file that runs on its own | `chmod +x`, then run it |
 
-A `.deb` and an Arch package put the app in the menus with its icon and give it a command with the app's name (`wildvex`). The packages are made with tools every Linux has (`tar`, `ar`, `zstd`, `mksquashfs`), not with `dpkg` or `makepkg`, so any of the four can be made on any of them. The tools it needs are in `roci doctor`; if one is missing it says which and how to get it.
+A `.deb`, an RPM and an Arch package put the app in the menus with its icon and give it a command with the app's name (`wildvex`). The packages are made with tools every Linux has (`tar`, `ar`, `zstd`, `mksquashfs`), not with `dpkg`, `rpmbuild` or `makepkg`, so any of the five can be made on any of them. Install an RPM with `dnf` rather than `rpm -i`: it is not signed, and Fedora's newest `rpm` refuses an unsigned package on its own, where `dnf` installs it and says it skipped the check. The tools it needs are in `roci doctor`; if one is missing it says which and how to get it.
 
 ## What the options say
 
@@ -43,13 +44,13 @@ category = "Game;"
 formats = "deb, arch"
 ```
 
-`--maintainer` is who looks after the package: a `.deb` and an Arch package name someone, as `Name <address>`. `--description` is the line package managers and menus show. `--category` is where the menus file the app (`Game;`, `Graphics;`, `Graphics;Music;`: the list the desktop entry specification gives). `--icon` is a square PNG, 512 pixels or more; without one the app gets rocinante's mark.
+`--maintainer` is who looks after the package: a `.deb`, an RPM and an Arch package name someone, as `Name <address>`. `--description` is the line package managers and menus show. `--category` is where the menus file the app (`Game;`, `Graphics;`, `Graphics;Music;`: the list the desktop entry specification gives). `--icon` is a square PNG, 512 pixels or more; without one the app gets rocinante's mark.
 
 ## What goes inside
 
 The program, the sketch's `assets` and `libs`, and the files it starts from (`ui.toml`, `memory.toml`, the vault), as for a Mac app. The program finds its assets beside itself; what it writes (what it remembers, `output/`) goes in `~/.local/share/<id>`, which is made the first time it runs.
 
-It also carries the libraries it needs that a computer cannot be counted on to have: SDL3, SDL3_ttf (made for the purpose, with its own FreeType and HarfBuzz, because the usual one pulls in a library that may not be shipped), and the ones that turn your own shaders into something the graphics card runs. The Arch package asks for Arch's own instead, and says which in its dependencies. A library that is not on the list of ones whose licence is known to allow it is never carried: the packaging stops and says so.
+It also carries the libraries it needs that a computer cannot be counted on to have: SDL3, SDL3_ttf (made for the purpose, with its own FreeType and HarfBuzz, because the usual one pulls in a library that may not be shipped), and the ones that turn your own shaders into something the graphics card runs. The Arch package asks for Arch's own instead, and says which in its dependencies. The `.deb` and the RPM carry them as the tar does, and ask only for the computer's C and C++ libraries. A library that is not on the list of ones whose licence is known to allow it is never carried: the packaging stops and says so.
 
 Before anything is made, the app is run once, for two frames, with no window, to see that it starts.
 
@@ -63,4 +64,4 @@ An AppImage starts with a small program from the AppImage project (their `runtim
 
 ## Signing
 
-Nothing here is signed: Linux does not ask for it. Package managers keep their own keys, and a repository that serves a `.deb` or an Arch package signs it itself.
+Nothing here is signed: Linux does not ask for it. Package managers keep their own keys, and a repository that serves a `.deb`, an RPM or an Arch package signs it itself (`rpmsign --addsign` signs an RPM).

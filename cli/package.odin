@@ -28,9 +28,9 @@ PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--ve
   --sign      on a Mac, the identity to sign the app with (else a Developer ID Application one found in
               the keychain, else the app is signed only so it runs here)
   --notarize  on a Mac, the keychain profile notarytool was given, to have Apple check the app
-  --format    on Linux, what to make, separated by commas: tar (a .tar.gz, the default), deb, arch (an Arch
-              package), appimage, or all. Kept in sketch.toml
-  --maintainer  on Linux, who looks after the package, as Name <address> (a .deb and an Arch package say it)
+  --format    on Linux, what to make, separated by commas: tar (a .tar.gz, the default), deb, rpm (for Fedora
+              and openSUSE), arch (an Arch package), appimage, or all. Kept in sketch.toml
+  --maintainer  on Linux, who looks after the package, as Name <address> (a .deb, an RPM and an Arch package say it)
   --description on Linux, one line about the app, for package managers and menus
   --category  on Linux, the menu categories a desktop file puts the app in, such as Game; or Graphics;Music;
   --yes       do not ask: take what is in sketch.toml and the defaults

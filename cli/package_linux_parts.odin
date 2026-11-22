@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 //
 // The pieces of a Linux package that are only text and arithmetic: which formats were asked for, the names of the files, the
-// desktop entry, the control files of a `.deb` and of an Arch package, the script an AppImage starts with, the oldest glibc a
+// desktop entry, the control files of a `.deb` and of an Arch package (an RPM is in `package_rpm.odin`), the script an AppImage starts with, the oldest glibc a
 // program needs and which libraries it still asks the computer for. They are kept apart from the commands that run tools so each
 // can be tested alone.
 package main
@@ -15,17 +15,19 @@ import "core:strings"
 Linux_Format :: enum {
 	Tar,
 	Deb,
+	Rpm,
 	Arch,
 	Appimage,
 }
 
 // The formats in the order they are made and listed.
-LINUX_FORMATS :: [?]Linux_Format{.Tar, .Deb, .Arch, .Appimage}
+LINUX_FORMATS :: [?]Linux_Format{.Tar, .Deb, .Rpm, .Arch, .Appimage}
 
 linux_format_word :: proc(f: Linux_Format) -> string {
 	switch f {
 	case .Tar:      return "tar"
 	case .Deb:      return "deb"
+	case .Rpm:      return "rpm"
 	case .Arch:     return "arch"
 	case .Appimage: return "appimage"
 	}
@@ -33,7 +35,7 @@ linux_format_word :: proc(f: Linux_Format) -> string {
 }
 
 // The formats a `--format` (or the `formats` of `sketch.toml`) names: words separated by commas, `all` for every one, and a few
-// other spellings people use (`tar.gz`, `pacman`, `AppImage`). `bad` is the first word that is no format. Each format is once,
+// other spellings people use (`tar.gz`, `fedora`, `pacman`, `AppImage`). `bad` is the first word that is no format. Each format is once,
 // in the order they are made, whatever order they were written in. An empty text is the plain tar.
 parse_linux_formats :: proc(text: string, allocator := context.temp_allocator) -> (formats: []Linux_Format, bad: string) {
 	wanted: [Linux_Format]bool
@@ -51,6 +53,7 @@ parse_linux_formats :: proc(text: string, allocator := context.temp_allocator) -
 			}
 		case "tar", "tar.gz", "tgz", "targz": wanted[.Tar] = true
 		case "deb", "debian":                  wanted[.Deb] = true
+		case "rpm", "fedora":                  wanted[.Rpm] = true
 		case "arch", "pacman", "pkg":          wanted[.Arch] = true
 		case "appimage":                       wanted[.Appimage] = true
 		case:
@@ -72,7 +75,7 @@ parse_linux_formats :: proc(text: string, allocator := context.temp_allocator) -
 // The processor as each kind of package names it.
 Linux_Arch :: struct {
 	deb:  string, // amd64, arm64
-	arch: string, // x86_64, aarch64: Arch's, and the AppImage's
+	arch: string, // x86_64, aarch64: Arch's, the RPM's and the AppImage's
 	odin: string, // the name in the file of the tar
 }
 
@@ -90,9 +93,10 @@ Linux_Names :: struct {
 	folder:     string, // what the tar unpacks into
 	tar:        string,
 	deb:        string,
+	rpm:        string,
 	arch:       string,
 	appimage:   string,
-	pkg:    string, // the name of the deb and of the Arch package: the slug, at least two letters
+	pkg:        string, // the name of the deb, the RPM and the Arch package: the slug, at least two letters
 }
 
 linux_names :: proc(name, slug, version: string, arch: Linux_Arch) -> Linux_Names {
@@ -103,6 +107,7 @@ linux_names :: proc(name, slug, version: string, arch: Linux_Arch) -> Linux_Name
 		folder = fmt.tprintf("%s-%s", slug, version),
 		tar = fmt.tprintf("%s-%s-linux-%s.tar.gz", slug, version, arch.odin),
 		deb = fmt.tprintf("%s_%s_%s.deb", package_name, version, arch.deb),
+		rpm = fmt.tprintf("%s-%s-1.%s.rpm", package_name, version, arch.arch),
 		arch = fmt.tprintf("%s-%s-1-%s.pkg.tar.zst", package_name, version, arch.arch),
 		appimage = fmt.tprintf("%s-%s-%s.AppImage", safe_name, version, arch.arch),
 		pkg = package_name,

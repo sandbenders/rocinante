@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: 0BSD
 //
-// `roci package linux`: a sketch as a Linux app, in the formats people ask for: a `.tar.gz` of a folder, a `.deb`, an Arch
-// package and an AppImage. The sketch is turned into Odin and built with the pinned Odin like `roci run --compile`, as a program
+// `roci package linux`: a sketch as a Linux app, in the formats people ask for: a `.tar.gz` of a folder, a `.deb`, an RPM, an
+// Arch package and an AppImage. The sketch is turned into Odin and built with the pinned Odin like `roci run --compile`, as a program
 // that finds its assets beside itself and keeps what it writes in `~/.local/share/<id>`. It carries SDL3 and SDL3_ttf in a `lib`
 // folder beside it (`tools/package-libs.sh linux`; the program looks there first, through its `RUNPATH`), except in the Arch
 // package, which asks for Arch's own. One folder of everything is made first and tried (the program is run for two frames,
 // headless), and every format is made from it with tools every Linux computer has: tar, ar, zstd and mksquashfs, no packaging
-// program of the distribution. Everything is in `output/package/linux` of the sketch's folder.
+// program of the distribution (the RPM is written by `package_rpm.odin`). Everything is in `output/package/linux` of the sketch's folder.
 package main
 
 import "../roci/folder"
@@ -15,6 +15,7 @@ import "core:crypto/hash"
 import "core:encoding/hex"
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:time"
 
@@ -64,7 +65,7 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 	formats, bad_format := parse_linux_formats(settings.formats)
 	if bad_format != "" {
-		fmt.sbprintf(err, "I don't know the format `%s`. The formats are tar, deb, arch and appimage, written with commas between them, or all.\n", bad_format)
+		fmt.sbprintf(err, "I don't know the format `%s`. The formats are tar, deb, rpm, arch and appimage, written with commas between them, or all.\n", bad_format)
 		return 2
 	}
 	wants :: proc(formats: []Linux_Format, f: Linux_Format) -> bool {
@@ -78,7 +79,7 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	maintainer := settings.maintainer
 	if maintainer == "" {
 		maintainer = fmt.tprintf("%s <nobody@example.invalid>", settings.name)
-	} else if problem := maintainer_problem(maintainer); problem != "" && (wants(formats, .Deb) || wants(formats, .Arch)) {
+	} else if problem := maintainer_problem(maintainer); problem != "" && (wants(formats, .Deb) || wants(formats, .Rpm) || wants(formats, .Arch)) {
 		fmt.sbprintf(err, "%s\nChange it in %s/%s, or with --maintainer.\n", problem, sketch_folder, folder.SETTINGS_FILE)
 		return 2
 	}
@@ -185,6 +186,13 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 				return 5
 			}
 			append(&made, [2]string{path, "deb"})
+		case .Rpm:
+			say_step(.Bundle, "Making the RPM")
+			path := make_rpm(work, stage, names, settings, maintainer, description, desktop, glibc, cxx, icon, icon_size, version, now, err)
+			if path == "" {
+				return 5
+			}
+			append(&made, [2]string{path, "rpm"})
 		case .Arch:
 			say_step(.Bundle, "Making the Arch package")
 			path := make_arch(work, stage, names, settings, maintainer, description, desktop, icon, icon_size, version, now, carried[:], err)
@@ -202,7 +210,7 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 		}
 	}
 	_ = os.remove_all(strings.concatenate({work, "/stage"}, context.temp_allocator))
-	for name in ([]string{"deb", "arch", "appimage"}) {
+	for name in ([]string{"deb", "rpm", "arch", "appimage"}) {
 		_ = os.remove_all(strings.concatenate({work, "/", name}, context.temp_allocator))
 	}
 
@@ -224,8 +232,8 @@ package_linux :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	if cxx > 0 {
 		fmt.println(term.out(fmt.tprintf("It also needs a libstdc++ with GLIBCXX_3.4.%d (the one that comes with GCC %s or newer).", cxx, gcc_for_glibcxx(cxx)), .Dim))
 	}
-	if wants(formats, .Deb) && settings.maintainer == "" {
-		fmt.println(term.out("The .deb and the Arch package name no maintainer yet: add `maintainer = \"Your Name <you@example.org>\"` to the [linux] part of sketch.toml.", .Dim))
+	if (wants(formats, .Deb) || wants(formats, .Rpm) || wants(formats, .Arch)) && settings.maintainer == "" {
+		fmt.println(term.out("The packages name no maintainer yet: add `maintainer = \"Your Name <you@example.org>\"` to the [linux] part of sketch.toml.", .Dim))
 	}
 	fmt.println(term.out("Nothing here is signed: Linux does not ask for it, and package managers keep their own keys.", .Dim))
 	_ = out
@@ -248,6 +256,8 @@ check_linux_tools :: proc(formats: []Linux_Format, err: ^strings.Builder) -> boo
 		case .Tar:
 		case .Deb:
 			need(&missing, "ar", "--version", "to make the .deb", "binutils")
+		case .Rpm:
+			need(&missing, "zstd", "--version", "to make the RPM", "zstd")
 		case .Arch:
 			need(&missing, "zstd", "--version", "to make the Arch package", "zstd")
 		case .Appimage:
@@ -262,7 +272,7 @@ check_linux_tools :: proc(formats: []Linux_Format, err: ^strings.Builder) -> boo
 	for line in missing {
 		fmt.sbprintf(err, "  %s\n", line)
 	}
-	fmt.sbprintf(err, "Arch: pacman -S binutils tar zstd squashfs-tools curl. Debian and Ubuntu: apt install binutils tar zstd squashfs-tools curl.\n")
+	fmt.sbprintf(err, "Arch: pacman -S binutils tar zstd squashfs-tools curl. Debian and Ubuntu: apt install binutils tar zstd squashfs-tools curl. Fedora: dnf install binutils tar zstd squashfs-tools curl.\n")
 	return false
 }
 
@@ -494,6 +504,118 @@ make_deb :: proc(work, stage: string, names: Linux_Names, settings: folder.Setti
 		return ""
 	}
 	return path
+}
+
+// The RPM: the same tree as the `.deb`, with SDL carried, its files listed in a header and packed in a cpio archive compressed
+// by zstd, written by `rpm_package`. It asks for the C and C++ libraries by the names Fedora gives them, so `dnf` says what is
+// missing on a computer that is too old.
+make_rpm :: proc(work, stage: string, names: Linux_Names, settings: folder.Settings, maintainer, description: string, desktop: Desktop_Info, glibc: string, glibcxx: int, icon, icon_size, version: string, now: time.Time, err: ^strings.Builder) -> string {
+	root, built := make_usr_tree(work, "rpm", stage, names, desktop, settings.id, icon, icon_size, true, err)
+	if !built {
+		return ""
+	}
+	mtime := u32(time.to_unix_seconds(now))
+	files := make([dynamic]Rpm_File, context.temp_allocator)
+	if !rpm_tree(root, "", names.pkg, mtime, &files, err) {
+		return ""
+	}
+	slice.sort_by(files[:], proc(a, b: Rpm_File) -> bool { return a.path < b.path })
+	cpio := rpm_cpio(files[:])
+	installed := 0
+	for f in files {
+		installed += rpm_file_size(f)
+	}
+	parts := strings.concatenate({work, "/rpm"}, context.temp_allocator)
+	archive := strings.concatenate({parts, "/payload.cpio"}, context.temp_allocator)
+	squeezed := strings.concatenate({archive, ".zst"}, context.temp_allocator)
+	if os.write_entire_file(archive, cpio) != nil {
+		fmt.sbprintf(err, "I cannot write the files of the RPM.\n")
+		return ""
+	}
+	if _, packed := run_tool(err, "Compressing the RPM", "zstd", "-q", "-f", "-19", "-T0", archive, "-o", squeezed); !packed {
+		return ""
+	}
+	payload, read_err := os.read_entire_file(squeezed, context.temp_allocator)
+	if read_err != nil {
+		fmt.sbprintf(err, "I cannot read the compressed files of the RPM.\n")
+		return ""
+	}
+	if !rpm_fits(installed, len(cpio), len(payload)) {
+		fmt.sbprintf(err, "The app is too big for an RPM made here (4 GB or more). The .tar.gz and the AppImage have no such limit.\n")
+		return ""
+	}
+	arch := linux_arch().arch
+	info := Rpm_Info{
+		name = names.pkg, version = version, release = "1", summary = description, description = description,
+		url = "", packager = maintainer, arch = arch, archnum = 19 if arch == "aarch64" else 1,
+		build_time = mtime, requires = rpm_requires(glibc, glibcxx), provides = rpm_provides(names.pkg, version, "1", arch),
+		compressor = "zstd", level = "19",
+	}
+	path := strings.concatenate({work, "/", names.rpm}, context.temp_allocator)
+	if os.write_entire_file(path, rpm_package(info, files[:], cpio, payload)) != nil {
+		fmt.sbprintf(err, "I cannot write the RPM.\n")
+		return ""
+	}
+	return path
+}
+
+// The files, links and folders of a package's tree as an RPM lists them. The folders listed are the app's own (`/usr/lib/<pkg>`
+// and what is in it, `/usr/share/doc/<pkg>`); `/usr/bin` and the others belong to the system's own packages, which a package must
+// not claim.
+rpm_tree :: proc(base, path, pkg: string, mtime: u32, files: ^[dynamic]Rpm_File, err: ^strings.Builder) -> bool {
+	here := strings.concatenate({base, path}, context.temp_allocator)
+	entries, read_err := os.read_all_directory_by_path(here, context.temp_allocator)
+	if read_err != nil {
+		fmt.sbprintf(err, "I cannot read the folder `%s`.\n", here)
+		return false
+	}
+	for entry in entries {
+		child := strings.concatenate({path, "/", entry.name}, context.temp_allocator)
+		full := strings.concatenate({base, child}, context.temp_allocator)
+		info, stat_err := os.lstat(full, context.temp_allocator)
+		if stat_err != nil {
+			fmt.sbprintf(err, "I cannot read `%s`.\n", full)
+			return false
+		}
+		#partial switch info.type {
+		case .Directory:
+			if rpm_owns_folder(child, pkg) {
+				append(files, Rpm_File{path = child, mode = RPM_KIND_FOLDER | 0o755, mtime = mtime})
+			}
+			if !rpm_tree(base, child, pkg, mtime, files, err) {
+				return false
+			}
+		case .Symlink:
+			target, link_err := os.read_link(full, context.temp_allocator)
+			if link_err != nil {
+				fmt.sbprintf(err, "I cannot read the link `%s`.\n", full)
+				return false
+			}
+			append(files, Rpm_File{path = child, mode = RPM_KIND_LINK | 0o777, link = target, mtime = mtime})
+		case .Regular:
+			bytes, file_err := os.read_entire_file(full, context.temp_allocator)
+			if file_err != nil {
+				fmt.sbprintf(err, "I cannot read `%s`.\n", full)
+				return false
+			}
+			mode: u32 = 0o755 if .Execute_User in info.mode else 0o644
+			append(files, Rpm_File{path = child, mode = RPM_KIND_FILE | mode, data = bytes, mtime = mtime})
+		case:
+			fmt.sbprintf(err, "`%s` is neither a file, a folder nor a link, and cannot go in an RPM.\n", full)
+			return false
+		}
+	}
+	return true
+}
+
+// Whether a folder of the tree is the app's own, for the RPM to list.
+rpm_owns_folder :: proc(path, pkg: string) -> bool {
+	for own in ([]string{strings.concatenate({"/usr/lib/", pkg}, context.temp_allocator), strings.concatenate({"/usr/share/doc/", pkg}, context.temp_allocator)}) {
+		if path == own || strings.has_prefix(path, strings.concatenate({own, "/"}, context.temp_allocator)) {
+			return true
+		}
+	}
+	return false
 }
 
 // The Arch package: a compressed tar of `.PKGINFO` and the files, asking for Arch's own SDL3 and SDL3_ttf.

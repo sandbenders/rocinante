@@ -32,14 +32,15 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 
 `roci package linux` is tried by hand on a real Linux computer (the unit tests cover the names, the control files, the desktop entry and what the libraries are read from; a container under emulation checked the files and a run with no window, 2026-11-21). On CachyOS, and again on an older Debian or Ubuntu with the packages of an older build (see the glibc note it prints):
 
-- [ ] `roci package linux examples/circle --yes --format all --maintainer "Name <you@example.org>"` makes the four files in `output/package/linux`, and says which glibc and libstdc++ they need.
+- [ ] `roci package linux examples/circle --yes --format all --maintainer "Name <you@example.org>"` makes the five files in `output/package/linux`, and says which glibc and libstdc++ they need.
 - [ ] The `.tar.gz` unpacked on another computer (no rocinante, no SDL) opens a window with its program, with the picture drawn; Wayland and X11 both.
 - [ ] `sudo pacman -U` the Arch package: the app is in the menu with its icon, `circle` starts it, `pacman -Qk circle` is clean and `sudo pacman -R circle` takes it away.
 - [ ] `sudo apt install ./circle_1.0.0_amd64.deb` on a Debian or Ubuntu new enough for its `libc6` dependency: the app is in the menu with its icon, `circle` starts it, `apt remove circle` takes it away.
+- [ ] `sudo dnf install ./circle-1.0.0-1.x86_64.rpm` on a Fedora new enough for its glibc dependency (an older one refuses it with `nothing provides libc.so.6(GLIBC_…)`, rightly): the app is in the menu with its icon, `circle` starts it, `rpm -V circle` is clean and `sudo dnf remove circle` takes it away.
 - [ ] The AppImage: `chmod +x` and run it (with FUSE), and with `APPIMAGE_EXTRACT_AND_RUN=1` without; it opens a window; `--appimage-extract` shows the same files as the tar.
-- [ ] A sketch with assets, fonts, sounds and a vault (a copy of a game) shows its font and plays its sounds in each of the four, and its `vault.key` and `memory.toml` appear in `~/.local/share/<its id>` the first time.
+- [ ] A sketch with assets, fonts, sounds and a vault (a copy of a game) shows its font and plays its sounds in each of the five, and its `vault.key` and `memory.toml` appear in `~/.local/share/<its id>` the first time.
 - [ ] A sketch that uses `effect "x.hlsl"` or `shade` (so shaderc and SPIRV-Cross are used at run time) works in the tar and the AppImage with none of them installed, and in the Arch package with its dependencies.
-- [ ] `roci package linux --format deb --maintainer oops` is refused with a message about the maintainer; `--format rpm` says the formats; a missing tool (`mksquashfs`) is named with how to get it.
+- [ ] `roci package linux --format deb --maintainer oops` is refused with a message about the maintainer; `--format snap` says the formats; a missing tool (`mksquashfs`) is named with how to get it.
 - [ ] `tools/package-linux-docker.sh` from a Mac makes the same files from a sketch folder.
 
 ## Linux and the BSDs: everything to try (CachyOS, FreeBSD, OpenBSD)

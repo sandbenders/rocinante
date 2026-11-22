@@ -19,7 +19,7 @@
 //     maintainer = "Your Name <you@example.org>"
 //     description = "A short line about the app"
 //     category = "Graphics;"
-//     formats = "tar, deb, arch, appimage"
+//     formats = "tar, deb, rpm, arch, appimage"
 package folder
 
 import "../toml"
@@ -44,7 +44,7 @@ Settings :: struct {
 	maintainer:  string, // [linux] who looks after the package: `Name <address>`
 	description: string, // [linux] one line about the app, for package managers and menus
 	desktop:     string, // [linux] the menu categories the desktop files it in, as the desktop entry spec writes them: Graphics;
-	formats:     string, // [linux] what to make, separated by commas: tar, deb, arch, appimage
+	formats:     string, // [linux] what to make, separated by commas: tar, deb, rpm, arch, appimage
 	found:    bool,   // there was a sketch.toml
 }
 

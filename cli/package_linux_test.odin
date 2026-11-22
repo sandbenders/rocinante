@@ -38,10 +38,11 @@ test_the_formats_are_words_with_commas_and_all :: proc(t: ^testing.T) {
 	testing.expect_value(t, names(""), "tar")
 	testing.expect_value(t, names("deb"), "deb")
 	testing.expect_value(t, names("appimage, deb , tar.gz"), "tar deb appimage") // each once, in the order they are made
-	testing.expect_value(t, names("all"), "tar deb arch appimage")
+	testing.expect_value(t, names("all"), "tar deb rpm arch appimage")
 	testing.expect_value(t, names("Pacman,DEB,deb"), "deb arch")
 	testing.expect_value(t, names("tgz,,"), "tar")
-	testing.expect_value(t, names("deb,rpm"), "bad:rpm")
+	testing.expect_value(t, names("arch,Fedora,rpm"), "rpm arch")
+	testing.expect_value(t, names("deb,snap"), "bad:snap")
 	testing.expect_value(t, names("flatpak"), "bad:flatpak")
 }
 
@@ -53,6 +54,7 @@ test_the_files_of_a_linux_package_are_named_by_each_kinds_rules :: proc(t: ^test
 	testing.expect_value(t, n.folder, "wild-vex-1.0.1")
 	testing.expect_value(t, n.tar, "wild-vex-1.0.1-linux-amd64.tar.gz")
 	testing.expect_value(t, n.deb, "wild-vex_1.0.1_amd64.deb")
+	testing.expect_value(t, n.rpm, "wild-vex-1.0.1-1.x86_64.rpm")
 	testing.expect_value(t, n.arch, "wild-vex-1.0.1-1-x86_64.pkg.tar.zst")
 	testing.expect_value(t, n.appimage, "Wild-Vex-1.0.1-x86_64.AppImage")
 	// a package name is two letters at least
