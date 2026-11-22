@@ -10,6 +10,11 @@
 //
 // What a drawing cannot show is not drawn and is counted in `lost`: text, embedded pictures, clip
 // paths, masks, filters, patterns and markers; a gradient is drawn as the first color of its stops.
+//
+// The drawing also keeps what the picture renderer (`raster.odin`, which draws a drawing into pixels with
+// no GPU, for app icons) shows and `svg` does not: each item's fill rule, its linear and radial gradients
+// (stops, units, `gradientTransform`, spread, `href` chains) and the clip paths it is cut by (in user
+// units, any shapes, either clip rule). What even that renderer leaves out is counted in `raster_lost`.
 package gfx
 
 import "../geom"
@@ -26,10 +31,50 @@ SVG_MAX_DEPTH :: 48
 Svg_Item :: struct {
 	contours:           []Contour, // in the drawing's units, with its top left at 0, 0
 	fill_on, stroke_on: bool,
-	fill, stroke:       maths.Colour,
+	fill, stroke:       maths.Colour, // with the opacities in their alpha; a gradient's first color
 	width:              f32, // of the outline, in the drawing's units
 	cap:                geom.Cap,
 	join:               geom.Join,
+	nonzero:            bool, // the fill rule SVG names (`svg` fills even-odd whatever it says)
+	fill_gradient:      i32, // which of the drawing's gradients fills it, or -1 for its color
+	stroke_gradient:    i32,
+	fill_alpha:         f32, // what a gradient's colors are multiplied by: the opacities, 0 to 1
+	stroke_alpha:       f32,
+	clips:              []i32, // the clips it is cut by, all of them
+}
+
+Svg_Spread :: enum u8 {
+	Pad,
+	Reflect,
+	Repeat,
+}
+
+Svg_Stop :: struct {
+	offset: f32, // 0 to 1, never less than the stop before
+	colour: maths.Colour,
+}
+
+// A gradient as one item uses it: the points it is defined by in its own space, and the transform from the
+// drawing's units into that space (the element's transform, its bounding box when the units are the box's,
+// and `gradientTransform`, undone).
+Svg_Gradient :: struct {
+	radial:         bool,
+	stops:          []Svg_Stop,
+	spread:         Svg_Spread,
+	x1, y1, x2, y2: f64, // a linear one: where 0 and 1 are
+	cx, cy, r:      f64, // a radial one: the circle where 1 is
+	fx, fy:         f64, // and the point where 0 is
+	to_gradient:    [6]f64,
+}
+
+// A clip: the shapes a clip path holds, in the drawing's units. What is inside any of them is kept.
+Svg_Clip_Shape :: struct {
+	contours: []Contour,
+	nonzero:  bool,
+}
+
+Svg_Clip :: struct {
+	shapes: []Svg_Clip_Shape,
 }
 
 Svg_Lost :: enum u8 {
@@ -46,15 +91,23 @@ Svg_Lost :: enum u8 {
 Svg_Drawing :: struct {
 	width, height: f32, // of the drawing: its view box, or its own width and height
 	items:         []Svg_Item,
-	lost:          bit_set[Svg_Lost],
+	gradients:     []Svg_Gradient,
+	clips:         []Svg_Clip,
+	lost:          bit_set[Svg_Lost], // what `svg` does not draw
+	raster_lost:   bit_set[Svg_Lost], // what the picture renderer does not draw either
 	allocator:     ^Svg_Arena,
 }
 
 // What the drawing's memory is kept in, so one call lets it all go.
 Svg_Arena :: struct {
-	items:    [dynamic]Svg_Item,
-	contours: [dynamic][]Contour,
-	points:   [dynamic][][2]f32,
+	items:       [dynamic]Svg_Item,
+	contours:    [dynamic][]Contour,
+	points:      [dynamic][][2]f32,
+	gradients:   [dynamic]Svg_Gradient,
+	stops:       [dynamic][]Svg_Stop,
+	clips:       [dynamic]Svg_Clip,
+	clip_shapes: [dynamic][]Svg_Clip_Shape,
+	clip_lists:  [dynamic][]i32,
 }
 
 Svg_Error :: enum u8 {
@@ -80,9 +133,23 @@ svg_destroy :: proc(d: ^Svg_Drawing) {
 		for contours in d.allocator.contours {
 			delete(contours)
 		}
+		for stops in d.allocator.stops {
+			delete(stops)
+		}
+		for shapes in d.allocator.clip_shapes {
+			delete(shapes)
+		}
+		for list in d.allocator.clip_lists {
+			delete(list)
+		}
 		delete(d.allocator.points)
 		delete(d.allocator.contours)
 		delete(d.allocator.items)
+		delete(d.allocator.gradients)
+		delete(d.allocator.stops)
+		delete(d.allocator.clips)
+		delete(d.allocator.clip_shapes)
+		delete(d.allocator.clip_lists)
 		free(d.allocator)
 	}
 	d^ = {}
@@ -116,6 +183,17 @@ affine_apply :: proc(m: Affine, p: geom.Point) -> geom.Point {
 @(private = "file")
 affine_scale :: proc(m: Affine) -> f64 {
 	return math.sqrt(abs(m[0] * m[3] - m[1] * m[2]))
+}
+
+// The transform that undoes `m`; false when `m` flattens everything onto a line.
+@(private = "file")
+affine_invert :: proc(m: Affine) -> (inverse: Affine, ok: bool) {
+	det := m[0] * m[3] - m[1] * m[2]
+	if abs(det) < 1e-12 || math.is_nan(det) {
+		return {}, false
+	}
+	a, b, c, d := m[3] / det, -m[1] / det, -m[2] / det, m[0] / det
+	return {a, b, c, d, -(a * m[4] + c * m[5]), -(b * m[4] + d * m[5])}, true
 }
 
 // ---- scanning numbers ----
@@ -380,14 +458,30 @@ Css_Rule :: struct {
 
 @(private = "file")
 Reader :: struct {
-	doc:       ^xml.Document,
-	ids:       map[string]xml.Element_ID,
-	rules:     [dynamic]Css_Rule,
-	gradients: map[string]maths.Colour,
-	arena:     ^Svg_Arena,
-	lost:      bit_set[Svg_Lost],
-	points:    int,
-	tolerance: f64,
+	doc:         ^xml.Document,
+	ids:         map[string]xml.Element_ID,
+	rules:       [dynamic]Css_Rule,
+	gradients:   map[string]maths.Colour,
+	templates:   map[string]Gradient_Template,
+	viewport:    [2]f64, // what a percentage in user units is of
+	arena:       ^Svg_Arena,
+	lost:        bit_set[Svg_Lost],
+	raster_lost: bit_set[Svg_Lost],
+	points:      int,
+	tolerance:   f64,
+	capture:     ^[dynamic]Svg_Clip_Shape, // while a clip path is read, where its shapes go instead of the items
+}
+
+// A gradient element as its `href` chain resolves it, before an item uses it.
+@(private = "file")
+Gradient_Template :: struct {
+	valid:      bool, // it has stops
+	radial:     bool,
+	stops:      []Svg_Stop, // kept in the arena
+	bbox_units: bool,
+	transform:  Affine,
+	spread:     Svg_Spread,
+	x1, y1, x2, y2, cx, cy, r, fx, fy: f64,
 }
 
 // What an element passes on to what it holds.
@@ -404,6 +498,11 @@ Paint_State :: struct {
 	opacity:        f64,
 	cap:            geom.Cap,
 	join:           geom.Join,
+	nonzero:        bool, // `fill-rule`
+	clip_nonzero:   bool, // `clip-rule`, for the shapes of a clip path
+	fill_url:       string, // the gradient the fill names, or ""
+	stroke_url:     string,
+	clips:          []i32, // the clips of the groups it is in and its own
 }
 
 @(private = "file")
@@ -625,32 +724,33 @@ opacity_of :: proc(text: string) -> (value: f64, ok: bool) {
 
 // How a paint is read: what it says and whether the element then has it.
 @(private = "file")
-read_paint :: proc(r: ^Reader, text: string, state: Paint_State) -> (colour: maths.Colour, on: bool, known: bool) {
+read_paint :: proc(r: ^Reader, text: string, state: Paint_State) -> (colour: maths.Colour, on: bool, known: bool, url: string) {
 	value := strings.trim_space(text)
 	switch {
 	case value == "none":
-		return {}, false, true
+		return {}, false, true, ""
 	case value == "currentColor" || value == "currentcolor":
-		return state.current, true, true
+		return state.current, true, true, ""
 	case strings.has_prefix(value, "url("):
 		close := strings.index_byte(value, ')')
 		if close < 0 {
-			return {}, false, false
+			return {}, false, false, ""
 		}
 		name := strings.trim(value[4:close], " \"'#")
 		if g, found := r.gradients[name]; found {
 			r.lost += {.Gradient}
-			return g, true, true
+			return g, true, true, name
 		}
 		// a pattern or a gradient with no stops: left out; the fallback after the url, if any, is not used
 		r.lost += {.Pattern}
-		return {}, false, true
+		r.raster_lost += {.Pattern}
+		return {}, false, true, ""
 	}
 	c, ok := parse_colour(value)
 	if !ok {
-		return {}, false, false
+		return {}, false, false, ""
 	}
-	return c, true, true
+	return c, true, true, ""
 }
 
 @(private = "file")
@@ -661,13 +761,25 @@ update_state :: proc(r: ^Reader, id: xml.Element_ID, state: ^Paint_State) {
 		}
 	}
 	if value, found := property(r, id, "fill"); found {
-		if c, on, known := read_paint(r, value, state^); known {
-			state.fill, state.fill_on = c, on
+		if c, on, known, url := read_paint(r, value, state^); known {
+			state.fill, state.fill_on, state.fill_url = c, on, url
 		}
 	}
 	if value, found := property(r, id, "stroke"); found {
-		if c, on, known := read_paint(r, value, state^); known {
-			state.stroke, state.stroke_on = c, on
+		if c, on, known, url := read_paint(r, value, state^); known {
+			state.stroke, state.stroke_on, state.stroke_url = c, on, url
+		}
+	}
+	if value, found := property(r, id, "fill-rule"); found {
+		switch strings.trim_space(value) {
+		case "nonzero": state.nonzero = true
+		case "evenodd": state.nonzero = false
+		}
+	}
+	if value, found := property(r, id, "clip-rule"); found {
+		switch strings.trim_space(value) {
+		case "nonzero": state.clip_nonzero = true
+		case "evenodd": state.clip_nonzero = false
 		}
 	}
 	if value, found := property(r, id, "stroke-width"); found {
@@ -704,6 +816,10 @@ update_state :: proc(r: ^Reader, id: xml.Element_ID, state: ^Paint_State) {
 	}{{"clip-path", .Clip}, {"mask", .Mask}, {"filter", .Filter}, {"marker-start", .Marker}, {"marker-mid", .Marker}, {"marker-end", .Marker}}) {
 		if value, found := property(r, id, name.name); found && strings.trim_space(value) != "none" {
 			r.lost += {name.kind}
+			// a clip path is cut by the picture renderer, in `draw_element`, which says when it cannot
+			if name.kind != .Clip {
+				r.raster_lost += {name.kind}
+			}
 		}
 	}
 }
@@ -867,18 +983,72 @@ parse_path :: proc(b: ^Builder, d: string) {
 	}
 }
 
-// Moves a builder's contours onto the drawing and keeps them as an item with the state's paint.
+// Moves a builder's contours onto the drawing and keeps them as an item with the state's paint, or, while a
+// clip path is read, as one of its shapes.
 @(private = "file")
 emit :: proc(r: ^Reader, b: ^Builder, state: Paint_State, m: Affine) {
 	builder_finish(b, false)
 	if len(b.contours) == 0 || r.points >= SVG_MAX_POINTS {
 		return
 	}
-	fill_on := state.fill_on && state.fill.a > 0 && state.opacity * state.fill_opacity > 0
-	stroke_on := state.stroke_on && state.stroke.a > 0 && state.stroke_width > 0 && state.opacity * state.stroke_opacity > 0
+	// the box round the shape in its own units, for a gradient measured by it
+	lo, hi := [2]f64{max(f64), max(f64)}, [2]f64{-max(f64), -max(f64)}
+	for contour in b.contours {
+		for p in contour {
+			lo = {min(lo.x, p.x), min(lo.y, p.y)}
+			hi = {max(hi.x, p.x), max(hi.y, p.y)}
+		}
+	}
+	if r.capture != nil {
+		append(r.capture, Svg_Clip_Shape{contours = keep_contours(r, b, m), nonzero = state.clip_nonzero})
+		return
+	}
+	fill_gradient, stroke_gradient := i32(-1), i32(-1)
+	fill_alpha := f32(state.opacity * state.fill_opacity)
+	stroke_alpha := f32(state.opacity * state.stroke_opacity)
+	fill_seen := state.fill.a > 0
+	if state.fill_on && state.fill_url != "" {
+		fill_gradient = instance_gradient(r, state.fill_url, lo, hi, m)
+		fill_seen = fill_gradient >= 0 || fill_seen
+	}
+	stroke_seen := state.stroke.a > 0
+	if state.stroke_on && state.stroke_url != "" {
+		stroke_gradient = instance_gradient(r, state.stroke_url, lo, hi, m)
+		stroke_seen = stroke_gradient >= 0 || stroke_seen
+	}
+	fill_on := state.fill_on && fill_seen && fill_alpha > 0
+	stroke_on := state.stroke_on && stroke_seen && state.stroke_width > 0 && stroke_alpha > 0
 	if !fill_on && !stroke_on {
 		return
 	}
+	item := Svg_Item{
+		contours        = keep_contours(r, b, m),
+		fill_on         = fill_on,
+		stroke_on       = stroke_on,
+		width           = f32(state.stroke_width * affine_scale(m)),
+		cap             = state.cap,
+		join            = state.join,
+		nonzero         = state.nonzero,
+		fill_gradient   = fill_gradient if fill_on else -1,
+		stroke_gradient = stroke_gradient if stroke_on else -1,
+		fill_alpha      = fill_alpha,
+		stroke_alpha    = stroke_alpha,
+	}
+	if len(state.clips) > 0 {
+		item.clips = make([]i32, len(state.clips))
+		copy(item.clips, state.clips)
+		append(&r.arena.clip_lists, item.clips)
+	}
+	item.fill = state.fill
+	item.fill.a *= fill_alpha
+	item.stroke = state.stroke
+	item.stroke.a *= stroke_alpha
+	append(&r.arena.items, item)
+}
+
+// The builder's contours moved into the drawing's units and kept in the arena.
+@(private = "file")
+keep_contours :: proc(r: ^Reader, b: ^Builder, m: Affine) -> []Contour {
 	contours := make([]Contour, len(b.contours))
 	for contour, i in b.contours {
 		points := make([][2]f32, len(contour))
@@ -891,19 +1061,224 @@ emit :: proc(r: ^Reader, b: ^Builder, state: Paint_State, m: Affine) {
 		contours[i] = {points, b.closed[i]}
 	}
 	append(&r.arena.contours, contours)
-	item := Svg_Item{
-		contours  = contours,
-		fill_on   = fill_on,
-		stroke_on = stroke_on,
-		width     = f32(state.stroke_width * affine_scale(m)),
-		cap       = state.cap,
-		join      = state.join,
+	return contours
+}
+
+// A coordinate of a gradient: a number, or a percentage of the box (its units) or of the view (user units).
+@(private = "file")
+gradient_coordinate :: proc(text: string, bbox_units: bool, of: f64) -> (value: f64, ok: bool) {
+	trimmed := strings.trim_space(text)
+	if strings.has_suffix(trimmed, "%") {
+		s := Scanner{text = trimmed[:len(trimmed) - 1]}
+		number, found := scan_number(&s)
+		if !found {
+			return 0, false
+		}
+		return number / 100 * (1 if bbox_units else of), true
 	}
-	item.fill = state.fill
-	item.fill.a *= f32(state.opacity * state.fill_opacity)
-	item.stroke = state.stroke
-	item.stroke.a *= f32(state.opacity * state.stroke_opacity)
-	append(&r.arena.items, item)
+	return length_of(trimmed)
+}
+
+// Reads a gradient element, taking what it does not say from the gradients its `href` leads to (its stops
+// from the first that has any), as SVG says. Kept, so each gradient is read once.
+@(private = "file")
+gradient_template :: proc(r: ^Reader, name: string) -> Gradient_Template {
+	if t, known := r.templates[name]; known {
+		return t
+	}
+	t := Gradient_Template{transform = AFFINE_IDENTITY, bbox_units = true}
+	chain := make([dynamic]xml.Element_ID, context.temp_allocator)
+	if first, found := r.ids[name]; found {
+		holder := first
+		for _ in 0 ..< 8 {
+			kind := local_name(r.doc.elements[holder].ident)
+			if kind != "linearGradient" && kind != "radialGradient" {
+				break
+			}
+			append(&chain, holder)
+			href, has_href := attribute(r, holder, "href")
+			if !has_href {
+				href, has_href = attribute(r, holder, "xlink:href")
+			}
+			if !has_href || !strings.has_prefix(href, "#") {
+				break
+			}
+			next, known := r.ids[href[1:]]
+			if !known {
+				break
+			}
+			holder = next
+		}
+	}
+	if len(chain) == 0 {
+		r.templates[name] = t
+		return t
+	}
+	t.radial = local_name(r.doc.elements[chain[0]].ident) == "radialGradient"
+	// the first of the chain that says it
+	said :: proc(r: ^Reader, chain: []xml.Element_ID, key: string) -> (value: string, found: bool) {
+		for id in chain {
+			if value, found = attribute(r, id, key); found {
+				return
+			}
+		}
+		return
+	}
+	if units, found := said(r, chain[:], "gradientUnits"); found {
+		t.bbox_units = strings.trim_space(units) != "userSpaceOnUse"
+	}
+	if text, found := said(r, chain[:], "gradientTransform"); found {
+		t.transform = parse_transform(text)
+	}
+	if text, found := said(r, chain[:], "spreadMethod"); found {
+		switch strings.trim_space(text) {
+		case "reflect": t.spread = .Reflect
+		case "repeat":  t.spread = .Repeat
+		}
+	}
+	diagonal := math.sqrt((r.viewport.x * r.viewport.x + r.viewport.y * r.viewport.y) / 2)
+	coordinate :: proc(r: ^Reader, chain: []xml.Element_ID, key: string, otherwise: f64, bbox_units: bool, of: f64) -> f64 {
+		if text, found := said(r, chain, key); found {
+			if value, ok := gradient_coordinate(text, bbox_units, of); ok {
+				return value
+			}
+		}
+		return otherwise
+	}
+	if t.radial {
+		half := 0.5 if t.bbox_units else 0.0
+		t.cx = coordinate(r, chain[:], "cx", half if t.bbox_units else r.viewport.x / 2, t.bbox_units, r.viewport.x)
+		t.cy = coordinate(r, chain[:], "cy", half if t.bbox_units else r.viewport.y / 2, t.bbox_units, r.viewport.y)
+		t.r = coordinate(r, chain[:], "r", half if t.bbox_units else diagonal / 2, t.bbox_units, diagonal)
+		t.fx = coordinate(r, chain[:], "fx", t.cx, t.bbox_units, r.viewport.x)
+		t.fy = coordinate(r, chain[:], "fy", t.cy, t.bbox_units, r.viewport.y)
+	} else {
+		t.x1 = coordinate(r, chain[:], "x1", 0, t.bbox_units, r.viewport.x)
+		t.y1 = coordinate(r, chain[:], "y1", 0, t.bbox_units, r.viewport.y)
+		t.x2 = coordinate(r, chain[:], "x2", 1 if t.bbox_units else r.viewport.x, t.bbox_units, r.viewport.x)
+		t.y2 = coordinate(r, chain[:], "y2", 0, t.bbox_units, r.viewport.y)
+	}
+	stops := make([dynamic]Svg_Stop, context.temp_allocator)
+	for id in chain {
+		for value in r.doc.elements[id].value {
+			child, is_child := value.(xml.Element_ID)
+			if !is_child || local_name(r.doc.elements[child].ident) != "stop" {
+				continue
+			}
+			stop := Svg_Stop{colour = {0, 0, 0, 255}}
+			if text, found := attribute(r, child, "offset"); found {
+				if o, ok := opacity_of(text); ok {
+					stop.offset = f32(o)
+				}
+			}
+			if len(stops) > 0 {
+				stop.offset = max(stop.offset, stops[len(stops) - 1].offset)
+			}
+			if text, found := property(r, child, "stop-color"); found {
+				if parsed, ok := parse_colour(text); ok {
+					stop.colour = parsed
+				}
+			}
+			if text, found := property(r, child, "stop-opacity"); found {
+				if o, ok := opacity_of(text); ok {
+					stop.colour.a *= f32(o)
+				}
+			}
+			append(&stops, stop)
+		}
+		if len(stops) > 0 {
+			break
+		}
+	}
+	if len(stops) > 0 {
+		kept := make([]Svg_Stop, len(stops))
+		copy(kept, stops[:])
+		append(&r.arena.stops, kept)
+		t.stops = kept
+		t.valid = true
+	}
+	r.templates[name] = t
+	return t
+}
+
+// A gradient for one item: the template placed by the item's box (when its units are the box's) and transform.
+// -1 when the gradient cannot be placed: no stops, a box with no width or height, a transform that flattens it.
+@(private = "file")
+instance_gradient :: proc(r: ^Reader, name: string, lo, hi: [2]f64, m: Affine) -> i32 {
+	t := gradient_template(r, name)
+	if !t.valid {
+		return -1
+	}
+	place := t.transform
+	if t.bbox_units {
+		w, h := hi.x - lo.x, hi.y - lo.y
+		if !(w > 0) || !(h > 0) {
+			return -1
+		}
+		place = affine_mul({w, 0, 0, h, lo.x, lo.y}, t.transform)
+	}
+	inverse, ok := affine_invert(affine_mul(m, place))
+	if !ok {
+		return -1
+	}
+	append(&r.arena.gradients, Svg_Gradient{
+		radial = t.radial, stops = t.stops, spread = t.spread,
+		x1 = t.x1, y1 = t.y1, x2 = t.x2, y2 = t.y2,
+		cx = t.cx, cy = t.cy, r = t.r, fx = t.fx, fy = t.fy,
+		to_gradient = inverse,
+	})
+	return i32(len(r.arena.gradients) - 1)
+}
+
+// The clip a `clip-path` names, read in the units of the element that names it (`m`), as one of the drawing's
+// clips. -1 when it names no clip path, or one this cannot cut (measured by the box, or holding no shape).
+@(private = "file")
+read_clip :: proc(r: ^Reader, text: string, m: Affine, depth: int) -> i32 {
+	value := strings.trim_space(text)
+	close := strings.index_byte(value, ')')
+	if !strings.has_prefix(value, "url(") || close < 0 {
+		return -1
+	}
+	target, known := r.ids[strings.trim(value[4:close], " \"'#")]
+	if !known || local_name(r.doc.elements[target].ident) != "clipPath" {
+		r.raster_lost += {.Clip}
+		return -1
+	}
+	if units, has := attribute(r, target, "clipPathUnits"); has && strings.trim_space(units) == "objectBoundingBox" {
+		r.raster_lost += {.Clip}
+		return -1
+	}
+	if _, nested := attribute(r, target, "clip-path"); nested {
+		r.raster_lost += {.Clip} // a clip path cut by another: its own clip is left out
+	}
+	place := m
+	if own, has := attribute(r, target, "transform"); has {
+		place = affine_mul(m, parse_transform(own))
+	}
+	shapes := make([dynamic]Svg_Clip_Shape, context.temp_allocator)
+	outer := r.capture
+	r.capture = &shapes
+	base := Paint_State{
+		fill_on = true, fill = {0, 0, 0, 255}, current = {0, 0, 0, 255}, stroke_width = 1,
+		fill_opacity = 1, stroke_opacity = 1, opacity = 1, nonzero = true, clip_nonzero = true,
+	}
+	update_state(r, target, &base)
+	for child in r.doc.elements[target].value {
+		if id, is_child := child.(xml.Element_ID); is_child {
+			draw_element(r, id, base, place, depth + 1)
+		}
+	}
+	r.capture = outer
+	if len(shapes) == 0 {
+		// an empty clip path hides everything: a clip with no shapes
+		append(&r.arena.clips, Svg_Clip{})
+		return i32(len(r.arena.clips) - 1)
+	}
+	kept := make([]Svg_Clip_Shape, len(shapes))
+	copy(kept, shapes[:])
+	append(&r.arena.clip_shapes, kept)
+	append(&r.arena.clips, Svg_Clip{shapes = kept})
+	return i32(len(r.arena.clips) - 1)
 }
 
 @(private = "file")
@@ -928,13 +1303,18 @@ draw_element :: proc(r: ^Reader, id: xml.Element_ID, parent: Paint_State, parent
 	name := local_name(element.ident)
 	switch name {
 	case "defs", "symbol", "clipPath", "mask", "pattern", "marker", "filter", "linearGradient", "radialGradient", "style", "title", "desc", "metadata", "script", "foreignObject", "view", "font", "cursor":
-		if name == "foreignObject" {r.lost += {.Picture}}
+		if name == "foreignObject" {
+			r.lost += {.Picture}
+			r.raster_lost += {.Picture}
+		}
 		return
 	case "text", "tspan", "textPath":
 		r.lost += {.Text}
+		r.raster_lost += {.Text}
 		return
 	case "image":
 		r.lost += {.Picture}
+		r.raster_lost += {.Picture}
 		return
 	}
 	if value, found := property(r, id, "display"); found && strings.trim_space(value) == "none" {
@@ -945,6 +1325,10 @@ draw_element :: proc(r: ^Reader, id: xml.Element_ID, parent: Paint_State, parent
 	m := parent_transform
 	if value, found := attribute(r, id, "transform"); found {
 		m = affine_mul(m, parse_transform(value))
+	}
+	// a clip path cuts the element and all it holds, in the element's own units; inside a clip path, clips are not read
+	if value, found := property(r, id, "clip-path"); found && r.capture == nil && strings.trim_space(value) != "none" {
+		state.clips = with_clip(state.clips, read_clip(r, value, m, depth))
 	}
 	if value, found := property(r, id, "visibility"); found {
 		switch strings.trim_space(value) {
@@ -1058,6 +1442,18 @@ draw_element :: proc(r: ^Reader, id: xml.Element_ID, parent: Paint_State, parent
 	}
 }
 
+// The clips of a group with one more; a clip that could not be read (-1) leaves them as they were.
+@(private = "file")
+with_clip :: proc(clips: []i32, clip: i32) -> []i32 {
+	if clip < 0 {
+		return clips
+	}
+	more := make([]i32, len(clips) + 1, context.temp_allocator)
+	copy(more, clips)
+	more[len(clips)] = clip
+	return more
+}
+
 // Reads an SVG file. The drawing's memory is its own; let it go with `svg_destroy`.
 svg_read :: proc(bytes: []byte) -> (drawing: Svg_Drawing, error: Svg_Error) {
 	doc, err := xml.parse_bytes(bytes, xml.Options{flags = {.Ignore_Unsupported, .Unbox_CDATA, .Decode_SGML_Entities}}, "", silent_xml_errors)
@@ -1073,6 +1469,7 @@ svg_read :: proc(bytes: []byte) -> (drawing: Svg_Drawing, error: Svg_Error) {
 	r := Reader{doc = doc, arena = new(Svg_Arena), tolerance = 0.02}
 	r.ids = make(map[string]xml.Element_ID, context.temp_allocator)
 	r.gradients = make(map[string]maths.Colour, context.temp_allocator)
+	r.templates = make(map[string]Gradient_Template, context.temp_allocator)
 	r.rules = make([dynamic]Css_Rule, context.temp_allocator)
 	for element, i in doc.elements {
 		for a in element.attribs {
@@ -1160,16 +1557,18 @@ svg_read :: proc(bytes: []byte) -> (drawing: Svg_Drawing, error: Svg_Error) {
 			width, height = w, h
 		}
 	}
+	r.viewport = {width, height} if width > 0 else {100, 100}
 	base := Paint_State{
 		fill_on = true, fill = {0, 0, 0, 255}, current = {0, 0, 0, 255},
 		stroke_width = 1, fill_opacity = 1, stroke_opacity = 1, opacity = 1, cap = .Butt, join = .Miter,
+		nonzero = true, clip_nonzero = true,
 	}
 	// the root's own presentation attributes are read by `draw_element`, so its transform is the view box's alone
 	draw_element(&r, root, base, {1, 0, 0, 1, -origin.x, -origin.y}, 0)
 	if len(r.arena.items) == 0 {
 		empty := Svg_Drawing{allocator = r.arena}
 		svg_destroy(&empty)
-		return {lost = r.lost}, .Empty
+		return {lost = r.lost, raster_lost = r.raster_lost}, .Empty
 	}
 	if width == 0 {
 		// no size at all: the box round what was drawn
@@ -1185,7 +1584,8 @@ svg_read :: proc(bytes: []byte) -> (drawing: Svg_Drawing, error: Svg_Error) {
 	}
 	return Svg_Drawing{
 		width = f32(width), height = f32(height),
-		items = r.arena.items[:], lost = r.lost, allocator = r.arena,
+		items = r.arena.items[:], gradients = r.arena.gradients[:], clips = r.arena.clips[:],
+		lost = r.lost, raster_lost = r.raster_lost, allocator = r.arena,
 	}, .None
 }
 
