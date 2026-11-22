@@ -44,7 +44,7 @@ category = "Game;"
 formats = "deb, arch"
 ```
 
-`--maintainer` is who looks after the package: a `.deb`, an RPM and an Arch package name someone, as `Name <address>`. `--description` is the line package managers and menus show. `--category` is where the menus file the app (`Game;`, `Graphics;`, `Graphics;Music;`: the list the desktop entry specification gives). `--icon` is a square PNG, 512 pixels or more; without one the app gets rocinante's mark.
+`--maintainer` is who looks after the package: a `.deb`, an RPM and an Arch package name someone, as `Name <address>`. `--description` is the line package managers and menus show. `--category` is where the menus file the app (`Game;`, `Graphics;`, `Graphics;Music;`: the list the desktop entry specification gives). The icon is made from a square SVG drawing or a PNG of 1024 by 1024 pixels or more in the sketch's `icons` folder (`icons/icon.svg` or `icons/icon.png`, or give it once with `--icon`): the packages install every size from 16 to 512 pixels, and the drawing itself, so menus and docks pick the sharpest, as [App icons](../34-app-icons/) explains. Without one the app gets rocinante's mark.
 
 ## What goes inside
 

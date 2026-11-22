@@ -13,6 +13,7 @@ my-sketch/
   sketch.roci     the sketch: what runs
   assets/         images, sounds, fonts and data the sketch uses
   libs/           other people's verbs, copied in by roci get
+  icons/          the app's icon: put icon.svg or icon.png here (see App icons)
   output/         what the sketch saves; git ignores it
 ```
 

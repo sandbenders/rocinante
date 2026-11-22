@@ -23,12 +23,11 @@ The id is what the Mac knows the app by; use a domain you own, backwards. The ve
 ```
 name = "Wildvex"
 id = "org.example.wildvex"
-icon = "assets/icon.png"
 version = "1.0.1"
 build = 7
 ```
 
-The icon is a PNG at least 512 by 512 pixels (1024 is best), or an `.iconset` folder (`icon = "icons/macos/wildvex.iconset"`) when you have drawn each size yourself: its ten pictures, `icon_16x16.png` to `icon_512x512@2x.png`, are used as they are. Without one the app wears the rocinante logo.
+The icon is made from a square SVG drawing or a PNG of 1024 by 1024 pixels or more in the sketch's `icons` folder (`icons/icon.svg` or `icons/icon.png`, or give it once with `--icon`): `roci package` makes the Mac's ten sizes in Apple's rounded square, and every other system's icons with them, as [App icons](../34-app-icons/) explains. Without one the app wears the rocinante logo.
 
 ## What you get
 
