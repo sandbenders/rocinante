@@ -598,6 +598,28 @@ write_front_mistake :: proc(out: string) -> bool {
 // The one drawing of the logo; the site's copies are made from it, so they never drift.
 LOGO :: "docs/logo/rocinante-logo.svg"
 
+// The faces the front page's headings are set in: Inter, the one rocinante draws text with
+// and ships with its licence, copied from the engine's own folder so the site serves the
+// same files and git keeps one copy of them.
+FONTS :: [?]string{"Inter-Regular.ttf", "Inter-Bold.ttf", "Inter-LICENSE.txt"}
+FONTS_FROM :: "roci/gfx/fonts"
+
+write_fonts :: proc(out: string) -> bool {
+	if !make_folder(fmt.tprintf("%s/static/fonts", out)) {
+		fmt.eprintfln("site: cannot make the folder for the fonts in %s", out)
+		return false
+	}
+	ok := true
+	for name in FONTS {
+		from := fmt.tprintf("%s/%s", FONTS_FROM, name)
+		if err := os.copy_file(fmt.tprintf("%s/static/fonts/%s", out, name), from); err != nil {
+			fmt.eprintfln("site: cannot copy the font %s: %v", from, err)
+			ok = false
+		}
+	}
+	return ok
+}
+
 // The logo as the browser tab's icon (dark on a light tab, light on a dark one) and as a
 // template the header and footer draw in the page's own ink, the asterisk cut from the paper.
 write_logo :: proc(out: string) -> bool {

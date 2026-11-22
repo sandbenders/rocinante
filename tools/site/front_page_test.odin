@@ -176,6 +176,54 @@ the_readme_title_is_drawn_from_the_logo :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(readme, WORDMARK) && strings.contains(readme, WORDMARK_ON_DARK), "the README shows both")
 }
 
+// The front page's headings are set in Inter, served from the engine's own copy with its licence.
+@(test)
+the_site_serves_the_engines_own_inter :: proc(t: ^testing.T) {
+	out := fresh_out("fonts")
+	defer os.remove_all(out)
+	testing.expect(t, write_fonts(out))
+	for name in FONTS {
+		copied, has := read(fmt.tprintf("%s/static/fonts/%s", out, name))
+		original, _ := read(fmt.tprintf("%s/%s", FONTS_FROM, name))
+		testing.expectf(t, has && copied == original && len(copied) > 0, "%s is served as the engine has it", name)
+	}
+	css, _ := read("site/hugo/assets/css/site.css")
+	testing.expect(t, strings.contains(css, `url("../fonts/Inter-Bold.ttf")`) || strings.contains(css, `url("/fonts/Inter-Bold.ttf")`), "the style sheet names the face it is served as")
+}
+
+// The front page's largest window is WILDVEX, a game made with rocinante, kept as a still
+// because the game is not in this repository; the others are examples, drawn as the site is made.
+@(test)
+the_front_page_opens_with_real_windows :: proc(t: ^testing.T) {
+	page, _ := read("site/hugo/layouts/home.html")
+	testing.expect(t, strings.contains(page, `"img/wildvex.webp"`))
+	still, has := read("site/hugo/static/img/wildvex.webp")
+	testing.expect(t, has && strings.has_prefix(still, "RIFF") && strings.contains(still[:16], "WEBP"))
+	for name in ([]string{"voyage", "studio", "landscape", "tunnel", "lamp", "music", "dials", "bricks", "data"}) {
+		testing.expectf(t, strings.contains(page, fmt.tprintf(`"examples/img/%s.png"`, name)), "the front page shows the example %s", name)
+		known := false
+		for entry in SHOWCASE {
+			known ||= entry.name == name
+		}
+		testing.expectf(t, known, "%s is an example the site draws", name)
+	}
+	// a window's title counts the lines of its example, so the two must agree
+	for name in ([]string{"voyage", "studio"}) {
+		lines := 0
+		files, _ := os.read_all_directory_by_path(fmt.tprintf("examples/%s", name), context.temp_allocator)
+		for f in files {
+			if strings.has_suffix(f.name, ".roci") {
+				text, _ := read(fmt.tprintf("examples/%s/%s", name, f.name))
+				lines += strings.count(text, "\n")
+			}
+		}
+		testing.expectf(t, strings.contains(page, fmt.tprintf(`%s: %d lines<`, name, lines)), "the window of %s says it has %d lines", name, lines)
+	}
+	// only what is built: nothing promised for later, no word that it may still change
+	testing.expect(t, !strings.contains(page, "coming"))
+	testing.expect(t, !strings.contains(page, "will still change"))
+}
+
 @(test)
 the_shared_link_picture_is_a_file_of_the_site :: proc(t: ^testing.T) {
 	hugo, _ := read("site/hugo/hugo.toml")

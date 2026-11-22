@@ -214,12 +214,93 @@ pre.roci.numbered { border-left: 0; padding-left: 0; counter-reset: line; backgr
 pre.shell { background: var(--ink); color: var(--paper); }
 pre.shell code::before { content: "$ "; opacity: 0.55; }
 
-/* home: the words run the page's whole width; the line and the window it draws share a row */
-.home-main { display: flex; flex-direction: column; gap: 48px; }
+/* home: big pictures and few words, one idea to a band. Its headings are set in Inter, the face
+   rocinante itself draws text with, served from the engine's own copy (tools/site copies it). */
+@font-face { font-family: "Inter"; src: url("../fonts/Inter-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("../fonts/Inter-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+:root {
+  --display: "Inter", var(--sans);
+  --night: #14214f;
+  --night-ink: #eef1ff;
+  --night-soft: #c3ccf2;
+  --night-line: #8ea4ff;
+  --field-shadow: 0 28px 60px -24px rgba(20, 33, 79, 0.55);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --night: #0e1638; --field-shadow: 0 28px 60px -24px rgba(0, 0, 0, 0.8); }
+}
+:root[data-theme="dark"] { --night: #0e1638; --field-shadow: 0 28px 60px -24px rgba(0, 0, 0, 0.8); }
+body.home { overflow-x: clip; }
+.home-main { display: flex; flex-direction: column; gap: clamp(64px, 9vw, 112px); }
 .home-main p, .home-main li, .home-main dd { max-width: none; }
-.hero { display: flex; flex-direction: column; gap: 22px; }
-.hero h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); max-width: 28ch; margin: 0.2em 0 0; }
-.hero .lead { font-size: 1.25rem; margin: 0; }
+.home-main h1, .home-main h2 { font-family: var(--display); font-weight: 700; letter-spacing: -0.025em; }
+/* The hero: the title and its sentence in the middle, then three real windows laid over one another. */
+.hero { display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center; padding-top: 24px; }
+.hero h1 { font-size: clamp(2.2rem, 5vw, 4rem); line-height: 1.06; max-width: 25ch; margin: 0; }
+.hero .lead { font-size: 1.2rem; max-width: 62ch; margin: 0; color: var(--soft); }
+.hero .lead .mark { color: var(--ink); }
+.hero-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 4px 0 0; }
+.action { display: inline-block; padding: 12px 24px; border-radius: 999px; background: var(--accent); color: var(--paper); font: 700 1rem var(--display); text-decoration: none; }
+.action.quiet { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+.action:hover { text-decoration: underline; text-underline-offset: 3px; }
+.action:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 999px; }
+.field { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); width: 100%; margin-top: 28px; padding-bottom: clamp(40px, 11vw, 150px); text-align: left; }
+.field .window { border-radius: 12px; box-shadow: var(--field-shadow); }
+.field .window img { background: var(--code-bg); }
+.field-wildvex { grid-column: 2 / 12; grid-row: 1; }
+.field-link { display: block; grid-row: 1; align-self: end; position: relative; z-index: 1; color: inherit; text-decoration: none; }
+.field-voyage { grid-column: 1 / 6; transform: translateY(42%); }
+.field-studio { grid-column: 10 / 13; transform: translateY(26%); }
+.field-link:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; border-radius: 12px; }
+@media (max-width: 760px) {
+  .hero { align-items: stretch; text-align: left; }
+  .hero-actions { justify-content: flex-start; }
+  .field { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding-bottom: 0; }
+  .field-wildvex { grid-column: 1 / 3; }
+  .field-link { grid-row: 2; align-self: start; }
+  .field-voyage { grid-column: 1 / 2; transform: none; }
+  .field-studio { grid-column: 2 / 3; transform: none; }
+}
+/* A band: its words, then what they show. A feature band puts one window beside its words, on
+   alternate sides. */
+.band { display: flex; flex-direction: column; gap: 22px; }
+.band-text h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); line-height: 1.1; margin: 0 0 12px; }
+.band-text p { font-size: 1.08rem; margin: 0 0 12px; max-width: 62ch; }
+.band-links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.band-links a { font-weight: 600; }
+.band.feature { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+.band.feature.flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.band.feature.flip .band-text { order: 2; }
+.band-window { border-radius: 12px; }
+@media (max-width: 760px) {
+  .band.feature, .band.feature.flip { grid-template-columns: minmax(0, 1fr); }
+  .band.feature.flip .band-text { order: 0; }
+}
+/* Apps: the systems' logos are the band's picture, large, beside its words. */
+.band.apps { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+.apps .platforms { justify-content: center; }
+.apps .platforms-title { flex: 1 0 100%; text-align: center; }
+.apps .platforms ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px 36px; }
+.apps .platforms svg { width: 56px; height: 56px; }
+.apps .platforms li { font-size: 0.9rem; gap: 8px; }
+@media (max-width: 760px) {
+  .band.apps { grid-template-columns: minmax(0, 1fr); }
+  .apps .platforms ul { gap: 20px 12px; }
+  .apps .platforms svg { width: 40px; height: 40px; }
+}
+/* What is under it: one deep cobalt band across the whole window. */
+.night { margin-inline: calc(50% - 50vw); background: var(--night); color: var(--night-ink); }
+.night-inner { max-width: 1180px; margin: 0 auto; padding: clamp(48px, 7vw, 88px) max(16px, env(safe-area-inset-right, 0px)) clamp(48px, 7vw, 88px) max(16px, env(safe-area-inset-left, 0px)); }
+.night h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); margin: 0 0 28px; color: var(--night-ink); }
+.night .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 24px 36px; margin: 0; }
+.night .facts div { border-top: 2px solid var(--night-line); padding-top: 12px; }
+.night .facts dt { font: 700 1.2rem var(--display); margin-bottom: 6px; }
+.night .facts dd { margin: 0; color: var(--night-soft); }
+/* And everything else: the rest of what it does, two quiet columns of links. */
+.more h2 { font-size: clamp(1.4rem, 2.4vw, 1.9rem); margin: 0 0 20px; }
+.more-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px 40px; margin: 0; }
+.more-list dt { font: 700 1.02rem var(--display); }
+.more-list dd { margin: 0; color: var(--soft); }
 /* The systems it runs on, under the title: their logos in the ink of the page, each named. */
 .platforms { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; }
 .platforms-title { margin: 0; font: 600 0.95rem var(--mono); color: var(--soft); }
@@ -252,7 +333,7 @@ pre.shell code::before { content: "$ "; opacity: 0.55; }
 /* Its longest lines are comments, which wrap rather than run out of the pane. */
 .sketch .editor pre { white-space: pre-wrap; }
 .hero-code { font-size: 1.35rem; padding: 22px 24px; }
-.ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
 .way { display: block; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 18px 20px; color: var(--ink); text-decoration: none; }
 .way:hover { border-color: var(--accent); }
 .way h2 { margin: 0 0 6px; color: var(--accent); }
@@ -267,18 +348,11 @@ pre.shell code::before { content: "$ "; opacity: 0.55; }
   .steps li { grid-template-columns: 26ch minmax(0, 1fr); }
   .steps pre.shell { white-space: pre; }
 }
-.start h2 { margin-top: 0; }
+.start h2 { margin-top: 0; font-size: clamp(1.4rem, 2.4vw, 1.9rem); }
 .start .note { margin: 0; }
 
 .mistake { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 16px; align-items: stretch; }
 .mistake pre.message-text { white-space: pre-wrap; }
-.engine .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px 28px; margin: 0; }
-.engine .facts div { border-top: 2px solid var(--accent); padding-top: 8px; }
-.engine .facts dt { font: 650 1rem var(--mono); margin-bottom: 4px; }
-.engine .facts dd { margin: 0; color: var(--soft); }
-.engine h2 { margin-top: 0; }
-/* What is coming: the same cards, drawn with a dashed line, since none of it is here yet. */
-.coming .facts div { border-top: 2px dashed var(--soft); }
 
 /* reference */
 .with-side { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; }
