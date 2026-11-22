@@ -52,7 +52,7 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 
 - [ ] `roci package freebsd examples/circle --yes --maintainer "Name <you@example.org>"` makes the `.pkg` and the `.tar.gz` in `output/package/freebsd`, and prints the ABI and the packages the app depends on.
 - [x] (2026-11-22, FreeBSD 15.1 desktop) `doas pkg add circle-1.0.0.pkg` installs it (with `sdl3`, `sdl3_ttf`, `shaderc` and `spirv-cross` fetched when missing): `pkg info circle` and `pkg info -l circle` list what is expected, `circle` starts it from a terminal, and `pkg check -s circle` and `pkg delete circle` leave nothing behind.
-- [x] (2026-11-22, icons confirmed; X11 or Wayland not recorded) The menu entry and its icon show in a desktop (X11 and Wayland), and the window's app id is the sketch's id.
+- [x] (2026-11-22, Wayland, icons confirmed; X11 untried) The menu entry and its icon show in a desktop (X11 and Wayland), and the window's app id is the sketch's id.
 - [ ] The `.tar.gz` unpacked on a FreeBSD with nothing of rocinante installed runs its program after the `pkg install` line of its `README.txt`.
 - [ ] A sketch with assets, fonts, sounds and a vault shows its font and plays its sounds from the package, and its `vault.key` and `memory.toml` appear in `~/.local/share/<its id>` the first time.
 - [ ] `roci package freebsd --format rpm` is refused with the formats said; on a computer with `pkg` taken out the missing tool is named.
