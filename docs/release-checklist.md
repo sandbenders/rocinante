@@ -42,6 +42,7 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [ ] A sketch that uses `effect "x.hlsl"` or `shade` (so shaderc and SPIRV-Cross are used at run time) works in the tar and the AppImage with none of them installed, and in the Arch package with its dependencies.
 - [ ] `roci package linux --format deb --maintainer oops` is refused with a message about the maintainer; `--format snap` says the formats; a missing tool (`mksquashfs`) is named with how to get it.
 - [ ] `tools/package-linux-docker.sh` from a Mac makes the same files from a sketch folder.
+- [ ] `tools/ci/package-linux-distros.sh examples/circle` makes the Debian 12, Ubuntu 24.04 and Fedora 43 packages, and each installs and runs on the newest release of its distribution.
 
 ## Linux and the BSDs: everything to try (CachyOS, FreeBSD, OpenBSD)
 
