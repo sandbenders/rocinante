@@ -529,3 +529,21 @@ test_the_files_a_bundle_ships_are_copied_into_the_apps_folder_once :: proc(t: ^t
 	// a bundle with nothing to seed copies nothing
 	testing.expect_value(t, seed_home("output/tests/rt_seed_nowhere", data), 0)
 }
+
+@(test)
+test_the_apps_folder_is_kept_as_a_copy_the_program_owns :: proc(t: ^testing.T) {
+	// SDL owns the string it gives for the program's folder and frees it when it shuts down: on OpenBSD the freed memory is reused at
+	// once (a probe read `MAIL` and `/var/mail/...` where the folder had been), so every asset of an app was "not in the assets
+	// folder" after a window that failed to start on Wayland was followed by the retry on X11
+	folder := "/usr/local/libexec/x/"
+	source := make([]byte, len(folder), context.temp_allocator)
+	copy(source, folder)
+	kept := kept_copy(string(source))
+	testing.expect_value(t, kept, folder)
+	testing.expect(t, raw_data(kept) != raw_data(source), "a copy, not the same bytes")
+	for i in 0 ..< len(source) {
+		source[i] = 'Z' // what freed memory becomes
+	}
+	testing.expect_value(t, kept, folder)
+	testing.expect_value(t, kept_copy(""), "")
+}

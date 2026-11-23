@@ -8,6 +8,7 @@
 // nothing here writes into the sketch's folder (an installed font is read where it is, not copied).
 package rt
 
+import "base:runtime"
 import "core:fmt"
 import "core:mem"
 import "core:math"
@@ -31,10 +32,20 @@ import oscp "../osc"
 ASSETS_ROOT: string = "."
 HOME: string = "."
 
-// A phone's program calls this before it starts: the folder its `assets` were carried to, and the one it may write.
+// A packaged app's or a phone's program calls this before it starts: the folder its `assets` were carried to, and the one it
+// may write. The program gives the strings SDL owns (`SDL_GetBasePath`), which SDL frees when it shuts down, and a window that
+// fails to start does shut it down before the retry on another video driver (Wayland, then X11, on OpenBSD), so what is kept
+// here is a copy.
 use_home :: proc(assets, writable: string) {
-	ASSETS_ROOT = assets if assets != "" else "."
-	HOME = writable if writable != "" else "."
+	ASSETS_ROOT = kept_copy(assets) if assets != "" else "."
+	HOME = kept_copy(writable) if writable != "" else "."
+}
+
+// A copy of a text that lasts as long as the program, for what it is told by a string it does not own. It is made on the process's
+// own heap and never freed: it is kept for the whole run, and a test that looks for leaks must not count it.
+@(private)
+kept_copy :: proc(text: string) -> string {
+	return strings.clone(text, runtime.heap_allocator())
 }
 
 @(private)
