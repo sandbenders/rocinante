@@ -77,6 +77,21 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [ ] `roci package openbsd --format rpm` is refused with the formats said; on a computer with `pkg_create` taken out the missing tool is named.
 - [ ] A package made on one OpenBSD release is tried on the next (its libraries have other numbers), and one made on arm64 is tried.
 
+## Packaging a Windows app
+
+`roci package windows` is tried by hand on a Windows computer (the unit tests cover the formats, the names, the four-number version, the resource script, the MSIX manifest, the import tables, the certificate list and the choice of a certificate; written 2026-11-23 and run on Windows 11 with a self-signed certificate):
+
+- [x] (2026-11-23, Windows 11) `roci package windows examples/circle --yes` makes the app's folder and `circle-1.0.0-windows-x64.zip` in `output/package/windows`; the folder holds the program, `SDL3.dll`, `SDL3_ttf.dll` and the notices, and the zip holds the folder.
+- [x] (2026-11-23) The packaged program, started from another folder (`Start-Process -Wait` with `--frames 2 --screenshot`), draws the sketch; `examples/voyage`'s draws lit, shadowed and with its textured model from the app's `assets`; `(Get-Item x.exe).VersionInfo` says the name and `1.0.0.<build>`, and Explorer shows the icon made for it.
+- [x] (2026-11-23) With a code-signing certificate in the user's store (a self-signed one), `roci package windows --format all` finds it without `--sign`; `Get-AuthenticodeSignature` says Valid, time-stamped, for the program, the two DLLs and the MSIX.
+- [x] (2026-11-23) With that certificate in `LocalMachine\TrustedPeople`, `Add-AppxPackage` installs the MSIX; the app is in the Start menu, starts from `C:\Program Files\WindowsApps` in a window, and `Remove-AppxPackage` takes it away.
+- [ ] The zip unpacked on a Windows computer with nothing of rocinante (no Odin, no Visual Studio) runs by double-clicking the program, and SmartScreen says what `roci package` said it would, unsigned and signed.
+- [ ] Opening the `.msix` in Explorer installs it through App Installer (not only `Add-AppxPackage`), and Settings, Apps removes it.
+- [ ] A sketch with a vault, fonts and sounds plays its sounds and shows its font from the zip and from the installed MSIX, and its `vault.key` and `memory.toml` appear in `%APPDATA%\<its id>` the first time (the MSIX's are redirected to the package's own folder).
+- [ ] A sketch that uses `mic` or `webcam`: the MSIX asks Windows for them, and one that does not is not listed under the microphone in Settings, Privacy.
+- [ ] `--sign` with a thumbprint and with a part of a name; `--sign` naming no certificate stops before anything is built; two certificates and no `--sign` stop with the question.
+- [ ] A certificate from an authority, and SmartScreen's warning with it; Windows 10; an arm64 Windows (the app is x64 and would run emulated).
+
 ## Packaging an Android app
 
 `roci package android` is tried by hand with a phone (the unit tests cover the id rules, the manifest, the orientation and category words and the key paths, not the SDK's tools). On a Mac, with the phone's tools set up (`tools/mobile-sdl.sh android`) and the Pixel 9 plugged in, unlocked, with USB debugging on:
