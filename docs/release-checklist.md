@@ -69,7 +69,8 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [ ] `pkg_info circle` and `pkg_info -L circle` list what is expected, and `pkg_delete circle` leaves nothing behind.
 - [ ] The menu entry and its icon show in a desktop, and the window's app id is the sketch's id.
 - [ ] The `.tar.gz` unpacked on an OpenBSD with nothing of rocinante installed runs its program after the `pkg_add` line of its `README.txt`.
-- [ ] A sketch with assets, fonts, sounds and a vault shows its font and plays its sounds from the package, and its `vault.key` and `memory.toml` appear in `~/.local/share/<its id>` the first time.
+- [x] (2026-11-23, Fabrizio) WILDVEX, with assets, fonts, shaders and a vault, runs in a window from the package. The first package printed that `ripple.hlsl` and the Aileron fonts were not in the assets folder: the app had kept the folder string SDL owns, which SDL frees when a window that fails to start quits it before the retry on X11, and OpenBSD reuses freed memory at once (fixed in `rt.use_home`, which keeps a copy).
+- [ ] The sounds of such a sketch play from the package, and its `vault.key` and `memory.toml` appear in `~/.local/share/<its id>` the first time.
 - [ ] `roci package openbsd --format rpm` is refused with the formats said; on a computer with `pkg_create` taken out the missing tool is named.
 - [ ] A package made on one OpenBSD release is tried on the next (its libraries have other numbers), and one made on arm64 is tried.
 
