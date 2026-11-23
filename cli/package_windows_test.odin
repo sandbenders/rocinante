@@ -7,26 +7,32 @@ import "core:strings"
 import "core:testing"
 
 @(test)
-test_windows_formats_are_the_zip_alone_unless_asked :: proc(t: ^testing.T) {
+test_windows_formats_are_the_zip_and_the_installer_unless_asked :: proc(t: ^testing.T) {
 	formats, bad := parse_windows_formats("")
 	testing.expect_value(t, bad, "")
-	testing.expect_value(t, len(formats), 1)
+	testing.expect_value(t, len(formats), 2)
 	testing.expect_value(t, formats[0], Windows_Format.Zip)
+	testing.expect_value(t, formats[1], Windows_Format.Setup)
 
 	formats, bad = parse_windows_formats("msix")
 	testing.expect_value(t, len(formats), 1)
 	testing.expect_value(t, formats[0], Windows_Format.Msix)
 
 	// in the order they are made, each once, whatever the order and case they are written in
-	formats, bad = parse_windows_formats(" MSIX, zip ,msix,")
-	testing.expect_value(t, len(formats), 2)
+	formats, bad = parse_windows_formats(" MSIX, zip ,msix, Setup")
+	testing.expect_value(t, len(formats), 3)
 	testing.expect_value(t, formats[0], Windows_Format.Zip)
-	testing.expect_value(t, formats[1], Windows_Format.Msix)
+	testing.expect_value(t, formats[1], Windows_Format.Setup)
+	testing.expect_value(t, formats[2], Windows_Format.Msix)
 
 	formats, _ = parse_windows_formats("all")
-	testing.expect_value(t, len(formats), 2)
+	testing.expect_value(t, len(formats), 3)
 	formats, _ = parse_windows_formats("appx")
 	testing.expect_value(t, formats[0], Windows_Format.Msix)
+	for word in ([]string{"setup", "installer", "EXE"}) {
+		formats, _ = parse_windows_formats(word)
+		testing.expectf(t, len(formats) == 1 && formats[0] == .Setup, "%s", word)
+	}
 
 	_, bad = parse_windows_formats("zip, msi")
 	testing.expect_value(t, bad, "msi")
@@ -39,6 +45,9 @@ test_windows_names_are_safe_for_files :: proc(t: ^testing.T) {
 	testing.expect_value(t, names.executable, "wild-vex.exe")
 	testing.expect_value(t, names.zip, "wild-vex-1.0.1-windows-x64.zip")
 	testing.expect_value(t, names.msix, "wild-vex-1.0.1-windows-x64.msix")
+	testing.expect_value(t, names.setup, "wild-vex-1.0.1-windows-x64-setup.exe")
+	testing.expect(t, strings.contains(WINDOWS_SETUP_MANIFEST, `level="requireAdministrator"`), "the installer asks for an administrator")
+	testing.expect(t, !strings.contains(WINDOWS_MANIFEST, "requestedExecutionLevel"), "the app does not")
 
 	testing.expect_value(t, windows_file_name(`A/B: "c"?`), `A-B- -c--`)
 	testing.expect_value(t, windows_file_name("Rain..  "), "Rain")

@@ -104,7 +104,7 @@ check_odin :: proc() -> bool {
 
 // Packages whose @(test) procedures `ci` runs, from the repository root (some
 // tests make fixtures under output/). Add each package here as it gets tests.
-TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/audio", "roci/builds", "roci/codegen", "roci/folder", "roci/gfx", "roci/interp", "roci/movies", "roci/lang", "roci/maths", "roci/osc", "roci/platform", "roci/registry", "roci/rt", "roci/toml", "roci/data", "roci/ui", "cli", "spikes/codegen", "tools/term", "tools/site", "tools/soundfont", "tools/imgui", "vendor/sancho/deflate", "vendor/sancho/png_writer", "vendor/sound"}
+TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/install", "roci/audio", "roci/builds", "roci/codegen", "roci/folder", "roci/gfx", "roci/interp", "roci/movies", "roci/lang", "roci/maths", "roci/osc", "roci/platform", "roci/registry", "roci/rt", "roci/toml", "roci/data", "roci/ui", "cli", "spikes/codegen", "tools/term", "tools/site", "tools/soundfont", "tools/imgui", "vendor/sancho/deflate", "vendor/sancho/png_writer", "vendor/sound"}
 
 // Where `odin test` writes each package's test program. Left to itself it writes
 // build.exe to the repository root, the very file `odin run build` is running
@@ -183,6 +183,7 @@ check_packages :: proc() -> bool {
 	ok = step("check header tool", {"odin", "check", "tools/header", "-vet", "-strict-style"}) && ok
 	ok = step("check site tool", {"odin", "check", "tools/site", "-vet", "-strict-style"}) && ok
 	ok = step("check model tool", {"odin", "check", "tools/model", "-vet", "-strict-style"}) && ok
+	ok = step("check the Windows installer", {"odin", "check", "roci/install/setup", "-vet", "-strict-style", "-target:windows_amd64"}) && ok
 	ok = step("check benchmark example", {"odin", "check", "examples/benchmark", "-vet", "-strict-style"}) && ok
 	ok = step("check circle example", {"odin", "check", "examples/circle", "-vet", "-strict-style"}) && ok
 	ok = step("check two windows example", {"odin", "check", "examples/two_windows", "-vet", "-strict-style"}) && ok

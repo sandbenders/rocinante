@@ -15,13 +15,15 @@ import "core:strings"
 // What `roci package windows` can make.
 Windows_Format :: enum {
 	Zip,
+	Setup,
 	Msix,
 }
 
-WINDOWS_FORMATS :: [?]Windows_Format{.Zip, .Msix}
+WINDOWS_FORMATS :: [?]Windows_Format{.Zip, .Setup, .Msix}
 
 // The formats a `--format` (or the `formats` of the `[windows]` part of `sketch.toml`) names: words separated by commas, `all` for
-// both. `bad` is the first word that is no format. Each is once, in the order they are made. An empty text is the zip alone.
+// all three. `bad` is the first word that is no format. Each is once, in the order they are made. An empty text is the zip and the
+// installer.
 parse_windows_formats :: proc(text: string, allocator := context.temp_allocator) -> (formats: []Windows_Format, bad: string) {
 	wanted: [Windows_Format]bool
 	given := false
@@ -37,6 +39,7 @@ parse_windows_formats :: proc(text: string, allocator := context.temp_allocator)
 				wanted[f] = true
 			}
 		case "zip":          wanted[.Zip] = true
+		case "setup", "installer", "exe": wanted[.Setup] = true
 		case "msix", "appx": wanted[.Msix] = true
 		case:
 			return nil, strings.trim_space(piece)
@@ -44,6 +47,7 @@ parse_windows_formats :: proc(text: string, allocator := context.temp_allocator)
 	}
 	if !given {
 		wanted[.Zip] = true
+		wanted[.Setup] = true
 	}
 	made := make([dynamic]Windows_Format, allocator)
 	for f in WINDOWS_FORMATS {
@@ -59,6 +63,7 @@ Windows_Names :: struct {
 	folder:     string, // the app's folder, which the zip holds: `Wildvex`
 	executable: string, // `wildvex.exe`
 	zip:        string, // `wildvex-1.0.1-windows-x64.zip`
+	setup:      string, // `wildvex-1.0.1-windows-x64-setup.exe`
 	msix:       string, // `wildvex-1.0.1-windows-x64.msix`
 }
 
@@ -67,6 +72,7 @@ windows_names :: proc(name, slug, version: string) -> Windows_Names {
 		folder     = windows_file_name(name),
 		executable = strings.concatenate({slug, ".exe"}, context.temp_allocator),
 		zip        = fmt.tprintf("%s-%s-windows-x64.zip", slug, version),
+		setup      = fmt.tprintf("%s-%s-windows-x64-setup.exe", slug, version),
 		msix       = fmt.tprintf("%s-%s-windows-x64.msix", slug, version),
 	}
 }
@@ -528,3 +534,33 @@ smartscreen_note :: proc(signed: bool) -> string {
 	}
 	return "The app is not signed, so Windows' SmartScreen says it is from an unknown publisher: people choose More info, then Run anyway. To sign it, put a code-signing certificate in your certificate store and package again, or name one with --sign."
 }
+
+// The installer's manifest: the program's own, but asking Windows for an administrator, since it writes in Program Files and in
+// the part of the registry Settings, Apps reads for everyone.
+WINDOWS_SETUP_MANIFEST :: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+    </application>
+  </compatibility>
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+    </windowsSettings>
+  </application>
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*"/>
+    </dependentAssembly>
+  </dependency>
+</assembly>
+`

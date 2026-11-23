@@ -12,6 +12,7 @@ package main
 
 import "../roci/codegen"
 import "../roci/folder"
+import "../roci/install"
 import "../tools/term"
 import "core:fmt"
 import "core:os"
@@ -56,6 +57,7 @@ package_windows :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 		return 2
 	}
 	wants_zip := slice.contains(formats, Windows_Format.Zip)
+	wants_setup := slice.contains(formats, Windows_Format.Setup)
 	wants_msix := slice.contains(formats, Windows_Format.Msix)
 	version := version_for_app(settings.version, time.now())
 	build_number := settings.build + 1
@@ -200,6 +202,15 @@ package_windows :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 		}
 	}
 
+	// ---- the installer: the setup program with the app's folder appended ----
+	setup := strings.concatenate({work, "/", names.setup}, context.temp_allocator)
+	if wants_setup {
+		say_step(.Bundle, "Making the installer")
+		if !make_windows_setup(root, work, app, setup, names, info, signed, signtool, certificate, err) {
+			return 5
+		}
+	}
+
 	// ---- the MSIX: the same folder with its logos and manifest, packed by makeappx ----
 	msix := strings.concatenate({work, "/", names.msix}, context.temp_allocator)
 	if wants_msix {
@@ -234,6 +245,9 @@ package_windows :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	term.progress_result(&packaging, "app", app)
 	if wants_zip {
 		term.progress_result(&packaging, "zip", fmt.tprintf("%s (%.1f MB)", zip, file_size(zip)))
+	}
+	if wants_setup {
+		term.progress_result(&packaging, "installer", fmt.tprintf("%s (%.1f MB)", setup, file_size(setup)))
 	}
 	if wants_msix {
 		term.progress_result(&packaging, "msix", fmt.tprintf("%s (%.1f MB)", msix, file_size(msix)))
@@ -427,6 +441,114 @@ fill_windows_folder :: proc(app, sketch_folder, root: string, err: ^strings.Buil
 		from := strings.concatenate({root, notice[0]}, context.temp_allocator)
 		if os.is_file(from) && !copy_one(from, strings.concatenate({app, "/", notice[1]}, context.temp_allocator), err) {
 			return false
+		}
+	}
+	return true
+}
+
+// Makes the installer: the setup program, built with the app's icon and version and a manifest that asks for an administrator;
+// a copy of it, signed, as the app's `uninstall.exe`; the archive of the app's folder, that uninstaller and `setup.ini`; and the
+// program with the archive and its trailer appended, signed last. The archive is then found and read back from the file made, as
+// the installer will.
+make_windows_setup :: proc(root, work, app, setup: string, names: Windows_Names, info: Windows_App_Info, signed: bool, signtool: string, certificate: Windows_Certificate, err: ^strings.Builder) -> bool {
+	resources := strings.concatenate({work, "/resources"}, context.temp_allocator)
+	manifest := strings.concatenate({resources, "/setup.manifest"}, context.temp_allocator)
+	rc := strings.concatenate({resources, "/setup.rc"}, context.temp_allocator)
+	setup_info := info
+	setup_info.description = fmt.tprintf("%s Setup", info.name)
+	setup_info.executable = names.setup
+	setup_info.manifest = manifest
+	if os.write_entire_file(manifest, transmute([]byte)string(WINDOWS_SETUP_MANIFEST)) != nil || os.write_entire_file(rc, transmute([]byte)windows_rc(setup_info)) != nil {
+		fmt.sbprintf(err, "I cannot write the resources of the installer in `%s`.\n", resources)
+		return false
+	}
+	program := strings.concatenate({work, "/setup-program.exe"}, context.temp_allocator)
+	if !build(root, strings.concatenate({root, "/roci/install/setup"}, context.temp_allocator), program, false, work, err, {strings.concatenate({"-resource:", rc}, context.temp_allocator), "-subsystem:windows"}) {
+		return false
+	}
+	uninstaller := strings.concatenate({work, "/uninstall.exe"}, context.temp_allocator)
+	if !copy_one(program, uninstaller, err) {
+		return false
+	}
+	if signed && !sign_windows(signtool, certificate, err, uninstaller) {
+		return false
+	}
+
+	// what goes in: setup.ini first, the app's files, then the uninstaller
+	files := make([dynamic]install.File, context.temp_allocator)
+	tree := make([dynamic]install.File, context.temp_allocator)
+	if !collect_files(app, "", &tree, err) {
+		return false
+	}
+	size := 0
+	for f in tree {
+		size += len(f.data)
+	}
+	uninstall_bytes, read_err := os.read_entire_file(uninstaller, context.temp_allocator)
+	if read_err != nil {
+		fmt.sbprintf(err, "I cannot read `%s`.\n", uninstaller)
+		return false
+	}
+	size += len(uninstall_bytes)
+	description := install.App{name = info.name, id = info.id, version = fmt.tprintf("%d.%d.%d", info.numbers[0], info.numbers[1], info.numbers[2]), publisher = info.publisher, folder = names.folder, executable = names.executable, size_kb = (size + 1023) / 1024}
+	append(&files, install.File{path = install.SETUP_INI, data = transmute([]u8)install.write_ini(description, context.temp_allocator)})
+	append(&files, ..tree[:])
+	append(&files, install.File{path = "uninstall.exe", data = uninstall_bytes})
+	archive := install.pack(files[:], context.temp_allocator)
+
+	program_bytes, program_err := os.read_entire_file(program, context.temp_allocator)
+	if program_err != nil {
+		fmt.sbprintf(err, "I cannot read `%s`.\n", program)
+		return false
+	}
+	whole := make([dynamic]u8, 0, len(program_bytes) + len(archive) + 64, context.temp_allocator)
+	append(&whole, ..program_bytes)
+	append(&whole, ..archive)
+	append(&whole, ..install.trailer(len(program_bytes), len(archive), context.temp_allocator))
+	if os.write_entire_file(setup, whole[:]) != nil {
+		fmt.sbprintf(err, "I cannot write `%s`.\n", setup)
+		return false
+	}
+	_ = os.remove(program)
+	_ = os.remove(uninstaller)
+	if signed && !sign_windows(signtool, certificate, err, setup) {
+		return false
+	}
+
+	// read back as the installer will, past the signature
+	made, made_err := os.read_entire_file(setup, context.temp_allocator)
+	found, has := install.find_archive(made)
+	entries, read_ok := install.read_archive(found, context.temp_allocator)
+	if made_err != nil || !has || !read_ok || len(entries) != len(files) {
+		fmt.sbprintf(err, "The installer was made, but the app it carries cannot be read back from it.\n")
+		return false
+	}
+	return true
+}
+
+// The files of a folder and of the folders in it, with their paths from `base` written with slashes.
+collect_files :: proc(base, path: string, files: ^[dynamic]install.File, err: ^strings.Builder) -> bool {
+	here := base if path == "" else strings.concatenate({base, "/", path}, context.temp_allocator)
+	entries, read_err := os.read_all_directory_by_path(here, context.temp_allocator)
+	if read_err != nil {
+		fmt.sbprintf(err, "I cannot read the folder `%s`.\n", here)
+		return false
+	}
+	slice.sort_by(entries, proc(a, b: os.File_Info) -> bool {return a.name < b.name})
+	for entry in entries {
+		child := entry.name if path == "" else strings.concatenate({path, "/", entry.name}, context.temp_allocator)
+		#partial switch entry.type {
+		case .Directory:
+			if !collect_files(base, child, files, err) {
+				return false
+			}
+		case .Regular:
+			data, file_err := os.read_entire_file(strings.concatenate({base, "/", child}, context.temp_allocator), context.temp_allocator)
+			if file_err != nil {
+				fmt.sbprintf(err, "I cannot read `%s`.\n", child)
+				return false
+			}
+			append(files, install.File{path = child, data = data})
 		}
 	}
 	return true

@@ -37,7 +37,7 @@ PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--ve
               and openSUSE), arch (an Arch package), appimage, or all. Kept in sketch.toml
               On FreeBSD: pkg (a package for pkg add) and tar, both by default
               On OpenBSD: pkg (a .tgz for pkg_add) and tar, both by default
-              On Windows: zip (the default) and msix (a package that installs, once signed)
+              On Windows: zip and setup (an installer for everyone on the computer), both by default, and msix
   --maintainer  on Linux, FreeBSD and OpenBSD, who looks after the package, as Name <address> (a .deb, an RPM, an Arch package, a .pkg and a .tgz say it)
   --description on Linux, FreeBSD, OpenBSD and Windows, one line about the app, for package managers, menus and Explorer
   --category  on Linux, the menu categories a desktop file puts the app in, such as Game; or Graphics;Music;
