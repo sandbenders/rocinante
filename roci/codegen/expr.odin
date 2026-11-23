@@ -158,13 +158,17 @@ builtin :: proc(g: ^Gen, e: ^lang.IR, name: string) -> string {
 	case "tau":     return "rt.TAU"
 	case "pressed": return "roci.pressed()"
 	case "anywhere": return "roci.anywhere()"
-	case "webcam":   return "roci.webcam()"
+	case "webcam":
+		g.uses.camera = true
+		return "roci.webcam()"
 	case "screens", "joysticks", "gamepads", "touches": return builtin_list(g, e, name)
 	case "gamepad": return builtin_record(g, e, name)
 	case "turtle", "midi", "osc", "packet", "received", "finger", "scene", "reply", "safe": return builtin_record(g, e, name)
 	case "chosen":   return "rt.chosen_path"
 	case "clipboard": return "rt.keep(roci.clipboard(context.temp_allocator))"
-	case "mic":      return "roci.mic()"
+	case "mic":
+		g.uses.microphone = true
+		return "roci.mic()"
 	case "speakers": return "roci.the_speakers()"
 	case "platform": return "roci.platform_name()"
 	case "language": return "rt.keep(roci.language_name(context.temp_allocator))"

@@ -334,8 +334,10 @@ asset_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (t
 	case "midi outputs":
 		return "rt.text_list(roci.midi_outputs(context.temp_allocator))", true, true
 	case "webcam cameras":
+		g.uses.camera = true
 		return "rt.text_list(roci.webcam_cameras(context.temp_allocator))", true, true
 	case "webcam pick":
+		g.uses.camera = true
 		if kind_of(g, c.args[0]) == .Text {
 			return fmt.aprintf("roci.webcam_pick(%s)", args[0], allocator = context.temp_allocator), false, true
 		}

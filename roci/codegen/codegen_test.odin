@@ -524,3 +524,29 @@ test_a_constant_that_is_made_by_a_line_that_runs_is_checked_when_a_verb_reads_it
 	// a constant that is only written down is made before everything else, so it has no flag
 	testing.expect(t, !strings.contains(result.source, "LOOK_made__"), result.source)
 }
+
+@(test)
+test_the_program_says_whether_the_sketch_uses_the_microphone_and_the_camera :: proc(t: ^testing.T) {
+	used :: proc(t: ^testing.T, text: string) -> Uses {
+		result := compile(text)
+		testing.expect_value(t, len(result.problems), 0)
+		return result.uses
+	}
+	// nothing asks a device for anything
+	testing.expect_value(t, used(t, "circle at 100 100 radius 20\n"), Uses{})
+	// the words alone, in a comment or in a text, ask for nothing
+	testing.expect_value(t, used(t, "// mic and webcam\ntext \"mic webcam\" at 10 10\n"), Uses{})
+	// the microphone: read as a value, taken as the source of `level` and `bands`, and recorded
+	testing.expect_value(t, used(t, "loud = level mic\n"), Uses{microphone = true})
+	testing.expect_value(t, used(t, "heard = bands mic 8\n"), Uses{microphone = true})
+	testing.expect_value(t, used(t, "record mic \"voice.wav\"\n"), Uses{microphone = true})
+	// sound that is played and heard through the speakers does not need the microphone
+	testing.expect_value(t, used(t, "loud = level\n"), Uses{})
+	// the camera: read as a picture, listed and picked
+	testing.expect_value(t, used(t, "image webcam at 0 0\n"), Uses{camera = true})
+	testing.expect_value(t, used(t, "cameras = webcam cameras\n"), Uses{camera = true})
+	testing.expect_value(t, used(t, "webcam pick 1\n"), Uses{camera = true})
+	testing.expect_value(t, used(t, "webcam pick \"front\"\n"), Uses{camera = true})
+	// both
+	testing.expect_value(t, used(t, "loud = level mic\nimage webcam at 0 0\n"), Uses{microphone = true, camera = true})
+}

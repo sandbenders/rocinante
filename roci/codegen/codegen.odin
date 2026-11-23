@@ -33,9 +33,17 @@ Options :: struct {
 	app_name: string, // with target "macos", "linux", "freebsd" or "openbsd": what people call the app, which volume controls and the like show (the program's name when empty)
 }
 
+// What a sketch asks the computer's devices for, known from the sketch itself. A packaged Mac app is given the permission for the
+// microphone and the camera only when the sketch uses them, because macOS asks the player before it lets an app listen or look.
+Uses :: struct {
+	microphone: bool, // reads `mic` (which `level`, `bands` and `record` take as a source too)
+	camera:     bool, // reads `webcam`, lists the cameras or picks one
+}
+
 Result :: struct {
 	source:   string, // the Odin program; empty when there are problems
 	problems: []Problem,
+	uses:     Uses,
 }
 
 @(private)
@@ -72,6 +80,7 @@ Gen :: struct {
 	src:      lang.Source,
 	options:  Options,
 	problems: [dynamic]Problem,
+	uses:     Uses, // the devices the program asks for, noted as the code that asks for them is written
 	body:     strings.Builder, // the procedure being written
 	procs:    strings.Builder, // everything written so far at package level
 	indent:   int,
@@ -266,7 +275,7 @@ generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Opti
 	case:
 		fmt.sbprintf(&out, "main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n", options.sketch, ODIN_VERSION_PIN, hook)
 	}
-	return Result{source = strings.to_string(out), problems = nil}, g.unset_found
+	return Result{source = strings.to_string(out), problems = nil, uses = g.uses}, g.unset_found
 }
 
 // The release of Odin the sketch was generated for, said in the header of a build log.
