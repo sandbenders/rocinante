@@ -74,6 +74,11 @@ Tcp_Conn :: struct {
 	from:     string,
 }
 
+// How many clients' threads are still running, across every endpoint: a client let go of while it is dialing
+// is freed by its thread, so a test waits for this to reach zero before it counts what is left over.
+@(private)
+tcp_client_threads: int
+
 // Starts a connection to a host and a port. It is made by a thread, so nothing waits here: the queue gets `.Open`
 // when it is made, or `.Close` with the reason when it could not be.
 tcp_open_client :: proc(host: string, port: int, allocator := context.allocator) -> ^Tcp_Endpoint {
@@ -82,6 +87,7 @@ tcp_open_client :: proc(host: string, port: int, allocator := context.allocator)
 	e.queue = make([dynamic]Tcp_Happened, 0, 16, allocator)
 	e.conns = make([dynamic]^Tcp_Conn, 0, 1, allocator)
 	e.dialing = true
+	sync.atomic_add(&tcp_client_threads, 1)
 	// the thread frees its own record when it ends, so a client let go of while it is dialing can be left to it
 	thread.create_and_start_with_data(e, tcp_dial_thread, self_cleanup = true)
 	return e
@@ -242,6 +248,7 @@ tcp_push :: proc(e: ^Tcp_Endpoint, kind: Tcp_Kind, client: int, text, from: stri
 tcp_dial_thread :: proc(data: rawptr) {
 	e := (^Tcp_Endpoint)(data)
 	context.allocator = runtime.heap_allocator()
+	defer sync.atomic_sub(&tcp_client_threads, 1)
 	if tcp_dial(e) {
 		// let go while it was dialing: nobody will read what happened
 		tcp_release(e, false)

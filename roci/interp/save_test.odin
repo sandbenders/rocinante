@@ -152,7 +152,7 @@ solid_frames :: proc(width, height: int) -> (gfx.Image, bool) {
 @(test)
 test_a_picture_is_saved_as_a_png_by_save_and_a_wrong_name_is_said :: proc(t: ^testing.T) {
 	cwd, _ := os.get_working_directory(context.temp_allocator)
-	folder := strings.concatenate({cwd, "/output/tests/save_a_picture"}, context.temp_allocator)
+	folder := strings.concatenate({sketch_path(cwd), "/output/tests/save_a_picture"}, context.temp_allocator)
 	_ = os.remove_all(folder)
 	sketch := strings.concatenate({"pic = picture from [ red blue ] size 2 1\nsave pic \"", folder, "/two.png\"\nsave (resize pic size 6 3) \"", folder, "/six-##.png\"\nsave pic \"", folder, "/bad.gif\"\nok = 1\n"}, context.temp_allocator)
 	p := run_text(t, sketch, 2)

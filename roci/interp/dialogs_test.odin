@@ -9,6 +9,13 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 
+// A path as a sketch writes it: a backslash in text starts an escape (the `\U` of `C:\Users`), so a Windows
+// path is written with forward slashes, which Windows takes too.
+sketch_path :: proc(path: string) -> string {
+	out, _ := strings.replace_all(path, "\\", "/", context.temp_allocator)
+	return out
+}
+
 // Runs a sketch in a folder of its own, with the files given (name below the folder, text) written first.
 @(private = "file")
 run_with_files :: proc(t: ^testing.T, folder_name, text: string, files: [][2]string, frames := 1) -> ^Interp {
@@ -131,14 +138,15 @@ ask file [ outside = read chosen ]
 @(test)
 test_read_refuses_a_file_nobody_chose :: proc(t: ^testing.T) {
 	absolute, _ := os.get_absolute_path("output/tests/dialogs_refuse/elsewhere/secret.txt", context.temp_allocator)
-	p := run_with_files(t, "dialogs_refuse", strings.concatenate({`x = read "`, absolute, `"
+	p := run_with_files(t, "dialogs_refuse", strings.concatenate({`x = read "`, sketch_path(absolute), `"
 y = read "nothing.txt"
 `}, context.temp_allocator), {{"elsewhere/secret.txt", "private"}})
 	defer finish(p)
 	testing.expect_value(t, as_text(global_named(p, "x")), "")
 	testing.expect_value(t, as_text(global_named(p, "y")), "")
-	testing.expect_value(t, len(p.errors), 2)
-	testing.expect_value(t, p.errors[0].id, lang.Message_Id.File_Not_Read)
+	if testing.expect_value(t, len(p.errors), 2) {
+		testing.expect_value(t, p.errors[0].id, lang.Message_Id.File_Not_Read)
+	}
 }
 
 @(test)

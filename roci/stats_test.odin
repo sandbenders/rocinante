@@ -109,6 +109,7 @@ test_the_log_gets_a_line_for_each_run_and_a_broken_log_is_set_aside :: proc(t: ^
 	testing.expect_value(t, string(bad), "this is { not json")
 	fresh, _ := os.read_entire_file(path, context.temp_allocator)
 	testing.expect_value(t, strings.count(string(fresh), "\"mode\""), 1)
-	// a folder it cannot make is a no, not a crash
-	testing.expect(t, !stats_log("/proc/nothing/here/log.json", "interpreted", "x", summary, true) || ODIN_OS == .Darwin)
+	// a folder it cannot make is a no, not a crash: a file stands where the folder would be, which no system can write through
+	testing.expect(t, os.write_entire_file("output/tests/stats_log/a_file", transmute([]byte)string("not a folder")) == nil)
+	testing.expect(t, !stats_log("output/tests/stats_log/a_file/here/log.json", "interpreted", "x", summary, true))
 }

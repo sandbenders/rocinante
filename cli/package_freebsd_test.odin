@@ -247,7 +247,10 @@ test_the_tree_of_a_package_lists_files_links_and_its_own_folders :: proc(t: ^tes
 	write("output/tests/pkg_tree/usr/local/libexec/app/assets/a.txt", "hi\n", os.Permissions{.Read_User, .Write_User, .Read_Group, .Read_Other})
 	write("output/tests/pkg_tree/usr/local/share/doc/app/copyright", "note", os.Permissions{.Read_User, .Write_User, .Read_Group, .Read_Other})
 	write("output/tests/pkg_tree/usr/local/share/applications/app.desktop", "[Desktop Entry]", os.Permissions{.Read_User, .Write_User, .Read_Group, .Read_Other})
-	testing.expect(t, os.symlink("../libexec/app/app", "output/tests/pkg_tree/usr/local/bin/app") == nil)
+	// Windows makes a link only in developer mode, and has no execute bit; a FreeBSD package is made on FreeBSD only,
+	// so there those two parts are left out and the rest is still checked
+	linked := os.symlink("../libexec/app/app", "output/tests/pkg_tree/usr/local/bin/app") == nil
+	testing.expect(t, linked || ODIN_OS == .Windows, "the link could not be made")
 
 	err := strings.builder_make(context.temp_allocator)
 	entries := make([dynamic]Pkg_Entry, context.temp_allocator)
@@ -258,17 +261,21 @@ test_the_tree_of_a_package_lists_files_links_and_its_own_folders :: proc(t: ^tes
 		found[e.path] = e
 	}
 	// five files and links, and three folders the package owns
-	testing.expect_value(t, len(entries), 8)
+	testing.expect_value(t, len(entries), 8 if linked else 7)
 	program := found["/usr/local/libexec/app/app"]
-	testing.expect_value(t, program.perm, u32(0o755))
+	if ODIN_OS != .Windows {
+		testing.expect_value(t, program.perm, u32(0o755))
+	}
 	testing.expect_value(t, program.size, 7)
 	testing.expect_value(t, program.sum, pkg_sum(transmute([]byte)string("program")))
 	testing.expect_value(t, found["/usr/local/libexec/app/assets/a.txt"].perm, u32(0o644))
 	testing.expect_value(t, found["/usr/local/libexec/app/assets/a.txt"].sum, pkg_sum(transmute([]byte)string("hi\n")))
-	link := found["/usr/local/bin/app"]
-	testing.expect_value(t, link.link, "../libexec/app/app")
-	testing.expect_value(t, link.sum, pkg_sum(transmute([]byte)string("../libexec/app/app")))
-	testing.expect_value(t, link.size, 0) // a link has no size of its own
+	if linked {
+		link := found["/usr/local/bin/app"]
+		testing.expect_value(t, link.link, "../libexec/app/app")
+		testing.expect_value(t, link.sum, pkg_sum(transmute([]byte)string("../libexec/app/app")))
+		testing.expect_value(t, link.size, 0) // a link has no size of its own
+	}
 	// the folders are listed only when the package owns them
 	testing.expect(t, found["/usr/local/libexec/app"].folder && found["/usr/local/libexec/app/assets"].folder && found["/usr/local/share/doc/app"].folder)
 	testing.expect(t, !("/usr/local/bin" in found) && !("/usr/local/libexec" in found) && !("/usr/local/share" in found) && !("/usr" in found))

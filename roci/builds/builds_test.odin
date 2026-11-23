@@ -49,6 +49,43 @@ interpreted_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string
 	return out, warnings
 }
 
+// Windows finds a program's libraries only beside it or on the PATH, so the SDL libraries that Odin ships are
+// copied beside the compiled programs, as `roci run --compile` does; elsewhere the system's libraries are found.
+put_libraries_beside :: proc(t: ^testing.T, binary: string) -> bool {
+	when ODIN_OS != .Windows {
+		return true
+	} else {
+		state, root_out, _, err := os.process_exec({command = {"odin", "root"}}, context.temp_allocator)
+		if !testing.expect(t, err == nil && state.exit_code == 0, "`odin root` did not say where Odin is") {
+			return false
+		}
+		root := strings.trim_space(string(root_out))
+		dir, _ := os.split_path(binary)
+		for lib in ([]string{"vendor/sdl3/SDL3.dll", "vendor/sdl3/ttf/SDL3_ttf.dll"}) {
+			_, name := os.split_path(lib)
+			data, read_err := os.read_entire_file(fmt.tprintf("%s/%s", root, lib), context.temp_allocator)
+			if !testing.expectf(t, read_err == nil, "%s is not in the Odin at %s", lib, root) {
+				return false
+			}
+			if !testing.expect(t, os.write_entire_file(fmt.tprintf("%s/%s", dir, name), data) == nil) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// The path a program is started by: Windows does not find a program named by a relative path written with
+// forward slashes (os.process_exec says Not_Exist), so there it is written with backslashes.
+runnable :: proc(binary: string) -> string {
+	when ODIN_OS == .Windows {
+		path, _ := strings.replace_all(binary, "/", "\\", context.temp_allocator)
+		return path
+	} else {
+		return binary
+	}
+}
+
 // What the compiled program prints for the same sketch.
 compiled_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string, warnings: int, ok: bool) {
 	roci.start_headless(1)
@@ -69,8 +106,11 @@ compiled_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string, w
 	if !testing.expectf(t, err == nil && state.exit_code == 0, "%s: the generated program did not build:\n%s", name, string(build_err)) {
 		return nil, 0, false
 	}
-	run_state, stdout, run_err, run_start_err := os.process_exec({command = {binary, "--frames", fmt.tprint(FRAMES)}}, context.temp_allocator)
-	testing.expectf(t, run_start_err == nil && run_state.exit_code == 0, "%s: the program failed (%d):\n%s", name, run_state.exit_code, string(run_err))
+	if !put_libraries_beside(t, binary) {
+		return nil, 0, false
+	}
+	run_state, stdout, run_err, run_start_err := os.process_exec({command = {runnable(binary), "--frames", fmt.tprint(FRAMES)}}, context.temp_allocator)
+	testing.expectf(t, run_start_err == nil && run_state.exit_code == 0, "%s: the program failed (%d, %v):\n%s", name, run_state.exit_code, run_start_err, string(run_err))
 	warnings = strings.count(string(run_err), "── Warning:")
 	text_out := strings.trim_right(string(stdout), "\n")
 	if text_out == "" {
@@ -141,7 +181,10 @@ test_a_compiled_sketch_that_makes_garbage_frees_it :: proc(t: ^testing.T) {
 	if !testing.expectf(t, build_run_err == nil && state.exit_code == 0, "the program did not build:\n%s", string(build_err)) {
 		return
 	}
-	run_state, stdout, run_log, run_err := os.process_exec({command = {binary, "--frames", "2500", "--stats"}}, context.temp_allocator)
+	if !put_libraries_beside(t, binary) {
+		return
+	}
+	run_state, stdout, run_log, run_err := os.process_exec({command = {runnable(binary), "--frames", "2500", "--stats"}}, context.temp_allocator)
 	if !testing.expectf(t, run_err == nil && run_state.exit_code == 0, "the program failed:\n%s", string(run_log)) {
 		return
 	}

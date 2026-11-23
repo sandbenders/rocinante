@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package platform
 
+import "core:sync"
 import "core:testing"
 import "core:time"
 
@@ -130,5 +131,15 @@ test_a_client_let_go_of_while_it_is_dialing_is_cleaned_up_by_its_thread :: proc(
 		client := tcp_open_client("127.0.0.1", 1)
 		tcp_close_endpoint(client)
 	}
+	// Windows tries a refused connection again for about two seconds before it gives up, so the threads are
+	// waited for (the other tests' clients count too, and end within the wait); then a moment for each thread
+	// to free its own record after its procedure returns
+	for _ in 0 ..< 1000 {
+		if sync.atomic_load(&tcp_client_threads) == 0 {
+			break
+		}
+		time.sleep(10 * time.Millisecond)
+	}
+	testing.expect_value(t, sync.atomic_load(&tcp_client_threads), 0)
 	time.sleep(100 * time.Millisecond)
 }
