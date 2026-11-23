@@ -58,6 +58,20 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [ ] `roci package freebsd --format rpm` is refused with the formats said; on a computer with `pkg` taken out the missing tool is named.
 - [ ] A package made on FreeBSD 15 is refused by `pkg add` on 14 (the ABI), and one made on 14 is tried on 15.
 
+## Packaging an OpenBSD app
+
+`roci package openbsd` is tried by hand on an OpenBSD computer (the unit tests cover the names, the packing list, the ldd lines, the package names and the library numbers; written 2026-11-23 and run on OpenBSD 8.0 amd64 up to the `pkg_add` dry run and starting the unpacked program with no window):
+
+- [x] (2026-11-23, OpenBSD 8.0 amd64) `roci package openbsd examples/circle --yes --maintainer "Name <you@example.org>"` makes the `.tgz` and the `.tar.gz` in `output/package/openbsd` (the first time it builds the SDL3_ttf the app carries, about two minutes), and prints the packages the app depends on.
+- [x] (2026-11-23) `pkg_add -n -D unsigned circle-1.0.0.tgz` says the package is ok, with `sdl3`, `shaderc` and `spirv-cross` as its dependencies and the libraries it asks for listed.
+- [x] (2026-11-23) The `.tar.gz` unpacked in another folder runs its program from a third one with no window, and loads its own `libSDL3_ttf.so.0` from the `lib` beside it and SDL3 from the system.
+- [ ] `doas pkg_add -D unsigned circle-1.0.0.tgz` installs it: `pkg_info circle` and `pkg_info -L circle` list what is expected, `circle` starts it from a terminal in a window, and `pkg_delete circle` leaves nothing behind.
+- [ ] The menu entry and its icon show in a desktop, and the window's app id is the sketch's id.
+- [ ] The `.tar.gz` unpacked on an OpenBSD with nothing of rocinante installed runs its program after the `pkg_add` line of its `README.txt`.
+- [ ] A sketch with assets, fonts, sounds and a vault shows its font and plays its sounds from the package, and its `vault.key` and `memory.toml` appear in `~/.local/share/<its id>` the first time.
+- [ ] `roci package openbsd --format rpm` is refused with the formats said; on a computer with `pkg_create` taken out the missing tool is named.
+- [ ] A package made on one OpenBSD release is tried on the next (its libraries have other numbers), and one made on arm64 is tried.
+
 ## Linux and the BSDs: everything to try (CachyOS, FreeBSD, OpenBSD)
 
 These systems were last tried in full before text, shaders, canvases, export and the whole user interface. Go through all of it on each, and write down what differs in the results table's notes. Everything in the first list must pass before anything else is worth trying.
