@@ -32,10 +32,10 @@ when LIBRARY_PRESENT {
 			"system:ws2_32.lib", "system:userenv.lib", "system:ntdll.lib", "system:bcrypt.lib", "system:advapi32.lib",
 		}
 	} else when ODIN_OS == .OpenBSD {
-		// OpenBSD has no libdl: dlopen is in its C library
+		// OpenBSD has no libdl: dlopen is in its C library, and since 8.0 the unwinder that Rust's panics need is in libc++abi
 		foreign import lib {
 			"../../.cache/ui/accesskit/libaccesskit.a",
-			"system:pthread", "system:m",
+			"system:pthread", "system:m", "system:c++abi",
 		}
 	} else {
 		// not checked yet beyond macOS: what Rust's standard library needs from the C library
