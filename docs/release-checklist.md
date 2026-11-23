@@ -83,7 +83,8 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [x] (2026-11-23) `adb install -r` installs it, it starts full-screen in portrait, and its game is in play; installing the next build over it unpacks the sketch's files again (`adb logcat -s rocinante` says how many) and keeps it running, and starting it a second time unpacks nothing.
 - [x] (2026-11-23) The first package for an id makes the release key in `~/Library/Application Support/rocinante/android` (a mode-600 password file beside it) and says to keep a copy; the next uses it.
 - [x] (2026-11-23) `roci run --compile --target android` still puts a test build on the phone.
-- [ ] The sounds of the sketch are heard on the phone, and a sketch with fonts, images and a vault (WILDVEX) shows its font and keeps its `vault.key` and `memory.toml` in the app's folder across an update; the first start of a sketch with hundreds of megabytes of assets takes how long.
+- [x] (2026-11-23, Fabrizio, the Pixel 9) WILDVEX, with all its assets, fonts, shaders and vault, packaged with `roci package android`, installs with `adb install -r`, starts and works.
+- [ ] The sounds of the sketch are heard on the phone, and WILDVEX keeps its `vault.key` and `memory.toml` in the app's folder across an update; how long the first start of a sketch with hundreds of megabytes of assets takes (not measured).
 - [ ] An update signed with the same key replaces the installed app and keeps what it remembered; one signed with another key is refused by the phone (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`).
 - [ ] A sketch that uses `mic` or `webcam` has `RECORD_AUDIO` or `CAMERA` in its manifest and the phone asks when it uses them; one that uses neither has neither.
 - [ ] `roci package android` on a Linux x86-64 and a Windows computer; on another phone and another Android version.
