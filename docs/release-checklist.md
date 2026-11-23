@@ -75,6 +75,20 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [ ] `roci package openbsd --format rpm` is refused with the formats said; on a computer with `pkg_create` taken out the missing tool is named.
 - [ ] A package made on one OpenBSD release is tried on the next (its libraries have other numbers), and one made on arm64 is tried.
 
+## Packaging an Android app
+
+`roci package android` is tried by hand with a phone (the unit tests cover the id rules, the manifest, the orientation and category words and the key paths, not the SDK's tools). On a Mac, with the phone's tools set up (`tools/mobile-sdl.sh android`) and the Pixel 9 plugged in, unlocked, with USB debugging on:
+
+- [x] (2026-11-23, a Mac, the Pixel 9) `roci package android` on a copy of `examples/bricks` (with an id, `orientation = "portrait"` and `category = "game"`) makes `output/package/android/<name>-<version>-android-arm64.apk`; `aapt2 dump badging` shows its id, versionCode (the build number), versionName, label and adaptive icon, `dump xmltree` the portrait orientation and the game category and no `debuggable`, and `apksigner verify --print-certs` its signature.
+- [x] (2026-11-23) `adb install -r` installs it, it starts full-screen in portrait, and its game is in play; installing the next build over it unpacks the sketch's files again (`adb logcat -s rocinante` says how many) and keeps it running, and starting it a second time unpacks nothing.
+- [x] (2026-11-23) The first package for an id makes the release key in `~/Library/Application Support/rocinante/android` (a mode-600 password file beside it) and says to keep a copy; the next uses it.
+- [x] (2026-11-23) `roci run --compile --target android` still puts a test build on the phone.
+- [ ] The sounds of the sketch are heard on the phone, and a sketch with fonts, images and a vault (WILDVEX) shows its font and keeps its `vault.key` and `memory.toml` in the app's folder across an update; the first start of a sketch with hundreds of megabytes of assets takes how long.
+- [ ] An update signed with the same key replaces the installed app and keeps what it remembered; one signed with another key is refused by the phone (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`).
+- [ ] A sketch that uses `mic` or `webcam` has `RECORD_AUDIO` or `CAMERA` in its manifest and the phone asks when it uses them; one that uses neither has neither.
+- [ ] `roci package android` on a Linux x86-64 and a Windows computer; on another phone and another Android version.
+- [ ] The Android App Bundle for Google Play (not built yet).
+
 ## Linux and the BSDs: everything to try (CachyOS, FreeBSD, OpenBSD)
 
 These systems were last tried in full before text, shaders, canvases, export and the whole user interface. Go through all of it on each, and write down what differs in the results table's notes. Everything in the first list must pass before anything else is worth trying.

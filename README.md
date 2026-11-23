@@ -31,7 +31,7 @@ All of it is at <https://rocinante-lang.org/>, built from this repository.
 
 ## Status
 
-An alpha. The language, the `roci` command (`run`, `check`, `fmt`, `man`, `test`, `new`, `get`), 2D and 3D drawing, text, pictures, shaders, widgets with screen readers, sound, MIDI and OSC all work, on macOS, Linux, FreeBSD, OpenBSD and Windows, and on an iPhone and an Android phone (`roci run --compile --target ios|android` puts a compiled sketch on a phone that is plugged in). `roci package` makes an app of a sketch for macOS, Linux, FreeBSD and OpenBSD; the other systems are not written yet. What each phase built and measured is in [docs/phases.md](docs/phases.md).
+An alpha. The language, the `roci` command (`run`, `check`, `fmt`, `man`, `test`, `new`, `get`), 2D and 3D drawing, text, pictures, shaders, widgets with screen readers, sound, MIDI and OSC all work, on macOS, Linux, FreeBSD, OpenBSD and Windows, and on an iPhone and an Android phone (`roci run --compile --target ios|android` puts a compiled sketch on a phone that is plugged in). `roci package` makes an app of a sketch for macOS, Linux, FreeBSD, OpenBSD and Android; the other systems are not written yet. What each phase built and measured is in [docs/phases.md](docs/phases.md).
 
 ## Building and contributing
 
