@@ -35,6 +35,14 @@ find_source :: proc() -> (root: string, ok: bool) {
 	if err != nil {
 		return "", false
 	}
+	return source_above(dir)
+}
+
+// The first folder from `dir` up (six at most) that holds the source of rocinante. Windows names folders with
+// backslashes, which are made slashes first, so the walk up finds the parent there too.
+source_above :: proc(start: string) -> (root: string, ok: bool) {
+	dir, _ := strings.replace_all(start, "\\", "/", context.temp_allocator)
+	dir = strings.trim_right(dir, "/")
 	for _ in 0 ..< 6 {
 		if is_source(dir) {
 			return dir, true
@@ -132,6 +140,22 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 		term.progress_fail(&p)
 		return 5
 	}
+	// Windows finds a program's libraries beside it (or on the PATH), so the ones it asks for are put there
+	when ODIN_OS == .Windows {
+		if odin_root, have_root := probe("odin", "root"); have_root {
+			carried, carried_ok := find_windows_libraries(binary, strings.trim_right(slashed(strings.trim_space(odin_root)), "/"), err)
+			if !carried_ok {
+				term.progress_fail(&p)
+				return 5
+			}
+			for library in carried {
+				if !copy_one(library, strings.concatenate({folder_path, "/", base_name(library)}, context.temp_allocator), err) {
+					term.progress_fail(&p)
+					return 5
+				}
+			}
+		}
+	}
 	term.progress_finish(&p)
 	term.progress_result(&p, "program", binary)
 	fmt.println()
@@ -171,11 +195,27 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 	if wait_err != nil {
 		return 5
 	}
+	if why := windows_start_failure(state.exit_code); why != "" {
+		fmt.sbprintf(err, "%s\n", why)
+		return 5
+	}
 	return state.exit_code
 }
 
+// What Windows meant when a program ended with one of the codes it gives a program it could not start: a library missing beside it,
+// or one of the wrong kind. Empty for any other code, which is the program's own.
+windows_start_failure :: proc(code: int) -> string {
+	switch u32(i64(code) & 0xFFFFFFFF) {
+	case 0xC0000135:
+		return "Windows could not start the program: a library it needs (SDL3.dll or SDL3_ttf.dll) is not beside it."
+	case 0xC000007B:
+		return "Windows could not start the program: a library beside it is of the wrong kind (32-bit, or for another processor)."
+	}
+	return ""
+}
+
 // Checks a sketch, turns it into the Odin source of its program and writes it as `source/sketch.odin` in `folder_path`, which it
-// makes. `target` is "", "ios", "android", or "macos", "linux", "freebsd" or "openbsd" for an app, whose `app_id` names the folder it keeps its files in
+// makes. `target` is "", "ios", "android", or "macos", "linux", "freebsd", "openbsd" or "windows" for an app, whose `app_id` names the folder it keeps its files in
 // and its windows, and whose `app_name` is what volume controls show. Gives the folder the source is in, and 0, or what went wrong
 // said in `err` and a code to exit with: 1 the sketch has errors, 4 it uses what cannot be compiled yet, 2 the files could not be written.
 // When `uses` is given it is set to what the sketch asks the computer's devices for, which a Mac app is signed for.

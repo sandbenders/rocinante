@@ -48,3 +48,37 @@ test_a_compiler_that_fails_without_a_word_is_explained :: proc(t: ^testing.T) {
 	// any other silent failure gives its code
 	testing.expect_value(t, compiler_silent(os.Process_State{exited = true, exit_code = 3}, nil), "The compiler stopped with code 3 and said nothing.\n")
 }
+
+@(test)
+test_the_source_is_found_above_a_folder_named_with_backslashes_or_slashes :: proc(t: ^testing.T) {
+	cwd, _ := os.get_working_directory(context.temp_allocator)
+	cwd, _ = strings.replace_all(cwd, "\\", "/", context.temp_allocator)
+	root := strings.concatenate({cwd, "/output/tests/source-above"}, context.temp_allocator)
+	os.remove_all(root)
+	defer os.remove_all(root)
+	testing.expect(t, os.make_directory_all(strings.concatenate({root, "/roci"}, context.temp_allocator)) == nil)
+	testing.expect(t, os.make_directory_all(strings.concatenate({root, "/output/bin"}, context.temp_allocator)) == nil)
+	testing.expect(t, os.write_entire_file(strings.concatenate({root, "/ODIN_VERSION"}, context.temp_allocator), transmute([]u8)string("dev-2026-11\n")) == nil)
+
+	found, ok := source_above(strings.concatenate({root, "/output/bin"}, context.temp_allocator))
+	testing.expect(t, ok)
+	testing.expect_value(t, found, root)
+
+	backslashed, _ := strings.replace_all(strings.concatenate({root, "/output/bin/"}, context.temp_allocator), "/", "\\", context.temp_allocator)
+	found, ok = source_above(backslashed)
+	testing.expect(t, ok, "a Windows folder, with backslashes, is walked up too")
+	testing.expect_value(t, found, root)
+
+	found, ok = source_above("/no/such/folder")
+	testing.expect(t, !ok, "a folder with no source above it")
+}
+
+@(test)
+test_windows_says_why_it_could_not_start_a_program :: proc(t: ^testing.T) {
+	testing.expect(t, strings.contains(windows_start_failure(-1073741515), "SDL3.dll"), "the code as a negative number")
+	testing.expect(t, strings.contains(windows_start_failure(0xC0000135), "SDL3.dll"), "and as a positive one")
+	testing.expect(t, strings.contains(windows_start_failure(0xC000007B), "wrong kind"))
+	testing.expect_value(t, windows_start_failure(0), "")
+	testing.expect_value(t, windows_start_failure(1), "")
+	testing.expect_value(t, windows_start_failure(5), "")
+}
