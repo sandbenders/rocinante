@@ -78,7 +78,7 @@ test_the_date_version_is_the_day_of_packaging :: proc(t: ^testing.T) {
 
 @(test)
 test_the_info_plist_names_the_app_and_says_why_it_may_listen_and_look :: proc(t: ^testing.T) {
-	text := info_plist(Plist_Info{name = "Wild & <Vex>", executable = "wild-vex", id = "org.example.wildvex", version = "1.0.1", build = 7, icon = "AppIcon", category = "public.app-category.games", minimum = "26.0"})
+	text := info_plist(Plist_Info{name = "Wild & <Vex>", executable = "wild-vex", id = "org.example.wildvex", version = "1.0.1", build = 7, icon = "AppIcon", category = "public.app-category.games", minimum = "26.0", microphone = true, camera = true})
 	for needle in ([]string{
 		"<key>CFBundleExecutable</key>\n\t<string>wild-vex</string>",
 		"<key>CFBundleIdentifier</key>\n\t<string>org.example.wildvex</string>",
@@ -100,8 +100,44 @@ test_the_info_plist_names_the_app_and_says_why_it_may_listen_and_look :: proc(t:
 	testing.expect(t, !strings.contains(plain, "CFBundleIconFile") && !strings.contains(plain, "LSApplicationCategoryType"))
 	testing.expect(t, strings.contains(plain, "<key>LSMinimumSystemVersion</key>\n\t<string>12.0</string>"))
 	testing.expect_value(t, xml_escape("a&b<c>\"d\"'e'"), "a&amp;b&lt;c&gt;&quot;d&quot;&apos;e&apos;")
-	testing.expect(t, strings.contains(entitlements_plist(), "com.apple.security.device.audio-input"))
-	testing.expect(t, strings.contains(entitlements_plist(), "com.apple.security.device.camera"))
+	// a sketch that listens to nothing and looks at nothing gives the app no reason to say, so nothing can make macOS ask (issue 72: a
+	// Mac app asked for the microphone though the sketch never used it)
+	testing.expect(t, !strings.contains(plain, "NSMicrophoneUsageDescription"))
+	testing.expect(t, !strings.contains(plain, "NSCameraUsageDescription"))
+	ears := info_plist(Plist_Info{name = "A", executable = "a", id = "x.y", version = "1", build = 1, microphone = true})
+	testing.expect(t, strings.contains(ears, "NSMicrophoneUsageDescription") && !strings.contains(ears, "NSCameraUsageDescription"))
+	eyes := info_plist(Plist_Info{name = "A", executable = "a", id = "x.y", version = "1", build = 1, camera = true})
+	testing.expect(t, strings.contains(eyes, "NSCameraUsageDescription") && !strings.contains(eyes, "NSMicrophoneUsageDescription"))
+}
+
+@(test)
+test_the_entitlements_are_only_for_the_microphone_and_the_camera_the_sketch_uses :: proc(t: ^testing.T) {
+	microphone :: "com.apple.security.device.audio-input"
+	camera :: "com.apple.security.device.camera"
+	libraries :: "com.apple.security.cs.disable-library-validation"
+	both := entitlements_plist(true, true, false)
+	testing.expect(t, strings.contains(both, microphone) && strings.contains(both, camera))
+	ears := entitlements_plist(true, false, false)
+	testing.expect(t, strings.contains(ears, microphone) && !strings.contains(ears, camera))
+	eyes := entitlements_plist(false, true, false)
+	testing.expect(t, !strings.contains(eyes, microphone) && strings.contains(eyes, camera))
+	// neither: still a plist the signing tool reads, with nothing granted
+	neither := entitlements_plist(false, false, false)
+	testing.expect(t, !strings.contains(neither, microphone) && !strings.contains(neither, camera))
+	testing.expect(t, strings.contains(neither, "<dict>\n</dict>"), neither)
+	// a Developer ID signature needs no switch for its libraries; an ad hoc one does, or the hardened runtime refuses the libraries the
+	// app carries (found on 2026-11-23: dyld said "have different Team IDs")
+	for text in ([]string{both, ears, eyes, neither}) {
+		testing.expect(t, !strings.contains(text, libraries))
+	}
+	adhoc := entitlements_plist(false, false, true)
+	testing.expect(t, strings.contains(adhoc, libraries) && !strings.contains(adhoc, microphone) && !strings.contains(adhoc, camera))
+	adhoc_all := entitlements_plist(true, true, true)
+	testing.expect(t, strings.contains(adhoc_all, libraries) && strings.contains(adhoc_all, microphone) && strings.contains(adhoc_all, camera))
+	for text in ([]string{both, ears, eyes, neither, adhoc, adhoc_all}) {
+		testing.expect(t, strings.has_prefix(text, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"))
+		testing.expect(t, strings.has_suffix(text, "</dict>\n</plist>\n"))
+	}
 }
 
 @(test)

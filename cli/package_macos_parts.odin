@@ -18,6 +18,8 @@ Plist_Info :: struct {
 	icon:       string, // the icon file in Resources, without its extension; empty for none
 	category:   string, // LSApplicationCategoryType; empty for none
 	minimum:    string, // the oldest macOS it runs on
+	microphone: bool,   // the sketch uses `mic`: the plist says why it may listen
+	camera:     bool,   // the sketch uses `webcam`: the plist says why it may look
 }
 
 // The oldest macOS an app asks for when the computer's own cannot be read: the libraries SDL needs are built for 12.
@@ -55,8 +57,8 @@ xml_escape :: proc(text: string, allocator := context.temp_allocator) -> string 
 	return strings.to_string(b)
 }
 
-// The `Info.plist` of the app. It says why a sketch may ask for the microphone and the camera, because macOS shows that
-// text when one does and ends a program that asks without it.
+// The `Info.plist` of the app. When the sketch uses the microphone or the camera it says why, because macOS shows that text when
+// the app asks and ends a program that asks without it; a sketch that uses neither gets no such text.
 info_plist :: proc(info: Plist_Info, allocator := context.temp_allocator) -> string {
 	b := strings.builder_make(allocator)
 	entry :: proc(b: ^strings.Builder, key, value: string) {
@@ -82,27 +84,40 @@ info_plist :: proc(info: Plist_Info, allocator := context.temp_allocator) -> str
 	}
 	entry(&b, "LSMinimumSystemVersion", info.minimum if info.minimum != "" else MACOS_FALLBACK)
 	entry(&b, "NSPrincipalClass", "NSApplication")
-	entry(&b, "NSMicrophoneUsageDescription", "This sketch can listen to the microphone to draw with sound.")
-	entry(&b, "NSCameraUsageDescription", "This sketch can use the camera to draw with what it sees.")
+	// the reasons are written only for what the sketch uses: macOS shows the text when something asks to listen or look, and an app that
+	// never uses the microphone must not be able to make it ask
+	if info.microphone {
+		entry(&b, "NSMicrophoneUsageDescription", "This sketch can listen to the microphone to draw with sound.")
+	}
+	if info.camera {
+		entry(&b, "NSCameraUsageDescription", "This sketch can use the camera to draw with what it sees.")
+	}
 	strings.write_string(&b, "\t<key>NSHighResolutionCapable</key>\n\t<true/>\n")
 	strings.write_string(&b, "</dict>\n</plist>\n")
 	return strings.to_string(b)
 }
 
-// What a signed app may do besides what every app may: listen to the microphone and use the camera (a program with the hardened
-// runtime that has no entitlement for them is given silence and black).
-entitlements_plist :: proc() -> string {
-	return `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>com.apple.security.device.audio-input</key>
-	<true/>
-	<key>com.apple.security.device.camera</key>
-	<true/>
-</dict>
-</plist>
-`
+// What a signed app may do besides what every app may: listen to the microphone and use the camera, each only when the sketch uses
+// it. A program with the hardened runtime that has no entitlement for one of them is refused it without being asked, and gets silence
+// or black. `own_libraries` is for an app signed only so that it runs on this Mac: the hardened runtime then refuses the libraries
+// it carries ("have different Team IDs": an ad hoc signature has no team for the program and the libraries to share), so library
+// validation is switched off for it; a Developer ID signs the program and its libraries with one team, and needs no such thing.
+entitlements_plist :: proc(microphone, camera, own_libraries: bool, allocator := context.temp_allocator) -> string {
+	b := strings.builder_make(allocator)
+	strings.write_string(&b, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+	strings.write_string(&b, "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n")
+	strings.write_string(&b, "<plist version=\"1.0\">\n<dict>\n")
+	if own_libraries {
+		strings.write_string(&b, "\t<key>com.apple.security.cs.disable-library-validation</key>\n\t<true/>\n")
+	}
+	if microphone {
+		strings.write_string(&b, "\t<key>com.apple.security.device.audio-input</key>\n\t<true/>\n")
+	}
+	if camera {
+		strings.write_string(&b, "\t<key>com.apple.security.device.camera</key>\n\t<true/>\n")
+	}
+	strings.write_string(&b, "</dict>\n</plist>\n")
+	return strings.to_string(b)
 }
 
 // The libraries a program asks the computer for: every dependency `otool -L` lists that is not the system's (`/System`, `/usr/lib`)

@@ -7,6 +7,7 @@
 // and zipped. Everything is in `output/package/macos` of the sketch's folder.
 package main
 
+import "../roci/codegen"
 import "../roci/folder"
 import "../tools/term"
 import "core:fmt"
@@ -126,7 +127,9 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 
 	// ---- the program ----
 	say_step(.Compile, "Compiling the sketch")
-	source_folder, code := make_source(file, files, "macos", settings.id, settings.name, work, err)
+	// what the sketch asks the computer's devices for: the app is given the permission for the microphone and the camera only then
+	uses: codegen.Uses
+	source_folder, code := make_source(file, files, "macos", settings.id, settings.name, work, err, &uses)
 	if code != 0 {
 		return code
 	}
@@ -221,7 +224,7 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	if !make_icns(fmt.tprintf("%s/macos/%s.iconset", icons.folder, slug), resources, err) {
 		return 5
 	}
-	plist := info_plist(Plist_Info{name = settings.name, executable = names.executable, id = settings.id, version = version, build = build_number, icon = "AppIcon", category = settings.category, minimum = minimum})
+	plist := info_plist(Plist_Info{name = settings.name, executable = names.executable, id = settings.id, version = version, build = build_number, icon = "AppIcon", category = settings.category, minimum = minimum, microphone = uses.microphone, camera = uses.camera})
 	if os.write_entire_file(strings.concatenate({contents, "/Info.plist"}, context.temp_allocator), transmute([]byte)plist) != nil {
 		fmt.sbprintf(err, "I cannot write the Info.plist of the app.\n")
 		return 5
@@ -243,15 +246,17 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 	say_step(.Sign, "Signing the app" if real_identity else "Signing the app for this Mac")
 	entitlements := strings.concatenate({work, "/entitlements.plist"}, context.temp_allocator)
-	_ = os.write_entire_file(entitlements, transmute([]byte)entitlements_plist())
+	_ = os.write_entire_file(entitlements, transmute([]byte)entitlements_plist(uses.microphone, uses.camera, !real_identity))
 	sign_with := identity if real_identity else "-"
+	// the hardened runtime goes on every signature, the one that only lets the app run on this Mac included: without it the
+	// entitlements decide nothing, and an app that touches the microphone with no entitlement is asked about it (or ended) by macOS
+	// instead of being refused; only a Developer ID signature gets the secure timestamp
 	for dylib in ([]string{"libSDL3.0.dylib", "libSDL3_ttf.0.dylib"}) {
-		command := []string{"codesign", "--force", "--sign", sign_with}
-		if real_identity {
-			command = []string{"codesign", "--force", "--sign", sign_with, "--options", "runtime", "--timestamp"}
-		}
 		whole := make([dynamic]string, context.temp_allocator)
-		append(&whole, ..command)
+		append(&whole, "codesign", "--force", "--sign", sign_with, "--options", "runtime")
+		if real_identity {
+			append(&whole, "--timestamp")
+		}
 		append(&whole, strings.concatenate({frameworks, "/", dylib}, context.temp_allocator))
 		if _, signed := run_tool(err, "Signing a library", ..whole[:]); !signed {
 			return 5
@@ -259,9 +264,9 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 	{
 		whole := make([dynamic]string, context.temp_allocator)
-		append(&whole, "codesign", "--force", "--sign", sign_with, "--entitlements", entitlements)
+		append(&whole, "codesign", "--force", "--sign", sign_with, "--entitlements", entitlements, "--options", "runtime")
 		if real_identity {
-			append(&whole, "--options", "runtime", "--timestamp")
+			append(&whole, "--timestamp")
 		}
 		append(&whole, app)
 		if _, signed := run_tool(err, "Signing the app", ..whole[:]); !signed {

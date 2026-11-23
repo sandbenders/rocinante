@@ -178,7 +178,8 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 // makes. `target` is "", "ios", "android", or "macos", "linux", "freebsd" or "openbsd" for an app, whose `app_id` names the folder it keeps its files in
 // and its windows, and whose `app_name` is what volume controls show. Gives the folder the source is in, and 0, or what went wrong
 // said in `err` and a code to exit with: 1 the sketch has errors, 4 it uses what cannot be compiled yet, 2 the files could not be written.
-make_source :: proc(file: string, files: []lang.File_Text, target, app_id, app_name, folder_path: string, err: ^strings.Builder) -> (source_folder: string, code: int) {
+// When `uses` is given it is set to what the sketch asks the computer's devices for, which a Mac app is signed for.
+make_source :: proc(file: string, files: []lang.File_Text, target, app_id, app_name, folder_path: string, err: ^strings.Builder, uses: ^codegen.Uses = nil) -> (source_folder: string, code: int) {
 	p, ok := interp.load_files(files)
 	defer interp.destroy(p)
 	if len(p.checked.diagnostics) > 0 {
@@ -191,6 +192,9 @@ make_source :: proc(file: string, files: []lang.File_Text, target, app_id, app_n
 	if len(generated.problems) > 0 {
 		say_problems(generated.problems, p.src, err)
 		return "", 4
+	}
+	if uses != nil {
+		uses^ = generated.uses
 	}
 	source_folder = strings.concatenate({folder_path, "/source"}, context.temp_allocator)
 	if !folder.ensure_directory(source_folder) {
