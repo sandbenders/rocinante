@@ -90,6 +90,23 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [ ] `roci package android` on a Linux x86-64 and a Windows computer; on another phone and another Android version.
 - [ ] The Android App Bundle for Google Play (not built yet).
 
+## Packaging an iPhone app
+
+
+
+`roci package ios` is tried by hand with a phone (the unit tests cover the id, orientation and colour words, the `Info.plist` and the catalog files).
+
+
+
+- [x] (2026-11-23, a Mac) `roci package ios` on a copy of `examples/bricks` makes the app and the `.ipa`: its own id, name, version, build, icon pictures and compiled catalog, signed by the development team.
+
+- [ ] The app installs on the iPhone 13 Pro with `xcrun devicectl device install app`, starts full-screen in the orientation asked for and shows the launch colour while it starts; its icon is the sketch's.
+
+- [ ] WILDVEX (all its assets) packaged for the iPhone installs and works; its sounds are heard.
+
+- [ ] A sketch that uses `mic` or `webcam` makes the phone ask; one that uses neither never does.
+
+- [ ] A distribution signature, TestFlight and the App Store (not built).
 ## Linux and the BSDs: everything to try (CachyOS, FreeBSD, OpenBSD)
 
 These systems were last tried in full before text, shaders, canvases, export and the whole user interface. Go through all of it on each, and write down what differs in the results table's notes. Everything in the first list must pass before anything else is worth trying.

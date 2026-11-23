@@ -17,7 +17,7 @@ import "core:strings"
 import "core:time"
 
 PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--version text] [--icon file] [--sign identity] [--notarize profile]
-                            [--format list] [--maintainer text] [--description text] [--category text] [--yes]
+                            [--format list] [--maintainer text] [--description text] [--category text] [--team id] [--yes]
 
   target      the system the app is for: linux, freebsd, openbsd, macos, windows, android or ios. It is
               built on this computer only if this computer can build it (roci doctor says)
@@ -60,6 +60,7 @@ Package_Args :: struct {
 	maintainer: string,
 	description: string,
 	category: string,
+	team:    string, // the Apple development team that signs an iPhone app
 	yes:     bool,
 }
 
@@ -71,7 +72,7 @@ parse_package_args :: proc(args: []string) -> Package_Args {
 		switch arg {
 		case "--yes":
 			result.yes = true
-		case "--name", "--id", "--version", "--icon", "--sign", "--notarize", "--format", "--maintainer", "--description", "--category":
+		case "--name", "--id", "--version", "--icon", "--sign", "--notarize", "--format", "--maintainer", "--description", "--category", "--team":
 			if i + 1 >= len(args) {
 				return Package_Args{ok = false, bad = arg}
 			}
@@ -88,6 +89,7 @@ parse_package_args :: proc(args: []string) -> Package_Args {
 			case "--maintainer": result.maintainer = value
 			case "--description": result.description = value
 			case "--category":   result.category = value
+			case "--team":       result.team = value
 			}
 		case:
 			if strings.has_prefix(arg, "-") {
@@ -313,9 +315,11 @@ run_package :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		end_packaging(code == 0)
 		return code
 	case "ios":
-		fmt.sbprintf(err, "`roci package %s` is not written yet. `roci run --compile --target %s` puts a sketch on a phone that is plugged in.\n", target.name, target.name)
+		code := package_ios(a, out, err)
+		end_packaging(code == 0)
+		return code
 	case:
-		fmt.sbprintf(err, "`roci package %s` is not written yet: the Mac, Linux, FreeBSD, OpenBSD and Android are the systems it makes apps for so far.\n", target.name)
+		fmt.sbprintf(err, "`roci package %s` is not written yet: the Mac, Linux, FreeBSD, OpenBSD, Android and the iPhone are the systems it makes apps for so far.\n", target.name)
 	}
 	return 2
 }
