@@ -65,7 +65,8 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [x] (2026-11-23, OpenBSD 8.0 amd64) `roci package openbsd examples/circle --yes --maintainer "Name <you@example.org>"` makes the `.tgz` and the `.tar.gz` in `output/package/openbsd` (the first time it builds the SDL3_ttf the app carries, about two minutes), and prints the packages the app depends on.
 - [x] (2026-11-23) `pkg_add -n -D unsigned ./circle-1.0.0.tgz` says the package is ok, with `sdl3`, `shaderc` and `spirv-cross` as its dependencies and the libraries it asks for listed.
 - [x] (2026-11-23) The `.tar.gz` unpacked in another folder runs its program from a third one with no window, and loads its own `libSDL3_ttf.so.0` from the `lib` beside it and SDL3 from the system.
-- [ ] `doas pkg_add -D unsigned ./circle-1.0.0.tgz` installs it (from the folder it is in: a bare file name is taken for a package on a mirror): `pkg_info circle` and `pkg_info -L circle` list what is expected, `circle` starts it from a terminal in a window, and `pkg_delete circle` leaves nothing behind.
+- [x] (2026-11-23, Fabrizio, OpenBSD 8.0 amd64) `doas pkg_add -D unsigned ./circle-1.0.0.tgz` installs it (from the folder it is in: a bare file name is taken for a package on a mirror) and the app works.
+- [ ] `pkg_info circle` and `pkg_info -L circle` list what is expected, and `pkg_delete circle` leaves nothing behind.
 - [ ] The menu entry and its icon show in a desktop, and the window's app id is the sketch's id.
 - [ ] The `.tar.gz` unpacked on an OpenBSD with nothing of rocinante installed runs its program after the `pkg_add` line of its `README.txt`.
 - [ ] A sketch with assets, fonts, sounds and a vault shows its font and plays its sounds from the package, and its `vault.key` and `memory.toml` appear in `~/.local/share/<its id>` the first time.
