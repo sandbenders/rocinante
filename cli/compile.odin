@@ -452,6 +452,24 @@ put_on_phone :: proc(p: ^term.Progress, parsed: Run_Args, root, sketch, source_f
 	if cleaned, clean_err := filepath.clean(log_path, context.temp_allocator); clean_err == nil {
 		log_path = cleaned
 	}
+	results, finished, code := run_phone_script(p, command[:], script, log_path, err)
+	if code != 0 {
+		return code
+	}
+	term.progress_finish(p)
+	for r in results {
+		term.progress_result(p, r.name, r.text)
+	}
+	if finished != "" {
+		fmt.printfln("\n%s", finished)
+	}
+	return 0
+}
+
+// Runs a script of `tools/` that says what it does in the lines `parse_phone_line` reads: each step it starts is drawn on `p`, what
+// it made and its last word are given back, and what the tools it runs said goes to the log. A failure ends `p` as failed, says what
+// went wrong in `err` and gives the code to exit with; otherwise the code is 0 and `p` is left for the caller to finish.
+run_phone_script :: proc(p: ^term.Progress, command: []string, script, log_path: string, err: ^strings.Builder) -> ([]Phone_Line, string, int) {
 	log, log_err := os.create(log_path)
 	defer if log_err == nil {
 		os.close(log)
@@ -460,7 +478,7 @@ put_on_phone :: proc(p: ^term.Progress, parsed: Run_Args, root, sketch, source_f
 	if pipe_err != nil {
 		term.progress_fail(p)
 		fmt.sbprintf(err, "I could not start `%s`.\n", script)
-		return 5
+		return nil, "", 5
 	}
 	defer os.close(reader)
 	process, start_err := os.process_start({command = command[:], stdout = writer, stderr = writer})
@@ -468,7 +486,7 @@ put_on_phone :: proc(p: ^term.Progress, parsed: Run_Args, root, sketch, source_f
 	if start_err != nil {
 		term.progress_fail(p)
 		fmt.sbprintf(err, "I could not start `%s`.\n", script)
-		return 5
+		return nil, "", 5
 	}
 	problems := make([dynamic]string, context.temp_allocator)
 	results := make([dynamic]Phone_Line, context.temp_allocator)
@@ -538,14 +556,7 @@ put_on_phone :: proc(p: ^term.Progress, parsed: Run_Args, root, sketch, source_f
 		if len(tail) > 0 {
 			fmt.sbprintf(err, "The whole of it is in %s.\n", log_path)
 		}
-		return state.exit_code if state.exit_code != 0 else 5
+		return nil, "", state.exit_code if state.exit_code != 0 else 5
 	}
-	term.progress_finish(p)
-	for r in results {
-		term.progress_result(p, r.name, r.text)
-	}
-	if finished != "" {
-		fmt.printfln("\n%s", finished)
-	}
-	return 0
+	return results[:], finished, 0
 }
