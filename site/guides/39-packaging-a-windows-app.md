@@ -1,6 +1,6 @@
 ---
 title: "Making a Windows app"
-summary: "Turn a sketch into a Windows app with roci package windows: a zip to unpack and run, an MSIX package that installs, signing, and what SmartScreen says."
+summary: "Turn a sketch into a Windows app with roci package windows: an installer for everyone, a zip, an MSIX package, signing, and SmartScreen."
 weight: 39
 ---
 
@@ -15,14 +15,30 @@ It works in the sketch's folder (or give it a folder), refuses a sketch that has
 
 ## The formats
 
-`--format` takes the names below, with a comma between them, or `all`. With nothing it makes the zip.
+`--format` takes the names below, with a comma between them, or `all`. With nothing it makes the installer and the zip.
 
 | Word | What it makes | How people use it |
 |---|---|---|
+| `setup` | `name-1.0.0-windows-x64-setup.exe`: an installer | run it, and the app is installed for everyone on the computer |
 | `zip` | `name-1.0.0-windows-x64.zip`: the app's folder | unzip it anywhere and run `name.exe` |
-| `msix` | `name-1.0.0-windows-x64.msix`: a package that installs | open it, and Windows installs the app with a Start menu entry; Settings, Apps removes it |
+| `msix` | `name-1.0.0-windows-x64.msix`: a package that installs | open it, and Windows installs the app for that person; Settings, Apps removes it |
 
 The app's folder is in `output/package/windows` too, ready to run as it is.
+
+## The installer
+
+The installer puts the app in `C:\Program Files\<name>` for everyone on the computer, adds it to the Start menu and to Settings, Apps, which removes it again. It asks once, in a Windows message box, and Windows asks first for an administrator, since Program Files belongs to the whole computer. Installing a newer version replaces the one there; installing while the app is open stops and says to close it first.
+
+It also works with nothing asked, for those who install on many computers:
+
+```
+name-1.0.0-windows-x64-setup.exe /S
+name-1.0.0-windows-x64-setup.exe /S /D=D:\Apps\Name
+```
+
+`/S` asks nothing and says nothing, and `/D=` chooses another folder (the last word on the line). The app carries `uninstall.exe`, which Settings, Apps runs; `uninstall.exe /uninstall /S` removes it with nothing asked. Removing it leaves what the app keeps for each person, in their `%APPDATA%\<id>`.
+
+The installer is rocinante's own: a small program with the app's files inside it, compressed, so nothing else is needed to make it or to run it. Its exit code is 0 when it did what it was asked, 1 when it was told no, 2 when it failed and 3 when the app was open.
 
 ## What goes inside
 
@@ -34,7 +50,7 @@ Before anything is zipped, the app is run once, for two frames, with no window, 
 
 An app that is not signed runs, but Windows' SmartScreen stops it the first time with "Windows protected your PC": people choose More info, then Run anyway. A signed app says who made it.
 
-`roci package windows` signs the program, its libraries and the MSIX package when your certificate store has a code-signing certificate (one with its private key that has not expired). With one, it uses it; with several, name the one you want:
+`roci package windows` signs the program, its libraries, the installer, its uninstaller and the MSIX package when your certificate store has a code-signing certificate (one with its private key that has not expired). With one, it uses it; with several, name the one you want:
 
 ```
 roci package windows --sign "Your Name"
@@ -71,7 +87,7 @@ version = "1.0.1"
 description = "A game about ships"
 
 [windows]
-formats = "zip, msix"
+formats = "setup, zip, msix"
 certificate = "Your Name"
 ```
 

@@ -91,6 +91,11 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [ ] A sketch that uses `mic` or `webcam`: the MSIX asks Windows for them, and one that does not is not listed under the microphone in Settings, Privacy.
 - [ ] `--sign` with a thumbprint and with a part of a name; `--sign` naming no certificate stops before anything is built; two certificates and no `--sign` stop with the question.
 - [ ] A certificate from an authority, and SmartScreen's warning with it; Windows 10; an arm64 Windows (the app is x64 and would run emulated).
+- [x] (2026-11-23, Windows 11) The installer (`--format setup`, made by default): `Get-AuthenticodeSignature` says it and its `uninstall.exe` are Valid; `setup.exe /S` from an elevated prompt installs into `C:\Program Files\<name>` with the Start menu shortcut and the entry in `HKLM\...\Uninstall\<id>`; the app starts from the shortcut as the user; a newer version installs over it; installing while the app is open exits 3 and leaves it whole; `uninstall.exe /uninstall /S` removes the folder, the shortcut and the entry.
+- [ ] The installer run by double-clicking: Windows asks for an administrator, its question and its message are clear and read by Narrator, and Settings, Apps shows the app with its icon, version, publisher and size, and its Uninstall button asks and removes it.
+- [ ] `setup.exe /S /D=D:\Apps\Name` installs there, and uninstalling removes only that folder; `/D=` naming a folder with other files in it stops with the message.
+- [ ] An unsigned installer: SmartScreen's warning, and Windows' administrator question showing an unknown publisher.
+- [ ] A sketch of a few hundred megabytes of assets installs (the installer reads itself into memory), and how long it takes.
 
 ## Packaging an Android app
 
