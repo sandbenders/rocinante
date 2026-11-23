@@ -100,7 +100,8 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 
 - [x] (2026-11-23, a Mac) `roci package ios` on a copy of `examples/bricks` makes the app and the `.ipa`: its own id, name, version, build, icon pictures and compiled catalog, signed by the development team.
 
-- [ ] The app installs on the iPhone 13 Pro with `xcrun devicectl device install app`, starts full-screen in the orientation asked for and shows the launch colour while it starts; its icon is the sketch's.
+- [x] (2026-11-23, Fabrizio, the iPhone 13 Pro) WILDVEX packaged with `roci package ios` installs and works.
+- [ ] The app starts in the orientation asked for and shows the launch colour while it starts; its icon is the sketch's.
 
 - [ ] WILDVEX (all its assets) packaged for the iPhone installs and works; its sounds are heard.
 
