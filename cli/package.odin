@@ -17,7 +17,7 @@ import "core:strings"
 import "core:time"
 
 PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--version text] [--icon file] [--sign identity] [--notarize profile]
-                            [--format list] [--maintainer text] [--description text] [--category text] [--team id] [--yes]
+                            [--format list] [--maintainer text] [--description text] [--category text] [--team id] [--app-store] [--upload] [--yes]
 
   target      the system the app is for: linux, freebsd, openbsd, macos, windows, android or ios. It is
               built on this computer only if this computer can build it (roci doctor says)
@@ -62,6 +62,8 @@ Package_Args :: struct {
 	category: string,
 	team:    string, // the Apple development team that signs an iPhone app
 	yes:     bool,
+	app_store: bool, // iOS: also make the build for the App Store (an .ipa signed for distribution)
+	upload:  bool,   // iOS: and send it to App Store Connect
 }
 
 parse_package_args :: proc(args: []string) -> Package_Args {
@@ -70,6 +72,11 @@ parse_package_args :: proc(args: []string) -> Package_Args {
 	for i := 0; i < len(args); i += 1 {
 		arg := args[i]
 		switch arg {
+		case "--app-store":
+			result.app_store = true
+		case "--upload":
+			result.app_store = true
+			result.upload = true
 		case "--yes":
 			result.yes = true
 		case "--name", "--id", "--version", "--icon", "--sign", "--notarize", "--format", "--maintainer", "--description", "--category", "--team":

@@ -255,3 +255,13 @@ test_the_mac_formats_are_a_disk_image_unless_a_zip_is_asked_for :: proc(t: ^test
 	testing.expect_value(t, names.dmg, "wild-vex-1.0.1-macos-arm64.dmg")
 	testing.expect_value(t, names.volume, "Wild Vex 1.0.1")
 }
+
+@(test)
+test_the_app_store_flags_are_read_and_upload_means_the_app_store_too :: proc(t: ^testing.T) {
+	a := parse_package_args({"ios", "--app-store"})
+	testing.expect(t, a.ok && a.app_store && !a.upload)
+	b := parse_package_args({"ios", "--upload"})
+	testing.expect(t, b.ok && b.app_store && b.upload)
+	c := parse_package_args({"ios"})
+	testing.expect(t, c.ok && !c.app_store && !c.upload)
+}

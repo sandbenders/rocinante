@@ -91,6 +91,7 @@ test_the_ios_files_are_named_by_the_app_and_its_version :: proc(t: ^testing.T) {
 	testing.expect_value(t, n.product, "wildvex")
 	testing.expect_value(t, n.app, "wildvex.app")
 	testing.expect_value(t, n.ipa, "wildvex-0.1.35-ios.ipa")
+	testing.expect_value(t, n.store_ipa, "wildvex-0.1.35-ios-appstore.ipa")
 }
 
 @(test)
@@ -158,4 +159,22 @@ test_the_files_of_the_asset_catalog_are_json_naming_the_icon_and_the_launch_colo
 	testing.expect(t, strings.contains(colour_text, "\"green\" : \"0.094\""), colour_text)
 	testing.expect(t, strings.contains(colour_text, "\"blue\" : \"0.125\""), colour_text)
 	testing.expect(t, strings.contains(colour_text, "\"color-space\" : \"srgb\""))
+}
+
+@(test)
+test_the_export_options_ask_for_the_app_store_and_keep_the_build_number :: proc(t: ^testing.T) {
+	export := ios_export_options(false)
+	for needle in ([]string{
+		"<key>method</key>\n\t<string>app-store-connect</string>",
+		"<key>destination</key>\n\t<string>export</string>",
+		"<key>signingStyle</key>\n\t<string>automatic</string>",
+		"<key>manageAppVersionAndBuildNumber</key>\n\t<false/>",
+		"<key>uploadSymbols</key>\n\t<false/>",
+	}) {
+		testing.expectf(t, strings.contains(export, needle), "%q is missing from the export options", needle)
+	}
+	upload := ios_export_options(true)
+	testing.expect(t, strings.contains(upload, "<key>destination</key>\n\t<string>upload</string>"))
+	testing.expect(t, !strings.contains(upload, "<string>export</string>"))
+	testing.expect_value(t, strings.count(export, "<dict>"), strings.count(export, "</dict>"))
 }

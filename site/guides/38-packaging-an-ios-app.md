@@ -1,6 +1,6 @@
 ---
 title: "Making an iPhone app"
-summary: "Turn a sketch into a signed iPhone app and .ipa with roci package ios: name, id, icon, launch colour, version, orientation, and what the signature allows."
+summary: "Turn a sketch into a signed iPhone app and .ipa with roci package ios: name, id, icon, launch colour, orientation, and the App Store build (--app-store)."
 weight: 38
 ---
 
@@ -26,4 +26,14 @@ Plug the phone in, unlock it and trust the Mac, find its id with `xcrun devicect
 
 ## What the signature allows
 
-The app is signed with your development team, so it runs only on phones that signature knows, and a free account's signature lasts seven days. The App Store needs a distribution signature and an Apple Developer Program account; that comes later.
+The app is signed with your development team, so it runs only on phones that signature knows, and a free account's signature lasts seven days.
+
+## For TestFlight and the App Store
+
+That needs a paid Apple Developer Program membership, and an app record in App Store Connect with the same bundle id as the sketch's id. Then:
+
+```
+roci package ios --app-store
+```
+
+makes `<name>-<version>-ios-appstore.ipa`, signed for distribution by Xcode with your team's account, and `--upload` also sends it to App Store Connect (Xcode must be signed in to that account; otherwise send the `.ipa` with Transporter). It shows under TestFlight once Apple has processed it. The build number is the one `roci` counts, so each upload is a new build. The first upload asks you about encryption in App Store Connect. With a free account `roci` stops at that step and says so.

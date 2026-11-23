@@ -122,6 +122,15 @@ package_ios :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	append(&command, "env", fmt.tprintf("ROCI_ROOT=%s", root), "NO_INSTALL=1", fmt.tprintf("BUNDLE_ID=%s", bundle_id))
 	append(&command, fmt.tprintf("APP_PLIST=%s", whole_path(plist_file)), fmt.tprintf("APP_CATALOG=%s", whole_path(strings.concatenate({work, "/catalog"}, context.temp_allocator))))
 	append(&command, fmt.tprintf("APP_PRODUCT=%s", names.product), fmt.tprintf("APP_OUT=%s", whole_path(strings.concatenate({work, "/build"}, context.temp_allocator))), fmt.tprintf("APP_IPA=%s", ipa))
+	store_ipa := whole_path(strings.concatenate({work, "/", names.store_ipa}, context.temp_allocator))
+	if a.app_store {
+		options_file := strings.concatenate({work, "/ExportOptions.plist"}, context.temp_allocator)
+		if os.write_entire_file(options_file, transmute([]byte)ios_export_options(a.upload)) != nil {
+			fmt.sbprintf(err, "I cannot write the export options of the app.\n")
+			return 5
+		}
+		append(&command, fmt.tprintf("APP_STORE=%s", "upload" if a.upload else "export"), fmt.tprintf("APP_EXPORT_OPTIONS=%s", whole_path(options_file)), fmt.tprintf("APP_STORE_IPA=%s", store_ipa))
+	}
 	if a.team != "" {
 		append(&command, fmt.tprintf("TEAM_ID=%s", a.team))
 	}
@@ -140,6 +149,12 @@ package_ios :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 	fmt.println()
 	fmt.println(term.out(fmt.tprintf("Install it on an iPhone that is plugged in and trusts this Mac with `xcrun devicectl device install app --device <the phone's id> %s/build/app/%s` (`xcrun devicectl list devices` lists the ids).", whole_path(work), names.app), .Dim))
+	if a.app_store {
+		fmt.println(term.out("The App Store build is signed for distribution by Xcode with your team's account, which needs a paid Apple Developer Program membership, and the app's id registered in App Store Connect (an app record with this bundle id). The first time you will answer Apple's questions about encryption there.", .Dim))
+		if !a.upload {
+			fmt.println(term.out("Send the .ipa with Transporter (Apple's app) or `xcrun altool --upload-app -f <the .ipa> -t ios` with your Apple ID, or run again with --upload.", .Dim))
+		}
+	}
 	fmt.println(term.out("It is signed with your development team, so it runs only on the phones that signature knows, and a free Apple account's signature lasts seven days; the App Store needs a distribution signature and an Apple Developer Program account, which comes later.", .Dim))
 	say_icons(icons)
 	_ = out

@@ -106,10 +106,11 @@ Ios_Names :: struct {
 	product: string, // the program and the folder's name: the app's slug
 	app:     string, // `wildvex.app`
 	ipa:     string, // `wildvex-1.0.0-ios.ipa`
+	store_ipa: string, // `wildvex-1.0.0-ios-appstore.ipa`
 }
 
 ios_names :: proc(slug, version: string) -> Ios_Names {
-	return {product = slug, app = fmt.tprintf("%s.app", slug), ipa = fmt.tprintf("%s-%s-ios.ipa", slug, version)}
+	return {product = slug, app = fmt.tprintf("%s.app", slug), ipa = fmt.tprintf("%s-%s-ios.ipa", slug, version), store_ipa = fmt.tprintf("%s-%s-ios-appstore.ipa", slug, version)}
 }
 
 // What the `Info.plist` of an app is written from.
@@ -181,4 +182,23 @@ ios_appicon_contents :: proc(file: string, allocator := context.temp_allocator) 
 // The `Contents.json` of the colour of the launch screen: one sRGB colour for every appearance.
 ios_colorset_contents :: proc(rgb: [3]f64, allocator := context.temp_allocator) -> string {
 	return fmt.aprintf("{{\n  \"colors\" : [\n    {{\n      \"color\" : {{\n        \"color-space\" : \"srgb\",\n        \"components\" : {{\n          \"alpha\" : \"1.000\",\n          \"blue\" : \"%.3f\",\n          \"green\" : \"%.3f\",\n          \"red\" : \"%.3f\"\n        }}\n      }},\n      \"idiom\" : \"universal\"\n    }}\n  ],\n  \"info\" : {{\n    \"author\" : \"xcode\",\n    \"version\" : 1\n  }}\n}}\n", rgb[2], rgb[1], rgb[0], allocator = allocator)
+}
+
+// The export options Xcode reads to make the build for the App Store (`xcodebuild -exportArchive -exportOptionsPlist`; the keys are
+// the ones `xcodebuild -help` lists): `app-store-connect` is the method, `destination` is `export` for an `.ipa` to keep or `upload`
+// to send it to App Store Connect at once, the signing is automatic (Xcode makes the distribution signature from the team's
+// account), the build number stays the one `roci` counted (Xcode would otherwise raise it), and no symbols are sent because the
+// program is a compiled library of ours with none for Apple to read.
+ios_export_options :: proc(upload: bool, allocator := context.temp_allocator) -> string {
+	b := strings.builder_make(allocator)
+	strings.write_string(&b, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+	strings.write_string(&b, "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n")
+	strings.write_string(&b, "<plist version=\"1.0\">\n<dict>\n")
+	fmt.sbprintf(&b, "\t<key>method</key>\n\t<string>app-store-connect</string>\n")
+	fmt.sbprintf(&b, "\t<key>destination</key>\n\t<string>%s</string>\n", "upload" if upload else "export")
+	fmt.sbprintf(&b, "\t<key>signingStyle</key>\n\t<string>automatic</string>\n")
+	fmt.sbprintf(&b, "\t<key>manageAppVersionAndBuildNumber</key>\n\t<false/>\n")
+	fmt.sbprintf(&b, "\t<key>uploadSymbols</key>\n\t<false/>\n")
+	strings.write_string(&b, "</dict>\n</plist>\n")
+	return strings.to_string(b)
 }

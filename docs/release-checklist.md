@@ -110,7 +110,8 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 
 - [ ] A sketch that uses `mic` or `webcam` makes the phone ask; one that uses neither never does.
 
-- [ ] A distribution signature, TestFlight and the App Store (not built).
+- [x] (2026-11-23, a Mac, a free account) `roci package ios --app-store` archives the app and the export stops with Xcode's "Team does not have permission to create iOS App Store provisioning profiles", which `roci` explains in plain words.
+- [ ] With a paid Apple Developer Program team: `--app-store` makes a signed `.ipa`, `--upload` sends it to App Store Connect, and the build shows under TestFlight; the encryption question; an app record with the bundle id (untried).
 ## Linux and the BSDs: everything to try (CachyOS, FreeBSD, OpenBSD)
 
 These systems were last tried in full before text, shaders, canvases, export and the whole user interface. Go through all of it on each, and write down what differs in the results table's notes. Everything in the first list must pass before anything else is worth trying.

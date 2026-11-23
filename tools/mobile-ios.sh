@@ -15,6 +15,7 @@
 # `roci package ios` runs this script too, to make an app people can be given instead of a test build: it sets APP_PLIST (the
 # app's own Info.plist), APP_CATALOG (a folder holding Assets.xcassets: the icon and the launch colour), APP_PRODUCT (the
 # program's and the app's file name), APP_OUT (the folder the build is made in) and APP_IPA (where the .ipa goes).
+# APP_STORE (export or upload), APP_EXPORT_OPTIONS (its plist) and APP_STORE_IPA also make the build for the App Store.
 set -eu
 
 source_folder="${1:?the folder with the program roci made}"
@@ -240,6 +241,28 @@ if [ -n "${APP_IPA:-}" ]; then
   rm -f "$APP_IPA"
   (cd "$out/ipa" && zip -qry "$APP_IPA" Payload) || fail "The .ipa could not be zipped."
   result ipa "$APP_IPA"
+fi
+if [ -n "${APP_STORE:-}" ]; then
+  # the build for the App Store: archived, then exported with a distribution signature that Xcode makes from the team's account
+  # (a paid Apple Developer Program team; a free account has no such signature). APP_STORE is `export`, which makes an .ipa to
+  # keep (APP_STORE_IPA), or `upload`, which sends it to App Store Connect. APP_EXPORT_OPTIONS is the plist that says so.
+  step sign "Archiving the app for the App Store"
+  (cd "$out/proj" && xcodebuild archive -project Sketch.xcodeproj -scheme RocinanteSketch -configuration Debug -sdk iphoneos \
+    -allowProvisioningUpdates -archivePath "$out/$product.xcarchive" > "$out/archive.log" 2>&1) \
+    || { tail -25 "$out/archive.log" >&2; fail "Xcode could not archive the app. The whole of it is in $out/archive.log."; }
+  step sign "Signing the app for the App Store"
+  rm -rf "$out/appstore"
+  xcodebuild -exportArchive -archivePath "$out/$product.xcarchive" -exportPath "$out/appstore" \
+    -exportOptionsPlist "$APP_EXPORT_OPTIONS" -allowProvisioningUpdates > "$out/export.log" 2>&1 \
+    || { tail -25 "$out/export.log" >&2; fail "Xcode could not make the build for the App Store: it needs a paid Apple Developer Program account for your team, and the app's id registered in App Store Connect. The whole of it is in $out/export.log."; }
+  if [ "$APP_STORE" = upload ]; then
+    result uploaded "App Store Connect has the build; it shows under TestFlight after Apple has processed it"
+  else
+    store_ipa="$(ls "$out"/appstore/*.ipa 2> /dev/null | head -n 1)"
+    [ -n "$store_ipa" ] || fail "Xcode made no .ipa. The whole of it is in $out/export.log."
+    cp "$store_ipa" "${APP_STORE_IPA:-$out/appstore.ipa}"
+    result appstore "${APP_STORE_IPA:-$out/appstore.ipa}"
+  fi
 fi
 [ -z "${NO_INSTALL:-}" ] || exit 0
 step install "Installing the app"
