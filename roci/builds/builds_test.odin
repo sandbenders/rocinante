@@ -67,7 +67,13 @@ put_libraries_beside :: proc(t: ^testing.T, binary: string) -> bool {
 			if !testing.expectf(t, read_err == nil, "%s is not in the Odin at %s", lib, root) {
 				return false
 			}
-			if !testing.expect(t, os.write_entire_file(fmt.tprintf("%s/%s", dir, name), data) == nil) {
+			// both tests put their programs in one folder and run them at once, and Windows locks a library a
+			// running program uses, so a copy already in place is left alone (it can still be read)
+			beside := fmt.tprintf("%s/%s", dir, name)
+			if there, there_err := os.read_entire_file(beside, context.temp_allocator); there_err == nil && string(there) == string(data) {
+				continue
+			}
+			if !testing.expect(t, os.write_entire_file(beside, data) == nil) {
 				return false
 			}
 		}
