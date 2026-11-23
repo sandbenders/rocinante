@@ -12,6 +12,7 @@ import "../roci/folder"
 import "../tools/term"
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:time"
 
@@ -91,6 +92,13 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	if !asked {
 		return 2
 	}
+	formats, bad_format := parse_mac_formats(settings.mac_formats)
+	if bad_format != "" {
+		fmt.sbprintf(err, "I don't know the format `%s`. The formats are dmg and zip, written with a comma between them, or all.\n", bad_format)
+		return 2
+	}
+	wants_dmg := slice.contains(formats, Mac_Format.Dmg)
+	wants_zip := slice.contains(formats, Mac_Format.Zip)
 	now := time.now()
 	version := version_for_app(settings.version, now)
 	build_number := settings.build + 1
@@ -286,7 +294,7 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 		return 5
 	}
 
-	// ---- the zip, notarised first when asked ----
+	// ---- the app is zipped to be notarised first when asked, then put in a disk image, signed and notarised too ----
 	zip := strings.concatenate({work, "/", names.zip}, context.temp_allocator)
 	if _, zipped := run_tool(err, "Zipping the app", "ditto", "-c", "-k", "--keepParent", "--sequesterRsrc", app, zip); !zipped {
 		return 5
@@ -307,17 +315,63 @@ package_macos :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 		}
 		notarised = true
 	}
+	if !wants_zip {
+		_ = os.remove(zip)
+	}
+	dmg := strings.concatenate({work, "/", names.dmg}, context.temp_allocator)
+	if wants_dmg {
+		say_step(.Bundle, "Making the disk image")
+		stage := strings.concatenate({work, "/dmg"}, context.temp_allocator)
+		_ = os.remove_all(stage)
+		if !folder.ensure_directory(stage) {
+			fmt.sbprintf(err, "I cannot make the folder `%s`.\n", stage)
+			return 5
+		}
+		// the app, and a shortcut to Applications to drag it onto
+		if _, copied := run_tool(err, "Putting the app in the disk image", "ditto", app, strings.concatenate({stage, "/", names.app}, context.temp_allocator)); !copied {
+			return 5
+		}
+		if _, linked := run_tool(err, "Adding the Applications shortcut", "ln", "-s", "/Applications", strings.concatenate({stage, "/Applications"}, context.temp_allocator)); !linked {
+			return 5
+		}
+		if _, made := run_tool(err, "Making the disk image", "hdiutil", "create", "-quiet", "-volname", names.volume, "-srcfolder", stage, "-fs", "HFS+", "-format", "UDZO", "-ov", dmg); !made {
+			return 5
+		}
+		_ = os.remove_all(stage)
+		if real_identity {
+			if _, signed := run_tool(err, "Signing the disk image", "codesign", "--force", "--sign", identity, "--timestamp", dmg); !signed {
+				return 5
+			}
+		}
+		if settings.notary != "" {
+			say_step(.Check, "Asking Apple to check the disk image")
+			if text, accepted := run_tool(err, "Notarising the disk image", "xcrun", "notarytool", "submit", dmg, "--keychain-profile", settings.notary, "--wait"); !accepted || !strings.contains(text, "status: Accepted") {
+				fmt.sbprintf(err, "Apple did not accept the disk image.\n%s\n", text)
+				return 5
+			}
+			if _, stapled := run_tool(err, "Attaching the notarisation to the disk image", "xcrun", "stapler", "staple", dmg); !stapled {
+				return 5
+			}
+		}
+	}
 
 	// the build number is spent now that an app exists
 	settings.build = build_number
 	_ = folder.write_settings(sketch_folder, settings)
-	size := 0
-	if info, stat_err := os.stat(zip, context.temp_allocator); stat_err == nil {
-		size = int(info.size)
+	file_size :: proc(path: string) -> f64 {
+		if info, stat_err := os.stat(path, context.temp_allocator); stat_err == nil {
+			return f64(info.size) / 1048576
+		}
+		return 0
 	}
 	end_packaging(true)
 	term.progress_result(&packaging, "app", app)
-	term.progress_result(&packaging, "zip", fmt.tprintf("%s (%.1f MB)", zip, f64(size) / 1048576))
+	if wants_dmg {
+		term.progress_result(&packaging, "dmg", fmt.tprintf("%s (%.1f MB)", dmg, file_size(dmg)))
+	}
+	if wants_zip {
+		term.progress_result(&packaging, "zip", fmt.tprintf("%s (%.1f MB)", zip, file_size(zip)))
+	}
 	fmt.println()
 	fmt.println(gatekeeper_note(real_identity, notarised))
 	fmt.println(term.out(fmt.tprintf("It runs on macOS %s or newer: the libraries it is made with are built for this Mac's system.", minimum), .Dim))

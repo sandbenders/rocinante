@@ -170,6 +170,8 @@ Mac_Names :: struct {
 	app:        string, // Wildvex.app
 	executable: string, // wildvex
 	zip:        string, // wildvex-1.0.1-macos-arm64.zip
+	dmg:        string, // wildvex-1.0.1-macos-arm64.dmg
+	volume:     string, // what the disk image is called when it is opened: Wildvex 1.0.1
 }
 
 mac_names :: proc(name, slug, version, arch: string, allocator := context.temp_allocator) -> Mac_Names {
@@ -177,6 +179,8 @@ mac_names :: proc(name, slug, version, arch: string, allocator := context.temp_a
 		app        = strings.concatenate({name, ".app"}, allocator),
 		executable = slug,
 		zip        = strings.concatenate({slug, "-", version, "-macos-", arch, ".zip"}, allocator),
+		dmg        = strings.concatenate({slug, "-", version, "-macos-", arch, ".dmg"}, allocator),
+		volume     = strings.concatenate({name, " ", version}, allocator),
 	}
 }
 
@@ -208,4 +212,46 @@ gatekeeper_note :: proc(signed_with_developer_id, notarised: bool) -> string {
 		return "It is signed with your Developer ID but not notarised, so macOS will ask a person to confirm the first time it opens. Add a notary profile to sketch.toml (`notary-profile`) to notarise it."
 	}
 	return "It is not signed with a Developer ID, so on another Mac macOS will say it cannot check the app. Whoever opens it should Control-click it, choose Open, and confirm once (or run `xattr -dr com.apple.quarantine` on it). A Developer ID and notarisation, which need an Apple developer account, remove that."
+}
+
+// What `roci package macos` can make besides the app.
+Mac_Format :: enum {
+	Dmg,
+	Zip,
+}
+
+MAC_FORMATS :: [?]Mac_Format{.Dmg, .Zip}
+
+// The formats a `--format` (or the `formats` of the `[macos]` part of `sketch.toml`) names: words separated by commas, `all` for
+// both. `bad` is the first word that is no format. Each is once, in the order they are made. An empty text is the disk image alone.
+parse_mac_formats :: proc(text: string, allocator := context.temp_allocator) -> (formats: []Mac_Format, bad: string) {
+	wanted: [Mac_Format]bool
+	given := false
+	for piece in strings.split(text, ",", context.temp_allocator) {
+		word := strings.to_lower(strings.trim_space(piece), context.temp_allocator)
+		if word == "" {
+			continue
+		}
+		given = true
+		switch word {
+		case "all":
+			for f in MAC_FORMATS {
+				wanted[f] = true
+			}
+		case "dmg": wanted[.Dmg] = true
+		case "zip": wanted[.Zip] = true
+		case:
+			return nil, strings.trim_space(piece)
+		}
+	}
+	if !given {
+		wanted[.Dmg] = true
+	}
+	made := make([dynamic]Mac_Format, allocator)
+	for f in MAC_FORMATS {
+		if wanted[f] {
+			append(&made, f)
+		}
+	}
+	return made[:], ""
 }

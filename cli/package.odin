@@ -137,6 +137,8 @@ resolve_settings :: proc(current: folder.Settings, a: Package_Args, sketch_folde
 		switch a.target {
 		case "freebsd":
 			r.settings.bsd_formats = a.format
+		case "macos":
+			r.settings.mac_formats = a.format
 		case "openbsd":
 			r.settings.openbsd_formats = a.format
 		case:

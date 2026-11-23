@@ -31,7 +31,7 @@ The icon is made from a square SVG drawing or a PNG of 1024 by 1024 pixels or mo
 
 ## What you get
 
-In the sketch's `output/package/macos` folder: the app (`Wildvex.app`) and a zip of it, ready to send. Inside the app are the compiled sketch, everything in `assets/` and `libs/`, and the two libraries it needs (SDL3 and SDL3_ttf), so it runs on a Mac that has nothing of rocinante installed. It is built for the processor of the Mac that made it, and runs on that Mac's macOS or newer.
+In the sketch's `output/package/macos` folder: the app (`Wildvex.app`) and a disk image of it (`wildvex-1.0.1-macos-arm64.dmg`), ready to send: whoever opens it sees the app and a shortcut to Applications to drag it onto. `--format zip` makes a zip instead and `--format all` both (kept in the `[macos]` part of `sketch.toml` as `formats`). With a Developer ID the disk image is signed too, and notarised and stapled when you have a notary profile. Inside the app are the compiled sketch, everything in `assets/` and `libs/`, and the two libraries it needs (SDL3 and SDL3_ttf), so it runs on a Mac that has nothing of rocinante installed. It is built for the processor of the Mac that made it, and runs on that Mac's macOS or newer.
 
 The app finds its pictures, sounds and fonts inside itself. What it writes (`save` and `record` go to its `output` folder, and what it `remember`s, its vault and its widgets' values) goes in its own folder, `~/Library/Application Support/<its id>`, because an app is not allowed to change itself. A `memory.toml`, `ui.toml`, `vault.bin` or `vault.key` in your sketch folder is copied there the first time the app runs, as its starting point.
 

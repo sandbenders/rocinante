@@ -56,6 +56,7 @@ Settings :: struct {
 	formats:     string, // [linux] what to make, separated by commas: tar, deb, rpm, arch, appimage
 	bsd_formats: string, // [freebsd] what to make, separated by commas: pkg, tar
 	openbsd_formats: string, // [openbsd] what to make, separated by commas: pkg, tar
+	mac_formats: string, // [macos] what to make, separated by commas: dmg, zip (a disk image when empty)
 	orientation:      string, // how a phone holds the app: portrait, landscape, or any (the default)
 	launch_colour:    string, // the colour an iPhone shows while the app starts, as #rrggbb (the colour of a sketch's first frame when it says nothing)
 	android_category: string, // [android] the kind of app Android files it under: game, audio, video, image, social, news, maps, productivity or accessibility
@@ -76,6 +77,7 @@ destroy_settings :: proc(s: ^Settings, allocator := context.allocator) {
 	delete(s.formats, allocator)
 	delete(s.bsd_formats, allocator)
 	delete(s.openbsd_formats, allocator)
+	delete(s.mac_formats, allocator)
 	delete(s.orientation, allocator)
 	delete(s.launch_colour, allocator)
 	delete(s.android_category, allocator)
@@ -143,6 +145,7 @@ read_settings :: proc(root: string, allocator := context.allocator) -> (s: Setti
 	s.formats = text(&doc, "linux", "formats", &found, allocator)
 	s.bsd_formats = text(&doc, "freebsd", "formats", &found, allocator)
 	s.openbsd_formats = text(&doc, "openbsd", "formats", &found, allocator)
+	s.mac_formats = text(&doc, "macos", "formats", &found, allocator)
 	s.orientation = text(&doc, "", "orientation", &found, allocator)
 	s.launch_colour = text(&doc, "", "launch-colour", &found, allocator)
 	s.android_category = text(&doc, "android", "category", &found, allocator)
@@ -183,6 +186,7 @@ write_settings :: proc(root: string, s: Settings) -> bool {
 	put(&doc, "linux", "formats", s.formats)
 	put(&doc, "freebsd", "formats", s.bsd_formats)
 	put(&doc, "openbsd", "formats", s.openbsd_formats)
+	put(&doc, "macos", "formats", s.mac_formats)
 	put(&doc, "", "orientation", s.orientation)
 	put(&doc, "", "launch-colour", s.launch_colour)
 	put(&doc, "android", "category", s.android_category)

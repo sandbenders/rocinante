@@ -233,3 +233,25 @@ test_an_iconset_with_missing_pictures_is_refused :: proc(t: ^testing.T) {
 	testing.expect(t, !make_icns("output/tests/no-such/wild.iconset", "output/tests", &err))
 	testing.expect(t, strings.contains(strings.to_string(err), "icon_16x16.png"), strings.to_string(err))
 }
+
+@(test)
+test_the_mac_formats_are_a_disk_image_unless_a_zip_is_asked_for :: proc(t: ^testing.T) {
+	formats, bad := parse_mac_formats("")
+	testing.expect_value(t, bad, "")
+	testing.expect_value(t, len(formats), 1)
+	testing.expect_value(t, formats[0], Mac_Format.Dmg)
+	formats, _ = parse_mac_formats(" ZIP , dmg, zip")
+	testing.expect_value(t, len(formats), 2) // each once, in the order they are made
+	testing.expect_value(t, formats[0], Mac_Format.Dmg)
+	testing.expect_value(t, formats[1], Mac_Format.Zip)
+	formats, _ = parse_mac_formats("zip")
+	testing.expect_value(t, len(formats), 1)
+	testing.expect_value(t, formats[0], Mac_Format.Zip)
+	formats, _ = parse_mac_formats("all")
+	testing.expect_value(t, len(formats), 2)
+	_, bad = parse_mac_formats("dmg, iso")
+	testing.expect_value(t, bad, "iso")
+	names := mac_names("Wild Vex", "wild-vex", "1.0.1", "arm64")
+	testing.expect_value(t, names.dmg, "wild-vex-1.0.1-macos-arm64.dmg")
+	testing.expect_value(t, names.volume, "Wild Vex 1.0.1")
+}

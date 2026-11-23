@@ -22,6 +22,8 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 `roci package macos` is only tried by hand (the unit tests cover its plist, names, settings and the libraries it points a program at, not the tools it runs). On a Mac:
 
 - [ ] `output/roci package macos examples/circle --yes` makes `output/package/macos/circle.app` and its zip; `otool -L circle.app/Contents/MacOS/circle` lists only `/System`, `/usr/lib` and `@rpath` libraries; `codesign --verify --deep --strict circle.app` says nothing; double-clicking the app opens the window.
+- [x] (2026-11-23, a Mac) `roci package macos --format all` on a copy of `examples/bricks` makes the app, a `.dmg` (mounted: the app and an Applications shortcut, signature verified) and a `.zip`.
+- [ ] The disk image signed with a Developer ID, notarised and stapled (`xcrun stapler validate` on it); needs a Developer ID and a notary profile.
 - [ ] A sketch with assets, fonts and a vault (a copy of a game) shows its font and its sounds in the app, and its `vault.key` and `memory.toml` appear in `~/Library/Application Support/<its id>` the first time; `save` writes into that folder's `output`.
 - [ ] On a terminal, the first `roci package macos` asks the name, the id and the version, writes `sketch.toml`, and the second run asks nothing and raises `build` by one.
 - [ ] `roci package macos --icon logo.svg` (a square drawing) puts it in `icons/icon.svg`, makes `icons/macos/<name>.iconset` and the other systems' icons, and the app shows the icon in Apple's rounded square in Finder and the Dock, with no gray frame; a second run makes no icons; a hand-made `icon_16x16.png` is kept; an oblong drawing or a 512-pixel PNG is refused before anything compiles.
