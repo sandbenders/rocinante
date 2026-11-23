@@ -4,6 +4,11 @@
 # part of the build script's `ci` command once the build script exists.
 root="$(git rev-parse --show-toplevel)"
 cd "$root" || exit 1
+# Git runs a hook with GIT_DIR and the other variables of this repository set, and every git a test
+# starts would inherit them: a test's `git init` in a folder of its own then re-initialised this
+# repository instead (on Windows it set core.bare = true, and the checkout stopped working). The
+# variables git names for this are unset, so the tests' git sees only their own folders.
+unset $(git rev-parse --local-env-vars)
 if [ -d build ]; then
   exec odin run build -- ci --fast
 fi
