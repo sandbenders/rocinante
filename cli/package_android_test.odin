@@ -152,3 +152,31 @@ test_the_release_key_is_kept_outside_the_sketch_in_a_folder_of_rocinantes_own ::
 	testing.expect(t, strings.contains(notice, keystore))
 	testing.expect(t, strings.contains(notice, "keep a copy"))
 }
+
+@(test)
+test_the_sdk_is_where_android_studio_puts_it_unless_android_home_says_otherwise :: proc(t: ^testing.T) {
+	testing.expect_value(t, android_sdk_home("/opt/sdk", "/Users/me", "macos"), "/opt/sdk")
+	testing.expect_value(t, android_sdk_home("", "/Users/me", "macos"), "/Users/me/Library/Android/sdk")
+	testing.expect_value(t, android_sdk_home("", "/Users/me/", "macos"), "/Users/me/Library/Android/sdk")
+	testing.expect_value(t, android_sdk_home("", "/home/me", "linux"), "/home/me/Android/Sdk")
+}
+
+@(test)
+test_a_path_with_a_space_in_it_is_quoted_for_the_shell :: proc(t: ^testing.T) {
+	testing.expect_value(t, shell_word("/Users/me/code/app.apk"), "/Users/me/code/app.apk")
+	testing.expect_value(t, shell_word("a-b_c+d.apk"), "a-b_c+d.apk")
+	testing.expect_value(t, shell_word("/Users/me/My Sketches/app.apk"), "'/Users/me/My Sketches/app.apk'")
+	testing.expect_value(t, shell_word("it's here"), "'it'\\''s here'") // a quote inside is closed, written, and opened again
+	testing.expect_value(t, shell_word("a$b"), "'a$b'")
+	testing.expect_value(t, shell_word(""), "''")
+}
+
+@(test)
+test_the_install_line_names_adb_by_its_place_when_the_computer_does_not_find_it :: proc(t: ^testing.T) {
+	sdk := "/Users/me/Library/Android/sdk/platform-tools/adb"
+	testing.expect_value(t, android_adb_name(true, sdk, true), "adb") // found by itself
+	testing.expect_value(t, android_adb_name(false, sdk, true), sdk) // not on the PATH, but in the SDK
+	testing.expect_value(t, android_adb_name(false, "/Users/me/My SDK/platform-tools/adb", true), "'/Users/me/My SDK/platform-tools/adb'")
+	testing.expect_value(t, android_adb_name(false, sdk, false), "adb") // nowhere: the line still says which tool
+	testing.expect_value(t, android_adb_name(true, sdk, false), "adb")
+}

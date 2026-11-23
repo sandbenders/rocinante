@@ -136,7 +136,11 @@ package_android :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 		made_key ||= r.name == "newkey"
 	}
 	fmt.println()
-	fmt.println(term.out(fmt.tprintf("Install it on a phone with `adb install -r %s`, or copy it to the phone and open it there (the phone asks to allow installing from that app).", apk), .Dim))
+	// `adb` is in the SDK's platform-tools, which Android Studio does not put on the PATH: name it by its place when the computer does not find it
+	_, adb_on_path := probe("sh", "-c", "command -v adb")
+	sdk_adb := strings.concatenate({android_sdk_home(os.get_env("ANDROID_HOME", context.temp_allocator), home, system), "/platform-tools/adb"}, context.temp_allocator)
+	adb := android_adb_name(adb_on_path, sdk_adb, os.is_file(sdk_adb))
+	fmt.println(term.out(fmt.tprintf("Install it on a phone that is plugged in, with USB debugging on, with `%s install -r %s`, or copy it to the phone and open it there (the phone asks to allow installing from that app).", adb, shell_word(apk)), .Dim))
 	fmt.println(term.out("It is an APK, which a phone can install: the Android App Bundle that Google Play asks for comes later.", .Dim))
 	if id_changed {
 		fmt.println(term.out(fmt.tprintf("Android ids cannot hold a hyphen, so the app's id is %s; to choose it yourself, write it in sketch.toml as `id`.", application_id), .Dim))

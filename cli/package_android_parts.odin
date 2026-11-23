@@ -167,3 +167,38 @@ android_key_folder :: proc(home, xdg, system: string, allocator := context.temp_
 android_key_notice :: proc(keystore: string, allocator := context.temp_allocator) -> string {
 	return fmt.aprintf("It made the app's release key, %s. Only this key can sign an update of the app, so keep a copy of it and of the password file beside it somewhere safe: without them a new version cannot replace this one on a phone.", keystore, allocator = allocator)
 }
+
+// Where Android Studio keeps the SDK when ANDROID_HOME says nothing: the places `tools/mobile-android.sh` looks in too.
+android_sdk_home :: proc(android_home, home, system: string, allocator := context.temp_allocator) -> string {
+	if android_home != "" {
+		return android_home
+	}
+	root := strings.trim_right(home, "/")
+	if system == "macos" {
+		return fmt.aprintf("%s/Library/Android/sdk", root, allocator = allocator)
+	}
+	return fmt.aprintf("%s/Android/Sdk", root, allocator = allocator)
+}
+
+// A path or a word as a shell takes it whole: as it is when it has nothing in it that would split it, else in single quotes.
+shell_word :: proc(text: string, allocator := context.temp_allocator) -> string {
+	for c in text {
+		switch c {
+		case 'a' ..= 'z', 'A' ..= 'Z', '0' ..= '9', '/', '.', '_', '-', '+', ':', '=', '@', '%', ',':
+			continue
+		}
+		escaped, _ := strings.replace_all(text, "'", "'\\''", context.temp_allocator)
+		return fmt.aprintf("'%s'", escaped, allocator = allocator)
+	}
+	return text if text != "" else "''"
+}
+
+// How the line that installs the APK names `adb`: just `adb` when the computer finds it by itself, else by its place in the SDK
+// (Android Studio does not put `platform-tools` on the PATH, so a bare `adb` is "command not found" on most Macs), and `adb` again
+// when it is nowhere, so the line still says which tool it means.
+android_adb_name :: proc(on_path: bool, sdk_adb: string, sdk_adb_exists: bool, allocator := context.temp_allocator) -> string {
+	if on_path || !sdk_adb_exists {
+		return "adb"
+	}
+	return shell_word(sdk_adb, allocator)
+}
