@@ -35,7 +35,7 @@ In the sketch's `output/package/macos` folder: the app (`Wildvex.app`) and a zip
 
 The app finds its pictures, sounds and fonts inside itself. What it writes (`save` and `record` go to its `output` folder, and what it `remember`s, its vault and its widgets' values) goes in its own folder, `~/Library/Application Support/<its id>`, because an app is not allowed to change itself. A `memory.toml`, `ui.toml`, `vault.bin` or `vault.key` in your sketch folder is copied there the first time the app runs, as its starting point.
 
-The first time it asks for the microphone or the camera, macOS shows a sentence saying the sketch may do so. Only a sketch that uses them asks.
+The first time it asks for the microphone or the camera, macOS shows a sentence saying the sketch may do so. Only a sketch that uses them asks: `roci package` gives the app the microphone only when the sketch reads `mic` (or records it) and the camera only when it uses `webcam`, and a sketch that uses neither gives macOS nothing to ask about.
 
 ## What a Mac says when someone opens it
 
