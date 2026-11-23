@@ -19,7 +19,7 @@ test_a_sketch_without_a_sketch_toml_has_empty_settings :: proc(t: ^testing.T) {
 test_settings_are_written_and_read_back_and_a_key_that_is_not_ours_stays :: proc(t: ^testing.T) {
 	root := fresh("settings_round")
 	testing.expect(t, os.make_directory_all(root) == nil)
-	written := Settings{name = "Wild Vex", id = "org.example.wildvex", version = "1.0.1", build = 7, identity = "Developer ID Application: Me (ABC123)", notary = "roci-notary", category = "public.app-category.games", maintainer = "Ada <ada@example.org>", description = "A game about ships", desktop = "Game;", formats = "tar, deb", bsd_formats = "pkg", openbsd_formats = "tar"}
+	written := Settings{name = "Wild Vex", id = "org.example.wildvex", version = "1.0.1", build = 7, identity = "Developer ID Application: Me (ABC123)", notary = "roci-notary", category = "public.app-category.games", maintainer = "Ada <ada@example.org>", description = "A game about ships", desktop = "Game;", formats = "tar, deb", bsd_formats = "pkg", openbsd_formats = "tar", orientation = "portrait", android_category = "game"}
 	testing.expect(t, write_settings(root, written))
 	got, problems := read_settings(root, context.temp_allocator)
 	testing.expect_value(t, len(problems), 0)
@@ -40,9 +40,12 @@ test_settings_are_written_and_read_back_and_a_key_that_is_not_ours_stays :: proc
 	small := read(path_in(strings.concatenate({root, "/../folder_settings_empty"}, context.temp_allocator), SETTINGS_FILE))
 	testing.expect(t, !strings.contains(small, "icon") && !strings.contains(small, "[macos]") && !strings.contains(small, "[linux]"), small)
 	testing.expect(t, !strings.contains(small, "[freebsd]") && !strings.contains(small, "[openbsd]"), small)
-	// the formats of the two BSDs are kept in parts of their own
+	testing.expect(t, !strings.contains(small, "[android]") && !strings.contains(small, "orientation"), small)
+	// the formats of the two BSDs and the Android category are kept in parts of their own, and the orientation is a plain key
 	text_of_written := read(path_in(root, SETTINGS_FILE))
 	testing.expect(t, strings.contains(text_of_written, "[openbsd]"), text_of_written)
+	testing.expect(t, strings.contains(text_of_written, "[android]\ncategory = \"game\""), text_of_written)
+	testing.expect(t, strings.contains(text_of_written, "orientation = \"portrait\""), text_of_written)
 }
 
 // A folder next to `root`, made for one test.

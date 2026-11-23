@@ -9,6 +9,10 @@
 //     id = "org.example.wildvex"
 //     version = "1.0.1"
 //     build = 7
+//     orientation = "portrait"
+//
+//     [android]
+//     category = "game"
 //
 //     [macos]
 //     identity = "Developer ID Application: Your Name (TEAMID)"
@@ -51,6 +55,8 @@ Settings :: struct {
 	formats:     string, // [linux] what to make, separated by commas: tar, deb, rpm, arch, appimage
 	bsd_formats: string, // [freebsd] what to make, separated by commas: pkg, tar
 	openbsd_formats: string, // [openbsd] what to make, separated by commas: pkg, tar
+	orientation:      string, // how a phone holds the app: portrait, landscape, or any (the default)
+	android_category: string, // [android] the kind of app Android files it under: game, audio, video, image, social, news, maps, productivity or accessibility
 	found:    bool,   // there was a sketch.toml
 }
 
@@ -68,6 +74,8 @@ destroy_settings :: proc(s: ^Settings, allocator := context.allocator) {
 	delete(s.formats, allocator)
 	delete(s.bsd_formats, allocator)
 	delete(s.openbsd_formats, allocator)
+	delete(s.orientation, allocator)
+	delete(s.android_category, allocator)
 	s^ = {}
 }
 
@@ -132,6 +140,8 @@ read_settings :: proc(root: string, allocator := context.allocator) -> (s: Setti
 	s.formats = text(&doc, "linux", "formats", &found, allocator)
 	s.bsd_formats = text(&doc, "freebsd", "formats", &found, allocator)
 	s.openbsd_formats = text(&doc, "openbsd", "formats", &found, allocator)
+	s.orientation = text(&doc, "", "orientation", &found, allocator)
+	s.android_category = text(&doc, "android", "category", &found, allocator)
 	if len(found) > 0 {
 		problems = make([]string, len(found), allocator)
 		for line, i in found {
@@ -169,6 +179,8 @@ write_settings :: proc(root: string, s: Settings) -> bool {
 	put(&doc, "linux", "formats", s.formats)
 	put(&doc, "freebsd", "formats", s.bsd_formats)
 	put(&doc, "openbsd", "formats", s.openbsd_formats)
+	put(&doc, "", "orientation", s.orientation)
+	put(&doc, "android", "category", s.android_category)
 	text := toml.write(&doc, context.temp_allocator)
 	return os.write_entire_file(path, transmute([]byte)text) == nil
 }
