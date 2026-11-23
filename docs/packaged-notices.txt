@@ -7,6 +7,8 @@ at the addresses given and in the source of each project.
   SDL3_ttf                    Zlib                     https://github.com/libsdl-org/SDL_ttf
   FreeType (in SDL3_ttf)      FreeType Project Licence https://freetype.org/license.html
   HarfBuzz (in SDL3_ttf)      MIT (the old MIT licence) https://github.com/harfbuzz/harfbuzz
+  plutosvg (Windows SDL3_ttf) MIT                      https://github.com/sammycage/plutosvg
+  plutovg (Windows SDL3_ttf)  MIT                      https://github.com/sammycage/plutovg
   Dear ImGui                  MIT                      https://github.com/ocornut/imgui
   accesskit-c                 MIT (or Apache-2.0)      https://github.com/AccessKit/accesskit-c
   shaderc and glslang         Apache-2.0 (with BSD-3-Clause and MIT parts) https://github.com/google/shaderc

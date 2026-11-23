@@ -30,6 +30,10 @@
 //
 //     [openbsd]
 //     formats = "pkg, tar"
+//
+//     [windows]
+//     formats = "zip, msix"
+//     certificate = "Your Name"
 package folder
 
 import "../toml"
@@ -61,6 +65,8 @@ Settings :: struct {
 	launch_colour:    string, // the colour an iPhone shows while the app starts, as #rrggbb (the colour of a sketch's first frame when it says nothing)
 	android_category: string, // [android] the kind of app Android files it under: game, audio, video, image, social, news, maps, productivity or accessibility
 	android_formats: string, // [android] what to make, separated by commas: apk, aab (the APK when empty)
+	windows_formats: string, // [windows] what to make, separated by commas: zip, msix (the zip when empty)
+	windows_certificate: string, // [windows] the code-signing certificate: its thumbprint, or a part of its name
 	found:    bool,   // there was a sketch.toml
 }
 
@@ -83,6 +89,8 @@ destroy_settings :: proc(s: ^Settings, allocator := context.allocator) {
 	delete(s.launch_colour, allocator)
 	delete(s.android_category, allocator)
 	delete(s.android_formats, allocator)
+	delete(s.windows_formats, allocator)
+	delete(s.windows_certificate, allocator)
 	s^ = {}
 }
 
@@ -152,6 +160,8 @@ read_settings :: proc(root: string, allocator := context.allocator) -> (s: Setti
 	s.launch_colour = text(&doc, "", "launch-colour", &found, allocator)
 	s.android_category = text(&doc, "android", "category", &found, allocator)
 	s.android_formats = text(&doc, "android", "formats", &found, allocator)
+	s.windows_formats = text(&doc, "windows", "formats", &found, allocator)
+	s.windows_certificate = text(&doc, "windows", "certificate", &found, allocator)
 	if len(found) > 0 {
 		problems = make([]string, len(found), allocator)
 		for line, i in found {
@@ -194,6 +204,8 @@ write_settings :: proc(root: string, s: Settings) -> bool {
 	put(&doc, "", "launch-colour", s.launch_colour)
 	put(&doc, "android", "category", s.android_category)
 	put(&doc, "android", "formats", s.android_formats)
+	put(&doc, "windows", "formats", s.windows_formats)
+	put(&doc, "windows", "certificate", s.windows_certificate)
 	text := toml.write(&doc, context.temp_allocator)
 	return os.write_entire_file(path, transmute([]byte)text) == nil
 }

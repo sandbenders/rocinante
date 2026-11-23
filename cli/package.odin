@@ -5,8 +5,9 @@
 // the sketch does not say (the app's name, id and version, kept in `sketch.toml` so it asks once), and it refuses a sketch that
 // has errors, as `roci check` would.
 //
-// The Mac (`package_macos.odin`), Linux (`package_linux_app.odin`), FreeBSD (`package_freebsd_app.odin`), OpenBSD
-// (`package_openbsd_app.odin`) and Android (`package_android.odin`) are written so far.
+// Each target has its own file: the Mac (`package_macos.odin`), Linux (`package_linux_app.odin`), FreeBSD
+// (`package_freebsd_app.odin`), OpenBSD (`package_openbsd_app.odin`), Windows (`package_windows_app.odin`), Android
+// (`package_android.odin`) and the iPhone (`package_ios.odin`).
 package main
 
 import "../roci/folder"
@@ -28,14 +29,17 @@ PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--ve
   --icon      a square SVG drawing, or a PNG of 1024 by 1024 pixels or more, to make every system's icons from:
               it is copied into the sketch's icons/ folder as icon.svg or icon.png, where later packages find it
   --sign      on a Mac, the identity to sign the app with (else a Developer ID Application one found in
-              the keychain, else the app is signed only so it runs here)
+              the keychain, else the app is signed only so it runs here). On Windows, the code-signing
+              certificate: its thumbprint or a part of its name (else the one in your certificate store,
+              else the app is not signed). Kept in sketch.toml
   --notarize  on a Mac, the keychain profile notarytool was given, to have Apple check the app
   --format    on Linux, what to make, separated by commas: tar (a .tar.gz, the default), deb, rpm (for Fedora
               and openSUSE), arch (an Arch package), appimage, or all. Kept in sketch.toml
               On FreeBSD: pkg (a package for pkg add) and tar, both by default
               On OpenBSD: pkg (a .tgz for pkg_add) and tar, both by default
+              On Windows: zip (the default) and msix (a package that installs, once signed)
   --maintainer  on Linux, FreeBSD and OpenBSD, who looks after the package, as Name <address> (a .deb, an RPM, an Arch package, a .pkg and a .tgz say it)
-  --description on Linux, FreeBSD and OpenBSD, one line about the app, for package managers and menus
+  --description on Linux, FreeBSD, OpenBSD and Windows, one line about the app, for package managers, menus and Explorer
   --category  on Linux, the menu categories a desktop file puts the app in, such as Game; or Graphics;Music;
   --yes       do not ask: take what is in sketch.toml and the defaults
 
@@ -135,7 +139,11 @@ resolve_settings :: proc(current: folder.Settings, a: Package_Args, sketch_folde
 	r.settings.id, r.defaulted.id = pick(a.id, current.id, folder.default_id(r.settings.name, context.temp_allocator))
 	r.settings.version, r.defaulted.version = pick(a.version, current.version, "1.0.0")
 	if a.sign != "" {
-		r.settings.identity = a.sign
+		if a.target == "windows" {
+			r.settings.windows_certificate = a.sign
+		} else {
+			r.settings.identity = a.sign
+		}
 	}
 	if a.notary != "" {
 		r.settings.notary = a.notary
@@ -150,6 +158,8 @@ resolve_settings :: proc(current: folder.Settings, a: Package_Args, sketch_folde
 			r.settings.android_formats = a.format
 		case "openbsd":
 			r.settings.openbsd_formats = a.format
+		case "windows":
+			r.settings.windows_formats = a.format
 		case:
 			r.settings.formats = a.format
 		}
@@ -329,8 +339,12 @@ run_package :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		code := package_ios(a, out, err)
 		end_packaging(code == 0)
 		return code
+	case "windows":
+		code := package_windows(a, out, err)
+		end_packaging(code == 0)
+		return code
 	case:
-		fmt.sbprintf(err, "`roci package %s` is not written yet: the Mac, Linux, FreeBSD, OpenBSD, Android and the iPhone are the systems it makes apps for so far.\n", target.name)
+		fmt.sbprintf(err, "`roci package %s` is not written yet.\n", target.name)
 	}
 	return 2
 }

@@ -146,6 +146,11 @@ run_doctor :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		path, have_msvc := probe(vswhere, "-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath")
 		tool_line(out, "Microsoft C++ build tools and Windows SDK", path, have_msvc, `Install Visual Studio Build Tools and tick "Desktop development with C++"`)
 		ok = have_msvc && ok
+		// signtool and makeappx, which make and sign a Windows app, come with the Windows SDK
+		sdk, have_sdk := windows_sdk_bin()
+		have_tools := have_sdk && os.is_file(strings.concatenate({sdk, "/makeappx.exe"}, context.temp_allocator))
+		tool_line(out, "signtool and makeappx, to package a Windows app", windows_path(sdk) if have_tools else "", have_tools, `They come with the Windows SDK: in the Visual Studio Installer, tick "Desktop development with C++" (or the Windows SDK on its own)`)
+		ok = have_tools && ok
 	} else {
 		clang, have_clang := probe("clang", "--version")
 		tool_line(out, "clang", clang, have_clang, "Install it with your package manager, for example: sudo apt install clang, sudo pacman -S clang or sudo dnf install clang (on FreeBSD it is part of the base system)")

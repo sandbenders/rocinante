@@ -433,6 +433,11 @@ test_a_program_for_a_phone_ends_in_the_entry_its_app_runs :: proc(t: ^testing.T)
 	testing.expect_value(t, len(openbsd.problems), 0)
 	testing.expect_value(t, openbsd.source, strings.clone(mac.source, context.temp_allocator))
 
+	// and a Windows app: SDL gives the folder beside the .exe and %APPDATA%\<id> for these two
+	windows := generate(&checked.program, src, Options{sketch = "test", source = "test.roci", target = "windows", app_id = "org.example.test"}, context.temp_allocator)
+	testing.expect_value(t, len(windows.problems), 0)
+	testing.expect_value(t, windows.source, strings.clone(mac.source, context.temp_allocator))
+
 	// the app's name, for volume controls, given to SDL after the id; a quote in it is escaped in the Odin source
 	named := generate(&checked.program, src, Options{sketch = "test", source = "test.roci", target = "linux", app_id = "org.example.test", app_name = "Wild \"Vex\""}, context.temp_allocator)
 	testing.expect_value(t, len(named.problems), 0)

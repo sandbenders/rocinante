@@ -45,6 +45,12 @@ ICON_CORNER :: 0.2237
 ICON_WINDOWS_SIZES :: [?]int{16, 20, 24, 32, 40, 48, 64, 96, 128, 256}
 ICON_LINUX_SIZES :: [?]int{16, 22, 24, 32, 48, 64, 96, 128, 192, 256, 512}
 
+// The pictures an MSIX package holds, by the names its manifest gives them.
+ICON_MSIX_LOGOS :: [?]struct {
+	file: string,
+	size: int,
+}{{"Square44x44Logo", 44}, {"Square150x150Logo", 150}, {"StoreLogo", 50}}
+
 // How an icon is made from the picture.
 Icon_Kind :: enum u8 {
 	Full,           // the picture, edge to edge
@@ -86,6 +92,10 @@ icon_files :: proc(name: string, allocator := context.temp_allocator) -> []Icon_
 	append(&files, Icon_File{path = "ios/AppIcon-1024.png", size = 1024, kind = .Opaque})
 	for s in ICON_WINDOWS_SIZES {
 		append(&files, Icon_File{path = fmt.aprintf("windows/%s-%d.png", name, s, allocator = allocator), size = s, kind = .Full})
+	}
+	// the logos an MSIX package names in its manifest: the Start menu's and taskbar's, the tile's, and the one of the package itself
+	for logo in ICON_MSIX_LOGOS {
+		append(&files, Icon_File{path = fmt.aprintf("windows/msix/%s.png", logo.file, allocator = allocator), size = logo.size, kind = .Full})
 	}
 	for s in ICON_LINUX_SIZES {
 		append(&files, Icon_File{path = fmt.aprintf("freedesktop/hicolor/%dx%d/apps/%s.png", s, s, name, allocator = allocator), size = s, kind = .Full})

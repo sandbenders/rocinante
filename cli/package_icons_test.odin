@@ -43,7 +43,7 @@ pixel :: proc(img: gfx.Image, x, y: int) -> [4]u8 {
 @(test)
 test_every_system_has_its_icon_files_named_as_it_wants_them :: proc(t: ^testing.T) {
 	files := icon_files("wild")
-	testing.expect_value(t, len(files), 10 + 1 + 10 + 11 + 1 + 5 * 4 + 2 + 2)
+	testing.expect_value(t, len(files), 10 + 1 + 10 + 3 + 11 + 1 + 5 * 4 + 2 + 2)
 	testing.expect_value(t, files[0], Icon_File{path = "macos/wild.iconset/icon_16x16.png", size = 16, kind = .Mac})
 	testing.expect_value(t, files[9].path, "macos/wild.iconset/icon_512x512@2x.png")
 	testing.expect_value(t, files[9].size, 1024)
@@ -53,6 +53,10 @@ test_every_system_has_its_icon_files_named_as_it_wants_them :: proc(t: ^testing.
 		paths[f.path] = f
 	}
 	testing.expect_value(t, paths["windows/wild-256.png"].size, 256)
+	// the logos an MSIX package names in its manifest
+	testing.expect_value(t, paths["windows/msix/Square44x44Logo.png"], Icon_File{path = "windows/msix/Square44x44Logo.png", size = 44, kind = .Full})
+	testing.expect_value(t, paths["windows/msix/Square150x150Logo.png"].size, 150)
+	testing.expect_value(t, paths["windows/msix/StoreLogo.png"].size, 50)
 	testing.expect_value(t, paths["freedesktop/hicolor/512x512/apps/wild.png"].kind, Icon_Kind.Full)
 	testing.expect_value(t, paths["android/res/mipmap-xxxhdpi/ic_launcher_background.png"].size, 432)
 	testing.expect_value(t, paths["android/res/mipmap-hdpi/ic_launcher_round.png"], Icon_File{path = "android/res/mipmap-hdpi/ic_launcher_round.png", size = 72, kind = .Round})
