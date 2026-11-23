@@ -13,6 +13,7 @@ import "../tools/term"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
+import "core:slice"
 import "core:strings"
 import "core:time"
 
@@ -38,6 +39,14 @@ package_android :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	if !asked {
 		return 2
 	}
+
+	formats, bad_format := parse_android_formats(settings.android_formats)
+	if bad_format != "" {
+		fmt.sbprintf(err, "I don't know the format `%s`. The formats are apk and aab (the App Bundle Google Play asks for), written with a comma between them, or all.\n", bad_format)
+		return 2
+	}
+	wants_apk := slice.contains(formats, Android_Format.Apk)
+	wants_aab := slice.contains(formats, Android_Format.Aab)
 
 	// ---- what Android is told, said in Android's words before anything is built ----
 	application_id, id_changed, id_problem := android_application_id(settings.id)
@@ -113,12 +122,16 @@ package_android :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 
 	// ---- the building, by the script that puts a test build on a phone too, told to make the app of its own ----
 	apk := whole_path(strings.concatenate({work, "/", names.apk}, context.temp_allocator))
+	aab := whole_path(strings.concatenate({work, "/", names.aab}, context.temp_allocator))
 	script := strings.concatenate({root, "/tools/mobile-android.sh"}, context.temp_allocator)
 	command := make([dynamic]string, context.temp_allocator)
 	append(&command, "env", fmt.tprintf("ROCI_ROOT=%s", root), "NO_INSTALL=1", fmt.tprintf("APP_PACKAGE=%s", application_id))
 	append(&command, fmt.tprintf("APP_MANIFEST=%s", whole_path(manifest_file)), fmt.tprintf("APP_RES=%s", whole_path(res)))
 	append(&command, fmt.tprintf("APP_OUT=%s", whole_path(strings.concatenate({work, "/build"}, context.temp_allocator))), fmt.tprintf("APP_APK=%s", apk))
 	append(&command, fmt.tprintf("APP_KEYSTORE=%s", keystore), fmt.tprintf("APP_KEYPASS=%s", password))
+	if wants_aab {
+		append(&command, fmt.tprintf("APP_AAB=%s", aab))
+	}
 	append(&command, "sh", script, whole_path(source_folder), whole_path(sketch_folder), settings.name)
 	results, finished, status := run_phone_script(&packaging, command[:], script, strings.concatenate({work, "/android.log"}, context.temp_allocator), err)
 	if status != 0 {
@@ -131,17 +144,29 @@ package_android :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	_ = folder.write_settings(sketch_folder, settings)
 	end_packaging(true)
 	made_key := false
+	if !wants_apk {
+		_ = os.remove(apk)
+	}
 	for r in results {
-		term.progress_result(&packaging, r.name if r.name != "app" else "apk", r.text)
+		if r.name == "app" && !wants_apk {
+			continue
+		}
+		term.progress_result(&packaging, "apk" if r.name == "app" else r.name, r.text)
 		made_key ||= r.name == "newkey"
 	}
 	fmt.println()
-	// `adb` is in the SDK's platform-tools, which Android Studio does not put on the PATH: name it by its place when the computer does not find it
-	_, adb_on_path := probe("sh", "-c", "command -v adb")
-	sdk_adb := strings.concatenate({android_sdk_home(os.get_env("ANDROID_HOME", context.temp_allocator), home, system), "/platform-tools/adb"}, context.temp_allocator)
-	adb := android_adb_name(adb_on_path, sdk_adb, os.is_file(sdk_adb))
-	fmt.println(term.out(fmt.tprintf("Install it on a phone that is plugged in, with USB debugging on, with `%s install -r %s`, or copy it to the phone and open it there (the phone asks to allow installing from that app).", adb, shell_word(apk)), .Dim))
-	fmt.println(term.out("It is an APK, which a phone can install: the Android App Bundle that Google Play asks for comes later.", .Dim))
+	if wants_apk {
+		// `adb` is in the SDK's platform-tools, which Android Studio does not put on the PATH: name it by its place when the computer does not find it
+		_, adb_on_path := probe("sh", "-c", "command -v adb")
+		sdk_adb := strings.concatenate({android_sdk_home(os.get_env("ANDROID_HOME", context.temp_allocator), home, system), "/platform-tools/adb"}, context.temp_allocator)
+		adb := android_adb_name(adb_on_path, sdk_adb, os.is_file(sdk_adb))
+		fmt.println(term.out(fmt.tprintf("Install the APK on a phone that is plugged in, with USB debugging on, with `%s install -r %s`, or copy it to the phone and open it there (the phone asks to allow installing from that app).", adb, shell_word(apk)), .Dim))
+	}
+	if wants_aab {
+		fmt.println(term.out("The App Bundle is what you upload to Google Play (a phone cannot install it). Play makes the app from it and signs that with Google's own key, so keep your key: it is the one Play checks your uploads against.", .Dim))
+	} else {
+		fmt.println(term.out("It is an APK, which a phone can install: `--format all` also makes the App Bundle that Google Play asks for.", .Dim))
+	}
 	if id_changed {
 		fmt.println(term.out(fmt.tprintf("Android ids cannot hold a hyphen, so the app's id is %s; to choose it yourself, write it in sketch.toml as `id`.", application_id), .Dim))
 	}

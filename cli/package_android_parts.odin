@@ -80,10 +80,11 @@ android_category :: proc(setting: string) -> (category: string, ok: bool) {
 Android_Names :: struct {
 	executable: string, // the slug
 	apk:        string, // `wildvex-1.0.0-android-arm64.apk`
+	aab:        string, // `wildvex-1.0.0-android.aab`
 }
 
 android_names :: proc(slug, version: string) -> Android_Names {
-	return {executable = slug, apk = fmt.tprintf("%s-%s-android-arm64.apk", slug, version)}
+	return {executable = slug, apk = fmt.tprintf("%s-%s-android-arm64.apk", slug, version), aab = fmt.tprintf("%s-%s-android.aab", slug, version)}
 }
 
 // What the manifest of an app is written from.
@@ -201,4 +202,46 @@ android_adb_name :: proc(on_path: bool, sdk_adb: string, sdk_adb_exists: bool, a
 		return "adb"
 	}
 	return shell_word(sdk_adb, allocator)
+}
+
+// What `roci package android` can make.
+Android_Format :: enum {
+	Apk,
+	Aab,
+}
+
+ANDROID_FORMATS :: [?]Android_Format{.Apk, .Aab}
+
+// The formats a `--format` (or the `formats` of the `[android]` part of `sketch.toml`) names: words separated by commas, `all` for
+// both. `bad` is the first word that is no format. Each is once, in the order they are made. An empty text is the APK alone.
+parse_android_formats :: proc(text: string, allocator := context.temp_allocator) -> (formats: []Android_Format, bad: string) {
+	wanted: [Android_Format]bool
+	given := false
+	for piece in strings.split(text, ",", context.temp_allocator) {
+		word := strings.to_lower(strings.trim_space(piece), context.temp_allocator)
+		if word == "" {
+			continue
+		}
+		given = true
+		switch word {
+		case "all":
+			for f in ANDROID_FORMATS {
+				wanted[f] = true
+			}
+		case "apk":        wanted[.Apk] = true
+		case "aab", "bundle": wanted[.Aab] = true
+		case:
+			return nil, strings.trim_space(piece)
+		}
+	}
+	if !given {
+		wanted[.Apk] = true
+	}
+	made := make([dynamic]Android_Format, allocator)
+	for f in ANDROID_FORMATS {
+		if wanted[f] {
+			append(&made, f)
+		}
+	}
+	return made[:], ""
 }

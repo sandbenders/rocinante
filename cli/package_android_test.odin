@@ -180,3 +180,23 @@ test_the_install_line_names_adb_by_its_place_when_the_computer_does_not_find_it 
 	testing.expect_value(t, android_adb_name(false, sdk, false), "adb") // nowhere: the line still says which tool
 	testing.expect_value(t, android_adb_name(true, sdk, false), "adb")
 }
+
+@(test)
+test_the_android_formats_are_an_apk_unless_a_bundle_is_asked_for :: proc(t: ^testing.T) {
+	formats, bad := parse_android_formats("")
+	testing.expect_value(t, bad, "")
+	testing.expect_value(t, len(formats), 1)
+	testing.expect_value(t, formats[0], Android_Format.Apk)
+	formats, _ = parse_android_formats(" AAB , apk, aab")
+	testing.expect_value(t, len(formats), 2) // each once, in the order they are made
+	testing.expect_value(t, formats[0], Android_Format.Apk)
+	testing.expect_value(t, formats[1], Android_Format.Aab)
+	formats, _ = parse_android_formats("bundle")
+	testing.expect_value(t, len(formats), 1)
+	testing.expect_value(t, formats[0], Android_Format.Aab)
+	formats, _ = parse_android_formats("all")
+	testing.expect_value(t, len(formats), 2)
+	_, bad = parse_android_formats("apk, zip")
+	testing.expect_value(t, bad, "zip")
+	testing.expect_value(t, android_names("wild-vex", "1.0.1").aab, "wild-vex-1.0.1-android.aab")
+}

@@ -16,7 +16,7 @@
 #
 # `roci package android` runs this script too, to make an app people can be given instead of a test build: it sets APP_MANIFEST
 # (the app's own AndroidManifest.xml), APP_RES (the folder of its icons, `res`), APP_PACKAGE (its id), APP_OUT (the folder the
-# build is made in), APP_APK (where the signed APK goes), APP_KEYSTORE and APP_KEYPASS (its release key and the file with the
+# build is made in), APP_APK (where the signed APK goes), APP_AAB (where an App Bundle goes too, when asked), APP_KEYSTORE and APP_KEYPASS (its release key and the file with the
 # key's password: made here when the key is not there yet) and NO_INSTALL=1. The sketch's `assets`, `libs` and starting files
 # are then carried inside the APK, which the activity unpacks into the app's own folder the first time it runs.
 set -eu
@@ -185,6 +185,40 @@ if [ -n "${APP_MANIFEST:-}" ]; then
     --out "$apk" "$out/sketch-aligned.apk" || fail "The APK could not be signed with the app's release key."
   "$build_tools/apksigner" verify "$apk" > /dev/null 2>&1 || fail "The signature of the APK did not check."
   result app "$apk"
+  if [ -n "${APP_AAB:-}" ]; then
+    # the App Bundle Google Play asks for: the same manifest, icons, program, libraries and files, with the manifest and the
+    # resources in the protocol-buffers form bundletool reads (made by the aapt2 Google publishes for bundles, not the SDK's), put
+    # together as the one module of the bundle and signed with the same release key as the APK (jarsigner, not apksigner)
+    step bundle "Making the App Bundle"
+    tools="$(sh "$root/tools/fetch-bundle-tools.sh" 2> "$out/fetch-bundle-tools.log")" \
+      || { tail -3 "$out/fetch-bundle-tools.log" >&2; fail "The tools that make an App Bundle could not be fetched; the first time they are downloaded."; }
+    aapt2_bundle="$(ls "$tools"/aapt2-*/aapt2 | head -n 1)"
+    bundletool="$(ls "$tools"/bundletool-*.jar | head -n 1)"
+    bundle="$out/bundle"
+    rm -rf "$bundle"
+    mkdir -p "$bundle/base/manifest" "$bundle/base/dex"
+    "$aapt2_bundle" link --proto-format -o "$bundle/proto.apk" -I "$android_jar" --manifest "$out/AndroidManifest.xml" \
+      --min-sdk-version "$API_LEVEL" --target-sdk-version "$TARGET_API_LEVEL" "$out/res.zip" \
+      || fail "aapt2 could not put the manifest and the icons together for the App Bundle."
+    unzip -q "$bundle/proto.apk" -d "$bundle/proto"
+    cp "$bundle/proto/AndroidManifest.xml" "$bundle/base/manifest/AndroidManifest.xml"
+    cp "$bundle/proto/resources.pb" "$bundle/base/resources.pb"
+    [ ! -d "$bundle/proto/res" ] || cp -R "$bundle/proto/res" "$bundle/base/res"
+    cp "$out/dex/classes.dex" "$bundle/base/dex/classes.dex"
+    cp -R "$out/lib" "$bundle/base/lib"
+    cp -R "$out/assets" "$bundle/base/assets"
+    (cd "$bundle/base" && zip -qr -X ../base.zip .)
+    java -jar "$bundletool" build-bundle --modules="$bundle/base.zip" --output="$bundle/unsigned.aab" > "$out/bundletool.log" 2>&1 \
+      || { tail -8 "$out/bundletool.log" >&2; fail "bundletool could not make the App Bundle."; }
+    mkdir -p "$(dirname "$APP_AAB")"
+    rm -f "$APP_AAB"
+    jarsigner -keystore "$APP_KEYSTORE" -storepass:file "$APP_KEYPASS" -sigalg SHA256withRSA -digestalg SHA-256 \
+      -signedjar "$APP_AAB" "$bundle/unsigned.aab" app > "$out/jarsigner.log" 2>&1 \
+      || { tail -5 "$out/jarsigner.log" >&2; fail "The App Bundle could not be signed with the app's release key."; }
+    java -jar "$bundletool" validate --bundle="$APP_AAB" >> "$out/bundletool.log" 2>&1 \
+      || { tail -8 "$out/bundletool.log" >&2; fail "bundletool does not accept the App Bundle it was given."; }
+    result bundle "$APP_AAB"
+  fi
 else
   if [ ! -f "$keystore" ]; then
     keytool -genkeypair -keystore "$keystore" -storepass android -keypass android \

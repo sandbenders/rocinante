@@ -1,6 +1,6 @@
 ---
 title: "Making an Android app"
-summary: "Turn a sketch into a signed APK with roci package android: its name, id, icon, version and orientation, what goes inside, and the key you must keep."
+summary: "Turn a sketch into a signed Android APK or Play App Bundle with roci package android: name, id, icon, version, orientation, and the key you must keep."
 weight: 37
 ---
 
@@ -37,6 +37,16 @@ The program, rocinante's libraries for the phone, and the sketch's `assets` and 
 
 An APK has to be signed, and an update can replace an installed app only if it is signed with the same key. `roci package` makes a key for the app's id the first time, and keeps it, with its password in a file beside it, in rocinante's own folder, outside the sketch's (`~/Library/Application Support/rocinante/android` on a Mac, `~/.local/share/rocinante/android` on Linux): a key in the sketch's folder would go to git with it. It says so when it makes one. **Keep a copy of the key and its password file somewhere safe.** If they are lost, a new version cannot replace the old one on a phone: whoever has the app installed would have to remove it first, and lose what it remembered.
 
+## The App Bundle for Google Play
+
+Google Play takes an Android App Bundle (`.aab`), not an APK, and makes the apps for each phone from it. Ask for it with `--format aab` (or `--format all` for both; `formats = "all"` in the `[android]` part of `sketch.toml` keeps the choice):
+
+```
+roci package android --format all
+```
+
+It is signed with the same key as the APK, and `roci` has bundletool check it. The first time, `roci` downloads two tools into its own folder, bundletool (Google, Apache-2.0) and the `aapt2` that Google publishes for bundles, and checks each against the checksum it knows. A phone cannot install a bundle: upload it in the Play Console. For a new app Play signs what it makes with a key of its own and keeps your key as the one your uploads are checked against, so keep a copy of yours as well.
+
 ## What it does not do yet
 
-Google Play asks for an Android App Bundle, which comes later; the APK is for installing. A key of your own, chosen for the app, is not read yet either, nor an icon in the phone's theme colours (Android's monochrome icon).
+A key of your own, chosen for the app, is not read yet either, nor an icon in the phone's theme colours (Android's monochrome icon).
