@@ -8,7 +8,7 @@ import "core:testing"
 
 // A git repository holding the given files, made under output/tests, with one commit.
 @(private = "file")
-make_repo :: proc(name: string, files: [][2]string) -> string {
+make_repo :: proc(t: ^testing.T, name: string, files: [][2]string) -> string {
 	repo := fresh(name)
 	_ = os.make_directory_all(repo)
 	for file in files {
@@ -18,17 +18,56 @@ make_repo :: proc(name: string, files: [][2]string) -> string {
 		}
 		_ = os.write_entire_file(full, transmute([]byte)file[1])
 	}
-	commit_all(repo, "first")
+	commit_all(t, repo, "first")
 	return repo
 }
 
+// Runs git on a fixture repository and on nothing else: the fixtures sit inside rocinante's own working tree,
+// so git is told the repository and its files outright and may not look above the fixture's folder, and a
+// fixture that went missing is an error rather than the enclosing repository taken in its place.
 @(private = "file")
-commit_all :: proc(repo, message: string) {
-	if ok, _ := run(repo, "git", "init", "-q"); !ok {
+fixture_git :: proc(repo: string, args: ..string) -> (ok: bool, output: string) {
+	absolute, abs_err := os.get_absolute_path(repo, context.temp_allocator)
+	if abs_err != nil || !os.is_directory(absolute) {
+		return false, ""
+	}
+	parent, _ := os.split_path(absolute)
+	inherited, _ := os.environ(context.temp_allocator)
+	env := make([dynamic]string, 0, len(inherited) + 3, context.temp_allocator)
+	for v in inherited {
+		upper := strings.to_upper(v, context.temp_allocator)
+		if !strings.has_prefix(upper, "GIT_DIR=") && !strings.has_prefix(upper, "GIT_WORK_TREE=") && !strings.has_prefix(upper, "GIT_CEILING_DIRECTORIES=") {
+			append(&env, v)
+		}
+	}
+	append(&env, strings.concatenate({"GIT_DIR=", absolute, "/.git"}, context.temp_allocator))
+	append(&env, strings.concatenate({"GIT_WORK_TREE=", absolute}, context.temp_allocator))
+	append(&env, strings.concatenate({"GIT_CEILING_DIRECTORIES=", parent}, context.temp_allocator))
+	command := make([dynamic]string, 0, len(args) + 3, context.temp_allocator)
+	append(&command, "git", "-C", absolute)
+	append(&command, ..args)
+	state, stdout, stderr, err := os.process_exec({working_dir = absolute, command = command[:], env = env[:]}, context.temp_allocator)
+	if err != nil {
+		return false, ""
+	}
+	text := strings.trim_space(string(stdout))
+	if text == "" {
+		text = strings.trim_space(string(stderr))
+	}
+	return state.exit_code == 0, text
+}
+
+@(private = "file")
+commit_all :: proc(t: ^testing.T, repo, message: string) {
+	absolute, _ := os.get_absolute_path(repo, context.temp_allocator)
+	if ok, _ := run("", "git", "init", "-q", absolute); !ok {
 		return
 	}
-	run(repo, "git", "add", "-A")
-	run(repo, "git", "-c", "user.name=test", "-c", "user.email=test@example.org", "commit", "-q", "-m", message)
+	if !testing.expectf(t, os.is_directory(path_in(absolute, ".git")), "git init made no repository in %s", absolute) {
+		return
+	}
+	fixture_git(repo, "add", "-A")
+	fixture_git(repo, "-c", "user.name=test", "-c", "user.email=test@example.org", "commit", "-q", "-m", message)
 }
 
 @(private = "file")
@@ -40,7 +79,7 @@ sketch_folder :: proc(name: string) -> string {
 
 @(private = "file")
 head_of :: proc(repo: string) -> string {
-	_, hash := run(repo, "git", "rev-parse", "HEAD")
+	_, hash := fixture_git(repo, "rev-parse", "HEAD")
 	return hash
 }
 
@@ -69,7 +108,7 @@ test_get_copies_a_library_without_git_and_records_where_it_came_from :: proc(t: 
 	if !git_installed() {
 		return
 	}
-	repo := make_repo("get_repo", {{"flock.roci", "learn flock n [ ]\n"}, {"README.md", "hi\n"}, {"parts/more.roci", "learn more n [ ]\n"}})
+	repo := make_repo(t, "get_repo", {{"flock.roci", "learn flock n [ ]\n"}, {"README.md", "hi\n"}, {"parts/more.roci", "learn more n [ ]\n"}})
 	root := sketch_folder("get_sketch")
 	result, err, detail := get_library(root, repo)
 	testing.expect_value(t, err, Library_Error.None)
@@ -108,7 +147,7 @@ test_get_says_what_went_wrong :: proc(t: ^testing.T) {
 	testing.expect_value(t, missing, Library_Error.Clone_Failed)
 	testing.expect(t, detail != "")
 	testing.expect(t, !os.exists(path_in(root, "libs/no_such_repository")))
-	no_roci := make_repo("get_no_roci", {{"README.md", "nothing to run\n"}})
+	no_roci := make_repo(t, "get_no_roci", {{"README.md", "nothing to run\n"}})
 	_, empty, _ := get_library(root, no_roci)
 	testing.expect_value(t, empty, Library_Error.No_Roci_Files)
 	testing.expect(t, !os.exists(path_in(root, "libs/folder_get_no_roci")))
@@ -120,9 +159,9 @@ test_get_fetches_the_libraries_a_library_asks_for_by_address_and_says_the_rest :
 	if !git_installed() {
 		return
 	}
-	inner := make_repo("get_inner", {{"inner.roci", "learn inner n [ ]\n"}})
+	inner := make_repo(t, "get_inner", {{"inner.roci", "learn inner n [ ]\n"}})
 	outer_text := strings.concatenate({"use \"", inner, "\"\nuse \"elsewhere\"\nlearn outer n [ inner n ]\n"}, context.temp_allocator)
-	outer := make_repo("get_outer", {{"outer.roci", outer_text}})
+	outer := make_repo(t, "get_outer", {{"outer.roci", outer_text}})
 	root := sketch_folder("get_deps")
 	result, err, _ := get_library(root, outer)
 	testing.expect_value(t, err, Library_Error.None)
@@ -132,7 +171,7 @@ test_get_fetches_the_libraries_a_library_asks_for_by_address_and_says_the_rest :
 	testing.expect_value(t, result.missing[0], "elsewhere")
 	testing.expect(t, os.exists(path_in(root, "libs/folder_get_inner/inner.roci")))
 	// A library that is there from another address is not replaced.
-	other := make_repo("get_other_inner", {{"inner.roci", "learn inner n [ ]\n"}})
+	other := make_repo(t, "get_other_inner", {{"inner.roci", "learn inner n [ ]\n"}})
 	root2 := sketch_folder("get_conflict")
 	_, other_err, _ := get_library(root2, other, "folder_get_inner")
 	testing.expect_value(t, other_err, Library_Error.None)
@@ -147,7 +186,7 @@ test_update_says_what_changed_and_replaces_the_copy :: proc(t: ^testing.T) {
 	if !git_installed() {
 		return
 	}
-	repo := make_repo("update_repo", {{"a.roci", "learn a n [ ]\n"}, {"b.roci", "learn b n [ ]\n"}, {"c.roci", "learn c n [ ]\n"}})
+	repo := make_repo(t, "update_repo", {{"a.roci", "learn a n [ ]\n"}, {"b.roci", "learn b n [ ]\n"}, {"c.roci", "learn c n [ ]\n"}})
 	root := sketch_folder("update_sketch")
 	_, err, _ := get_library(root, repo, "lib")
 	testing.expect_value(t, err, Library_Error.None)
@@ -159,7 +198,7 @@ test_update_says_what_changed_and_replaces_the_copy :: proc(t: ^testing.T) {
 	_ = os.write_entire_file(path_in(repo, "a.roci"), transmute([]byte)string("learn a n [ print n ]\n"))
 	_ = os.remove(path_in(repo, "b.roci"))
 	_ = os.write_entire_file(path_in(repo, "d.roci"), transmute([]byte)string("learn d n [ ]\n"))
-	commit_all(repo, "second")
+	commit_all(t, repo, "second")
 	changed, changed_err, _ := update_library(root, "lib")
 	testing.expect_value(t, changed_err, Library_Error.None)
 	testing.expect(t, !changed.same)
@@ -195,7 +234,7 @@ test_a_use_of_a_git_address_is_fetched_once_and_then_the_program_includes_it :: 
 	if !git_installed() {
 		return
 	}
-	repo := make_repo("use_repo", {{"glow.roci", "learn glow n [ circle at n n radius 2 ]\n"}})
+	repo := make_repo(t, "use_repo", {{"glow.roci", "learn glow n [ circle at n n radius 2 ]\n"}})
 	root := sketch_folder("use_sketch")
 	text := strings.concatenate({"use \"", repo, "\"\nglow 5\n"}, context.temp_allocator)
 	_ = os.write_entire_file(path_in(root, "sketch.roci"), transmute([]byte)text)

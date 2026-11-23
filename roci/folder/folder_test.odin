@@ -6,9 +6,10 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 
-// A fresh folder name under output/tests for one test.
+// A fresh folder name under output/tests for one test, in a folder of this run's own (named by the process), so
+// two runs at once never make, remove or run git in each other's fixtures.
 fresh :: proc(name: string) -> string {
-	root := strings.concatenate({"output/tests/folder_", name}, context.temp_allocator)
+	root := fmt.tprintf("output/tests/%d/folder_%s", os.get_pid(), name)
 	_ = os.remove_all(root)
 	return root
 }
@@ -107,9 +108,9 @@ test_a_new_sketch_starts_a_repository_with_a_first_commit_when_git_is_here :: pr
 		return
 	}
 	// A folder outside this repository, so a new one can start.
-	root := strings.concatenate({os.get_env("TMPDIR", context.temp_allocator), "rocinante_folder_git"}, context.temp_allocator)
+	root := strings.concatenate({os.get_env("TMPDIR", context.temp_allocator), fmt.tprintf("rocinante_folder_git_%d", os.get_pid())}, context.temp_allocator)
 	if os.get_env("TMPDIR", context.temp_allocator) == "" {
-		root = "/tmp/rocinante_folder_git"
+		root = fmt.tprintf("/tmp/rocinante_folder_git_%d", os.get_pid())
 	}
 	_ = os.remove_all(root)
 	defer os.remove_all(root)
