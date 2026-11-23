@@ -13,6 +13,12 @@
 # EMULATOR=1 puts the app on Android's emulator instead of a phone: a running one if there is one, else the virtual
 # device named by AVD (else the first `emulator -list-avds` gives), started and waited for. The APK is the same
 # arm64 one, which an arm64 virtual device runs as it is; the emulator is for seeing layouts, not for speed.
+#
+# `roci package android` runs this script too, to make an app people can be given instead of a test build: it sets APP_MANIFEST
+# (the app's own AndroidManifest.xml), APP_RES (the folder of its icons, `res`), APP_PACKAGE (its id), APP_OUT (the folder the
+# build is made in), APP_APK (where the signed APK goes), APP_KEYSTORE and APP_KEYPASS (its release key and the file with the
+# key's password: made here when the key is not there yet) and NO_INSTALL=1. The sketch's `assets`, `libs` and starting files
+# are then carried inside the APK, which the activity unpacks into the app's own folder the first time it runs.
 set -eu
 
 source_folder="${1:?the folder with the program roci made}"
@@ -24,7 +30,8 @@ out="$sketch_folder/artifacts/android"
 [ -z "${EMULATOR:-}" ] || out="$sketch_folder/artifacts/android-emulator"
 SDL_ANDROID_LIB="${SDL_ANDROID_LIB:-$root/.cache/mobile/android}"
 SDL_ANDROID_JAVA="${SDL_ANDROID_JAVA:-$root/.cache/mobile/SDL3-3.4.18/android-project/app/src/main/java}"
-PACKAGE=org.rocinante.sketch
+PACKAGE="${APP_PACKAGE:-org.rocinante.sketch}"
+[ -z "${APP_OUT:-}" ] || out="$APP_OUT"
 
 # What it says is read by roci, which draws the steps: `step <kind> <words>` starts one (kinds: libraries, phone, compile,
 # bundle, sign, install, start), `result <name> <detail>` is something made, `finished <words>` the last word and
@@ -122,22 +129,72 @@ step bundle "Making the app"
 javac --release 11 -classpath "$android_jar" -d "$out/classes" $(find "$SDL_ANDROID_JAVA" "$here" -name '*.java')
 "$build_tools/d8" --lib "$android_jar" --min-api "$API_LEVEL" --output "$out/dex" $(find "$out/classes" -name '*.class')
 
-sed "s/@NAME@/$name/g" "$here/AndroidManifest.xml" > "$out/AndroidManifest.xml"
-"$build_tools/aapt" package -f -M "$out/AndroidManifest.xml" -I "$android_jar" \
-  --min-sdk-version "$API_LEVEL" --target-sdk-version "$TARGET_API_LEVEL" -F "$out/sketch-unaligned.apk"
+if [ -n "${APP_MANIFEST:-}" ]; then
+  # an app of its own: its manifest and its icons, through aapt2, which knows the adaptive icons of Android 8 and later
+  cp "$APP_MANIFEST" "$out/AndroidManifest.xml"
+  "$build_tools/aapt2" compile --dir "$APP_RES" -o "$out/res.zip" \
+    || fail "The icons could not be read by aapt2: look in $APP_RES."
+  "$build_tools/aapt2" link -o "$out/sketch-unaligned.apk" -I "$android_jar" --manifest "$out/AndroidManifest.xml" \
+    --min-sdk-version "$API_LEVEL" --target-sdk-version "$TARGET_API_LEVEL" "$out/res.zip" \
+    || fail "aapt2 could not put the manifest and the icons together."
+else
+  sed "s/@NAME@/$name/g" "$here/AndroidManifest.xml" > "$out/AndroidManifest.xml"
+  "$build_tools/aapt" package -f -M "$out/AndroidManifest.xml" -I "$android_jar" \
+    --min-sdk-version "$API_LEVEL" --target-sdk-version "$TARGET_API_LEVEL" -F "$out/sketch-unaligned.apk"
+fi
 cp "$out/dex/classes.dex" "$out/classes.dex"
 (cd "$out" && "$build_tools/aapt" add sketch-unaligned.apk classes.dex \
   lib/arm64-v8a/libmain.so lib/arm64-v8a/libSDL3.so lib/arm64-v8a/libSDL3_ttf.so \
   lib/arm64-v8a/libshaderc_shared.so lib/arm64-v8a/libspirv-cross-c-shared.so > /dev/null)
-"$build_tools/zipalign" -f -p 4 "$out/sketch-unaligned.apk" "$out/sketch-aligned.apk"
-if [ ! -f "$keystore" ]; then
-  keytool -genkeypair -keystore "$keystore" -storepass android -keypass android \
-    -alias spike -keyalg RSA -keysize 2048 -validity 10000 \
-    -dname "CN=rocinante, O=rocinante" > /dev/null 2>&1
+if [ -n "${APP_MANIFEST:-}" ]; then
+  # the sketch's own files go inside the APK, under assets/sketch/, for the activity to unpack into the app's folder: `assets` and
+  # `libs` as they are, and the files a sketch starts from (what it remembers, its vault, what its widgets were set to) apart
+  stage="$out/assets/sketch"
+  mkdir -p "$stage/seed"
+  for part in assets libs; do
+    if [ -d "$sketch_folder/$part" ]; then
+      cp -R "$sketch_folder/$part" "$stage/$part"
+    fi
+  done
+  find "$stage" -name .git -prune -exec rm -rf {} + 2> /dev/null || true
+  find "$stage" \( -name .DS_Store -o -name .keep \) -type f -delete 2> /dev/null || true
+  for seed in ui.toml memory.toml vault.bin vault.key; do
+    [ ! -f "$sketch_folder/$seed" ] || cp "$sketch_folder/$seed" "$stage/seed/$seed"
+  done
+  # a file for the activity to find even when the sketch has none, so `sketch` is always there to list
+  printf 'rocinante\n' > "$stage/seed/.sketch"
+  (cd "$out" && find assets -type f -print0 | xargs -0 "$build_tools/aapt" add sketch-unaligned.apk > /dev/null)
 fi
-"$build_tools/apksigner" sign --ks "$keystore" --ks-pass pass:android --key-pass pass:android \
-  --out "$out/sketch.apk" "$out/sketch-aligned.apk"
-result app "$out/sketch.apk"
+"$build_tools/zipalign" -f -p 4 "$out/sketch-unaligned.apk" "$out/sketch-aligned.apk"
+if [ -n "${APP_MANIFEST:-}" ]; then
+  # the app's release key: made once for the id, kept outside the sketch's folder, and the only thing that can sign an update
+  [ -n "${APP_KEYSTORE:-}" ] && [ -n "${APP_KEYPASS:-}" ] || fail "The app's release key was not named."
+  if [ ! -f "$APP_KEYSTORE" ]; then
+    mkdir -p "$(dirname "$APP_KEYSTORE")"
+    (umask 077; LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32 > "$APP_KEYPASS")
+    keytool -genkeypair -keystore "$APP_KEYSTORE" -storepass:file "$APP_KEYPASS" -keypass:file "$APP_KEYPASS" \
+      -alias app -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=$PACKAGE" > "$out/keytool.log" 2>&1 \
+      || { tail -5 "$out/keytool.log" >&2; fail "The app's release key could not be made."; }
+    result newkey "$APP_KEYSTORE"
+  fi
+  apk="${APP_APK:-$out/sketch.apk}"
+  mkdir -p "$(dirname "$apk")"
+  # the key has the keystore's password, so it is given once: apksigner reads a second `file:` password from the next line of the
+  # same file, and the file has the one line
+  "$build_tools/apksigner" sign --ks "$APP_KEYSTORE" --ks-pass file:"$APP_KEYPASS" --ks-key-alias app \
+    --out "$apk" "$out/sketch-aligned.apk" || fail "The APK could not be signed with the app's release key."
+  "$build_tools/apksigner" verify "$apk" > /dev/null 2>&1 || fail "The signature of the APK did not check."
+  result app "$apk"
+else
+  if [ ! -f "$keystore" ]; then
+    keytool -genkeypair -keystore "$keystore" -storepass android -keypass android \
+      -alias spike -keyalg RSA -keysize 2048 -validity 10000 \
+      -dname "CN=rocinante, O=rocinante" > /dev/null 2>&1
+  fi
+  "$build_tools/apksigner" sign --ks "$keystore" --ks-pass pass:android --key-pass pass:android \
+    --out "$out/sketch.apk" "$out/sketch-aligned.apk"
+  result app "$out/sketch.apk"
+fi
 
 [ -z "${NO_INSTALL:-}" ] || exit 0
 step install "Installing the app"

@@ -5,8 +5,8 @@
 // the sketch does not say (the app's name, id and version, kept in `sketch.toml` so it asks once), and it refuses a sketch that
 // has errors, as `roci check` would.
 //
-// The Mac (`package_macos.odin`), Linux (`package_linux_app.odin`), FreeBSD (`package_freebsd_app.odin`) and OpenBSD
-// (`package_openbsd_app.odin`) are written so far.
+// The Mac (`package_macos.odin`), Linux (`package_linux_app.odin`), FreeBSD (`package_freebsd_app.odin`), OpenBSD
+// (`package_openbsd_app.odin`) and Android (`package_android.odin`) are written so far.
 package main
 
 import "../roci/folder"
@@ -38,6 +38,10 @@ PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--ve
   --description on Linux, FreeBSD and OpenBSD, one line about the app, for package managers and menus
   --category  on Linux, the menu categories a desktop file puts the app in, such as Game; or Graphics;Music;
   --yes       do not ask: take what is in sketch.toml and the defaults
+
+On Android the app is a signed APK to install on a phone (adb install -r, or copy it over). Its id, name, version and icon are the
+sketch's own; sketch.toml can say how a phone holds it (orientation = "portrait", "landscape" or "any") and what kind of app it is
+(category = "game" in the [android] part). Its release key is made once, outside the sketch's folder: keep a copy of it.
 
 The result is in the sketch's output/package folder.`
 
@@ -304,10 +308,14 @@ run_package :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		code := package_openbsd(a, out, err)
 		end_packaging(code == 0)
 		return code
-	case "ios", "android":
+	case "android":
+		code := package_android(a, out, err)
+		end_packaging(code == 0)
+		return code
+	case "ios":
 		fmt.sbprintf(err, "`roci package %s` is not written yet. `roci run --compile --target %s` puts a sketch on a phone that is plugged in.\n", target.name, target.name)
 	case:
-		fmt.sbprintf(err, "`roci package %s` is not written yet: the Mac, Linux, FreeBSD and OpenBSD are the systems it makes apps for so far.\n", target.name)
+		fmt.sbprintf(err, "`roci package %s` is not written yet: the Mac, Linux, FreeBSD, OpenBSD and Android are the systems it makes apps for so far.\n", target.name)
 	}
 	return 2
 }
