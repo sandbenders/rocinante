@@ -181,7 +181,7 @@ package_openbsd :: proc(a: Package_Args, out, err: ^strings.Builder) -> int {
 	}
 	fmt.println()
 	if wants_pkg {
-		fmt.println(term.out(fmt.tprintf("Install it as root with `doas pkg_add -D unsigned %s`; pkg_add fetches the packages it needs (%s) from your mirror.", names.pkg_file, openbsd_dep_names(needs.deps)), .Dim))
+		fmt.println(term.out(fmt.tprintf("Install it as root, from the folder it is in, with `%s`; pkg_add fetches the packages it needs (%s) from your mirror.", openbsd_install_command(names.pkg_file), openbsd_dep_names(needs.deps)), .Dim))
 		fmt.println(term.out(fmt.tprintf("It is made for the OpenBSD this computer runs, on %s: pkg_add checks the libraries the program asks for, so make packages on the release you want to support.", machine), .Dim))
 		fmt.println(term.out("It is not signed, which is why pkg_add needs -D unsigned: a repository of your own would sign its packages with signify.", .Dim))
 		if settings.maintainer == "" {

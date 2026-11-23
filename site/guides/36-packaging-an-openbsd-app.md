@@ -19,7 +19,7 @@ It works in the sketch's folder (or give it a folder), refuses a sketch that has
 
 | Word | What it makes | Install it with |
 |---|---|---|
-| `pkg` | `name-1.0.0.tgz`, a package for OpenBSD's own package tools | `pkg_add -D unsigned name-1.0.0.tgz`, as root |
+| `pkg` | `name-1.0.0.tgz`, a package for OpenBSD's own package tools | `pkg_add -D unsigned ./name-1.0.0.tgz`, as root, from the folder it is in |
 | `tar` | `name-1.0.0-openbsd-amd64.tar.gz`: a folder to unpack anywhere and run | `tar xzf`, then run the program in it |
 
 The package puts the app in `/usr/local/libexec/name`, gives it a command with the app's name in `/usr/local/bin`, and adds its menu entry and icons under `/usr/local/share`, so a desktop shows it. `pkg_delete name` takes every file away again. It is made by OpenBSD's own `pkg_create`, from a list of the files that `roci` writes, so what `pkg_add` checks of it was checked by the tool that knows.
@@ -49,4 +49,4 @@ A package names who looks after it, as `Name <address>`; without one it says so,
 
 ## Signing
 
-The package is not signed. `pkg_add` refuses an unsigned package unless it is told `-D unsigned`, which is why the command above has it. A repository of your own signs its packages with `signify`, and the people who use it install its public key.
+The package is not signed. `pkg_add` refuses an unsigned package unless it is told `-D unsigned`, which is why the command above has it. The `./` in front of the file matters: `pkg_add` takes a name with no slash in it for a package to fetch from a mirror, and says `Can't find` when it is a file. A repository of your own signs its packages with `signify`, and the people who use it install its public key.

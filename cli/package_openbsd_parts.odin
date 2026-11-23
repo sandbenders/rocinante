@@ -238,6 +238,12 @@ openbsd_plist :: proc(entries: []Openbsd_Entry, allocator := context.temp_alloca
 	return strings.to_string(b)
 }
 
+// The command that installs a package file from the folder it is in. The `./` matters: `pkg_add` takes a name with no slash in it for
+// the name of a package to fetch from a mirror and says `Can't find` when it is a file, so a file is told by its path.
+openbsd_install_command :: proc(pkg_file: string, allocator := context.temp_allocator) -> string {
+	return fmt.aprintf("doas pkg_add -D unsigned ./%s", pkg_file, allocator = allocator)
+}
+
 // The command that starts the app, in `bin`: a script that runs the program in its own folder by its full path, so the program
 // finds its files and the libraries it carries wherever it was started from, and not a link, whose own folder it might take for it.
 openbsd_command :: proc(pkg, executable: string, allocator := context.temp_allocator) -> string {

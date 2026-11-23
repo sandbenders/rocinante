@@ -217,6 +217,13 @@ test_the_packing_list_names_programs_libraries_and_folders :: proc(t: ^testing.T
 }
 
 @(test)
+test_a_package_file_is_installed_by_a_path_and_not_a_bare_name :: proc(t: ^testing.T) {
+	// pkg_add looks a name with no slash up on a mirror, so the file is written with `./` (found by trying it: `Can't find circle-1.0.0.tgz`)
+	testing.expect_value(t, openbsd_install_command("circle-1.0.0.tgz"), "doas pkg_add -D unsigned ./circle-1.0.0.tgz")
+	testing.expect_value(t, openbsd_install_command("bricks-game-2.1.3.tgz"), "doas pkg_add -D unsigned ./bricks-game-2.1.3.tgz")
+}
+
+@(test)
 test_the_command_runs_the_program_by_its_full_path :: proc(t: ^testing.T) {
 	text := openbsd_command("wildvex", "wildvex")
 	testing.expect_value(t, text, "#!/bin/sh\nexec /usr/local/libexec/wildvex/wildvex \"$@\"\n")
