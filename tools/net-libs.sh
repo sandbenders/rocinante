@@ -5,7 +5,7 @@
 # .cache/net/lib/libcurl.a and the mbedTLS libraries beside it, .cache/net/include. HTTP and HTTPS only:
 # no HTTP/2, no compression, no other protocol, so nothing else is linked. The sources are fetched by
 # tools/fetch-net.sh. Needs cmake and a C compiler (cc). On Windows libcurl uses the system's Schannel and
-# builds with MSVC's cl, from Git Bash started inside vcvars64.bat (not yet run there).
+# builds with MSVC's cl and the cmake Visual Studio Build Tools carry, from Git Bash started inside vcvars64.bat.
 #
 #     tools/net-libs.sh                 for this computer, into .cache/net
 #     tools/net-libs.sh ios             for an iPhone (arm64), into .cache/net-ios (Xcode; MIN_IOS, default 15.0)
@@ -37,7 +37,7 @@ common="-DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_
 curl_options="-DBUILD_SHARED_LIBS=OFF -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF -DHTTP_ONLY=ON \
  -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF -DCURL_USE_LIBSSH=OFF -DUSE_NGHTTP2=OFF -DCURL_ZLIB=OFF \
  -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DUSE_LIBIDN2=OFF -DCURL_DISABLE_LDAP=ON -DENABLE_WEBSOCKETS=ON \
- -DCURL_DISABLE_INSTALL=OFF"
+ -DCURL_DISABLE_INSTALL=OFF -DBUILD_LIBCURL_DOCS=OFF -DBUILD_MISC_DOCS=OFF -DENABLE_CURL_MANUAL=OFF"
 
 # What a phone needs to be told: where its compiler is. Test programs are built as static libraries because
 # an iPhone program cannot run (or be linked) without signing, and Android's cmake looks for libraries only
