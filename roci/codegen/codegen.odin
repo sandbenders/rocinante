@@ -28,9 +28,9 @@ Problem :: struct {
 Options :: struct {
 	sketch:   string, // the sketch's name, for the header and the log
 	source:   string, // the file it was written in, for the comments that say which line
-	target:   string, // "ios" or "android" for a program an app runs, "macos", "linux" or "freebsd" for one that is packaged as an app; empty for this computer
-	app_id:   string, // with target "macos", "linux" or "freebsd": the app's id, which names the folder it keeps what it writes in
-	app_name: string, // with target "macos", "linux" or "freebsd": what people call the app, which volume controls and the like show (the program's name when empty)
+	target:   string, // "ios" or "android" for a program an app runs, "macos", "linux", "freebsd" or "openbsd" for one that is packaged as an app; empty for this computer
+	app_id:   string, // with target "macos", "linux", "freebsd" or "openbsd": the app's id, which names the folder it keeps what it writes in
+	app_name: string, // with target "macos", "linux", "freebsd" or "openbsd": what people call the app, which volume controls and the like show (the program's name when empty)
 }
 
 Result :: struct {
@@ -222,7 +222,7 @@ generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Opti
 	fmt.sbprintf(&out, "#+feature dynamic-literals\npackage sketch\n\nimport \"core:fmt\"\nimport \"core:math\"\nimport \"rocinante:roci\"\nimport \"rocinante:roci/collide\"\nimport \"rocinante:roci/data\"\nimport \"rocinante:roci/maths\"\nimport \"rocinante:roci/rt\"\n")
 	switch options.target {
 	case "":
-	case "macos", "linux", "freebsd":
+	case "macos", "linux", "freebsd", "openbsd":
 		fmt.sbprintf(&out, "import sdl \"vendor:sdl3\"\n")
 	case:
 		fmt.sbprintf(&out, "import \"base:runtime\"\nimport \"core:c\"\nimport sdl \"vendor:sdl3\"\n")
@@ -253,7 +253,7 @@ generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Opti
 		fmt.sbprintf(&out, "sketch_main :: proc() {{\n\trun := rt.read_run(%q, %q)\n\trt.execute(run, setup, roots%s)\n}}\n\n", options.sketch, ODIN_VERSION_PIN, hook)
 		fmt.sbprintf(&out, "@(export, link_name = \"rocinante_main\")\nrocinante_main :: proc \"c\" (argc: c.int, argv: [^]cstring) -> c.int {{\n\tcontext = runtime.default_context()\n\tfolder := string(sdl.GetAndroidInternalStoragePath())\n\trt.use_home(folder, folder)\n\tsketch_main()\n\treturn 0\n}}\n\n")
 		fmt.sbprintf(&out, "// SDL's activity never goes through the NDK's native_app_glue, which wants this name defined.\n@(export, link_name = \"android_main\")\nandroid_main :: proc \"c\" (app: rawptr) {{}}\n")
-	case "macos", "linux", "freebsd":
+	case "macos", "linux", "freebsd", "openbsd":
 		// A packaged app starts with no folder of its own: the assets are beside the program (in the bundle of a Mac app), and what the sketch writes
 		// goes in the app's folder (Application Support on a Mac, ~/.local/share on Linux), which is where the program works from.
 		// The id and the name are given to SDL before it starts, so a Wayland or X11 desktop matches the window to the app's desktop file

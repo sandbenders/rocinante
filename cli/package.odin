@@ -5,7 +5,8 @@
 // the sketch does not say (the app's name, id and version, kept in `sketch.toml` so it asks once), and it refuses a sketch that
 // has errors, as `roci check` would.
 //
-// The Mac (`package_macos.odin`), Linux (`package_linux_app.odin`) and FreeBSD (`package_freebsd_app.odin`) are written so far.
+// The Mac (`package_macos.odin`), Linux (`package_linux_app.odin`), FreeBSD (`package_freebsd_app.odin`) and OpenBSD
+// (`package_openbsd_app.odin`) are written so far.
 package main
 
 import "../roci/folder"
@@ -32,8 +33,9 @@ PACKAGE_USAGE :: `roci package <target> [folder] [--name text] [--id text] [--ve
   --format    on Linux, what to make, separated by commas: tar (a .tar.gz, the default), deb, rpm (for Fedora
               and openSUSE), arch (an Arch package), appimage, or all. Kept in sketch.toml
               On FreeBSD: pkg (a package for pkg add) and tar, both by default
-  --maintainer  on Linux and FreeBSD, who looks after the package, as Name <address> (a .deb, an RPM, an Arch package and a .pkg say it)
-  --description on Linux, one line about the app, for package managers and menus
+              On OpenBSD: pkg (a .tgz for pkg_add) and tar, both by default
+  --maintainer  on Linux, FreeBSD and OpenBSD, who looks after the package, as Name <address> (a .deb, an RPM, an Arch package, a .pkg and a .tgz say it)
+  --description on Linux, FreeBSD and OpenBSD, one line about the app, for package managers and menus
   --category  on Linux, the menu categories a desktop file puts the app in, such as Game; or Graphics;Music;
   --yes       do not ask: take what is in sketch.toml and the defaults
 
@@ -126,9 +128,12 @@ resolve_settings :: proc(current: folder.Settings, a: Package_Args, sketch_folde
 		r.settings.notary = a.notary
 	}
 	if a.format != "" {
-		if a.target == "freebsd" {
+		switch a.target {
+		case "freebsd":
 			r.settings.bsd_formats = a.format
-		} else {
+		case "openbsd":
+			r.settings.openbsd_formats = a.format
+		case:
 			r.settings.formats = a.format
 		}
 	}
@@ -295,10 +300,14 @@ run_package :: proc(args: []string, out, err: ^strings.Builder) -> int {
 		code := package_freebsd(a, out, err)
 		end_packaging(code == 0)
 		return code
+	case "openbsd":
+		code := package_openbsd(a, out, err)
+		end_packaging(code == 0)
+		return code
 	case "ios", "android":
 		fmt.sbprintf(err, "`roci package %s` is not written yet. `roci run --compile --target %s` puts a sketch on a phone that is plugged in.\n", target.name, target.name)
 	case:
-		fmt.sbprintf(err, "`roci package %s` is not written yet: the Mac, Linux and FreeBSD are the systems it makes apps for so far.\n", target.name)
+		fmt.sbprintf(err, "`roci package %s` is not written yet: the Mac, Linux, FreeBSD and OpenBSD are the systems it makes apps for so far.\n", target.name)
 	}
 	return 2
 }

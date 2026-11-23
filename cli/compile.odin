@@ -175,7 +175,7 @@ run_compile :: proc(parsed: Run_Args, file: string, files: []lang.File_Text, out
 }
 
 // Checks a sketch, turns it into the Odin source of its program and writes it as `source/sketch.odin` in `folder_path`, which it
-// makes. `target` is "", "ios", "android", or "macos", "linux" or "freebsd" for an app, whose `app_id` names the folder it keeps its files in
+// makes. `target` is "", "ios", "android", or "macos", "linux", "freebsd" or "openbsd" for an app, whose `app_id` names the folder it keeps its files in
 // and its windows, and whose `app_name` is what volume controls show. Gives the folder the source is in, and 0, or what went wrong
 // said in `err` and a code to exit with: 1 the sketch has errors, 4 it uses what cannot be compiled yet, 2 the files could not be written.
 make_source :: proc(file: string, files: []lang.File_Text, target, app_id, app_name, folder_path: string, err: ^strings.Builder) -> (source_folder: string, code: int) {

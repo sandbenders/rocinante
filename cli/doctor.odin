@@ -163,6 +163,24 @@ run_doctor :: proc(args: []string, out, err: ^strings.Builder) -> int {
 			}
 			tool_line(out, "pkg, tar, readelf and ldd, to package a FreeBSD app", "all there" if len(missing) == 0 else "", len(missing) == 0, fmt.tprintf("%s should come with FreeBSD: reinstall the base system's parts that hold them", strings.join(missing[:], ", ", context.temp_allocator)))
 		}
+		when ODIN_OS == .OpenBSD {
+			// only `roci package openbsd` needs these: the first group is part of the base system, the second builds the SDL3_ttf the app
+			// carries (once), since OpenBSD has no package for it; neither fails the report
+			missing := make([dynamic]string, context.temp_allocator)
+			for tool in ([]string{"pkg_create", "pkg_info", "tar", "readelf", "ldd"}) {
+				if _, here := probe("sh", "-c", strings.concatenate({"command -v ", tool}, context.temp_allocator)); !here {
+					append(&missing, tool)
+				}
+			}
+			tool_line(out, "pkg_create, pkg_info, tar, readelf and ldd, to package an OpenBSD app", "all there" if len(missing) == 0 else "", len(missing) == 0, fmt.tprintf("%s should come with OpenBSD: reinstall the base system's parts that hold them", strings.join(missing[:], ", ", context.temp_allocator)))
+			absent := make([dynamic]string, context.temp_allocator)
+			for tool in ([]string{"cmake", "git", "curl"}) {
+				if _, here := probe(tool, "--version"); !here {
+					append(&absent, tool)
+				}
+			}
+			tool_line(out, "cmake, git and curl, to build the SDL3_ttf an OpenBSD app carries", "all there" if len(absent) == 0 else "", len(absent) == 0, fmt.tprintf("Install them with: doas pkg_add %s", strings.join(absent[:], " ", context.temp_allocator)))
+		}
 		when ODIN_OS == .Linux {
 			// only `roci package linux` needs these, and only for the formats asked for: they do not fail the report
 			needed := [?][3]string{{"tar", "--version", "tar"}, {"readelf", "--version", "binutils"}, {"ar", "--version", "binutils"}, {"cmake", "--version", "cmake"}, {"git", "--version", "git"}, {"curl", "--version", "curl"}, {"zstd", "--version", "zstd"}, {"mksquashfs", "-version", "squashfs-tools"}}

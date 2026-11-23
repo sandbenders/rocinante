@@ -18,15 +18,24 @@
 #                         HarfBuzz's glib, which is LGPL and may not be in a packaged sketch)
 # Needs cmake, git, curl, a C and C++ compiler and SDL3 with its headers (Arch's sdl3, built from source elsewhere).
 #
+#
+# On OpenBSD, the same and only SDL3_ttf, since OpenBSD has no package for it (SDL3, shaderc and SPIRV-Cross are packages the
+# app asks for, and the C and C++ libraries are the base system's):
+#   libSDL3_ttf.so.0      SDL3_ttf built here against the installed SDL3, with FreeType and HarfBuzz inside it, so it asks the
+#                         computer for SDL3 and the base system's libraries only
+# Needs cmake, git, curl, SDL3 with its headers (doas pkg_add sdl3) and the C and C++ compilers of the base system.
+#
 #     tools/package-libs.sh macos
 #     tools/package-libs.sh linux
+#     tools/package-libs.sh openbsd
 set -eu
 
 target="${1:-}"
 case "$target" in
   macos) [ "$(uname -s)" = Darwin ] || { echo "package-libs: macos is for a Mac" >&2; exit 1; } ;;
   linux) [ "$(uname -s)" = Linux ] || { echo "package-libs: linux is for a Linux computer" >&2; exit 1; } ;;
-  *) echo "usage: tools/package-libs.sh macos|linux" >&2; exit 2 ;;
+  openbsd) [ "$(uname -s)" = OpenBSD ] || { echo "package-libs: openbsd is for an OpenBSD computer" >&2; exit 1; } ;;
+  *) echo "usage: tools/package-libs.sh macos|linux|openbsd" >&2; exit 2 ;;
 esac
 tools="cmake git curl"
 [ "$target" = macos ] && tools="cmake ninja git curl"
@@ -41,6 +50,31 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 cache="$root/.cache/package/$target"
 lib="$cache/lib"
 mkdir -p "$lib"
+
+if [ "$target" = openbsd ]; then
+  [ -f "$lib/libSDL3_ttf.so.0" ] && { echo "$lib"; exit 0; }
+  [ -f /usr/local/include/SDL3/SDL.h ] || { echo "package-libs: SDL3 is not installed (doas pkg_add sdl3)" >&2; exit 1; }
+  echo "== SDL3_ttf $SDL_TTF_TAG"
+  ttf_src="$cache/src/SDL_ttf-$SDL_TTF_TAG"
+  [ -d "$ttf_src" ] || git clone -q --depth 1 --branch "$SDL_TTF_TAG" --recurse-submodules --shallow-submodules https://github.com/libsdl-org/SDL_ttf "$ttf_src"
+  ttf_build="$cache/ttf-build"
+  generator=""
+  command -v ninja > /dev/null 2>&1 && generator="-G Ninja"
+  # shellcheck disable=SC2086
+  cmake -S "$ttf_src" -B "$ttf_build" $generator -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    -DCMAKE_PREFIX_PATH=/usr/local -DSDLTTF_VENDORED=ON -DSDLTTF_HARFBUZZ=ON -DSDLTTF_PLUTOSVG=OFF -DSDLTTF_SAMPLES=OFF > /dev/null
+  cmake --build "$ttf_build" --parallel > /dev/null
+  cp -P "$ttf_build"/libSDL3_ttf.so* "$lib/"
+  [ -f "$lib/libSDL3_ttf.so.0" ] || { echo "package-libs: SDL3_ttf did not build a libSDL3_ttf.so.0" >&2; exit 1; }
+  # nothing but SDL3 and the base system's libraries may be left for the app to find
+  if readelf -d "$lib/libSDL3_ttf.so.0" | awk '/NEEDED/ {print $5}' | tr -d '[]' | grep -v -e '^libSDL3\.so' -e '^libc\.so' -e '^libm\.so' -e '^libpthread' -e '^libc++\.so' -e '^libc++abi\.so' > /dev/null; then
+    echo "package-libs: libSDL3_ttf depends on something that is not SDL3 or the base system:" >&2
+    readelf -d "$lib/libSDL3_ttf.so.0" | grep NEEDED >&2
+    exit 1
+  fi
+  echo "$lib"
+  exit 0
+fi
 
 if [ "$target" = linux ]; then
   [ -f "$lib/libSDL3_ttf.so.0" ] && { echo "$lib"; exit 0; }
