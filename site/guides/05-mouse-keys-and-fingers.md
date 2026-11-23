@@ -125,6 +125,12 @@ FreeBSD keeps gamepads for its `games` group, so add yourself to it once, as roo
 
 Tried over USB: the PlayStation 4 pad, the PlayStation 5 pad and the Logitech Dual Action all work, with every button, stick and trigger where `gamepad` says it is. Xbox One and Xbox Series pads do not work over USB, because FreeBSD has no driver for them, and the pad's logo keeps blinking. An Xbox 360 pad should work, since FreeBSD has a driver for those (`kldload xb360gp` loads it), but none was at hand to try.
 
+### Gamepads on OpenBSD
+
+OpenBSD needs no group for a gamepad: its device files (`/dev/ujoy/*`) can be read by everyone.
+
+Tried over USB with the Logitech Dual Action (OpenBSD 8.0): both sticks, every button and the two triggers (which are buttons on this pad) work where `gamepad` says they are. The d-pad does not: `gamepad.dpad` always reads `{ 0, 0 }`. The pad reports its d-pad as a hat switch, and OpenBSD's joystick code in SDL sets the hat and then, in the same moment, sets it back to the middle, so a sketch that looks once a frame never sees a direction held. Nothing in a sketch can work around it; it waits for a fix in SDL. A pad that reports its d-pad as four separate buttons, or one that is not a hat switch, was not tried.
+
 ## Actions
 
 A game that asks `held "space"` works with a keyboard and no other way. `bind` names what the player does and says which inputs do it, so the rest of the sketch asks only for the name:
