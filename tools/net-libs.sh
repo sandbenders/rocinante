@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: 0BSD
 #
 # Builds libcurl and mbedTLS (the TLS it uses) as static libraries into .cache/net (ignored by git):
-# .cache/net/lib/libcurl.a and the mbedTLS libraries beside it, .cache/net/include. HTTP and HTTPS only:
-# no HTTP/2, no compression, no other protocol, so nothing else is linked. The sources are fetched by
+# .cache/net/lib/libcurl.a and the mbedTLS libraries beside it, .cache/net/include. HTTP and HTTPS only
+# (with web sockets, ws and wss): no HTTP/2, no compression, no other protocol, so nothing else is linked. The sources are fetched by
 # tools/fetch-net.sh. Needs cmake and a C compiler (cc). On Windows libcurl uses the system's Schannel and
 # builds with MSVC's cl and the cmake Visual Studio Build Tools carry, from Git Bash started inside vcvars64.bat.
 #
@@ -31,13 +31,21 @@ if ! command -v cmake >/dev/null 2>&1; then
 	exit 1
 fi
 
-# curl's options: the library only, HTTP and HTTPS, mbedTLS (Schannel on Windows) for the secure part
-# (always into lib/, where the bindings look: cmake would choose lib64/ on Fedora and openSUSE)
+# curl's options: the library only, HTTP and HTTPS and web sockets (ws and wss, for `websocket connect`),
+# mbedTLS (Schannel on Windows) for the secure part (always into lib/, where the bindings look: cmake would
+# choose lib64/ on Fedora and openSUSE). curl's cmake has no HTTP_ONLY (that is its configure script's
+# --enable-http-only): every other protocol is switched off by its own CURL_DISABLE_ option, and web sockets
+# are on by default. SMB needs NTLM, which is off by default, and SCP and SFTP need libssh, which is off.
+# The man pages are not built either (they need perl, and their install failed in a long Windows path).
 common="-DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_INSTALL_LIBDIR=lib"
-curl_options="-DBUILD_SHARED_LIBS=OFF -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF -DHTTP_ONLY=ON \
+curl_options="-DBUILD_SHARED_LIBS=OFF -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
  -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF -DCURL_USE_LIBSSH=OFF -DUSE_NGHTTP2=OFF -DCURL_ZLIB=OFF \
- -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DUSE_LIBIDN2=OFF -DCURL_DISABLE_LDAP=ON -DENABLE_WEBSOCKETS=ON \
- -DCURL_DISABLE_INSTALL=OFF -DBUILD_LIBCURL_DOCS=OFF -DBUILD_MISC_DOCS=OFF -DENABLE_CURL_MANUAL=OFF"
+ -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DUSE_LIBIDN2=OFF \
+ -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_FILE=ON -DCURL_DISABLE_FTP=ON -DCURL_DISABLE_GOPHER=ON \
+ -DCURL_DISABLE_IMAP=ON -DCURL_DISABLE_IPFS=ON -DCURL_DISABLE_LDAP=ON -DCURL_DISABLE_LDAPS=ON \
+ -DCURL_DISABLE_MQTT=ON -DCURL_DISABLE_POP3=ON -DCURL_DISABLE_RTSP=ON -DCURL_DISABLE_SMTP=ON \
+ -DCURL_DISABLE_TELNET=ON -DCURL_DISABLE_TFTP=ON -DCURL_ENABLE_NTLM=OFF -DCURL_DISABLE_WEBSOCKETS=OFF \
+ -DBUILD_LIBCURL_DOCS=OFF -DBUILD_MISC_DOCS=OFF -DENABLE_CURL_MANUAL=OFF -DCURL_DISABLE_INSTALL=OFF"
 
 # What a phone needs to be told: where its compiler is. Test programs are built as static libraries because
 # an iPhone program cannot run (or be linked) without signing, and Android's cmake looks for libraries only
