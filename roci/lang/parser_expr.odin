@@ -246,6 +246,9 @@ param_kind_is :: proc(info: Call_Info, index: int, kind: registry.Kind) -> bool 
 // values.
 @(private)
 is_stop_word :: proc(p: ^Parser, word: string) -> bool {
+	if slice.contains(p.taken[:], word) {
+		return false // said to be taken where it was given as a name: a use is that name
+	}
 	if slice.contains(registry.KEYWORDS[:], word) {
 		return word != "it" && word != "result"
 	}
@@ -1331,6 +1334,7 @@ parse_hole :: proc(p: ^Parser, from, to: int, hole: Span) -> ^Expr {
 		round_opens = make([dynamic]int, p.alloc),
 		block_marks = make([dynamic]int, p.alloc),
 		shadowed = p.shadowed,
+		taken    = p.taken,
 	}
 	report_lexer_problems(&sub, Lexed{tokens = l.tokens[:], comments = l.comments[:], problems = l.problems[:]})
 	e := parse_expression(&sub)

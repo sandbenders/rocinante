@@ -36,6 +36,12 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 	#partial switch t.kind {
 	case .Name:
 		word := text_of(p, t)
+		// `repeat = 2` gives a value to a word the language keeps: read it as the assignment it is, so
+		// the checker says that word is taken, as it does for `at = 1`, instead of reading a broken `repeat`
+		if registry.cannot_be_name(word) && is_assignment(p) {
+			append(&p.taken, word)
+			return parse_assignment(p)
+		}
 		switch word {
 		case "if":     return parse_if(p)
 		case "repeat": return parse_repeat(p)
@@ -141,6 +147,17 @@ is_known_word :: proc(p: ^Parser, word: string) -> bool {
 		return true
 	}
 	return registry.is_reserved(word)
+}
+
+// Says a word the language keeps (a keyword or a grammar word) given as the name of a loop's value or a
+// message, in the words `at = 1` gets.
+@(private)
+reserved_as_name :: proc(p: ^Parser, name: Token) {
+	word := text_of(p, name)
+	if registry.cannot_be_name(word) {
+		report(p, .Reserved_Name, name.span, word, "", "", line_with(p, name.span, fmt.tprintf("my%s", word)))
+		append(&p.taken, word)
+	}
 }
 
 @(private)
@@ -414,6 +431,7 @@ parse_for :: proc(p: ^Parser) -> Stmt_Kind {
 		skip_line(p)
 		return Error_Stmt{}
 	}
+	reserved_as_name(p, name)
 	advance(p)
 	if is_each {
 		if !expect_word(p, "in") {
@@ -789,6 +807,7 @@ parse_on :: proc(p: ^Parser) -> Stmt_Kind {
 			skip_line(p)
 			return Error_Stmt{}
 		}
+		reserved_as_name(p, message)
 		advance(p)
 		body, ok := parse_block_after(p, "on")
 		if !ok {

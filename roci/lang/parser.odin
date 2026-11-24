@@ -49,6 +49,7 @@ parse :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		round_opens = make([dynamic]int, allocator),
 		block_marks = make([dynamic]int, allocator),
 		shadowed = make([dynamic]string, allocator),
+		taken    = make([dynamic]string, allocator),
 		own      = own_names(src, lexed, verbs, allocator),
 	}
 	report_lexer_problems(&p, lexed)
@@ -100,6 +101,7 @@ Parser :: struct {
 	learn_depth: int,
 	own:         [dynamic]Own_Name, // names the sketch gives a value anywhere that are also words of the language, found before parsing
 	shadowed:    [dynamic]string, // names of the writer's that are also words of the language, said once where they are made: a use reads as the name
+	taken:       [dynamic]string, // words the language keeps that a line gave as a name, said there: a use reads as that name, so it is said once
 	check_depth: int, // how many `check` blocks the statement being read is inside
 	wraps:       [dynamic]Span, // calls that need round brackets, in this statement
 	nest_depth:  int,

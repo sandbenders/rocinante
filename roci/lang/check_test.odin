@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package lang
 
+import "../registry"
 import "core:fmt"
 import "core:strings"
 import "core:testing"
@@ -2120,5 +2121,38 @@ draw [ effect "wave{n}.hlsl" ]`
 	}
 	testing.expect_value(t, strings.join(names[:], ", ", context.temp_allocator), "melt.hlsl false, spiral.hlsl true, glow false, streams.hlsl false, melt.hlsl true")
 	testing.expect_value(t, len(check_text("circle at 1 1 radius 1").checked.program.shaders), 0)
+}
+
+// A word the language keeps, given as a name in any of the places a line names something, is said once,
+// in the words `at = 1` gets, where the name is given; a later use of it reads as that name.
+@(test)
+test_every_kept_word_given_as_a_name_is_said_once_as_already_a_word :: proc(t: ^testing.T) {
+	forms := [?]string{
+		"%s = 1\nprint %s",
+		"for each %s in [ 1 2 ] [ print %s ]",
+		"for %s from 1 to 2 [ print %s ]",
+		"w = window size 10 10\non w receive %s [ print %s ]",
+	}
+	words := make([dynamic]string, context.temp_allocator)
+	append(&words, ..registry.KEYWORDS[:])
+	append(&words, ..registry.GRAMMAR_WORDS[:])
+	for form in forms {
+		for word in words {
+			if word == "each" && strings.has_prefix(form, "for %s from") {
+				continue // `for each from` starts a `for each`, which is then missing its `in`: said as that, rightly
+			}
+			text, _ := strings.replace_all(form, "%s", word, context.temp_allocator)
+			got := check_text(text)
+			ids := make([dynamic]Message_Id, context.temp_allocator)
+			for d in got.checked.diagnostics {
+				append(&ids, d.id)
+			}
+			if !testing.expectf(t, len(ids) == 1 && ids[0] == .Reserved_Name, "`%s` gave %v", text, ids) {
+				continue
+			}
+			d := got.checked.diagnostics[0]
+			testing.expectf(t, text[d.span.start:d.span.end] == word, "`%s`: said at %q", text, text[d.span.start:d.span.end])
+		}
+	}
 }
 
