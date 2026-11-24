@@ -130,7 +130,7 @@ typedef void (*roci_event_fn)(const roci_event *event);
 typedef void (*roci_draw_fn)(void);
 typedef void (*roci_receive_fn)(roci_value *value);
 
-/* Opens a window of the given size, optionally at a position, and gives it back. */
+/* Opens a window of the given size, optionally at a position, and gives it back. `fps 60` keeps the sketch at most at 60 frames a second while it is open, so a sketch that counts its time in frames moves at the same speed on a screen of 60, 120 or 144 Hz. */
 roci_window_id roci_window(double width, double height);
 
 /* Opens a window at a position on the screen and gives it back. */
