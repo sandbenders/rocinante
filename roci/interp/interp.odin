@@ -265,6 +265,8 @@ start :: proc(p: ^Interp) {
 		return
 	}
 	p.alloc = p.long
+	// a Mac fills the screen at once for a sketch that asks for fullscreen in its text; it can only be said before the first window
+	roci.fullscreen_spaces(!p.checked.program.fullscreen)
 	warm_shaders(p)
 	frame := Frame{}
 	defer delete(frame.slots)

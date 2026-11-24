@@ -258,6 +258,16 @@ draw into c [ circle at 5 5 radius 2 ]
 }
 
 @(test)
+test_setup_first_tells_a_mac_to_fill_the_screen_at_once_when_the_sketch_asks_for_fullscreen :: proc(t: ^testing.T) {
+	full := compile("w = window size 300 200 fullscreen true\n")
+	testing.expect_value(t, len(full.problems), 0)
+	said := strings.index(full.source, "\troci.fullscreen_spaces(false)\n")
+	testing.expect(t, said > strings.index(full.source, "setup :: proc() {") && said < strings.index(full.source, "roci.window("), "in setup, before the first window")
+	plain := compile("w = window size 300 200\n")
+	testing.expect(t, !strings.contains(plain.source, "fullscreen_spaces"))
+}
+
+@(test)
 test_setup_translates_the_shaders_a_sketch_names_first_and_only_when_it_names_some :: proc(t: ^testing.T) {
 	named := compile("draw [\n  shade \"spiral.hlsl\"\n  circle at 1 1 radius 1\n  effect \"melt.hlsl\"\n]\n")
 	testing.expect_value(t, len(named.problems), 0)

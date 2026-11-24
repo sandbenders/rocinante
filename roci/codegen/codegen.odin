@@ -248,7 +248,7 @@ generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Opti
 		emit_scene_procs(&g, &out)
 	}
 	source_declarations, source_call := source_lines(&g)
-	fmt.sbprintf(&out, "%ssetup :: proc() {{\n%s%s%s}}\n\n", source_declarations, source_call, warm_line(program), strings.to_string(setup))
+	fmt.sbprintf(&out, "%ssetup :: proc() {{\n%s%s%s%s}}\n\n", source_declarations, source_call, fullscreen_line(program), warm_line(program), strings.to_string(setup))
 	hook := ", hook" if len(g.handlers) > 0 || g.uses_tweens else ""
 	switch options.target {
 	case "ios":
@@ -610,3 +610,11 @@ warm_line :: proc(program: ^lang.IR_Program) -> string {
 	strings.write_string(&b, "})\n")
 	return strings.to_string(b)
 }
+
+// The line that starts `setup` for a sketch that asks for fullscreen in its own text, so a Mac fills the
+// screen at once instead of sliding into a Space, as the interpreter does; it must come before the first
+// window. Nothing for any other sketch.
+fullscreen_line :: proc(program: ^lang.IR_Program) -> string {
+	return "\troci.fullscreen_spaces(false)\n" if program.fullscreen else ""
+}
+

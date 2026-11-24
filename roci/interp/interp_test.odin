@@ -1138,6 +1138,16 @@ test_the_lowest_fps_of_the_windows_holds_the_sketch_and_a_headless_frame_is_one_
 }
 
 @(test)
+test_a_sketch_that_asks_for_fullscreen_in_its_text_fills_a_macs_screen_without_a_space :: proc(t: ^testing.T) {
+	full := run_text(t, "w = window size 300 200 fullscreen true")
+	testing.expect(t, !roci.fullscreen_uses_spaces())
+	finish(full)
+	plain := run_text(t, "w = window size 300 200")
+	defer finish(plain)
+	testing.expect(t, roci.fullscreen_uses_spaces())
+}
+
+@(test)
 test_set_changes_a_windows_size_title_and_position :: proc(t: ^testing.T) {
 	text := "w = window size 300 200 at 10 20 title \"a\"\nset w width 640 title \"b\" at { 50, 60 }\nprint w.width\nprint w.height\nprint w.title\nprint w.at"
 	expect_printed(t, text, "640\n200\nb\n{ 50, 60 }")
