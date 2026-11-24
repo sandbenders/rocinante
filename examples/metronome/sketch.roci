@@ -1,0 +1,50 @@
+// Metronome: a sketch that counts its time in frames, as most games do, held at the rate
+// it asks for (`fps`), so it keeps the same speed on a screen of 60, 120 or 144 Hz. The
+// pendulum swings a little every frame and the dot moves four pixels a frame; the ghosts
+// behind it are the frames before, so their spacing is one frame's step. `w.fps` is the
+// rate the window asked for and `fps` the rate it is drawing at.
+//
+// Keys: 1 holds it at 30 frames a second, 2 at 60, and 3 lets it go as fast as the
+// screen refreshes, where it runs faster on a faster screen.
+w = window size 640 360 title "metronome" fps 30
+
+STEP = 4
+GHOSTS = 12
+x = 40
+trail = []
+
+on key "1" [ set w fps 30 ]
+on key "2" [ set w fps 60 ]
+on key "3" [ set w fps 0 ]
+
+draw [
+  background (rgb 24 26 38)
+  no stroke
+
+  // The pendulum: three degrees a frame, so a whole swing is 120 frames.
+  swing = (sin (frame * 3)) * 32
+  push [
+    move 480 70
+    turn swing
+    line from 0 0 to 0 180 stroke (rgb 200 205 220) thickness 4
+    circle at 0 180 radius 22 fill (rgb 240 180 70)
+  ]
+  circle at 480 70 radius 6 fill (rgb 200 205 220)
+
+  // The dot and the frames behind it.
+  x = x + STEP
+  if x > 380 [ x = 40 ]
+  add x to trail
+  if (count trail) > GHOSTS [ remove (item 1 of trail) from trail ]
+  for i from 1 to (count trail) [
+    circle at (item i of trail) 280 radius 10 fill (rgb 90 160 240) alpha (i * 100 / GHOSTS)
+  ]
+
+  if w.fps > 0 [
+    text "asked for {w.fps} frames a second" at 40 40 size 20 fill white
+  ] else [
+    text "asked for no limit" at 40 40 size 20 fill white
+  ]
+  text "drawing {round fps} a second" at 40 72 size 20 fill (rgb 170 175 190)
+  text "1: 30   2: 60   3: as fast as the screen" at 40 316 size 14 fill (rgb 120 125 140)
+]

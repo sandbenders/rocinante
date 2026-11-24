@@ -95,6 +95,7 @@ EXAMPLES := [?]Example{
 	{"ui", 6, {1}}, // a slider, a check box and a button in a ui block, drawn over a dot and its ring
 	{"tunnel", 20, {1}}, // a raymarched tunnel made by one shader, and a lens effect on top
 	{"bounce", 90, {1}}, // Processing's Bounce: a ball turning round at the edges, a shadow and a highlight on it
+	{"metronome", 30, {1}}, // a second at the 30 frames a second it asks for: the pendulum part way through its swing, the dot and its ghosts a frame's step apart, and the two rates in words
 	{"sinewave", 20, {1}}, // Processing's Sine Wave: a row of dots on a sliding sine, bigger and brighter at the crests
 	{"rope", 150, {1}}, // Processing's Follow: a rope of segments that leads itself round the window once the mouse has been still a second
 	{"life", 120, {1}}, // Processing's Game of Life: a random grid thirty generations on, wrapping at its edges

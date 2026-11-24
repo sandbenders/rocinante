@@ -1,0 +1,6 @@
+w: a window
+STEP: a number
+GHOSTS: a number
+x: a number
+trail: a list of numbers
+swing: a number

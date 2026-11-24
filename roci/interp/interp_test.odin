@@ -1759,6 +1759,31 @@ test_the_sorting_example_keeps_and_skips_the_tall_bars :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_the_metronome_example_changes_its_rate_from_keys :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("metronome"), 1)
+	defer finish(p)
+	w := first_window()
+	testing.expect_value(t, roci.window_fps(w), 30)
+	testing.expect_value(t, roci.frame_limit(), 30)
+	roci.step({key_event(w, ._2)})
+	testing.expect_value(t, roci.window_fps(w), 60)
+	before := roci.time_now()
+	roci.step({key_event(w, ._2, false)})
+	testing.expect(t, abs(roci.time_now() - before - 1.0 / 60) < 1e-12, "a headless frame is a sixtieth at 60")
+	roci.step({key_event(w, ._3)})
+	testing.expect_value(t, roci.window_fps(w), 0)
+	testing.expect_value(t, roci.frame_limit(), 0)
+	roci.step({key_event(w, ._3, false), key_event(w, ._1)})
+	testing.expect_value(t, roci.window_fps(w), 30)
+	// the dot moves a step a frame and keeps the frames behind it
+	for _ in 0 ..< 20 {
+		roci.step()
+	}
+	testing.expect_value(t, len(as_list(global_named(p, "trail")).items), 12)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
 test_the_windows_example_changes_its_settings_from_keys :: proc(t: ^testing.T) {
 	p := run_text(t, example_text("windows"), 1)
 	defer finish(p)
