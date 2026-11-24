@@ -65,7 +65,7 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"align", "alpha", "angle", "around", "as", "at", "attack", "bend", "blend", "bordered", "buffer", "by", "channel", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "from", "fullscreen", "grab", "header", "height", "in",
+	"align", "alpha", "angle", "around", "as", "at", "attack", "bend", "blend", "bordered", "buffer", "by", "channel", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "fps", "from", "fullscreen", "grab", "header", "height", "in",
 	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "player", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "round", "sheet", "size", "smallest", "speed", "start", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "tube", "velocity", "vibrato", "visible", "volume", "width",
 }
 
@@ -96,7 +96,7 @@ VALUE_DEFS := [?]Value_Def{
 	{"clipboard", .Text, 0, "The text on the computer's clipboard, empty when there is none or when it holds something that is not text: `pasted = clipboard`. `copy to clipboard` puts text there."},
 	{"false", .Boolean, 0, "The value of a condition that does not hold."},
 	{"finger", .Record, 0, "The finger an `on touch down` or `on touch up` block runs for: a record with `id`, `pos`, `start` and `pressure`."},
-	{"fps", .Number, 0, "How many frames a second the sketch is drawing."},
+	{"fps", .Number, 0, "How many frames a second the sketch is drawing. A window can hold it lower: `window size 400 300 fps 30` draws at most 30 a second however fast the screen refreshes, and `w.fps` is the limit a window asked for."},
 	{"frame", .Number, 0, "How many frames the sketch has drawn, counting from 0."},
 	{"gamepad", .Record, 0, "The first gamepad that is plugged in, or one at rest when there is none: a record with `connected`, `name`, the face buttons `bottom`, `right`, `left` and `top` (true while held, named by where they are, since the same place says A on one pad and a cross on another), the sticks `leftstick` and `rightstick` and the d-pad `dpad` (vectors, each of x and y from -1 to 1, up negative like the screen's y), `lefttrigger` and `righttrigger` (0 to 1), `leftstickpress`, `rightstickpress`, `leftshoulder`, `rightshoulder`, `start`, `back` and `home` (true while held) and `extra`, a list of the other buttons."},
 	{"gamepads", .List, 0, "Every gamepad that is plugged in, the first one first, each a record like `gamepad`; a pad plugged in or out while the sketch runs is added or taken away at once."},
@@ -156,6 +156,7 @@ WINDOW_PROPERTIES := [?]Property_Def{
 	{"smallest", .Vector, 2, true},   // the smallest size it can be dragged to; 0 0 for no limit
 	{"largest", .Vector, 2, true},    // the largest size
 	{"ratio", .Number, 0, true},      // the shape (width over height) it keeps when resized; 0 for any
+	{"fps", .Number, 0, true},        // the most frames a second the sketch draws while it is open; 0 for no limit
 	{"focusable", .Boolean, 0, true}, // whether it can take the keyboard
 	{"grab", .Boolean, 0, true},      // whether the mouse is kept inside it
 	{"modal", .Boolean, 0, true},     // whether it blocks its parent until closed
@@ -199,9 +200,9 @@ property_words :: proc(def: Property_Def) -> string {
 	return "a value"
 }
 
-// `width`, `height` and `size` are values and connecting words together, so they
-// stay free to use as parameter names.
-FREE_AS_PARAMETERS := [?]string{"height", "size", "width"}
+// `width`, `height`, `size` and `fps` are values and connecting words together, so they
+// stay free to use as parameter names, and are read as values where a value is due.
+FREE_AS_PARAMETERS := [?]string{"fps", "height", "size", "width"}
 
 // Words only the settings of a window use, which stay free as names for anything
 // else (a `ratio`, a `parent`, `visible`): the parser takes one for a connecting

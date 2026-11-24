@@ -1092,6 +1092,19 @@ test_the_other_window_words_check_and_a_name_like_them_is_still_a_name :: proc(t
 	expect_errors(t, "ratio = 0.5\nvisible = true\nparent = 3\ncircle at 1 1 radius ratio", {})
 }
 
+// `fps` is the measured rate as a value, a word of `window` and `set` that limits it, and a property of a window.
+@(test)
+test_fps_limits_a_window_and_is_still_the_rate_where_a_value_is_due :: proc(t: ^testing.T) {
+	expect_errors(t, "w = window size 720 1280 fps 60", {})
+	expect_errors(t, "w = window size 300 200 title \"slow\" fps 30 resizable false", {})
+	expect_errors(t, "w = window size 300 200\nset w fps 30\nset w fps 0 title \"free\"", {})
+	expect_types(t, "w = window size 300 200 fps 30\nlimit = w.fps\nnow = fps", "w: a window\nlimit: a number\nnow: a number")
+	expect_errors(t, "circle at 1 1 radius fps", {})
+	expect_errors(t, "text \"{round fps} a second\" at 10 10", {})
+	expect_errors(t, "print fps", {})
+	expect_errors(t, "learn show fps [ print fps ]\nshow 3", {})
+}
+
 @(test)
 test_a_gradient_list_holds_colours_and_a_list_of_a_list_is_taught :: proc(t: ^testing.T) {
 	for ok in ([]string{

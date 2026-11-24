@@ -133,6 +133,7 @@ WINDOW_OPTIONS := []Option{
 	{"smallest", {.Number, .Number}, false},
 	{"largest", {.Number, .Number}, false},
 	{"ratio", {.Number}, false},
+	{"fps", {.Number}, false},
 	{"alpha", {.Number}, false},
 	{"focusable", {.Boolean}, false},
 	{"visible", {.Boolean}, false},
@@ -158,6 +159,7 @@ SET_OPTIONS := []Option{
 	{"smallest", {.Number, .Number}, false},
 	{"largest", {.Number, .Number}, false},
 	{"ratio", {.Number}, false},
+	{"fps", {.Number}, false},
 	{"focusable", {.Boolean}, false},
 	{"grab", {.Boolean}, false},
 	{"parent", {.Window}, false},
@@ -201,7 +203,7 @@ VERBS := []Verb{
 	// Window and app loop
 	{"window", {
 		{{{"width", .Number}, {"height", .Number}}, WINDOW_OPTIONS, .Window},
-	}, "Opens a window of the given size, optionally at a position, and gives it back."},
+	}, "Opens a window of the given size, optionally at a position, and gives it back. `fps 60` keeps the sketch at most at 60 frames a second while it is open, so a sketch that counts its time in frames moves at the same speed on a screen of 60, 120 or 144 Hz."},
 	{"title", {{{{"text", .Text}}, nil, .None}}, "Sets the title of the window the code runs in. Another window is changed with `set`."},
 	{"fullscreen", {{{}, nil, .None}}, "Makes the window fill the screen."},
 	{"quit", {{{}, nil, .None}}, "Closes the sketch."},

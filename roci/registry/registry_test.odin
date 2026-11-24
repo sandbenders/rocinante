@@ -632,7 +632,7 @@ test_statements_have_forms_and_an_example :: proc(t: ^testing.T) {
 
 @(test)
 test_the_window_properties_are_listed_with_their_kinds :: proc(t: ^testing.T) {
-	testing.expect_value(t, len(WINDOW_PROPERTIES), 24)
+	testing.expect_value(t, len(WINDOW_PROPERTIES), 25)
 	for def in WINDOW_PROPERTIES {
 		testing.expectf(t, def.name != "" && def.kind != .None, "`%s` has no kind", def.name)
 	}
@@ -665,6 +665,30 @@ test_the_words_only_a_window_uses_stay_free_as_names :: proc(t: ^testing.T) {
 		testing.expectf(t, !is_reserved_name(word), "`%s` should be usable as a name", word)
 	}
 	testing.expect(t, is_reserved_name("circle"))
+}
+
+@(test)
+test_fps_is_a_value_a_window_word_and_a_property_at_once :: proc(t: ^testing.T) {
+	testing.expect(t, slice.contains(VALUES[:], "fps"))
+	testing.expect(t, slice.contains(CONNECTING_WORDS[:], "fps"))
+	testing.expect(t, is_free_as_parameter("fps"), "read as the value wherever a value is due")
+	window, _ := find_verb("window")
+	set, _ := find_verb("set")
+	in_window, in_set := false, false
+	for option in window.shapes[0].options {
+		in_window ||= option.word == "fps" && len(option.kinds) == 1 && option.kinds[0] == .Number
+	}
+	for option in set.shapes[0].options {
+		in_set ||= option.word == "fps" && len(option.kinds) == 1 && option.kinds[0] == .Number
+	}
+	testing.expect(t, in_window && in_set)
+	property_found := false
+	for def in WINDOW_PROPERTIES {
+		if def.name == "fps" {
+			property_found = def.kind == .Number && def.settable
+		}
+	}
+	testing.expect(t, property_found)
 }
 
 @(test)
