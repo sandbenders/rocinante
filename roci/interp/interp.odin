@@ -265,6 +265,7 @@ start :: proc(p: ^Interp) {
 		return
 	}
 	p.alloc = p.long
+	warm_shaders(p)
 	frame := Frame{}
 	defer delete(frame.slots)
 	p.frame = &frame

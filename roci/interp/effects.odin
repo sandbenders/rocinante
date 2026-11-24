@@ -143,9 +143,7 @@ shader_values :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call, id: roci.Sha
 // changed, or 0 (after saying why) when it cannot be had.
 @(private)
 load_shader :: proc(it: ^Interp, name: string, span: lang.Span, fill := false) -> roci.Shader {
-	// A shader used to fill and one used as an effect are written for different preludes, so a
-	// file used both ways is two shaders.
-	key := strings.concatenate({name, "\x00fill"}, context.temp_allocator) if fill else name
+	key := shader_key(name, fill)
 	entry, known := it.shaders[key]
 	if known && entry.epoch == roci.shader_epoch() {
 		if entry.state == .Good || entry.state == .Broken || entry.state == .Unreadable {
@@ -171,6 +169,30 @@ load_shader :: proc(it: ^Interp, name: string, span: lang.Span, fill := false) -
 	forget_error(it, .Shader_Broken, span)
 	say_shader_problem(it, name, fresh, span, fill)
 	return fresh.id if fresh.state == .Good else 0
+}
+
+// A shader used to fill and one used as an effect are written for different preludes, so a file used both
+// ways is two shaders, kept under two names.
+@(private)
+shader_key :: proc(name: string, fill: bool) -> string {
+	return strings.concatenate({name, "\x00fill"}, context.temp_allocator) if fill else name
+}
+
+// Translates the shaders the program names in its `effect` and `shade` lines before it runs, so no frame
+// waits for one. Nothing is said here: what is wrong with one (a mistake, a file that is not there) is
+// kept, and said when its line first runs, as it would have been. One already known is left alone.
+@(private)
+warm_shaders :: proc(it: ^Interp) {
+	for named in it.checked.program.shaders {
+		key := shader_key(named.name, named.fill)
+		if entry, known := it.shaders[key]; known && entry.epoch == roci.shader_epoch() {
+			continue
+		}
+		fresh := read_shader(it, named.name, Shader_Entry{}, named.fill)
+		fresh.tried = time.tick_now()
+		fresh.epoch = roci.shader_epoch()
+		store_shader(it, key, fresh)
+	}
 }
 
 // Finds and translates the file called `name`. `before` is what was known of it, so a

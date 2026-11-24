@@ -387,6 +387,7 @@ reload_files :: proc(p: ^Interp, files: []lang.File_Text, restart := false) -> (
 
 	current = n
 	n.alloc = n.long
+	warm_shaders(n)
 	frame := Frame{}
 	defer delete(frame.slots)
 	n.frame = &frame

@@ -6,6 +6,7 @@ import "../folder"
 import "../gfx"
 import "../lang"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:testing"
 import "core:time"
@@ -228,3 +229,54 @@ test_an_effect_inside_a_canvas_is_taken_without_a_message :: proc(t: ^testing.T)
 	effects, _ := roci.recorded_effects(first_window())
 	testing.expect_value(t, len(effects), 0)
 }
+
+@(test)
+test_the_shaders_a_sketch_names_are_translated_before_its_first_frame :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "effects_warm", "draw [\n  effect \"wave.hlsl\"\n  shade \"paint.hlsl\"\n  circle at 1 1 radius 1\n  effect \"glow\"\n]")
+	defer finish(p)
+	// no frame has run, and the three are ready
+	testing.expect_value(t, roci.frame_count(), 0)
+	testing.expect_value(t, len(p.shaders), 3)
+	wave := p.shaders["wave.hlsl"]
+	testing.expect_value(t, wave.state, Shader_State.Good)
+	testing.expect_value(t, p.shaders["paint.hlsl\x00fill"].state, Shader_State.Good)
+	testing.expect(t, p.shaders["glow"].builtin && p.shaders["glow"].state == .Good)
+	// the frame that uses them takes them as they are
+	roci.step()
+	testing.expect_value(t, p.shaders["wave.hlsl"].id, wave.id)
+	testing.expect_value(t, p.shaders["wave.hlsl"].mtime, wave.mtime)
+	effects, _ := roci.recorded_effects(first_window())
+	testing.expect_value(t, len(effects), 2)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_a_shader_translated_ahead_is_said_to_be_wrong_only_when_its_line_runs :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "effects_warm_problems", "on key \"space\" [ effect \"broken.hlsl\" ]\ndraw [ effect \"nothing.hlsl\" ]")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	testing.expect_value(t, p.shaders["broken.hlsl"].state, Shader_State.Broken)
+	testing.expect_value(t, p.shaders["nothing.hlsl"].state, Shader_State.Missing)
+	roci.step()
+	if testing.expect_value(t, len(p.errors), 1) {
+		testing.expect_value(t, p.errors[0].id, lang.Message_Id.Shader_Missing)
+	}
+	roci.step({key_event(first_window(), .SPACE)})
+	ids := make([dynamic]lang.Message_Id, context.temp_allocator)
+	for e in p.errors {
+		append(&ids, e.id)
+	}
+	testing.expect(t, slice.contains(ids[:], lang.Message_Id.Shader_Broken), "said when the key's block runs")
+}
+
+@(test)
+test_a_shader_named_only_while_the_sketch_runs_is_translated_when_its_line_first_runs :: proc(t: ^testing.T) {
+	p := run_effect_sketch(t, "effects_warm_later", "name = \"wave.hlsl\"\ndraw [ effect name ]")
+	defer finish(p)
+	testing.expect_value(t, len(p.checked.program.shaders), 0)
+	testing.expect_value(t, len(p.shaders), 0)
+	roci.step()
+	testing.expect_value(t, p.shaders["wave.hlsl"].state, Shader_State.Good)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
