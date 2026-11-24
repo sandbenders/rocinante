@@ -1,0 +1,12 @@
+// The frame rate a window asks for, read back and changed, and the time a headless frame stands for at it.
+w = window size 300 200 fps 30
+print ("asked " + w.fps)
+set w fps 0.5
+print ("at least " + w.fps)
+set w fps 0
+print ("free " + w.fps)
+set w fps 20
+
+draw [
+  if frame is 3 [ print ("frames by time " + (round (time * w.fps))) ]
+]

@@ -1121,6 +1121,23 @@ test_every_window_word_is_a_property_that_reads_back_what_was_asked :: proc(t: ^
 }
 
 @(test)
+test_fps_limits_a_window_is_read_back_and_changed_with_set :: proc(t: ^testing.T) {
+	text := "w = window size 300 200 fps 30\nprint w.fps\nset w fps 0.5\nprint w.fps\nset w fps 0\nprint w.fps\nset w fps 72 title \"t\"\nprint w.fps\nprint (fps >= 0)"
+	expect_printed(t, text, "30\n1\n0\n72\ntrue")
+}
+
+@(test)
+test_the_lowest_fps_of_the_windows_holds_the_sketch_and_a_headless_frame_is_one_frame_at_it :: proc(t: ^testing.T) {
+	p := run_text(t, "a = window size 100 100 fps 60\nb = window size 100 100 fps 24\nc = window size 100 100")
+	defer finish(p)
+	testing.expect_value(t, roci.frame_limit(), 24)
+	before := roci.time_now()
+	roci.step()
+	testing.expect(t, abs(roci.time_now() - before - 1.0 / 24) < 1e-12, "a 24th of a second a frame")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
 test_set_changes_a_windows_size_title_and_position :: proc(t: ^testing.T) {
 	text := "w = window size 300 200 at 10 20 title \"a\"\nset w width 640 title \"b\" at { 50, 60 }\nprint w.width\nprint w.height\nprint w.title\nprint w.at"
 	expect_printed(t, text, "640\n200\nb\n{ 50, 60 }")

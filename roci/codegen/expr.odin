@@ -228,6 +228,7 @@ field :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Field) -> string {
 		case "mouse":  return fmt.aprintf("roci.window_mouse(%s)", w, allocator = context.temp_allocator)
 		case "alpha":  return fmt.aprintf("rt.byte_to_alpha(roci.window_alpha(%s))", w, allocator = context.temp_allocator)
 		case "ratio":  return fmt.aprintf("roci.window_ratio(%s)", w, allocator = context.temp_allocator)
+		case "fps":    return fmt.aprintf("roci.window_fps(%s)", w, allocator = context.temp_allocator)
 		case "smallest": return fmt.aprintf("roci.window_smallest(%s)", w, allocator = context.temp_allocator)
 		case "largest":  return fmt.aprintf("roci.window_largest(%s)", w, allocator = context.temp_allocator)
 		case "cursor":   return fmt.aprintf("roci.CURSOR_NAMES[roci.window_cursor(%s)]", w, allocator = context.temp_allocator)

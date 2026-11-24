@@ -291,6 +291,8 @@ emit_set :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) {
 				line(g, "roci.set_%s(%s, int((%s)[0]), int((%s)[1]))", o.word, target, holder, holder)
 			case "ratio":
 				line(g, "roci.set_ratio(%s, %s)", target, expr(g, o.args[0]))
+			case "fps":
+				line(g, "roci.set_fps(%s, %s)", target, expr(g, o.args[0]))
 			case "alpha":
 				line(g, "roci.set_window_alpha(%s, rt.alpha_to_byte(%s))", target, expr(g, o.args[0]))
 			case:
@@ -410,6 +412,8 @@ window_lines :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> string {
 			line(g, "roci.set_%s(%s, int((%s)[0]), int((%s)[1]))", o.word, made, holder, holder)
 		case "ratio":
 			line(g, "roci.set_ratio(%s, %s)", made, expr(g, o.args[0]))
+		case "fps":
+			line(g, "roci.set_fps(%s, %s)", made, expr(g, o.args[0]))
 		case "alpha":
 			line(g, "roci.set_window_alpha(%s, rt.alpha_to_byte(%s))", made, expr(g, o.args[0]))
 		case "cursor":

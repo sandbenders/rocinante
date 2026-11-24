@@ -49,6 +49,9 @@ apply_window_options :: proc(it: ^Interp, w: roci.Window, options: []lang.IR_Opt
 	if v, found := option_value(it, options, "ratio"); found {
 		roci.set_ratio(w, as_number(v))
 	}
+	if v, found := option_value(it, options, "fps"); found {
+		roci.set_fps(w, as_number(v))
+	}
 	if v, found := option_value(it, options, "alpha"); found {
 		roci.set_window_alpha(w, alpha_to_byte(as_number(v)))
 	}
@@ -89,6 +92,7 @@ set_window_property :: proc(it: ^Interp, w: roci.Window, name: string, value: Va
 		limit := as_pair(value)
 		roci.set_largest(w, int(limit.x), int(limit.y))
 	case "ratio":     roci.set_ratio(w, as_number(value))
+	case "fps":       roci.set_fps(w, as_number(value))
 	case "focusable": roci.set_focusable(w, as_bool(value))
 	case "grab":      roci.set_grab(w, as_bool(value))
 	case "modal":     roci.set_modal(w, as_bool(value))

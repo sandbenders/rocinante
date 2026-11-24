@@ -302,6 +302,7 @@ read_field :: proc(it: ^Interp, base: Value, name: string, at := lang.Span{}) ->
 			return roci.window_flag(w, name)
 		case "alpha":    return byte_to_alpha(roci.window_alpha(w))
 		case "ratio":    return roci.window_ratio(w)
+		case "fps":      return roci.window_fps(w)
 		case "smallest": return vec2(roci.window_smallest(w))
 		case "largest":  return vec2(roci.window_largest(w))
 		case "cursor":   return roci.CURSOR_NAMES[roci.window_cursor(w)]
