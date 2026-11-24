@@ -27,6 +27,7 @@ Effect_Gpu :: struct {
 	texture_format: sdl.GPUTextureFormat,
 	sampler:       ^sdl.GPUSampler,
 	error:         string, // why the last pipeline could not be made, said once
+	prepared:      map[Effect_Key]bool, // the shaders `prepare_shaders` has made pipelines for, in each target's format
 }
 
 // The vertex shader every effect shares, translated once for the program.
@@ -51,6 +52,7 @@ effect_gpu_destroy :: proc(r: ^Renderer) {
 		sdl.ReleaseGPUGraphicsPipeline(r.device, pipeline)
 	}
 	delete(r.effects.fills)
+	delete(r.effects.prepared)
 	for texture in r.effects.textures {
 		if texture != nil {
 			sdl.ReleaseGPUTexture(r.device, texture)
@@ -118,6 +120,38 @@ effect_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureForma
 	}
 	r.effects.pipelines[key] = pipeline
 	return pipeline
+}
+
+// Makes the pipelines of every shader that is translated and has none yet for `format`, before a frame is
+// drawn, so a frame never waits for the graphics driver to compile one at the moment a shader is first
+// drawn with, which took about a tenth of a second (`effect` and `shade` translate their shaders before
+// the first frame, so the first frame makes them all, before anything is on the screen). An effect gets the
+// pipeline of `format`; a fill gets those of `format` at the target's sample count with no stencil and with
+// one it leaves alone, which is how a shape without a clip is drawn. A pipeline the driver refuses is said
+// once, as at first use, and not asked for again here. Only a window's frame asks: a canvas or a picture
+// being saved makes its own pipelines when it first draws with a shader, so it does not wait for every one.
+prepare_shaders :: proc(r: ^Renderer, format: sdl.GPUTextureFormat) {
+	if r.device == nil || len(shader_store) == 0 || !can_run_effects(r) {
+		return
+	}
+	for data, i in shader_store {
+		if len(data.code) == 0 {
+			continue
+		}
+		key := Effect_Key{Shader_Id(i + 1), data.version, format}
+		if key in r.effects.prepared {
+			continue
+		}
+		r.effects.prepared[key] = true
+		switch data.kind {
+		case .Effect:
+			_ = effect_pipeline(r, key.shader, format)
+		case .Fill:
+			samples := samples_for(r, format)
+			_ = fill_pipeline(r, key.shader, format, samples, .Off)
+			_ = fill_pipeline(r, key.shader, format, samples, .Attached)
+		}
+	}
 }
 
 // The two textures effects draw through, made again when the target's size or format changes.

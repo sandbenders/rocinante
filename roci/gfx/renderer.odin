@@ -1207,7 +1207,10 @@ release_acquired :: proc(acquired: ^Acquired) {
 render_acquired :: proc(r: ^Renderer, window: ^sdl.Window, acquired: ^Acquired, canvas: [2]f32, list: ^Command_List, b: ^Batcher) -> bool {
 	ok := true
 	if acquired.swapchain != nil {
-		ok = render(r, acquired.commands, acquired.swapchain, sdl.GetGPUSwapchainTextureFormat(r.device, window), acquired.size, canvas, list, b)
+		format := sdl.GetGPUSwapchainTextureFormat(r.device, window)
+		// a window's shaders are made ready before its frame is drawn, not when each is first drawn with
+		prepare_shaders(r, format)
+		ok = render(r, acquired.commands, acquired.swapchain, format, acquired.size, canvas, list, b)
 	}
 	submitted := sdl.SubmitGPUCommandBuffer(acquired.commands)
 	acquired^ = {}
