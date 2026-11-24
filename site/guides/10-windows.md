@@ -33,6 +33,8 @@ draw w [
 
 Some settings are only a request on some systems: a window manager may decide where a window goes, for example.
 
+On a Mac, a window usually goes fullscreen by sliding into a space of its own, which takes a moment. A sketch with `fullscreen true` (or the verb `fullscreen`) written in it fills the screen at once instead, from its first frame, which a game that starts full wants. For that whole run the Mac's own fullscreen button is gone from the windows' title bars, and `set w fullscreen` is instant too. A `fullscreen` whose value is worked out while the sketch runs keeps the slide.
+
 ## How often a window draws
 
 A window draws a new frame each time its screen refreshes: 60 times a second on most screens, but 120 or 144 on many newer ones. A sketch that moves things by a step every frame, or waits a number of frames, then runs faster on a faster screen. `fps` keeps it at most at the rate you give, whatever the screen:
