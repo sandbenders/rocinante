@@ -2156,3 +2156,37 @@ test_every_kept_word_given_as_a_name_is_said_once_as_already_a_word :: proc(t: ^
 	}
 }
 
+// A verb `learn` could not teach, under a word the language keeps, is said once where it is taught: a
+// later line that calls it says nothing more, and a mistake of its own elsewhere is still said.
+@(test)
+test_a_verb_learn_could_not_teach_is_said_once_and_its_calls_say_nothing_more :: proc(t: ^testing.T) {
+	once :: proc(t: ^testing.T, text, word: string, loc := #caller_location) {
+		got := check_text(text)
+		ids := make([dynamic]Message_Id, context.temp_allocator)
+		for d in got.checked.diagnostics {
+			append(&ids, d.id)
+		}
+		if testing.expectf(t, len(ids) == 1 && ids[0] == .Learn_Reserved_Name, "`%s` gave %v", text, ids, loc = loc) {
+			testing.expect_value(t, got.checked.diagnostics[0].args[0], word, loc = loc)
+		}
+	}
+	once(t, "learn post [ print 1 ]\npost", "post")
+	once(t, "learn post [ print 1 ]\nx = post\nprint (post)", "post")
+	once(t, "learn circle x [ print x ]\ncircle 3", "circle")
+	once(t, "learn hidden [ print 1 ]\nhidden", "hidden")
+	once(t, "learn repeat [ print 1 ]\nrepeat", "repeat")
+	once(t, "learn at [ print 1 ]\nat", "at")
+	once(t, "learn walk if [ print if ]\nwalk 3", "if")
+	once(t, "learn walk with if 2 [ print if ]\nwalk", "if")
+	// a keyword that heads a statement of its own kind is still that statement, and a parameter's word is its
+	// name only inside its verb
+	once(t, "learn repeat [ print 1 ]\nrepeat 3 [ print 2 ]", "repeat")
+	once(t, "learn walk if [ print if ]\nif 1 > 0 [ print 2 ]", "if")
+	got := check_text("learn post [ print 1 ]\npost\ncircle at 1 1")
+	ids := make([dynamic]Message_Id, context.temp_allocator)
+	for d in got.checked.diagnostics {
+		append(&ids, d.id)
+	}
+	testing.expectf(t, len(ids) == 2 && ids[1] == .Missing_Required_Word, "a mistake of another line is still said: %v", ids)
+}
+

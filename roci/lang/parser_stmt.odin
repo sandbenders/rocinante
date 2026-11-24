@@ -42,6 +42,13 @@ parse_statement_kind :: proc(p: ^Parser) -> Stmt_Kind {
 			append(&p.taken, word)
 			return parse_assignment(p)
 		}
+		// a line that uses a verb `learn` could not teach, under a word the language keeps, is a call of the
+		// verb the sketch meant, which does not exist: what that `learn` said is all there is to say. A keyword
+		// that heads a line of its own kind (`repeat 3 [ ... ]`) is still that statement.
+		if slice.contains(p.untaught[:], word) && (!slice.contains(registry.KEYWORDS[:], word) || ends_statement(peek_at(p, 1))) {
+			skip_line(p)
+			return Error_Stmt{}
+		}
 		switch word {
 		case "if":     return parse_if(p)
 		case "repeat": return parse_repeat(p)
@@ -147,6 +154,16 @@ is_known_word :: proc(p: ^Parser, word: string) -> bool {
 		return true
 	}
 	return registry.is_reserved(word)
+}
+
+// Whether a token ends the statement before it: the end of a line, of the file or of a block.
+@(private)
+ends_statement :: proc(t: Token) -> bool {
+	#partial switch t.kind {
+	case .Newline, .End_Of_File, .Close_Square:
+		return true
+	}
+	return false
 }
 
 // Says a word the language keeps (a keyword or a grammar word) given as the name of a loop's value or a
@@ -501,10 +518,14 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 	verb_name := text_of(p, name)
 	if is_taken_name(p, verb_name) {
 		report(p, .Learn_Reserved_Name, name.span, verb_name, line_with(p, name.span, fmt.tprintf("my%s", verb_name)))
+		append(&p.untaught, verb_name)
 	}
 	params := make([dynamic]string, p.alloc)
 	shadowed_before := len(p.shadowed)
 	defer resize(&p.shadowed, shadowed_before)
+	// a parameter given a word the language keeps is that name inside this verb only
+	taken_before := len(p.taken)
+	defer resize(&p.taken, taken_before)
 	for {
 		t := cur(p)
 		if t.kind != .Name || is_word(p, t, "with") {
@@ -516,6 +537,7 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 			report(p, .Learn_Repeated_Parameter, t.span, param, line_with(p, t.span, fmt.tprintf("%s2", param)))
 		} else if registry.cannot_be_name(param) {
 			report(p, .Learn_Reserved_Name, t.span, param, line_with(p, t.span, fmt.tprintf("my%s", param)))
+			append(&p.taken, param)
 		} else if is_taken_name(p, param) {
 			// a word of the language that goes with a verb or stands for a value is the parameter's name inside the verb
 			append(&p.shadowed, param)
@@ -530,6 +552,7 @@ parse_learn :: proc(p: ^Parser) -> Stmt_Kind {
 			text := text_of(p, word)
 			if registry.cannot_be_name(text) {
 				report(p, .Learn_Reserved_Name, word.span, text, line_with(p, word.span, fmt.tprintf("my%s", text)))
+				append(&p.taken, text)
 			}
 			if !is_argument_start(p, cur(p)) || call_ends_at(p, cur(p)) || cur(p).kind == .Open_Square {
 				report(p, .Learn_Default_Not_One_Item, word.span, "", insertion(p, word.span.end, " 0"))

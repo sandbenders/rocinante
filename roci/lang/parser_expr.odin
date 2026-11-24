@@ -1335,6 +1335,7 @@ parse_hole :: proc(p: ^Parser, from, to: int, hole: Span) -> ^Expr {
 		block_marks = make([dynamic]int, p.alloc),
 		shadowed = p.shadowed,
 		taken    = p.taken,
+		untaught = p.untaught,
 	}
 	report_lexer_problems(&sub, Lexed{tokens = l.tokens[:], comments = l.comments[:], problems = l.problems[:]})
 	e := parse_expression(&sub)

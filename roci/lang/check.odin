@@ -101,18 +101,19 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 			append(&cut_lines, position_of(src, d.span.start).line)
 		}
 	}
-	// A name that is a word of the language is said once, where it is made. Every later use reads as a call
-	// of the verb of that name, which is not what was meant, so what the line says about the call is an echo.
+	// A name that is a word of the language is said once, where it is made (as a value's name or as a verb
+	// `learn` teaches). Every later use reads as that word of the language, the verb or the statement, which
+	// is not what was meant, so what the line says about it is an echo.
 	taken := make([dynamic]string, context.temp_allocator)
 	for d in all {
-		if d.id == .Reserved_Name {
+		if d.id == .Reserved_Name || d.id == .Learn_Reserved_Name {
 			append(&taken, d.args[0])
 		}
 	}
 	for d in all {
 		if len(taken) > 0 && slice.contains(taken[:], d.args[0]) {
 			#partial switch d.id {
-			case .Wrong_Argument_Count, .Wrong_Argument_Kind, .Needs_Brackets, .Value_Of_Nothing, .Missing_Required_Word:
+			case .Wrong_Argument_Count, .Wrong_Argument_Kind, .Needs_Brackets, .Value_Of_Nothing, .Missing_Required_Word, .Labels_Needed, .Missing_Block, .Unexpected_Token:
 				continue
 			}
 		}
