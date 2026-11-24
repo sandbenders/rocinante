@@ -84,6 +84,10 @@ broken.hlsl:1: error: 'return' : type does not match, or is not convertible to, 
 The effect is left out until it is mended, and the sketch carries on. The shader is read again when you save it.
 ```
 
+## Ready before the first frame
+
+Making a shader ready for the graphics card takes a moment, about a tenth of a second. Every shader a sketch names in an `effect` or `shade` line, written as text in the line, is made ready before the sketch's first frame, so an effect that begins later (a title that melts after a few seconds) does not make the frame it begins on wait. A shader whose name is put together while the sketch runs (`effect name`, `effect "wave{n}.hlsl"`) is made ready the first time its line runs, and that frame waits for it, so write the name in the line where you can. The first frame a canvas draws with a shader also waits for the graphics card, once. A mistake in a shader is still said when its line first runs.
+
 ## Shaders as fills
 
 `shade` chooses a shader as the fill, so every shape drawn after it is colored by the shader, until `fill` puts a plain color back. The shape is the mask: the shader works out each pixel's color from where it is in the shape's own box.
