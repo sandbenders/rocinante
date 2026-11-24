@@ -57,6 +57,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"logo", 0, "The logo", 3, 1},
 
 	{"bounce", 1, "Bounce", 90, 1},
+	{"metronome", 1, "Metronome", 30, 1},
 	{"sinewave", 1, "Sine wave", 20, 1},
 	{"noisewave", 1, "Noise wave", 60, 1},
 	{"ease", 1, "Easing", 200, 1},
