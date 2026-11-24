@@ -49,10 +49,19 @@ cc -Wall -Wextra -Werror examples/c/controls.c -Iinclude -Loutput -lroci -o outp
 echo "abi-check: examples/c/controls.c builds"
 cc -Wall -Wextra -Werror examples/c/player.c -Iinclude -Loutput -lroci -o output/c_player
 echo "abi-check: examples/c/player.c builds"
+cc -Wall -Wextra -Werror examples/c/kaleidoscope.c -Iinclude -Loutput -lroci -lm -o output/c_kaleidoscope
+echo "abi-check: examples/c/kaleidoscope.c builds"
+cc -Wall -Wextra -Werror examples/c/reaction.c examples/c/gray_scott.c -Iinclude -Loutput -lroci -o output/c_reaction
+echo "abi-check: examples/c/reaction.c builds, with its library gray_scott.c"
+cc -Wall -Wextra -Werror examples/c/packing.c -Iinclude -Loutput -lroci -o output/c_packing
+echo "abi-check: examples/c/packing.c builds, with stb_rect_pack.h"
 if [ "${1:-}" = "--run" ]; then
   LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_circle 2
   LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_scene 2
   LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_controls 2
   LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_player 2
+  LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_kaleidoscope 2
+  LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_reaction 2
+  LD_LIBRARY_PATH=output DYLD_LIBRARY_PATH=output ./output/c_packing 2
   echo "abi-check: the C examples ran"
 fi
