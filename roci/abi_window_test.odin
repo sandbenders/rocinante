@@ -29,6 +29,10 @@ test_the_c_window_settings_are_set_and_read_back :: proc(t: ^testing.T) {
 	testing.expect_value(t, abi_window_fps(w), 1)
 	abi_set_window_fps(w, 0)
 	testing.expect_value(t, abi_window_fps(w), 0)
+	abi_fullscreen_spaces(0)
+	testing.expect(t, !fullscreen_uses_spaces())
+	abi_fullscreen_spaces(1)
+	testing.expect(t, fullscreen_uses_spaces())
 	abi_set_window_fps(99, 30) // no such window: nothing happens
 	testing.expect_value(t, abi_window_fps(99), 0)
 	abi_set_window_alpha(w, 128)

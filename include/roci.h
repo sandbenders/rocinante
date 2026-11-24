@@ -883,6 +883,9 @@ const char *roci_window_cursor(roci_window_id window);
 /* Turns waiting for the display's refresh on or off for the current window (on to start with). */
 void roci_vsync(int on);
 
+/* On a Mac, whether fullscreen slides into a Space of its own and resizable windows keep the fullscreen button (1, the start), or fills the screen at once (0). Call it before the first window opens: it holds for the whole run. Other systems ignore it. */
+void roci_fullscreen_spaces(int on);
+
 /* How many frames a second the sketch is drawing. */
 double roci_fps(void);
 

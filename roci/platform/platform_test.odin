@@ -424,3 +424,9 @@ test_the_foreground_watch_is_called_when_the_app_comes_back :: proc(t: ^testing.
 	testing.expect(t, background_filter(nil, &back))
 	testing.expect_value(t, calls, 2)
 }
+
+@(test)
+test_the_mac_spaces_hint_is_one_or_zero :: proc(t: ^testing.T) {
+	testing.expect_value(t, mac_spaces_hint(true), cstring("1"))
+	testing.expect_value(t, mac_spaces_hint(false), cstring("0"))
+}

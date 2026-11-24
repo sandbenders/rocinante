@@ -87,6 +87,7 @@ Win :: struct {
 Sketch :: struct {
 	started:      bool,
 	headless:     bool,
+	no_spaces:    bool,    // fullscreen on a Mac fills the screen at once, without a Space (`fullscreen_spaces`)
 	failed:       bool,    // the graphics could not be started; the sketch runs headless
 	error:        string,
 	render_reported: bool, // a drawing failure has been said once
@@ -190,7 +191,7 @@ start :: proc() -> bool {
 	}
 	platform.set_background_watch(background_flush)
 	platform.set_foreground_watch(foreground_resume)
-	if !platform.init(&the.app) {
+	if !platform.init(&the.app, mac_spaces = !the.no_spaces) {
 		the.failed, the.headless = true, true
 		the.error = strings.clone(the.app.error)
 		fmt.eprintfln("rocinante: could not start the graphics: %s", the.app.error)

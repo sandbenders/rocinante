@@ -1369,3 +1369,18 @@ test_held_frames_keep_the_finished_frame_and_draw_over_it_and_end_hook_runs_afte
 	step()
 	testing.expect_value(t, hooked, 2)
 }
+
+@(test)
+test_fullscreen_on_a_mac_uses_spaces_until_told_not_to_and_shutdown_forgets :: proc(t: ^testing.T) {
+	begin()
+	testing.expect(t, fullscreen_uses_spaces(), "the Mac's own way to start with")
+	fullscreen_spaces(false)
+	testing.expect(t, !fullscreen_uses_spaces())
+	fullscreen_spaces(true)
+	testing.expect(t, fullscreen_uses_spaces())
+	fullscreen_spaces(false)
+	finish()
+	begin()
+	defer finish()
+	testing.expect(t, fullscreen_uses_spaces(), "a sketch started again decides again")
+}

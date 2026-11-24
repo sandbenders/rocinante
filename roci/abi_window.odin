@@ -231,6 +231,12 @@ abi_vsync :: proc "c" (on: c.int) {
 	vsync(on != 0)
 }
 
+@(export, link_name = "roci_fullscreen_spaces")
+abi_fullscreen_spaces :: proc "c" (on: c.int) {
+	context = abi_context()
+	fullscreen_spaces(on != 0)
+}
+
 @(export, link_name = "roci_fps")
 abi_fps :: proc "c" () -> f64 {
 	context = abi_context()
@@ -630,6 +636,7 @@ abi_window_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_window_title", typeid_of(type_of(abi_window_title)), "const char *roci_window_title(roci_window_id window)", "The title of a window. The text stays valid until the next function that gives text back."))
 	append(all, abi_entry("roci_window_cursor", typeid_of(type_of(abi_window_cursor)), "const char *roci_window_cursor(roci_window_id window)", "The name of the cursor over a window. The text stays valid until the next function that gives text back."))
 	append(all, abi_entry("roci_vsync", typeid_of(type_of(abi_vsync)), "void roci_vsync(int on)", "Turns waiting for the display's refresh on or off for the current window (on to start with)."))
+	append(all, abi_entry("roci_fullscreen_spaces", typeid_of(type_of(abi_fullscreen_spaces)), "void roci_fullscreen_spaces(int on)", "On a Mac, whether fullscreen slides into a Space of its own and resizable windows keep the fullscreen button (1, the start), or fills the screen at once (0). Call it before the first window opens: it holds for the whole run. Other systems ignore it."))
 	append(all, abi_entry("roci_fps", typeid_of(type_of(abi_fps)), "double roci_fps(void)", "How many frames a second the sketch is drawing."))
 	append(all, abi_entry("roci_current_seed", typeid_of(type_of(abi_current_seed)), "unsigned long long roci_current_seed(void)", "The seed of this run, chosen at random unless roci_seed set it."))
 	append(all, abi_entry("roci_wheel", typeid_of(type_of(abi_wheel)), "roci_vec2 roci_wheel(void)", "How far the wheel turned during the last frame: x to the right, y up."))

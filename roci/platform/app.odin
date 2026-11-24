@@ -109,8 +109,12 @@ background_filter :: proc "c" (userdata: rawptr, event: ^sdl.Event) -> bool {
 }
 
 // Starts SDL and the GPU device. On failure `app.error` says why and nothing is
-// left open.
-init :: proc(app: ^App) -> bool {
+// left open. `mac_spaces` false makes fullscreen on a Mac fill the screen at once instead of
+// sliding into a Space of its own, for the whole run (SDL reads it when its video starts), which
+// also takes the fullscreen button off resizable windows' title bars; other systems ignore it
+// (https://wiki.libsdl.org/SDL3/SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES).
+init :: proc(app: ^App, mac_spaces := true) -> bool {
+	sdl.SetHint(sdl.HINT_VIDEO_MAC_FULLSCREEN_SPACES, mac_spaces_hint(mac_spaces))
 	// On a Wayland desktop, Wayland first: SDL 3.4 otherwise falls back to XWayland on
 	// compositors without the fifo-v1 protocol (niri), where window sizes and
 	// settings get lost and scaled displays draw at density 1 (decided 2026-10-29).
@@ -133,6 +137,12 @@ init :: proc(app: ^App) -> bool {
 		return ok
 	}
 	return false
+}
+
+// The value of SDL's hint for Spaces on a Mac: "1" lets fullscreen use them, "0" does not. Set on
+// every start, so a sketch started again in the same program decides again.
+mac_spaces_hint :: proc "contextless" (on: bool) -> cstring {
+	return "1" if on else "0"
 }
 
 // Whether a failed start on this video driver is worth another try on X11: it was

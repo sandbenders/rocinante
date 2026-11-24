@@ -304,3 +304,19 @@ apply_cursor :: proc() {
 		the.cursor_shown = want
 	}
 }
+
+// Whether fullscreen on a Mac goes through a Space of its own, sliding in, which is the Mac's way and
+// keeps the fullscreen button on a resizable window's title bar (true, the start), or fills the screen
+// at once, which a game that starts full wants, since its first frames otherwise show part of the
+// window below the screen. SDL reads it when the graphics start and keeps it for the whole run, so it
+// must be said before the first window opens; said once the graphics have started it changes nothing,
+// and `shutdown` forgets it. The language says it for a sketch with a `fullscreen true` in its own
+// text. Other systems ignore it.
+fullscreen_spaces :: proc(on: bool) {
+	the.no_spaces = !on
+}
+
+// Whether fullscreen on a Mac goes through a Space (`fullscreen_spaces`).
+fullscreen_uses_spaces :: proc() -> bool {
+	return !the.no_spaces
+}
