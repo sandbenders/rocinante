@@ -74,6 +74,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 		c.instance_keys = make(map[string]^IR_Instance, 8, allocator)
 		c.verb_locals = make([dynamic]^Symbol, allocator)
 		c.aliases = make([dynamic]Alias, allocator)
+		c.shaders = make([dynamic]Named_Shader, allocator)
 		c.verb = nil
 		collect_assignments(&c, parsed.program.stmts)
 		collect_learns(&c, parsed.program.stmts)
@@ -128,7 +129,7 @@ check :: proc(src: Source, verbs: []registry.Verb, extra_taught: []Taught_Verb =
 	}
 	return Checked{
 		parsed      = parsed,
-		program     = IR_Program{stmts = stmts[:], symbols = c.order[:], instances = c.instances[:], types = types},
+		program     = IR_Program{stmts = stmts[:], symbols = c.order[:], instances = c.instances[:], types = types, shaders = c.shaders[:]},
 		types       = types,
 		diagnostics = unique[:],
 	}
@@ -200,6 +201,7 @@ Checker :: struct {
 	msg_types:     map[string]Type_Id,     // what is sent to each window, by the name that is sent to (check_messages.odin)
 	msg_mixed:     map[string]bool,        // windows that are sent different kinds of value
 	data_files:    map[string]Data_Found,  // the data files read, by the name written in the sketch (check_data.odin)
+	shaders:       [dynamic]Named_Shader,  // the shaders `effect` and `shade` name by their own text (check_shaders.odin)
 	data_sites:    map[string]int,         // the record shape of each place in a data file
 	mem_types:     map[string]Type_Id,     // the kind of value kept under each name of `remember` (check_memory.odin)
 	scenes:        map[string]Span,        // every scene of the sketch, by name, and where it is written (check_scene.odin)

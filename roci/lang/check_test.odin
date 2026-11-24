@@ -2092,3 +2092,33 @@ test_save_takes_in_sketch_or_in_output_and_no_other_place :: proc(t: ^testing.T)
 	expect_errors(t, "swatch = picture from [ red ] size 1 1\nsave swatch \"a.png\" in sketch\nsave swatch \"b.png\" in output\nsave [ 1 2 ] \"c.json\" in sketch\ncircle at 1 1 radius 1\nsave \"s.png\" in sketch", {})
 	testing.expect(t, has_errors(check_text("swatch = picture from [ red ] size 1 1\nsave swatch \"a.png\" in nowhere").checked.diagnostics))
 }
+
+// The shaders a program names in its own text, once each, for the back ends to translate before the first frame.
+@(test)
+test_the_program_lists_the_shaders_its_effect_and_shade_lines_name :: proc(t: ^testing.T) {
+	text := `guitar = synth saw
+effect guitar "delay"
+effect "melt.hlsl" by { amount: 1 }
+draw [
+  shade "spiral.hlsl"
+  circle at 1 1 radius 1
+  effect "melt.hlsl"
+  effect "glow"
+]
+learn pour [ effect "streams.hlsl" ]
+on key "space" [ pour ]
+scene "title" [ draw [ shade "melt.hlsl" ] ]
+n = 2
+draw [ effect "wave{n}.hlsl" ]`
+	got := check_text(text)
+	if !testing.expectf(t, !has_errors(got.checked.diagnostics), "%v", got.checked.diagnostics) {
+		return
+	}
+	names := make([dynamic]string, context.temp_allocator)
+	for named in got.checked.program.shaders {
+		append(&names, fmt.tprintf("%s %v", named.name, named.fill))
+	}
+	testing.expect_value(t, strings.join(names[:], ", ", context.temp_allocator), "melt.hlsl false, spiral.hlsl true, glow false, streams.hlsl false, melt.hlsl true")
+	testing.expect_value(t, len(check_text("circle at 1 1 radius 1").checked.program.shaders), 0)
+}
+

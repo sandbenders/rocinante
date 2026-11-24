@@ -362,6 +362,7 @@ check_call :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> ^IR {
 		}
 	}
 	sound_use(c, verb, e, k, args[:])
+	shader_use(c, verb, index, args[:])
 	// a vector the verb gives is as long as the one it was given (normalize and limit), or three long (a point of the 3D floor)
 	if shape.gives == .Vector {
 		if verb.name == "world point" {
