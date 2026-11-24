@@ -252,8 +252,19 @@ draw into c [ circle at 5 5 radius 2 ]
 	testing.expect(t, strings.contains(source, "rt.tween_number(&level, 10.0, 1.0, \"\", nil)"))
 	testing.expect(t, strings.contains(source, "rt.step_tweens()"), "the frame hook steps the tweens")
 	testing.expect(t, strings.contains(source, "rt.effect(\"glow\", []roci.Effect_Value{rt.effect_number(\"amount\", 0.5)})"))
+	testing.expect(t, strings.contains(source, "\trt.warm_shaders({{\"glow\", false}})\n"), "the shaders it names are translated as setup starts")
 	testing.expect(t, strings.contains(source, "if rt.begin_into(c_) {"))
 	testing.expect(t, strings.contains(source, "if counts != nil { rt.mark(&counts.gc__) }"), "a table held by a name is a root")
+}
+
+@(test)
+test_setup_translates_the_shaders_a_sketch_names_first_and_only_when_it_names_some :: proc(t: ^testing.T) {
+	named := compile("draw [\n  shade \"spiral.hlsl\"\n  circle at 1 1 radius 1\n  effect \"melt.hlsl\"\n]\n")
+	testing.expect_value(t, len(named.problems), 0)
+	warm := strings.index(named.source, "rt.warm_shaders({{\"spiral.hlsl\", true}, {\"melt.hlsl\", false}})")
+	testing.expect(t, warm > strings.index(named.source, "setup :: proc() {"), "in setup")
+	plain := compile("circle at 1 1 radius 1\n")
+	testing.expect(t, !strings.contains(plain.source, "warm_shaders"))
 }
 
 @(test)

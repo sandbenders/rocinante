@@ -547,3 +547,27 @@ test_the_apps_folder_is_kept_as_a_copy_the_program_owns :: proc(t: ^testing.T) {
 	testing.expect_value(t, kept, folder)
 	testing.expect_value(t, kept_copy(""), "")
 }
+
+@(test)
+test_the_shaders_a_compiled_sketch_names_are_translated_before_they_are_used_and_a_problem_waits_for_its_line :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	defer roci.shutdown()
+	defer forget_said()
+	defer forget_shaders()
+	warm_shaders({{"glow", false}, {"nothing", false}, {"not_there.hlsl", true}})
+	glow, warmed := shaders["glow"]
+	testing.expect(t, warmed && glow.id != 0 && glow.problem == "", "a built-in effect is translated ahead")
+	unknown, kept := shaders["nothing"]
+	testing.expect(t, kept && unknown.id == 0 && strings.contains(unknown.problem, "`nothing`"), "the problem is kept")
+	testing.expect(t, !said["nothing"], "and not said yet")
+	_, missing_kept := shaders["not_there.hlsl\x00fill"]
+	testing.expect(t, !missing_kept, "a file that is not there is left to its line, which looks for it again")
+	// the line that uses them finds them translated, and says the problem then, once
+	testing.expect_value(t, load_shader("glow", false), glow.id)
+	testing.expect_value(t, load_shader("nothing", false), 0)
+	testing.expect(t, said["nothing"])
+	// warming again changes nothing that is known
+	warm_shaders({{"glow", false}})
+	testing.expect_value(t, shaders["glow"].id, glow.id)
+}
+

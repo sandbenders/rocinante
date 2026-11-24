@@ -248,7 +248,7 @@ generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Opti
 		emit_scene_procs(&g, &out)
 	}
 	source_declarations, source_call := source_lines(&g)
-	fmt.sbprintf(&out, "%ssetup :: proc() {{\n%s%s}}\n\n", source_declarations, source_call, strings.to_string(setup))
+	fmt.sbprintf(&out, "%ssetup :: proc() {{\n%s%s%s}}\n\n", source_declarations, source_call, warm_line(program), strings.to_string(setup))
 	hook := ", hook" if len(g.handlers) > 0 || g.uses_tweens else ""
 	switch options.target {
 	case "ios":
@@ -591,4 +591,22 @@ source_lines :: proc(g: ^Gen) -> (declarations, call: string) {
 	}
 	strings.write_string(&b, "}\n\n")
 	return strings.to_string(b), fmt.tprintf("\trt.use_source(source_text__, %q, source_parts__[:])\n", g.src.name)
+}
+
+// The line that starts `setup` by translating the shaders the sketch names, so no frame waits for one,
+// as the interpreter does before it runs; nothing when it names none.
+warm_line :: proc(program: ^lang.IR_Program) -> string {
+	if len(program.shaders) == 0 {
+		return ""
+	}
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, "\trt.warm_shaders({")
+	for named, i in program.shaders {
+		if i > 0 {
+			strings.write_string(&b, ", ")
+		}
+		fmt.sbprintf(&b, "{{%q, %v}}", named.name, named.fill)
+	}
+	strings.write_string(&b, "})\n")
+	return strings.to_string(b)
 }
