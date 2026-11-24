@@ -45,7 +45,7 @@ RUN_USAGE :: `roci run [file] [--frames N] [--screenshot out.png] [--window N] [
               and the frame rate, and when the run ends a line says how fast it was and is added
               to artifacts/log.json in the sketch's folder (with --frames there is no window, so no box)
   --no-vsync  with a window, do not wait for the display, so the frame rate is what the computer can
-              do and not what the screen allows (it goes with --stats)
+              do and not what the screen allows, up to a window's fps (it goes with --stats)
   --compile   compile the sketch to a program for this computer, in the artifacts folder of the
               sketch's folder, and run it in the terminal instead of interpreting it (it does not
               reload when the file changes). It needs Odin, the release this rocinante is pinned to

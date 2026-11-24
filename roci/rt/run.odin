@@ -16,7 +16,7 @@ import "../gfx"
 Run :: struct {
 	sketch:     string, // the name of its folder, for the log
 	odin:       string, // the Odin release it was built with
-	frames:     int,    // more than 0: no window, this many frames of a sixtieth of a second
+	frames:     int,    // more than 0: no window, this many frames of a sixtieth of a second (or of one frame at `fps`)
 	seed:       u64,
 	stats:      bool,
 	no_vsync:   bool,

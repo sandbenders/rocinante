@@ -21,6 +21,7 @@ reset_settings :: proc(w: ^Win) {
 	set_smallest(w.id, 0, 0)
 	set_largest(w.id, 0, 0)
 	set_ratio(w.id, 0)
+	set_fps(w.id, 0)
 	set_window_alpha(w.id, 255)
 	w.parent = 0
 	w.cursor = .Arrow

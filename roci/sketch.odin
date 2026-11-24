@@ -68,6 +68,7 @@ Win :: struct {
 	smallest:     [2]int,           // size limits; 0 for none
 	largest:      [2]int,
 	ratio:        f64,              // the shape it keeps when resized; 0 for any
+	fps:          f64,              // the most frames a second the sketch draws while it is open; 0 for no limit
 	position:     [2]int,           // where it was asked to be (a headless window has no screen)
 	cursor:       Cursor,           // the mouse cursor while the mouse is over it
 	fingers:      [dynamic]Finger,  // the fingers down that went down in this window, in that order
@@ -227,6 +228,7 @@ shutdown :: proc() {
 	webcam_stop()
 	movies_stop()
 	stats_stop()
+	rate = {}
 	for w in the.windows {
 		destroy_win(w)
 	}

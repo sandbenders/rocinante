@@ -53,17 +53,20 @@ run :: proc(block: proc() = nil, frames := 0) -> bool {
 		began := time.tick_now()
 		step(events[:])
 		paced(began)
+		hold_rate()
 	}
 	return true
 }
 
 // One frame. `events` are what the windows reported since the last one. A headless
-// sketch advances its clock by `dt` seconds; one with graphics follows the wall.
+// sketch advances its clock by `dt` seconds (left out, a sixtieth, or one frame at the
+// rate its windows asked for with `fps`); one with graphics follows the wall.
 // Whatever the frame makes with `context.temp_allocator` is freed when it ends,
 // headless or not, so a pointer from longer-lived data into the frame's memory fails
 // in a test as it would for a person. It is the frame's own memory: what the caller
 // made with its temporary allocator is left alone.
-step :: proc(events: []platform.Event = nil, dt := 1.0 / 60) {
+step :: proc(events: []platform.Event = nil, dt := -1.0) {
+	dt := dt if dt >= 0 else headless_step()
 	if !frame_memory_ready {
 		runtime.default_temp_allocator_init(&frame_memory, int(runtime.DEFAULT_ARENA_GROWING_MINIMUM_BLOCK_SIZE), runtime.default_allocator())
 		frame_memory_ready = true
@@ -431,6 +434,9 @@ paced :: proc(began: time.Tick) {
 	}
 	building := max(0, time.duration_milliseconds(time.tick_diff(began, now)) - pace.presenting)
 	between := time.duration_milliseconds(time.tick_diff(pace.last, now)) if pace.last != {} else 0
+	if rate_holding() {
+		between = 0 // frames held at a rate are refreshes apart on purpose, not late
+	}
 	pace_learn(&pace, building, between)
 }
 

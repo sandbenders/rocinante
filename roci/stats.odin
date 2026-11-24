@@ -10,6 +10,7 @@ package roci
 
 import "core:encoding/json"
 import "core:fmt"
+import "core:math"
 import "core:os"
 import "core:slice"
 import "core:strings"
@@ -25,6 +26,8 @@ Stats_Summary :: struct {
 	fps_low:        f64, // the rate of the slowest hundredth of the frames
 	frame_ms_mean:  f64,
 	frame_ms_worst: f64,
+	fps_limit:      f64, // the rate the sketch asked for with `fps`; 0 for none
+	refresh:        f64, // the refresh of the screen that was waited for; 0 when none was
 }
 
 // One run in the log file.
@@ -40,6 +43,8 @@ Stats_Entry :: struct {
 	fps_low_1pct:   f64,
 	frame_ms_mean:  f64,
 	frame_ms_worst: f64,
+	fps_limit:      f64,
+	refresh:        f64,
 }
 
 @(private)
@@ -54,13 +59,16 @@ Stats :: struct {
 	shown_fps: f64,
 	shown_ms:  f64,
 	window_n:  int,       // frames since `shown_at`
+	limit:     f64,       // the rate the sketch asked for, as the last frame was held
+	refresh:   f64,       // the refresh of the screen it was held on
 }
 
 @(thread_local) @(private) stats: Stats
 @(thread_local) @(private) stats_final: Stats_Summary // what the run that ended last measured
 
 // Starts timing the frames. `overlay` draws the box in every window; `no_vsync` asks windows made from now
-// on not to wait for the display, so the rate is what the computer can do and not what the screen allows.
+// on not to wait for the display, so the rate is what the computer can do and not what the screen allows
+// (a window's `fps` still holds it).
 stats_start :: proc(overlay := true, no_vsync := false) {
 	stats_stop()
 	stats.on, stats.overlay, stats.no_vsync = true, overlay, no_vsync
@@ -82,6 +90,7 @@ stats_frame :: proc() {
 	if !stats.on {
 		return
 	}
+	stats.limit, stats.refresh = frame_limit(), rate.refresh
 	now := time.tick_now()
 	if stats.have_last {
 		ms := f32(time.duration_milliseconds(time.tick_diff(stats.last, now)))
@@ -109,10 +118,12 @@ draw_stats :: proc(w: ^Win) {
 	list := &w.list
 	frame := fmt.tprintf("frame %d", the.frame)
 	rate := fmt.tprintf("%.1f fps  %.1f ms", stats.shown_fps, stats.shown_ms) if stats.shown_fps > 0 else "- fps"
+	held := limit_line(stats.limit, stats.refresh)
 	glyph :: 8 // the overlay font's cell, at scale 1
 	scale :: 2
-	width := f32(max(len(frame), len(rate)) * glyph * scale + 16)
-	height := f32(2 * glyph * scale + 8 * 2 + 4)
+	lines := 3 if held != "" else 2
+	width := f32(max(len(frame), len(rate), len(held)) * glyph * scale + 16)
+	height := f32(lines * glyph * scale + 8 * 2 + (lines - 1) * 4)
 	gfx.push(list, .Style_And_Transform)
 	list.transform = gfx.IDENTITY
 	list.look_changed = true
@@ -125,7 +136,30 @@ draw_stats :: proc(w: ^Win) {
 	gfx.set_fill(list, {255, 255, 255, 255})
 	gfx.debug_text(list, frame, 16, 16, scale)
 	gfx.debug_text(list, rate, 16, 16 + glyph * scale + 4, scale)
+	if held != "" {
+		gfx.debug_text(list, held, 16, 16 + 2 * (glyph * scale + 4), scale)
+	}
 	gfx.pop(list)
+}
+
+// The third line of the box while a rate holds: "limit 60 fps", and where the screen's refresh is not a
+// whole multiple of it, "limit 60 fps, uneven at 144 Hz". Empty while none holds.
+limit_line :: proc(limit, refresh: f64) -> string {
+	if limit <= 0 {
+		return ""
+	}
+	if rate_uneven(limit, refresh) {
+		return fmt.tprintf("limit %s fps, uneven at %s Hz", rate_number(limit), rate_number(refresh))
+	}
+	return fmt.tprintf("limit %s fps", rate_number(limit))
+}
+
+// A rate as it is written for people: whole numbers without a point, others with two places.
+rate_number :: proc(n: f64) -> string {
+	if n == math.round(n) && abs(n) < 1e15 {
+		return fmt.tprintf("%d", i64(n))
+	}
+	return fmt.tprintf("%.2f", n)
 }
 
 // Applies `no_vsync` to a window that was just made.
@@ -174,6 +208,7 @@ summarise :: proc(times: []f32) -> (s: Stats_Summary) {
 stats_stop :: proc() {
 	if stats.on {
 		stats_final = summarise(stats.times[:])
+		stats_final.fps_limit, stats_final.refresh = stats.limit, stats.refresh
 	}
 	delete(stats.times)
 	stats = {}
@@ -184,7 +219,20 @@ stats_text :: proc(s: Stats_Summary, allocator := context.temp_allocator) -> str
 	if s.frames == 0 {
 		return "no frames were timed"
 	}
-	return fmt.aprintf("%d frames in %.2f s: %.1f fps on average (%.2f ms a frame), the slowest hundredth %.1f fps, the worst frame %.2f ms", s.frames, s.seconds, s.fps_average, s.frame_ms_mean, s.fps_low, s.frame_ms_worst, allocator = allocator)
+	text := fmt.tprintf("%d frames in %.2f s: %.1f fps on average (%.2f ms a frame), the slowest hundredth %.1f fps, the worst frame %.2f ms", s.frames, s.seconds, s.fps_average, s.frame_ms_mean, s.fps_low, s.frame_ms_worst)
+	return strings.concatenate({text, limit_words(s.fps_limit, s.refresh)}, allocator)
+}
+
+// What a summary adds about the rate the sketch asked for: nothing when it asked for none.
+limit_words :: proc(limit, refresh: f64) -> string {
+	if limit <= 0 {
+		return ""
+	}
+	if rate_uneven(limit, refresh) {
+		fewer := math.floor(refresh / limit)
+		return fmt.tprintf("; held at %s fps, which the screen's %s Hz is not a whole multiple of, so frames came %s or %s refreshes apart", rate_number(limit), rate_number(refresh), rate_number(fewer), rate_number(fewer + 1))
+	}
+	return fmt.tprintf("; held at most at %s fps", rate_number(limit))
 }
 
 // Adds a run to the log file, an array with one entry for each run, creating the file and the folder it
@@ -224,6 +272,8 @@ stats_log :: proc(path: string, mode, sketch: string, summary: Stats_Summary, vs
 		fps_low_1pct   = summary.fps_low,
 		frame_ms_mean  = summary.frame_ms_mean,
 		frame_ms_worst = summary.frame_ms_worst,
+		fps_limit      = summary.fps_limit,
+		refresh        = summary.refresh,
 	})
 	text, marshal_err := json.marshal(entries[:], {pretty = true, use_spaces = true, spaces = 2}, context.temp_allocator)
 	if marshal_err != nil {
