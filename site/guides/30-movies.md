@@ -70,6 +70,6 @@ draw [
 
 ## How it keeps time
 
-A movie moves on by the time each frame took, so it plays at the right speed whatever the frame rate is. A headless run (`roci run --frames`, `roci test`) takes a sixtieth of a second a frame, so a picture of a movie is the same on every computer. A movie nobody draws is still decoded while it plays, and costs nothing else.
+A movie moves on by the time each frame took, so it plays at the right speed whatever the frame rate is. A headless run (`roci run --frames`, `roci test`) takes a sixtieth of a second a frame (or one frame at the rate the sketch asked for with `fps`), so a picture of a movie is the same on every computer. A movie nobody draws is still decoded while it plays, and costs nothing else.
 
 A movie value is the movie itself, not one of its pictures: `still = clip` is the movie too, and draws what the movie shows when `still` is drawn. A picture that must stay as it was is made with one of the picture verbs (`crop still at 0 0 size 160 96` keeps a copy as it is now, for example).

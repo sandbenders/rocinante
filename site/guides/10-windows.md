@@ -33,6 +33,25 @@ draw w [
 
 Some settings are only a request on some systems: a window manager may decide where a window goes, for example.
 
+## How often a window draws
+
+A window draws a new frame each time its screen refreshes: 60 times a second on most screens, but 120 or 144 on many newer ones. A sketch that moves things by a step every frame, or waits a number of frames, then runs faster on a faster screen. `fps` keeps it at most at the rate you give, whatever the screen:
+
+```roci
+w = window size 720 1280 fps 60
+x = 0
+draw [
+  background 20
+  x = x + 4
+  if x > width [ x = 0 ]
+  circle at x 640 radius 30 fill gold
+]
+```
+
+The dot crosses at the same speed on every screen. `set w fps 30` changes the rate while the sketch runs, `set w fps 0` takes the limit away, and `w.fps` is the limit the window asked for (0 for none). `fps` on its own is the rate the sketch is drawing at now. With several windows, the sketch draws at the lowest limit any of them asked for, since every window is drawn in each frame.
+
+When the screen's refresh is not a whole multiple of the rate, such as 60 on a 144 Hz screen, frames come two and three refreshes apart in turn: the rate is right on average, but the movement is a little less smooth than on a 60 or 120 Hz screen. `roci run --stats` says so in its box. A run with no window (`roci run --frames`, `roci test`) takes one frame at the rate for each frame, or a sixtieth of a second when no rate was asked for.
+
 ## Several windows
 
 Each window gets its own `draw` block, named after the window:
