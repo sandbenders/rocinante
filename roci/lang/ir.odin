@@ -332,4 +332,5 @@ IR_Program :: struct {
 	instances: []^IR_Instance,
 	types:     ^Types,
 	shaders:   []Named_Shader, // the shaders `effect` and `shade` lines name by their own text, to translate before the first frame
+	fullscreen: bool,          // a `window`, `set` or `fullscreen` line asks to fill the screen in its own text, so a Mac does it without a Space
 }

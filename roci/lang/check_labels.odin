@@ -168,6 +168,7 @@ check_labelled :: proc(c: ^Checker, e: ^Expr, k: Call, as_stmt: bool) -> (ir: ^I
 		note(c, .Value_Of_Nothing, e.span, verb.name, "", "", text_at(c, e.span))
 		return error_ir(c, e.span), true
 	}
+	fullscreen_use(c, verb, form.shape, options)
 	return new_ir(c, e.span, type, IR_Call{verb = verb, shape = form.shape, args = args, options = options}), true
 }
 

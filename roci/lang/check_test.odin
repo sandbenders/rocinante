@@ -2190,3 +2190,19 @@ test_a_verb_learn_could_not_teach_is_said_once_and_its_calls_say_nothing_more ::
 	testing.expectf(t, len(ids) == 2 && ids[1] == .Missing_Required_Word, "a mistake of another line is still said: %v", ids)
 }
 
+// A line that asks to fill the screen in its own text, so a Mac can do it without a Space.
+@(test)
+test_the_program_says_whether_a_line_asks_for_fullscreen_in_its_own_text :: proc(t: ^testing.T) {
+	asks :: proc(text: string) -> bool {
+		got := check_text(text)
+		return !has_errors(got.checked.diagnostics) && got.checked.program.fullscreen
+	}
+	testing.expect(t, asks("w = window size 720 1280 fullscreen true"))
+	testing.expect(t, asks("w = window size 300 200 title \"game\" fullscreen true resizable false"))
+	testing.expect(t, asks("w = window size 300 200\non key \"f\" [ set w fullscreen true ]"))
+	testing.expect(t, asks("fullscreen\ncircle at 1 1 radius 1"))
+	testing.expect(t, !asks("w = window size 300 200 fullscreen false"))
+	testing.expect(t, !asks("small = true\nw = window size 300 200 fullscreen (not small)"), "worked out while it runs")
+	testing.expect(t, !asks("w = window size 300 200\nset w title \"t\""))
+	testing.expect(t, !asks("circle at 1 1 radius 1"))
+}
