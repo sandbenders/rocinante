@@ -826,6 +826,9 @@ void roci_set_largest(roci_window_id window, double width, double height);
 /* Sets the shape (width over height) a window keeps when it is resized; 0 for any. */
 void roci_set_ratio(roci_window_id window, double ratio);
 
+/* Sets the most frames a second the sketch draws while a window is open, however fast its screen refreshes; 0 for no limit, and at least 1 otherwise. The sketch runs at the lowest limit of its open windows. */
+void roci_set_window_fps(roci_window_id window, double rate);
+
 /* Sets how solid the whole window is, 0 (gone) to 255 (solid). */
 void roci_set_window_alpha(roci_window_id window, double alpha);
 
@@ -858,6 +861,9 @@ double roci_window_alpha(roci_window_id window);
 
 /* The shape a window keeps when resized; 0 for any. */
 double roci_window_ratio(roci_window_id window);
+
+/* The most frames a second a window asked for; 0 for no limit. */
+double roci_window_fps(roci_window_id window);
 
 /* The smallest size a window can be dragged to. */
 roci_vec2 roci_window_smallest(roci_window_id window);

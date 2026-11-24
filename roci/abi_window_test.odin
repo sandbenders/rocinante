@@ -22,6 +22,15 @@ test_the_c_window_settings_are_set_and_read_back :: proc(t: ^testing.T) {
 	testing.expect_value(t, abi_window_largest(w), Abi_Vec2{900, 700})
 	abi_set_ratio(w, 1.5)
 	testing.expect_value(t, abi_window_ratio(w), 1.5)
+	testing.expect_value(t, abi_window_fps(w), 0)
+	abi_set_window_fps(w, 60)
+	testing.expect_value(t, abi_window_fps(w), 60)
+	abi_set_window_fps(w, 0.1) // at least a frame a second
+	testing.expect_value(t, abi_window_fps(w), 1)
+	abi_set_window_fps(w, 0)
+	testing.expect_value(t, abi_window_fps(w), 0)
+	abi_set_window_fps(99, 30) // no such window: nothing happens
+	testing.expect_value(t, abi_window_fps(99), 0)
 	abi_set_window_alpha(w, 128)
 	testing.expect(t, abi_window_alpha(w) > 100 && abi_window_alpha(w) <= 128, "half solid")
 	for name in ([?]cstring{"resizable", "bordered", "topmost", "visible", "focusable", "grab", "modal", "fullscreen"}) {

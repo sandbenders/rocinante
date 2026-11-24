@@ -62,6 +62,12 @@ abi_set_ratio :: proc "c" (window: c.int, ratio: f64) {
 	set_ratio(Window(window), ratio)
 }
 
+@(export, link_name = "roci_set_window_fps")
+abi_set_window_fps :: proc "c" (window: c.int, rate: f64) {
+	context = abi_context()
+	set_fps(Window(window), rate)
+}
+
 @(export, link_name = "roci_set_window_alpha")
 abi_set_window_alpha :: proc "c" (window: c.int, alpha: f64) {
 	context = abi_context()
@@ -158,6 +164,12 @@ abi_window_alpha :: proc "c" (window: c.int) -> f64 {
 abi_window_ratio :: proc "c" (window: c.int) -> f64 {
 	context = abi_context()
 	return window_ratio(Window(window))
+}
+
+@(export, link_name = "roci_window_fps")
+abi_window_fps :: proc "c" (window: c.int) -> f64 {
+	context = abi_context()
+	return window_fps(Window(window))
 }
 
 @(export, link_name = "roci_window_smallest")
@@ -599,6 +611,7 @@ abi_window_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_set_smallest", typeid_of(type_of(abi_set_smallest)), "void roci_set_smallest(roci_window_id window, double width, double height)", "Sets the smallest size a window can be dragged to; 0 and 0 for no limit."))
 	append(all, abi_entry("roci_set_largest", typeid_of(type_of(abi_set_largest)), "void roci_set_largest(roci_window_id window, double width, double height)", "Sets the largest size a window can be dragged to; 0 and 0 for no limit."))
 	append(all, abi_entry("roci_set_ratio", typeid_of(type_of(abi_set_ratio)), "void roci_set_ratio(roci_window_id window, double ratio)", "Sets the shape (width over height) a window keeps when it is resized; 0 for any."))
+	append(all, abi_entry("roci_set_window_fps", typeid_of(type_of(abi_set_window_fps)), "void roci_set_window_fps(roci_window_id window, double rate)", "Sets the most frames a second the sketch draws while a window is open, however fast its screen refreshes; 0 for no limit, and at least 1 otherwise. The sketch runs at the lowest limit of its open windows."))
 	append(all, abi_entry("roci_set_window_alpha", typeid_of(type_of(abi_set_window_alpha)), "void roci_set_window_alpha(roci_window_id window, double alpha)", "Sets how solid the whole window is, 0 (gone) to 255 (solid)."))
 	append(all, abi_entry("roci_set_parent", typeid_of(type_of(abi_set_parent)), "void roci_set_parent(roci_window_id window, roci_window_id parent)", "Makes a window belong to another."))
 	append(all, abi_entry("roci_set_cursor", typeid_of(type_of(abi_set_cursor)), "void roci_set_cursor(roci_window_id window, const char *name)", "Sets the mouse cursor over a window: \"arrow\" or \"none\"."))
@@ -610,6 +623,7 @@ abi_window_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_window_mouse", typeid_of(type_of(abi_window_mouse)), "roci_vec2 roci_window_mouse(roci_window_id window)", "Where the mouse is in a window."))
 	append(all, abi_entry("roci_window_alpha", typeid_of(type_of(abi_window_alpha)), "double roci_window_alpha(roci_window_id window)", "How solid a window is, 0 to 255."))
 	append(all, abi_entry("roci_window_ratio", typeid_of(type_of(abi_window_ratio)), "double roci_window_ratio(roci_window_id window)", "The shape a window keeps when resized; 0 for any."))
+	append(all, abi_entry("roci_window_fps", typeid_of(type_of(abi_window_fps)), "double roci_window_fps(roci_window_id window)", "The most frames a second a window asked for; 0 for no limit."))
 	append(all, abi_entry("roci_window_smallest", typeid_of(type_of(abi_window_smallest)), "roci_vec2 roci_window_smallest(roci_window_id window)", "The smallest size a window can be dragged to."))
 	append(all, abi_entry("roci_window_largest", typeid_of(type_of(abi_window_largest)), "roci_vec2 roci_window_largest(roci_window_id window)", "The largest size a window can be dragged to."))
 	append(all, abi_entry("roci_window_parent", typeid_of(type_of(abi_window_parent)), "roci_window_id roci_window_parent(roci_window_id window)", "The window a window belongs to, 0 for none."))
