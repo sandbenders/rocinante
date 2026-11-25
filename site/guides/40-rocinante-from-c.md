@@ -1,6 +1,6 @@
 ---
 title: "rocinante from C"
-summary: "Use rocinante as a C library: one header, one library and a draw function give you a window, and any other C library joins in with an include. Three examples: a kaleidoscope, a reaction-diffusion library of its own, and an stb header."
+summary: "Use rocinante as a C library: one header and a draw function give you a window, and any other C library joins in with an include."
 weight: 40
 ---
 
