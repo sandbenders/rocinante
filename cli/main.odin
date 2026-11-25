@@ -12,21 +12,21 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-COMMANDS :: `roci, a small language for sketches.
+COMMANDS :: `roci, a powerful and expressive language for sketches.
 
-  roci check [file]    read a sketch and say what is wrong with it
-  roci new <name>      make a sketch folder
-  roci init            make the sketch files in this folder
-  roci add <file>      copy a file into the sketch's assets/
-  roci get <address>   copy a library from a git repository into libs/
-  roci update [name]   fetch newer copies of the libraries roci get made
-  roci run [file]      run a sketch; with --frames N, without a window
-  roci test [folder]   run the checks of a sketch and compare its picture with the stored one
-  roci fmt [file]      write a sketch in the house style
-  roci man [word]      how a verb or statement is written
-  roci doctor          say which targets this computer can build and which tools it lacks
-  roci package <target>  make the sketch an app to give to someone (macos and linux so far)
-  roci vault show     look into what a sketch keeps in its vault, or change it
+  roci check [file]     read a sketch and say what is wrong with it
+  roci new <name>       make a sketch folder
+  roci init             make the sketch files in this folder
+  roci add <file>       copy a file into the sketch's assets/
+  roci get <address>    copy a library from a git repository into libs/
+  roci update [name]    fetch newer copies of the libraries roci get made
+  roci run [file]       run a sketch; with --frames N, without a window
+  roci test [folder]    run the checks of a sketch and compare its picture with the stored one
+  roci fmt [file]       write a sketch in the house style
+  roci man [word]       how a verb or statement is written
+  roci doctor           say which targets this computer can build and which tools it lacks
+  roci package <target> make the sketch an app to distribute 
+  roci vault show       look into what a sketch keeps in its vault, or change it
 
 More commands arrive as the language does.`
 

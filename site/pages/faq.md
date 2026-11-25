@@ -12,7 +12,7 @@ My main problems with them relate to the syntax of the languages they are built 
 
 Another problem is packaging. It is still hard to package the final piece and distribute it to the whole modern ecosystem, including different platforms and mobile devices.
 
-rocinante provides one simple language I have been crafting for years, both for my personal use and for use in classrooms, that doesn't require learning Java, Python, or C++. Even so, it is expressive, powerful, and complete enough to build full multiplatform applications, including a light unit test system. You write a few friendly words and its engine draws them on the GPU. With one command, you can package it, without having to deal with build files.
+rocinante provides a powerful and expressive language I have been crafting for years, both for my personal use and for use in classrooms, that doesn't require learning Java, Python, or C++. Even so, it is expressive, powerful, and complete enough to build full multiplatform applications, including a light unit test system. You write a few friendly words and its engine draws them on the GPU. With one command, you can package it, without having to deal with build files.
 
 The language ships with an interpreter, allowing hot reload. Change it and see it. Save the file in your favorite editor and the running sketch updates, keeping its values, so particles keep flying while you change their color. When you feel the work is done, a simple command compiles your sketch into executable machine code that runs at native compiled speed. You don't need to worry about Metal, Vulkan, or Direct3D. rocinante takes care of all of that.
 
@@ -98,7 +98,7 @@ This is exactly what I call the "Symbiotic Future", a concept I coined and have 
 
 While such stories are compelling as entertainment, my vision as an artist and researcher who has worked with creative AI for over two decades is very different. I believe in an increasingly symbiotic future, where AI and humans play together in real time, sharing transparent processes and decisions, with collaboration as a critical concept. The main objective is to challenge and enhance both human and computer creativity. I do not think computers will replace human creativity, but I believe they will collaborate ever more closely to enhance our perceptions of, and through, creative acts. For more, see [_The Language of Creative AI_](https://link.springer.com/book/10.1007/978-3-031-10960-7), a book I co-edited.
 
-A small language like rocinante also helps people and AI alike. rocinante has few words and one shape, so a sketch can be read and changed by you, whoever wrote it. Code you can't read is code you can't play with. rocinante's grammar is written down, and `roci fmt` keeps every sketch in one style, which makes it easy for tools, AI included, to write rocinante correctly.
+A powerful and expressive language like rocinante also helps people and AI alike. rocinante has few words and one shape, so a sketch can be read and changed by you, whoever wrote it. Code you can't read is code you can't play with. rocinante's grammar is written down, and `roci fmt` keeps every sketch in one style, which makes it easy for tools, AI included, to write rocinante correctly.
 
 I built rocinante with the help of AI, putting the Symbiotic Future into practice once more.
 
