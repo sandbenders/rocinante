@@ -135,10 +135,11 @@ draw_stats :: proc(w: ^Win) {
 	frame := fmt.tprintf("frame %d", the.frame)
 	rate := fmt.tprintf("%.1f fps  %.1f ms", stats.shown_fps, stats.shown_ms) if stats.shown_fps > 0 else "- fps"
 	held := limit_line(stats.limit, stats.refresh)
+	shapes := shapes_line(w.batcher.stats.shapes_cut, w.batcher.stats.shapes_kept)
 	glyph :: 8 // the overlay font's cell, at scale 1
 	scale :: 2
-	lines := 3 if held != "" else 2
-	width := f32(max(len(frame), len(rate), len(held)) * glyph * scale + 16)
+	lines := 2 + int(held != "") + int(shapes != "")
+	width := f32(max(len(frame), len(rate), len(held), len(shapes)) * glyph * scale + 16)
 	height := f32(lines * glyph * scale + 8 * 2 + (lines - 1) * 4)
 	gfx.push(list, .Style_And_Transform)
 	list.transform = gfx.IDENTITY
@@ -152,10 +153,23 @@ draw_stats :: proc(w: ^Win) {
 	gfx.set_fill(list, {255, 255, 255, 255})
 	gfx.debug_text(list, frame, 16, 16, scale)
 	gfx.debug_text(list, rate, 16, 16 + glyph * scale + 4, scale)
+	row := 2
 	if held != "" {
-		gfx.debug_text(list, held, 16, 16 + 2 * (glyph * scale + 4), scale)
+		gfx.debug_text(list, held, 16, 16 + f32(row) * (glyph * scale + 4), scale)
+		row += 1
+	}
+	if shapes != "" {
+		gfx.debug_text(list, shapes, 16, 16 + f32(row) * (glyph * scale + 4), scale)
 	}
 	gfx.pop(list)
+}
+
+// The line of the box about the mesh's shapes in the last build: "shapes 12 cut 340 kept". Empty while no shape went through the mesh.
+shapes_line :: proc(cut, kept: int) -> string {
+	if cut + kept == 0 {
+		return ""
+	}
+	return fmt.tprintf("shapes %d cut %d kept", cut, kept)
 }
 
 // The third line of the box while a rate holds: "limit 60 fps", and where the screen's refresh is not a

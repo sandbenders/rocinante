@@ -141,3 +141,10 @@ test_shapes_are_counted_only_while_frames_are_timed_and_after_the_first :: proc(
 	testing.expect_value(t, stats_last().shapes_cut, 3)
 	testing.expect_value(t, stats_last().shapes_kept, 8)
 }
+
+@(test)
+test_the_box_has_a_line_for_the_shapes_cut_and_kept_in_the_last_build :: proc(t: ^testing.T) {
+	testing.expect_value(t, shapes_line(0, 0), "")
+	testing.expect_value(t, shapes_line(12, 340), "shapes 12 cut 340 kept")
+	testing.expect_value(t, shapes_line(0, 5), "shapes 0 cut 5 kept")
+}
