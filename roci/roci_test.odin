@@ -1384,3 +1384,51 @@ test_fullscreen_on_a_mac_uses_spaces_until_told_not_to_and_shutdown_forgets :: p
 	defer finish()
 	testing.expect(t, fullscreen_uses_spaces(), "a sketch started again decides again")
 }
+
+@(test)
+test_a_hundred_and_fifty_windows_each_keep_their_own_commands_and_close_one_by_one :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	wins: [150]Window
+	for i in 0 ..< len(wins) {
+		wins[i] = window(10 + i, 10)
+		draw(wins[i], proc() {
+			circle(0, 0, 1)
+		})
+	}
+	step()
+	testing.expect_value(t, len(the.windows), 150)
+	for w in wins {
+		testing.expect_value(t, len(commands_of(w)), 1)
+	}
+	// each one closes alone, from the oldest, and the others go on drawing
+	for i in 0 ..< len(wins) - 1 {
+		step({platform.Close_Requested{window = platform.Window_Id(wins[i])}})
+		testing.expect_value(t, len(the.windows), 149 - i)
+		testing.expect(t, !the.quit)
+	}
+	step()
+	testing.expect_value(t, len(commands_of(wins[149])), 1)
+	step({platform.Close_Requested{window = platform.Window_Id(wins[149])}})
+	testing.expect_value(t, len(the.windows), 0)
+	testing.expect(t, the.quit)
+}
+
+@(test)
+test_windows_opened_and_closed_over_and_over_leave_nothing_behind :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	keep := window(10, 10) // one stays, so the sketch does not end
+	for _ in 0 ..< 200 {
+		w := window(20, 20)
+		draw(w, proc() {
+			rect(0, 0, 5, 5)
+		})
+		step()
+		testing.expect_value(t, len(commands_of(w)), 1)
+		step({platform.Close_Requested{window = platform.Window_Id(w)}})
+		testing.expect_value(t, len(the.windows), 1)
+	}
+	testing.expect(t, !the.quit)
+	testing.expect_value(t, current_window(), keep)
+}
