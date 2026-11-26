@@ -186,6 +186,7 @@ show_frame :: proc(w: ^Win) {
 	}
 	draw_stats(w)
 	gfx.build(&w.batcher, &w.list, canvas)
+	stats_shapes(w.batcher.stats.shapes_cut, w.batcher.stats.shapes_kept)
 	if w.handle == nil {
 		return
 	}

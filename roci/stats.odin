@@ -28,6 +28,8 @@ Stats_Summary :: struct {
 	frame_ms_worst: f64,
 	fps_limit:      f64, // the rate the sketch asked for with `fps`; 0 for none
 	refresh:        f64, // the refresh of the screen that was waited for; 0 when none was
+	shapes_cut:     int, // shapes cut into triangles, summed over the frames counted
+	shapes_kept:    int, // shapes whose kept triangles were used again, summed over the frames counted
 }
 
 // One run in the log file.
@@ -45,6 +47,8 @@ Stats_Entry :: struct {
 	frame_ms_worst: f64,
 	fps_limit:      f64,
 	refresh:        f64,
+	shapes_cut:     int,
+	shapes_kept:    int,
 }
 
 @(private)
@@ -61,6 +65,8 @@ Stats :: struct {
 	window_n:  int,       // frames since `shown_at`
 	limit:     f64,       // the rate the sketch asked for, as the last frame was held
 	refresh:   f64,       // the refresh of the screen it was held on
+	cut:       int,       // shapes cut into triangles, summed over the frames since the clock started
+	kept:      int,       // shapes that took kept triangles, the same
 }
 
 @(thread_local) @(private) stats: Stats
@@ -82,6 +88,16 @@ stats_on :: proc() -> bool {
 // The summary of the run that ended last (every field 0 when none was timed).
 stats_last :: proc() -> Stats_Summary {
 	return stats_final
+}
+
+// Counts what a window's build did with the shapes of its mesh. Called after each build while frames are timed; the first frame
+// is left out, as it is from the times.
+@(private)
+stats_shapes :: proc(cut, kept: int) {
+	if stats.on && stats.have_last {
+		stats.cut += cut
+		stats.kept += kept
+	}
 }
 
 // Takes the time of a frame. Called as each frame ends.
@@ -209,6 +225,7 @@ stats_stop :: proc() {
 	if stats.on {
 		stats_final = summarise(stats.times[:])
 		stats_final.fps_limit, stats_final.refresh = stats.limit, stats.refresh
+		stats_final.shapes_cut, stats_final.shapes_kept = stats.cut, stats.kept
 	}
 	delete(stats.times)
 	stats = {}
@@ -220,7 +237,15 @@ stats_text :: proc(s: Stats_Summary, allocator := context.temp_allocator) -> str
 		return "no frames were timed"
 	}
 	text := fmt.tprintf("%d frames in %.2f s: %.1f fps on average (%.2f ms a frame), the slowest hundredth %.1f fps, the worst frame %.2f ms", s.frames, s.seconds, s.fps_average, s.frame_ms_mean, s.fps_low, s.frame_ms_worst)
-	return strings.concatenate({text, limit_words(s.fps_limit, s.refresh)}, allocator)
+	return strings.concatenate({text, limit_words(s.fps_limit, s.refresh), shapes_words(s.shapes_cut, s.shapes_kept)}, allocator)
+}
+
+// What a summary adds about the shapes cut into triangles: nothing when no shape went through the mesh.
+shapes_words :: proc(cut, kept: int) -> string {
+	if cut + kept == 0 {
+		return ""
+	}
+	return fmt.tprintf("; %d shapes cut and %d kept from an earlier frame (%d%% kept)", cut, kept, 100 * kept / (cut + kept))
 }
 
 // What a summary adds about the rate the sketch asked for: nothing when it asked for none.
@@ -274,6 +299,8 @@ stats_log :: proc(path: string, mode, sketch: string, summary: Stats_Summary, vs
 		frame_ms_worst = summary.frame_ms_worst,
 		fps_limit      = summary.fps_limit,
 		refresh        = summary.refresh,
+		shapes_cut     = summary.shapes_cut,
+		shapes_kept    = summary.shapes_kept,
 	})
 	text, marshal_err := json.marshal(entries[:], {pretty = true, use_spaces = true, spaces = 2}, context.temp_allocator)
 	if marshal_err != nil {

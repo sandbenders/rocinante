@@ -113,3 +113,31 @@ test_the_log_gets_a_line_for_each_run_and_a_broken_log_is_set_aside :: proc(t: ^
 	testing.expect(t, os.write_entire_file("output/tests/stats_log/a_file", transmute([]byte)string("not a folder")) == nil)
 	testing.expect(t, !stats_log("output/tests/stats_log/a_file/here/log.json", "interpreted", "x", summary, true))
 }
+
+@(test)
+test_the_summary_tells_how_many_shapes_were_cut_and_how_many_kept :: proc(t: ^testing.T) {
+	testing.expect_value(t, shapes_words(0, 0), "")
+	testing.expect_value(t, shapes_words(10, 30), "; 10 shapes cut and 30 kept from an earlier frame (75% kept)")
+	testing.expect_value(t, shapes_words(5, 0), "; 5 shapes cut and 0 kept from an earlier frame (0% kept)")
+	s := Stats_Summary{frames = 10, seconds = 1, fps_average = 10, fps_low = 10, frame_ms_mean = 100, frame_ms_worst = 100}
+	testing.expect(t, !strings.contains(stats_text(s), "shapes"), "a run with no mesh shapes says nothing of them")
+	s.shapes_cut, s.shapes_kept = 2, 6
+	testing.expect(t, strings.has_suffix(stats_text(s), "2 shapes cut and 6 kept from an earlier frame (75% kept)"))
+}
+
+@(test)
+test_shapes_are_counted_only_while_frames_are_timed_and_after_the_first :: proc(t: ^testing.T) {
+	stats_shapes(4, 4)
+	stats_start(overlay = false)
+	defer stats_stop()
+	stats_shapes(7, 0) // the first frame is not timed
+	testing.expect_value(t, stats.cut, 0)
+	stats_frame() // the first frame ends: the clock starts
+	stats_shapes(1, 5)
+	stats_shapes(2, 3)
+	testing.expect_value(t, stats.cut, 3)
+	testing.expect_value(t, stats.kept, 8)
+	stats_stop()
+	testing.expect_value(t, stats_last().shapes_cut, 3)
+	testing.expect_value(t, stats_last().shapes_kept, 8)
+}
