@@ -155,6 +155,18 @@ test_a_repeat_takes_its_count_once :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_a_move_by_a_vector_known_only_as_it_runs_chooses_the_canvas_or_space_then :: proc(t: ^testing.T) {
+	// the list holds a vector of two and one of three, so each item is boxed
+	result := compile("spots = [ { 10, 20 } { 1, 2, 3 } ]\nfor each s in spots [\n  push [\n    move s\n    circle at 0 0 radius 5\n  ]\n]\nmove { 4, 5 }\nmove { 1, 2, 3 }\n")
+	testing.expect_value(t, len(result.problems), 0)
+	source := result.source
+	testing.expect(t, strings.contains(source, "rt.move_box("), "a boxed vector is moved by what it holds")
+	testing.expect(t, !strings.contains(source, "rt.unbox_vector(s"), "never taken as three numbers, which moved only the shapes in space")
+	testing.expect(t, strings.contains(source, "roci.move_v([2]f64{4.0, 5.0})"), "a vector of two known as such is still the canvas's move")
+	testing.expect(t, strings.contains(source, "roci.move_xyz("), "and one of three the move in space")
+}
+
+@(test)
 test_the_verbs_in_space_and_the_window_words_are_written_as_calls :: proc(t: ^testing.T) {
 	result := compile("window size 400 300 title \"x\" resizable false at 10 20\nlight sun from 0 -1 1 fill white\nmaterial metallic 50\nbox at 0 0 0 size 5\nsphere at { 1, 2, 3 } radius 4\nmove 1 2 3\nturn 30 around y\ncamera at 0 5 10 fov 60\nwith fill red [ circle at 1 1 radius 1 ]\n")
 	testing.expect_value(t, len(result.problems), 0)

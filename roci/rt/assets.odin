@@ -406,6 +406,21 @@ merge_sort :: proc(order: []int, keys: []$K) {
 	}
 }
 
+// `move spot` where the kind of `spot` is only known as the sketch runs: a vector of three numbers or more
+// moves the shapes in space, as the interpreter does, and anything else moves the drawing on the canvas (a
+// value that is not a vector, by nothing). Compiling it as the move in space whatever the vector held left
+// every shape drawn after it where the canvas's origin was, while the interpreter drew it in its place.
+move_box :: proc(b: Box) {
+	#partial switch v in b {
+	case [3]f64:
+		roci.move_xyz(v[0], v[1], v[2])
+	case [4]f64:
+		roci.move_xyz(v[0], v[1], v[2])
+	case:
+		roci.move_v(unbox_vector(b, 2))
+	}
+}
+
 // `polygon [ corners ]`: a list of vectors, or a list of such lists, the contours of one shape.
 polygon :: proc(corners: ^List([2]f64), look := roci.Look{}) {
 	if corners == nil || len(corners.items) == 0 {

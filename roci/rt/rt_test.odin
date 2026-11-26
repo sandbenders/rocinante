@@ -641,3 +641,30 @@ test_every_table_a_program_keeps_is_given_back_with_its_keys :: proc(t: ^testing
 	forget_fetches()
 	testing.expect_value(t, len(fetches), 0)
 }
+
+@(test)
+test_a_boxed_vector_moves_the_canvas_only_when_it_holds_two_numbers :: proc(t: ^testing.T) {
+	roci.start_headless(1)
+	defer roci.shutdown()
+	w := roci.current_window()
+	// where a circle drawn at the canvas's origin lands after each move
+	landed :: proc(w: roci.Window) -> [2]f32 {
+		roci.circle(0, 0, 1)
+		drawn := roci.recorded(w)
+		last := drawn[len(drawn) - 1]
+		return {last.transform.e, last.transform.f}
+	}
+	move_box(Box([2]f64{10, 20}))
+	testing.expect_value(t, landed(w), [2]f32{10, 20})
+	// three or four numbers move the shapes in space: the drawing on the canvas stays where it was
+	move_box(Box([3]f64{1, 2, 3}))
+	testing.expect_value(t, landed(w), [2]f32{10, 20})
+	move_box(Box([4]f64{1, 1, 1, 9}))
+	testing.expect_value(t, landed(w), [2]f32{10, 20})
+	// what is not a vector moves nothing
+	move_box(Box(f64(5)))
+	move_box(Box{})
+	testing.expect_value(t, landed(w), [2]f32{10, 20})
+	move_box(Box([2]f64{-4, 1}))
+	testing.expect_value(t, landed(w), [2]f32{6, 21})
+}

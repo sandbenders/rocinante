@@ -297,6 +297,14 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 		if c.shape == 1 && vector_size(g, c.args[0]) == 2 {
 			return fmt.aprintf("roci.move_v(%s)", args[0], allocator = context.temp_allocator), false
 		}
+		if c.shape == 1 {
+			// a vector held in a box (an item of a list of mixed values) has the size the checker gives the
+			// mix, three when a vector of three is in it, while each value keeps its own: moved by what it
+			// holds as the sketch runs, on the canvas or in space, as the interpreter moves it
+			if k, converted := c.args[0].kind.(lang.IR_Convert); converted && kind_of(g, k.value) == .Boxed {
+				return fmt.aprintf("rt.move_box(%s)", expr(g, k.value), allocator = context.temp_allocator), false
+			}
+		}
 		return more_verbs(g, e, c, args) // in space
 	case "turn":
 		if len(c.options) > 0 {
