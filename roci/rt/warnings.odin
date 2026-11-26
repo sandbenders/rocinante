@@ -94,3 +94,49 @@ forget_source :: proc() {
 	program_source = {}
 	have_source = false
 }
+
+// Says `Division_By_Zero` once for a place, as the interpreter does, and nothing when the program has no text of its sketch.
+// The answer is 0 either way (`divide`, `modulo`).
+@(private)
+zero_divisor :: proc(site: ^Site) {
+	if !have_source {
+		return
+	}
+	span := lang.Span{file = 0, start = site.start, end = site.end}
+	say_warning(.Division_By_Zero, site, lang.division_by_zero_args(program_source, span, site.name, context.temp_allocator))
+}
+
+// `a / b` at a place of the sketch that is named, so a divisor of 0 is said.
+divide_at :: proc(a, b: f64, site: ^Site) -> f64 {
+	if b == 0 {
+		zero_divisor(site)
+	}
+	return divide(a, b)
+}
+
+// `a % b` at a place of the sketch.
+modulo_at :: proc(a, b: f64, site: ^Site) -> f64 {
+	if b == 0 {
+		zero_divisor(site)
+	}
+	return modulo(a, b)
+}
+
+// A vector divided by a vector, where any part of the divisor may be 0.
+divide_vector_at :: proc(a: [$N]f64, b: [N]f64, site: ^Site) -> [N]f64 {
+	for i in 0 ..< N {
+		if b[i] == 0 {
+			zero_divisor(site)
+			break
+		}
+	}
+	return divide_vector(a, b)
+}
+
+// A vector divided by a number.
+divide_vector_by_at :: proc(a: [$N]f64, b: f64, site: ^Site) -> [N]f64 {
+	if b == 0 {
+		zero_divisor(site)
+	}
+	return divide_vector_by(a, b)
+}

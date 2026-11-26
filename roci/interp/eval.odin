@@ -586,9 +586,8 @@ report_division :: proc(it: ^Interp, e: ^lang.IR, k: lang.IR_Binary) {
 	if said_already(it, .Division_By_Zero, e.span) {
 		return
 	}
-	divisor := lang.span_text(it.src, k.rhs.span)
-	line := strings.trim_space(lang.line_text(it.src, lang.position_of(it.src, e.span.start).line))
-	fail(it, .Division_By_Zero, e.span, "", "", "", strings.concatenate({"if ", divisor, " is not 0 [ ", line, " ]"}, context.temp_allocator))
+	words := lang.division_by_zero_args(it.src, e.span, lang.span_text(it.src, k.rhs.span))
+	fail(it, .Division_By_Zero, e.span, words[0], words[1], words[2], words[3])
 }
 
 // A comparison of two values: `is` and `is not` by what they hold, the others as numbers.

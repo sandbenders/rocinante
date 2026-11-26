@@ -68,3 +68,42 @@ test_a_constant_read_gives_its_value_with_its_own_type :: proc(t: ^testing.T) {
 	width: Maybe(f64) = constant_read(wide, true, &site) * 2 // a number where the place takes an optional one
 	testing.expect_value(t, width, 25.0)
 }
+
+@(test)
+test_a_division_by_zero_is_said_once_for_a_place_and_gives_0 :: proc(t: ^testing.T) {
+	forget_said()
+	defer forget_said()
+	defer forget_source()
+	parts := make([]Part, 1, context.temp_allocator)
+	parts[0] = Part{name = "t.roci", start = 0, first_line = 1}
+	text := "w = 600 / n\n"
+	use_source(text, "t.roci", parts)
+	site := Site{start = 4, end = 11, name = "n"}
+	key := fmt.tprintf("warning %d at %d", int(lang.Message_Id.Division_By_Zero), 4)
+	testing.expect_value(t, divide_at(6, 3, &site), 2.0)
+	testing.expect(t, said == nil || !said[key]) // a divisor that is not 0 says nothing
+	testing.expect_value(t, divide_at(6, 0, &site), 0.0)
+	testing.expect(t, said[key])
+	testing.expect_value(t, modulo_at(7, 0, &site), 0.0)
+	testing.expect_value(t, modulo_at(7, 4, &site), 3.0)
+	// vectors and boxes say it for a part of the divisor
+	forget_said()
+	testing.expect_value(t, divide_vector_at([2]f64{4, 4}, [2]f64{2, 0}, &site), [2]f64{2, 0})
+	testing.expect(t, said[key])
+	forget_said()
+	testing.expect_value(t, divide_vector_by_at([2]f64{4, 4}, 0, &site), [2]f64{0, 0})
+	testing.expect(t, said[key])
+	forget_said()
+	testing.expect_value(t, box_arith(.Divide, Box(f64(8)), Box(f64(0)), &site).(f64), 0.0)
+	testing.expect(t, said[key])
+	forget_said()
+	box_arith(.Divide, Box([2]f64{1, 1}), Box(f64(2)), &site)
+	box_arith(.Divide, Box(f64(8)), Box(f64(2)), &site)
+	box_arith(.Multiply, Box(f64(8)), Box(f64(0)), &site)
+	testing.expect(t, said == nil || !said[key]) // a divisor of 0 is only a fault for a division
+	// a program that has no text of its sketch says nothing
+	forget_source()
+	forget_said()
+	testing.expect_value(t, divide_at(6, 0, &site), 0.0)
+	testing.expect(t, said == nil || !said[key])
+}

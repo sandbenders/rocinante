@@ -71,8 +71,8 @@ test_a_sum_of_number_literals_is_worked_out_as_the_interpreter_does :: proc(t: ^
 test_division_and_remainders_that_can_meet_zero_go_through_the_runtime :: proc(t: ^testing.T) {
 	result := compile("a = 3\nb = 0\nprint (a / b)\nprint (a % b)\nprint (a / 2)\nprint (a ^ 2)\n")
 	testing.expect_value(t, len(result.problems), 0)
-	testing.expect(t, strings.contains(result.source, "rt.divide(a, b)"))
-	testing.expect(t, strings.contains(result.source, "rt.modulo(a, b)"))
+	testing.expect(t, strings.contains(result.source, "rt.divide_at(a, b, &site_"))
+	testing.expect(t, strings.contains(result.source, "rt.modulo_at(a, b, &site_"))
 	testing.expect(t, strings.contains(result.source, "(a / 2.0)"), "a divisor that is not zero is a plain division")
 	testing.expect(t, strings.contains(result.source, "rt.power(a, 2.0)"))
 }
@@ -585,4 +585,19 @@ test_a_name_a_verb_first_gives_a_value_inside_a_block_is_declared_at_the_top_of_
 	for name in ([]string{"at_x", "r", "w"}) {
 		testing.expectf(t, strings.contains(result.source, fmt.tprintf("%s: f64", name)), "%s is not declared in:\n%s", name, result.source)
 	}
+}
+
+@(test)
+test_a_division_that_may_have_a_divisor_of_0_is_written_with_its_place_and_a_sure_one_is_not :: proc(t: ^testing.T) {
+	result := compile("n = 0 + floor time\nv = { 1, 2 }\nprint (10 / n)\nprint (10 % n)\nprint (10 / 4)\nprint (v / n)\nprint (v / v)\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, "rt.divide_at("), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.modulo_at("), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.divide_vector_by_at("), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.divide_vector_at("), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.Site{start = "), result.source)
+	// a divisor written as a number that is not 0 cannot fail, and carries no place
+	sure := compile("print (10 / 4)\n")
+	testing.expect(t, !strings.contains(sure.source, "_at("), sure.source)
+	testing.expect(t, !strings.contains(sure.source, "rt.use_source"), sure.source)
 }

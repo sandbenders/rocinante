@@ -343,9 +343,29 @@ clamp_colour_box :: proc(c: [4]f32) -> maths.Colour {
 	return {clamp(c.r, 0, 255), clamp(c.g, 0, 255), clamp(c.b, 0, 255), clamp(c.a, 0, 255)}
 }
 
+// Whether any part of a value is 0: a divisor that gives 0 whatever it divides.
+@(private)
+box_has_zero :: proc(b: Box) -> bool {
+	if v, n, ok := box_vector_of(b); ok {
+		for i in 0 ..< n {
+			if v[i] == 0 {
+				return true
+			}
+		}
+		return false
+	}
+	if c, ok := b.(maths.Colour); ok {
+		return c.r == 0 || c.g == 0 || c.b == 0 || c.a == 0
+	}
+	return unbox_number(b) == 0
+}
+
 // `a + b`, `a - b`, `a * b` and `a / b` where one side or both could be of any kind: text joins with anything
 // through plus; vectors and colours work part by part; anything else is a number or 0.
-box_arith :: proc(op: Box_Op, a, b: Box) -> Box {
+box_arith :: proc(op: Box_Op, a, b: Box, site: ^Site = nil) -> Box {
+	if site != nil && op == .Divide && box_has_zero(b) {
+		zero_divisor(site)
+	}
 	if op == .Add {
 		_, left_text := a.(string)
 		_, right_text := b.(string)

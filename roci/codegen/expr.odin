@@ -481,6 +481,12 @@ shown :: proc(g: ^Gen, e: ^lang.IR) -> string {
 	return "\"\""
 }
 
+// The place a division is written, which says so when its divisor is 0.
+@(private)
+division_site :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Binary) -> string {
+	return new_site(g, e.span, lang.span_text(g.src, k.rhs.span), "")
+}
+
 @(private)
 binary :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Binary) -> string {
 	lk, rk := kind_of(g, k.lhs), kind_of(g, k.rhs)
@@ -500,7 +506,7 @@ binary :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Binary) -> string {
 		case .Add:      return fmt.aprintf("rt.box_arith(.Add, %s, %s)", l, r, allocator = context.temp_allocator)
 		case .Subtract: return fmt.aprintf("rt.box_arith(.Subtract, %s, %s)", l, r, allocator = context.temp_allocator)
 		case .Multiply: return fmt.aprintf("rt.box_arith(.Multiply, %s, %s)", l, r, allocator = context.temp_allocator)
-		case .Divide:   return fmt.aprintf("rt.box_arith(.Divide, %s, %s)", l, r, allocator = context.temp_allocator)
+		case .Divide:   return fmt.aprintf("rt.box_arith(.Divide, %s, %s, &%s)", l, r, division_site(g, e, k), allocator = context.temp_allocator)
 		case .Is:       return fmt.aprintf("rt.box_equal(%s, %s)", l, r, allocator = context.temp_allocator)
 		case .Is_Not:   return fmt.aprintf("(!rt.box_equal(%s, %s))", l, r, allocator = context.temp_allocator)
 		case .Less, .Less_Equal, .Greater, .Greater_Equal, .Modulo, .Power, .And, .Or:
@@ -540,17 +546,17 @@ binary :: proc(g: ^Gen, e: ^lang.IR, k: lang.IR_Binary) -> string {
 			if number, literal := k.rhs.kind.(lang.IR_Number); literal && number.value != 0 {
 				return text(g, l, "/", r)
 			}
-			return fmt.aprintf("rt.divide(%s, %s)", l, r, allocator = context.temp_allocator)
+			return fmt.aprintf("rt.divide_at(%s, %s, &%s)", l, r, division_site(g, e, k), allocator = context.temp_allocator)
 		}
 		if lk == .Vector && rk == .Vector {
-			return fmt.aprintf("rt.divide_vector(%s, %s)", l, r, allocator = context.temp_allocator)
+			return fmt.aprintf("rt.divide_vector_at(%s, %s, &%s)", l, r, division_site(g, e, k), allocator = context.temp_allocator)
 		}
 		if lk == .Vector && rk == .Number {
-			return fmt.aprintf("rt.divide_vector_by(%s, %s)", l, r, allocator = context.temp_allocator)
+			return fmt.aprintf("rt.divide_vector_by_at(%s, %s, &%s)", l, r, division_site(g, e, k), allocator = context.temp_allocator)
 		}
 	case .Modulo:
 		if both_numbers {
-			return fmt.aprintf("rt.modulo(%s, %s)", l, r, allocator = context.temp_allocator)
+			return fmt.aprintf("rt.modulo_at(%s, %s, &%s)", l, r, division_site(g, e, k), allocator = context.temp_allocator)
 		}
 	case .Power:
 		if both_numbers {

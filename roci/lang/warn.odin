@@ -33,3 +33,10 @@ field_missing_args :: proc(src: Source, span: Span, field: string, has: []string
 constant_not_made_args :: proc(name: string, allocator := context.temp_allocator) -> [4]string {
 	return {name, "", "", strings.concatenate({name, " = ..."}, allocator)}
 }
+
+// The arguments of `Division_By_Zero` for a division or remainder that met a divisor of 0: the line it is on is shown inside
+// a test of the divisor, the way the writer could guard it.
+division_by_zero_args :: proc(src: Source, span: Span, divisor: string, allocator := context.temp_allocator) -> [4]string {
+	line := strings.trim_space(line_text(src, position_of(src, span.start).line))
+	return {"", "", "", strings.concatenate({"if ", divisor, " is not 0 [ ", line, " ]"}, allocator)}
+}
