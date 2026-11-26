@@ -33,6 +33,21 @@ test_a_rate_is_held_only_where_the_screen_alone_would_go_faster :: proc(t: ^test
 }
 
 @(test)
+test_only_wayland_lets_a_rate_pace_a_window_alone_and_only_below_its_screen :: proc(t: ^testing.T) {
+	testing.expect(t, rate_paces_alone(60, 99.98, true, true), "60 on a 100 Hz screen under Wayland")
+	testing.expect(t, rate_paces_alone(60, 144, true, true))
+	testing.expect(t, rate_paces_alone(1, 60, true, true), "the lowest limit")
+	testing.expect(t, !rate_paces_alone(60, 99.98, false, true), "X11, Windows and the Mac keep waiting for the screen")
+	testing.expect(t, !rate_paces_alone(60, 99.98, true, false), "a window that does not wait for its screen is left alone")
+	testing.expect(t, !rate_paces_alone(0, 144, true, true), "no limit: the screen paces it")
+	testing.expect(t, !rate_paces_alone(-5, 144, true, true))
+	testing.expect(t, !rate_paces_alone(60, 60, true, true), "a 60 Hz screen holds 60 itself")
+	testing.expect(t, !rate_paces_alone(60, 60.5, true, true), "near enough to hold it itself")
+	testing.expect(t, !rate_paces_alone(144, 60, true, true), "a slower screen than the rate")
+	testing.expect(t, !rate_paces_alone(60, 0, true, true), "a screen that says no refresh")
+}
+
+@(test)
 test_frames_land_unevenly_where_the_refresh_is_not_a_whole_multiple :: proc(t: ^testing.T) {
 	testing.expect(t, rate_uneven(60, 144), "2.4 refreshes a frame")
 	testing.expect(t, rate_uneven(50, 120))
@@ -145,7 +160,9 @@ test_a_headless_sketch_is_never_held_by_sleeping :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, time.tick_since(started) < 900 * time.Millisecond)
 	testing.expect(t, !rate_holding())
-	testing.expect_value(t, waited_refresh(), 0)
+	waited, shown := first_refresh()
+	testing.expect_value(t, waited, 0)
+	testing.expect_value(t, shown, 0)
 }
 
 @(test)

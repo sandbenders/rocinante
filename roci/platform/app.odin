@@ -25,7 +25,9 @@ App :: struct {
 Window :: struct {
 	id:     Window_Id,
 	handle: ^sdl.Window,
-	vsync:  bool,
+	vsync:  bool, // frames wait for the screen's refresh
+	paced:  bool, // a frame rate paces the window instead, by `set_paced`; vsync is off for it
+	mailbox_missing: bool, // the screen has no mailbox, so `set_paced` leaves the window waiting
 }
 
 Window_Options :: struct {
@@ -459,6 +461,27 @@ set_vsync :: proc(app: ^App, window: ^Window, on: bool) -> bool {
 		return fail(app, "SDL_SetGPUSwapchainParameters")
 	}
 	window.vsync = mode == .VSYNC
+	window.paced = false
+	return true
+}
+
+// Lets a frame rate the sketch holds pace the window by itself: with `on` its frames are handed over
+// without waiting for the screen (mailbox, which shows whole frames, so nothing tears), and with it off
+// they wait again. A window whose screen has no mailbox stays as it is and remembers that, so it is
+// asked once. False when the window was left waiting.
+set_paced :: proc(app: ^App, window: ^Window, on: bool) -> bool {
+	if on == window.paced {
+		return true
+	}
+	if on && (window.mailbox_missing || !sdl.WindowSupportsGPUPresentMode(app.device, window.handle, .MAILBOX)) {
+		window.mailbox_missing = true
+		return false
+	}
+	if !sdl.SetGPUSwapchainParameters(app.device, window.handle, .SDR, .MAILBOX if on else .VSYNC) {
+		return fail(app, "SDL_SetGPUSwapchainParameters")
+	}
+	window.paced = on
+	window.vsync = !on
 	return true
 }
 

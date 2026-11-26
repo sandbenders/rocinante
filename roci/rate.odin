@@ -13,10 +13,18 @@
 // when it is due rather than the one after. A screen that refreshes no faster than the rate needs
 // nothing: waiting for it already holds the sketch there. A headless run takes one frame's time at the
 // rate for each frame instead of a sixtieth of a second, so `time` and `frame` agree as in a window.
+//
+// On Wayland the window stops waiting for its screen while a rate holds it below the screen's refresh,
+// and hands its frames over at once (mailbox: whole frames, no tearing), so the sleep alone paces them.
+// Waiting for the screen there made the next frame wait for the one before to be shown, as much as a
+// whole refresh, before it was even built, and frames that also took long to build then missed their
+// refresh and a sketch that counts its time in frames slowed for a moment (WILDVEX on niri at 100 Hz).
+// X11, Windows and the Mac were smooth waiting for the screen and are left as they were.
 package roci
 
 import "core:math"
 import "core:time"
+import "platform"
 import sdl "vendor:sdl3"
 
 // The fewest frames a second a window may ask for, so it still answers its keys and its close button.
@@ -105,20 +113,55 @@ rate_wake :: proc(due: time.Tick, refresh: f64) -> time.Tick {
 	return time.tick_add(due, -time.Duration(0.5e9 / refresh))
 }
 
-// The refresh rate of the first window's screen when that window waits for its screen, else 0.
+// Whether a window is paced by the rate alone instead of also waiting for its screen: on Wayland, for a
+// window that would wait for its screen (`waits`), while a rate holds it below the screen's refresh.
+rate_paces_alone :: proc(limit, refresh: f64, wayland, waits: bool) -> bool {
+	return wayland && waits && limit > 0 && refresh > limit * RATE_SLACK
+}
+
+// The refresh rate of a window's screen, 0 when the system says none.
 @(private)
-waited_refresh :: proc() -> f64 {
-	if the.headless || len(the.windows) == 0 {
-		return 0
-	}
-	w := the.windows[0]
-	if !w.alive || w.handle == nil || !w.handle.vsync {
-		return 0
-	}
-	if mode := sdl.GetCurrentDisplayMode(sdl.GetDisplayForWindow(w.handle.handle)); mode != nil && mode.refresh_rate > 0 {
+screen_refresh :: proc(handle: ^platform.Window) -> f64 {
+	if mode := sdl.GetCurrentDisplayMode(sdl.GetDisplayForWindow(handle.handle)); mode != nil && mode.refresh_rate > 0 {
 		return f64(mode.refresh_rate)
 	}
 	return 0
+}
+
+// Makes every window wait for its screen, or not, as `rate_paces_alone` says for the rate `limit`. A
+// window that has a frame acquired is left until the next frame, as its swapchain is in use.
+@(private)
+pace_windows :: proc(limit: f64) {
+	if the.headless || the.app.video != "wayland" {
+		return
+	}
+	for w in the.windows {
+		if !w.alive || w.handle == nil || w.acquired.commands != nil {
+			continue
+		}
+		h := w.handle
+		waits := (h.vsync || h.paced) && !h.mailbox_missing
+		alone := limit > 0 && rate_paces_alone(limit, screen_refresh(h), true, waits)
+		if alone != h.paced {
+			platform.set_paced(&the.app, h, alone)
+		}
+	}
+}
+
+// The refresh rate of the first window's screen: `waited` when that window waits for its screen, and
+// `shown` also when the rate paces it alone, since its frames are still shown at the screen's refreshes.
+// Both 0 otherwise.
+@(private)
+first_refresh :: proc() -> (waited, shown: f64) {
+	if the.headless || len(the.windows) == 0 {
+		return 0, 0
+	}
+	w := the.windows[0]
+	if !w.alive || w.handle == nil || !(w.handle.vsync || w.handle.paced) {
+		return 0, 0
+	}
+	shown = screen_refresh(w.handle)
+	return shown if w.handle.vsync else 0, shown
 }
 
 // Whether the loop is holding the sketch at a rate, so the frames are apart by more than one refresh.
@@ -131,8 +174,9 @@ rate_holding :: proc() -> bool {
 @(private)
 hold_rate :: proc() {
 	limit := frame_limit()
-	refresh := waited_refresh()
-	rate.refresh = refresh
+	pace_windows(limit)
+	refresh, shown := first_refresh()
+	rate.refresh = shown
 	if the.headless || !rate_needs_holding(limit, refresh) {
 		rate.due, rate.limit = {}, limit
 		return
