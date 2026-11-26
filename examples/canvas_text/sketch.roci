@@ -1,0 +1,19 @@
+// canvas text: a canvas fills letters as a picture does. `badge` is drawn into every frame, and the letters AB are cut out of it
+// as it is now.
+window size 400 200 title "canvas text"
+badge = canvas 100 100
+
+draw [
+  draw into badge [
+    clear
+    no stroke
+    fill white
+    circle at 50 50 radius 45
+    fill crimson
+    circle at 50 50 radius 20
+  ]
+  background navy
+  fill badge
+  font "Inter Bold" size 120
+  text "AB" at 100 20
+]

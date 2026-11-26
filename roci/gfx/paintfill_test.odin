@@ -201,7 +201,7 @@ test_a_mark_keeps_the_background_picture_so_the_overlay_leaves_it_alone :: proc(
 // ---- a text filled with a picture ----
 
 @(test)
-test_a_text_filled_with_a_picture_is_a_masked_item_and_a_canvas_leaves_it_in_its_colour :: proc(t: ^testing.T) {
+test_a_text_filled_with_a_picture_or_a_canvas_is_a_masked_item :: proc(t: ^testing.T) {
 	defer images_stop()
 	list := fresh()
 	defer destroy(&list)
@@ -223,7 +223,8 @@ test_a_text_filled_with_a_picture_is_a_masked_item_and_a_canvas_leaves_it_in_its
 	testing.expect_value(t, b.typeset[0].fill.image, id)
 	testing.expect_value(t, b.typeset[0].fill.fit, Image_Fit.Fit)
 	testing.expect(t, !b.typeset[1].masked)
-	testing.expect(t, !b.typeset[2].masked)
+	testing.expect(t, b.typeset[2].masked, "a canvas fills a text too: its pixels are read back when the text is made")
+	testing.expect_value(t, b.typeset[2].fill.image, canvas_id)
 }
 
 @(test)
@@ -301,4 +302,16 @@ test_a_text_fill_follows_the_fill_rules_of_a_shape_and_the_density :: proc(t: ^t
 	testing.expect_value(t, none[3], u8(0))
 	empty := compose_text_fill(nil, 0, 0, 1, Image_Fill{}, data, context.temp_allocator)
 	testing.expect_value(t, len(empty), 0)
+}
+
+@(test)
+test_a_text_filled_with_a_canvas_is_made_again_when_the_canvas_is_drawn_into :: proc(t: ^testing.T) {
+	defer images_stop()
+	id, made := image_add_canvas(10, 10, 1)
+	testing.expect(t, made)
+	item := Typeset_Item{text = "hi", size = 20, fill = Image_Fill{image = id}, masked = true}
+	before := text_fill_key(item, 20, 0, 1)
+	testing.expect_value(t, text_fill_key(item, 20, 0, 1), before) // the same canvas, the same text
+	canvas_of(id).drawn += 1 // a round was closed: the canvas shows something else now
+	testing.expect(t, text_fill_key(item, 20, 0, 1) != before)
 }

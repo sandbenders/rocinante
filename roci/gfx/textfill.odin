@@ -9,7 +9,8 @@
 // textured quad through the typeset pipeline, so it keeps its order among shapes and
 // text. It is made again only when the text, the font, the picture or the way it sits
 // changes, and let go when it has not been used for a while. A picture is read from the
-// CPU copy kept for it, so a canvas (whose pixels live on the GPU) cannot fill a text.
+// CPU copy kept for it; a canvas (whose pixels live on the GPU) is read back first (`canvas_read`) and the text is made again
+// whenever the canvas was drawn into.
 // Emoji in such a text are cut from the picture too, as silhouettes.
 package gfx
 
@@ -98,6 +99,9 @@ compose_text_fill :: proc(coverage: []u8, width, height: int, scale: f32, fill: 
 text_fill_key :: proc(item: Typeset_Item, pixels, wrap, scale: f32) -> u64 {
 	h := text_key(item, pixels, wrap)
 	h = hash_u64(h, u64(item.fill.image) | u64(images_epoch()) << 32)
+	if canvas := canvas_of(item.fill.image); canvas != nil {
+		h = hash_u64(h, canvas.drawn) // a canvas drawn into since shows something else
+	}
 	h = hash_u64(h, u64(item.fill.fit))
 	h = hash_f32_pair(h, item.fill.tile, scale)
 	return hash_f32_pair(h, item.fill.at.x, item.fill.at.y)
@@ -153,6 +157,19 @@ text_fill_texture :: proc(r: ^Renderer, commands: ^sdl.GPUCommandBuffer, item: T
 	r.text_fills[key] = Text_Fill_Texture{used = s.frame} // a text that cannot be made is not tried again
 	coverage, width, height := text_coverage(item, pixels, wrap)
 	picture := image_data(item.fill.image)
+	copied: Image_Data // a canvas read back, for as long as this text is made
+	read_pixels: []u8
+	defer delete(read_pixels)
+	if picture != nil && picture.canvas != nil {
+		// a canvas keeps its pixels on the GPU: read them back, as the pixel verbs do, and cut the letters from that
+		read, read_ok := canvas_read(r, item.fill.image)
+		if !read_ok {
+			return {}, false
+		}
+		read_pixels = read.pixels
+		copied = Image_Data{width = read.width, height = read.height, pixels = read.pixels}
+		picture = &copied
+	}
 	if coverage == nil || picture == nil {
 		return {}, false
 	}

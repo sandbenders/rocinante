@@ -546,10 +546,10 @@ Typeset_Item :: struct {
 typeset_item :: proc(list: ^Command_List, c: Command) -> Typeset_Item {
 	offset, length := int(c.args[5]), int(c.args[6])
 	// A text filled with a picture is its letters cut out of it (textfill.odin). That needs the
-	// picture's pixels, which a canvas keeps on the GPU, so a canvas leaves the text in its colour.
+	// picture's pixels; a canvas keeps them on the GPU, so the text asks for them when it is drawn (`text_fill_texture`).
 	masked := false
 	if fill := c.style.fill_image; fill.image != 0 && c.style.fill_on {
-		if data := image_data(fill.image); data != nil && data.canvas == nil && data.pixels != nil {
+		if data := image_data(fill.image); data != nil && (data.canvas != nil || data.pixels != nil) {
 			masked = true
 		}
 	}

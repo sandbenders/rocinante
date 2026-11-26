@@ -101,6 +101,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"paint", 4, "Picture as paint", 3, 1},
 	{"canvas", 4, "Canvas", 60, 1},
 	{"canvas_layers", 4, "Canvas layers", 3, 1},
+	{"canvas_text", 4, "Canvas text", 3, 1},
 	{"outline", 4, "Outline", 3, 1},
 	{"vector", 4, "Vector drawing", 20, 1},
 	{"blend", 4, "Blend and clip", 3, 1},
