@@ -179,3 +179,39 @@ letting_go_of_the_pictures_lets_go_of_the_canvases_too :: proc(t: ^testing.T) {
 	images_stop()
 	testing.expect(t, canvas_of(id) == nil)
 }
+
+@(test)
+a_list_names_the_canvases_it_draws_fills_strokes_or_paints_behind_with_each_once :: proc(t: ^testing.T) {
+	defer images_stop()
+	drawn, _ := image_add_canvas(10, 10, 1)
+	filled, _ := image_add_canvas(10, 10, 1)
+	stroked, _ := image_add_canvas(10, 10, 1)
+	behind, _ := image_add_canvas(10, 10, 1)
+	unused, _ := image_add_canvas(10, 10, 1)
+	loaded, _ := image_add_pixels(1, 1, {1, 2, 3, 4})
+	list: Command_List
+	defer destroy(&list)
+	testing.expect_value(t, len(list_canvases(&list)), 0)
+	testing.expect(t, draw_image(&list, drawn, 0, 0, 5, 5))
+	testing.expect(t, draw_image(&list, drawn, 5, 5, 5, 5)) // the same canvas again counts once
+	testing.expect(t, draw_image(&list, loaded, 0, 0, 5, 5)) // a loaded picture is no canvas
+	set_fill_image(&list, Image_Fill{image = filled})
+	circle(&list, 5, 5, 3)
+	set_stroke_image(&list, Image_Fill{image = stroked})
+	circle(&list, 5, 5, 4)
+	background_image(&list, Image_Fill{image = behind})
+	found := list_canvases(&list)
+	testing.expect_value(t, len(found), 4)
+	has :: proc(found: []Image_Id, id: Image_Id) -> bool {
+		for f in found {
+			if f == id {
+				return true
+			}
+		}
+		return false
+	}
+	for id in ([]Image_Id{drawn, filled, stroked, behind}) {
+		testing.expectf(t, has(found, id), "canvas %v is not named", id)
+	}
+	testing.expect(t, !has(found, unused) && !has(found, loaded))
+}

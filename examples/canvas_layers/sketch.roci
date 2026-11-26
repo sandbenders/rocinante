@@ -1,0 +1,34 @@
+// canvas layers: a canvas that shows another one, however they were made. `frame` is made first and shows `board`, which is
+// made before `badge` and shows it, so each is drawn after the one it shows, every frame.
+window size 400 300 title "canvas layers"
+frame = canvas 400 300
+board = canvas 400 300
+badge = canvas 100 100
+
+draw [
+  draw into frame [
+    clear
+    no stroke
+    fill gold
+    rect at 0 0 size 400 300
+    image board at 20 20 width 360 height 260
+  ]
+  draw into board [
+    clear
+    no stroke
+    fill navy
+    rect at 0 0 size 400 300
+    image badge at 30 30 width 120
+    image badge at 220 120 width 140 tint orange
+  ]
+  draw into badge [
+    clear
+    no stroke
+    fill white
+    circle at 50 50 radius 45
+    fill crimson
+    circle at 50 50 radius 20
+  ]
+  background white
+  image frame at 0 0 width 400
+]

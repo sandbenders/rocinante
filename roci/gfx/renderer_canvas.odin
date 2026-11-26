@@ -25,11 +25,22 @@ Canvas_Gpu :: struct {
 // failure would repeat.
 render_canvas :: proc(r: ^Renderer, id: Image_Id) -> bool {
 	canvas := canvas_of(id)
-	if canvas == nil {
+	if canvas == nil || canvas.rendering {
+		// a canvas that is being drawn already (two that show each other): the other keeps what this one showed last
 		return true
 	}
+	canvas.rendering = true
+	defer canvas.rendering = false
 	canvas_close_round(canvas)
 	ok := true
+	// the canvases this one shows are drawn first, whatever order they were made in, so it sees this frame's picture of them
+	for &round in canvas.rounds {
+		for shown in list_canvases(&round.list) {
+			if shown != id {
+				ok = render_canvas(r, shown) && ok
+			}
+		}
+	}
 	for &round in canvas.rounds {
 		ok = render_canvas_round(r, id, canvas, &round.list) && ok
 		destroy(&round.list)

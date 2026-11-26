@@ -31,6 +31,7 @@ Canvas :: struct {
 	density: f32,            // device pixels for each logical pixel
 	pending: bool,           // something was recorded into `list` since the last round was closed
 	drawn:   u64,            // how many rounds have been closed: it changes when what the canvas shows will
+	rendering: bool,         // its rounds are being drawn now, so a canvas that shows it, and that it shows, does not start it again
 }
 
 // The side of a canvas texture that has `logical` logical pixels at `density`.
@@ -142,4 +143,32 @@ canvas_destroy :: proc(c: ^Canvas) {
 	destroy(&c.list)
 	batcher_destroy(&c.batcher)
 	free(c)
+}
+
+// The canvases a command list shows or fills with: what its Image commands, its looks' picture fills and its background picture
+// name, each once, in the order they are first met. A canvas must be drawn before the lists that show it are.
+list_canvases :: proc(list: ^Command_List, allocator := context.temp_allocator) -> []Image_Id {
+	found := make([dynamic]Image_Id, allocator)
+	note :: proc(found: ^[dynamic]Image_Id, id: Image_Id) {
+		if id == 0 || canvas_of(id) == nil {
+			return
+		}
+		for known in found {
+			if known == id {
+				return
+			}
+		}
+		append(found, id)
+	}
+	note(&found, list.background_image.image)
+	for look in list.looks {
+		note(&found, look.style.fill_image.image)
+		note(&found, look.style.stroke_image.image)
+	}
+	for command in list.commands {
+		if command.kind == .Image {
+			note(&found, Image_Id(command.args[4]))
+		}
+	}
+	return found[:]
 }
