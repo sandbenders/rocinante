@@ -1,9 +1,12 @@
 // canvas layers: a canvas that shows another one, however they were made. `frame` is made first and shows `board`, which is
-// made before `badge` and shows it, so each is drawn after the one it shows, every frame.
+// made before `badge` and shows it, so each is drawn after the one it shows, every frame. `crowd` holds over two thousand
+// shapes, which a sketch with no window has drawn as soon as they are in, and still shows `stamp` as it was drawn that frame.
 window size 400 300 title "canvas layers"
 frame = canvas 400 300
 board = canvas 400 300
 badge = canvas 100 100
+stamp = canvas 60 60
+crowd = canvas 100 100
 
 draw [
   draw into frame [
@@ -29,6 +32,22 @@ draw [
     fill crimson
     circle at 50 50 radius 20
   ]
+  draw into stamp [
+    clear
+    no stroke
+    fill white
+    circle at 30 30 radius 28
+    fill crimson
+    circle at 30 30 radius 12
+  ]
+  draw into crowd [
+    clear
+    no stroke
+    fill teal
+    for i from 1 to 2100 [ circle at 4 4 radius 1 ]
+    image stamp at 20 20 width 60
+  ]
   background white
   image frame at 0 0 width 400
+  image crowd at 290 190 width 100
 ]

@@ -76,7 +76,7 @@ EXAMPLES := [?]Example{
 	{"circle", 3, {1}}, // the smallest sketch: one line, one circle
 	{"images", 5, {1}}, // pictures from assets: sizes, tints, alpha, a turning badge
 	{"canvas", 60, {1}}, // a canvas that keeps its drawing: two dots with fading trails
-	{"canvas_layers", 3, {1}}, // a canvas that shows one made after it, three deep
+	{"canvas_layers", 3, {1}}, // a canvas that shows one made after it, three deep, and one of over two thousand shapes
 	{"fills", 5, {1}}, // shapes filled with a picture: cover, fit, stretch, tile and center, and an outline over one
 	{"outline", 3, {1}}, // the same ball against a picture as a rectangle and as its outline
 	{"vector", 20, {1}}, // an SVG badge of paths, curves, arcs, a ring cut out by a hole, groups, a use and a style, drawn at its own size, stretched, turned and growing and shrinking
