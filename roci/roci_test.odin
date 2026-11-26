@@ -5,7 +5,9 @@
 // thread-local, so parallel tests do not meet).
 package roci
 
+import "core:fmt"
 import "core:math"
+import "core:os"
 import "core:strings"
 import "core:testing"
 import "gfx"
@@ -421,12 +423,27 @@ test_the_same_seed_gives_the_same_numbers_and_another_seed_does_not :: proc(t: ^
 	testing.expect_value(t, current_seed(), u64(43))
 }
 
+// A headless sketch that never seeds begins from seed 0, so it repeats itself; seed 7 gives another sequence; and once the sketch has
+// shut down, no seed is chosen, so the next window sketch of the process takes one from the clock as the start-up does.
 @(test)
-test_a_sketch_that_never_seeds_still_has_a_seed_to_report :: proc(t: ^testing.T) {
-	start_headless(0)
+test_a_headless_sketch_that_never_seeds_begins_from_seed_0_and_repeats_itself :: proc(t: ^testing.T) {
+	draws :: proc() -> [4]f64 {
+		return {random(1000), random(1000), random(1000), random(1000)}
+	}
+	start_headless()
+	testing.expect_value(t, current_seed(), u64(0))
+	first := draws()
+	finish()
+	testing.expect(t, !the.seed_chosen, "a finished sketch leaves no seed chosen")
+	start_headless()
+	second := draws()
+	finish()
+	testing.expect_value(t, second, first)
+	testing.expect(t, first[0] != first[1] || first[1] != first[2] || first[2] != first[3], "the numbers vary")
+	start_headless(7)
 	defer finish()
-	testing.expect(t, the.seed_chosen)
-	_ = random(1)
+	testing.expect_value(t, current_seed(), u64(7))
+	testing.expect(t, draws() != first, "another seed gives another sequence")
 }
 
 @(test)
@@ -636,10 +653,34 @@ test_a_new_handler_replaces_the_old :: proc(t: ^testing.T) {
 
 @(test)
 test_values_clone_and_destroy_without_leaking :: proc(t: ^testing.T) {
+	// the leak check of the test runner sees anything `value_destroy` fails to give back
 	v := Value([]Value{"a string", []Value{"nested", 1.0}, true, [2]f64{1, 2}})
 	c := value_clone(v)
-	value_destroy(c)
+	defer value_destroy(c)
+	original, copied := v.([]Value), c.([]Value)
+	testing.expect_value(t, len(copied), 4)
+	testing.expect_value(t, copied[0].(string), "a string")
+	testing.expect(t, raw_data(copied[0].(string)) != raw_data(original[0].(string)), "the text is a copy, not the same memory")
+	testing.expect(t, raw_data(copied) != raw_data(original), "the list is a copy")
+	nested_original, nested_copy := original[1].([]Value), copied[1].([]Value)
+	testing.expect(t, raw_data(nested_copy) != raw_data(nested_original), "a list inside a list is a copy too")
+	testing.expect_value(t, nested_copy[0].(string), "nested")
+	testing.expect_value(t, nested_copy[1].(f64), 1.0)
+	testing.expect_value(t, copied[2].(bool), true)
+	testing.expect_value(t, copied[3].([2]f64), [2]f64{1, 2})
+	// changing the copy leaves the original alone
+	nested_copy[1] = 99.0
+	testing.expect_value(t, nested_original[1].(f64), 1.0)
+	// a value of no kind, an empty text and an empty list are copied without trouble, and destroying a nil is no trouble
+	testing.expect(t, value_clone(nil) == nil)
+	empty_text := value_clone("")
+	testing.expect_value(t, empty_text.(string), "")
+	value_destroy(empty_text)
+	empty_list := value_clone([]Value{})
+	testing.expect_value(t, len(empty_list.([]Value)), 0)
+	value_destroy(empty_list)
 	value_destroy(Value(nil))
+	value_destroy(Value(2.5))
 }
 
 // ---- input and events ----
@@ -870,6 +911,48 @@ test_every_registry_verb_has_an_odin_name_and_no_name_is_invented :: proc(t: ^te
 		for b in API_NAMES[i + 1:] {
 			testing.expectf(t, a.verb != b.verb, "`%s` is listed twice", a.verb)
 		}
+	}
+}
+
+// The registry and API_NAMES are kept by the same hands, so a typo in both would agree with itself. The package's own source is the third
+// witness: every procedure the table names has to be defined there.
+@(test)
+test_every_name_in_the_api_table_is_a_procedure_the_package_defines :: proc(t: ^testing.T) {
+	files, err := os.read_all_directory_by_path("roci", context.temp_allocator)
+	if !testing.expect(t, err == nil, "the package's folder cannot be read") {
+		return
+	}
+	source: strings.Builder
+	strings.builder_init(&source, context.temp_allocator)
+	for file in files {
+		if file.type != .Regular || !strings.has_suffix(file.name, ".odin") || strings.has_suffix(file.name, "_test.odin") {
+			continue
+		}
+		data, read_err := os.read_entire_file(fmt.tprintf("roci/%s", file.name), context.temp_allocator)
+		if testing.expectf(t, read_err == nil, "cannot read %s", file.name) {
+			strings.write_string(&source, "\n")
+			strings.write_string(&source, string(data))
+		}
+	}
+	text := strings.to_string(source)
+	for entry in API_NAMES {
+		defined := strings.contains(text, fmt.tprintf("\n%s :: proc", entry.odin))
+		testing.expectf(t, defined, "API_NAMES says `%s` is answered by `%s`, and no procedure of that name is defined in the package", entry.verb, entry.odin)
+	}
+}
+
+// A few entries whose Odin name is not the verb's, written out by hand: the table must not drift from what the language's words became.
+@(test)
+test_the_names_odin_could_not_use_are_the_ones_the_table_says :: proc(t: ^testing.T) {
+	expected := [?]Api_Entry{{"map", "map_range"}, {"clamp", "clamp_between"}, {"abs", "absolute"}, {"sqrt", "square_root"}, {"min", "smaller_of"}, {"max", "larger_of"}, {"model", "draw_model"}, {"clear", "clear_window"}, {"up", "turtle_up"}, {"draw into", "draw_into"}}
+	for want in expected {
+		found := ""
+		for entry in API_NAMES {
+			if entry.verb == want.verb {
+				found = entry.odin
+			}
+		}
+		testing.expect_value(t, found, want.odin)
 	}
 }
 
