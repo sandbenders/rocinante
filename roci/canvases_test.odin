@@ -190,3 +190,46 @@ test_a_headless_test_never_starts_graphics_for_a_canvas_that_piles_up :: proc(t:
 	testing.expect(t, !the.shot_ready)
 	testing.expect(t, len(gfx.canvas_of(c).rounds) > CANVAS_ROUNDS_WAITING)
 }
+
+@(test)
+test_a_canvas_made_and_drawn_into_before_the_window_line_opens_no_window_of_its_own :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	c, ok := canvas(64, 48)
+	testing.expect(t, ok)
+	testing.expect_value(t, len(the.windows), 0)
+	testing.expect(t, begin_into(c))
+	rect(0, 0, 10, 10)
+	circle(5, 5, 2)
+	end_into()
+	testing.expect_value(t, len(the.windows), 0)
+	testing.expect_value(t, len(gfx.canvas_of(c).list.commands), 2)
+	testing.expect_value(t, gfx.canvas_of(c).density, HEADLESS_CANVAS_DENSITY)
+	// the sketch's own line then makes the first window, at the size it asks for, and takes nothing over
+	w := window(320, 200)
+	testing.expect_value(t, len(the.windows), 1)
+	testing.expect(t, the.windows[0].explicit)
+	testing.expect_value(t, the.windows[0].width, 320)
+	testing.expect_value(t, the.windows[0].height, 200)
+	testing.expect_value(t, win_for(w), the.windows[0])
+	testing.expect_value(t, len(the.windows[0].list.commands), 0)
+	testing.expect_value(t, image_size(c), [2]f64{64, 48})
+}
+
+@(test)
+test_existing_win_finds_the_window_the_verbs_would_use_and_makes_none :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	testing.expect(t, existing_win() == nil)
+	testing.expect_value(t, len(the.windows), 0)
+	first := window(100, 100)
+	second := window(50, 50)
+	testing.expect_value(t, existing_win(), win_for(second)) // the newest
+	the.newest = nil
+	testing.expect_value(t, existing_win(), win_for(first)) // else the default
+	the.default = nil
+	testing.expect_value(t, existing_win(), the.windows[0]) // else the first one left
+	the.current = win_for(second)
+	testing.expect_value(t, existing_win(), win_for(second)) // the one whose block runs comes first
+	the.current = nil
+}

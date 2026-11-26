@@ -16,10 +16,13 @@ import "platform"
 HEADLESS_CANVAS_DENSITY :: f32(2)
 
 // A new canvas of this logical size, as sharp as the window it is made in: the window's
-// density, or 2 when there is no real window. Gives false for a size that is zero or too big.
+// density, or 2 when there is no real window. A canvas made before the sketch's `window` line
+// opens no window of its own (the line that follows would have to resize it, which a Mac that
+// is asked for a fullscreen window stops the program for); it is 2 as well, and drawn the same.
+// Gives false for a size that is zero or too big.
 canvas :: proc(width, height: f64) -> (Image, bool) {
 	density := HEADLESS_CANVAS_DENSITY
-	if w := current_win(); w.handle != nil {
+	if w := existing_win(); w != nil && w.handle != nil {
 		density = platform.window_metrics(w.handle).density
 	}
 	made, ok := gfx.image_add_canvas(int(width), int(height), density)

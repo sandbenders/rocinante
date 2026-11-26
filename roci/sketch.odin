@@ -358,6 +358,22 @@ current_win :: proc() -> ^Win {
 	return the.default
 }
 
+// The window the verbs would act on, when there is one: unlike `current_win` it makes none, for the verbs that only need to know
+// about a window if it exists (a canvas made before the sketch's `window` line takes its sharpness from one only when there is one).
+@(private)
+existing_win :: proc() -> ^Win {
+	if the.current != nil {
+		return the.current
+	}
+	if the.newest != nil {
+		return the.newest
+	}
+	if the.default != nil {
+		return the.default
+	}
+	return the.windows[0] if len(the.windows) > 0 else nil
+}
+
 @(private)
 win_for :: proc(id: Window) -> ^Win {
 	for w in the.windows {
