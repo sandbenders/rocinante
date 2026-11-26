@@ -380,9 +380,41 @@ input_scale :: proc(window: ^Window) -> f64 {
 	return f64(content_scale(sdl.GetWindowDisplayScale(window.handle), WINDOW_IS_IN_PIXELS))
 }
 
+// What a Mac window's frame has above the picture when SDL cannot say yet (a title bar is about 28 points).
+@(private)
+UNKNOWN_BORDERS :: 40
+
 // Resizes the window, in logical pixels.
 set_size :: proc(window: ^Window, width, height: int) {
-	sdl.SetWindowSize(window.handle, i32(width), i32(height))
+	w, h := width, height
+	when ODIN_OS == .Darwin {
+		// AppKit stops the program with a breakpoint trap when a window that already exists is resized so that its frame
+		// (the title bar included) is taller than its screen's usable area (a sketch that asks for a big size and then fills
+		// the screen met it), so the size is held to what the screen has left once the borders are taken
+		bounds: sdl.Rect
+		if sdl.GetDisplayUsableBounds(sdl.GetDisplayForWindow(window.handle), &bounds) {
+			top, left, bottom, right: i32
+			_ = sdl.GetWindowBordersSize(window.handle, &top, &left, &bottom, &right)
+			if top + bottom == 0 {
+				top = UNKNOWN_BORDERS // a window that is not shown yet says it has none, and its title bar still counts
+			}
+			w, h = fit_to_screen(width, height, int(bounds.w - left - right), int(bounds.h - top - bottom))
+		}
+	}
+	sdl.SetWindowSize(window.handle, i32(w), i32(h))
+}
+
+// A window size held to the room a screen has: each side at most `room`, and never below 1. A side with no room given
+// (a screen that could not be read) is not held.
+fit_to_screen :: proc(width, height, room_width, room_height: int) -> (int, int) {
+	w, h := max(width, 1), max(height, 1)
+	if room_width > 0 {
+		w = min(w, room_width)
+	}
+	if room_height > 0 {
+		h = min(h, room_height)
+	}
+	return w, h
 }
 
 set_position :: proc(window: ^Window, x, y: int) {
