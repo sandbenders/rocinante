@@ -26,7 +26,7 @@ esac
 ANDROID_HOME="${ANDROID_HOME:-$default_home}"
 NDK_VERSION="${NDK_VERSION:-29.0.14206865}"
 API_LEVEL="${API_LEVEL:-28}"
-TARGET_API_LEVEL="${TARGET_API_LEVEL:-34}"
+TARGET_API_LEVEL="${TARGET_API_LEVEL:-36}"
 : "${SDL_ANDROID_LIB:?set SDL_ANDROID_LIB to the folder with libSDL3.so}"
 : "${SDL_ANDROID_JAVA:?set SDL_ANDROID_JAVA to the android-project/app/src/main/java}"
 

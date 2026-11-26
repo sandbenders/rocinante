@@ -49,7 +49,7 @@ esac
 ANDROID_HOME="${ANDROID_HOME:-$default_home}"
 NDK_VERSION="${NDK_VERSION:-29.0.14206865}"
 API_LEVEL="${API_LEVEL:-28}"
-TARGET_API_LEVEL="${TARGET_API_LEVEL:-34}"
+TARGET_API_LEVEL="${TARGET_API_LEVEL:-36}"
 ndk="$ANDROID_HOME/ndk/$NDK_VERSION"
 adb="$ANDROID_HOME/platform-tools/adb"
 [ -d "$ndk" ] || fail "I need the Android NDK $NDK_VERSION in $ANDROID_HOME (Android Studio, SDK Manager, SDK Tools, NDK), or set ANDROID_HOME."

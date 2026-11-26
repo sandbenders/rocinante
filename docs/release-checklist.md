@@ -111,7 +111,7 @@ On the iPhone, also play `examples/touch` with several fingers: they should be i
 - [ ] A sketch that uses `mic` or `webcam` has `RECORD_AUDIO` or `CAMERA` in its manifest and the phone asks when it uses them; one that uses neither has neither.
 - [ ] `roci package android` on a Linux x86-64 and a Windows computer; on another phone and another Android version.
 - [x] (2026-11-23, a Mac, the Android emulator) `roci package android --format all` makes the APK and a `.aab`; bundletool validates it, builds the apps for the emulator from it (`base` and `config.arm64_v8a`), they install, the app starts and unpacks its files.
-- [ ] The `.aab` uploaded in the Play Console (an internal testing track) and installed from Play; the target API level raised to 36 before (`TARGET_API_LEVEL` is 34); a Linux and a Windows host (the downloads there are pinned but never run).
+- [ ] The `.aab` uploaded in the Play Console (an internal testing track) and installed from Play; the app run on the Pixel 9 with its target API level of 36 (raised from 34 on 2026-11-26, checked only in the APK's manifest); a Linux and a Windows host (the downloads there are pinned but never run).
 
 ## Packaging an iPhone app
 
