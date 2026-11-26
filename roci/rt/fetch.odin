@@ -64,3 +64,9 @@ step_fetches :: proc() {
 		reply = {}
 	}
 }
+
+// Lets go of the list of the fetches still open (when a check of the program's memory ends the run, and for tests).
+forget_fetches :: proc() {
+	delete(fetches)
+	fetches = nil
+}

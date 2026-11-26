@@ -601,3 +601,22 @@ test_a_division_that_may_have_a_divisor_of_0_is_written_with_its_place_and_a_sur
 	testing.expect(t, !strings.contains(sure.source, "_at("), sure.source)
 	testing.expect(t, !strings.contains(sure.source, "rt.use_source"), sure.source)
 }
+
+@(test)
+test_print_makes_its_text_in_the_memory_of_the_frame_and_not_in_the_program :: proc(t: ^testing.T) {
+	result := compile("n = 2\nprint n\nprint \"hi\"\nprint [ 1 2 ]\nprint { 1, 2 }\n")
+	testing.expect_value(t, len(result.problems), 0)
+	testing.expect(t, strings.contains(result.source, ", context.temp_allocator))"), "the text is in the temporary memory a frame frees")
+	testing.expect(t, !strings.contains(result.source, "rt.show(") || !strings.contains(result.source, ", context.allocator))"), "no text of a print is left for ever")
+}
+
+@(test)
+test_a_sketch_that_receives_messages_gives_its_inboxes_back_when_asked_and_one_that_does_not_has_nothing_to_give :: proc(t: ^testing.T) {
+	received := compile("w = window size 10 10\nxs = [ 1 2 ]\non w receive m [ print count m ]\nsend w xs\n")
+	testing.expect_value(t, len(received.problems), 0)
+	testing.expect(t, strings.contains(received.source, "release_inboxes :: proc() {\n\tdelete(inbox_1_now)\n\tdelete(inbox_1_next)\n}"))
+	testing.expect(t, strings.contains(received.source, "setup :: proc() {\n\trt.at_end(release_inboxes)\n"))
+	plain := compile("print 1\n")
+	testing.expect(t, !strings.contains(plain.source, "release_inboxes"))
+	testing.expect(t, !strings.contains(plain.source, "rt.at_end"))
+}

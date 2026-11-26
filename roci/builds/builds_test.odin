@@ -115,8 +115,8 @@ compiled_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string, w
 	if !put_libraries_beside(t, binary) {
 		return nil, 0, false
 	}
-	run_state, stdout, run_err, run_start_err := os.process_exec({command = {runnable(binary), "--frames", fmt.tprint(FRAMES)}}, context.temp_allocator)
-	testing.expectf(t, run_start_err == nil && run_state.exit_code == 0, "%s: the program failed (%d, %v):\n%s", name, run_state.exit_code, run_start_err, string(run_err))
+	run_state, stdout, run_err, run_start_err := os.process_exec({command = {runnable(binary), "--frames", fmt.tprint(FRAMES), "--check-memory"}}, context.temp_allocator)
+	testing.expectf(t, run_start_err == nil && run_state.exit_code == 0, "%s: the program failed, or did not give back all it made (%d, %v):\n%s", name, run_state.exit_code, run_start_err, string(run_err))
 	warnings = strings.count(string(run_err), "── Warning:")
 	text_out := strings.trim_right(string(stdout), "\n")
 	if text_out == "" {

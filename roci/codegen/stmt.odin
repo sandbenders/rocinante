@@ -990,5 +990,6 @@ emit_receive :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_On) {
 	name := fmt.aprintf("on_%d", id, allocator = context.temp_allocator)
 	emit_proc(g, name, fmt.tprintf("(%s: %s)", name_of(g, k.message), info.message_type), k.body)
 	fmt.sbprintf(&g.procs, "inbox_%d_now, inbox_%d_next: [dynamic]%s\n\n", info.id, info.id, info.message_type)
+	append(&g.inboxes, info.id)
 	append(&g.handlers, Handler{kind = .Receive, proc_name = name, index = info.id, message_type = info.message_type, window = info.window, scene = g.registering})
 }

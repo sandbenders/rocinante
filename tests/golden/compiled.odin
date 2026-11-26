@@ -80,7 +80,7 @@ run_compiled_example :: proc(name, picture_name: string) -> bool {
 	made := actual_path(picture_name)
 	// a compiled sketch finds its `assets` in the folder it runs in, so it runs in its own, with whole paths
 	here, _ := os.get_working_directory(context.temp_allocator)
-	run_state, _, run_log, run_err := os.process_exec({command = {fmt.tprintf("%s/%s", here, binary), "--frames", fmt.tprint(example.frames), "--screenshot", fmt.tprintf("%s/%s", here, made)}, working_dir = fmt.tprintf("examples/%s", name)}, context.temp_allocator)
+	run_state, _, run_log, run_err := os.process_exec({command = {fmt.tprintf("%s/%s", here, binary), "--frames", fmt.tprint(example.frames), "--screenshot", fmt.tprintf("%s/%s", here, made), "--check-memory"}, working_dir = fmt.tprintf("examples/%s", name)}, context.temp_allocator)
 	if run_err != nil || run_state.exit_code != 0 {
 		report(picture_name, false, fmt.tprintf("the program failed (%d): %s", run_state.exit_code, string(run_log)))
 		return false

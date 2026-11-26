@@ -1,12 +1,14 @@
 package rt
 
 import "core:math"
+import "core:mem"
 import "core:os"
 import "core:strings"
 import "core:time"
 import "../"
 import "../data"
 import "../folder"
+import "../gfx"
 import "../maths"
 import "../osc"
 import "core:testing"
@@ -571,3 +573,71 @@ test_the_shaders_a_compiled_sketch_names_are_translated_before_they_are_used_and
 	testing.expect_value(t, shaders["glow"].id, glow.id)
 }
 
+
+@(thread_local)
+finished_count: int
+
+@(test)
+test_what_a_program_asked_to_finish_is_finished_once_when_its_memory_is_checked :: proc(t: ^testing.T) {
+	finished_count = 0
+	at_end(proc() {finished_count += 1})
+	at_end(proc() {finished_count += 10})
+	release_everything()
+	testing.expect_value(t, finished_count, 11)
+	release_everything()
+	testing.expect_value(t, finished_count, 11) // each is asked once
+}
+
+@(test)
+test_the_scenes_names_and_stack_are_given_back :: proc(t: ^testing.T) {
+	defer forget_scenes()
+	testing.expect_value(t, scene_register("menu"), 1)
+	testing.expect_value(t, scene_register("play"), 2)
+	forget_scenes()
+	testing.expect_value(t, len(scene_names), 0)
+	testing.expect_value(t, scene_register("again"), 1) // a new list begins
+}
+
+@(test)
+test_a_check_of_memory_reports_what_was_not_given_back_and_every_bad_free :: proc(t: ^testing.T) {
+	track: mem.Tracking_Allocator
+	mem.tracking_allocator_init(&track, context.allocator)
+	defer mem.tracking_allocator_destroy(&track)
+	testing.expect(t, report_leaks(&track), "nothing was made, so nothing is left")
+	kept, _ := mem.alloc(16, allocator = mem.tracking_allocator(&track))
+	testing.expect(t, !report_leaks(&track), "an allocation that was not freed is a leak")
+	mem.free(kept, mem.tracking_allocator(&track))
+	testing.expect(t, report_leaks(&track), "freed, it is not")
+	append(&track.bad_free_array, mem.Tracking_Allocator_Bad_Free_Entry{memory = nil})
+	testing.expect(t, !report_leaks(&track), "a bad free is said too")
+}
+
+@(test)
+test_every_table_a_program_keeps_is_given_back_with_its_keys :: proc(t: ^testing.T) {
+	pictures = make(map[string]roci.Image)
+	pictures[strings.clone("a.png")] = 0
+	sounds = make(map[string]roci.Sound)
+	sounds[strings.clone("a.wav")] = 0
+	drawings = make(map[string]^gfx.Svg_Drawing)
+	drawings[strings.clone("a.svg")] = new(gfx.Svg_Drawing)
+	drawings[strings.clone("broken.svg")] = nil // a drawing that could not be read is remembered as none
+	models = make(map[string]roci.Model)
+	models[strings.clone("a.glb")] = 0
+	fonts_made = make(map[string]roci.Sound)
+	fonts_made[strings.clone("a.sf2")] = 0
+	mesh_counts = make(map[int]int)
+	mesh_counts[1] = 2
+	forget_stores()
+	testing.expect_value(t, len(pictures) + len(sounds) + len(drawings) + len(models) + len(fonts_made) + len(mesh_counts), 0)
+	forget_stores() // nothing left to give back is no trouble
+	widget_sites = make(map[int]int)
+	widget_sites[3] = 1
+	forget_widgets()
+	testing.expect_value(t, len(widget_sites), 0)
+	append(&tweens, Tween{})
+	forget_tweens()
+	testing.expect_value(t, len(tweens), 0)
+	append(&fetches, Fetching{})
+	forget_fetches()
+	testing.expect_value(t, len(fetches), 0)
+}

@@ -102,6 +102,7 @@ Gen :: struct {
 	written:  map[^lang.IR]string,
 	receiver_info: [dynamic]Receiver,
 	receiver_next: int, // how many receivers have been written
+	inboxes:  [dynamic]int, // the message inboxes the program keeps, which it gives back when a check of its memory asks
 	copiers:  map[string]string, // an Odin type -> the procedure that makes a deep copy of a value of it
 	registering: int, // the scene whose statements are being written, 0 outside every scene
 	has_scenes: bool,
@@ -158,6 +159,7 @@ generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Opti
 	g.written = make(map[^lang.IR]string, 64, context.temp_allocator)
 	g.scenes = make([dynamic]string, context.temp_allocator)
 	g.receiver_info = make([dynamic]Receiver, context.temp_allocator)
+	g.inboxes = make([dynamic]int, context.temp_allocator)
 	g.copiers = make(map[string]string, 4, context.temp_allocator)
 	g.scene_draws = make([dynamic]Scene_Draw, context.temp_allocator)
 	g.scene_uis = make([dynamic]Scene_Draw, context.temp_allocator)
@@ -248,7 +250,8 @@ generate_pass :: proc(program: ^lang.IR_Program, src: lang.Source, options: Opti
 		emit_scene_procs(&g, &out)
 	}
 	source_declarations, source_call := source_lines(&g)
-	fmt.sbprintf(&out, "%ssetup :: proc() {{\n%s%s%s%s}}\n\n", source_declarations, source_call, fullscreen_line(program), warm_line(program), strings.to_string(setup))
+	release_line := emit_inbox_release(&g, &out)
+	fmt.sbprintf(&out, "%ssetup :: proc() {{\n%s%s%s%s%s}}\n\n", source_declarations, release_line, source_call, fullscreen_line(program), warm_line(program), strings.to_string(setup))
 	hook := ", hook" if len(g.handlers) > 0 || g.uses_tweens else ""
 	switch options.target {
 	case "ios":
@@ -618,3 +621,17 @@ fullscreen_line :: proc(program: ^lang.IR_Program) -> string {
 	return "\troci.fullscreen_spaces(false)\n" if program.fullscreen else ""
 }
 
+
+// The procedure that gives back the buffers of the message inboxes, which the program hands to `rt.at_end` when it starts, and
+// the line of `setup` that does that. Both empty for a sketch that receives nothing.
+emit_inbox_release :: proc(g: ^Gen, out: ^strings.Builder) -> string {
+	if len(g.inboxes) == 0 {
+		return ""
+	}
+	fmt.sbprintf(out, "// What the inboxes of messages hold, given back when a check of the program's memory asks.\nrelease_inboxes :: proc() {{\n")
+	for id in g.inboxes {
+		fmt.sbprintf(out, "\tdelete(inbox_%d_now)\n\tdelete(inbox_%d_next)\n", id, id)
+	}
+	fmt.sbprintf(out, "}}\n\n")
+	return "\trt.at_end(release_inboxes)\n"
+}

@@ -355,14 +355,14 @@ verb_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> (text: string, gives
 	case "print":
 		#partial switch kind_of(g, c.args[0]) {
 		case .Boxed:
-			return fmt.aprintf("fmt.println(rt.show_box(%s, context.allocator))", args[0], allocator = context.temp_allocator), false
+			return fmt.aprintf("fmt.println(rt.show_box(%s, context.temp_allocator))", args[0], allocator = context.temp_allocator), false
 		case .Number, .Boolean, .Text, .Vector:
-			return fmt.aprintf("fmt.println(rt.show(%s, context.allocator))", args[0], allocator = context.temp_allocator), false
+			return fmt.aprintf("fmt.println(rt.show(%s, context.temp_allocator))", args[0], allocator = context.temp_allocator), false
 		case .List, .Table:
 			if !printable(g, c.args[0].type) {
 				break
 			}
-			return fmt.aprintf("fmt.println(rt.show(%s, context.allocator))", args[0], allocator = context.temp_allocator), false
+			return fmt.aprintf("fmt.println(rt.show(%s, context.temp_allocator))", args[0], allocator = context.temp_allocator), false
 		}
 		refuse(g, e.span, fmt.tprintf("`print` of %s", lang.describe(g.types, c.args[0].type)))
 		return "", false

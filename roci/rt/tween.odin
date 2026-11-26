@@ -145,3 +145,9 @@ shift_tweens :: proc(scene: int, waited: f64) {
 		}
 	}
 }
+
+// Lets go of the tweens that are still moving (when a check of the program's memory ends the run, and for tests).
+forget_tweens :: proc() {
+	delete(tweens)
+	tweens = nil
+}

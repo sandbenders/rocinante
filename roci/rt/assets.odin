@@ -1184,3 +1184,34 @@ clip_polygons :: proc(contours: ^List(^List([2]f64))) {
 	}
 	roci.clip_polygons(made[:])
 }
+
+// Lets go of the tables a program keeps its loaded files and counts in, and their keys (when a check of the program's memory ends the
+// run, and for tests). The pictures, sounds and models themselves are the core's: `roci.shutdown` frees them.
+forget_stores :: proc() {
+	for key in pictures {
+		delete(key)
+	}
+	delete(pictures)
+	for key in sounds {
+		delete(key)
+	}
+	delete(sounds)
+	for key, drawing in drawings {
+		if drawing != nil {
+			gfx.svg_destroy(drawing)
+			free(drawing)
+		}
+		delete(key)
+	}
+	delete(drawings)
+	for key in models {
+		delete(key)
+	}
+	delete(models)
+	for key in fonts_made {
+		delete(key)
+	}
+	delete(fonts_made)
+	delete(mesh_counts)
+	pictures, sounds, drawings, models, fonts_made, mesh_counts = nil, nil, nil, nil, nil, nil
+}

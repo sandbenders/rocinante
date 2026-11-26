@@ -188,3 +188,9 @@ ui_open :: proc(p: Placing, kind: ui.Container, text: string) -> ui.Open {
 	}
 	return opened
 }
+
+// Lets go of the count of the widgets of each place (when a check of the program's memory ends the run, and for tests).
+forget_widgets :: proc() {
+	delete(widget_sites)
+	widget_sites = nil
+}

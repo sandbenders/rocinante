@@ -187,3 +187,10 @@ scene_apply :: proc() {
 		}
 	}
 }
+
+// Lets go of the scenes' names and the stack of scenes (when a check of the program's memory ends the run, and for tests).
+forget_scenes :: proc() {
+	delete(scene_names)
+	delete(scene_stack)
+	scene_names, scene_stack = nil, nil
+}
