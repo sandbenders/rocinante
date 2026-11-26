@@ -104,7 +104,7 @@ expr_fresh :: proc(g: ^Gen, e: ^lang.IR) -> string {
 		if g.in_verb != nil && k.symbol in g.flagged {
 			// a verb may be called before the line that makes this constant has run
 			site := new_site(g, e.span, k.symbol.name, "")
-			return fmt.aprintf("(%s if rt.constant_made(%s_made__, &%s) else %s)", name, name, site, name, allocator = context.temp_allocator)
+			return fmt.aprintf("rt.constant_read(%s, %s_made__, &%s)", name, name, site, allocator = context.temp_allocator)
 		}
 		return name
 	case lang.IR_Builtin:

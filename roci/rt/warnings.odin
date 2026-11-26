@@ -68,6 +68,13 @@ constant_made :: proc(made: bool, site: ^Site) -> bool {
 	return true
 }
 
+// A constant a verb reads before its line has run: its value, after the same warning. A procedure and not an `if`
+// expression, so the value keeps its own type where it goes to a place that takes an optional one (`width` of `image`).
+constant_read :: proc(value: $T, made: bool, site: ^Site) -> T {
+	constant_made(made, site)
+	return value
+}
+
 @(private)
 say_warning :: proc(id: lang.Message_Id, site: ^Site, words: [4]string) {
 	key := fmt.tprintf("warning %d at %d", int(id), site.start)

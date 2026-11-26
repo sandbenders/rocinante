@@ -1,0 +1,8 @@
+// A constant a verb reads as part of the width given to image, a place that takes an optional number.
+learn stamp pic scale [
+  image pic at 0 0 width (WIDE * scale)
+  give WIDE * scale
+]
+sheet = canvas 10 10
+WIDE = 40 + floor time
+print (stamp sheet 2)

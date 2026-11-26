@@ -547,7 +547,7 @@ test_a_constant_that_is_made_by_a_line_that_runs_is_checked_when_a_verb_reads_it
 	testing.expect_value(t, len(result.problems), 0)
 	testing.expect(t, strings.contains(result.source, "HELLO_made__: bool"), result.source)
 	testing.expect(t, strings.contains(result.source, "HELLO_made__ = true"), result.source)
-	testing.expect(t, strings.contains(result.source, "rt.constant_made(HELLO_made__, &site_"), result.source)
+	testing.expect(t, strings.contains(result.source, "rt.constant_read(HELLO, HELLO_made__, &site_"), result.source)
 	// a constant that is only written down is made before everything else, so it has no flag
 	testing.expect(t, !strings.contains(result.source, "LOOK_made__"), result.source)
 }

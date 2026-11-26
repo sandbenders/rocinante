@@ -57,3 +57,14 @@ test_a_constant_not_yet_made_is_said_once_and_still_read :: proc(t: ^testing.T) 
 	testing.expect(t, constant_made(false, &site))
 	testing.expect(t, said == nil || !said[fmt.tprintf("warning %d at %d", int(lang.Message_Id.Constant_Not_Made), 16)])
 }
+
+@(test)
+test_a_constant_read_gives_its_value_with_its_own_type :: proc(t: ^testing.T) {
+	forget_said()
+	defer forget_said()
+	site := Site{start = 0, end = 1, name = "WIDE"}
+	wide := 12.5
+	testing.expect_value(t, constant_read(wide, false, &site), 12.5)
+	width: Maybe(f64) = constant_read(wide, true, &site) * 2 // a number where the place takes an optional one
+	testing.expect_value(t, width, 25.0)
+}
