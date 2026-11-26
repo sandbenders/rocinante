@@ -4,74 +4,128 @@
 // clipper, the outline by the stroker) in the shape's own space and only then moved onto the canvas, so a shape that comes
 // again with the same corners, whatever `move`, `turn` or `grow` carried it, has the same triangles: they are found by a
 // hash of the corners and of what shapes the outline (its half width, ends, joins, the tolerance and whether it closes),
-// and only the move onto the canvas is done again. What is not drawn for a while is forgotten, and the whole is cut back
-// when it grows past a limit. A hit gives exactly the triangles a miss would have made, so no picture changes.
+// and only the move onto the canvas is done again. A hit gives exactly the triangles a miss would have made, so no
+// picture changes.
+//
+// The shapes are kept in two generations, each with a map and an arena that holds their corners and indices. New shapes
+// go into the newer one, and a shape found in the older one is copied into the newer one, so what is still drawn moves
+// along. Every `SHAPES_KEPT_BUILDS / 2` builds, or sooner when the newer one holds half of `SHAPES_KEPT_CORNERS`, the older
+// generation is let go whole (its arena reset, its map cleared, both keeping their memory) and becomes the newer, so a
+// shape not drawn for between sixty and a hundred and twenty builds is forgotten. Letting go costs the same however many
+// shapes there are: a sketch whose shapes change their corners every frame (a swaying plant, a wobbling outline) makes
+// thousands of shapes that are never drawn again, and freeing them one by one stopped a frame for seventy milliseconds
+// every two seconds (WILDVEX, about 150,000 shapes at a time).
 package gfx
 
 import "../geom"
+import "core:mem"
 
-// An unused shape is forgotten after a hundred and twenty builds, at the next look, which is made that often; the limit is
-// in corners (sixteen bytes each, and four more for every index).
+// A generation is let go after half this many builds, so an unused shape lasts between half of it and all of it; the
+// limit is in corners (sixteen bytes each, and four more for every index), for both generations together.
 SHAPES_KEPT_BUILDS :: 120
 SHAPES_KEPT_CORNERS :: 1_000_000
+SHAPES_BLOCK :: 1 << 20
 
 // Two hashes of the same numbers, so that two different shapes would have to collide in both to be taken for each other.
 Shape_Key :: [2]u64
 
+// Triangles cut from a shape; `points` and `indices` live in their generation's arena.
 Cut_Shape :: struct {
 	points:  []geom.Point,
 	indices: []u32,
-	used:    int, // the build that last used it
+}
+
+Shape_Generation :: struct {
+	shapes:  map[Shape_Key]Cut_Shape,
+	arena:   mem.Dynamic_Arena,
+	ready:   bool, // the arena has been set up
+	corners: int,
 }
 
 Shape_Cache :: struct {
-	shapes:     map[Shape_Key]Cut_Shape,
-	corners:    int,
-	builds:     int, // counted by `shapes_next_build`
-	cut:        int, // shapes cut in this build
-	kept:       int, // shapes taken from the cache in this build
-	last_prune: int,
+	generations: [2]Shape_Generation, // the newer first
+	builds:      int, // counted by `shapes_next_build`
+	started:     int, // the build the newer generation began at
+	cut:         int, // shapes cut in this build
+	kept:        int, // shapes taken from the cache in this build
 }
 
-// What the next build starts with: its number, its counts at 0, and the shapes not used for a long time forgotten.
+// What the next build starts with: its number, its counts at 0, and the older generation let go when its time has come.
 shapes_next_build :: proc(c: ^Shape_Cache) {
 	c.builds += 1
 	c.cut, c.kept = 0, 0
-	if c.corners > SHAPES_KEPT_CORNERS {
-		shapes_forget(c, SHAPES_KEPT_BUILDS / 4)
-		if c.corners > SHAPES_KEPT_CORNERS {
-			shapes_forget(c, 0)
-		}
-	} else if c.builds - c.last_prune >= SHAPES_KEPT_BUILDS {
-		shapes_forget(c, SHAPES_KEPT_BUILDS)
+	if c.builds - c.started >= SHAPES_KEPT_BUILDS / 2 || c.generations[0].corners > SHAPES_KEPT_CORNERS / 2 {
+		shapes_turn(c)
 	}
 }
 
-// Forgets every shape not used in the last `age` builds.
-shapes_forget :: proc(c: ^Shape_Cache, age: int) {
-	c.last_prune = c.builds
-	gone := make([dynamic]Shape_Key, context.temp_allocator)
-	for key, shape in c.shapes {
-		if shape.used < c.builds - age || age == 0 {
-			append(&gone, key)
+// Lets the older generation go and starts a new one in its place.
+shapes_turn :: proc(c: ^Shape_Cache) {
+	generation_clear(&c.generations[1])
+	c.generations[0], c.generations[1] = c.generations[1], c.generations[0]
+	c.started = c.builds
+}
+
+// Forgets every shape kept (when the cache must start again), keeping the memory for the next ones.
+shapes_forget_all :: proc(c: ^Shape_Cache) {
+	generation_clear(&c.generations[0])
+	generation_clear(&c.generations[1])
+	c.started = c.builds
+}
+
+// How many shapes are kept, in both generations; a shape that is in both counts once.
+shapes_count :: proc(c: ^Shape_Cache) -> int {
+	n := len(c.generations[0].shapes)
+	for key in c.generations[1].shapes {
+		if key not_in c.generations[0].shapes {
+			n += 1
 		}
 	}
-	for key in gone {
-		shape := c.shapes[key]
-		c.corners -= len(shape.points)
-		delete(shape.points)
-		delete(shape.indices)
-		delete_key(&c.shapes, key)
-	}
+	return n
+}
+
+// The corners kept, in both generations.
+shapes_corners :: proc(c: ^Shape_Cache) -> int {
+	return c.generations[0].corners + c.generations[1].corners
 }
 
 shapes_destroy :: proc(c: ^Shape_Cache) {
-	for _, shape in c.shapes {
-		delete(shape.points)
-		delete(shape.indices)
+	for &g in c.generations {
+		delete(g.shapes)
+		if g.ready {
+			mem.dynamic_arena_destroy(&g.arena)
+		}
 	}
-	delete(c.shapes)
 	c^ = {}
+}
+
+@(private)
+generation_clear :: proc(g: ^Shape_Generation) {
+	clear(&g.shapes)
+	if g.ready {
+		mem.dynamic_arena_reset(&g.arena)
+	}
+	g.corners = 0
+}
+
+// Keeps a copy of these triangles in the generation, in its arena.
+@(private)
+generation_keep :: proc(g: ^Shape_Generation, key: Shape_Key, points: []geom.Point, indices: []u32) -> ^Cut_Shape {
+	if !g.ready {
+		// blocks of a megabyte, so only a shape of more than about sixteen thousand corners is allocated (and freed) alone
+		mem.dynamic_arena_init(&g.arena, block_size = SHAPES_BLOCK, out_band_size = SHAPES_BLOCK / 4)
+		g.ready = true
+	}
+	if g.shapes == nil {
+		g.shapes = make(map[Shape_Key]Cut_Shape)
+	}
+	memory := mem.dynamic_arena_allocator(&g.arena)
+	shape := Cut_Shape{points = make([]geom.Point, len(points), memory), indices = make([]u32, len(indices), memory)}
+	copy(shape.points, points)
+	copy(shape.indices, indices)
+	g.shapes[key] = shape
+	g.corners += len(points)
+	return &g.shapes[key]
 }
 
 @(private)
@@ -115,13 +169,15 @@ cut_outline :: proc(c: ^Shape_Cache, points: []geom.Point, closed: bool, options
 
 @(private)
 cut_shape :: proc(c: ^Shape_Cache, key: Shape_Key, contours: [][]geom.Point, outline: []geom.Point, closed: bool, options: geom.Stroke_Options) -> ^Cut_Shape {
-	if c.shapes == nil {
-		c.shapes = make(map[Shape_Key]Cut_Shape)
-	}
-	if found, ok := &c.shapes[key]; ok {
-		found.used = c.builds
+	newer, older := &c.generations[0], &c.generations[1]
+	if found, ok := &newer.shapes[key]; ok {
 		c.kept += 1
 		return found
+	}
+	if found, ok := older.shapes[key]; ok {
+		// still drawn: it moves into the newer generation, so it outlives the older one
+		c.kept += 1
+		return generation_keep(newer, key, found.points, found.indices)
 	}
 	tri: geom.Triangulation
 	defer geom.triangulation_destroy(&tri)
@@ -130,11 +186,6 @@ cut_shape :: proc(c: ^Shape_Cache, key: Shape_Key, contours: [][]geom.Point, out
 	} else {
 		geom.stroke_polyline(outline, closed, options, &tri)
 	}
-	shape := Cut_Shape{points = make([]geom.Point, len(tri.points)), indices = make([]u32, len(tri.indices)), used = c.builds}
-	copy(shape.points, tri.points[:])
-	copy(shape.indices, tri.indices[:])
-	c.shapes[key] = shape
-	c.corners += len(shape.points)
 	c.cut += 1
-	return &c.shapes[key]
+	return generation_keep(newer, key, tri.points[:], tri.indices[:])
 }
