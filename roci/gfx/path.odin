@@ -119,8 +119,6 @@ path_geometry :: proc(points: [][2]f32, allocator := context.temp_allocator) -> 
 @(private)
 path_into_mesh :: proc(m: ^Mesh, c: Command, points: [][2]f32, tolerance: f64, paint: Arc_Paint, stroke: geom.Stroke_Options) {
 	contours, closed := path_geometry(points)
-	tri: geom.Triangulation
-	defer geom.triangulation_destroy(&tri)
 	if c.style.fill_on {
 		// a fill needs three corners; an open contour is closed by the straight line back
 		fillable := make([dynamic][]geom.Point, context.temp_allocator)
@@ -130,9 +128,7 @@ path_into_mesh :: proc(m: ^Mesh, c: Command, points: [][2]f32, tolerance: f64, p
 			}
 		}
 		if len(fillable) > 0 {
-			geom.triangulate(fillable[:], &tri)
-			add_triangulation(m, tri, c.transform, paint.fill_colour, paint.fill_row, paint.box_centre, paint.box_half)
-			geom.triangulation_destroy(&tri)
+			add_triangulation(m, cut_fill(&m.shapes, fillable[:]), c.transform, paint.fill_colour, paint.fill_row, paint.box_centre, paint.box_half)
 		}
 	}
 	if c.style.stroke_on && c.style.thickness > 0 {
@@ -140,9 +136,7 @@ path_into_mesh :: proc(m: ^Mesh, c: Command, points: [][2]f32, tolerance: f64, p
 			if len(contour) == 0 {
 				continue
 			}
-			geom.stroke_polyline(contour, closed[i] && len(contour) >= 3, stroke, &tri)
-			add_triangulation(m, tri, c.transform, paint.stroke_colour, paint.stroke_row, paint.box_centre, paint.box_half)
-			geom.triangulation_destroy(&tri)
+			add_triangulation(m, cut_outline(&m.shapes, contour, closed[i] && len(contour) >= 3, stroke), c.transform, paint.stroke_colour, paint.stroke_row, paint.box_centre, paint.box_half)
 		}
 	}
 }

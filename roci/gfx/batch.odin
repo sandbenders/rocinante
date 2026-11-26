@@ -86,6 +86,8 @@ Stats :: struct {
 	path_commands:   int, // commands drawn from the mesh
 	glyphs:          int,
 	mesh_triangles:  int,
+	shapes_cut:      int, // shapes of the mesh cut into triangles in this build
+	shapes_kept:     int, // shapes of the mesh whose triangles were already there from an earlier build
 	batches:         int,
 	draws:           int, // one per batch
 	reallocations:   int, // how many of the batcher's buffers had to grow; 0 once they fit the frame
@@ -160,6 +162,7 @@ build_commands :: proc(b: ^Batcher, list: ^Command_List, canvas: [2]f32, may_res
 	clear(&b.mesh.vertices)
 	clear(&b.mesh.indices)
 	clear(&b.batches)
+	shapes_next_build(&b.mesh.shapes)
 	b.owner = 0
 	b.shaped = false
 	b.stats = {commands = len(list.commands)}
@@ -205,6 +208,8 @@ build_commands :: proc(b: ^Batcher, list: ^Command_List, canvas: [2]f32, may_res
 	b.stats.instances = len(b.instances)
 	b.stats.glyphs = len(b.glyphs)
 	b.stats.mesh_triangles = len(b.mesh.indices) / 3
+	b.stats.shapes_cut = b.mesh.shapes.cut
+	b.stats.shapes_kept = b.mesh.shapes.kept
 	b.stats.batches = len(b.batches)
 	b.stats.draws = len(b.batches)
 	return true

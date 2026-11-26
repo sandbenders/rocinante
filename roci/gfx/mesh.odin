@@ -35,11 +35,13 @@ Mesh_Vertex :: struct {
 Mesh :: struct {
 	vertices: [dynamic]Mesh_Vertex,
 	indices:  [dynamic]u32,
+	shapes:   Shape_Cache, // the triangles of shapes cut before (shapecache.odin)
 }
 
 mesh_destroy :: proc(m: ^Mesh) {
 	delete(m.vertices)
 	delete(m.indices)
+	shapes_destroy(&m.shapes)
 	m^ = {}
 }
 
@@ -67,9 +69,9 @@ scale_of :: proc "contextless" (t: Transform) -> f64 {
 
 // Appends the triangles of `tri`, moved onto the canvas, in one colour.
 @(private)
-add_triangulation :: proc(m: ^Mesh, tri: geom.Triangulation, t: Transform, colour: [4]f32, gradient: u32, box_centre, box_half: [2]f32) {
+add_triangulation :: proc(m: ^Mesh, shape: ^Cut_Shape, t: Transform, colour: [4]f32, gradient: u32, box_centre, box_half: [2]f32) {
 	base := u32(len(m.vertices))
-	for p in tri.points {
+	for p in shape.points {
 		x, y := transform_apply(t, f32(p.x), f32(p.y))
 		append(&m.vertices, Mesh_Vertex{
 			position = {x, y},
@@ -79,7 +81,7 @@ add_triangulation :: proc(m: ^Mesh, tri: geom.Triangulation, t: Transform, colou
 			gradient = gradient,
 		})
 	}
-	for index in tri.indices {
+	for index in shape.indices {
 		append(&m.indices, base + index)
 	}
 }
@@ -133,8 +135,6 @@ mesh_add_command :: proc(m: ^Mesh, c: Command, fill_row := u32(0), stroke_row :=
 		tolerance  = tolerance,
 	}
 	has_outline := style.stroke_on && style.thickness > 0
-	tri: geom.Triangulation
-	defer geom.triangulation_destroy(&tri)
 	points := make([dynamic]geom.Point, context.temp_allocator)
 
 	if c.kind == .Path {
@@ -147,13 +147,11 @@ mesh_add_command :: proc(m: ^Mesh, c: Command, fill_row := u32(0), stroke_row :=
 	}
 	closed := outline_of(c, tolerance, &points)
 	if style.fill_on && has_area(c) && closed {
-		geom.triangulate({points[:]}, &tri)
-		add_triangulation(m, tri, c.transform, fill_colour, fill_row, box_centre, box_half)
-		geom.triangulation_destroy(&tri)
+		filled := [1][]geom.Point{points[:]}
+		add_triangulation(m, cut_fill(&m.shapes, filled[:]), c.transform, fill_colour, fill_row, box_centre, box_half)
 	}
 	if has_outline && len(points) > 0 {
-		geom.stroke_polyline(points[:], closed, stroke, &tri)
-		add_triangulation(m, tri, c.transform, stroke_colour, stroke_row, box_centre, box_half)
+		add_triangulation(m, cut_outline(&m.shapes, points[:], closed, stroke), c.transform, stroke_colour, stroke_row, box_centre, box_half)
 	}
 }
 
@@ -189,20 +187,16 @@ arc_into_mesh :: proc(m: ^Mesh, c: Command, tolerance: f64, paint: Arc_Paint, st
 	if whole {
 		resize(&curve, len(curve) - 1) // the last point repeats the first
 	}
-	tri: geom.Triangulation
-	defer geom.triangulation_destroy(&tri)
 	if c.style.fill_on {
 		polygon := make([dynamic]geom.Point, context.temp_allocator)
 		if !whole {
 			append(&polygon, geom.Point{f64(cx), f64(cy)})
 		}
 		append(&polygon, ..curve[:])
-		geom.triangulate({polygon[:]}, &tri)
-		add_triangulation(m, tri, c.transform, paint.fill_colour, paint.fill_row, paint.box_centre, paint.box_half)
-		geom.triangulation_destroy(&tri)
+		filled := [1][]geom.Point{polygon[:]}
+		add_triangulation(m, cut_fill(&m.shapes, filled[:]), c.transform, paint.fill_colour, paint.fill_row, paint.box_centre, paint.box_half)
 	}
 	if c.style.stroke_on && c.style.thickness > 0 {
-		geom.stroke_polyline(curve[:], whole, stroke, &tri)
-		add_triangulation(m, tri, c.transform, paint.stroke_colour, paint.stroke_row, paint.box_centre, paint.box_half)
+		add_triangulation(m, cut_outline(&m.shapes, curve[:], whole, stroke), c.transform, paint.stroke_colour, paint.stroke_row, paint.box_centre, paint.box_half)
 	}
 }
