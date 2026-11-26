@@ -1,0 +1,26 @@
+// A name a verb first gives a value inside a block (push, draw into, with) belongs to the verb.
+learn spot_in_push [
+  push [
+    at_x = 100
+    print at_x
+  ]
+]
+
+learn spot_in_canvas sheet [
+  draw into sheet [
+    r = 20
+    print r
+  ]
+]
+
+learn spot_in_with [
+  with fill red [
+    w = 5
+    print (w + 1)
+  ]
+]
+
+page = canvas 100 100
+spot_in_canvas page
+spot_in_push
+spot_in_with

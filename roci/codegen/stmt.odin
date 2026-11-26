@@ -845,6 +845,17 @@ collect_locals :: proc(block: lang.IR_Block, out: ^[dynamic]^lang.Symbol) {
 			collect_locals(k.body, out)
 		case lang.IR_For_Each:
 			collect_locals(k.body, out)
+		case lang.IR_With:
+			collect_locals(k.body, out)
+		case lang.IR_Expr_Stmt:
+			// `push [ ... ]` and `draw into canvas [ ... ]` are calls whose argument is a block: the names it makes belong to the verb too
+			if call, is_call := k.expr.kind.(lang.IR_Call); is_call {
+				for arg in call.args {
+					if value, is_block := arg.kind.(lang.IR_Block_Value); is_block {
+						collect_locals(value.block, out)
+					}
+				}
+			}
 		}
 	}
 }

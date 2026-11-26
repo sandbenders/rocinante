@@ -2,6 +2,7 @@ package codegen
 
 import "../lang"
 import "../registry"
+import "core:fmt"
 import "core:strings"
 import "core:testing"
 
@@ -575,4 +576,13 @@ test_the_program_says_whether_the_sketch_uses_the_microphone_and_the_camera :: p
 	testing.expect_value(t, used(t, "webcam pick \"front\"\n"), Uses{camera = true})
 	// both
 	testing.expect_value(t, used(t, "loud = level mic\nimage webcam at 0 0\n"), Uses{microphone = true, camera = true})
+}
+
+@(test)
+test_a_name_a_verb_first_gives_a_value_inside_a_block_is_declared_at_the_top_of_the_verb :: proc(t: ^testing.T) {
+	result := compile("learn spot_in_push [\n\tpush [\n\t\tat_x = 100\n\t\tcircle at at_x 100 radius 40\n\t]\n]\nlearn spot_in_canvas pic [\n\tdraw into pic [\n\t\tr = 20\n\t\tcircle at 50 50 radius r\n\t]\n]\nlearn spot_in_with [\n\twith fill red [\n\t\tw = 5\n\t\tcircle at w w radius w\n\t]\n]\npic = canvas 100 100\nspot_in_canvas pic\ndraw [\n\tspot_in_push\n\tspot_in_with\n\timage pic at 0 0 width 100\n]\n")
+	testing.expect_value(t, len(result.problems), 0)
+	for name in ([]string{"at_x", "r", "w"}) {
+		testing.expectf(t, strings.contains(result.source, fmt.tprintf("%s: f64", name)), "%s is not declared in:\n%s", name, result.source)
+	}
 }
