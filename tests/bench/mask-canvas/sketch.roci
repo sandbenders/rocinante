@@ -1,0 +1,71 @@
+// What `mask ... by` costs when the stencil is a canvas drawn into every frame: the pattern of
+// a melting logo. Four plates of 1300 by 560 are drawn once, two cut canvases are drawn into
+// every frame, and each frame masks the four plates by them and draws the results. The sketch
+// quits after 400 frames; run it with `roci run tests/bench/mask-canvas --stats --no-vsync`
+// and read the speed line. Change MODE to split the cost:
+//   "full"     draw into the cuts, mask four plates by them, draw the four masks
+//   "maskonly" the same masks, made and not drawn: the processor's part alone
+//   "read"     draw into the cuts and read one pixel of each: the canvas read-back alone
+//   "draw"     draw into the cuts and draw the plates unmasked: the frame without masks
+//   "static"   mask by cuts drawn once: each mask is remembered, so nothing is made again
+MODE = "full"
+W = 1300
+H = 560
+
+window size 1400 1200 title "mask-canvas"
+plates = []
+for i from 1 to 4 [
+  p = canvas W H
+  draw into p [
+    no stroke
+    fill (rgb (i * 60) 80 200)
+    for k from 0 to 40 [ circle at (k * 32) (H / 2) radius 60 ]
+  ]
+  add p to plates
+]
+cuts = [ (canvas W H) (canvas W H) ]
+draw into (item 1 of cuts) [ fill white  rect at 0 0 size W (H / 2) ]
+draw into (item 2 of cuts) [ fill white  rect at 0 0 size W (H / 2) ]
+
+// Draws into a cut a white edge that waves down from the top, as a melt's front does.
+learn melt_into pic phase [
+  edge = []
+  add { W, 0 } to edge
+  x = W
+  while x >= 0 [
+    add { x, H * 0.4 + sin (x * 0.02 + phase) * 80 } to edge
+    x = x - 6
+  ]
+  add { 0, 0 } to edge
+  draw into pic [
+    clear
+    no stroke
+    fill white
+    polygon edge
+  ]
+]
+
+draw [
+  background 30
+  t = frame * 0.05
+  if MODE is not "static" [
+    melt_into (item 1 of cuts) t
+    melt_into (item 2 of cuts) (t + 1)
+  ]
+  for i from 1 to 4 [
+    cut = item (1 + floor ((i - 1) / 2)) of cuts
+    plate = item i of plates
+    y = (i - 1) * 280 - 100
+    if MODE is "full" or MODE is "static" [ image (mask plate by cut) at 0 y ]
+    if MODE is "maskonly" [
+      image plate at 0 y
+      m = mask plate by cut
+    ]
+    if MODE is "draw" [ image plate at 0 y ]
+    if MODE is "read" [
+      image plate at 0 y
+      c = pixel cut at 10 10
+    ]
+  ]
+  if frame >= 400 [ quit ]
+]
