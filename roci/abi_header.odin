@@ -128,6 +128,11 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"ui key", "roci_ui_key", ""},
 	{"ui theme", "roci_ui_theme", ""},
 	{"forget ui", "roci_forget_ui", ""},
+	{"simulate", "roci_simulate_circle roci_simulate_box", ""},
+	{"fixed", "roci_fixed_circle roci_fixed_box roci_fixed_wall", ""},
+	{"no simulate", "roci_no_simulate", ""},
+	{"gravity", "roci_gravity", ""},
+	{"kick", "roci_kick", ""},
 	{"panel", "roci_panel_begin roci_panel_end", ""},
 	{"row", "roci_row_begin roci_row_end", ""},
 	{"column", "roci_column_begin roci_column_end", ""},
@@ -427,6 +432,7 @@ abi_table_init :: proc "contextless" () {
 	abi_sound_group(&all)
 	abi_pads_group(&all)
 	abi_screens_group(&all)
+	abi_physics_group(&all)
 	abi_memory_group(&all)
 	abi_files_group(&all)
 	abi_dialogs_group(&all)
@@ -569,6 +575,7 @@ typedef int roci_window_id;
 typedef int roci_image_id;
 typedef int roci_sound_id;
 typedef int roci_model_id;
+typedef int roci_body_id;
 typedef int roci_svg_id;
 typedef int roci_gradient_id;
 typedef int roci_shader_id;

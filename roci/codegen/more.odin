@@ -112,6 +112,14 @@ more_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (te
 		return light_call(g, e, c)
 	case "tween":
 		return tween_call(g, e, c), false
+	case "simulate", "fixed":
+		return physics_call(g, e, c, name == "fixed"), false
+	case "no simulate":
+		return fmt.aprintf("rt.no_simulate(%s)", args[0], allocator = context.temp_allocator), false
+	case "gravity":
+		return fmt.aprintf("roci.physics_gravity(%s)", args[0], allocator = context.temp_allocator), false
+	case "kick":
+		return fmt.aprintf("rt.kick(%s, %s)", args[0], args[1], allocator = context.temp_allocator), false
 	// ---- more of the maths ----
 	case "ease":
 		curve := `""`
@@ -329,4 +337,29 @@ tween_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> string {
 	}
 	refuse(g, e.span, fmt.tprintf("`tween` of %s", lang.describe(g.types, place.type)))
 	return ""
+}
+
+// `simulate ball` and `fixed wall`: the shape the record's fields make it (`lang.shape_class`), a circle, a rectangle or a wall.
+@(private)
+physics_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, fixed: bool) -> string {
+	if len(c.args) == 0 || kind_of(g, c.args[0]) != .Record {
+		refuse(g, e.span, "`simulate` of something that is not a record")
+		return ""
+	}
+	item := g.types.items[lang.resolve(g.types, c.args[0].type)]
+	names := make([dynamic]string, context.temp_allocator)
+	for f in g.types.shapes[item.a].fields {
+		append(&names, f.name)
+	}
+	class, _ := lang.shape_class(names[:])
+	shape := ""
+	#partial switch class {
+	case .Circle:  shape = "Circle"
+	case .Box:     shape = "Box"
+	case .Segment: shape = "Segment"
+	case:
+		refuse(g, e.span, "`simulate` of a shape that is not a circle, a rectangle or a wall")
+		return ""
+	}
+	return fmt.aprintf("rt.simulate(%s, .%s, %v)", expr(g, c.args[0]), shape, fixed, allocator = context.temp_allocator)
 }

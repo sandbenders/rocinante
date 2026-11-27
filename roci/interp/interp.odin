@@ -127,6 +127,7 @@ Interp :: struct {
 	scene_pending: Scene_Pending, // the change the frame asked for
 	registering: int, // while a `scene` statement sets itself up: its place
 	tweens:    [dynamic]Tween, // the places being moved a little each frame (tween.odin)
+	bodies:    [dynamic]Body_Link, // the records the physics moves (physics.odin)
 	checks:    [dynamic]Check_Result, // what `run_checks` found, one for each check (checks.odin)
 	check_at:  int, // the check being run, counting from 1; 0 when none is
 	home:     string, // the file the program was read from, so `load` and `font` can find its assets even when it is not watched
@@ -241,6 +242,7 @@ destroy :: proc(p: ^Interp) {
 		drop_tween(&t)
 	}
 	delete(p.tweens)
+	drop_bodies(p)
 	delete(p.checks)
 	for name in p.fonts_missed {
 		delete(name)

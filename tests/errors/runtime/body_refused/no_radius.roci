@@ -1,0 +1,2 @@
+dot = { pos: { 1, 1 }, radius: 0 }
+simulate dot

@@ -250,6 +250,8 @@ list_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call, arg
 		return tween_type(c, verb, k, args, options), true
 	case "touching", "contact", "hits", "inside", "cast":
 		return collision_verb_type(c, verb, e, k, args), true
+	case "simulate", "fixed", "no simulate", "kick":
+		return physics_verb_type(c, verb, k, args), true
 	}
 	return T_ERROR, false
 }

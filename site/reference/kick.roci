@@ -1,0 +1,11 @@
+ball = { pos: { 200, 240 }, radius: 18, bounce: 0.6 }
+floor = { pos: { 0, 260 }, size: { 400, 30 } }
+simulate ball
+fixed floor
+
+on key "space" [ kick ball { 0, -300 } ]
+
+draw [
+  circle at ball.pos radius ball.radius fill tomato
+  rect at floor.pos size floor.size fill 120
+]

@@ -1,0 +1,10 @@
+paddle = { pos: { 150, 240 }, size: { 100, 14 } }
+ball = { pos: { 200, 60 }, radius: 14, bounce: 0.9 }
+fixed paddle
+simulate ball
+
+draw [
+  paddle.pos.x = mouse.x - 50
+  circle at ball.pos radius ball.radius fill gold
+  rect at paddle.pos size paddle.size fill 200
+]

@@ -77,6 +77,9 @@ REFERENCE_SECTIONS := []Reference_Section{
 	{"Collision", "Whether shapes touch, where, and what a line meets. Shapes are plain records.", {
 		"touching", "contact", "hits", "inside", "cast", "ray", "triangles", "outline",
 	}},
+	{"Physics", "Shapes that fall, bounce and push each other, on Box2D. A shape is a record, and the physics moves its own `pos`.", {
+		"simulate", "fixed", "no simulate", "gravity", "kick",
+	}},
 	{"Windows", "Opening windows, changing them while they are open, and sending values between them.", {
 		"window", "title", "fullscreen", "set", "send", "width", "height", "screens", "safe", "platform", "language", "vibrate", "quit",
 	}},

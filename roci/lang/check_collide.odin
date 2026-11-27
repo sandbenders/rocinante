@@ -58,6 +58,69 @@ collision_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call
 	return T_ERROR
 }
 
+// What the physics verbs (`simulate fixed kick` and `no simulate`) take: a flat circle, rectangle or wall, written as a record so
+// that its numbers can be handed to the physics and read back, and, if it has them, body fields of the kinds the physics reads and
+// writes. An outline, or a shape in space, is not simulated yet.
+@(private)
+physics_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, k: Call, args: []^IR) -> Type_Id {
+	if len(args) < 1 || len(k.args) < 1 {
+		return T_NONE
+	}
+	span := k.args[0].span
+	type := args[0].type
+	if problem, ok := shape_problem(c, type); !ok {
+		note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), problem, SHAPE_EXAMPLE)
+		return T_NONE
+	}
+	resolved := resolve(c.types, type)
+	if c.types.items[resolved].kind != .Record {
+		if c.types.items[resolved].kind == .Vector {
+			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "A point has no size to push against, and the physics needs a record it can move: ", PHYSICS_EXAMPLE)
+		}
+		return T_NONE
+	}
+	root := c.types.items[resolved].a
+	for site in sites_of(c, root) {
+		class, _ := shape_class(c.site_names[site])
+		switch {
+		case class == .Polygon || class == .Mesh:
+			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "The physics knows circles (`pos` and `radius`), rectangles (`pos` and `size`) and walls (`from` and `to`) so far, not an outline. ", PHYSICS_EXAMPLE)
+			return T_NONE
+		case class == .Segment && verb.name == "simulate":
+			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "A wall, which has a `from` and a `to`, never moves, so it is given with `fixed`. ", "fixed floor")
+			return T_NONE
+		case vector_length(c, root, "pos") == 3 || vector_length(c, root, "from") == 3 || vector_length(c, root, "size") == 3:
+			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "The physics is flat: the places of a shape that is simulated have two numbers. ", PHYSICS_EXAMPLE)
+			return T_NONE
+		}
+	}
+	if verb.name == "simulate" || verb.name == "fixed" {
+		BODY := [?]struct {
+			name: string,
+			kind: Type_Kind,
+			what: string,
+		}{{"vel", .Vector, "two numbers, as `vel: { 0, 0 }`"}, {"angle", .Number, "a number of degrees"}, {"spin", .Number, "a number of degrees a second"}, {"bounce", .Number, "a number from 0 up"}, {"friction", .Number, "a number from 0 up"}, {"density", .Number, "a number from 0 up"}, {"sensor", .Boolean, "true or false"}, {"bullet", .Boolean, "true or false"}}
+		for need in BODY {
+			field, has := shape_field(c.types, root, need.name)
+			if !has {
+				continue
+			}
+			found := c.types.items[resolve(c.types, field.type)]
+			if found.kind == .Variable || found.kind == .Boxed || found.kind == .Error {
+				continue
+			}
+			if found.kind != need.kind || (need.kind == .Vector && found.a != 2) {
+				note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), fmt.tprintf("Its `%s` is %s, and the physics reads and writes it as %s. ", need.name, describe(c.types, field.type), need.what), PHYSICS_EXAMPLE)
+				return T_NONE
+			}
+		}
+	}
+	return T_NONE
+}
+
+@(private = "file")
+PHYSICS_EXAMPLE :: "ball = { pos: { 200, 100 }, radius: 10, vel: { 0, 0 } }\nsimulate ball"
+
 // The record a call gives: one shape for this place in the sketch, kept from the
 // first pass to the second, with these fields.
 @(private = "file")

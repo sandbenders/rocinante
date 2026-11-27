@@ -143,6 +143,7 @@ step :: proc(events: []platform.Event = nil, dt := -1.0) {
 		the.current = nil
 		show_frame(w)
 	}
+	physics_advance()
 	if the.end_hook != nil {
 		the.end_hook()
 	}

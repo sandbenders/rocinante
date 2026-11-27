@@ -1,0 +1,10 @@
+── `b` is made again every frame, so the physics cannot keep it ─── sketch.roci:3:3
+
+3 │   simulate b
+  │   ^^^^^^^^^^
+
+A shape that is simulated has to be the same record frame after frame, because the physics moves its `pos` a little each frame. This one is made inside a `draw` or an event, so a new one is made each time. It is left out, and the sketch carries on.
+
+Make it once, at the top of the sketch, and give that to the physics:
+    ball = { pos: { 200, 100 }, radius: 10 }
+    simulate ball

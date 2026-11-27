@@ -104,14 +104,11 @@ test_a_ball_dropped_on_a_floor_comes_to_rest_on_it :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_the_length_unit_is_a_setting_of_the_library_and_the_null_ids_are_null :: proc(t: ^testing.T) {
-	defer SetLengthUnitsPerMeter(1)
-	SetLengthUnitsPerMeter(50)
-	testing.expect_value(t, GetLengthUnitsPerMeter(), 50)
+test_the_length_unit_starts_at_one_and_the_null_ids_are_null :: proc(t: ^testing.T) {
+	// the unit is a setting of the whole library, which tests on other threads would feel, so it is read here and never changed
+	testing.expect_value(t, GetLengthUnitsPerMeter(), 1)
 	testing.expect(t, world_is_null(World_Id{}))
 	testing.expect(t, body_is_null(Body_Id{}))
 	testing.expect(t, shape_is_null(Shape_Id{}))
 	testing.expect(t, joint_is_null(Joint_Id{}))
-	SetLengthUnitsPerMeter(1)
-	testing.expect_value(t, GetLengthUnitsPerMeter(), 1)
 }

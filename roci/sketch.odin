@@ -20,6 +20,7 @@ import "core:strings"
 import "core:time"
 import "gfx"
 import "maths"
+import "physics"
 import "platform"
 import "toml"
 import "ui"
@@ -120,6 +121,8 @@ Sketch :: struct {
 	hook:         proc(w: Window), // run for each window in each frame
 	early_hook:   proc(w: Window, happenings: []Happened), // runs MIDI blocks while the loop waits for the screen
 	end_hook:     proc(),          // run once when every window has finished its frame (a scene change waits for it)
+	physics:      physics.World,   // its bodies (physics.odin), made by the first one
+	physics_before, physics_after: proc(), // what a program that keeps its shapes as records does around each step
 	save_problems: [dynamic]Save_Problem, // files that could not be written, for the language to say (save.odin)
 	record_results: [dynamic]Record_Result, // recordings that ended, for the language to say (record.odin)
 	overlay_title: string, // what the error overlay says, or "" for none
@@ -279,6 +282,7 @@ shutdown :: proc() {
 	gfx.models_stop()
 	svgs_stop()
 	abi_stop()
+	physics_stop()
 	gfx.shaders_stop()
 	gfx.effect_vertex_stop()
 	gfx.fill_vertex_stop()

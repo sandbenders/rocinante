@@ -1,0 +1,25 @@
+gravity { 0, 400 }
+ball = { pos: { 200, 40 }, radius: 12, vel: { 20, 0 }, bounce: 0.6 }
+plank = { pos: { 260, 10 }, size: { 40, 20 }, angle: 15, vel: { 0, 0 }, spin: 0, bounce: 0.2, friction: 0.3 }
+floor = { pos: { 0, 300 }, size: { 800, 40 } }
+wall = { from: { 400, 0 }, to: { 400, 400 } }
+paddle = { pos: { 100, 280 }, size: { 50, 10 } }
+gone = { pos: { 600, 10 }, radius: 8 }
+simulate ball
+simulate plank
+simulate gone
+fixed floor
+fixed wall
+fixed paddle
+
+draw [
+  if frame is 10 [ kick ball { 0, -150 } ]
+  if frame is 12 [ no simulate gone ]
+  paddle.pos.x = 100 + frame
+  if frame % 20 is 0 [
+    print ball.pos
+    print plank.pos
+    print plank.angle
+    print gone.pos
+  ]
+]

@@ -52,6 +52,9 @@ collect :: proc(p: ^Interp) {
 			t.record = as_record(move_value(p, t.record, &moved))
 		}
 	}
+	for &b in p.bodies {
+		b.record = as_record(move_value(p, b.record, &moved))
+	}
 	// A cached tree belongs to a list; a list nothing reaches any more is gone.
 	for &e in p.shape_cache {
 		if e.list == nil {

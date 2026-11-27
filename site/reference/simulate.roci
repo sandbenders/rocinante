@@ -1,0 +1,9 @@
+ball = { pos: { 140, 40 }, radius: 24, vel: { 50, 0 }, bounce: 0.7 }
+floor = { pos: { 0, 250 }, size: { 400, 40 } }
+simulate ball
+fixed floor
+
+draw [
+  circle at ball.pos radius ball.radius fill tomato
+  rect at floor.pos size floor.size fill 120
+]

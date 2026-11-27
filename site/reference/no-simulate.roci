@@ -1,0 +1,10 @@
+ball = { pos: { 200, 30 }, radius: 16, bounce: 0.8 }
+floor = { pos: { 0, 260 }, size: { 400, 30 } }
+simulate ball
+fixed floor
+
+draw [
+  if frame is 90 [ no simulate ball ]
+  circle at ball.pos radius ball.radius fill teal
+  rect at floor.pos size floor.size fill 120
+]

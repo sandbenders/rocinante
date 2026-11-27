@@ -26,6 +26,7 @@ typedef int roci_window_id;
 typedef int roci_image_id;
 typedef int roci_sound_id;
 typedef int roci_model_id;
+typedef int roci_body_id;
 typedef int roci_svg_id;
 typedef int roci_gradient_id;
 typedef int roci_shader_id;
@@ -1536,6 +1537,54 @@ int roci_screen_main(int index);
 
 /* The safe area of the current window, in its units: how far in from each side the screen is free of a phone's notch, camera, status bar, home bar and rounded corners. All zeros on a desktop and in a headless run. It is read each time, so it follows the phone as it turns. */
 roci_insets roci_safe_area(void);
+
+/* Gives a circle to the physics, which moves it every frame by gravity and by what it meets: its middle at x, y, in pixels. Gives its number, or 0 when it cannot be made (a radius of nothing, a number that is not one). The first body makes the world. */
+roci_body_id roci_simulate_circle(double x, double y, double radius);
+
+/* Gives a rectangle to the physics: its top left corner at x, y, turned `angle` degrees clockwise about its middle. Gives its number, or 0 when it cannot be made. */
+roci_body_id roci_simulate_box(double x, double y, double width, double height, double angle);
+
+/* Gives a circle to the physics that is not pushed and never moves by itself; roci_body_pose moves it, and it pushes what it meets. */
+roci_body_id roci_fixed_circle(double x, double y, double radius);
+
+/* Gives a rectangle to the physics that is not pushed and never moves by itself; roci_body_pose moves it, and it pushes what it meets. */
+roci_body_id roci_fixed_box(double x, double y, double width, double height, double angle);
+
+/* Gives a wall to the physics, a line from one place to another, which never moves. */
+roci_body_id roci_fixed_wall(double from_x, double from_y, double to_x, double to_y);
+
+/* Takes a body out of the physics. */
+void roci_no_simulate(roci_body_id body);
+
+/* Sets the gravity of the physics in pixels a second each second: 0, 400 pulls things down (y goes down) and is what a world has to start with. */
+void roci_gravity(double x, double y);
+
+/* Adds a speed to a body, however heavy it is: 0, -300 sends it up at 300 pixels a second more than it had. */
+void roci_kick(roci_body_id body, double dx, double dy);
+
+/* Where a body is: a circle's middle, a rectangle's top left corner. 0, 0 for a body that is not there. */
+roci_vec2 roci_body_pos(roci_body_id body);
+
+/* How far a body is turned, in degrees clockwise, from 0 up to 360. */
+double roci_body_angle(roci_body_id body);
+
+/* A body's speed in pixels a second. */
+roci_vec2 roci_body_vel(roci_body_id body);
+
+/* How fast a body turns, in degrees a second, clockwise. */
+double roci_body_spin(roci_body_id body);
+
+/* 1 while a body is in the physics, 0 for one taken out or never made. */
+int roci_body_exists(roci_body_id body);
+
+/* Puts a body somewhere, in the same places roci_body_pos gives. A fixed body put somewhere moves there in the next step and pushes what it meets on the way; a wall is not moved. */
+void roci_body_pose(roci_body_id body, double x, double y, double angle);
+
+/* Gives a body a speed in pixels a second and a spin in degrees a second. */
+void roci_body_motion(roci_body_id body, double vx, double vy, double spin);
+
+/* Sets how heavy, how rough and how bouncy a body is (1, 0.6 and 0 are usual); a negative number leaves what it has. */
+void roci_body_feel(roci_body_id body, double density, double friction, double bounce);
 
 /* Keeps a number under a name, in memory.toml beside the program, for the next run to read with roci_recall_number. The file is written after a pause in the changes and when the program ends, so this may be called every frame. */
 void roci_remember_number(const char *key, double value);

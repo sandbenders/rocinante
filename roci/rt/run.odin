@@ -174,6 +174,7 @@ end_of_frame :: proc() {
 all_roots :: proc() {
 	collector_roots()
 	mark_tweens()
+	mark_bodies()
 	mark_data()
 }
 
@@ -241,6 +242,7 @@ release_everything :: proc() {
 	delete(at_end_procs)
 	at_end_procs = nil
 	forget_scenes()
+	forget_bodies()
 	forget_widgets()
 	forget_tweens()
 	forget_fetches()

@@ -1,0 +1,5 @@
+learn drop [
+  b = { pos: { 1, 1 }, radius: 5 }
+  simulate b
+]
+draw [ drop ]

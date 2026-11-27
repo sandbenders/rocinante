@@ -112,6 +112,13 @@ sample :: proc(kind: Kind, index: int, verb := "", after := "") -> string {
 		case .List: return "[ { pos: { 120, 100 }, radius: 10 } ]"
 		}
 	}
+	// and so do the physics verbs, which take a circle, a rectangle or a wall written as a record
+	switch verb {
+	case "simulate", "fixed", "no simulate", "kick":
+		if kind == .Any {
+			return "{ from: { 0, 200 }, to: { 200, 200 } }" if verb == "fixed" else "{ pos: { 100, 100 }, radius: 10 }"
+		}
+	}
 	#partial switch kind {
 	case .Number:     return numbers[index % len(numbers)]
 	case .Text:       return "\"hello\""

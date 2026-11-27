@@ -183,6 +183,16 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		case "light":  roci.ui_theme(.Light)
 		case "system": roci.ui_theme(.System)
 		}
+	case .Simulate:
+		body_verb(it, e, call, false)
+	case .Fixed:
+		body_verb(it, e, call, true)
+	case .No_Simulate:
+		body_release(it, call)
+	case .Gravity:
+		roci.physics_gravity(as_pair(eval(it, call.args[0])))
+	case .Kick:
+		body_kick(it, call)
 	case .Panel, .Row, .Column, .Tabs, .Tab, .Menu:
 		return container_verb(it, e, call, code)
 	case .Add:
