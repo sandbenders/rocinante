@@ -86,15 +86,18 @@ mask_on_gpu :: proc(r: ^Renderer, picture, stencil: Image_Id) -> (made: Image_Id
 		set_error(r, "creating the sampler of a mask")
 		return 0, false
 	}
-	texture := sdl.CreateGPUTexture(r.device, {
-		type                 = .D2,
-		format               = CANVAS_FORMAT,
-		usage                = {.SAMPLER, .COLOR_TARGET},
-		width                = width,
-		height               = height,
-		layer_count_or_depth = 1,
-		num_levels           = 1,
-	})
+	texture := mask_pool_take(r, width, height)
+	if texture == nil {
+		texture = sdl.CreateGPUTexture(r.device, {
+			type                 = .D2,
+			format               = CANVAS_FORMAT,
+			usage                = {.SAMPLER, .COLOR_TARGET},
+			width                = width,
+			height               = height,
+			layer_count_or_depth = 1,
+			num_levels           = 1,
+		})
+	}
 	if texture == nil {
 		set_error(r, "creating the texture of a mask")
 		return 0, false
@@ -135,8 +138,48 @@ mask_on_gpu :: proc(r: ^Renderer, picture, stencil: Image_Id) -> (made: Image_Id
 	if r.canvases == nil {
 		r.canvases = make(map[Image_Id]Canvas_Gpu)
 	}
-	r.canvases[id] = Canvas_Gpu{textures = {texture, nil}, current = 0, width = width, height = height, rendered = true}
+	r.canvases[id] = Canvas_Gpu{textures = {texture, nil}, current = 0, width = width, height = height, rendered = true, fixed = true}
 	return id, true
+}
+
+// ---- the pool of mask textures ----
+
+// A texture of a mask that was let go, waiting to be drawn into by the next mask of its size.
+Pooled_Texture :: struct {
+	texture:       ^sdl.GPUTexture,
+	width, height: u32,
+}
+
+// How many let-go mask textures a renderer keeps. A sketch that masks by a canvas every frame
+// makes a few masks a frame and lets the ones they replace go two frames later, so a few of
+// each size are enough to make a new texture rarely; more would only hold memory.
+MASK_POOL_MOST :: 8
+
+// Keeps a let-go mask's texture for a later mask of its size. Gives the texture to let go
+// instead when the pool is full: the one kept longest, so the sizes in use stay.
+mask_pool_put :: proc(r: ^Renderer, texture: ^sdl.GPUTexture, width, height: u32) -> (spilled: ^sdl.GPUTexture) {
+	if texture == nil {
+		return nil
+	}
+	append(&r.mask_pool, Pooled_Texture{texture, width, height})
+	if len(r.mask_pool) > MASK_POOL_MOST {
+		spilled = r.mask_pool[0].texture
+		ordered_remove(&r.mask_pool, 0)
+	}
+	return spilled
+}
+
+// A kept texture of exactly this size, the one put last, taken out of the pool; nil when
+// there is none. A pass that draws into it clears it first, and the graphics card finishes
+// what an earlier frame drew with it before, since a renderer's work runs in order.
+mask_pool_take :: proc(r: ^Renderer, width, height: u32) -> ^sdl.GPUTexture {
+	#reverse for pooled, i in r.mask_pool {
+		if pooled.width == width && pooled.height == height {
+			ordered_remove(&r.mask_pool, i)
+			return pooled.texture
+		}
+	}
+	return nil
 }
 
 // The mask shader's own block: `premultiplied`, laid out where the translator put it.

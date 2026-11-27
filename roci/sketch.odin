@@ -155,6 +155,8 @@ Sketch :: struct {
 	derived_most:  int,  // how many made pictures there may be before the longest unused go; 0 for the usual
 	derived_bytes: int,  // what the made pictures that are kept hold now, as `Derived_Picture.bytes` counts it
 	canvas_reads: map[Image]Canvas_Read,   // the last read-back of each canvas that was asked about
+	mask_last:    map[u64]Mask_Made,      // the newest mask made on the graphics card of each picture and stencil, by the two (pixels.odin)
+	masks_replaced: [dynamic]Mask_Made,   // masks a newer one of the same two replaced, let go once unused for two frames
 	into:         Image,   // the canvas the verbs draw onto now, or 0 for the window (canvases.odin)
 }
 
@@ -268,6 +270,8 @@ shutdown :: proc() {
 		delete(read.pixels)
 	}
 	delete(the.canvas_reads)
+	delete(the.mask_last)
+	delete(the.masks_replaced)
 	gfx.images_stop()
 	clipboard_stop()
 	screens_stop()

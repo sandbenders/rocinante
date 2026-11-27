@@ -3,6 +3,8 @@ package gfx
 
 import "core:testing"
 
+import sdl "vendor:sdl3"
+
 @(test)
 the_mask_shader_translates_with_two_pictures_and_its_premultiplied_value :: proc(t: ^testing.T) {
 	defer shaders_stop()
@@ -95,4 +97,25 @@ taking_pixels_keeps_them_without_a_copy_and_frees_them_when_refused :: proc(t: ^
 	testing.expect(t, !bad)
 	_, bad = image_take_pixels(2, 3, nil)
 	testing.expect(t, !bad)
+}
+
+@(test)
+the_mask_pool_gives_back_a_texture_of_the_same_size_and_spills_the_oldest :: proc(t: ^testing.T) {
+	r: Renderer // no device: the pool only keeps the numbers of textures, and these are never drawn with
+	defer delete(r.mask_pool)
+	fake :: proc(n: uintptr) -> ^sdl.GPUTexture {return (^sdl.GPUTexture)(n)}
+	testing.expect(t, mask_pool_take(&r, 10, 10) == nil, "an empty pool has nothing")
+	testing.expect(t, mask_pool_put(&r, nil, 10, 10) == nil)
+	testing.expect_value(t, len(r.mask_pool), 0)
+	for i in 1 ..= MASK_POOL_MOST {
+		testing.expect(t, mask_pool_put(&r, fake(uintptr(i * 16)), 10, u32(10 + i % 2)) == nil)
+	}
+	// One more spills the one kept longest.
+	testing.expect_value(t, mask_pool_put(&r, fake(0x1000), 20, 20), fake(16))
+	testing.expect_value(t, len(r.mask_pool), MASK_POOL_MOST)
+	testing.expect(t, mask_pool_take(&r, 30, 30) == nil, "no texture of another size")
+	testing.expect_value(t, mask_pool_take(&r, 20, 20), fake(0x1000))
+	// Of several of one size, the one put last comes first.
+	testing.expect_value(t, mask_pool_take(&r, 10, 10), fake(uintptr(MASK_POOL_MOST * 16)))
+	testing.expect_value(t, len(r.mask_pool), MASK_POOL_MOST - 2)
 }

@@ -1,5 +1,5 @@
 // What `mask ... by` costs when the stencil is a canvas drawn into every frame (made on the
-// graphics card since 2026-11-27, 4.9 ms a frame here against 77 before, on Windows with an
+// graphics card since 2026-11-27, 1.35 ms a frame here against 77 before, on Windows with an
 // RTX 2080 Ti): the pattern of a melting logo. Four plates of 1300 by 560 are drawn once, two
 // cut canvases are drawn into every frame, and each frame masks the four plates by them and
 // draws the results. The sketch quits after 400 frames; run it with

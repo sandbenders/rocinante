@@ -328,3 +328,56 @@ test_a_mask_made_on_the_graphics_card_is_let_go_with_its_read_back :: proc(t: ^t
 	testing.expect_value(t, the.derived_bytes, 0)
 	testing.expect_value(t, known_derived(99), Image(0))
 }
+
+@(test)
+test_a_mask_replaced_by_a_newer_one_is_let_go_once_it_is_two_frames_unused :: proc(t: ^testing.T) {
+	defer shutdown()
+	picture, stencil := Image(11), Image(12) // only their numbers name the pair
+	make_mask :: proc(key: u64) -> Image {
+		made, _ := gfx.image_add_fixed_canvas(4, 4, 1)
+		remember_derived(key, made, 64)
+		return made
+	}
+	first := make_mask(1)
+	note_mask_made(picture, stencil, 1, first)
+	testing.expect_value(t, len(the.masks_replaced), 0)
+	gfx.images_tick()
+	second := make_mask(2)
+	note_mask_made(picture, stencil, 2, second)
+	testing.expect_value(t, len(the.masks_replaced), 1)
+	// Another pair replaces nothing.
+	other := make_mask(3)
+	note_mask_made(stencil, picture, 3, other)
+	testing.expect_value(t, len(the.masks_replaced), 1)
+	// The same mask made again is not a replacement.
+	note_mask_made(picture, stencil, 2, second)
+	testing.expect_value(t, len(the.masks_replaced), 1)
+	// Drawn in the frame before, the replaced one stays.
+	gfx.images_tick()
+	let_go_replaced_masks()
+	testing.expect(t, gfx.image_data(first) != nil)
+	gfx.image_touch(first) // drawn again: the two frames start over
+	gfx.images_tick()
+	gfx.images_tick()
+	let_go_replaced_masks()
+	testing.expect(t, gfx.image_data(first) != nil)
+	gfx.images_tick()
+	evict_derived() // which lets the replaced ones go first
+	testing.expect(t, gfx.image_data(first) == nil, "three frames unused: let go")
+	testing.expect(t, 1 not_in the.derived)
+	testing.expect_value(t, len(the.masks_replaced), 0)
+	testing.expect(t, gfx.image_data(second) != nil && gfx.image_data(other) != nil, "the newest of each pair stay")
+	testing.expect_value(t, the.derived_bytes, 2 * 64)
+	// A newest mask let go by something else is forgotten as the newest of its pair.
+	forget_derived(3, other)
+	let_go_replaced_masks()
+	testing.expect_value(t, len(the.mask_last), 1)
+	testing.expect_value(t, the.derived_bytes, 64)
+	// A replaced mask that is gone already is only dropped from the list.
+	third := make_mask(4)
+	note_mask_made(picture, stencil, 4, third)
+	forget_derived(2, second)
+	let_go_replaced_masks()
+	testing.expect_value(t, len(the.masks_replaced), 0)
+	testing.expect(t, gfx.image_data(third) != nil)
+}

@@ -422,16 +422,78 @@ mask_on_gpu :: proc(picture, stencil: Image) -> (result: Image, done: bool) {
 		return 0, false
 	}
 	remember_derived(id, made, gfx.mask_bytes(renderer, made))
+	note_mask_made(picture, stencil, id, made)
 	return made, true
+}
+
+// A mask made on the graphics card and the key it is remembered by.
+Mask_Made :: struct {
+	key: u64,
+	id:  Image,
+}
+
+// Notes `made` as the newest mask of `picture` by `stencil`; the one it replaces (the same two
+// pictures, with a canvas drawn since) is let go once it is two frames unused
+// (`let_go_replaced_masks`), so a sketch that masks by a canvas every frame keeps a few masks
+// and not the 256 MB of them the budget allows, and their textures are drawn into again.
+@(private)
+note_mask_made :: proc(picture, stencil: Image, key: u64, made: Image) {
+	pair := hash.fnv64a(slice.to_bytes([]u32{u32(picture), u32(stencil)}))
+	if the.mask_last == nil {
+		the.mask_last = make(map[u64]Mask_Made)
+	}
+	if old, found := the.mask_last[pair]; found && old.id != made {
+		append(&the.masks_replaced, old)
+	}
+	the.mask_last[pair] = Mask_Made{key, made}
+}
+
+// Lets go of the masks a newer one replaced that have not been drawn or read for two frames,
+// and forgets the newest masks that are gone. Called each frame.
+@(private)
+let_go_replaced_masks :: proc() {
+	for i := len(the.masks_replaced) - 1; i >= 0; i -= 1 {
+		m := the.masks_replaced[i]
+		data := gfx.image_data(m.id)
+		if data != nil && gfx.images_clock - data.used <= 2 {
+			continue
+		}
+		if data != nil {
+			forget_derived(m.key, m.id)
+		}
+		unordered_remove(&the.masks_replaced, i)
+	}
+	for pair, m in the.mask_last {
+		if gfx.image_data(m.id) == nil {
+			delete_key(&the.mask_last, pair)
+		}
+	}
+}
+
+// Lets go of a made picture remembered under `key` (when that is still `id`), with what counts
+// it and, for a canvas, its read-back.
+@(private)
+forget_derived :: proc(key: u64, id: Image) {
+	if d, found := the.derived[key]; found && d.id == id {
+		the.derived_bytes -= d.bytes
+		delete_key(&the.derived, key)
+	}
+	gfx.image_release(id)
+	if read, found := the.canvas_reads[id]; found {
+		delete(read.pixels)
+		delete_key(&the.canvas_reads, id)
+	}
 }
 
 // ---- keeping the total in check ----
 
 // Lets go of pictures the sketch's operations made, longest unused first, while they hold more
 // than `DERIVED_BUDGET_BYTES` or are more than `MAX_DERIVED_PICTURES`, down to `EVICT_DOWN_TO`
-// of it; one used in the last two frames is never let go. Called each frame, and does nothing
-// but compare two numbers while the pictures are within the limits.
+// of it; one used in the last two frames is never let go. Called each frame; first it lets go
+// of the masks a newer one replaced (`let_go_replaced_masks`), then it does nothing but compare
+// two numbers while the pictures are within the limits.
 evict_derived :: proc() {
+	let_go_replaced_masks()
 	budget := the.derived_budget if the.derived_budget > 0 else DERIVED_BUDGET_BYTES
 	most := the.derived_most if the.derived_most > 0 else MAX_DERIVED_PICTURES
 	if the.derived_bytes <= budget && len(the.derived) <= most {
@@ -465,14 +527,7 @@ evict_derived :: proc() {
 		if data := gfx.image_data(d.id); data != nil && gfx.images_clock - data.used <= 2 {
 			continue
 		}
-		the.derived_bytes -= d.bytes
-		gfx.image_release(d.id)
-		delete_key(&the.derived, e.key)
-		// a mask made on the graphics card is a canvas, and its pixels may have been read back
-		if read, found := the.canvas_reads[d.id]; found {
-			delete(read.pixels)
-			delete_key(&the.canvas_reads, d.id)
-		}
+		forget_derived(e.key, d.id) // a mask made on the graphics card is a canvas, and may have been read back
 	}
 }
 

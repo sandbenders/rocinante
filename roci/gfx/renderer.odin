@@ -183,6 +183,7 @@ Renderer :: struct {
 	effects: Effect_Gpu,    // shaders of the sketch's own run over the frame (renderer_effect.odin)
 	images:  map[Image_Id]^sdl.GPUTexture, // the textures of the pictures drawn so far (typeset.odin)
 	canvases: map[Image_Id]Canvas_Gpu,     // the textures of the canvases (renderer_canvas.odin)
+	mask_pool: [dynamic]Pooled_Texture,   // textures of masks let go, kept to draw the next masks of their size into (renderer_mask.odin)
 	canvas_rounds: int,                    // canvas rounds submitted since the GPU was last waited for (renderer_canvas.odin)
 	text_fills: map[u64]Text_Fill_Texture, // the textures of texts filled with a picture (textfill.odin)
 	released_seen: int, // how many of `released_images` this renderer has dropped the textures of
@@ -274,6 +275,10 @@ renderer_destroy :: proc(r: ^Renderer) {
 		}
 	}
 	delete(r.canvases)
+	for pooled in r.mask_pool {
+		sdl.ReleaseGPUTexture(r.device, pooled.texture)
+	}
+	delete(r.mask_pool)
 	effect_gpu_destroy(r)
 	delete(r.error)
 	r^ = {}
@@ -1111,9 +1116,16 @@ release_stale_textures :: proc(r: ^Renderer) {
 			delete_key(&r.images, id)
 		}
 		if gpu, found := r.canvases[id]; found {
-			for texture in gpu.textures {
-				if texture != nil {
-					sdl.ReleaseGPUTexture(r.device, texture)
+			if gpu.fixed && gpu.textures[0] != nil {
+				// a mask's texture is drawn into again by a later mask of its size
+				if spilled := mask_pool_put(r, gpu.textures[0], gpu.width, gpu.height); spilled != nil {
+					sdl.ReleaseGPUTexture(r.device, spilled)
+				}
+			} else {
+				for texture in gpu.textures {
+					if texture != nil {
+						sdl.ReleaseGPUTexture(r.device, texture)
+					}
 				}
 			}
 			delete_key(&r.canvases, id)

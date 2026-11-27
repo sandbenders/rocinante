@@ -18,6 +18,7 @@ Canvas_Gpu :: struct {
 	width:    u32, // device pixels
 	height:   u32,
 	rendered: bool, // there is a picture on `textures[current]`
+	fixed:    bool, // a mask made on the graphics card: one texture, given to `mask_pool` when let go
 }
 
 // Draws every waiting round of a canvas onto its texture, oldest first. Gives false when
