@@ -32,6 +32,7 @@ Canvas :: struct {
 	pending: bool,           // something was recorded into `list` since the last round was closed
 	drawn:   u64,            // how many rounds have been closed: it changes when what the canvas shows will
 	rendering: bool,         // its rounds are being drawn now, so a canvas that shows it, and that it shows, does not start it again
+	fixed:   bool,           // made by an operation on the graphics card (`mask_on_gpu`): never drawn into, and let go like a made picture
 }
 
 // The side of a canvas texture that has `logical` logical pixels at `density`.
@@ -55,6 +56,17 @@ image_add_canvas :: proc(width, height: int, density: f32) -> (Image_Id, bool) {
 		canvas_destroy(canvas)
 	}
 	return id, kept
+}
+
+// Makes a fixed canvas of this logical size and `density`: a picture whose pixels are on the
+// graphics card, put there by an operation (`mask_on_gpu`) and never drawn into, which is let go
+// like the other pictures a sketch's operations make. False for a size that is zero or too big.
+image_add_fixed_canvas :: proc(width, height: int, density: f32) -> (Image_Id, bool) {
+	id, ok := image_add_canvas(width, height, density)
+	if ok {
+		image_data(id).canvas.fixed = true
+	}
+	return id, ok
 }
 
 // The canvas a picture number is, or nil for a loaded picture or a number that is not one.

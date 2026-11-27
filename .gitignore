@@ -24,5 +24,10 @@ examples/*/ui.toml
 examples/*/memory.toml
 examples/*/vault.key
 examples/*/vault.bin*
+# The same for the benchmark sketches
+tests/bench/*/ui.toml
+tests/bench/*/memory.toml
+tests/bench/*/vault.key
+tests/bench/*/vault.bin*
 /accesskit-c-*.zip
 artifacts/

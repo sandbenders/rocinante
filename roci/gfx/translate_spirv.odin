@@ -118,7 +118,7 @@ translate_to_spirv :: proc(source: string, stage: Stage, entry: string, params: 
 
 // Metal source for SPIR-V that translate_to_spirv made. The entry point is `main0`. With
 // `effect` the fragment shader's resources get the numbers the effect pass binds them by:
-// uniform buffers 0 and 1, texture and sampler 0 (SPIRV-Cross would number the buffers in
+// uniform buffers 0 and 1, textures and samplers 0 and 1 (SPIRV-Cross would number the buffers in
 // the order the shader first uses them).
 spirv_to_msl :: proc(spirv: []u8, effect := false, textures := true, allocator := context.allocator) -> (code: []u8, message: string, ok: bool) {
 	ctx: spirvcross.Context
@@ -145,11 +145,15 @@ spirv_to_msl :: proc(spirv: []u8, effect := false, textures := true, allocator :
 			binding.stage, binding.desc_set, binding.binding, binding.msl_buffer = spirvcross.EXECUTION_MODEL_FRAGMENT, 3, c.uint(slot), c.uint(slot)
 			_ = spirvcross.compiler_msl_add_resource_binding_2(compiler, &binding)
 		}
+		// The frame is texture 0; the built-in mask reads its stencil as texture 1. A binding the
+		// shader does not have changes nothing.
 		if textures {
-			binding: spirvcross.Msl_Resource_Binding
-			spirvcross.msl_resource_binding_init_2(&binding)
-			binding.stage, binding.desc_set, binding.binding, binding.msl_texture, binding.msl_sampler = spirvcross.EXECUTION_MODEL_FRAGMENT, 2, 0, 0, 0
-			_ = spirvcross.compiler_msl_add_resource_binding_2(compiler, &binding)
+			for slot in 0 ..< 2 {
+				binding: spirvcross.Msl_Resource_Binding
+				spirvcross.msl_resource_binding_init_2(&binding)
+				binding.stage, binding.desc_set, binding.binding, binding.msl_texture, binding.msl_sampler = spirvcross.EXECUTION_MODEL_FRAGMENT, 2, c.uint(slot), c.uint(slot), c.uint(slot)
+				_ = spirvcross.compiler_msl_add_resource_binding_2(compiler, &binding)
+			}
 		}
 	}
 	text: cstring

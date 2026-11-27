@@ -29,6 +29,7 @@ Shader_Data :: struct {
 	code:     []u8,    // the fragment shader: DXBC for Direct3D 12 on Windows, SPIR-V elsewhere
 	msl:      []u8,    // and its Metal form, made from the SPIR-V the first time a Metal device asks
 	params:   Shader_Params,
+	textures: int, // how many pictures an effect reads: 1 (the frame, `scene`) unless it says more, as the built-in mask's 2
 }
 
 @(thread_local) shader_store: [dynamic]Shader_Data

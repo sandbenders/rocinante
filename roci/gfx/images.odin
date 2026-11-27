@@ -162,6 +162,21 @@ image_add_pixels :: proc(width, height: int, pixels: []u8) -> (Image_Id, bool) {
 	return id, ok
 }
 
+// Keeps RGBA pixels made for it with `context.allocator`, without copying them, and gives
+// their number; the store owns them from then on. False, with the pixels freed, for a size
+// that is zero, too big or does not match the pixels, or when the store is full.
+image_take_pixels :: proc(width, height: int, pixels: []u8) -> (Image_Id, bool) {
+	if width <= 0 || height <= 0 || width > MAX_IMAGE_SIDE || height > MAX_IMAGE_SIDE || len(pixels) != width * height * 4 {
+		delete(pixels)
+		return 0, false
+	}
+	id, ok := image_put(Image_Data{width = width, height = height, pixels = pixels})
+	if !ok {
+		delete(pixels)
+	}
+	return id, ok
+}
+
 // Decodes a file's bytes and keeps the picture. False when it cannot be read, or when the
 // store is full.
 image_add :: proc(bytes_in: []u8) -> (Image_Id, bool) {
@@ -240,13 +255,17 @@ image_touch :: proc "contextless" (id: Image_Id) {
 
 // Lets go of a loaded picture's pixels, for the ones a sketch made that nothing needs any
 // more. The number then names nothing: it draws and fills nothing, as a picture that is not
-// there. A canvas is never let go.
+// there. A canvas is never let go, except a fixed one an operation made on the graphics card,
+// whose texture each renderer lets go when it sees the number in `released_images`.
 image_release :: proc(id: Image_Id) -> bool {
 	data := image_data(id)
-	if data == nil || data.canvas != nil {
+	if data == nil || (data.canvas != nil && !data.canvas.fixed) {
 		return false
 	}
 	delete(data.pixels)
+	if data.canvas != nil {
+		canvas_destroy(data.canvas)
+	}
 	slot := image_slot(id)
 	// The slot keeps counting, so the number of the picture let go names nothing from now on.
 	image_store[slot] = Image_Data{generation = data.generation + 1}

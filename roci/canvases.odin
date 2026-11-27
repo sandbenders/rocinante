@@ -37,7 +37,8 @@ canvas :: proc(width, height: f64) -> (Image, bool) {
 // being drawn into already (a canvas cannot be drawn into from inside itself or another).
 begin_into :: proc(picture: Image) -> bool {
 	canvas := gfx.canvas_of(picture)
-	if canvas == nil || the.into != 0 {
+	// a mask made on the graphics card is a canvas, but a picture all the same, so it never changes
+	if canvas == nil || canvas.fixed || the.into != 0 {
 		return false
 	}
 	the.into = picture

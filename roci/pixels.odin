@@ -207,6 +207,13 @@ derived_picture :: proc(key: u64, pixels: []u8, width, height: int) -> Image {
 	if !made {
 		return 0
 	}
+	remember_derived(key, id, 2 * len(pixels))
+	return id
+}
+
+// Keeps a picture an operation made under the `key` of what made it, holding `bytes`.
+@(private)
+remember_derived :: proc(key: u64, id: Image, bytes: int) {
 	gfx.image_touch(id)
 	if the.derived == nil {
 		the.derived = make(map[u64]Derived_Picture)
@@ -214,9 +221,18 @@ derived_picture :: proc(key: u64, pixels: []u8, width, height: int) -> Image {
 	if old, stale := the.derived[key]; stale {
 		the.derived_bytes -= old.bytes // its picture was let go with the renderer's, and this replaces it
 	}
-	the.derived[key] = Derived_Picture{id = id, bytes = 2 * len(pixels)}
-	the.derived_bytes += 2 * len(pixels)
-	return id
+	the.derived[key] = Derived_Picture{id = id, bytes = bytes}
+	the.derived_bytes += bytes
+}
+
+// The picture an operation made before for `key`, touched so it is kept, or 0.
+@(private)
+known_derived :: proc(key: u64) -> Image {
+	if found, known := the.derived[key]; known && gfx.image_data(found.id) != nil {
+		gfx.image_touch(found.id)
+		return found.id
+	}
+	return 0
 }
 
 // A picture of `width` by `height` made from colours, left to right and top to bottom. A
@@ -334,13 +350,22 @@ filter_picture :: proc(picture: Image, kind: Filter, amount := Maybe(f64){}) -> 
 
 // The picture with its alpha multiplied by how much of the stencil shows at each place (white
 // and solid shows it, black or clear hides it), the stencil stretched over it.
+//
+// When either is a canvas the mask is made on the graphics card (`mask_on_gpu`), where the
+// canvas's pixels are, and the picture it gives is a canvas that cannot be drawn into; with no
+// graphics that run shaders it is made on the processor from the canvases read back.
 mask_picture :: proc(picture, stencil: Image) -> (result: Image, ok: bool) {
+	if gfx.canvas_of(picture) != nil || gfx.canvas_of(stencil) != nil {
+		if made, done := mask_on_gpu(picture, stencil); done {
+			return made, true
+		}
+	}
 	read := picture_pixels(picture)
 	if !read.ok {
 		return 0, gfx.image_data(picture) == nil
 	}
-	// A canvas read replaces its own earlier read, so the picture's pixels are kept apart first.
-	own := slice.clone(read.pixels, context.temp_allocator)
+	// The picture's pixels stay good while the stencil is read: a canvas's read is kept until that
+	// canvas is drawn on again, and reading another one leaves it alone.
 	over := picture_pixels(stencil)
 	if !over.ok {
 		return 0, gfx.image_data(stencil) == nil
@@ -349,12 +374,55 @@ mask_picture :: proc(picture, stencil: Image) -> (result: Image, ok: bool) {
 	key_picture(&key, picture, read)
 	key_picture(&key, stencil, over)
 	id := key_done(key)
-	if found, known := the.derived[id]; known && gfx.image_data(found.id) != nil {
-		gfx.image_touch(found.id)
-		return found.id, true
+	if found := known_derived(id); found != 0 {
+		return found, true
 	}
-	pixels := gfx.pixels_mask(own, read.width, read.height, over.pixels, over.width, over.height, context.temp_allocator)
-	return derived_picture(id, pixels, read.width, read.height), true
+	pixels := gfx.pixels_mask(read.pixels, read.width, read.height, over.pixels, over.width, over.height)
+	if pixels == nil {
+		return 0, true
+	}
+	made, kept := gfx.image_take_pixels(read.width, read.height, pixels)
+	if !kept {
+		return 0, true
+	}
+	remember_derived(id, made, 2 * read.width * read.height * 4)
+	return made, true
+}
+
+// `mask_picture` on the graphics card: the canvases among the two have what was drawn into them
+// up to now drawn first, then one pass makes the mask (gfx's `mask_on_gpu`). The mask of the same
+// two pictures, with the canvases drawn as many times, is the one made before. False when there
+// are no graphics, or none that run shaders, so the mask is made on the processor instead.
+@(private)
+mask_on_gpu :: proc(picture, stencil: Image) -> (result: Image, done: bool) {
+	if graphics_refused {
+		return 0, false
+	}
+	renderer := drawing_renderer()
+	if !gfx.can_mask_on_gpu(renderer) {
+		return 0, false
+	}
+	key := key_begin("mask")
+	for id in ([2]Image{picture, stencil}) {
+		gfx.image_touch(id)
+		version: u64
+		if canvas := gfx.canvas_of(id); canvas != nil {
+			gfx.canvas_close_round(canvas)
+			version = canvas.drawn
+		}
+		append(&key.words, u64(id), version)
+	}
+	id := key_done(key)
+	if found := known_derived(id); found != 0 {
+		return found, true
+	}
+	flush_canvases(renderer)
+	made, ok := gfx.mask_on_gpu(renderer, picture, stencil)
+	if !ok {
+		return 0, false
+	}
+	remember_derived(id, made, gfx.mask_bytes(renderer, made))
+	return made, true
 }
 
 // ---- keeping the total in check ----
@@ -400,6 +468,11 @@ evict_derived :: proc() {
 		the.derived_bytes -= d.bytes
 		gfx.image_release(d.id)
 		delete_key(&the.derived, e.key)
+		// a mask made on the graphics card is a canvas, and its pixels may have been read back
+		if read, found := the.canvas_reads[d.id]; found {
+			delete(read.pixels)
+			delete_key(&the.canvas_reads, d.id)
+		}
 	}
 }
 

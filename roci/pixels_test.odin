@@ -265,3 +265,66 @@ test_a_picture_made_every_frame_does_not_pile_up_without_end :: proc(t: ^testing
 	}
 	testing.expect_value(t, live, the.derived_bytes)
 }
+
+@(test)
+test_a_mask_with_a_canvas_and_no_graphics_gives_no_picture :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	set_graphics_refused(true)
+	defer set_graphics_refused(false)
+	photo := gradient_picture(4, 4)
+	c, _ := canvas(4, 4)
+	// Without graphics nothing can make the mask on the graphics card or read the canvas back.
+	made, ok := mask_picture(photo, c)
+	testing.expect(t, !ok && made == 0)
+	made, ok = mask_picture(c, photo)
+	testing.expect(t, !ok && made == 0)
+	testing.expect_value(t, len(derived_pictures()), 0)
+}
+
+@(test)
+test_a_remembered_mask_of_pictures_is_given_again_and_its_pixels_are_the_masks_own :: proc(t: ^testing.T) {
+	defer shutdown()
+	photo := gradient_picture(3, 1)
+	stencil := picture_from_colors({{255, 255, 255, 255}, {0, 0, 0, 255}, {255, 255, 255, 128}}, 3, 1)
+	before := len(derived_pictures()) // the stencil is a made picture too
+	masked, ok := mask_picture(photo, stencil)
+	testing.expect(t, ok && masked != 0)
+	// The mask's pixels are its own: the picture's are unchanged.
+	p, _ := pixel_of(photo, 1, 0)
+	testing.expect_value(t, p.a, f32(255))
+	m, _ := pixel_of(masked, 1, 0)
+	testing.expect_value(t, m, Colour{10, 0, 100, 0})
+	m, _ = pixel_of(masked, 2, 0)
+	testing.expect_value(t, m, Colour{20, 0, 100, 128})
+	testing.expect_value(t, len(derived_pictures()), before + 1)
+	again, _ := mask_picture(photo, stencil)
+	testing.expect_value(t, again, masked)
+	testing.expect_value(t, len(derived_pictures()), before + 1)
+	// A picture masked by itself works from one read of it.
+	self, self_ok := mask_picture(stencil, stencil)
+	testing.expect(t, self_ok && self != 0)
+	s, _ := pixel_of(self, 1, 0)
+	testing.expect_value(t, s.a, f32(0))
+}
+
+@(test)
+test_a_mask_made_on_the_graphics_card_is_let_go_with_its_read_back :: proc(t: ^testing.T) {
+	defer shutdown()
+	// Stands for what `mask_on_gpu` makes: a fixed canvas, remembered as a made picture.
+	fixed, _ := gfx.image_add_fixed_canvas(8, 8, 1)
+	remember_derived(99, fixed, 8 * 8 * 4)
+	the.canvas_reads = make(map[Image]Canvas_Read)
+	the.canvas_reads[fixed] = Canvas_Read{width = 8, height = 8, pixels = make([]u8, 8 * 8 * 4)}
+	testing.expect_value(t, known_derived(99), fixed)
+	testing.expect_value(t, known_derived(98), Image(0))
+	the.derived_budget = 100
+	for _ in 0 ..< 4 {
+		gfx.images_tick()
+	}
+	evict_derived()
+	testing.expect(t, gfx.image_data(fixed) == nil, "let go when the made pictures hold too much")
+	testing.expect(t, fixed not_in the.canvas_reads, "and its read-back with it")
+	testing.expect_value(t, the.derived_bytes, 0)
+	testing.expect_value(t, known_derived(99), Image(0))
+}

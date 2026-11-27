@@ -1,10 +1,12 @@
-// What `mask ... by` costs when the stencil is a canvas drawn into every frame: the pattern of
-// a melting logo. Four plates of 1300 by 560 are drawn once, two cut canvases are drawn into
-// every frame, and each frame masks the four plates by them and draws the results. The sketch
-// quits after 400 frames; run it with `roci run tests/bench/mask-canvas --stats --no-vsync`
-// and read the speed line. Change MODE to split the cost:
+// What `mask ... by` costs when the stencil is a canvas drawn into every frame (made on the
+// graphics card since 2026-11-27, 4.9 ms a frame here against 77 before, on Windows with an
+// RTX 2080 Ti): the pattern of a melting logo. Four plates of 1300 by 560 are drawn once, two
+// cut canvases are drawn into every frame, and each frame masks the four plates by them and
+// draws the results. The sketch quits after 400 frames; run it with
+// `roci run tests/bench/mask-canvas --stats --no-vsync` and read the speed line. Change MODE
+// to split the cost:
 //   "full"     draw into the cuts, mask four plates by them, draw the four masks
-//   "maskonly" the same masks, made and not drawn: the processor's part alone
+//   "maskonly" the same masks, made and not drawn
 //   "read"     draw into the cuts and read one pixel of each: the canvas read-back alone
 //   "draw"     draw into the cuts and draw the plates unmasked: the frame without masks
 //   "static"   mask by cuts drawn once: each mask is remembered, so nothing is made again

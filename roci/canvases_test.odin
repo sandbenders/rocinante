@@ -233,3 +233,17 @@ test_existing_win_finds_the_window_the_verbs_would_use_and_makes_none :: proc(t:
 	testing.expect_value(t, existing_win(), win_for(second)) // the one whose block runs comes first
 	the.current = nil
 }
+
+@(test)
+test_a_mask_made_on_the_graphics_card_is_a_canvas_that_cannot_be_drawn_into :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	fixed, ok := gfx.image_add_fixed_canvas(10, 10, 1)
+	testing.expect(t, ok)
+	testing.expect(t, !begin_into(fixed), "a picture never changes")
+	testing.expect(t, !is_drawing_into())
+	testing.expect(t, !draw_into(fixed, proc() {}), "and the block is not run")
+	// flushing has nothing of it to draw
+	flush_canvases(nil)
+	testing.expect_value(t, len(gfx.canvas_of(fixed).rounds), 0)
+}

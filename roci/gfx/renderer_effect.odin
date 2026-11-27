@@ -99,7 +99,7 @@ effect_pipeline :: proc(r: ^Renderer, id: Shader_Id, format: sdl.GPUTextureForma
 	}
 	vertex := create_shader(r, code.vertex, code.vertex_entry, code.format, .VERTEX, 0, 0)
 	uniform_buffers := u32(2) if data.params.size > 0 else 1
-	fragment := create_shader(r, code.fragment, code.fragment_entry, code.format, .FRAGMENT, uniform_buffers, 1)
+	fragment := create_shader(r, code.fragment, code.fragment_entry, code.format, .FRAGMENT, uniform_buffers, u32(max(data.textures, 1)))
 	defer if vertex != nil {sdl.ReleaseGPUShader(r.device, vertex)}
 	defer if fragment != nil {sdl.ReleaseGPUShader(r.device, fragment)}
 	if vertex == nil || fragment == nil {
@@ -182,6 +182,13 @@ effect_textures :: proc(r: ^Renderer, pixels: [2]u32, format: sdl.GPUTextureForm
 		}
 	}
 	e.texture_size, e.texture_format = pixels, format
+	return effect_textures_sampler(r)
+}
+
+// The sampler effects read their pictures with (smooth, clamped at the edges), made the first time.
+@(private)
+effect_textures_sampler :: proc(r: ^Renderer) -> bool {
+	e := &r.effects
 	if e.sampler == nil {
 		e.sampler = sdl.CreateGPUSampler(r.device, {
 			min_filter     = .LINEAR,

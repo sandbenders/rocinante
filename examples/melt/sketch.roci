@@ -1,0 +1,69 @@
+// Melt: pictures cut every frame by a canvas. The front is a canvas drawn into each frame, a
+// white shape whose edge comes down the picture with drips hanging from it, and mask shows
+// the landscape only where the front is white. A mask made with a canvas is made on the
+// graphics card, where the canvas is, so it stays fast when the canvas changes every frame.
+// The second picture is a canvas of stripes cut by the same front turned upside down, and
+// the third is the front itself.
+window size 700 250 title "melt"
+photo = load "landscape.png"
+W = photo.width
+H = photo.height
+front = canvas W H
+risen = canvas W H
+stripes = canvas W H
+draw into stripes [
+  no stroke
+  for i from 0 to 19 [
+    fill (hsb (i * 12) 160 230)
+    rect at (i * 16) 0 size 16 H
+  ]
+]
+DRIPS = 9
+
+// The corners of the melted part: everything above a front `front_y` pixels from the top, with
+// drips hanging from it, as a polygon.
+learn melt_edge front_y [
+  edge = []
+  add { W, 0 } to edge
+  x = W
+  while x >= 0 [
+    y = front_y
+    for d from 1 to DRIPS [
+      middle = (d - 0.5) / DRIPS * W
+      u = (x - middle) / 14
+      if abs u < 1 [ y = max y (front_y + (24 + 16 * sin (d * 130)) * sqrt (1 - u * u)) ]
+    ]
+    add { x, y } to edge
+    x = x - 4
+  ]
+  add { 0, 0 } to edge
+  give edge
+]
+
+draw [
+  background 245
+  down = frame % 150 / 150 * (H - 40)
+  edge = melt_edge down
+  draw into front [
+    clear
+    no stroke
+    fill white
+    polygon edge
+  ]
+  draw into risen [
+    clear
+    no stroke
+    fill white
+    polygon (collect edge [ { it.x, H - it.y } ])
+  ]
+  image (mask photo by front) at 20 20
+  image (mask stripes by risen) at 360 20 size 160 100
+  fill 60
+  rect at 360 130 size 160 100
+  image front at 360 130 size 160 100
+  fill 40
+  font "Inter" size 12
+  text "a picture cut by a canvas" at 20 236
+  text "a canvas cut by a canvas" at 530 60
+  text "the front" at 530 170
+]

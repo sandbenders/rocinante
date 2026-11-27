@@ -396,9 +396,10 @@ pixels_mask :: proc(src: []u8, width, height: int, stencil: []u8, stencil_width,
 		fitted = pixels_resize(stencil, stencil_width, stencil_height, width, height, true, context.temp_allocator)
 	}
 	out := make([]u8, len(src), allocator)
-	for i := 0; i < len(src); i += 4 {
+	copy(out, src)
+	// the colours are copied whole and only the alpha is worked out; every length was checked above
+	#no_bounds_check for i := 0; i < len(src); i += 4 {
 		show := brightness_of(f32(fitted[i]), f32(fitted[i + 1]), f32(fitted[i + 2])) / 255 * f32(fitted[i + 3]) / 255
-		out[i], out[i + 1], out[i + 2] = src[i], src[i + 1], src[i + 2]
 		out[i + 3] = to_byte(f32(src[i + 3]) * show)
 	}
 	return out

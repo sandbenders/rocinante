@@ -1,0 +1,9 @@
+photo: a picture
+W: a number
+H: a number
+front: a picture
+risen: a picture
+stripes: a picture
+DRIPS: a number
+down: a number
+edge: a list of vectors of 2 numbers

@@ -1110,6 +1110,14 @@ release_stale_textures :: proc(r: ^Renderer) {
 			}
 			delete_key(&r.images, id)
 		}
+		if gpu, found := r.canvases[id]; found {
+			for texture in gpu.textures {
+				if texture != nil {
+					sdl.ReleaseGPUTexture(r.device, texture)
+				}
+			}
+			delete_key(&r.canvases, id)
+		}
 	}
 }
 

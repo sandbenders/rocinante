@@ -98,6 +98,7 @@ SHOWCASE := [?]Showcase_Entry{
 	{"images", 4, "Images", 5, 1},
 	{"fills", 4, "Picture fills", 5, 1},
 	{"pixels", 4, "Pixels", 3, 1},
+	{"melt", 4, "Melt", 60, 1},
 	{"paint", 4, "Picture as paint", 3, 1},
 	{"canvas", 4, "Canvas", 60, 1},
 	{"canvas_layers", 4, "Canvas layers", 3, 1},

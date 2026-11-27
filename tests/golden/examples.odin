@@ -86,6 +86,7 @@ EXAMPLES := [?]Example{
 	{"project", 3, {1}}, // a ship and its colors read from a file of another folder with use
 	{"paint", 3, {1}}, // a picture as the window, the letters of a text and the outlines of shapes
 	{"pixels", 3, {1}}, // pixel, crop, resize and filter: a magnifier and six filtered thumbnails
+	{"melt", 60, {1}}, // mask by a canvas drawn every frame, made on the graphics card: a landscape and stripes cut by a dripping front, and the front itself
 	{"effects", 3, {1}}, // two shaders of its own over five stripes: a wave with a tint, and a vignette
 	{"spiral", 20, {1}}, // shapes filled by one shader: a spiral of black and white bands with an accent arm, in a window-sized rectangle and two circles
 	{"neon", 20, {1}}, // the built-in effects: glow, split, grain and vignette over bright rings
