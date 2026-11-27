@@ -89,8 +89,16 @@ tcp_open_client :: proc(host: string, port: int, allocator := context.allocator)
 	e.dialing = true
 	sync.atomic_add(&tcp_client_threads, 1)
 	// the thread frees its own record when it ends, so a client let go of while it is dialing can be left to it
-	thread.create_and_start_with_data(e, tcp_dial_thread, self_cleanup = true)
+	start_dial_thread(e)
 	return e
+}
+
+// Starts the thread that makes a client's connection and frees its own record as it ends. The record is made on the heap, whatever the
+// caller's allocator is, since the thread frees it after the caller may have let go of its allocator or looked for what it left.
+@(private)
+start_dial_thread :: proc(e: ^Tcp_Endpoint) {
+	context.allocator = runtime.heap_allocator()
+	thread.create_and_start_with_data(e, tcp_dial_thread, self_cleanup = true)
 }
 
 // Starts listening on every network interface at `port` (0 lets the system choose). On failure `error` says why

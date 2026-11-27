@@ -90,11 +90,20 @@ fetch_ask :: proc(url: string, post := false, body := "", headers: []string = ni
 		append(&job.headers, strings.clone(h, heap))
 	}
 	job.bytes = make([dynamic]u8, heap)
-	if thread.create_and_start_with_poly_data(job, fetch_thread, runtime.default_context(), .Normal, true) == nil {
+	if start_fetch_thread(job) == nil {
 		fetch_deliver(id, 0, nil, "the system could not start a thread to fetch it")
 		fetch_free_job(job)
 	}
 	return id
+}
+
+// Starts the thread of a fetch, which frees its own record as it ends. The record is made on the heap, whatever the caller's
+// allocator is: the thread frees it after the caller may have let go of its allocator or looked for what it left (a test did, and
+// reported 288 bytes as a leak about one run in a hundred).
+@(private)
+start_fetch_thread :: proc(job: ^Fetch_Job) -> ^thread.Thread {
+	context.allocator = runtime.heap_allocator()
+	return thread.create_and_start_with_poly_data(job, fetch_thread, runtime.default_context(), .Normal, true)
 }
 
 @(private)
