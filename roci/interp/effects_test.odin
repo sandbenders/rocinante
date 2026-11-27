@@ -12,6 +12,8 @@ import "core:testing"
 import "core:time"
 
 GOOD_FILL :: "float amount;\nfloat4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0\n{\n    return float4(uv, amount, 1.0);\n}\n"
+// A color then a number share one 16-byte slot: `amount` sits right after `tint`'s blue.
+PACKED_EFFECT :: "float3 tint;\nfloat amount;\nfloat4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0\n{\n    return float4(tint * amount, 1.0);\n}\n"
 GOOD_EFFECT :: "float amount;\nfloat4 tint;\nfloat4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0\n{\n    return scene.Sample(scene_sampler, uv) * amount + tint * time;\n}\n"
 
 // A sketch folder with a good shader called `wave.hlsl` and a broken one, `broken.hlsl`, in
@@ -22,6 +24,7 @@ run_effect_sketch :: proc(t: ^testing.T, folder_name, text: string) -> ^Interp {
 	testing.expect(t, folder.ensure_directory(concat(root, "/assets/shaders")))
 	testing.expect(t, os.write_entire_file(concat(root, "/assets/shaders/wave.hlsl"), transmute([]byte)string(GOOD_EFFECT)) == nil)
 	testing.expect(t, os.write_entire_file(concat(root, "/assets/shaders/paint.hlsl"), transmute([]byte)string(GOOD_FILL)) == nil)
+	testing.expect(t, os.write_entire_file(concat(root, "/assets/shaders/packed.hlsl"), transmute([]byte)string(PACKED_EFFECT)) == nil)
 	testing.expect(t, os.write_entire_file(concat(root, "/assets/shaders/broken.hlsl"), transmute([]byte)string("float4 ps_main() : SV_Target0 { return nothing_here; }\n")) == nil)
 	path := concat(root, "/sketch.roci")
 	testing.expect(t, os.write_entire_file(path, transmute([]byte)text) == nil)
@@ -46,6 +49,19 @@ test_an_effect_is_recorded_with_the_values_it_is_given_by_name :: proc(t: ^testi
 	floats := (cast([^]f32)raw_data(values))[:8]
 	testing.expect_value(t, floats[0], f32(0.5))
 	testing.expect_value(t, [4]f32{floats[4], floats[5], floats[6], floats[7]}, [4]f32{1, 0, 0, 1}) // a color is 0 to 1 for the shader
+}
+
+@(test)
+test_a_color_given_to_three_numbers_gives_red_green_and_blue_and_leaves_the_next_value_alone :: proc(t: ^testing.T) {
+	// The number is written first, so a color that wrote its alpha too would overwrite it.
+	p := run_effect_sketch(t, "effects_packed", "effect \"packed.hlsl\" by { amount: 0.5, tint: #ff8000 }")
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 0)
+	effects, values := roci.recorded_effects(first_window())
+	testing.expect_value(t, len(effects), 1)
+	testing.expect_value(t, len(values), 16)
+	floats := (cast([^]f32)raw_data(values))[:4]
+	testing.expect_value(t, [4]f32{floats[0], floats[1], floats[2], floats[3]}, [4]f32{1, f32(128) / 255, 0, 0.5})
 }
 
 @(test)

@@ -48,7 +48,7 @@ Any other global at the top of the shader, such as `float amount;`, is a value t
 effect "tint.hlsl" by { strength: 0.4, spot: { 120, 80 }, color: teal }
 ```
 
-A color arrives as 0 to 1, ready for the shader's math. A name the shader does not have is said, with the names it has, and the others still go.
+A color arrives as 0 to 1, ready for the shader's math: a `float4` gets red, green, blue and alpha, and a `float3` red, green and blue. A name the shader does not have is said, with the names it has, and the others still go.
 
 ## Several effects, and where they run
 
