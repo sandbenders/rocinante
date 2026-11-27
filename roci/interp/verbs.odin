@@ -20,10 +20,36 @@ eval_call :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	if call.verb == nil {
 		return nil // taught in another file: its body is not here
 	}
-	if is_language_code(verb_code(call.verb)) {
+	code := verb_code(call.verb)
+	if is_language_code(code) {
 		return call_language(it, e, call)
 	}
+	// `push` and `draw into` run a block, so a verb that calls itself inside one comes back
+	// through here: they are kept out of `call_builtin`, whose frame holds the room of every
+	// verb, so that a hundred calls deep fit in Windows' one megabyte of stack.
+	#partial switch code {
+	case .Push:
+		return call_push(it, call)
+	case .Draw_Into:
+		return draw_into(it, e, call)
+	}
 	return call_builtin(it, e, call)
+}
+
+// `push [ ... ]`: the block runs with the style and the move it began with kept, and given
+// back after it.
+@(private)
+call_push :: proc(it: ^Interp, call: lang.IR_Call) -> Value {
+	roci.push()
+	if len(call.args) > 0 {
+		if block, ok := call.args[0].kind.(lang.IR_Block_Value); ok {
+			if flow := exec_block(it, block.block); flow != .Normal {
+				it.pending = flow
+			}
+		}
+	}
+	roci.pop()
+	return nil
 }
 
 // The values of a call's arguments: in `buffer` when it has room (the caller's stack),
@@ -75,12 +101,21 @@ call_taught :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 			given[i] = eval(it, o.args[0])
 		}
 	}
-	if it.depth >= MAX_DEPTH {
+	// The stack grows down on every processor rocinante runs on, so the room left is how far
+	// this call's place is above the stack's end. The end is read once, at the outermost call,
+	// since every call under it runs on the same thread.
+	if it.depth == 0 {
+		it.stack_low = stack_low_limit()
+	}
+	here: u8
+	at := uintptr(&here)
+	cramped := it.stack_low != 0 && (at < it.stack_low || at - it.stack_low < STACK_ROOM)
+	if it.depth >= MAX_DEPTH || cramped {
 		if said_already(it, .Recursion_Too_Deep, e.span) {
 			return zero_value(it, inst.result, 0) if inst.gives else nil
 		}
 		line := lang.line_text(it.src, lang.position_of(it.src, e.span.start).line)
-		fail(it, .Recursion_Too_Deep, e.span, inst.name, "100", "", fix_text(strings.concatenate({"if ", inst.params[0].name if len(inst.params) > 0 else "count", " < 20 [ "}, context.temp_allocator), line, " ]"))
+		fail(it, .Recursion_Too_Deep, e.span, inst.name, fmt.tprint(it.depth), "", fix_text(strings.concatenate({"if ", inst.params[0].name if len(inst.params) > 0 else "count", " < 20 [ "}, context.temp_allocator), line, " ]"))
 		return zero_value(it, inst.result, 0) if inst.gives else nil
 	}
 	it.depth += 1
@@ -346,23 +381,6 @@ apply_look :: proc(look: roci.Look) {
 call_builtin :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 	verb := call.verb
 	code := verb_code(verb)
-	// `draw into` runs its block itself, with every verb drawing onto the canvas.
-	if code == .Draw_Into {
-		return draw_into(it, e, call)
-	}
-	// `push` runs its block itself; no other core verb takes one.
-	if code == .Push {
-		roci.push()
-		if len(call.args) > 0 {
-			if block, ok := call.args[0].kind.(lang.IR_Block_Value); ok {
-				if flow := exec_block(it, block.block); flow != .Normal {
-					it.pending = flow
-				}
-			}
-		}
-		roci.pop()
-		return nil
-	}
 	buffer: [ARGS_ON_STACK]Value = ---
 	a := eval_args(it, call.args, buffer[:])
 	// Most calls have no style words: they share one empty look instead of building

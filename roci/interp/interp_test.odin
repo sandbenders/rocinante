@@ -245,6 +245,55 @@ test_a_verb_never_ending_in_calls_is_stopped_and_the_sketch_goes_on :: proc(t: ^
 	testing.expect_value(t, p.errors[0].id, lang.Message_Id.Recursion_Too_Deep)
 }
 
+// A verb that calls itself inside `push`, a style block, `if` and `repeat` is stopped with the
+// message, not by the end of the stack: Windows gives a thread one megabyte, which a hundred
+// calls through nested blocks overflowed. Plain calls still go a hundred deep everywhere; on
+// Windows calls inside blocks inside blocks may be stopped sooner, when little of the stack is
+// left, and the message says how deep they went.
+@(test)
+test_a_verb_calling_itself_inside_blocks_is_stopped_before_the_stack_ends :: proc(t: ^testing.T) {
+	cases := [?]struct {
+		text:    string,
+		hundred: bool, // goes a hundred calls deep on every system
+	} {
+		{"learn deep n [\n  deep (n + 1)\n]\ndeep 0\nprint \"after\"", true},
+		{"learn deep n [\n  forward 1\n  push [ left 10  deep (n + 1) ]\n]\ndeep 0\nprint \"after\"", false},
+		{"learn deep n [\n  with stroke red [ deep (n + 1) ]\n]\ndeep 0\nprint \"after\"", false},
+		{"learn deep n [\n  repeat 1 [ if n >= 0 [ push [ push [ deep (n + 1) ] ] ] ]\n]\ndeep 0\nprint \"after\"", false},
+	}
+	for c in cases {
+		p := run_text(t, c.text)
+		testing.expect_value(t, printed(p), "after")
+		testing.expect_value(t, len(p.errors), 1)
+		if len(p.errors) > 0 {
+			testing.expect_value(t, p.errors[0].id, lang.Message_Id.Recursion_Too_Deep)
+			if c.hundred || ODIN_OS != .Windows {
+				testing.expect_value(t, p.errors[0].args[1], "100")
+			}
+		}
+		finish(p)
+	}
+}
+
+// Where the end of the stack is known, a call made with less room than the interpreter keeps is
+// refused with the message, so the room is checked and not only the count.
+@(test)
+test_a_call_with_too_little_stack_left_is_stopped :: proc(t: ^testing.T) {
+	p, ok := load("test.roci", "learn once n [ print n ]\nonce 1\nprint \"after\"")
+	testing.expect(t, ok)
+	defer finish(p)
+	// the stack's end as if it were just under where this test runs
+	here: u8
+	p.depth = 1 // the outermost call would read the real end again
+	p.stack_low = uintptr(&here) - STACK_ROOM / 2
+	start(p)
+	testing.expect_value(t, printed(p), "after")
+	testing.expect_value(t, len(p.errors), 1)
+	if len(p.errors) > 0 {
+		testing.expect_value(t, p.errors[0].id, lang.Message_Id.Recursion_Too_Deep)
+	}
+}
+
 @(test)
 test_a_name_made_inside_a_verb_is_its_own :: proc(t: ^testing.T) {
 	text := "learn work n [\n  inner = n + 1\n  give inner\n]\nprint (work 1)\nprint (work 5)"

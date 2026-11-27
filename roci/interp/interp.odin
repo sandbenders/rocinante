@@ -23,6 +23,14 @@ import "core:time"
 // How many verbs may call each other before the sketch is stopped, and how long
 // one block may run.
 MAX_DEPTH :: 100
+// How much of the stack must be left for a taught verb to be called, where the end of the
+// stack is known (Windows): the sketch is stopped as if the calls went too deep when less is
+// left. A call costs 4 to 8 KB, and up to 20 KB when blocks sit inside blocks in it (measured
+// on Windows, 2026-11-27), and Windows gives a program and each thread one megabyte, so a
+// hundred calls inside nested blocks ended the program there before the count did. What is
+// left is for what the verbs at the bottom do; with 256 KB kept, a hundred calls through an
+// expression (`give 1 + (forever (n + 1))`) no longer fitted in a debug build.
+STACK_ROOM :: 128 * 1024
 BLOCK_SECONDS :: 2.0
 
 // A name that lives in a frame: a parameter, a loop name, `it`.
@@ -94,7 +102,8 @@ Interp :: struct {
 	echo:      bool, // `print` also writes to the console
 	print_json: bool, // `print` is written to the console as a line of JSON, and kept nowhere
 	depth:     int,
-	path:      string, // the file being watched, or ""
+	stack_low: uintptr, // the lowest address the stack can grow to, read at the outermost taught call; 0 where it is not known
+	path:    string, // the file being watched, or ""
 	mtime:     time.Time,
 	program:   bool,      // the watched file is a sketch.roci, and every .roci file of its folder is the program
 	watched:   []string,  // the program's files, in joining order
