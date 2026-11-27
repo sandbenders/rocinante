@@ -52,7 +52,9 @@ test_a_box_is_given_and_read_by_its_top_left_corner_and_a_clockwise_angle :: pro
 	s := state(&w, b)
 	testing.expect(t, abs(s.pos.x - 100) < 0.01 && abs(s.pos.y - 50) < 0.01, "the corner it was given")
 	testing.expect(t, abs(s.angle - 30) < 0.01, "the angle it was given")
-	// the middle is half the size from the corner, turned 30 degrees clockwise on a screen with y down: x 20 y 10 becomes 7.68, 21.16
+	// whatever the angle, the middle is half the size from the corner it was given: the box turns about its middle
+	m := middle(&w, b)
+	testing.expect(t, abs(m.x - 120) < 0.01 && abs(m.y - 60) < 0.01, "the middle of a 40 by 20 box at 100, 50")
 	run(&w, 10)
 	s = state(&w, b)
 	testing.expect(t, abs(s.pos.x - 100) < 0.01 && abs(s.pos.y - 50) < 0.01, "a fixed body stays where it is, whatever gravity says")

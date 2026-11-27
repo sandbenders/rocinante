@@ -3,8 +3,8 @@
 // 2D physics on Box2D: a world of bodies that a sketch's shapes are given to. The package works in what the language does, pixels,
 // degrees turning clockwise (y goes down, so a positive angle turns the way the clock does) and seconds, and keeps Box2D in the metres
 // it is tuned for (`PIXELS_PER_METRE` of them to a metre), so no global setting of the library is touched and worlds on several
-// threads do not meet. A circle's place is its middle and a box's its top left corner, as in the collision verbs, which is also what
-// the shapes of a sketch say. Nothing here knows about records or windows: `roci` hands it numbers and reads numbers back.
+// threads do not meet. A circle's place is its middle and a box's the top left corner of the rectangle it turns inside, about its
+// middle, as in the collision verbs, which is also what the shapes of a sketch say. Nothing here knows about records or windows: `roci` hands it numbers and reads numbers back.
 package physics
 
 import box2d "../../vendor/box2d"
@@ -153,10 +153,11 @@ all_finite :: proc(values: ..f64) -> bool {
 	return true
 }
 
-// The middle of a box whose top left corner is at `pos`, turned by `angle` about its middle.
+// The middle of a box whose top left corner is at `pos`: half its size from it, whatever the angle, since the angle turns the box about
+// its middle (a box is the rectangle of `rect at pos size size`, turned as the collision verbs turn it).
 @(private)
-box_middle :: proc(pos, size: [2]f64, angle: f64) -> [2]f64 {
-	return pos + turned(size / 2, angle) // the corner and the middle are `size / 2` apart, turned with the box
+box_middle :: proc(pos, size: [2]f64) -> [2]f64 {
+	return pos + size / 2
 }
 
 // Makes a body of a shape. Gives 0 for one that cannot be made: a size or a radius of nothing, a number that is not one, a
@@ -183,7 +184,7 @@ create :: proc(w: ^World, desc: Body_Desc) -> Body {
 		if !(desc.size.x > 0 && desc.size.y > 0) {
 			return 0
 		}
-		def.position = metres(box_middle(desc.pos, desc.size, desc.angle))
+		def.position = metres(box_middle(desc.pos, desc.size))
 		def.rotation = rotation(desc.angle)
 	case .Segment:
 		if desc.from == desc.to {
@@ -277,7 +278,7 @@ state :: proc(w: ^World, b: Body) -> Body_State {
 	angle := degrees_of(transform.q)
 	pos := pixels(transform.p)
 	if s.kind == .Box {
-		pos -= turned(s.size / 2, angle) // from the middle back to the corner
+		pos -= s.size / 2 // from the middle back to the corner the box had before it was turned
 	}
 	if s.kind == .Segment {
 		pos = {}
@@ -294,13 +295,22 @@ state :: proc(w: ^World, b: Body) -> Body_State {
 	}
 }
 
+// The middle of a body, which is its place for a circle and half the size from it for a box: where it turns.
+middle :: proc(w: ^World, b: Body) -> [2]f64 {
+	s := slot_of(w, b)
+	if s == nil {
+		return {}
+	}
+	return pixels(box2d.Body_GetPosition(s.id))
+}
+
 // Puts a body somewhere, as the sketch changed it: its place and angle, in the same words as `state`. A segment cannot be put.
 set_pose :: proc(w: ^World, b: Body, pos: [2]f64, angle: f64) {
 	s := slot_of(w, b)
 	if s == nil || s.kind == .Segment || !all_finite(pos.x, pos.y, angle) {
 		return
 	}
-	middle := box_middle(pos, s.size, angle) if s.kind == .Box else pos
+	middle := box_middle(pos, s.size) if s.kind == .Box else pos
 	box2d.Body_SetTransform(s.id, metres(middle), rotation(angle))
 }
 
