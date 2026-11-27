@@ -162,4 +162,11 @@ if ! fresh "$lib/libcurl.a" curl "$key"; then
   cp "$root/.cache/net-ios/lib/"lib*.a "$lib/"
   stamp curl "$key"
 fi
+# Box2D for 2D physics, built by tools/physics-libs.sh (static). The scripts name the version, so a change to them builds it again.
+key="$setting physics=$(sum_files "$root/tools/fetch-physics.sh" "$root/tools/physics-libs.sh")"
+if ! fresh "$lib/libbox2d.a" box2d "$key"; then
+  MIN_IOS="$MIN_IOS" "$root/tools/physics-libs.sh" ios
+  cp "$root/.cache/physics-ios/lib/libbox2d.a" "$lib/"
+  stamp box2d "$key"
+fi
 echo "built into $lib"

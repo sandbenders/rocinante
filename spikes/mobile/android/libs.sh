@@ -168,6 +168,14 @@ if ! fresh "$lib/libcurl.a" curl "$key"; then
   stamp curl "$key"
 fi
 
+# Box2D for 2D physics, built by tools/physics-libs.sh (static). The scripts name the version, so a change to them builds it again.
+key="$setting physics=$(sum_files "$root/tools/fetch-physics.sh" "$root/tools/physics-libs.sh")"
+if ! fresh "$lib/libbox2d.a" box2d "$key"; then
+  ANDROID_HOME="$ANDROID_HOME" NDK_VERSION="$NDK_VERSION" API_LEVEL="$API_LEVEL" "$root/tools/physics-libs.sh" android
+  cp "$root/.cache/physics-android/lib/libbox2d.a" "$lib/"
+  stamp box2d "$key"
+fi
+
 # The C++ runtime the libraries above were built against, linked statically into libmain.so.
 cp "$ndk/toolchains/llvm/prebuilt/$host/sysroot/usr/lib/aarch64-linux-android/libc++_static.a" "$lib/"
 cp "$ndk/toolchains/llvm/prebuilt/$host/sysroot/usr/lib/aarch64-linux-android/libc++abi.a" "$lib/"

@@ -25,6 +25,7 @@ commands:
   ui-libs [regenerate]  build the user interface libraries into .cache/ui (regenerate: make the bindings again, needs python3)
   sound-libs    build the sound file decoders into .cache/sound (a C compiler)
   net-libs      build libcurl and its TLS into .cache/net (cmake and a C compiler)
+  physics-libs  build Box2D into .cache/physics (cmake and a C compiler)
   docs          build the documentation site into output/site/public (needs Hugo, HUGO_VERSION)
   docs serve    preview it at http://localhost:1313/rocinante/, rewriting what changes in site/ as it is saved
 `
@@ -51,6 +52,8 @@ main :: proc() {
 		ok = sound_libs()
 	case "net-libs":
 		ok = net_libs()
+	case "physics-libs":
+		ok = physics_libs()
 	case "docs":
 		ok = docs_serve() if len(args) > 1 && args[1] == "serve" else docs()
 	case:
@@ -105,7 +108,7 @@ check_odin :: proc() -> bool {
 
 // Packages whose @(test) procedures `ci` runs, from the repository root (some
 // tests make fixtures under output/). Add each package here as it gets tests.
-TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/install", "roci/audio", "roci/builds", "roci/codegen", "roci/folder", "roci/gfx", "roci/interp", "roci/movies", "roci/lang", "roci/maths", "roci/osc", "roci/platform", "roci/registry", "roci/rt", "roci/toml", "roci/data", "roci/ui", "cli", "spikes/codegen", "tools/term", "tools/site", "tools/soundfont", "tools/imgui", "vendor/sancho/deflate", "vendor/sancho/png_writer", "vendor/sound"}
+TEST_PACKAGES :: []string{"build", "roci/geom", "roci/collide", "roci", "roci/install", "roci/audio", "roci/builds", "roci/codegen", "roci/folder", "roci/gfx", "roci/interp", "roci/movies", "roci/lang", "roci/maths", "roci/osc", "roci/platform", "roci/registry", "roci/rt", "roci/toml", "roci/data", "roci/ui", "cli", "spikes/codegen", "tools/term", "tools/site", "tools/soundfont", "tools/imgui", "vendor/sancho/deflate", "vendor/sancho/png_writer", "vendor/sound", "vendor/box2d"}
 
 // Where `odin test` writes each package's test program. Left to itself it writes
 // build.exe to the repository root, the very file `odin run build` is running
@@ -130,6 +133,7 @@ ci :: proc(fast: bool) -> bool {
 	ok = check_accesskit() && ok
 	ok = check_sound() && ok // before the packages: every program with sound links the decoders
 	ok = check_net() && ok // and every program that can fetch links libcurl
+	ok = check_physics() && ok // and every one with 2D physics links Box2D
 	ok = check_packages() && ok
 	if !fast {
 		ok = check_optimised_tests() && ok

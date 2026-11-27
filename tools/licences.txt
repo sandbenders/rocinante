@@ -53,4 +53,7 @@ vendor/accesskit MIT
 # MPL-2.0, which has no permissive alternative; the source notice goes with an iOS app, which is the only build that
 # embeds it), for the iPhone, which has no file of its own.
 vendor/curl     curl
+# Box2D 3.2.0 (Erin Catto, MIT by its LICENSE, read 2026-11-27) and the Odin bindings to it in vendor/box2d (our own, from its
+# headers). It is built by tools/physics-libs.sh from the release's archive, whose checksum tools/fetch-physics.sh checks.
+vendor/box2d    MIT
 # bundletool 1.18.3 (Google, Apache-2.0 by its LICENSE) and the aapt2 Google publishes for bundles (Apache-2.0 by the NOTICE in its jar, checked 2026-11-23): tools that `roci package android --format aab` downloads into .cache/android/tools (tools/fetch-bundle-tools.sh, checksums pinned); nothing of them is linked into roci or shipped in a packaged sketch.
