@@ -1,0 +1,8 @@
+balls: a list of records with pos, radius, vel, bounce, friction and tint
+pegs: a list of records with pos and radius
+dividers: a list of records with pos and size
+COLORS: a list of colors
+peg: a record with pos and radius
+divider: a record with pos and size
+walls: a list of records with from and to
+paddle: a record with pos and size

@@ -1,0 +1,55 @@
+// Pachinko: balls fall through a field of pegs and fall out through the bins below. The balls
+// are shapes that `simulate` gives to the physics, which then moves them every frame
+// by gravity and by what they meet: each ball's own `pos` and `vel` are the ones it
+// moves, so the sketch only draws them. The pegs, the dividers and the walls are shapes
+// `fixed` in place, and the paddle follows the mouse: a `fixed` shape the sketch moves
+// pushes what is in its way. A ball is dropped now and then; a click drops one under
+// the mouse, and a ball that has fallen out of the bottom is let go of (`no simulate`) and leaves the list.
+window size 480 640 title "pachinko"
+
+balls = []
+pegs = []
+dividers = []
+COLORS = [ tomato orange gold yellowgreen mediumturquoise orchid ]
+
+// Rows of pegs, every other row shifted by half a gap.
+for row from 0 to 8 [
+  for col from 0 to 8 [
+    peg = { pos: { 40 + col * 50 + (row % 2) * 25, 150 + row * 44 }, radius: 6 }
+    add peg to pegs
+    fixed peg
+  ]
+]
+for n from 0 to 6 [
+  divider = { pos: { 40 + n * 80, 540 }, size: { 6, 100 } }
+  add divider to dividers
+  fixed divider
+]
+walls = [
+  { from: { 0, 0 }, to: { 0, 640 } }
+  { from: { 480, 0 }, to: { 480, 640 } }
+]
+for each w in walls [ fixed w ]
+paddle = { pos: { 200, 90 }, size: { 80, 10 } }
+fixed paddle
+
+learn drop x [
+  ball = { pos: { x, 20 }, radius: 9, vel: { random from -20 to 20, 0 }, bounce: 0.5, friction: 0.2, tint: pick COLORS }
+  add ball to balls
+  // the list keeps its own copy of what is added in a frame, and that is the one to simulate
+  simulate (item (count balls) of balls)
+]
+
+on mouse down [ drop mouse.x ]
+
+draw [
+  background 24
+  paddle.pos = { clamp (mouse.x - 40) 0 400, 90 }
+  if frame % 45 is 0 [ drop (random from 40 to 440) ]
+  for each b in (keep balls [ it.pos.y > 700 ]) [ no simulate b ]
+  balls = skip balls [ it.pos.y > 700 ]
+  for each p in pegs [ circle at p.pos radius p.radius fill 150 ]
+  for each bar in dividers [ rect at bar.pos size bar.size fill 100 ]
+  rect at paddle.pos size paddle.size round 4 fill gold
+  for each b in balls [ circle at b.pos radius b.radius fill b.tint ]
+]

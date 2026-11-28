@@ -3,6 +3,7 @@ package interp
 
 import "../"
 import "../lang"
+import "../platform"
 import "core:testing"
 
 place :: proc(p: ^Interp, name, field: string) -> [2]f64 {
@@ -163,4 +164,40 @@ test_running_a_sketch_again_lets_go_of_its_bodies_and_its_gravity :: proc(t: ^te
 	testing.expect_value(t, roci.physics_count(), 0)
 	testing.expect(t, !roci.has_physics() || roci.physics_gravity_now() == roci.PHYSICS_GRAVITY)
 	_ = lang.Message_Id.Body_Refused
+}
+
+// The pachinko example drops a ball now and then and the physics keeps every one inside the walls; a click drops one more under the mouse;
+// a ball that has fallen past the bottom is let go of and leaves the list, so the list and the physics hold the same number.
+@(test)
+test_the_pachinko_example_drops_balls_that_stay_between_the_walls_and_are_let_go_at_the_bottom :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("pachinko"), 0)
+	defer finish(p)
+	for _ in 0 ..< 10 {
+		roci.step({})
+	}
+	balls := as_list(global_named(p, "balls"))
+	testing.expect_value(t, len(balls.items), 1) // the first frame drops one (frame 0 is a multiple of 45)
+	before := len(balls.items)
+	id := platform.Window_Id(first_window())
+	roci.step({platform.Mouse_Moved{window = id, x = 240, y = 300}, click_event(first_window(), 240, 300)})
+	balls = as_list(global_named(p, "balls"))
+	testing.expect_value(t, len(balls.items), before + 1)
+	most := 0
+	for _ in 0 ..< 1500 {
+		roci.step({})
+		balls = as_list(global_named(p, "balls"))
+		most = max(most, len(balls.items))
+		for item in balls.items {
+			pos := as_pair(as_record(item).fields[0])
+			if pos.x < 0 || pos.x > 480 {
+				testing.expectf(t, false, "a ball left through a wall at %v", pos)
+				return
+			}
+		}
+	}
+	testing.expect(t, most > 3, "several balls are falling at once")
+	testing.expect(t, len(balls.items) < 40, "balls that fell out of the bottom were let go")
+	// the ones that fell out of the bottom are gone from both: the physics holds the pegs, dividers, walls, paddle and the balls left
+	testing.expect_value(t, roci.physics_count(), 81 + 7 + 2 + 1 + len(balls.items))
+	testing.expect_value(t, len(p.errors), 0)
 }
