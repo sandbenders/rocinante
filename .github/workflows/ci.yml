@@ -54,6 +54,24 @@ jobs:
           key: spirv-cross-ubuntu-24.04-${{ hashFiles('tools/ci/install-spirv-cross.sh') }}
       - name: Build SPIRV-Cross
         run: tools/ci/install-spirv-cross.sh "$HOME/spirv-cross"
+      # The libraries the build script makes first: Dear ImGui, accesskit-c, the sound decoders and libcurl. Only the libraries are kept,
+      # with the stamp beside each (the build script's `sources_stamp`), which says a restored library is still the one the sources make; the
+      # key holds the hash of the sources as well, so a change to them restores nothing and the libraries are built again and kept.
+      - name: Restore the libraries
+        uses: actions/cache@v6
+        with:
+          path: |
+            .cache/ui/libroci_ui.a
+            .cache/ui/.sources-stamp
+            .cache/ui/accesskit
+            .cache/ui/accesskit-c-*.zip
+            .cache/net/lib
+            .cache/net/include
+            .cache/net/share
+            .cache/net/.sources-stamp
+            .cache/sound/libroci_sound.a
+            .cache/sound/.sources-stamp
+          key: libs-ubuntu-24.04-${{ hashFiles('ODIN_VERSION', 'tools/ui-libs.sh', 'tools/net-libs.sh', 'tools/fetch-net.sh', 'tools/sound-libs.sh', 'tools/fetch-opus.sh', 'vendor/imgui/c/**', 'vendor/sound/c/**') }}
       - name: Run the pipeline
         run: |
           export PATH="$HOME/odin:$PATH"
@@ -68,9 +86,6 @@ jobs:
           export ROCI_REQUIRE_LAVAPIPE=1 # and so must the golden images
           export ROCI_REQUIRE_ACCESSKIT=1 # and the screen-reader library has to be had
           echo "SDL3 $(pkg-config --modversion sdl3)"
-          sh tools/ui-libs.sh
-          # accesskit-c, the screen-reader bridge's library: its release archive, checked by sha256
-          sh tools/ui-libs.sh accesskit
-          # the sound file decoders, from the vendor folder of the job's Odin
-          sh tools/sound-libs.sh
+          # the first steps of `ci` make Dear ImGui, accesskit-c (its release archive, checked by sha256), the sound decoders and
+          # libcurl, and skip what the cache restored and the stamps say is current
           odin run build -- ci

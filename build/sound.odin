@@ -6,11 +6,17 @@ package build
 
 import "core:fmt"
 import "core:os"
-import "core:time"
 
 import "../tools/term"
 
 SOUND_LIBRARY :: ".cache/sound/libroci_sound.a" when ODIN_OS != .Windows else ".cache/sound/roci_sound.lib"
+SOUND_STAMP :: ".cache/sound/" + STAMP_FILE
+
+// The stamp of what the decoders are made from: their C source, the scripts, and the release of Odin whose vendor folder has miniaudio's and
+// stb_vorbis's source.
+sound_sources_stamp :: proc() -> string {
+	return sources_stamp({"tools/sound-libs.sh", "tools/fetch-opus.sh", "ODIN_VERSION"}, {"vendor/sound/c"})
+}
 
 // Builds the library (`sound-libs`).
 sound_libs :: proc() -> bool {
@@ -22,31 +28,16 @@ sound_libs :: proc() -> bool {
 		fmt.eprintfln("%s", term.err("sound-libs failed", .Bold_Red))
 		return false
 	}
+	stamp_write(SOUND_STAMP, sound_sources_stamp())
 	return true
 }
 
 // Every program that plays a sound links the decoders, and `roci` is one, so the library is
-// built before the packages are checked when it is missing or older than its source (the pipelines
-// and a clone that has built it since the source last changed skip this).
+// built before the packages are checked when it is missing or what it is made from has changed (the
+// pipelines' cache and a clone that has built it for the sources as they are now skip this).
 check_sound :: proc() -> bool {
-	if os.exists(SOUND_LIBRARY) {
-		library, library_err := os.stat(SOUND_LIBRARY, context.temp_allocator)
-		// every file of the C source folder (the source, the headers it includes and the list of libopus's
-		// files): the library is stale when any of them is newer
-		fresh := library_err == nil
-		sources, read_err := os.read_all_directory_by_path("vendor/sound/c", context.temp_allocator)
-		fresh &&= read_err == nil
-		for entry in sources {
-			if entry.type == .Directory {
-				continue
-			}
-			if time.diff(entry.modification_time, library.modification_time) < 0 {
-				fresh = false
-			}
-		}
-		if fresh {
-			return true
-		}
+	if os.exists(SOUND_LIBRARY) && stamp_matches(SOUND_STAMP, sound_sources_stamp()) {
+		return true
 	}
 	fmt.printfln("%s", term.out("== building the sound decoders (tools/sound-libs.sh)", .Bold_Cyan))
 	return sound_libs()

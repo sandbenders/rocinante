@@ -12,6 +12,12 @@ import "../tools/term"
 UI_LIBRARY :: ".cache/ui/libroci_ui.a" when ODIN_OS != .Windows else ".cache/ui/roci_ui.lib"
 ACCESSKIT_LIBRARY :: ".cache/ui/accesskit/libaccesskit.a" when ODIN_OS != .Windows else ".cache/ui/accesskit/accesskit.lib"
 ACCESSKIT_HEADER :: ".cache/ui/accesskit/accesskit.h"
+UI_STAMP :: ".cache/ui/" + STAMP_FILE
+
+// The stamp of what libroci_ui is made from: its script and the C wrappers committed beside the bindings.
+ui_sources_stamp :: proc() -> string {
+	return sources_stamp({"tools/ui-libs.sh"}, {"vendor/imgui/c"})
+}
 
 // Builds the libraries (`ui-libs`) or builds them and writes the bindings again
 // (`ui-libs regenerate`).
@@ -25,15 +31,17 @@ ui_libs :: proc(regenerate: bool) -> bool {
 		fmt.eprintfln("%s", term.err("ui-libs failed", .Bold_Red))
 		return false
 	}
+	stamp_write(UI_STAMP, ui_sources_stamp())
 	return true
 }
 
 // Every program that opens a window links Dear ImGui, so the library has to be built before
-// anything else is: `ci` builds it when it is missing (the pipelines build it as a step of their
-// own first, which makes this a no-op there). The bindings and their generator are
+// anything else is: `ci` builds it when it is missing or when what it is made from has changed (a
+// library the pipelines restored from their cache, or a clone built earlier, is kept while the stamp
+// beside it is the stamp of the sources, `sources_stamp`). The bindings and their generator are
 // type-checked, and the tests that call Dear ImGui run in `check_packages`.
 check_ui :: proc() -> bool {
-	if !os.exists(UI_LIBRARY) {
+	if !os.exists(UI_LIBRARY) || !stamp_matches(UI_STAMP, ui_sources_stamp()) {
 		fmt.printfln("%s", term.out("== building the user interface libraries (tools/ui-libs.sh)", .Bold_Cyan))
 		if !ui_libs(false) {
 			return false

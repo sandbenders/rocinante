@@ -11,13 +11,34 @@
 default:
   image: rocinante-ci:latest
   tags: [orion]
-  # accesskit-c's release archive is 67 MB (every system's library) and GitHub's download host is sometimes slow, so
-  # the archive is kept from one job to the next, also when a later step of the job failed, until tools/ui-libs.sh changes.
+  # The libraries the build script makes first (Dear ImGui took 51 s to compile on ORION in every job) are kept from one job to the
+  # next, also when a later step of the job failed: only the libraries and the stamp beside each (the build script's `sources_stamp`),
+  # not the sources they were built from. The stamp is what says a restored library is still the one the sources make, so a cache
+  # that is out of date is only rebuilt and kept again. accesskit-c's release archive is 67 MB (every system's library) and GitHub's
+  # download host is sometimes slow, so it is kept too.
   cache:
-    key:
-      files: [tools/ui-libs.sh]
-    paths: [.cache/ui/accesskit-c-*.zip]
-    when: always
+    - key:
+        files: [tools/ui-libs.sh]
+      paths:
+        - .cache/ui/libroci_ui.a
+        - .cache/ui/.sources-stamp
+        - .cache/ui/accesskit
+        - .cache/ui/accesskit-c-*.zip
+      when: always
+    - key:
+        files: [tools/net-libs.sh, tools/fetch-net.sh]
+      paths:
+        - .cache/net/lib
+        - .cache/net/include
+        - .cache/net/share
+        - .cache/net/.sources-stamp
+      when: always
+    - key:
+        files: [tools/sound-libs.sh, ODIN_VERSION]
+      paths:
+        - .cache/sound/libroci_sound.a
+        - .cache/sound/.sources-stamp
+      when: always
 
 variables:
   ODIN_DIR: $CI_PROJECT_DIR/.cache/odin
@@ -35,12 +56,8 @@ variables:
       tools/ci/install-odin.sh "$ODIN_DIR"
       export PATH="$ODIN_DIR:$PATH"
     fi
-  # Dear ImGui, built once for the job (the user interface tests link it).
-  - sh tools/ui-libs.sh
-  # accesskit-c, the screen-reader bridge's library: its release archive, checked by sha256.
-  - sh tools/ui-libs.sh accesskit
-  # The sound file decoders, from the vendor folder of the job's Odin.
-  - sh tools/sound-libs.sh
+  # Dear ImGui, accesskit-c, the sound decoders and libcurl are made by the first steps of `ci`, which skips what the cache above restored
+  # and the stamps say is current.
 
 # Fast check on merge requests only.
 fast:
