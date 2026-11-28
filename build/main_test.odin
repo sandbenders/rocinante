@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 package build
 
+import "core:slice"
 import "core:testing"
 
 @(test)
@@ -80,6 +81,15 @@ test_optimised_test_binaries_differ_from_every_default_one :: proc(t: ^testing.T
 @(test)
 test_the_optimised_tests_are_built_for_speed :: proc(t: ^testing.T) {
 	testing.expect_value(t, OPTIMISED_TEST_FLAG, "-o:speed")
+}
+
+@(test)
+test_the_optimised_tests_use_a_unit_for_each_package_and_skip_only_packages_of_the_pipeline :: proc(t: ^testing.T) {
+	testing.expect(t, slice.contains(OPTIMISED_TEST_FLAGS, "-o:speed"))
+	testing.expect(t, slice.contains(OPTIMISED_TEST_FLAGS, "-use-separate-modules"))
+	for package_dir in NOT_REPEATED_OPTIMISED {
+		testing.expectf(t, slice.contains(TEST_PACKAGES, package_dir), "%s is skipped but is not a package that is tested", package_dir)
+	}
 }
 
 @(test)

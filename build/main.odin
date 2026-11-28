@@ -10,6 +10,7 @@ package build
 
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:time"
 
@@ -148,9 +149,18 @@ ci :: proc(fast: bool) -> bool {
 // The unit tests again, built optimised (-o:speed, as the benchmark is measured):
 // a sketch must behave the same however it was built, so the
 // optimiser must not change a result, which holds only while nothing uses
-// fast-math. The full `ci` only, because building every package optimised takes
-// about a minute.
+// fast-math. The full `ci` only, because building every package optimised is slow.
 OPTIMISED_TEST_FLAG :: "-o:speed"
+
+// Odin builds an optimised program as one unit by default, which LLVM works through on one thread: `roci/interp`'s tests took 29 s to
+// build that way and 3 s with a unit for each package, about ten times faster on a computer with cores to spare (the pipelines'
+// runner has four, and the whole optimised pass was 43 minutes of its hour). The code is still optimised; only calls from one package
+// into another are no longer inlined, which the compiled sketches of the golden images (built as one unit) still cover.
+OPTIMISED_TEST_FLAGS :: []string{OPTIMISED_TEST_FLAG, "-use-separate-modules"}
+
+// Packages whose tests are not repeated optimised: they run `odin build` for each sketch of tests/compile and run the programs, which are
+// built the same however the test was, so the repeat would build and run every one of them again (10 minutes on the runner) and test nothing.
+NOT_REPEATED_OPTIMISED :: []string{"roci/builds"}
 
 // Odin's test runner only fails a test for a leak or a bad free when told to: without this
 // flag it prints the warning and still ends with "All tests were successful".
@@ -159,8 +169,15 @@ FAIL_ON_BAD_MEMORY_FLAG :: "-define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true"
 check_optimised_tests :: proc() -> bool {
 	ok := true
 	for package_dir in TEST_PACKAGES {
+		if slice.contains(NOT_REPEATED_OPTIMISED, package_dir) {
+			continue
+		}
 		out := fmt.tprintf("-out:%s", test_binary(package_dir, "_speed"))
-		ok = step(fmt.tprintf("unit tests, optimised: %s", package_dir), {"odin", "test", package_dir, OPTIMISED_TEST_FLAG, FAIL_ON_BAD_MEMORY_FLAG, "-vet", "-strict-style", out}) && ok
+		command := make([dynamic]string, context.temp_allocator)
+		append(&command, "odin", "test", package_dir)
+		append(&command, ..OPTIMISED_TEST_FLAGS)
+		append(&command, FAIL_ON_BAD_MEMORY_FLAG, "-vet", "-strict-style", out)
+		ok = step(fmt.tprintf("unit tests, optimised: %s", package_dir), command[:]) && ok
 	}
 	return ok
 }
