@@ -366,7 +366,7 @@ Taken in this order (decided 2026-11-16):
 2. Files and data formats, dialogs, network.
 3. Webcam, video playback and recording (§4.11).
 4. Serial and Firmata, sensors.
-5. 2D physics on Box2D v3 worlds (§5.13). Built 2026-11-28 (`simulate`, `fixed`, `no simulate`, `gravity`, `kick`, body fields, interpreter, compiler and C, `examples/pachinko`); `link` (hinge, rod, spring, weld, wheel, slider; limits and motors), `examples/car`, the `hit` field (how hard a shape hit something, for sounds and sparks) and outlines (`points`, concave too, `examples/tumble`) since 2026-11-28; untried: Windows, a phone.
+5. 2D physics on Box2D v3 worlds (§5.13). Built 2026-11-28 (`simulate`, `fixed`, `no simulate`, `gravity`, `kick`, body fields, interpreter, compiler and C, `examples/pachinko`); `link` (hinge, rod, spring, weld, wheel, slider; limits and motors), `examples/car`, the `hit` field (how hard a shape hit something, for sounds and sparks) and outlines (`points`, concave too, `examples/tumble`) since 2026-11-28; checked on this Mac and, with `examples/car` compiled and put on it, the Pixel 9 (2026-11-28: it rests on its wheel links); untried: Windows, an iPhone.
 6. The LiteRT spike (open question 1).
 7. Machine learning (§4.10): LiteRT bindings, `predict`, the built-in tasks and their chosen models, `roci add` conversion, `roci doctor ml`.
 - **Exit**: an installation-style sketch (camera in, OSC out, UI control window, runs for 24 hours without leaks); a webcam sketch driven by `hands` at full frame rate on all seven platforms; a game-style sketch played with two different gamepads, remapped by a player through `controls`.
