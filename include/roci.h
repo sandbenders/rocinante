@@ -1586,6 +1586,9 @@ roci_vec2 roci_body_vel(roci_body_id body);
 /* How fast a body turns, in degrees a second, clockwise. */
 double roci_body_spin(roci_body_id body);
 
+/* How hard the hardest thing a body hit in the last step was, in pixels a second that the two came together at, 0 when it hit nothing: what to play a sound or draw a spark by. */
+double roci_body_hit(roci_body_id body);
+
 /* 1 while a body is in the physics, 0 for one taken out or never made. */
 int roci_body_exists(roci_body_id body);
 

@@ -17,6 +17,7 @@ Bound :: struct {
 	pos, vel:                      ^[2]f64,
 	angle, spin:                   ^f64,
 	density, friction, bounce:     ^f64,
+	hit:                           ^f64,
 }
 
 @(thread_local) @(private) bound: [dynamic]Bound
@@ -44,6 +45,7 @@ read_fields :: proc(b: ^Bound) -> (fields: roci.Physics_Fields, has: roci.Physic
 	if b.density != nil {fields.density, has = b.density^, has + {.Density}}
 	if b.friction != nil {fields.friction, has = b.friction^, has + {.Friction}}
 	if b.bounce != nil  {fields.bounce, has = b.bounce^, has + {.Bounce}}
+	if b.hit != nil     {fields.hit, has = b.hit^, has + {.Hit}}
 	return
 }
 
@@ -76,6 +78,7 @@ simulate :: proc(record: ^$T, shape: roci.Physics_Shape, fixed := false) {
 		density  = field_pointer(record, "density", f64),
 		friction = field_pointer(record, "friction", f64),
 		bounce   = field_pointer(record, "bounce", f64),
+		hit      = field_pointer(record, "hit", f64),
 	}
 	flag :: proc(record: ^$T, name: string) -> bool {
 		if p := field_pointer(record, name, bool); p != nil {
@@ -196,6 +199,7 @@ sync_out :: proc() {
 		if .Angle in changed {b.angle^ = out.angle}
 		if .Vel in changed   {b.vel^ = out.vel}
 		if .Spin in changed  {b.spin^ = out.spin}
+		if .Hit in changed   {b.hit^ = out.hit}
 	}
 }
 

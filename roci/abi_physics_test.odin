@@ -25,6 +25,7 @@ test_the_c_functions_make_bodies_that_fall_bounce_and_are_read_back :: proc(t: ^
 	testing.expect(t, abi_body_angle(plank) >= 0 && abi_body_angle(plank) < 360)
 	_ = abi_body_spin(plank)
 	testing.expect_value(t, abi_body_pos(floor), Abi_Vec2{0, 300})
+	testing.expect_value(t, abi_body_hit(ball), 0) // at rest
 }
 
 @(test)

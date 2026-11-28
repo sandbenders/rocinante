@@ -366,7 +366,7 @@ Taken in this order (decided 2026-11-16):
 2. Files and data formats, dialogs, network.
 3. Webcam, video playback and recording (§4.11).
 4. Serial and Firmata, sensors.
-5. 2D physics on Box2D v3 worlds (§5.13). First slice built 2026-11-28 (`simulate`, `fixed`, `no simulate`, `gravity`, `kick`, body fields, interpreter, compiler and C, `examples/pachinko`); `link` (hinge, rod, spring, weld, wheel, slider; limits and motors), `examples/car` since 2026-11-28; sensors and polygons next.
+5. 2D physics on Box2D v3 worlds (§5.13). First slice built 2026-11-28 (`simulate`, `fixed`, `no simulate`, `gravity`, `kick`, body fields, interpreter, compiler and C, `examples/pachinko`); `link` (hinge, rod, spring, weld, wheel, slider; limits and motors), `examples/car`, and the `hit` field (how hard a shape hit something, for sounds and sparks) since 2026-11-28; polygons next.
 6. The LiteRT spike (open question 1).
 7. Machine learning (§4.10): LiteRT bindings, `predict`, the built-in tasks and their chosen models, `roci add` conversion, `roci doctor ml`.
 - **Exit**: an installation-style sketch (camera in, OSC out, UI control window, runs for 24 hours without leaks); a webcam sketch driven by `hands` at full frame rate on all seven platforms; a game-style sketch played with two different gamepads, remapped by a player through `controls`.

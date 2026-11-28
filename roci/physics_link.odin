@@ -14,6 +14,7 @@ Physics_Fields :: struct {
 	pos, vel:                  [2]f64,
 	angle, spin:               f64,
 	density, friction, bounce: f64,
+	hit:                       f64, // written by the physics only: the hardest impact of the last step
 }
 
 Physics_Field :: enum u8 {
@@ -24,6 +25,7 @@ Physics_Field :: enum u8 {
 	Density,
 	Friction,
 	Bounce,
+	Hit,
 }
 
 Physics_Has :: bit_set[Physics_Field]
@@ -125,6 +127,9 @@ physics_give_back :: proc(l: ^Physics_Link, has: Physics_Has) -> (out: Physics_F
 	}
 	if .Spin in has && moved_by(s.spin, l.last.spin) {
 		out.spin, changed = s.spin, changed + {.Spin}
+	}
+	if .Hit in has && moved_by(s.hit, l.last.hit) {
+		out.hit, changed = s.hit, changed + {.Hit}
 	}
 	l.last = out
 	return

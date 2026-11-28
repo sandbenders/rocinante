@@ -109,7 +109,7 @@ physics_shape_ok :: proc(c: ^Checker, verb: ^registry.Verb, span: Span, type: Ty
 			name: string,
 			kind: Type_Kind,
 			what: string,
-		}{{"vel", .Vector, "two numbers, as `vel: { 0, 0 }`"}, {"angle", .Number, "a number of degrees"}, {"spin", .Number, "a number of degrees a second"}, {"bounce", .Number, "a number from 0 up"}, {"friction", .Number, "a number from 0 up"}, {"density", .Number, "a number from 0 up"}, {"sensor", .Boolean, "true or false"}, {"bullet", .Boolean, "true or false"}}
+		}{{"vel", .Vector, "two numbers, as `vel: { 0, 0 }`"}, {"angle", .Number, "a number of degrees"}, {"spin", .Number, "a number of degrees a second"}, {"hit", .Number, "a number: the physics writes how hard the last thing it hit was, in pixels a second"}, {"bounce", .Number, "a number from 0 up"}, {"friction", .Number, "a number from 0 up"}, {"density", .Number, "a number from 0 up"}, {"sensor", .Boolean, "true or false"}, {"bullet", .Boolean, "true or false"}}
 		for need in BODY {
 			field, has := shape_field(c.types, root, need.name)
 			if !has {

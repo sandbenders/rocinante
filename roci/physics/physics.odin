@@ -59,6 +59,7 @@ Body_State :: struct {
 	vel:   [2]f64,
 	spin:  f64,
 	awake: bool,
+	hit:   f64, // the hardest impact in the last step, in pixels a second: how fast it and what it met came together; 0 for none
 }
 
 Body :: distinct int // 1 and up; 0 is no body
@@ -68,6 +69,7 @@ Slot :: struct {
 	kind: Shape_Kind,
 	size: [2]f64, // a box's, for the corner and the middle
 	home: [2]f64, // a wall's middle, which is where a joint holds it by default
+	hit:  f64,    // the hardest impact of the last step
 	live: bool,
 }
 
@@ -76,6 +78,7 @@ World :: struct {
 	gravity: [2]f64,
 	slots:   [dynamic]Slot,
 	joints:  [dynamic]Joint_Slot,
+	by_id:   [dynamic]int, // Box2D's number of a body (`index1`) to its place in `slots` plus 1, so an event finds its body at once
 	made:    bool,
 }
 
@@ -89,6 +92,7 @@ world_lock: sync.Mutex
 make_world :: proc() -> (w: World, ok: bool) {
 	def := box2d.DefaultWorldDef()
 	def.gravity = metres(DEFAULT_GRAVITY)
+	def.hit_event_threshold = 0.2 // metres a second: gentler touches than a roll along the floor are not impacts
 	sync.mutex_lock(&world_lock)
 	id := box2d.CreateWorld(&def)
 	sync.mutex_unlock(&world_lock)
@@ -106,6 +110,7 @@ destroy_world :: proc(w: ^World) {
 	}
 	delete(w.slots)
 	delete(w.joints)
+	delete(w.by_id)
 	w^ = {}
 }
 
@@ -206,6 +211,7 @@ create :: proc(w: ^World, desc: Body_Desc) -> Body {
 	shape_def.is_sensor = desc.sensor
 	shape_def.enable_sensor_events = true
 	shape_def.enable_contact_events = true
+	shape_def.enable_hit_events = true
 	made: box2d.Shape_Id
 	switch desc.kind {
 	case .Circle:
@@ -227,11 +233,33 @@ create :: proc(w: ^World, desc: Body_Desc) -> Body {
 	for &s, i in w.slots {
 		if !s.live {
 			s = slot
+			remember_id(w, body, i + 1)
 			return Body(i + 1)
 		}
 	}
 	append(&w.slots, slot)
+	remember_id(w, body, len(w.slots))
 	return Body(len(w.slots))
+}
+
+@(private)
+remember_id :: proc(w: ^World, id: box2d.Body_Id, place: int) {
+	for len(w.by_id) <= int(id.index1) {
+		append(&w.by_id, 0)
+	}
+	w.by_id[id.index1] = place
+}
+
+@(private)
+slot_by_id :: proc(w: ^World, id: box2d.Body_Id) -> ^Slot {
+	if int(id.index1) >= len(w.by_id) || w.by_id[id.index1] == 0 {
+		return nil
+	}
+	s := &w.slots[w.by_id[id.index1] - 1]
+	if !s.live || s.id != id {
+		return nil
+	}
+	return s
 }
 
 @(private)
@@ -252,6 +280,7 @@ destroy :: proc(w: ^World, b: Body) {
 	if s := slot_of(w, b); s != nil {
 		box2d.DestroyBody(s.id) // Box2D takes the joints on the body with it
 		s.live = false
+		w.by_id[s.id.index1] = 0
 		for &j in w.joints {
 			if j.live && (j.desc.a == b || j.desc.b == b) {
 				j.live = false
@@ -300,6 +329,7 @@ state :: proc(w: ^World, b: Body) -> Body_State {
 		vel = {tidy(moving.x), tidy(moving.y)},
 		spin = tidy(f64(box2d.Body_GetAngularVelocity(s.id)) * 180 / math.PI),
 		awake = box2d.Body_IsAwake(s.id),
+		hit = tidy(s.hit),
 	}
 }
 
@@ -382,5 +412,18 @@ step :: proc(w: ^World, seconds: f64) {
 	if !w.made || !(seconds > 0) || !finite(seconds) {
 		return
 	}
+	for &s in w.slots {
+		s.hit = 0
+	}
 	box2d.World_Step(w.id, f32(min(seconds, LONGEST_STEP)), SUB_STEPS)
+	events := box2d.World_GetContactEvents(w.id)
+	for i in 0 ..< int(events.hit_count) {
+		event := events.hit_events[i]
+		speed := f64(event.approach_speed) * PIXELS_PER_METRE
+		for shape in ([2]box2d.Shape_Id{event.shape_id_a, event.shape_id_b}) {
+			if s := slot_by_id(w, box2d.Shape_GetBody(shape)); s != nil {
+				s.hit = max(s.hit, speed)
+			}
+		}
+	}
 }

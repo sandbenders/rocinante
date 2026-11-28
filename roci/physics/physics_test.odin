@@ -512,3 +512,25 @@ test_naming_the_kind_again_keeps_where_the_joint_is_zero_and_another_kind_replac
 	run(&w, 60)
 	testing.expect(t, abs(state(&w, arm).angle - 45) < 3, "welded where it was")
 }
+
+@(test)
+test_a_body_that_lands_reports_how_hard_and_then_nothing :: proc(t: ^testing.T) {
+	w := joint_world()
+	defer destroy_world(&w)
+	set_gravity(&w, {0, 400})
+	ball := create(&w, Body_Desc{kind = .Circle, pos = {100, 50}, radius = 10, density = -1, friction = -1, bounce = 0})
+	floor := create(&w, Body_Desc{kind = .Box, fixed = true, pos = {0, 300}, size = {400, 20}, density = -1, friction = -1, bounce = -1})
+	strongest := 0.0
+	hit_floor := 0.0
+	for _ in 0 ..< 120 {
+		step(&w, 1.0 / 60)
+		strongest = max(strongest, state(&w, ball).hit)
+		hit_floor = max(hit_floor, state(&w, floor).hit)
+	}
+	// it fell about 240 pixels from rest: sqrt(2 * 400 * 240) is about 438 pixels a second
+	testing.expect(t, strongest > 380 && strongest < 480, "it landed at about 440 pixels a second")
+	testing.expect(t, abs(hit_floor - strongest) < 1, "the floor felt the same impact")
+	step(&w, 1.0 / 60)
+	testing.expect_value(t, state(&w, ball).hit, 0) // at rest on the floor, nothing new is hit
+	testing.expect_value(t, state(&w, 77).hit, 0) // no such body
+}

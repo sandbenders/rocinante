@@ -167,7 +167,7 @@ body_kick :: proc(it: ^Interp, call: lang.IR_Call) {
 // Which of the physics fields a record has.
 @(private = "file")
 fields_of :: proc(it: ^Interp, r: ^Record) -> (fields: roci.Physics_Fields, has: roci.Physics_Has) {
-	for entry in ([?]struct{name: string, field: roci.Physics_Field}{{"pos", .Pos}, {"angle", .Angle}, {"vel", .Vel}, {"spin", .Spin}, {"density", .Density}, {"friction", .Friction}, {"bounce", .Bounce}}) {
+	for entry in ([?]struct{name: string, field: roci.Physics_Field}{{"pos", .Pos}, {"angle", .Angle}, {"vel", .Vel}, {"spin", .Spin}, {"density", .Density}, {"friction", .Friction}, {"bounce", .Bounce}, {"hit", .Hit}}) {
 		field := entry.field
 		v, found := field_of(it, r, entry.name)
 		if !found {
@@ -182,6 +182,7 @@ fields_of :: proc(it: ^Interp, r: ^Record) -> (fields: roci.Physics_Fields, has:
 		case .Density:  fields.density = as_number(v)
 		case .Friction: fields.friction = as_number(v)
 		case .Bounce:   fields.bounce = as_number(v)
+		case .Hit:      fields.hit = as_number(v)
 		}
 	}
 	return
@@ -229,6 +230,9 @@ sync_bodies_out :: proc() {
 		}
 		if .Spin in changed {
 			put_field(it, l.record, "spin", out.spin)
+		}
+		if .Hit in changed {
+			put_field(it, l.record, "hit", out.hit)
 		}
 		l.record.stamp = next_write(it)
 	}

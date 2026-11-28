@@ -81,6 +81,12 @@ abi_body_spin :: proc "c" (body: c.int) -> f64 {
 	return physics_state(Physics_Body(body)).spin
 }
 
+@(export, link_name = "roci_body_hit")
+abi_body_hit :: proc "c" (body: c.int) -> f64 {
+	context = abi_context()
+	return physics_state(Physics_Body(body)).hit
+}
+
 @(export, link_name = "roci_body_exists")
 abi_body_exists :: proc "c" (body: c.int) -> c.int {
 	context = abi_context()
@@ -190,6 +196,7 @@ abi_physics_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_body_angle", typeid_of(type_of(abi_body_angle)), "double roci_body_angle(roci_body_id body)", "How far a body is turned, in degrees clockwise, from 0 up to 360."))
 	append(all, abi_entry("roci_body_vel", typeid_of(type_of(abi_body_vel)), "roci_vec2 roci_body_vel(roci_body_id body)", "A body's speed in pixels a second."))
 	append(all, abi_entry("roci_body_spin", typeid_of(type_of(abi_body_spin)), "double roci_body_spin(roci_body_id body)", "How fast a body turns, in degrees a second, clockwise."))
+	append(all, abi_entry("roci_body_hit", typeid_of(type_of(abi_body_hit)), "double roci_body_hit(roci_body_id body)", "How hard the hardest thing a body hit in the last step was, in pixels a second that the two came together at, 0 when it hit nothing: what to play a sound or draw a spark by."))
 	append(all, abi_entry("roci_body_exists", typeid_of(type_of(abi_body_exists)), "int roci_body_exists(roci_body_id body)", "1 while a body is in the physics, 0 for one taken out or never made."))
 	append(all, abi_entry("roci_body_pose", typeid_of(type_of(abi_body_pose)), "void roci_body_pose(roci_body_id body, double x, double y, double angle)", "Puts a body somewhere, in the same places roci_body_pos gives. A fixed body put somewhere moves there in the next step and pushes what it meets on the way; a wall is not moved."))
 	append(all, abi_entry("roci_body_motion", typeid_of(type_of(abi_body_motion)), "void roci_body_motion(roci_body_id body, double vx, double vy, double spin)", "Gives a body a speed in pixels a second and a spin in degrees a second."))

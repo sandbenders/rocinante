@@ -98,6 +98,27 @@ draw [
 
 Taking a shape out of the list does not take it out of the physics, so say `no simulate b` first, as `examples/pachinko` does for balls that have fallen out of the bottom. The physics holds up to 20,000 shapes.
 
+## What hit what
+
+A record with a field `hit: 0` is told, every frame, how hard the hardest thing its shape hit in that frame was, in pixels a second that the two came together at, and 0 when it hit nothing. It is for a sound that is louder for a harder knock, or a spark:
+
+```roci picture
+ball = { pos: { 200, 40 }, radius: 14, hit: 0, bounce: 0.5 }
+floor = { pos: { 0, 250 }, size: { 400, 30 } }
+simulate ball
+fixed floor
+flash = 0
+
+draw [
+  if ball.hit > 100 [ flash = 12 ]
+  flash = max 0 (flash - 1)
+  circle at ball.pos radius ball.radius fill tomato
+  rect at floor.pos size floor.size fill (120 + flash * 10)
+]
+```
+
+Whether two shapes are touching is `touching` and `hits`, which work on any shapes, simulated or not. A shape with `sensor: true` is a zone: it is no obstacle, things pass through it, and `touching ball zone` says what is in it.
+
 ## Linking shapes
 
 `link a b` holds two shapes to each other. Both have to be given to the physics first, with `simulate` or `fixed`. A shape that is `fixed` and never moved is a post to hang things from:
@@ -159,4 +180,4 @@ The same words are C functions (`roci_simulate_circle`, `roci_fixed_wall`, `roci
 
 ## What is not there yet
 
-Polygons and shapes in space are not simulated. Sensors are coming.
+Polygons and shapes in space are not simulated yet.

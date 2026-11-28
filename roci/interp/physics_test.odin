@@ -308,3 +308,24 @@ test_the_car_example_rests_on_its_suspension_and_drives_when_the_right_key_is_he
 	testing.expect(t, abs(place(p, "body", "pos").x - 60) < 15, "back at the start")
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+// A record with a `hit` field is told how hard its shape hit something, in the frame it did, and 0 in the next.
+@(test)
+test_a_hit_field_is_set_in_the_frame_a_ball_lands_and_cleared_after :: proc(t: ^testing.T) {
+	p := run_text(t, `ball = { pos: { 100, 50 }, radius: 10, hit: 0 }
+floor = { pos: { 0, 300 }, size: { 400, 20 }, hit: 0 }
+simulate ball
+fixed floor
+strongest = 0
+after = 0
+draw [
+  if ball.hit > strongest [ strongest = ball.hit ]
+  if strongest > 0 and ball.hit is 0 [ after = after + 1 ]
+]
+`, 120)
+	defer finish(p)
+	testing.expect(t, as_number(global_named(p, "strongest")) > 380 && as_number(global_named(p, "strongest")) < 480, "the landing was about 440 pixels a second")
+	testing.expect(t, as_number(global_named(p, "after")) > 50, "and it was 0 again after")
+	testing.expect_value(t, number(p, "floor", "hit"), 0)
+	testing.expect_value(t, len(p.errors), 0)
+}
