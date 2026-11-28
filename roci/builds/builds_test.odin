@@ -9,6 +9,7 @@
 package builds
 
 import "../"
+import "base:runtime"
 import "../codegen"
 import "../folder"
 import "../interp"
@@ -16,6 +17,7 @@ import "../lang"
 import "core:fmt"
 import "core:os"
 import "core:strconv"
+import "core:sync"
 import "core:strings"
 import "core:testing"
 
@@ -92,30 +94,82 @@ runnable :: proc(binary: string) -> string {
 	}
 }
 
-// What the compiled program prints for the same sketch.
-compiled_lines :: proc(t: ^testing.T, name, text: string) -> (lines: []string, warnings: int, ok: bool) {
-	roci.start_headless(1)
-	p, loaded := interp.load_files({lang.File_Text{name = name, text = text}})
-	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = name, source = name}, context.temp_allocator)
-	interp.destroy(p)
-	interp.forget_decoded_pictures()
-	roci.shutdown()
-	if !testing.expectf(t, loaded && len(generated.problems) == 0, "%s: could not be compiled: %v", name, generated.problems) {
-		return nil, 0, false
+// The sketches are built as one program, so the core is compiled once and not once for each (on the pipeline's runner a build takes
+// 20 seconds and there are twenty of them): each is a folder of `output/tests/compiled`, and the program runs the one its first argument
+// names. Whichever test needs it first makes it, the other waits and uses it.
+BUNDLE_DIR :: "output/tests/compiled"
+
+// The sketch of the memory test, made from an example, which is in the bundle too.
+MEMORY_SKETCH :: "particles_memory"
+
+@(private = "file")
+bundle_lock: sync.Mutex
+@(private = "file")
+bundle_tried: bool
+@(private = "file")
+bundle_binary: string // kept by the heap, not a test's allocator: it outlives the test that made it
+
+// The program of every sketch of tests/compile and of the memory test, built once. False when it could not be made.
+ensure_bundle :: proc(t: ^testing.T) -> (binary: string, ok: bool) {
+	sync.mutex_lock(&bundle_lock)
+	defer sync.mutex_unlock(&bundle_lock)
+	if bundle_tried {
+		return bundle_binary, bundle_binary != ""
 	}
-	folder_path := fmt.tprintf("output/tests/compiled/%s", name)
-	_ = os.remove_all(folder_path)
-	testing.expect(t, folder.ensure_directory(folder_path))
-	testing.expect(t, os.write_entire_file(fmt.tprintf("%s/sketch.odin", folder_path), transmute([]byte)generated.source) == nil)
-	binary := fmt.tprintf("output/tests/compiled/%s_program%s", name, ".exe" when ODIN_OS == .Windows else "")
-	state, _, build_err, err := os.process_exec({command = {"odin", "build", folder_path, "-collection:rocinante=.", fmt.tprintf("-out:%s", binary)}}, context.temp_allocator)
-	if !testing.expectf(t, err == nil && state.exit_code == 0, "%s: the generated program did not build:\n%s", name, string(build_err)) {
-		return nil, 0, false
+	bundle_tried = true
+	entries, read_err := os.read_all_directory_by_path("tests/compile", context.temp_allocator)
+	if !testing.expect(t, read_err == nil, "tests/compile is missing") {
+		return "", false
 	}
-	if !put_libraries_beside(t, binary) {
-		return nil, 0, false
+	_ = os.remove_all(BUNDLE_DIR)
+	testing.expect(t, folder.ensure_directory(BUNDLE_DIR))
+	names := make([dynamic]string, context.temp_allocator)
+	sources := make([dynamic][2]string, context.temp_allocator) // name and text
+	for entry in entries {
+		if strings.has_suffix(entry.name, ".roci") {
+			data, err := os.read_entire_file(fmt.tprintf("tests/compile/%s", entry.name), context.temp_allocator)
+			if testing.expectf(t, err == nil, "cannot read %s", entry.name) {
+				append(&sources, [2]string{strings.trim_suffix(entry.name, ".roci"), string(data)})
+			}
+		}
 	}
-	run_state, stdout, run_err, run_start_err := os.process_exec({command = {runnable(binary), "--frames", fmt.tprint(FRAMES), "--check-memory"}}, context.temp_allocator)
+	particles, particles_err := os.read_entire_file("examples/particles/sketch.roci", context.temp_allocator)
+	if !testing.expect(t, particles_err == nil) {
+		return "", false
+	}
+	append(&sources, [2]string{MEMORY_SKETCH, string(particles)})
+	for source in sources {
+		name, text := source[0], source[1]
+		roci.start_headless(1)
+		p, loaded := interp.load_files({lang.File_Text{name = name, text = text}})
+		generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = name, source = name, package_name = codegen.bundle_package(name, context.temp_allocator)}, context.temp_allocator)
+		interp.destroy(p)
+		interp.forget_decoded_pictures()
+		roci.shutdown()
+		if !testing.expectf(t, loaded && len(generated.problems) == 0, "%s: could not be compiled: %v", name, generated.problems) {
+			continue
+		}
+		folder_path := fmt.tprintf("%s/%s", BUNDLE_DIR, name)
+		testing.expect(t, folder.ensure_directory(folder_path))
+		testing.expect(t, os.write_entire_file(fmt.tprintf("%s/sketch.odin", folder_path), transmute([]byte)generated.source) == nil)
+		append(&names, name)
+	}
+	testing.expect(t, os.write_entire_file(fmt.tprintf("%s/main.odin", BUNDLE_DIR), transmute([]byte)codegen.bundle_main(names[:], context.temp_allocator)) == nil)
+	path := fmt.tprintf("output/tests/compiled_program%s", ".exe" when ODIN_OS == .Windows else "")
+	state, _, build_err, err := os.process_exec({command = {"odin", "build", BUNDLE_DIR, "-collection:rocinante=.", fmt.tprintf("-out:%s", path)}}, context.temp_allocator)
+	if !testing.expectf(t, err == nil && state.exit_code == 0, "the generated programs did not build:\n%s", string(build_err)) {
+		return "", false
+	}
+	if !put_libraries_beside(t, path) {
+		return "", false
+	}
+	bundle_binary = strings.clone(path, runtime.heap_allocator())
+	return bundle_binary, true
+}
+
+// What the compiled program prints for a sketch of the bundle.
+compiled_lines :: proc(t: ^testing.T, name, binary: string) -> (lines: []string, warnings: int, ok: bool) {
+	run_state, stdout, run_err, run_start_err := os.process_exec({command = {runnable(binary), name, "--frames", fmt.tprint(FRAMES), "--check-memory"}}, context.temp_allocator)
 	testing.expectf(t, run_start_err == nil && run_state.exit_code == 0, "%s: the program failed, or did not give back all it made (%d, %v):\n%s", name, run_state.exit_code, run_start_err, string(run_err))
 	warnings = strings.count(string(run_err), "── Warning:")
 	text_out := strings.trim_right(string(stdout), "\n")
@@ -131,6 +185,10 @@ test_compiled_sketches_print_what_interpreted_ones_do :: proc(t: ^testing.T) {
 	if !testing.expect(t, read_err == nil, "tests/compile is missing") {
 		return
 	}
+	binary, built := ensure_bundle(t)
+	if !built {
+		return
+	}
 	checked := 0
 	for entry in entries {
 		if !strings.has_suffix(entry.name, ".roci") {
@@ -143,7 +201,7 @@ test_compiled_sketches_print_what_interpreted_ones_do :: proc(t: ^testing.T) {
 		}
 		text := string(data)
 		expected, expected_warnings := interpreted_lines(t, name, text)
-		got, got_warnings, ok := compiled_lines(t, name, text)
+		got, got_warnings, ok := compiled_lines(t, name, binary)
 		if !ok {
 			continue
 		}
@@ -165,32 +223,11 @@ test_compiled_sketches_print_what_interpreted_ones_do :: proc(t: ^testing.T) {
 // how many collections it made and how much it still holds.
 @(test)
 test_a_compiled_sketch_that_makes_garbage_frees_it :: proc(t: ^testing.T) {
-	data, err := os.read_entire_file("examples/particles/sketch.roci", context.temp_allocator)
-	if !testing.expect(t, err == nil) {
+	binary, built := ensure_bundle(t)
+	if !built {
 		return
 	}
-	roci.start_headless(1)
-	p, loaded := interp.load_files({lang.File_Text{name = "particles", text = string(data)}})
-	generated := codegen.generate(&p.checked.program, p.src, codegen.Options{sketch = "particles", source = "particles"}, context.temp_allocator)
-	interp.destroy(p)
-	interp.forget_decoded_pictures()
-	roci.shutdown()
-	if !testing.expectf(t, loaded && len(generated.problems) == 0, "particles could not be compiled: %v", generated.problems) {
-		return
-	}
-	dir := "output/tests/compiled/particles_memory"
-	_ = os.remove_all(dir)
-	testing.expect(t, folder.ensure_directory(dir))
-	testing.expect(t, os.write_entire_file(fmt.tprintf("%s/sketch.odin", dir), transmute([]byte)generated.source) == nil)
-	binary := fmt.tprintf("output/tests/compiled/particles_memory_program%s", ".exe" when ODIN_OS == .Windows else "")
-	state, _, build_err, build_run_err := os.process_exec({command = {"odin", "build", dir, "-collection:rocinante=.", fmt.tprintf("-out:%s", binary)}}, context.temp_allocator)
-	if !testing.expectf(t, build_run_err == nil && state.exit_code == 0, "the program did not build:\n%s", string(build_err)) {
-		return
-	}
-	if !put_libraries_beside(t, binary) {
-		return
-	}
-	run_state, stdout, run_log, run_err := os.process_exec({command = {runnable(binary), "--frames", "2500", "--stats"}}, context.temp_allocator)
+	run_state, stdout, run_log, run_err := os.process_exec({command = {runnable(binary), MEMORY_SKETCH, "--frames", "2500", "--stats"}}, context.temp_allocator)
 	if !testing.expectf(t, run_err == nil && run_state.exit_code == 0, "the program failed:\n%s", string(run_log)) {
 		return
 	}

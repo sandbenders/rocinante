@@ -632,3 +632,23 @@ test_a_sketch_that_receives_messages_gives_its_inboxes_back_when_asked_and_one_t
 	testing.expect(t, !strings.contains(plain.source, "release_inboxes"))
 	testing.expect(t, !strings.contains(plain.source, "rt.at_end"))
 }
+
+@(test)
+test_the_bundle_program_runs_the_sketch_its_first_argument_names :: proc(t: ^testing.T) {
+	source := bundle_main({"circle", "life"}, context.temp_allocator)
+	testing.expect(t, strings.contains(source, "package main"))
+	testing.expect(t, strings.contains(source, "import s0 \"circle\"\nimport s1 \"life\"\n"))
+	testing.expect(t, strings.contains(source, "case \"circle\":\n\t\ts0.main()"))
+	testing.expect(t, strings.contains(source, "case \"life\":\n\t\ts1.main()"))
+	testing.expect(t, strings.contains(source, "os.args = rest[:]"), "the sketch's own arguments follow its name")
+	testing.expect(t, strings.contains(source, "case:\n\t\tos.exit(2)"), "a name that is none of them stops the program")
+	none := bundle_main({}, context.temp_allocator)
+	testing.expect(t, !strings.contains(none, "import s0"))
+}
+
+@(test)
+test_a_sketch_in_a_bundle_gets_a_package_of_its_own :: proc(t: ^testing.T) {
+	testing.expect_value(t, bundle_package("circle", context.temp_allocator), "sketch_circle")
+	testing.expect_value(t, bundle_package("a-b c.1", context.temp_allocator), "sketch_a_b_c_1")
+	testing.expect_value(t, bundle_package("", context.temp_allocator), "sketch_")
+}
