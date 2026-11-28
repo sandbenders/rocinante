@@ -329,3 +329,57 @@ draw [
 	testing.expect_value(t, number(p, "floor", "hit"), 0)
 	testing.expect_value(t, len(p.errors), 0)
 }
+
+@(test)
+test_a_polygon_record_falls_by_its_points_and_a_fixed_one_is_ground :: proc(t: ^testing.T) {
+	p := run_text(t, `hill = { points: [ { 0, 300 } { 200, 220 } { 400, 300 } ] }
+rock = { points: [ { 180, 20 } { 220, 20 } { 230, 60 } { 190, 80 } { 170, 60 } ], vel: { 0, 0 }, angle: 0, bounce: 0.2 }
+fixed hill
+simulate rock
+`, 200)
+	defer finish(p)
+	corners := as_list(read_field(p, global_named(p, "rock"), "points"))
+	testing.expect_value(t, len(corners.items), 5)
+	lowest := 0.0
+	for item in corners.items {
+		lowest = max(lowest, as_pair(item).y)
+	}
+	testing.expect(t, lowest > 150 && lowest < 235, "it fell down onto the hill")
+	// the shape is the same size: the first side is 40 long
+	first, second := as_pair(corners.items[0]), as_pair(corners.items[1])
+	testing.expect(t, abs((second.x - first.x) * (second.x - first.x) + (second.y - first.y) * (second.y - first.y) - 1600) < 1, "the side keeps its length")
+	hill := as_list(read_field(p, global_named(p, "hill"), "points"))
+	testing.expect_value(t, as_pair(hill.items[1]), [2]f64{200, 220}) // the ground did not move
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// The tumble example drops stars and triangles into the bowl; they keep their shapes and stay in it, and a click adds one more.
+@(test)
+test_the_tumble_example_fills_a_bowl_with_outlines_that_keep_their_shape :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("tumble"), 0)
+	defer finish(p)
+	for _ in 0 ..< 400 {
+		roci.step({})
+	}
+	pieces := as_list(global_named(p, "shapes"))
+	testing.expect(t, len(pieces.items) >= 8, "pieces have been dropped")
+	before := len(pieces.items)
+	roci.step({platform.Mouse_Moved{window = platform.Window_Id(first_window()), x = 240, y = 100}, click_event(first_window(), 240, 100)})
+	pieces = as_list(global_named(p, "shapes"))
+	testing.expect(t, len(pieces.items) >= before + 1, "the click dropped one (a timed drop may share its frame)")
+	for _ in 0 ..< 400 {
+		roci.step({})
+	}
+	for item in as_list(global_named(p, "shapes")).items {
+		corners := as_list(read_field(p, item, "points"))
+		testing.expect(t, len(corners.items) == 10 || len(corners.items) == 3, "a star has ten corners and a triangle three")
+		for c in corners.items {
+			point := as_pair(c)
+			if point.x < 40 || point.x > 440 || point.y > 440 {
+				testing.expectf(t, false, "a corner left the bowl: %v", point)
+				return
+			}
+		}
+	}
+	testing.expect_value(t, len(p.errors), 0)
+}

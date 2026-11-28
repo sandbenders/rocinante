@@ -6,6 +6,10 @@ floor = { pos: { 0, 120 }, size: { 800, 40 } }
 wall = { from: { 400, 0 }, to: { 400, 400 } }
 paddle = { pos: { 100, 280 }, size: { 50, 10 } }
 gone = { pos: { 600, 10 }, radius: 8 }
+hill = { points: [ { 500, 300 } { 650, 240 } { 800, 300 } ] }
+rock = { points: [ { 620, 20 } { 660, 20 } { 670, 60 } { 630, 80 } { 610, 60 } ], vel: { 0, 0 }, angle: 0, bounce: 0.2 }
+fixed hill
+simulate rock
 simulate ball
 simulate plank
 simulate gone
@@ -24,5 +28,7 @@ draw [
     print plank.angle
     print gone.pos
     print strongest
+    print rock.points
+    print rock.angle
   ]
 ]

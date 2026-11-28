@@ -1,0 +1,52 @@
+// Tumble: outlines fall into a bowl. A shape with `points` is an outline, any number of
+// corners and concave or not, and `simulate` gives it to the physics, which keeps its
+// shape and moves the points themselves every frame, so the sketch draws them with
+// `polygon`. The bowl is a fixed outline: ground that never moves. A click drops a new
+// star or triangle under the mouse. What the sketch makes in a frame is copied into the
+// list, and the list's own copy is the one given to the physics.
+window size 480 480 title "tumble"
+
+COLORS = [ tomato orange gold yellowgreen mediumturquoise orchid ]
+shapes = []
+
+// A star of five points around a middle, with its corners in the order a line goes round it.
+learn star x y size [
+  corners = []
+  for n from 0 to 9 [
+    angle = n * 36 - 90
+    reach = size
+    if n % 2 is 1 [ reach = size * 0.45 ]
+    add { x + reach * cos angle, y + reach * sin angle } to corners
+  ]
+  give corners
+]
+
+learn wedge x y size [
+  give [ { x, y - size } { x + size, y + size * 0.8 } { x - size, y + size * 0.8 } ]
+]
+
+learn drop x kind [
+  corners = wedge x 30 22
+  if kind < 1 [ corners = star x 30 28 ]
+  piece = { points: corners, tint: pick COLORS, bounce: 0.3, friction: 0.5 }
+  add piece to shapes
+  simulate (item (count shapes) of shapes)
+]
+
+// A bowl: the outline of a dish, thick walls and a floor, as one concave shape.
+bowl = { points: [
+  { 40, 200 } { 90, 200 } { 110, 400 } { 370, 400 } { 390, 200 } { 440, 200 }
+  { 420, 440 } { 60, 440 }
+] }
+fixed bowl
+
+on mouse down [ drop mouse.x (random 2) ]
+
+draw [
+  background 245
+  polygon bowl.points fill 90
+  if frame % 40 is 0 and count shapes < 14 [ drop (random from 160 to 320) (random 2) ]
+  for each piece in shapes [
+    polygon piece.points fill piece.tint stroke 40 thickness 2
+  ]
+]

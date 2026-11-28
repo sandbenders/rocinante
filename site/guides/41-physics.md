@@ -98,6 +98,24 @@ draw [
 
 Taking a shape out of the list does not take it out of the physics, so say `no simulate b` first, as `examples/pachinko` does for balls that have fallen out of the bottom. The physics holds up to 20,000 shapes.
 
+## Outlines
+
+A record with `points` is an outline, a shape of any number of corners, and the physics takes it too: it keeps its shape, however concave it is, and falls, tumbles and lands. The physics moves the points themselves, so the sketch draws them with `polygon`:
+
+```roci picture
+ground = { points: [ { 0, 280 } { 200, 220 } { 400, 280 } { 400, 300 } { 0, 300 } ] }
+rock = { points: [ { 180, 20 } { 220, 20 } { 230, 60 } { 190, 80 } { 170, 60 } ], bounce: 0.3 }
+fixed ground
+simulate rock
+
+draw [
+  polygon ground.points fill 110
+  polygon rock.points fill tomato
+]
+```
+
+A `fixed` outline is ground that never moves. A simulated one gets its `vel` and `spin` and the rest as other shapes do, and if its record has an `angle` that says how far it has turned. A shape in space (a mesh) is not simulated: the physics is flat.
+
 ## What hit what
 
 A record with a field `hit: 0` is told, every frame, how hard the hardest thing its shape hit in that frame was, in pixels a second that the two came together at, and 0 when it hit nothing. It is for a sound that is louder for a harder knock, or a spark:
@@ -172,7 +190,7 @@ draw [
 ]
 ```
 
-`no link a b` lets go. A link goes when either shape is taken out of the physics. `examples/car` drives on two `wheel` links.
+`no link a b` lets go. A link goes when either shape is taken out of the physics. `examples/car` drives on two `wheel` links, and `examples/tumble` drops outlines into a bowl.
 
 ## From C
 
@@ -180,4 +198,4 @@ The same words are C functions (`roci_simulate_circle`, `roci_fixed_wall`, `roci
 
 ## What is not there yet
 
-Polygons and shapes in space are not simulated yet.
+Shapes in space are not simulated: the physics is flat.

@@ -47,6 +47,7 @@ EXAMPLES := [?]Example{
 	{"checks", 3, {1}}, // verbs with checks beside them (shapes.roci), drawn as a flower of rings
 	{"text", 1, {1}}, // real text in two weights, aligned, wrapped and measured
 	{"bricks", 120, {1}}, // collision: a brick broken by then
+	{"tumble", 400, {1}}, // physics: stars and triangles, outlines the physics moves by their points, in a bowl that is a fixed outline
 	{"car", 200, {1}}, // physics: a car resting on its wheel joints on the road
 	{"pachinko", 200, {1}}, // physics: balls dropped among the pegs, at the places the physics has moved them to by then
 	{"mouse", 5, {1}}, // the canvas before any input: the starting dots and the grid

@@ -53,6 +53,33 @@ test_the_c_functions_kick_move_and_remove_bodies_and_set_the_gravity :: proc(t: 
 }
 
 @(test)
+test_the_c_functions_make_outlines_that_fall_and_give_their_corners_back :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	abi_gravity(0, 400)
+	ground := [3]Abi_Vec2{{0, 300}, {200, 250}, {400, 300}}
+	rock := [4]Abi_Vec2{{190, 20}, {210, 20}, {215, 60}, {185, 60}}
+	g := abi_fixed_polygon(raw_data(ground[:]), 3)
+	r := abi_simulate_polygon(raw_data(rock[:]), 4)
+	testing.expect(t, g != 0 && r != 0)
+	testing.expect_value(t, abi_body_points(r, nil, 0), 4)
+	for _ in 0 ..< 200 {
+		step()
+	}
+	out: [4]Abi_Vec2
+	testing.expect_value(t, abi_body_points(r, raw_data(out[:]), 4), 4)
+	lowest := 0.0
+	for p in out {
+		lowest = max(lowest, p.y)
+	}
+	testing.expect(t, lowest > 200 && lowest < 260, "it came down on the hill")
+	testing.expect_value(t, abi_body_points(abi_simulate_circle(5, 5, 3), nil, 0), 0)
+	testing.expect_value(t, abi_simulate_polygon(nil, 4), 0)
+	two := [2]Abi_Vec2{{0, 0}, {5, 5}}
+	testing.expect_value(t, abi_simulate_polygon(raw_data(two[:]), 2), 0)
+}
+
+@(test)
 test_the_c_functions_give_0_for_what_cannot_be_made :: proc(t: ^testing.T) {
 	begin()
 	defer finish()

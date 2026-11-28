@@ -1,0 +1,3 @@
+COLORS: a list of colors
+shapes: a list of records with points, tint, bounce and friction
+bowl: a record with points

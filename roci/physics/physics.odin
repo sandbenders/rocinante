@@ -8,6 +8,7 @@
 package physics
 
 import box2d "../../vendor/box2d"
+import "../geom"
 import "core:math"
 import "core:sync"
 
@@ -32,6 +33,7 @@ Shape_Kind :: enum u8 {
 	Circle, // `pos` is the middle, `radius` its radius
 	Box,    // `pos` is the top left corner, `size` its width and height, `angle` turns it about its middle
 	Segment, // `from` to `to` in the world: a wall, which never moves
+	Polygon, // `points` in the world, any outline: a convex one of eight corners or fewer is one shape, any other is cut into triangles
 }
 
 // What a body is made of, as a sketch says it. A negative `density`, `friction` or `bounce` is the usual one (1, 0.6 and 0).
@@ -43,6 +45,7 @@ Body_Desc :: struct {
 	size:     [2]f64,
 	angle:    f64,    // degrees clockwise
 	from, to: [2]f64, // a segment's ends
+	points:   [][2]f64, // a polygon's corners in the world; the caller keeps them
 	vel:      [2]f64, // pixels a second
 	spin:     f64,    // degrees a second, clockwise
 	density:  f64,
@@ -70,6 +73,8 @@ Slot :: struct {
 	size: [2]f64, // a box's, for the corner and the middle
 	home: [2]f64, // a wall's middle, which is where a joint holds it by default
 	hit:  f64,    // the hardest impact of the last step
+	fixed: bool,  // a wall or a fixed polygon: it never moves
+	local: [dynamic][2]f64, // a polygon's corners in pixels from its origin (the average of the corners), turning with it
 	live: bool,
 }
 
@@ -107,6 +112,9 @@ destroy_world :: proc(w: ^World) {
 		sync.mutex_lock(&world_lock)
 		box2d.DestroyWorld(w.id)
 		sync.mutex_unlock(&world_lock)
+	}
+	for &s in w.slots {
+		delete(s.local)
 	}
 	delete(w.slots)
 	delete(w.joints)
@@ -177,6 +185,29 @@ create :: proc(w: ^World, desc: Body_Desc) -> Body {
 	if !all_finite(desc.pos.x, desc.pos.y, desc.radius, desc.size.x, desc.size.y, desc.angle, desc.from.x, desc.from.y, desc.to.x, desc.to.y, desc.vel.x, desc.vel.y, desc.spin) {
 		return 0
 	}
+	local: [dynamic][2]f64
+	origin: [2]f64
+	if desc.kind == .Polygon {
+		if len(desc.points) < 3 {
+			return 0
+		}
+		for p in desc.points {
+			if !all_finite(p.x, p.y) {
+				return 0
+			}
+			origin += p
+		}
+		origin /= f64(len(desc.points))
+		if abs(geom.signed_area(desc.points)) < 1e-6 {
+			return 0
+		}
+		for p in desc.points {
+			append(&local, p - origin)
+		}
+	}
+	defer if local != nil {
+		delete(local)
+	}
 	def := box2d.DefaultBodyDef()
 	def.type = .Kinematic if desc.fixed else .Dynamic // a fixed body can be moved by the sketch, and pushes what it meets
 	def.is_bullet = desc.bullet
@@ -199,6 +230,11 @@ create :: proc(w: ^World, desc: Body_Desc) -> Body {
 			return 0
 		}
 		def.type = .Static // a wall: nothing moves it
+	case .Polygon:
+		def.position = metres(origin)
+		if desc.fixed {
+			def.type = .Static // a fixed outline is ground: it is not moved, which a box can be
+		}
 	}
 	body := box2d.CreateBody(w.id, &def)
 	if box2d.body_is_null(body) {
@@ -214,6 +250,8 @@ create :: proc(w: ^World, desc: Body_Desc) -> Body {
 	shape_def.enable_hit_events = true
 	made: box2d.Shape_Id
 	switch desc.kind {
+	case .Polygon:
+		made = make_polygon_shapes(body, &shape_def, local[:])
 	case .Circle:
 		circle := box2d.Circle{{0, 0}, f32(desc.radius / PIXELS_PER_METRE)}
 		made = box2d.CreateCircleShape(body, &shape_def, &circle)
@@ -229,7 +267,8 @@ create :: proc(w: ^World, desc: Body_Desc) -> Body {
 		return 0
 	}
 	// the first free place, so a long sketch that makes and drops bodies does not grow the list for ever
-	slot := Slot{id = body, kind = desc.kind, size = desc.size, home = (desc.from + desc.to) / 2, live = true}
+	slot := Slot{id = body, kind = desc.kind, size = desc.size, home = (desc.from + desc.to) / 2, fixed = desc.fixed || desc.kind == .Segment, local = local, live = true}
+	local = nil // the slot has the corners now
 	for &s, i in w.slots {
 		if !s.live {
 			s = slot
@@ -240,6 +279,57 @@ create :: proc(w: ^World, desc: Body_Desc) -> Body {
 	append(&w.slots, slot)
 	remember_id(w, body, len(w.slots))
 	return Body(len(w.slots))
+}
+
+// Whether the corners, in order, turn the same way all round (collinear ones allowed): a shape Box2D takes as it is.
+@(private)
+is_convex :: proc(points: [][2]f64) -> bool {
+	sign := 0.0
+	for i in 0 ..< len(points) {
+		a, b, c := points[i], points[(i + 1) % len(points)], points[(i + 2) % len(points)]
+		cross := (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x)
+		if abs(cross) < 1e-9 {
+			continue
+		}
+		if sign == 0 {
+			sign = cross
+		} else if (sign > 0) != (cross > 0) {
+			return false
+		}
+	}
+	return true
+}
+
+// Gives a body the shapes of an outline whose corners are in pixels from the body's origin: one shape when it is convex and has eight
+// corners or fewer, else its triangles. Gives a shape that was made, or none when nothing could be (a sliver with no area).
+@(private)
+make_polygon_shapes :: proc(body: box2d.Body_Id, shape_def: ^box2d.Shape_Def, corners: [][2]f64) -> (made: box2d.Shape_Id) {
+	add :: proc(body: box2d.Body_Id, shape_def: ^box2d.Shape_Def, points: [][2]f64) -> box2d.Shape_Id {
+		metric := make([]box2d.Vec2, len(points), context.temp_allocator)
+		for p, i in points {
+			metric[i] = metres(p)
+		}
+		hull := box2d.ComputeHull(raw_data(metric), i32(len(metric)))
+		if hull.count < 3 {
+			return {}
+		}
+		polygon := box2d.MakePolygon(&hull, 0)
+		return box2d.CreatePolygonShape(body, shape_def, &polygon)
+	}
+	if len(corners) <= box2d.MAX_POLYGON_VERTICES && is_convex(corners) {
+		return add(body, shape_def, corners)
+	}
+	flat: geom.Triangulation
+	defer geom.triangulation_destroy(&flat)
+	contours := [][]geom.Point{corners}
+	geom.triangulate(contours, &flat)
+	for i := 0; i + 2 < len(flat.indices); i += 3 {
+		triangle := [3][2]f64{flat.points[flat.indices[i]], flat.points[flat.indices[i + 1]], flat.points[flat.indices[i + 2]]}
+		if shape := add(body, shape_def, triangle[:]); !box2d.shape_is_null(shape) {
+			made = shape
+		}
+	}
+	return made
 }
 
 @(private)
@@ -280,6 +370,8 @@ destroy :: proc(w: ^World, b: Body) {
 	if s := slot_of(w, b); s != nil {
 		box2d.DestroyBody(s.id) // Box2D takes the joints on the body with it
 		s.live = false
+		delete(s.local)
+		s.local = nil
 		w.by_id[s.id.index1] = 0
 		for &j in w.joints {
 			if j.live && (j.desc.a == b || j.desc.b == b) {
@@ -348,7 +440,7 @@ middle :: proc(w: ^World, b: Body) -> [2]f64 {
 // Puts a body somewhere, as the sketch changed it: its place and angle, in the same words as `state`. A segment cannot be put.
 set_pose :: proc(w: ^World, b: Body, pos: [2]f64, angle: f64) {
 	s := slot_of(w, b)
-	if s == nil || s.kind == .Segment || !all_finite(pos.x, pos.y, angle) {
+	if s == nil || s.kind == .Segment || s.kind == .Polygon || !all_finite(pos.x, pos.y, angle) { // an outline is not put somewhere: it has no place of its own
 		return
 	}
 	middle := box_middle(pos, s.size) if s.kind == .Box else pos
@@ -358,7 +450,7 @@ set_pose :: proc(w: ^World, b: Body, pos: [2]f64, angle: f64) {
 // Gives a body a velocity and a spin.
 set_motion :: proc(w: ^World, b: Body, vel: [2]f64, spin: f64) {
 	s := slot_of(w, b)
-	if s == nil || s.kind == .Segment || !all_finite(vel.x, vel.y, spin) {
+	if s == nil || s.kind == .Segment || (s.kind == .Polygon && s.fixed) || !all_finite(vel.x, vel.y, spin) {
 		return
 	}
 	box2d.Body_SetLinearVelocity(s.id, metres(vel))
@@ -368,7 +460,7 @@ set_motion :: proc(w: ^World, b: Body, vel: [2]f64, spin: f64) {
 // Adds to a body's velocity, whatever its mass: a kick of `{ 0, -300 }` sends anything up at 300 pixels a second more.
 kick :: proc(w: ^World, b: Body, dv: [2]f64) {
 	s := slot_of(w, b)
-	if s == nil || s.kind == .Segment || !all_finite(dv.x, dv.y) {
+	if s == nil || s.kind == .Segment || (s.kind == .Polygon && s.fixed) || !all_finite(dv.x, dv.y) {
 		return
 	}
 	box2d.Body_SetAwake(s.id, true)
@@ -383,19 +475,37 @@ set_feel :: proc(w: ^World, b: Body, density, friction, bounce: f64) {
 	if s == nil {
 		return
 	}
-	shapes: [1]box2d.Shape_Id
-	if box2d.Body_GetShapes(s.id, raw_data(shapes[:]), 1) < 1 {
-		return
+	shapes: [64]box2d.Shape_Id // a polygon cut into triangles has several; the first sixty-four are enough to feel the same
+	found := int(box2d.Body_GetShapes(s.id, raw_data(shapes[:]), 64))
+	for shape in shapes[:min(found, 64)] {
+		if density >= 0 && finite(density) {
+			box2d.Shape_SetDensity(shape, f32(density), true)
+		}
+		if friction >= 0 && finite(friction) {
+			box2d.Shape_SetFriction(shape, f32(friction))
+		}
+		if bounce >= 0 && finite(bounce) {
+			box2d.Shape_SetRestitution(shape, f32(bounce))
+		}
 	}
-	if density >= 0 && finite(density) {
-		box2d.Shape_SetDensity(shapes[0], f32(density), true)
+}
+
+// The corners of a polygon now, in the world, in the order it was given: its first corner is the first of the outline, turned and moved
+// with the body. Nothing for a body that is not a polygon.
+polygon_points :: proc(w: ^World, b: Body, allocator := context.allocator) -> [dynamic][2]f64 {
+	s := slot_of(w, b)
+	if s == nil || s.kind != .Polygon {
+		return nil
 	}
-	if friction >= 0 && finite(friction) {
-		box2d.Shape_SetFriction(shapes[0], f32(friction))
+	t := box2d.Body_GetTransform(s.id)
+	here := pixels(t.p)
+	turn := degrees_of(t.q)
+	out := make([dynamic][2]f64, 0, len(s.local), allocator)
+	for p in s.local {
+		q := here + turned(p, turn)
+		append(&out, [2]f64{tidy(q.x), tidy(q.y)})
 	}
-	if bounce >= 0 && finite(bounce) {
-		box2d.Shape_SetRestitution(shapes[0], f32(bounce))
-	}
+	return out
 }
 
 // The gravity of the world, in pixels a second each second.

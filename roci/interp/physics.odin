@@ -88,6 +88,19 @@ body_desc :: proc(it: ^Interp, r: ^Record, fixed: bool) -> (desc: roci.Physics_D
 		desc.from = pair_field(it, r, "from", {})
 		desc.to = pair_field(it, r, "to", {})
 		return desc, true
+	case .Polygon:
+		desc.kind = .Polygon
+		corners, has := field_of(it, r, "points")
+		list := as_list(corners) if has else nil
+		if list == nil {
+			return {}, false
+		}
+		points := make([dynamic][2]f64, 0, len(list.items), context.temp_allocator)
+		for item in list.items {
+			append(&points, as_pair(item))
+		}
+		desc.points = points[:]
+		return desc, true
 	}
 	return {}, false
 }
@@ -167,7 +180,7 @@ body_kick :: proc(it: ^Interp, call: lang.IR_Call) {
 // Which of the physics fields a record has.
 @(private = "file")
 fields_of :: proc(it: ^Interp, r: ^Record) -> (fields: roci.Physics_Fields, has: roci.Physics_Has) {
-	for entry in ([?]struct{name: string, field: roci.Physics_Field}{{"pos", .Pos}, {"angle", .Angle}, {"vel", .Vel}, {"spin", .Spin}, {"density", .Density}, {"friction", .Friction}, {"bounce", .Bounce}, {"hit", .Hit}}) {
+	for entry in ([?]struct{name: string, field: roci.Physics_Field}{{"pos", .Pos}, {"angle", .Angle}, {"vel", .Vel}, {"spin", .Spin}, {"density", .Density}, {"friction", .Friction}, {"bounce", .Bounce}, {"hit", .Hit}, {"points", .Points}}) {
 		field := entry.field
 		v, found := field_of(it, r, entry.name)
 		if !found {
@@ -183,6 +196,7 @@ fields_of :: proc(it: ^Interp, r: ^Record) -> (fields: roci.Physics_Fields, has:
 		case .Friction: fields.friction = as_number(v)
 		case .Bounce:   fields.bounce = as_number(v)
 		case .Hit:      fields.hit = as_number(v)
+		case .Points:   // the corners are read when the shape is made and written back, never taken in
 		}
 	}
 	return
@@ -233,6 +247,18 @@ sync_bodies_out :: proc() {
 		}
 		if .Hit in changed {
 			put_field(it, l.record, "hit", out.hit)
+		}
+		if .Points in changed {
+			// the new corners are made to last as long as the record does
+			corners := roci.physics_polygon(l.link.body, context.temp_allocator)
+			saved := it.alloc
+			it.alloc = it.long
+			list := new_list(it)
+			for p in corners {
+				append(&list.items, vec2(p))
+			}
+			it.alloc = saved
+			put_field(it, l.record, "points", list)
 		}
 		l.record.stamp = next_write(it)
 	}

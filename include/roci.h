@@ -1565,6 +1565,15 @@ roci_body_id roci_fixed_box(double x, double y, double width, double height, dou
 /* Gives a wall to the physics, a line from one place to another, which never moves. */
 roci_body_id roci_fixed_wall(double from_x, double from_y, double to_x, double to_y);
 
+/* Gives an outline to the physics, any number of corners at least three, in the window's pixels, concave or not. It keeps its shape and moves by gravity and what it meets. Gives its number, or 0 when it cannot be made (fewer than three corners, no area, a number that is not one). */
+roci_body_id roci_simulate_polygon(const roci_vec2 *corners, int count);
+
+/* Gives an outline to the physics as ground: it never moves, and things land on it. */
+roci_body_id roci_fixed_polygon(const roci_vec2 *corners, int count);
+
+/* The corners of an outline body now, in the window's pixels and in the order they were given. Copies up to `capacity` of them into `corners` (which may be NULL) and gives how many there are, 0 for a body that is not an outline, so a first call with capacity 0 says how big an array to make. */
+int roci_body_points(roci_body_id body, roci_vec2 *corners, int capacity);
+
 /* Takes a body out of the physics. */
 void roci_no_simulate(roci_body_id body);
 

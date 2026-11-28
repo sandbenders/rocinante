@@ -672,7 +672,7 @@ CATALOGUE := [Message_Id]Entry{
 		"A shape that is simulated has to be the same record frame after frame, because the physics moves its `pos` a little each frame. This one is made inside a `draw` or an event, so a new one is made each time. It is left out, and the sketch carries on.",
 		"Make it once, at the top of the sketch, and give that to the physics:", "{d}"},
 	.Body_Refused = {.Error, "The physics cannot use `{a}` as it is",
-		"A circle needs a `radius` above 0, a rectangle a `size` that is above 0 both ways, and a wall a `from` that is not its `to`, and every number of a shape has to be a number, and the physics holds at most 20,000 shapes. It is left out, and the sketch carries on.",
+		"A circle needs a `radius` above 0, a rectangle a `size` that is above 0 both ways, a wall a `from` that is not its `to`, and an outline (`points`) at least three corners with some area, and every number of a shape has to be a number, and the physics holds at most 20,000 shapes. It is left out, and the sketch carries on.",
 		"For example:", "{d}"},
 	.Link_Refused = {.Error, "The physics cannot link `{a}` and `{b}`",
 		"{c} The link is left out, and the sketch carries on.",

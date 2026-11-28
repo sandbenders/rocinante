@@ -3,7 +3,7 @@
 2 │ simulate dot
   │ ^^^^^^^^^^^^
 
-A circle needs a `radius` above 0, a rectangle a `size` that is above 0 both ways, and a wall a `from` that is not its `to`, and every number of a shape has to be a number, and the physics holds at most 20,000 shapes. It is left out, and the sketch carries on.
+A circle needs a `radius` above 0, a rectangle a `size` that is above 0 both ways, a wall a `from` that is not its `to`, and an outline (`points`) at least three corners with some area, and every number of a shape has to be a number, and the physics holds at most 20,000 shapes. It is left out, and the sketch carries on.
 
 For example:
     ball = { pos: { 200, 100 }, radius: 10 }

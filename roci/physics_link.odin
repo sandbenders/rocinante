@@ -26,6 +26,7 @@ Physics_Field :: enum u8 {
 	Friction,
 	Bounce,
 	Hit,
+	Points, // an outline's corners: written back whenever the body moved, never taken in
 }
 
 Physics_Has :: bit_set[Physics_Field]
@@ -67,7 +68,13 @@ angle_between :: proc(from, to: f64) -> f64 {
 
 // Makes the link of a body that was just made from these fields.
 physics_link :: proc(body: Physics_Body, fixed: bool, shape: Physics_Shape, fields: Physics_Fields) -> Physics_Link {
-	return Physics_Link{body = body, fixed = fixed, shape = shape, last = fields}
+	l := Physics_Link{body = body, fixed = fixed, shape = shape, last = fields}
+	if shape == .Polygon {
+		// an outline has no `pos` and `angle` of its own: they are the body's, to tell when it has moved
+		s := physics_state(body)
+		l.last.pos, l.last.angle = s.pos, s.angle
+	}
+	return l
 }
 
 // Before the step: takes in what the sketch changed in the record. `now` holds the record's fields as they are, those in `has` only.
@@ -77,6 +84,23 @@ physics_take_in :: proc(l: ^Physics_Link, now: Physics_Fields, has: Physics_Has)
 		return
 	}
 	current := physics_state(l.body)
+	if l.shape == .Polygon {
+		// an outline is moved by the physics only: what the sketch writes to its corners is not taken in, but its speed and feel are
+		if !l.fixed {
+			if moved_pair(now.vel, l.last.vel) && .Vel in has || moved_by(now.spin, l.last.spin) && .Spin in has {
+				physics_motion(l.body, now.vel if .Vel in has else l.last.vel, now.spin if .Spin in has else l.last.spin)
+				l.last.vel, l.last.spin = now.vel if .Vel in has else l.last.vel, now.spin if .Spin in has else l.last.spin
+			}
+		}
+		density := now.density if .Density in has else l.last.density
+		friction := now.friction if .Friction in has else l.last.friction
+		bounce := now.bounce if .Bounce in has else l.last.bounce
+		if density != l.last.density || friction != l.last.friction || bounce != l.last.bounce {
+			physics_feel(l.body, density, friction, bounce)
+			l.last.density, l.last.friction, l.last.bounce = density, friction, bounce
+		}
+		return
+	}
 	pos := now.pos if .Pos in has else l.last.pos
 	angle := now.angle if .Angle in has else l.last.angle
 	vel := now.vel if .Vel in has else l.last.vel
@@ -116,7 +140,15 @@ physics_give_back :: proc(l: ^Physics_Link, has: Physics_Has) -> (out: Physics_F
 	}
 	s := physics_state(l.body)
 	out = l.last
-	if .Pos in has && moved_pair(s.pos, l.last.pos) {
+	if l.shape == .Polygon {
+		if .Points in has && (moved_pair(s.pos, l.last.pos) || moved_by(s.angle, l.last.angle)) {
+			changed += {.Points}
+		}
+		out.pos = s.pos // where the body is, to tell the next move
+		if .Angle not_in has {
+			out.angle = s.angle
+		}
+	} else if .Pos in has && moved_pair(s.pos, l.last.pos) {
 		out.pos, changed = s.pos, changed + {.Pos}
 	}
 	if .Angle in has && moved_by(s.angle, l.last.angle) {

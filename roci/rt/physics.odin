@@ -18,6 +18,7 @@ Bound :: struct {
 	angle, spin:                   ^f64,
 	density, friction, bounce:     ^f64,
 	hit:                           ^f64,
+	points:                        ^^List([2]f64), // an outline's corners, rewritten as the body moves
 }
 
 @(thread_local) @(private) bound: [dynamic]Bound
@@ -46,6 +47,7 @@ read_fields :: proc(b: ^Bound) -> (fields: roci.Physics_Fields, has: roci.Physic
 	if b.friction != nil {fields.friction, has = b.friction^, has + {.Friction}}
 	if b.bounce != nil  {fields.bounce, has = b.bounce^, has + {.Bounce}}
 	if b.hit != nil     {fields.hit, has = b.hit^, has + {.Hit}}
+	if b.points != nil  {has += {.Points}}
 	return
 }
 
@@ -79,6 +81,7 @@ simulate :: proc(record: ^$T, shape: roci.Physics_Shape, fixed := false) {
 		friction = field_pointer(record, "friction", f64),
 		bounce   = field_pointer(record, "bounce", f64),
 		hit      = field_pointer(record, "hit", f64),
+		points   = field_pointer(record, "points", ^List([2]f64)),
 	}
 	flag :: proc(record: ^$T, name: string) -> bool {
 		if p := field_pointer(record, name, bool); p != nil {
@@ -108,6 +111,11 @@ simulate :: proc(record: ^$T, shape: roci.Physics_Shape, fixed := false) {
 			if b.angle != nil {
 				desc.angle = b.angle^
 			}
+		}
+	case .Polygon:
+		usable = b.points != nil && b.points^ != nil
+		if usable {
+			desc.points = b.points^.items[:]
 		}
 	case .Segment:
 		from, to := field_pointer(record, "from", [2]f64), field_pointer(record, "to", [2]f64)
@@ -200,6 +208,11 @@ sync_out :: proc() {
 		if .Vel in changed   {b.vel^ = out.vel}
 		if .Spin in changed  {b.spin^ = out.spin}
 		if .Hit in changed   {b.hit^ = out.hit}
+		if .Points in changed && b.points^ != nil {
+			corners := roci.physics_polygon(b.link.body, context.temp_allocator)
+			clear(&b.points^.items)
+			append(&b.points^.items, ..corners[:])
+		}
 	}
 }
 

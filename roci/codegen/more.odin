@@ -361,6 +361,7 @@ physics_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, fixed: bool) -> stri
 	case .Circle:  shape = "Circle"
 	case .Box:     shape = "Box"
 	case .Segment: shape = "Segment"
+	case .Polygon: shape = "Polygon"
 	case:
 		refuse(g, e.span, "`simulate` of a shape that is not a circle, a rectangle or a wall")
 		return ""

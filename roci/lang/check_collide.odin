@@ -93,8 +93,8 @@ physics_shape_ok :: proc(c: ^Checker, verb: ^registry.Verb, span: Span, type: Ty
 	for site in sites_of(c, root) {
 		class, _ := shape_class(c.site_names[site])
 		switch {
-		case class == .Polygon || class == .Mesh:
-			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "The physics knows circles (`pos` and `radius`), rectangles (`pos` and `size`) and walls (`from` and `to`) so far, not an outline. ", PHYSICS_EXAMPLE)
+		case class == .Mesh:
+			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "The physics is flat: it knows circles (`pos` and `radius`), rectangles (`pos` and `size`), walls (`from` and `to`) and outlines (`points`), not a mesh in space. ", PHYSICS_EXAMPLE)
 			return false
 		case class == .Segment && verb.name == "simulate":
 			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "A wall, which has a `from` and a `to`, never moves, so it is given with `fixed`. ", "fixed floor")

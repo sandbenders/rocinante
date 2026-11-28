@@ -534,3 +534,106 @@ test_a_body_that_lands_reports_how_hard_and_then_nothing :: proc(t: ^testing.T) 
 	testing.expect_value(t, state(&w, ball).hit, 0) // at rest on the floor, nothing new is hit
 	testing.expect_value(t, state(&w, 77).hit, 0) // no such body
 }
+
+// ---- polygons ----
+
+@(test)
+test_a_convex_polygon_falls_and_comes_to_rest_on_a_floor_on_one_of_its_sides :: proc(t: ^testing.T) {
+	w := joint_world()
+	defer destroy_world(&w)
+	floor := create(&w, Body_Desc{kind = .Segment, fixed = true, from = {0, 300}, to = {400, 300}, density = -1, friction = -1, bounce = -1})
+	corners := [][2]f64{{100, 100}, {160, 100}, {180, 140}, {130, 170}, {90, 140}}
+	pentagon := create(&w, Body_Desc{kind = .Polygon, points = corners, density = -1, friction = -1, bounce = -1})
+	testing.expect(t, floor != 0 && pentagon != 0)
+	before := polygon_points(&w, pentagon, context.temp_allocator)
+	testing.expect_value(t, len(before), 5)
+	for p, i in corners {
+		testing.expect(t, abs(before[i].x - p.x) < 1e-3 && abs(before[i].y - p.y) < 1e-3, "it starts where it was given")
+	}
+	run(&w, 300)
+	after := polygon_points(&w, pentagon, context.temp_allocator)
+	lowest := 0.0
+	for p in after {
+		lowest = max(lowest, p.y)
+	}
+	testing.expect(t, abs(lowest - 300) < 1.5, "its lowest corner or side rests on the floor")
+	// the shape is unchanged: the side lengths are what they were
+	for i in 0 ..< 5 {
+		j := (i + 1) % 5
+		was := before[j] - before[i]
+		now := after[j] - after[i]
+		testing.expect(t, abs(math.sqrt(was.x * was.x + was.y * was.y) - math.sqrt(now.x * now.x + now.y * now.y)) < 0.05, "a side keeps its length")
+	}
+	testing.expect(t, state(&w, pentagon).vel.y < 1, "and it is still")
+}
+
+@(test)
+test_a_concave_polygon_is_cut_into_triangles_that_hold_its_shape :: proc(t: ^testing.T) {
+	w := joint_world()
+	defer destroy_world(&w)
+	create(&w, Body_Desc{kind = .Segment, fixed = true, from = {0, 300}, to = {400, 300}, density = -1, friction = -1, bounce = -1})
+	// an L: concave, six corners
+	l_shape := [][2]f64{{100, 100}, {160, 100}, {160, 220}, {240, 220}, {240, 260}, {100, 260}}
+	body := create(&w, Body_Desc{kind = .Polygon, points = l_shape, density = -1, friction = -1, bounce = -1})
+	testing.expect(t, body != 0)
+	run(&w, 240)
+	points := polygon_points(&w, body, context.temp_allocator)
+	lowest := 0.0
+	for p in points {
+		lowest = max(lowest, p.y)
+	}
+	testing.expect(t, abs(lowest - 300) < 1.5, "the L lies on the floor")
+	testing.expect_value(t, len(points), 6)
+}
+
+@(test)
+test_a_fixed_polygon_is_ground_that_does_not_move_and_things_land_on_it :: proc(t: ^testing.T) {
+	w := joint_world()
+	defer destroy_world(&w)
+	hill := [][2]f64{{0, 300}, {200, 200}, {400, 300}}
+	ground := create(&w, Body_Desc{kind = .Polygon, fixed = true, points = hill, density = -1, friction = -1, bounce = -1})
+	ball := create(&w, Body_Desc{kind = .Circle, pos = {200, 100}, radius = 10, density = -1, friction = -1, bounce = 0})
+	run(&w, 120)
+	testing.expect(t, abs(state(&w, ball).pos.y - 190) < 2, "the ball sits on the top of the hill, a radius above 200")
+	after := polygon_points(&w, ground, context.temp_allocator)
+	testing.expect_value(t, after[1], [2]f64{200, 200})
+	set_pose(&w, ground, {0, 0}, 0) // not put anywhere
+	set_motion(&w, ground, {50, 0}, 0)
+	kick(&w, ground, {50, 0})
+	testing.expect_value(t, polygon_points(&w, ground, context.temp_allocator)[1], [2]f64{200, 200})
+	testing.expect_value(t, len(polygon_points(&w, ball, context.temp_allocator)), 0) // a ball has no corners
+}
+
+@(test)
+test_polygons_with_too_few_corners_no_area_or_a_bad_number_are_refused :: proc(t: ^testing.T) {
+	w := joint_world()
+	defer destroy_world(&w)
+	two := [][2]f64{{0, 0}, {10, 10}}
+	line := [][2]f64{{0, 0}, {10, 10}, {20, 20}}
+	bad := [][2]f64{{0, 0}, {10, math.nan_f64()}, {20, 0}}
+	testing.expect_value(t, create(&w, Body_Desc{kind = .Polygon, points = two, density = -1, friction = -1, bounce = -1}), 0)
+	testing.expect_value(t, create(&w, Body_Desc{kind = .Polygon, points = line, density = -1, friction = -1, bounce = -1}), 0)
+	testing.expect_value(t, create(&w, Body_Desc{kind = .Polygon, points = bad, density = -1, friction = -1, bounce = -1}), 0)
+	testing.expect_value(t, count(&w), 0)
+}
+
+@(test)
+test_a_convex_hull_of_more_than_eight_corners_is_cut_up_and_still_a_polygon :: proc(t: ^testing.T) {
+	w := joint_world()
+	defer destroy_world(&w)
+	create(&w, Body_Desc{kind = .Segment, fixed = true, from = {0, 300}, to = {400, 300}, density = -1, friction = -1, bounce = -1})
+	corners: [dynamic][2]f64
+	defer delete(corners)
+	for i in 0 ..< 16 {
+		a := f64(i) * math.PI / 8
+		append(&corners, [2]f64{200 + 30 * math.cos(a), 100 + 30 * math.sin(a)})
+	}
+	disc := create(&w, Body_Desc{kind = .Polygon, points = corners[:], density = -1, friction = -1, bounce = -1})
+	testing.expect(t, disc != 0)
+	run(&w, 300)
+	lowest := 0.0
+	for p in polygon_points(&w, disc, context.temp_allocator) {
+		lowest = max(lowest, p.y)
+	}
+	testing.expect(t, abs(lowest - 300) < 1.5)
+}

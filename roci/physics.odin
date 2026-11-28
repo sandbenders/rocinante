@@ -71,6 +71,14 @@ physics_joint_count :: proc() -> int {
 	return physics.joint_count(&the.physics) if the.physics.made else 0
 }
 
+// The corners of a polygon body now, in the world, in the order it was given (nothing for another kind of body). Made with the allocator given.
+physics_polygon :: proc(body: Physics_Body, allocator := context.allocator) -> [dynamic][2]f64 {
+	if !the.physics.made {
+		return nil
+	}
+	return physics.polygon_points(&the.physics, body, allocator)
+}
+
 // Takes a body out of the world.
 physics_destroy :: proc(body: Physics_Body) {
 	physics.destroy(&the.physics, body)

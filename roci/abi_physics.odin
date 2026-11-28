@@ -37,6 +37,51 @@ abi_fixed_wall :: proc "c" (from_x, from_y, to_x, to_y: f64) -> c.int {
 	return c.int(physics_body(Physics_Desc{kind = .Segment, fixed = true, from = {from_x, from_y}, to = {to_x, to_y}, density = -1, friction = -1, bounce = -1}))
 }
 
+// The corners of an outline as the program gave them, or none when there are fewer than three or the array is missing.
+@(private = "file")
+abi_corners :: proc(corners: [^]Abi_Vec2, count: c.int) -> [][2]f64 {
+	if corners == nil || count < 3 {
+		return nil
+	}
+	points := make([][2]f64, int(count), context.temp_allocator)
+	for i in 0 ..< int(count) {
+		points[i] = {corners[i].x, corners[i].y}
+	}
+	return points
+}
+
+@(export, link_name = "roci_simulate_polygon")
+abi_simulate_polygon :: proc "c" (corners: [^]Abi_Vec2, count: c.int) -> c.int {
+	context = abi_context()
+	points := abi_corners(corners, count)
+	if points == nil {
+		return 0
+	}
+	return c.int(physics_body(Physics_Desc{kind = .Polygon, points = points, density = -1, friction = -1, bounce = -1}))
+}
+
+@(export, link_name = "roci_fixed_polygon")
+abi_fixed_polygon :: proc "c" (corners: [^]Abi_Vec2, count: c.int) -> c.int {
+	context = abi_context()
+	points := abi_corners(corners, count)
+	if points == nil {
+		return 0
+	}
+	return c.int(physics_body(Physics_Desc{kind = .Polygon, fixed = true, points = points, density = -1, friction = -1, bounce = -1}))
+}
+
+@(export, link_name = "roci_body_points")
+abi_body_points :: proc "c" (body: c.int, corners: [^]Abi_Vec2, capacity: c.int) -> c.int {
+	context = abi_context()
+	points := physics_polygon(Physics_Body(body), context.temp_allocator)
+	for i in 0 ..< min(len(points), int(capacity)) {
+		if corners != nil {
+			corners[i] = {points[i].x, points[i].y}
+		}
+	}
+	return c.int(len(points))
+}
+
 @(export, link_name = "roci_no_simulate")
 abi_no_simulate :: proc "c" (body: c.int) {
 	context = abi_context()
@@ -189,6 +234,9 @@ abi_physics_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_fixed_circle", typeid_of(type_of(abi_fixed_circle)), "roci_body_id roci_fixed_circle(double x, double y, double radius)", "Gives a circle to the physics that is not pushed and never moves by itself; roci_body_pose moves it, and it pushes what it meets."))
 	append(all, abi_entry("roci_fixed_box", typeid_of(type_of(abi_fixed_box)), "roci_body_id roci_fixed_box(double x, double y, double width, double height, double angle)", "Gives a rectangle to the physics that is not pushed and never moves by itself; roci_body_pose moves it, and it pushes what it meets."))
 	append(all, abi_entry("roci_fixed_wall", typeid_of(type_of(abi_fixed_wall)), "roci_body_id roci_fixed_wall(double from_x, double from_y, double to_x, double to_y)", "Gives a wall to the physics, a line from one place to another, which never moves."))
+	append(all, abi_entry("roci_simulate_polygon", typeid_of(type_of(abi_simulate_polygon)), "roci_body_id roci_simulate_polygon(const roci_vec2 *corners, int count)", "Gives an outline to the physics, any number of corners at least three, in the window's pixels, concave or not. It keeps its shape and moves by gravity and what it meets. Gives its number, or 0 when it cannot be made (fewer than three corners, no area, a number that is not one)."))
+	append(all, abi_entry("roci_fixed_polygon", typeid_of(type_of(abi_fixed_polygon)), "roci_body_id roci_fixed_polygon(const roci_vec2 *corners, int count)", "Gives an outline to the physics as ground: it never moves, and things land on it."))
+	append(all, abi_entry("roci_body_points", typeid_of(type_of(abi_body_points)), "int roci_body_points(roci_body_id body, roci_vec2 *corners, int capacity)", "The corners of an outline body now, in the window's pixels and in the order they were given. Copies up to `capacity` of them into `corners` (which may be NULL) and gives how many there are, 0 for a body that is not an outline, so a first call with capacity 0 says how big an array to make."))
 	append(all, abi_entry("roci_no_simulate", typeid_of(type_of(abi_no_simulate)), "void roci_no_simulate(roci_body_id body)", "Takes a body out of the physics."))
 	append(all, abi_entry("roci_gravity", typeid_of(type_of(abi_gravity)), "void roci_gravity(double x, double y)", "Sets the gravity of the physics in pixels a second each second: 0, 400 pulls things down (y goes down) and is what a world has to start with."))
 	append(all, abi_entry("roci_kick", typeid_of(type_of(abi_kick)), "void roci_kick(roci_body_id body, double dx, double dy)", "Adds a speed to a body, however heavy it is: 0, -300 sends it up at 300 pixels a second more than it had."))
