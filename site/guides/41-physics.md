@@ -135,7 +135,33 @@ draw [
 ]
 ```
 
-Whether two shapes are touching is `touching` and `hits`, which work on any shapes, simulated or not. A shape with `sensor: true` is a zone: it is no obstacle, things pass through it, and `touching ball zone` says what is in it.
+Whether two shapes are touching is `touching` and `hits`, which work on any shapes, simulated or not.
+
+## Zones
+
+A shape with `sensor: true` is a zone: nothing bumps into it, things pass through it, and it says when a shape comes in and when one goes out. `on enter` and `on leave` take the zone and what may cross it, one shape or a list, and inside the block `visitor` is the shape that did:
+
+```roci picture
+goal = { pos: { 140, 200 }, size: { 120, 50 }, sensor: true }
+ball = { pos: { 200, 20 }, radius: 14, tint: tomato }
+balls = [ ball ]
+floor = { pos: { 0, 280 }, size: { 400, 20 } }
+simulate ball
+fixed goal
+fixed floor
+inside = 0
+
+on enter goal balls [ inside = inside + 1 ]
+on leave goal balls [ inside = inside - 1 ]
+
+draw [
+  rect at goal.pos size goal.size fill (60 + inside * 90) alpha 40
+  circle at ball.pos radius ball.radius fill ball.tint
+  rect at floor.pos size floor.size fill 120
+]
+```
+
+The events are heard in the frame after the physics found them, since the physics moves things at the end of a frame. A zone can be a circle, a rectangle or an outline, and it can be `fixed` or move. A shape taken out of the physics inside a zone says nothing about leaving: you took it out yourself. `on enter` with no shape after it is the scene event, which runs when a scene begins.
 
 ## Linking shapes
 

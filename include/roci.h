@@ -80,7 +80,8 @@ typedef struct {
 
 typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS,
 	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC, ROCI_MIDI_BEND, ROCI_MIDI_PROGRAM, ROCI_MIDI_PRESSURE, ROCI_MIDI_START, ROCI_MIDI_STOP,
-	ROCI_ACTION_PRESS, ROCI_ACTION_RELEASE } roci_event_kind;
+	ROCI_ACTION_PRESS, ROCI_ACTION_RELEASE, ROCI_UDP = 20, ROCI_TCP_OPEN, ROCI_TCP_LINE, ROCI_TCP_CLOSE, ROCI_WEBSOCKET_OPEN, ROCI_WEBSOCKET, ROCI_WEBSOCKET_CLOSE,
+	ROCI_ZONE_ENTER, ROCI_ZONE_LEAVE } roci_event_kind;
 
 /* What a MIDI event says: the note (60 is middle C) and its velocity (0 to 100) for a key, the controller and its
  * value (0 to 100) for a knob or fader, the pitch wheel (bend, -100 to 100), the instrument chosen (program, 0 to
@@ -104,6 +105,10 @@ typedef struct { int to; const char *from; int port; const unsigned char *data; 
  * Valid only while the handler runs. */
 typedef struct { const char *label, *text, *from; int client; } roci_tcp;
 
+/* A body that came into a zone or went out of it (kinds 27 and 28): the zone's number and the body's, as the functions that make
+ * bodies gave them. A zone is made by roci_zone_circle, roci_zone_box or roci_zone_polygon, and nothing bumps into it. */
+typedef struct { int sensor, visitor; } roci_zone_event;
+
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
  * mouse events; valid only while the handler runs), the finger (for touch events) and the key or
  * controller (for MIDI events), the message (for an osc event), the datagram (for a udp event) and what happened on a connection (for a tcp event). */
@@ -116,6 +121,7 @@ typedef struct {
 	roci_osc osc;
 	roci_udp udp;
 	roci_tcp tcp;
+	roci_zone_event zone;
 } roci_event;
 
 /* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;
@@ -926,7 +932,7 @@ int roci_touch_count(void);
 /* The finger at a place (from 0) in the order the fingers went down, every field 0 past the last. */
 roci_finger roci_touch(int index);
 
-/* Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key", "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up", "midi control", "press" or "release" (the first MIDI handler starts reading every MIDI device; the last two are for an action made with roci_bind), and `argument` the key or mouse button it is for ("space", "right") or the action's name, or NULL for any. */
+/* Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is "key", "mouse down", "mouse up", "touch down", "touch up", "resize", "move", "focus", "midi down", "midi up", "midi control", "press", "release", "zone enter" or "zone leave" (the first MIDI handler starts reading every MIDI device; "press" and "release" are for an action made with roci_bind; the last two run when a body comes into or goes out of a zone made with roci_zone_circle, roci_zone_box or roci_zone_polygon, event->zone saying which), and `argument` the key or mouse button it is for ("space", "right"), the action's name, or the number of the zone, or NULL for any. */
 void roci_on(roci_window_id window, const char *event, const char *argument, roci_event_fn handler);
 
 /* Runs `handler` again and again in the current window, every `count` seconds, or frames when `unit` is "frames". */
@@ -1573,6 +1579,15 @@ roci_body_id roci_fixed_polygon(const roci_vec2 *corners, int count);
 
 /* The corners of an outline body now, in the window's pixels and in the order they were given. Copies up to `capacity` of them into `corners` (which may be NULL) and gives how many there are, 0 for a body that is not an outline, so a first call with capacity 0 says how big an array to make. */
 int roci_body_points(roci_body_id body, roci_vec2 *corners, int capacity);
+
+/* Makes a zone, a circle that never moves and that nothing bumps into: roci_on with "zone enter" and "zone leave" says which bodies come into it and go out. Gives its number, or 0 when it cannot be made. */
+roci_body_id roci_zone_circle(double x, double y, double radius);
+
+/* A zone that is a rectangle: its top left corner at x, y, turned `angle` degrees clockwise about its middle. */
+roci_body_id roci_zone_box(double x, double y, double width, double height, double angle);
+
+/* A zone that is an outline, any number of corners at least three. */
+roci_body_id roci_zone_polygon(const roci_vec2 *corners, int count);
 
 /* Takes a body out of the physics. */
 void roci_no_simulate(roci_body_id body);

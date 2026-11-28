@@ -76,7 +76,7 @@ physics_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, k: Call, args: []^I
 }
 
 // Whether a value can be given to the physics by this verb; says why when it cannot.
-@(private = "file")
+@(private)
 physics_shape_ok :: proc(c: ^Checker, verb: ^registry.Verb, span: Span, type: Type_Id) -> bool {
 	if problem, ok := shape_problem(c, type); !ok {
 		note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), problem, SHAPE_EXAMPLE)

@@ -45,6 +45,8 @@ register_on :: proc(it: ^Interp, k: ^lang.IR_On) {
 	h := Handler{body = &k.body, event = k.event, args = k.args, scene = it.registering}
 	if k.event == "" {
 		h.kind, h.message = .Receive, k.message
+	} else if k.message != nil {
+		h.message = k.message // `on enter goal balls`: the symbol `visitor` is bound to what came in
 	}
 	if k.window != nil {
 		if w, ok := eval(it, k.window).(roci.Window); ok {
@@ -112,6 +114,8 @@ event_name :: proc(kind: roci.Happening) -> string {
 	case .Midi_Stop:  return "midi stop"
 	case .Action_Press: return "press"
 	case .Action_Release: return "release"
+	case .Sensor_Enter: return "zone enter"
+	case .Sensor_Leave: return "zone leave"
 	}
 	return ""
 }
@@ -128,6 +132,12 @@ run_event_handlers :: proc(p: ^Interp, w: roci.Window, happenings: []roci.Happen
 				continue
 			}
 			if h.kind != .Event || h.event != event_name(happening.kind) || (!h.any && h.window != w) {
+				continue
+			}
+			if h.message != nil {
+				if visitor := zone_visitor(p, h, happening); visitor != nil {
+					run_block(p, h.body, h.message, visitor)
+				}
 				continue
 			}
 			if len(h.args) > 0 && !event_arg_matches(p, h, happening) {
@@ -240,6 +250,48 @@ event_arg_matches :: proc(p: ^Interp, h: Handler, happening: roci.Happened) -> b
 		return oscp.match(want, happening.osc.address)
 	}
 	return want == happening.name
+}
+
+// `on enter goal balls`: the record that came in, or nil when this is not for the zone or not for something the handler names. The
+// zone and the shapes are worked out as the event arrives, so a zone that is another record by then still means the one it names now.
+@(private)
+zone_visitor :: proc(p: ^Interp, h: Handler, happening: roci.Happened) -> ^Record {
+	if len(h.args) != 2 {
+		return nil
+	}
+	saved_alloc, saved_frame := p.alloc, p.frame
+	p.alloc = context.temp_allocator
+	frame := Frame{}
+	p.frame = &frame
+	zone, things := eval(p, h.args[0]), eval(p, h.args[1])
+	p.alloc, p.frame = saved_alloc, saved_frame
+	zone_record := as_record(zone)
+	if zone_record == nil {
+		return nil
+	}
+	zone_at, visitor_at := link_of(p, zone_record), -1
+	if zone_at < 0 || p.bodies[zone_at].link.body != happening.bodies[0] {
+		return nil
+	}
+	for l, i in p.bodies {
+		if l.link.body == happening.bodies[1] {
+			visitor_at = i
+			break
+		}
+	}
+	if visitor_at < 0 {
+		return nil
+	}
+	visitor := p.bodies[visitor_at].record
+	if list := as_list(things); list != nil {
+		for item in list.items {
+			if as_record(item) == visitor {
+				return visitor
+			}
+		}
+		return nil
+	}
+	return visitor if as_record(things) == visitor else nil
 }
 
 // `send w value`: a copy of the value is put in the window's inbox, to arrive next frame.

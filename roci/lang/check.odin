@@ -668,8 +668,46 @@ check_stmt :: proc(c: ^Checker, s: ^Stmt) -> ^IR_Stmt {
 	return out
 }
 
+// `on enter goal balls [ ... ]` and `on leave goal balls [ ... ]`: the zone, and one shape or a list of them that may come in or go out, with `visitor`
+// the one that did, of the kind the list holds. The scene events of the same names take nothing, so a name that follows makes it this one.
+@(private)
+check_zone_event :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
+	example := strings.concatenate({"goal = { pos: { 100, 200 }, size: { 80, 40 }, sensor: true }\nballs = []\nfixed goal\non ", k.event, " goal balls [ print visitor.pos ]"}, context.temp_allocator)
+	result := IR_On{event = fmt.tprintf("zone %s", k.event)}
+	if k.window != nil {
+		result.window = check_kind(c, k.window, T_WINDOW, "on")
+	}
+	visitor := T_ERROR
+	if len(k.args) != 2 {
+		note(c, .Zone_Needs_Both, k.body.span, k.event, "This one is given one thing. " if len(k.args) == 1 else "This one is given too many things. ", "", example)
+	} else {
+		zone, things := check_expr(c, k.args[0], false), check_expr(c, k.args[1], false)
+		result.args = make([]^IR, 2, c.alloc)
+		result.args[0], result.args[1] = zone, things
+		on_verb := registry.Verb{name = fmt.tprintf("on %s", k.event)}
+		if physics_shape_ok(c, &on_verb, k.args[0].span, zone.type) {
+			visitor = things.type
+			if kind_of(c.types, things.type) == .List {
+				visitor = element_of(c, things.type)
+			}
+			if !physics_shape_ok(c, &on_verb, k.args[1].span, visitor) {
+				visitor = T_ERROR
+			}
+		}
+	}
+	message := declare_local(c, "visitor", .Message, visitor, k.body.span)
+	mark := len(c.locals) - 1
+	result.message = message
+	result.body = check_block(c, k.body, true)
+	resize(&c.locals, mark)
+	return result
+}
+
 @(private)
 check_on :: proc(c: ^Checker, k: On) -> IR_Stmt_Kind {
+	if (k.event == "enter" || k.event == "leave") && len(k.args) > 0 {
+		return check_zone_event(c, k)
+	}
 	result := IR_On{event = k.event}
 	if k.event != "" {
 		args := make([dynamic]^IR, c.alloc)

@@ -216,6 +216,46 @@ sync_out :: proc() {
 	}
 }
 
+// `on enter goal balls`: the shape that came in or went out, as a record of the kind the sketch holds, when the zone is the shape the
+// event says and the shape is the one `things` is or one of the items of `things`.
+zone_visitor_of :: proc(zone: ^$Z, things: ^$V, happening: roci.Happened) -> (^V, bool) {
+	visitor := visitor_body(zone, happening)
+	if visitor == nil || things == nil || &things.gc__ != visitor {
+		return nil, false
+	}
+	return things, true
+}
+
+zone_visitor_in :: proc(zone: ^$Z, things: ^List(^$V), happening: roci.Happened) -> (^V, bool) {
+	visitor := visitor_body(zone, happening)
+	if visitor == nil || things == nil {
+		return nil, false
+	}
+	for item in things.items {
+		if item != nil && &item.gc__ == visitor {
+			return item, true
+		}
+	}
+	return nil, false
+}
+
+// The header of the record that is the second body of the happening, when the first is the zone given.
+@(private)
+visitor_body :: proc(zone: ^$Z, happening: roci.Happened) -> ^Header {
+	if zone == nil {
+		return nil
+	}
+	if i := bound_of(&zone.gc__); i < 0 || bound[i].link.body != happening.bodies[0] {
+		return nil
+	}
+	for b in bound {
+		if b.link.body == happening.bodies[1] {
+			return b.owner
+		}
+	}
+	return nil
+}
+
 // What the collector must keep: the records of bodies.
 @(private)
 mark_bodies :: proc() {

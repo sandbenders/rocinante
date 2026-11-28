@@ -39,6 +39,8 @@ Happening :: enum u8 {
 	Ws_Open, // a web socket was opened
 	Ws_Message, // a message arrived on a web socket
 	Ws_Close, // a web socket closed
+	Sensor_Enter, // a body came into a zone the physics has (a shape with `sensor: true`)
+	Sensor_Leave, // and went out of it
 }
 
 Happened :: struct {
@@ -50,6 +52,7 @@ Happened :: struct {
 	osc:    Osc_Message, // the message, for Osc
 	udp:    Udp_Packet, // the datagram, for Udp
 	tcp:    Tcp_Message, // what happened on a connection, for the Tcp_ and Ws_ kinds
+	bodies: [2]Physics_Body, // the zone and then what came in or went out, for the Sensor_ kinds
 }
 
 // The events of the frame in progress.

@@ -147,6 +147,7 @@ Message_Id :: enum u8 {
 	Name_Hides,
 	Labels_Needed,
 	Not_A_Shape,
+	Zone_Needs_Both,
 	Tween_Place,
 	// What goes wrong while a sketch runs (found by the interpreter, never by the checker)
 	Index_Out_Of_Range,
@@ -581,6 +582,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Labels_Needed = {.Error, "`{a}` is written with labels",
 		"Shapes are written with {b} in front of their values, so a number is never mistaken for another and the line reads as what it draws.",
 		"Write:", "{d}"},
+	.Zone_Needs_Both = {.Error, "`on {a}` needs a zone and what {a}s it",
+		"With a shape, `on {a}` waits for something to {a} a zone, so it takes two things: the zone, which is a shape of the physics with `sensor: true`, and what may {a} it, which is one shape or a list of shapes. {b}Inside the block, `visitor` is the one that did.",
+		"For example:", "{d}"},
 	.Tween_Place = {.Error, "`tween` cannot move `{a}`",
 		"{b}A tween moves a number, a vector or a color, a little each frame, so it needs one that lasts: a name of the sketch, or a field of a record.",
 		"For example:", "{d}"},

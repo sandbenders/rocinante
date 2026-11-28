@@ -108,6 +108,7 @@ step :: proc(events: []platform.Event = nil, dt := -1.0) {
 	udp_step()
 	tcp_step()
 	websocket_step()
+	sensor_step()
 	midi_out_step()
 	apply_cursor()
 	// The windows may close while a frame runs, so go by a copy of the list.

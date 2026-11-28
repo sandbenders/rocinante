@@ -252,8 +252,8 @@ EVENTS := []Event{
 	{"websocket close", {.Text}, "Runs when a web socket of that label closes, or could not be opened; `received.text` says why: `on websocket close \"feed\" [ print received.text ]`."},
 	{"press", {.Text}, "Runs when an action that `bind` made goes down, once for each press, whichever input did it: `on press \"jump\" [ ... ]`."},
 	{"release", {.Text}, "Runs when an action that `bind` made comes up, which is when every input bound to it is up: `on release \"fire\" [ ... ]`."},
-	{"enter", {}, "Runs when the scene it is written in begins, after the one before it has left: `scene \"play\" [ on enter [ restart ] ]`. Outside every scene it runs each time any scene begins."},
-	{"leave", {}, "Runs when the scene it is written in ends, before the next one begins: a place to tidy up. It cannot change scene itself."},
+	{"enter", {.Any, .Any}, "Runs when the scene it is written in begins, after the one before it has left: `scene \"play\" [ on enter [ restart ] ]`. Outside every scene it runs each time any scene begins. With a zone and what may enter it, it runs when one of those shapes comes into the zone, a shape of the physics with `sensor: true`: `on enter goal balls [ score = score + 1 ]`, where `visitor` is the shape that came in and `balls` is one shape or a list of them."},
+	{"leave", {.Any, .Any}, "Runs when the scene it is written in ends, before the next one begins: a place to tidy up. It cannot change scene itself. With a zone and what may leave it, it runs when one of those shapes goes out of the zone: `on leave goal balls [ print visitor.pos ]`, where `visitor` is the shape that went out."},
 	{"resize", {}, "Runs when the window changes size."},
 	{"move", {}, "Runs when the window moves."},
 	{"focus", {}, "Runs when the window gains or loses focus."},
@@ -262,7 +262,7 @@ EVENTS := []Event{
 // The events whose text may be left out, so a `[` straight after the name starts the block and does
 // not begin a list used as the text: `on osc [ ... ]` runs for every message, `on osc "/fader/*" [ ... ]`
 // for the ones sent to matching addresses.
-EVENTS_WITH_OPTIONAL_TEXT := [?]string{"osc"}
+EVENTS_WITH_OPTIONAL_TEXT := [?]string{"osc", "enter", "leave"}
 
 // What `every 2 seconds [ ... ]` and `every 10 frames [ ... ]` count in. The
 // singular is for 1. These are positional, like connecting words: only the word

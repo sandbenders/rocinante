@@ -82,6 +82,29 @@ abi_body_points :: proc "c" (body: c.int, corners: [^]Abi_Vec2, capacity: c.int)
 	return c.int(len(points))
 }
 
+// A zone: a body that never moves and nothing bumps into, which says (roci_on "zone enter" and "zone leave") what comes into it and goes out.
+@(export, link_name = "roci_zone_circle")
+abi_zone_circle :: proc "c" (x, y, radius: f64) -> c.int {
+	context = abi_context()
+	return c.int(physics_body(Physics_Desc{kind = .Circle, fixed = true, sensor = true, pos = {x, y}, radius = radius, density = -1, friction = -1, bounce = -1}))
+}
+
+@(export, link_name = "roci_zone_box")
+abi_zone_box :: proc "c" (x, y, width, height, angle: f64) -> c.int {
+	context = abi_context()
+	return c.int(physics_body(Physics_Desc{kind = .Box, fixed = true, sensor = true, pos = {x, y}, size = {width, height}, angle = angle, density = -1, friction = -1, bounce = -1}))
+}
+
+@(export, link_name = "roci_zone_polygon")
+abi_zone_polygon :: proc "c" (corners: [^]Abi_Vec2, count: c.int) -> c.int {
+	context = abi_context()
+	points := abi_corners(corners, count)
+	if points == nil {
+		return 0
+	}
+	return c.int(physics_body(Physics_Desc{kind = .Polygon, fixed = true, sensor = true, points = points, density = -1, friction = -1, bounce = -1}))
+}
+
 @(export, link_name = "roci_no_simulate")
 abi_no_simulate :: proc "c" (body: c.int) {
 	context = abi_context()
@@ -237,6 +260,9 @@ abi_physics_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_simulate_polygon", typeid_of(type_of(abi_simulate_polygon)), "roci_body_id roci_simulate_polygon(const roci_vec2 *corners, int count)", "Gives an outline to the physics, any number of corners at least three, in the window's pixels, concave or not. It keeps its shape and moves by gravity and what it meets. Gives its number, or 0 when it cannot be made (fewer than three corners, no area, a number that is not one)."))
 	append(all, abi_entry("roci_fixed_polygon", typeid_of(type_of(abi_fixed_polygon)), "roci_body_id roci_fixed_polygon(const roci_vec2 *corners, int count)", "Gives an outline to the physics as ground: it never moves, and things land on it."))
 	append(all, abi_entry("roci_body_points", typeid_of(type_of(abi_body_points)), "int roci_body_points(roci_body_id body, roci_vec2 *corners, int capacity)", "The corners of an outline body now, in the window's pixels and in the order they were given. Copies up to `capacity` of them into `corners` (which may be NULL) and gives how many there are, 0 for a body that is not an outline, so a first call with capacity 0 says how big an array to make."))
+	append(all, abi_entry("roci_zone_circle", typeid_of(type_of(abi_zone_circle)), "roci_body_id roci_zone_circle(double x, double y, double radius)", "Makes a zone, a circle that never moves and that nothing bumps into: roci_on with \"zone enter\" and \"zone leave\" says which bodies come into it and go out. Gives its number, or 0 when it cannot be made."))
+	append(all, abi_entry("roci_zone_box", typeid_of(type_of(abi_zone_box)), "roci_body_id roci_zone_box(double x, double y, double width, double height, double angle)", "A zone that is a rectangle: its top left corner at x, y, turned `angle` degrees clockwise about its middle."))
+	append(all, abi_entry("roci_zone_polygon", typeid_of(type_of(abi_zone_polygon)), "roci_body_id roci_zone_polygon(const roci_vec2 *corners, int count)", "A zone that is an outline, any number of corners at least three."))
 	append(all, abi_entry("roci_no_simulate", typeid_of(type_of(abi_no_simulate)), "void roci_no_simulate(roci_body_id body)", "Takes a body out of the physics."))
 	append(all, abi_entry("roci_gravity", typeid_of(type_of(abi_gravity)), "void roci_gravity(double x, double y)", "Sets the gravity of the physics in pixels a second each second: 0, 400 pulls things down (y goes down) and is what a world has to start with."))
 	append(all, abi_entry("roci_kick", typeid_of(type_of(abi_kick)), "void roci_kick(roci_body_id body, double dx, double dy)", "Adds a speed to a body, however heavy it is: 0, -300 sends it up at 300 pixels a second more than it had."))

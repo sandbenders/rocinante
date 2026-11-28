@@ -318,7 +318,7 @@ abi_touch :: proc "c" (index: c.int) -> Abi_Touch {
 // ---- events ----
 
 Abi_Event :: struct {
-	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc, 13 midi bend, 14 midi program, 15 midi pressure, 16 midi start, 17 midi stop, 18 press, 19 release, 20 udp, 21 tcp open, 22 tcp line, 23 tcp close, 24 websocket open, 25 websocket, 26 websocket close
+	kind:   c.int, // 0 key, 1 mouse down, 2 mouse up, 3 touch down, 4 touch up, 5 resize, 6 move, 7 focus, 9 midi down, 10 midi up, 11 midi control, 12 osc, 13 midi bend, 14 midi program, 15 midi pressure, 16 midi start, 17 midi stop, 18 press, 19 release, 20 udp, 21 tcp open, 22 tcp line, 23 tcp close, 24 websocket open, 25 websocket, 26 websocket close, 27 zone enter, 28 zone leave
 	window: c.int,
 	name:   cstring, // the key's name, or the mouse button's
 	finger: Abi_Touch,
@@ -326,6 +326,13 @@ Abi_Event :: struct {
 	osc:    Abi_Osc, // the message, for an osc event
 	udp:    Abi_Udp, // the datagram, for a udp event
 	tcp:    Abi_Tcp, // what happened on a connection, for the tcp events
+	zone:   Abi_Zone, // who crossed which zone, for the zone enter and zone leave events
+}
+
+// A body that came into a zone or went out of it, as roci_zone is: the zone's number and the body's, as roci_simulate_circle and its kin gave them.
+Abi_Zone :: struct {
+	sensor:  c.int,
+	visitor: c.int,
 }
 
 // A message that arrived over the network, as roci_osc is: the address and the sender as text, the first
@@ -421,6 +428,8 @@ abi_event_name :: proc(kind: Happening) -> string {
 	case .Ws_Open:    return "websocket open"
 	case .Ws_Message: return "websocket"
 	case .Ws_Close:   return "websocket close"
+	case .Sensor_Enter: return "zone enter"
+	case .Sensor_Leave: return "zone leave"
 	}
 	return ""
 }
@@ -499,6 +508,10 @@ abi_run_handlers :: proc(w: Window, happenings: []Happened) {
 				if h.argument != "" && h.argument != fmt.tprint(happening.udp.to) {
 					continue
 				}
+			} else if happening.kind == .Sensor_Enter || happening.kind == .Sensor_Leave {
+				if h.argument != "" && h.argument != fmt.tprint(int(happening.bodies[0])) {
+					continue
+				}
 			} else if h.argument != "" && h.argument != happening.name {
 				continue
 			}
@@ -523,6 +536,9 @@ abi_run_handlers :: proc(w: Window, happenings: []Happened) {
 					to = c.int(u.to), from = strings.clone_to_cstring(u.from, context.temp_allocator), port = c.int(u.port),
 					data = raw_data(u.data), size = c.int(len(u.data)), text = strings.clone_to_cstring(u.text, context.temp_allocator),
 				}
+			}
+			if happening.kind == .Sensor_Enter || happening.kind == .Sensor_Leave {
+				event.zone = Abi_Zone{sensor = c.int(happening.bodies[0]), visitor = c.int(happening.bodies[1])}
 			}
 			h.fn(&event)
 		}
@@ -646,6 +662,6 @@ abi_window_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_modifier_down", typeid_of(type_of(abi_modifier_down)), "int roci_modifier_down(const char *name)", "1 while \"shift\", \"ctrl\" or \"alt\" is held, on either side."))
 	append(all, abi_entry("roci_touch_count", typeid_of(type_of(abi_touch_count)), "int roci_touch_count(void)", "How many fingers are down in the current window."))
 	append(all, abi_entry("roci_touch", typeid_of(type_of(abi_touch)), "roci_finger roci_touch(int index)", "The finger at a place (from 0) in the order the fingers went down, every field 0 past the last."))
-	append(all, abi_entry("roci_on", typeid_of(type_of(abi_on)), "void roci_on(roci_window_id window, const char *event, const char *argument, roci_event_fn handler)", "Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is \"key\", \"mouse down\", \"mouse up\", \"touch down\", \"touch up\", \"resize\", \"move\", \"focus\", \"midi down\", \"midi up\", \"midi control\", \"press\" or \"release\" (the first MIDI handler starts reading every MIDI device; the last two are for an action made with roci_bind), and `argument` the key or mouse button it is for (\"space\", \"right\") or the action's name, or NULL for any."))
+	append(all, abi_entry("roci_on", typeid_of(type_of(abi_on)), "void roci_on(roci_window_id window, const char *event, const char *argument, roci_event_fn handler)", "Runs `handler` when something happens in a window (0 for whichever it happens in): `event` is \"key\", \"mouse down\", \"mouse up\", \"touch down\", \"touch up\", \"resize\", \"move\", \"focus\", \"midi down\", \"midi up\", \"midi control\", \"press\", \"release\", \"zone enter\" or \"zone leave\" (the first MIDI handler starts reading every MIDI device; \"press\" and \"release\" are for an action made with roci_bind; the last two run when a body comes into or goes out of a zone made with roci_zone_circle, roci_zone_box or roci_zone_polygon, event->zone saying which), and `argument` the key or mouse button it is for (\"space\", \"right\"), the action's name, or the number of the zone, or NULL for any."))
 	append(all, abi_entry("roci_every", typeid_of(type_of(abi_every)), "void roci_every(double count, const char *unit, roci_draw_fn handler)", "Runs `handler` again and again in the current window, every `count` seconds, or frames when `unit` is \"frames\"."))
 }

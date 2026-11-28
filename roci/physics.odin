@@ -160,6 +160,26 @@ physics_advance :: proc() {
 	}
 }
 
+// Puts what the last step found of zones into the frame's happenings: a body came into a zone, or went out of it. They are for the window
+// the other events that belong to no window go to, and heard in the frame after the step, since the step ends a frame.
+@(private)
+sensor_step :: proc() {
+	if !the.physics.made {
+		return
+	}
+	events := physics.take_sensor_events(&the.physics)
+	if len(events) == 0 {
+		return
+	}
+	window := Window(0) // no window yet: nothing runs for the event, but the log still has it
+	if target := midi_target(); target != nil {
+		window = target.id
+	}
+	for e in events {
+		append(&the.log, Happened{kind = .Sensor_Enter if e.entered else .Sensor_Leave, window = window, bodies = {e.sensor, e.visitor}})
+	}
+}
+
 // Lets go of the world (when a sketch ends).
 @(private)
 physics_stop :: proc() {

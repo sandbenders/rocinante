@@ -6,3 +6,6 @@ peg: a record with pos, radius and hit
 divider: a record with pos and size
 walls: a list of records with from and to
 paddle: a record with pos and size
+bins: a record with pos, size and sensor
+scored: a number
+in_bins: a number

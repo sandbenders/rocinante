@@ -637,3 +637,53 @@ test_a_convex_hull_of_more_than_eight_corners_is_cut_up_and_still_a_polygon :: p
 	}
 	testing.expect(t, abs(lowest - 300) < 1.5)
 }
+
+// ---- sensors ----
+
+@(test)
+test_a_ball_falling_through_a_zone_enters_and_leaves_it_and_the_zone_is_no_obstacle :: proc(t: ^testing.T) {
+	w := joint_world()
+	defer destroy_world(&w)
+	set_gravity(&w, {0, 400})
+	zone := create(&w, Body_Desc{kind = .Box, fixed = true, sensor = true, pos = {150, 150}, size = {100, 40}, density = -1, friction = -1, bounce = -1})
+	ball := create(&w, Body_Desc{kind = .Circle, pos = {200, 50}, radius = 10, density = -1, friction = -1, bounce = -1})
+	entered, left := 0, 0
+	entered_at, left_at := -1, -1
+	for frame in 0 ..< 120 {
+		step(&w, 1.0 / 60)
+		for e in take_sensor_events(&w) {
+			testing.expect_value(t, e.sensor, zone)
+			testing.expect_value(t, e.visitor, ball)
+			if e.entered {
+				entered, entered_at = entered + 1, frame
+			} else {
+				left, left_at = left + 1, frame
+			}
+		}
+	}
+	testing.expect_value(t, entered, 1)
+	testing.expect_value(t, left, 1)
+	testing.expect(t, entered_at < left_at, "in before out")
+	testing.expect(t, state(&w, ball).pos.y > 250, "it fell through: the zone is no obstacle")
+	testing.expect_value(t, len(take_sensor_events(&w)), 0) // each is heard once
+}
+
+@(test)
+test_a_body_taken_out_inside_a_zone_gives_no_event_and_a_static_outline_can_be_a_zone :: proc(t: ^testing.T) {
+	w := joint_world()
+	defer destroy_world(&w)
+	set_gravity(&w, {0, 0})
+	corners := [][2]f64{{100, 100}, {200, 100}, {200, 200}, {100, 200}}
+	zone := create(&w, Body_Desc{kind = .Polygon, fixed = true, sensor = true, points = corners, density = -1, friction = -1, bounce = -1})
+	ball := create(&w, Body_Desc{kind = .Circle, pos = {150, 150}, radius = 10, density = -1, friction = -1, bounce = -1})
+	step(&w, 1.0 / 60)
+	events := take_sensor_events(&w)
+	testing.expect_value(t, len(events), 1)
+	testing.expect(t, len(events) == 1 && events[0].entered && events[0].sensor == zone && events[0].visitor == ball, "it began inside the zone")
+	destroy(&w, ball)
+	step(&w, 1.0 / 60)
+	step(&w, 1.0 / 60)
+	for e in take_sensor_events(&w) {
+		testing.expect(t, e.visitor != ball, "nothing is said of a body that was taken out")
+	}
+}

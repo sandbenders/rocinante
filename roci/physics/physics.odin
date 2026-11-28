@@ -67,6 +67,13 @@ Body_State :: struct {
 
 Body :: distinct int // 1 and up; 0 is no body
 
+// A body came into a sensor's zone or left it, as the last step found.
+Sensor_Event :: struct {
+	sensor:  Body, // the shape with `sensor: true`
+	visitor: Body, // the one that came in or went out
+	entered: bool, // false for going out
+}
+
 Slot :: struct {
 	id:   box2d.Body_Id,
 	kind: Shape_Kind,
@@ -83,6 +90,7 @@ World :: struct {
 	gravity: [2]f64,
 	slots:   [dynamic]Slot,
 	joints:  [dynamic]Joint_Slot,
+	sensor_events: [dynamic]Sensor_Event, // those of the last step, kept until taken
 	by_id:   [dynamic]int, // Box2D's number of a body (`index1`) to its place in `slots` plus 1, so an event finds its body at once
 	made:    bool,
 }
@@ -119,6 +127,7 @@ destroy_world :: proc(w: ^World) {
 	delete(w.slots)
 	delete(w.joints)
 	delete(w.by_id)
+	delete(w.sensor_events)
 	w^ = {}
 }
 
@@ -490,6 +499,17 @@ set_feel :: proc(w: ^World, b: Body, density, friction, bounce: f64) {
 	}
 }
 
+// The sensor events of the last step, oldest first, and lets go of them: the sketch hears of each once.
+take_sensor_events :: proc(w: ^World, allocator := context.temp_allocator) -> []Sensor_Event {
+	if len(w.sensor_events) == 0 {
+		return nil
+	}
+	out := make([]Sensor_Event, len(w.sensor_events), allocator)
+	copy(out, w.sensor_events[:])
+	clear(&w.sensor_events)
+	return out
+}
+
 // The corners of a polygon now, in the world, in the order it was given: its first corner is the first of the outline, turned and moved
 // with the body. Nothing for a body that is not a polygon.
 polygon_points :: proc(w: ^World, b: Body, allocator := context.allocator) -> [dynamic][2]f64 {
@@ -526,6 +546,31 @@ step :: proc(w: ^World, seconds: f64) {
 		s.hit = 0
 	}
 	box2d.World_Step(w.id, f32(min(seconds, LONGEST_STEP)), SUB_STEPS)
+	clear(&w.sensor_events)
+	sensors := box2d.World_GetSensorEvents(w.id)
+	body_of_shape :: proc(w: ^World, shape: box2d.Shape_Id) -> Body {
+		// the shape of an end event may have been destroyed with its body: that is no event for the sketch, which took it out itself
+		if !box2d.Shape_IsValid(shape) {
+			return 0
+		}
+		s := slot_by_id(w, box2d.Shape_GetBody(shape))
+		if s == nil {
+			return 0
+		}
+		return Body(w.by_id[s.id.index1])
+	}
+	for i in 0 ..< int(sensors.begin_count) {
+		e := sensors.begin_events[i]
+		if a, b := body_of_shape(w, e.sensor_shape_id), body_of_shape(w, e.visitor_shape_id); a != 0 && b != 0 {
+			append(&w.sensor_events, Sensor_Event{sensor = a, visitor = b, entered = true})
+		}
+	}
+	for i in 0 ..< int(sensors.end_count) {
+		e := sensors.end_events[i]
+		if a, b := body_of_shape(w, e.sensor_shape_id), body_of_shape(w, e.visitor_shape_id); a != 0 && b != 0 {
+			append(&w.sensor_events, Sensor_Event{sensor = a, visitor = b, entered = false})
+		}
+	}
 	events := box2d.World_GetContactEvents(w.id)
 	for i in 0 ..< int(events.hit_count) {
 		event := events.hit_events[i]

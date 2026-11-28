@@ -198,8 +198,8 @@ test_the_pachinko_example_drops_balls_that_stay_between_the_walls_and_are_let_go
 	}
 	testing.expect(t, most > 3, "several balls are falling at once")
 	testing.expect(t, len(balls.items) < 40, "balls that fell out of the bottom were let go")
-	// the ones that fell out of the bottom are gone from both: the physics holds the pegs, dividers, walls, paddle and the balls left
-	testing.expect_value(t, roci.physics_count(), 81 + 7 + 2 + 1 + len(balls.items))
+	// the ones that fell out of the bottom are gone from both: the physics holds the pegs, dividers, walls, paddle, bins and the balls left
+	testing.expect_value(t, roci.physics_count(), 81 + 7 + 2 + 1 + 1 + len(balls.items))
 	testing.expect_value(t, len(p.errors), 0)
 }
 
@@ -381,5 +381,65 @@ test_the_tumble_example_fills_a_bowl_with_outlines_that_keep_their_shape :: proc
 			}
 		}
 	}
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_on_enter_and_on_leave_run_for_the_shapes_that_cross_a_zone_with_visitor_the_one_that_did :: proc(t: ^testing.T) {
+	p := run_text(t, `goal = { pos: { 150, 150 }, size: { 100, 40 }, sensor: true }
+ball = { pos: { 200, 40 }, radius: 10, tint: red }
+other = { pos: { 300, 40 }, radius: 10, tint: blue }
+things = [ ball ]
+simulate ball
+simulate other
+fixed goal
+ins = 0
+outs = 0
+last_in = 0
+on enter goal things [
+  ins = ins + 1
+  last_in = visitor.pos.y
+]
+on leave goal things [ outs = outs + 1 ]
+draw [ ]
+`, 150)
+	defer finish(p)
+	testing.expect_value(t, as_number(global_named(p, "ins")), 1) // only the ball is listed: the other one passes nowhere near
+	testing.expect_value(t, as_number(global_named(p, "outs")), 1)
+	testing.expect(t, as_number(global_named(p, "last_in")) > 100 && as_number(global_named(p, "last_in")) < 160, "visitor was the ball, at the top of the zone")
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_on_enter_takes_one_shape_as_well_as_a_list_and_leaves_scene_events_alone :: proc(t: ^testing.T) {
+	p := run_text(t, `goal = { pos: { 150, 150 }, size: { 100, 40 }, sensor: true }
+ball = { pos: { 200, 40 }, radius: 10 }
+simulate ball
+fixed goal
+ins = 0
+scenes_began = 0
+on enter goal ball [ ins = ins + 1 ]
+scene "a" [
+  on enter [ scenes_began = scenes_began + 1 ]
+]
+draw [ ]
+`, 100)
+	defer finish(p)
+	testing.expect_value(t, as_number(global_named(p, "ins")), 1)
+	testing.expect_value(t, as_number(global_named(p, "scenes_began")), 1) // the scene began once, and the zone event did not run it again
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+// The pachinko bins are a zone: every ball that reaches the bottom is counted once on the way in, and `in_bins` goes back to what is there.
+@(test)
+test_the_pachinko_bins_count_the_balls_that_reach_them :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("pachinko"), 0)
+	defer finish(p)
+	for _ in 0 ..< 1500 {
+		roci.step({})
+	}
+	scored, inside := as_number(global_named(p, "scored")), as_number(global_named(p, "in_bins"))
+	testing.expect(t, scored >= 8, "balls have reached the bins")
+	testing.expect(t, inside >= 0 && inside <= scored, "the ones in the bins now are some of those that came in")
 	testing.expect_value(t, len(p.errors), 0)
 }

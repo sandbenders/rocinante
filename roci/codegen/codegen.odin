@@ -53,6 +53,7 @@ Handler_Kind :: enum {
 	Event,
 	Scene_Event, // `on enter` and `on leave`
 	Receive,     // `on w receive message`
+	Zone,        // `on enter zone things`, `on leave zone things`
 }
 
 @(private)

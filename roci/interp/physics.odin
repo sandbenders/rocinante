@@ -106,7 +106,7 @@ body_desc :: proc(it: ^Interp, r: ^Record, fixed: bool) -> (desc: roci.Physics_D
 }
 
 // The link a record has, if it is a body.
-@(private = "file")
+@(private)
 link_of :: proc(it: ^Interp, r: ^Record) -> int {
 	for l, i in it.bodies {
 		if l.record == r {

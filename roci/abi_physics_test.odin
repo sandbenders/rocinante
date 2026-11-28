@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: 0BSD
 package roci
 
+import "core:fmt"
+import "core:strings"
 import "core:testing"
 
 @(test)
@@ -118,4 +120,63 @@ test_the_c_functions_link_bodies_with_options_and_let_go :: proc(t: ^testing.T) 
 	abi_no_link(bob, post)
 	testing.expect_value(t, abi_linked(post, bob), 0)
 	abi_no_link(1, 99)
+}
+
+@(test)
+test_the_c_zone_functions_say_what_comes_in_and_goes_out_to_a_handler :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	abi_gravity(0, 400)
+	zone := abi_zone_box(150, 150, 100, 40, 0)
+	circle := abi_zone_circle(500, 500, 20)
+	corners := [3]Abi_Vec2{{0, 0}, {10, 0}, {5, 8}}
+	outline := abi_zone_polygon(raw_data(corners[:]), 3)
+	ball := abi_simulate_circle(200, 40, 10)
+	testing.expect(t, zone != 0 && circle != 0 && outline != 0 && ball != 0)
+	testing.expect_value(t, abi_zone_polygon(nil, 3), 0)
+	heard_in, heard_out := 0, 0
+	for _ in 0 ..< 120 {
+		step()
+		for h in roci_happened_for_test() {
+			if h.kind == .Sensor_Enter && h.bodies[0] == Physics_Body(zone) && h.bodies[1] == Physics_Body(ball) {
+				heard_in += 1
+			}
+			if h.kind == .Sensor_Leave && h.bodies[0] == Physics_Body(zone) && h.bodies[1] == Physics_Body(ball) {
+				heard_out += 1
+			}
+		}
+	}
+	testing.expect_value(t, heard_in, 1)
+	testing.expect_value(t, heard_out, 1)
+}
+
+@(private = "file")
+roci_happened_for_test :: proc() -> []Happened {
+	return happened()
+}
+
+@(test)
+test_a_c_handler_hears_zone_enter_and_zone_leave_for_the_zone_it_was_asked_for :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	abi_seen_count = 0
+	_ = window(200, 200)
+	abi_gravity(0, 400)
+	zone := abi_zone_box(50, 100, 100, 30, 0)
+	elsewhere := abi_zone_box(400, 100, 100, 30, 0)
+	ball := abi_simulate_circle(100, 20, 8)
+	argument := strings.clone_to_cstring(fmt.tprint(int(zone)), context.temp_allocator)
+	other := strings.clone_to_cstring(fmt.tprint(int(elsewhere)), context.temp_allocator)
+	abi_on(0, "zone enter", argument, abi_note)
+	abi_on(0, "zone leave", argument, abi_note)
+	abi_on(0, "zone enter", other, abi_note) // another zone: nothing falls into it in this time
+	for _ in 0 ..< 100 {
+		step()
+	}
+	testing.expect_value(t, abi_seen_count, 2)
+	if abi_seen_count == 2 {
+		testing.expect_value(t, abi_seen[0].kind, i32(Happening.Sensor_Enter))
+		testing.expect_value(t, abi_seen[1].kind, i32(Happening.Sensor_Leave))
+		testing.expect_value(t, abi_seen[0].zone, Abi_Zone{sensor = zone, visitor = ball})
+	}
 }

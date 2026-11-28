@@ -4,7 +4,8 @@
 // moves, so the sketch only draws them. The pegs, the dividers and the walls are shapes
 // `fixed` in place, and the paddle follows the mouse: a `fixed` shape the sketch moves
 // pushes what is in its way. A peg has a field `hit`, which the physics sets to how hard a
-// ball hit it in that frame, so the peg flashes when it is struck. A ball is dropped now and then; a click drops
+// ball hit it in that frame, so the peg flashes when it is struck. The bins are a zone, a shape
+// with `sensor: true`, and `on enter` and `on leave` run when a ball comes into it and goes out. A ball is dropped now and then; a click drops
 // one under the mouse, and a ball that has fallen out of the bottom is let go of (`no simulate`) and leaves the list.
 window size 480 640 title "pachinko"
 
@@ -34,6 +35,17 @@ for each w in walls [ fixed w ]
 paddle = { pos: { 200, 90 }, size: { 80, 10 } }
 fixed paddle
 
+// The bins are one zone: a shape with `sensor: true` is no obstacle, and says what comes into it and goes out.
+bins = { pos: { 0, 560 }, size: { 480, 90 }, sensor: true }
+fixed bins
+scored = 0
+in_bins = 0
+on enter bins balls [
+  scored = scored + 1
+  in_bins = in_bins + 1
+]
+on leave bins balls [ in_bins = in_bins - 1 ]
+
 learn drop x [
   ball = { pos: { x, 20 }, radius: 9, vel: { random from -20 to 20, 0 }, bounce: 0.5, friction: 0.2, tint: pick COLORS }
   add ball to balls
@@ -54,6 +66,8 @@ draw [
     if p.hit > 0 [ circle at p.pos radius (p.radius + 3) fill gold ] else [ circle at p.pos radius p.radius fill 150 ]
   ]
   for each bar in dividers [ rect at bar.pos size bar.size fill 100 ]
+  rect at bins.pos size bins.size fill white alpha 6
   rect at paddle.pos size paddle.size round 4 fill gold
   for each b in balls [ circle at b.pos radius b.radius fill b.tint ]
+  text "{scored} reached the bins, {in_bins} in them now" at 12 24 fill 200
 ]

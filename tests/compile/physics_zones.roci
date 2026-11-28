@@ -1,0 +1,34 @@
+gravity { 0, 400 }
+goal = { pos: { 150, 150 }, size: { 100, 40 }, sensor: true }
+floor = { pos: { 0, 300 }, size: { 800, 20 } }
+red_ball = { pos: { 200, 40 }, radius: 10, bounce: 0.3 }
+blue_ball = { pos: { 190, 30 }, radius: 8 }
+others = [ blue_ball ]
+fixed goal
+fixed floor
+simulate red_ball
+simulate blue_ball
+ins = 0
+outs = 0
+
+on enter goal red_ball [
+  ins = ins + 1
+  print "red in at"
+  print visitor.pos.y
+]
+on leave goal red_ball [
+  outs = outs + 1
+  print "red out"
+]
+on enter goal others [
+  print "blue in at"
+  print visitor.radius
+]
+on leave goal others [ print "blue out" ]
+
+draw [
+  if frame % 30 is 0 [
+    print ins
+    print outs
+  ]
+]

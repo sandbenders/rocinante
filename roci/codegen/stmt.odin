@@ -623,6 +623,10 @@ emit_every :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_Every) {
 
 @(private)
 emit_on :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_On) {
+	if k.event == "zone enter" || k.event == "zone leave" {
+		emit_zone_event(g, s, k)
+		return
+	}
 	if k.message != nil {
 		emit_receive(g, s, k)
 		return
@@ -716,11 +720,22 @@ emit_handlers :: proc(g: ^Gen, out: ^strings.Builder) {
 	}
 	events := false
 	for h in g.handlers {
-		events ||= h.kind == .Event
+		events ||= h.kind == .Event || h.kind == .Zone
 	}
 	if events {
 		fmt.sbprintf(out, "\tfor happening in roci.happened() {{\n\t\tif happening.window != w {{ continue }}\n")
 		for h in g.handlers {
+			if h.kind == .Zone {
+				test := fmt.tprintf("happening.kind == .%s", h.event)
+				if h.window != "" {
+					test = fmt.tprintf("%s && w == %s", test, h.window)
+				}
+				if h.scene > 0 {
+					test = fmt.tprintf("%s && rt.takes_part(%d)", test, h.scene)
+				}
+				fmt.sbprintf(out, "\t\tif %s {{\n\t\t\tif visitor, found := %s; found {{ %s(visitor) }}\n\t\t}}\n", test, h.arg, h.proc_name)
+				continue
+			}
 			if h.kind != .Event {
 				continue
 			}
@@ -974,6 +989,35 @@ emit_scene_procs :: proc(g: ^Gen, out: ^strings.Builder) {
 }
 
 // `on stage receive message [ ... ]`: a procedure that takes the message, run for each one in the window's inbox.
+// `on enter goal balls [ ... ]`: a procedure that takes the shape that came in, run by the frame's hook when the physics said a body
+// crossed that zone and the shape is one the sketch named.
+@(private)
+emit_zone_event :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_On) {
+	if len(k.args) != 2 || k.message == nil || kind_of(g, k.args[0]) != .Record {
+		refuse(g, s.span, "`on enter` of something that is not a shape")
+		return
+	}
+	if g.types.items[lang.resolve(g.types, k.message.type)].kind != .Record {
+		refuse(g, s.span, "`on enter` for shapes that are not records")
+		return
+	}
+	visitor_type, ok := odin_type(g, k.message.type, s.span, "a shape")
+	if !ok {
+		return
+	}
+	id := len(g.handlers) + 1
+	name := fmt.aprintf("on_%d", id, allocator = context.temp_allocator)
+	emit_proc(g, name, fmt.tprintf("(%s: %s)", name_of(g, k.message), visitor_type), k.body)
+	handler := Handler{kind = .Zone, proc_name = name, index = id, scene = g.registering}
+	handler.event = "Sensor_Enter" if k.event == "zone enter" else "Sensor_Leave"
+	if k.window != nil {
+		handler.window = expr(g, k.window)
+	}
+	procedure := "rt.zone_visitor_in" if kind_of(g, k.args[1]) == .List else "rt.zone_visitor_of"
+	handler.arg = fmt.aprintf("%s(%s, %s, happening)", procedure, expr(g, k.args[0]), expr(g, k.args[1]), allocator = context.temp_allocator)
+	append(&g.handlers, handler)
+}
+
 @(private)
 emit_receive :: proc(g: ^Gen, s: ^lang.IR_Stmt, k: lang.IR_On) {
 	if k.window == nil {

@@ -484,6 +484,7 @@ foreign lib {
 	DestroyShape :: proc(shape_id: Shape_Id, update_body_mass: bool) ---
 	Shape_GetType :: proc(shape_id: Shape_Id) -> Shape_Type ---
 	Shape_GetBody :: proc(shape_id: Shape_Id) -> Body_Id ---
+	Shape_IsValid :: proc(shape_id: Shape_Id) -> bool ---
 	Shape_IsSensor :: proc(shape_id: Shape_Id) -> bool ---
 	Shape_SetUserData :: proc(shape_id: Shape_Id, user_data: rawptr) ---
 	Shape_GetUserData :: proc(shape_id: Shape_Id) -> rawptr ---

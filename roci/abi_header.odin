@@ -129,7 +129,7 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"ui theme", "roci_ui_theme", ""},
 	{"forget ui", "roci_forget_ui", ""},
 	{"simulate", "roci_simulate_circle roci_simulate_box roci_simulate_polygon", ""},
-	{"fixed", "roci_fixed_circle roci_fixed_box roci_fixed_wall roci_fixed_polygon", ""},
+	{"fixed", "roci_fixed_circle roci_fixed_box roci_fixed_wall roci_fixed_polygon roci_zone_circle roci_zone_box roci_zone_polygon", ""},
 	{"no simulate", "roci_no_simulate", ""},
 	{"gravity", "roci_gravity", ""},
 	{"kick", "roci_kick", ""},
@@ -631,7 +631,8 @@ typedef struct {
 
 typedef enum { ROCI_KEY_DOWN, ROCI_MOUSE_DOWN, ROCI_MOUSE_UP, ROCI_TOUCH_DOWN, ROCI_TOUCH_UP, ROCI_RESIZE, ROCI_MOVE, ROCI_FOCUS,
 	ROCI_MIDI_DOWN = 9, ROCI_MIDI_UP, ROCI_MIDI_CONTROL, ROCI_OSC, ROCI_MIDI_BEND, ROCI_MIDI_PROGRAM, ROCI_MIDI_PRESSURE, ROCI_MIDI_START, ROCI_MIDI_STOP,
-	ROCI_ACTION_PRESS, ROCI_ACTION_RELEASE } roci_event_kind;
+	ROCI_ACTION_PRESS, ROCI_ACTION_RELEASE, ROCI_UDP = 20, ROCI_TCP_OPEN, ROCI_TCP_LINE, ROCI_TCP_CLOSE, ROCI_WEBSOCKET_OPEN, ROCI_WEBSOCKET, ROCI_WEBSOCKET_CLOSE,
+	ROCI_ZONE_ENTER, ROCI_ZONE_LEAVE } roci_event_kind;
 
 /* What a MIDI event says: the note (60 is middle C) and its velocity (0 to 100) for a key, the controller and its
  * value (0 to 100) for a knob or fader, the pitch wheel (bend, -100 to 100), the instrument chosen (program, 0 to
@@ -655,6 +656,10 @@ typedef struct { int to; const char *from; int port; const unsigned char *data; 
  * Valid only while the handler runs. */
 typedef struct { const char *label, *text, *from; int client; } roci_tcp;
 
+/* A body that came into a zone or went out of it (kinds 27 and 28): the zone's number and the body's, as the functions that make
+ * bodies gave them. A zone is made by roci_zone_circle, roci_zone_box or roci_zone_polygon, and nothing bumps into it. */
+typedef struct { int sensor, visitor; } roci_zone_event;
+
 /* What happened: kind, the window it happened in, the key's or the mouse button's name (for key and
  * mouse events; valid only while the handler runs), the finger (for touch events) and the key or
  * controller (for MIDI events), the message (for an osc event), the datagram (for a udp event) and what happened on a connection (for a tcp event). */
@@ -667,6 +672,7 @@ typedef struct {
 	roci_osc osc;
 	roci_udp udp;
 	roci_tcp tcp;
+	roci_zone_event zone;
 } roci_event;
 
 /* A shape for the collision functions. Kinds: ROCI_POINT, ROCI_CIRCLE, ROCI_BOX, ROCI_SEGMENT and ROCI_POLYGON are flat;

@@ -1,0 +1,12 @@
+── `on enter` needs a zone and what enters it ───────── sketch.roci:3:15
+
+3 │ on enter goal [ print visitor ]
+  │               ^^^^^^^^^^^^^^^^^
+
+With a shape, `on enter` waits for something to enter a zone, so it takes two things: the zone, which is a shape of the physics with `sensor: true`, and what may enter it, which is one shape or a list of shapes. This one is given one thing. Inside the block, `visitor` is the one that did.
+
+For example:
+    goal = { pos: { 100, 200 }, size: { 80, 40 }, sensor: true }
+    balls = []
+    fixed goal
+    on enter goal balls [ print visitor.pos ]
