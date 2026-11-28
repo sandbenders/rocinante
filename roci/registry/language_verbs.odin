@@ -22,6 +22,21 @@ OUTLINE_OPTIONS := []Option{
 	{"alpha", {.Number}, false},
 }
 
+// What `link` takes: how two shapes of the physics are held to each other.
+LINK_OPTIONS := []Option{
+	{"as", {.Name}, false},
+	{"at", {.Vector}, false},
+	{"to", {.Vector}, false},
+	{"axis", {.Vector}, false},
+	{"length", {.Number}, false},
+	{"stiffness", {.Number}, false},
+	{"damping", {.Number}, false},
+	{"limit", {.Number, .Number}, false},
+	{"motor", {.Number}, false},
+	{"torque", {.Number}, false},
+	{"collide", {.Boolean}, false},
+}
+
 // What `crop` takes: the box to keep, from the picture's top left, in pixels.
 CROP_OPTIONS := []Option{
 	{"at", {.Number, .Number}, true},
@@ -256,6 +271,8 @@ LANGUAGE_VERBS := []Verb{
 	{"no simulate", {{{{"shape", .Any}}, nil, .None}}, "Takes a shape out of the physics, and the record is only a record again: `no simulate brick`. Removing a shape from a list does not do this, so a brick that is hit is taken out of both."},
 	{"gravity", {{{{"pull", .Vector}}, nil, .None}}, "Sets the gravity of the physics in pixels a second each second: `gravity { 0, 400 }` pulls things down (y goes down) and is what a world has to start with, and `gravity { 0, 0 }` lets them float."},
 	{"kick", {{{{"shape", .Any}, {"speed", .Vector}}, nil, .None}}, "Adds a speed to a shape that is simulated, however heavy it is: `kick ball { 0, -300 }` sends it up at 300 pixels a second more than it had. It is not `push`, which scopes the style."},
+	{"link", {{{{"a", .Any}, {"b", .Any}}, LINK_OPTIONS, .None}}, "Holds two shapes of the physics to each other: `link post bob as rod` hangs `bob` from `post` on a rod, and `link door frame as hinge at { 100, 50 }` lets a door turn about a point. `as` is `hinge` (turns about the point `at`; `limit` is the two angles it may reach, in degrees from where it begins, and `motor` a speed to turn at, in degrees a second), `rod` (the middles, or `at` on the first and `to` on the second, stay `length` apart; with `limit` a rope that may be any length between the two), `spring` (pulls the ends to `length` apart: `stiffness` is how many times a second it bounces, `damping` from 0 to 1 how fast it settles), `weld` (glued at `at`; `stiffness` makes it a little springy), `wheel` (turns about `at` and slides along `axis` on a spring, the way a car's wheel does) and `slider` (slides along `axis` only, within `limit` pixels, driven by `motor` pixels a second). `torque` says how hard a motor pushes, and `collide true` lets the two shapes bump into each other, which they do not by default. Two shapes have one link: saying `link` for them again changes the options it names and keeps the rest. Both shapes have to be given to the physics first (`simulate` or `fixed`), and a link goes when either of them does."},
+	{"no link", {{{{"a", .Any}, {"b", .Any}}, nil, .None}}, "Lets go of the link between two shapes, and the shapes go on moving on their own: `no link post bob`."},
 	{"touching", {{{{"a", .Any}, {"b", .Any}}, nil, .Boolean}}, "Whether two shapes touch, edges included: `touching ball paddle`. Shapes with three numbers in their places (`pos: { 0, 0, 0 }`) are in space: a sphere, a box (turned by `angle: { x, y, z }`), a segment or a mesh (`triangles`)."},
 	{"contact", {{{{"a", .Any}, {"b", .Any}}, nil, .Any}}, "Where two shapes touch: a record with point, normal (the way to move the first to part them) and depth, every field 0 when they do not."},
 	{"hits", {{{{"shape", .Any}, {"list", .List}}, nil, .List}}, "The items of a list that touch a shape, in list order: `hits ball bricks`."},

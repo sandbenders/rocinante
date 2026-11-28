@@ -4,6 +4,7 @@ package interp
 import "../"
 import "../lang"
 import "../platform"
+import "core:math"
 import "core:testing"
 
 place :: proc(p: ^Interp, name, field: string) -> [2]f64 {
@@ -199,5 +200,111 @@ test_the_pachinko_example_drops_balls_that_stay_between_the_walls_and_are_let_go
 	testing.expect(t, len(balls.items) < 40, "balls that fell out of the bottom were let go")
 	// the ones that fell out of the bottom are gone from both: the physics holds the pegs, dividers, walls, paddle and the balls left
 	testing.expect_value(t, roci.physics_count(), 81 + 7 + 2 + 1 + len(balls.items))
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_a_rod_hangs_a_ball_from_a_fixed_post_and_it_swings_at_the_end_of_it :: proc(t: ^testing.T) {
+	p := run_text(t, `post = { pos: { 200, 40 }, radius: 4 }
+bob = { pos: { 300, 40 }, radius: 12, vel: { 0, 0 } }
+fixed post
+simulate bob
+link post bob as rod
+`, 150)
+	defer finish(p)
+	reach := place(p, "bob", "pos") - place(p, "post", "pos")
+	testing.expect(t, abs(math.sqrt(reach.x * reach.x + reach.y * reach.y) - 100) < 1, "it stays a rod's length from the post")
+	testing.expect(t, place(p, "bob", "pos").y > 40, "and has swung down")
+	testing.expect_value(t, roci.physics_joint_count(), 1)
+	testing.expect_value(t, len(p.errors), 0)
+}
+
+@(test)
+test_link_options_make_a_hinge_with_a_motor_and_a_limit_and_link_again_changes_it :: proc(t: ^testing.T) {
+	p := run_text(t, `hub = { pos: { 200, 200 }, radius: 5 }
+arm = { pos: { 200, 190 }, size: { 100, 20 }, angle: 0, spin: 0 }
+fixed hub
+simulate arm
+gravity { 0, 0 }
+link hub arm as hinge at { 200, 200 } limit -10 45 motor 90
+`, 120)
+	defer finish(p)
+	testing.expect(t, abs(number(p, "arm", "angle") - 45) < 3, "turned until the limit")
+	// said again with only the motor named, the limit and the place stay
+	text := `hub = { pos: { 200, 200 }, radius: 5 }
+arm = { pos: { 200, 190 }, size: { 100, 20 }, angle: 0, spin: 0 }
+fixed hub
+simulate arm
+gravity { 0, 0 }
+link hub arm as hinge at { 200, 200 } limit -10 45 motor 90
+draw [ if frame is 120 [ link hub arm motor -90 ] ]
+`
+	q := run_text(t, text, 300)
+	defer finish(q)
+	angle := number(q, "arm", "angle")
+	testing.expect(t, abs(angle - 350) < 3, "turned back the other way, to the other limit, -10 degrees")
+	testing.expect_value(t, len(q.errors), 0)
+}
+
+@(test)
+test_no_link_lets_go_and_a_body_dropped_takes_its_link_with_it :: proc(t: ^testing.T) {
+	p := run_text(t, `a = { pos: { 100, 100 }, radius: 10 }
+b = { pos: { 160, 100 }, radius: 10 }
+c = { pos: { 220, 100 }, radius: 10 }
+simulate a
+simulate b
+simulate c
+link a b as rod
+link b c as rod
+`, 5)
+	defer finish(p)
+	testing.expect_value(t, roci.physics_joint_count(), 2)
+	q := run_text(t, `a = { pos: { 100, 100 }, radius: 10 }
+b = { pos: { 160, 100 }, radius: 10 }
+c = { pos: { 220, 100 }, radius: 10 }
+simulate a
+simulate b
+simulate c
+link a b as rod
+link b c as rod
+no link a b
+no simulate c
+`, 5)
+	defer finish(q)
+	testing.expect_value(t, roci.physics_joint_count(), 0)
+}
+
+@(test)
+test_a_link_between_shapes_not_given_to_the_physics_says_so_and_the_sketch_goes_on :: proc(t: ^testing.T) {
+	p := run_text(t, `post = { pos: { 200, 40 }, radius: 4 }
+bob = { pos: { 200, 140 }, radius: 12 }
+simulate bob
+link post bob as rod
+`, 3)
+	defer finish(p)
+	testing.expect_value(t, len(p.errors), 1)
+	testing.expect_value(t, roci.physics_joint_count(), 0)
+}
+
+// The car rests on its springs, and with the right key held its wheels' motors drive it up the road; let go, it rolls on and slows.
+@(test)
+test_the_car_example_rests_on_its_suspension_and_drives_when_the_right_key_is_held :: proc(t: ^testing.T) {
+	p := run_text(t, example_text("car"), 120)
+	defer finish(p)
+	rest := place(p, "body", "pos")
+	testing.expect(t, abs(rest.x - 60) < 2 && rest.y > 205 && rest.y < 235, "it settles on its wheels where it started")
+	testing.expect_value(t, roci.physics_joint_count(), 2)
+	w := first_window()
+	roci.step({platform.Key_Changed{window = platform.Window_Id(w), scancode = .RIGHT, down = true}})
+	for _ in 0 ..< 240 {
+		roci.step({})
+	}
+	driven := place(p, "body", "pos")
+	testing.expect(t, driven.x > rest.x + 150, "it has driven to the right")
+	roci.step({platform.Key_Changed{window = platform.Window_Id(w), scancode = .RIGHT, down = false}})
+	// the key R puts it back where it started
+	roci.step({platform.Key_Changed{window = platform.Window_Id(w), scancode = .R, down = true}})
+	roci.step({})
+	testing.expect(t, abs(place(p, "body", "pos").x - 60) < 15, "back at the start")
 	testing.expect_value(t, len(p.errors), 0)
 }

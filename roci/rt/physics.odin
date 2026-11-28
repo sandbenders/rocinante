@@ -147,6 +147,33 @@ kick :: proc(record: ^$T, speed: [2]f64) {
 	}
 }
 
+// `link a b as rod ...`: holds two bodies to each other, or changes the link they have. The joint says which options were written.
+link :: proc(a: ^$A, b: ^$B, joint: roci.Physics_Joint) {
+	if a == nil || b == nil {
+		return
+	}
+	ia, ib := bound_of(&a.gc__), bound_of(&b.gc__)
+	if ia < 0 || ib < 0 {
+		say_once("physics link", "A link holds two shapes that the physics already has: give both to it with `simulate` or `fixed` first.")
+		return
+	}
+	joint := joint
+	joint.a, joint.b = bound[ia].link.body, bound[ib].link.body
+	if !roci.physics_join(joint) {
+		say_once("physics link", "A shape cannot be linked to itself, a `rod` or a `spring` needs ends that are apart (or a `length` above 0), and every number has to be a number.")
+	}
+}
+
+// `no link a b`.
+no_link :: proc(a: ^$A, b: ^$B) {
+	if a == nil || b == nil {
+		return
+	}
+	if ia, ib := bound_of(&a.gc__), bound_of(&b.gc__); ia >= 0 && ib >= 0 {
+		roci.physics_unjoin(bound[ia].link.body, bound[ib].link.body)
+	}
+}
+
 @(private)
 sync_in :: proc() {
 	for i := len(bound) - 1; i >= 0; i -= 1 {

@@ -114,7 +114,7 @@ sample :: proc(kind: Kind, index: int, verb := "", after := "") -> string {
 	}
 	// and so do the physics verbs, which take a circle, a rectangle or a wall written as a record
 	switch verb {
-	case "simulate", "fixed", "no simulate", "kick":
+	case "simulate", "fixed", "no simulate", "kick", "link", "no link":
 		if kind == .Any {
 			return "{ from: { 0, 200 }, to: { 200, 200 } }" if verb == "fixed" else "{ pos: { 100, 100 }, radius: 10 }"
 		}

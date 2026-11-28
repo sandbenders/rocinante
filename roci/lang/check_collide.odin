@@ -63,21 +63,31 @@ collision_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, e: ^Expr, k: Call
 // writes. An outline, or a shape in space, is not simulated yet.
 @(private)
 physics_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, k: Call, args: []^IR) -> Type_Id {
-	if len(args) < 1 || len(k.args) < 1 {
-		return T_NONE
+	shapes := 2 if verb.name == "link" || verb.name == "no link" else 1
+	for n in 0 ..< shapes {
+		if len(args) <= n || len(k.args) <= n {
+			return T_NONE
+		}
+		if !physics_shape_ok(c, verb, k.args[n].span, args[n].type) {
+			return T_NONE
+		}
 	}
-	span := k.args[0].span
-	type := args[0].type
+	return T_NONE
+}
+
+// Whether a value can be given to the physics by this verb; says why when it cannot.
+@(private = "file")
+physics_shape_ok :: proc(c: ^Checker, verb: ^registry.Verb, span: Span, type: Type_Id) -> bool {
 	if problem, ok := shape_problem(c, type); !ok {
 		note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), problem, SHAPE_EXAMPLE)
-		return T_NONE
+		return false
 	}
 	resolved := resolve(c.types, type)
 	if c.types.items[resolved].kind != .Record {
 		if c.types.items[resolved].kind == .Vector {
 			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "A point has no size to push against, and the physics needs a record it can move: ", PHYSICS_EXAMPLE)
 		}
-		return T_NONE
+		return false
 	}
 	root := c.types.items[resolved].a
 	for site in sites_of(c, root) {
@@ -85,13 +95,13 @@ physics_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, k: Call, args: []^I
 		switch {
 		case class == .Polygon || class == .Mesh:
 			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "The physics knows circles (`pos` and `radius`), rectangles (`pos` and `size`) and walls (`from` and `to`) so far, not an outline. ", PHYSICS_EXAMPLE)
-			return T_NONE
+			return false
 		case class == .Segment && verb.name == "simulate":
 			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "A wall, which has a `from` and a `to`, never moves, so it is given with `fixed`. ", "fixed floor")
-			return T_NONE
+			return false
 		case vector_length(c, root, "pos") == 3 || vector_length(c, root, "from") == 3 || vector_length(c, root, "size") == 3:
 			note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), "The physics is flat: the places of a shape that is simulated have two numbers. ", PHYSICS_EXAMPLE)
-			return T_NONE
+			return false
 		}
 	}
 	if verb.name == "simulate" || verb.name == "fixed" {
@@ -111,11 +121,11 @@ physics_verb_type :: proc(c: ^Checker, verb: ^registry.Verb, k: Call, args: []^I
 			}
 			if found.kind != need.kind || (need.kind == .Vector && found.a != 2) {
 				note(c, .Not_A_Shape, span, verb.name, describe(c.types, type), fmt.tprintf("Its `%s` is %s, and the physics reads and writes it as %s. ", need.name, describe(c.types, field.type), need.what), PHYSICS_EXAMPLE)
-				return T_NONE
+				return false
 			}
 		}
 	}
-	return T_NONE
+	return true
 }
 
 @(private = "file")

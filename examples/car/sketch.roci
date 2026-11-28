@@ -1,0 +1,72 @@
+// Car: a body on two wheels drives over hills. The body is a rectangle and the wheels are
+// circles, each held to the body by a `link ... as wheel`: a wheel turns about its axle
+// and slides up and down a little on a spring, which is the car's suspension. The right
+// and left keys give the wheels a `motor` (a speed to turn at), so saying `link` again
+// with only the motor changes it and keeps the rest. The hills are lines `fixed` in the
+// world. The view follows the car with `move`, and R puts it back at the start.
+window size 640 360 title "car"
+
+gravity { 0, 500 }
+
+// A road of short lines: flat, a hill, a dip, a ramp.
+road = []
+learn lay x y1 y2 [
+  add { from: { x, y1 }, to: { x + 40, y2 } } to road
+]
+y = 260
+for step from 0 to 59 [
+  next = y
+  if step > 5 and step < 12 [ next = y - 14 ]
+  if step > 14 and step < 20 [ next = y + 10 ]
+  if step > 24 and step < 30 [ next = y - 6 ]
+  if step > 40 and step < 44 [ next = y - 22 ]
+  lay (step * 40) y next
+  y = next
+]
+for each piece in road [ fixed piece ]
+
+body = { pos: { 60, 200 }, size: { 80, 24 }, angle: 0, density: 1.5 }
+back = { pos: { 70, 236 }, radius: 14, angle: 0, friction: 1.2, density: 0.6 }
+front = { pos: { 130, 236 }, radius: 14, angle: 0, friction: 1.2, density: 0.6 }
+simulate body
+simulate back
+simulate front
+link body back as wheel at { 70, 236 } axis { 0, 1 } stiffness 4 damping 0.7 motor 0
+link body front as wheel at { 130, 236 } axis { 0, 1 } stiffness 4 damping 0.7 motor 0
+
+on key "r" [
+  body.pos = { 60, 200 }
+  body.angle = 0
+  body.vel = { 0, 0 }
+  back.pos = { 70, 236 }
+  back.vel = { 0, 0 }
+  front.pos = { 130, 236 }
+  front.vel = { 0, 0 }
+]
+
+draw [
+  background skyblue
+  speed = 0
+  if held "right" [ speed = 720 ]
+  if held "left" [ speed = -540 ]
+  link body back motor speed
+  link body front motor speed
+  push [
+    move { 280 - body.pos.x, 0 }
+    for each piece in road [ line from piece.from to piece.to stroke 70 thickness 3 ]
+    push [
+      move { body.pos.x + 40, body.pos.y + 12 }
+      turn body.angle
+      rect at { -40, -12 } size body.size fill tomato round 5
+      rect at { -10, -22 } size { 36, 14 } fill 255 alpha 70 round 4
+    ]
+    for each w in [ back front ] [
+      push [
+        move w.pos
+        turn w.angle
+        circle at { 0, 0 } radius w.radius fill 40
+        line from { 0, 0 } to { w.radius - 3, 0 } stroke 200 thickness 2
+      ]
+    ]
+  ]
+]

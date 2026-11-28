@@ -1,0 +1,11 @@
+post = { pos: { 200, 30 }, radius: 5 }
+bob = { pos: { 300, 30 }, radius: 18 }
+fixed post
+simulate bob
+link post bob as rod
+on mouse down [ no link post bob ]
+
+draw [
+  circle at post.pos radius post.radius fill 120
+  circle at bob.pos radius bob.radius fill tomato
+]

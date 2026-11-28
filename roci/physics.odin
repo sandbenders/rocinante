@@ -44,6 +44,33 @@ physics_body :: proc(desc: Physics_Desc) -> Physics_Body {
 	return physics.create(&the.physics, desc)
 }
 
+Physics_Joint :: physics.Joint_Desc
+Physics_Joint_Kind :: physics.Joint_Kind
+Physics_Joint_Field :: physics.Joint_Field
+
+// Holds two bodies to each other, or changes the joint they have: the fields named in `joint.set` are put over its own. False when it
+// cannot be made (the same body twice, a body that is gone, a rod of no length, a number that is not one).
+physics_join :: proc(joint: Physics_Joint) -> bool {
+	return the.physics.made && physics.join(&the.physics, joint)
+}
+
+// Lets go of the joint between two bodies.
+physics_unjoin :: proc(a, b: Physics_Body) {
+	if the.physics.made {
+		physics.unjoin(&the.physics, a, b)
+	}
+}
+
+// Whether a joint holds two bodies.
+physics_joined :: proc(a, b: Physics_Body) -> bool {
+	return the.physics.made && physics.joined(&the.physics, a, b)
+}
+
+// How many joints the world holds.
+physics_joint_count :: proc() -> int {
+	return physics.joint_count(&the.physics) if the.physics.made else 0
+}
+
 // Takes a body out of the world.
 physics_destroy :: proc(body: Physics_Body) {
 	physics.destroy(&the.physics, body)

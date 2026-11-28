@@ -193,6 +193,10 @@ call_language :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) -> Value {
 		roci.physics_gravity(as_pair(eval(it, call.args[0])))
 	case .Kick:
 		body_kick(it, call)
+	case .Link:
+		body_link(it, e, call)
+	case .No_Link:
+		body_unlink(it, call)
 	case .Panel, .Row, .Column, .Tabs, .Tab, .Menu:
 		return container_verb(it, e, call, code)
 	case .Add:

@@ -67,6 +67,7 @@ Slot :: struct {
 	id:   box2d.Body_Id,
 	kind: Shape_Kind,
 	size: [2]f64, // a box's, for the corner and the middle
+	home: [2]f64, // a wall's middle, which is where a joint holds it by default
 	live: bool,
 }
 
@@ -74,6 +75,7 @@ World :: struct {
 	id:      box2d.World_Id,
 	gravity: [2]f64,
 	slots:   [dynamic]Slot,
+	joints:  [dynamic]Joint_Slot,
 	made:    bool,
 }
 
@@ -103,6 +105,7 @@ destroy_world :: proc(w: ^World) {
 		sync.mutex_unlock(&world_lock)
 	}
 	delete(w.slots)
+	delete(w.joints)
 	w^ = {}
 }
 
@@ -220,7 +223,7 @@ create :: proc(w: ^World, desc: Body_Desc) -> Body {
 		return 0
 	}
 	// the first free place, so a long sketch that makes and drops bodies does not grow the list for ever
-	slot := Slot{id = body, kind = desc.kind, size = desc.size, live = true}
+	slot := Slot{id = body, kind = desc.kind, size = desc.size, home = (desc.from + desc.to) / 2, live = true}
 	for &s, i in w.slots {
 		if !s.live {
 			s = slot
@@ -247,8 +250,13 @@ exists :: proc(w: ^World, b: Body) -> bool {
 // Takes a body out of the world. Nothing happens for a body that is not there.
 destroy :: proc(w: ^World, b: Body) {
 	if s := slot_of(w, b); s != nil {
-		box2d.DestroyBody(s.id)
+		box2d.DestroyBody(s.id) // Box2D takes the joints on the body with it
 		s.live = false
+		for &j in w.joints {
+			if j.live && (j.desc.a == b || j.desc.b == b) {
+				j.live = false
+			}
+		}
 	}
 }
 
@@ -300,6 +308,9 @@ middle :: proc(w: ^World, b: Body) -> [2]f64 {
 	s := slot_of(w, b)
 	if s == nil {
 		return {}
+	}
+	if s.kind == .Segment {
+		return s.home
 	}
 	return pixels(box2d.Body_GetPosition(s.id))
 }

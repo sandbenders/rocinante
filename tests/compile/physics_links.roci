@@ -1,0 +1,38 @@
+gravity { 0, 400 }
+post = { pos: { 100, 40 }, radius: 4 }
+bob = { pos: { 200, 40 }, radius: 10, vel: { 0, 0 } }
+hub = { pos: { 300, 200 }, radius: 5 }
+arm = { pos: { 300, 190 }, size: { 80, 20 }, angle: 0, spin: 0 }
+anchor = { pos: { 450, 60 }, radius: 4 }
+weight = { pos: { 450, 160 }, radius: 12, vel: { 0, 0 } }
+rail = { pos: { 500, 300 }, radius: 3 }
+cart = { pos: { 495, 295 }, size: { 20, 20 }, vel: { 80, 0 } }
+glue_a = { pos: { 50, 200 }, size: { 40, 20 } }
+glue_b = { pos: { 100, 210 }, radius: 10 }
+fixed post
+simulate bob
+fixed hub
+simulate arm
+fixed anchor
+simulate weight
+fixed rail
+simulate cart
+simulate glue_a
+simulate glue_b
+link post bob as rod
+link hub arm as hinge at { 300, 200 } limit -20 50 motor 60
+link anchor weight as spring length 90 stiffness 2 damping 0.5
+link rail cart as slider axis { 1, 0 } limit 0 60
+link glue_a glue_b as weld at { 90, 210 }
+
+draw [
+  if frame is 60 [ link hub arm motor -60 ]
+  if frame is 100 [ no link glue_a glue_b ]
+  if frame % 40 is 0 [
+    print bob.pos
+    print arm.angle
+    print weight.pos
+    print cart.pos
+    print glue_b.pos
+  ]
+]

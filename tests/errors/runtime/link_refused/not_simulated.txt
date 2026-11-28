@@ -1,0 +1,13 @@
+── The physics cannot link `post` and `bob` ──────────── sketch.roci:4:1
+
+4 │ link post bob as rod
+  │ ^^^^^^^^^^^^^^^^^^^^
+
+`post` is not in the physics yet: `simulate` or `fixed` gives it to the physics. The link is left out, and the sketch carries on.
+
+Give both shapes to the physics first, then link them:
+    post = { pos: { 200, 40 }, radius: 4 }
+    bob = { pos: { 200, 140 }, radius: 12 }
+    fixed post
+    simulate bob
+    link post bob as rod

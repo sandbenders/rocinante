@@ -1,0 +1,7 @@
+road: a list of records with from and to
+y: a number
+next: a number
+body: a record with pos, size, angle, density and vel
+back: a record with pos, radius, angle, friction, density and vel
+front: a record with pos, radius, angle, friction, density and vel
+speed: a number

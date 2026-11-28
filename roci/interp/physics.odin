@@ -9,6 +9,7 @@ package interp
 
 import "../"
 import "../lang"
+import "core:fmt"
 
 // A record that is a body: the record, and what the physics keeps about it (`roci.Physics_Link`).
 Body_Link :: struct {
@@ -244,5 +245,88 @@ drop_bodies :: proc(it: ^Interp) {
 	if roci.has_physics() {
 		roci.physics_gravity(roci.PHYSICS_GRAVITY)
 		roci.physics_sync(nil, nil)
+	}
+}
+
+// `link a b as hinge at { 100, 50 }`: holds two bodies to each other, or changes the joint they have.
+@(private)
+body_link :: proc(it: ^Interp, e: ^lang.IR, call: lang.IR_Call) {
+	ra, rb := as_record(eval(it, call.args[0])), as_record(eval(it, call.args[1]))
+	name_a, name_b := lang.span_text(it.src, call.args[0].span), lang.span_text(it.src, call.args[1].span)
+	refuse :: proc(it: ^Interp, e: ^lang.IR, a, b, why: string) {
+		fail(it, .Link_Refused, e.span, a, b, why, "post = { pos: { 200, 40 }, radius: 4 }\nbob = { pos: { 200, 140 }, radius: 12 }\nfixed post\nsimulate bob\nlink post bob as rod")
+	}
+	if ra == nil || rb == nil {
+		return
+	}
+	ia, ib := link_of(it, ra), link_of(it, rb)
+	if ia < 0 || ib < 0 {
+		which := name_a if ia < 0 else name_b
+		refuse(it, e, name_a, name_b, fmt.tprintf("`%s` is not in the physics yet: `simulate` or `fixed` gives it to the physics.", which))
+		return
+	}
+	joint := roci.Physics_Joint{a = it.bodies[ia].link.body, b = it.bodies[ib].link.body}
+	if word, found := option_value(it, call.options, "as"); found {
+		joint.kind = joint_kind(as_text(word))
+		joint.set += {.Kind}
+	}
+	if v, found := option_value(it, call.options, "at"); found {
+		joint.at, joint.set = as_pair(v), joint.set + {.At}
+	}
+	if v, found := option_value(it, call.options, "to"); found {
+		joint.to, joint.set = as_pair(v), joint.set + {.To}
+	}
+	if v, found := option_value(it, call.options, "axis"); found {
+		joint.axis, joint.set = as_pair(v), joint.set + {.Axis}
+	}
+	if v, found := option_value(it, call.options, "length"); found {
+		joint.length, joint.set = as_number(v), joint.set + {.Length}
+	}
+	if v, found := option_value(it, call.options, "stiffness"); found {
+		joint.stiffness, joint.set = as_number(v), joint.set + {.Stiffness}
+	}
+	if v, found := option_value(it, call.options, "damping"); found {
+		joint.damping, joint.set = as_number(v), joint.set + {.Damping}
+	}
+	if low, found := option_value(it, call.options, "limit", 0); found {
+		high, _ := option_value(it, call.options, "limit", 1)
+		joint.low, joint.high, joint.set = as_number(low), as_number(high), joint.set + {.Limit}
+	}
+	if v, found := option_value(it, call.options, "motor"); found {
+		joint.speed, joint.set = as_number(v), joint.set + {.Motor}
+	}
+	if v, found := option_value(it, call.options, "torque"); found {
+		joint.torque, joint.set = as_number(v), joint.set + {.Torque}
+	}
+	if v, found := option_value(it, call.options, "collide"); found {
+		joint.collide, joint.set = as_bool(v), joint.set + {.Collide}
+	}
+	if !roci.physics_join(joint) {
+		refuse(it, e, name_a, name_b, "A shape cannot be joined to itself, a `rod` or a `spring` needs ends that are apart (or a `length` above 0), and every number has to be a number.")
+	}
+}
+
+// The kind of joint a word names (checked against its list when the sketch was read).
+@(private = "file")
+joint_kind :: proc(word: string) -> roci.Physics_Joint_Kind {
+	switch word {
+	case "rod":    return .Rod
+	case "spring": return .Spring
+	case "weld":   return .Weld
+	case "wheel":  return .Wheel
+	case "slider": return .Slider
+	}
+	return .Hinge
+}
+
+// `no link a b`.
+@(private)
+body_unlink :: proc(it: ^Interp, call: lang.IR_Call) {
+	ra, rb := as_record(eval(it, call.args[0])), as_record(eval(it, call.args[1]))
+	if ra == nil || rb == nil {
+		return
+	}
+	if ia, ib := link_of(it, ra), link_of(it, rb); ia >= 0 && ib >= 0 {
+		roci.physics_unjoin(it.bodies[ia].link.body, it.bodies[ib].link.body)
 	}
 }

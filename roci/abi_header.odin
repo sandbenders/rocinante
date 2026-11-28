@@ -133,6 +133,8 @@ ABI_LANGUAGE := [?]Abi_Language{
 	{"no simulate", "roci_no_simulate", ""},
 	{"gravity", "roci_gravity", ""},
 	{"kick", "roci_kick", ""},
+	{"link", "roci_link", ""},
+	{"no link", "roci_no_link roci_linked", ""},
 	{"panel", "roci_panel_begin roci_panel_end", ""},
 	{"row", "roci_row_begin roci_row_end", ""},
 	{"column", "roci_column_begin roci_column_end", ""},
@@ -599,6 +601,18 @@ typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
 
 /* How far in from each side of a window the screen is free of what a phone keeps for itself, in the window's units. */
 typedef struct { double top, bottom, left, right; } roci_insets;
+
+/* How roci_link holds two bodies. kind is "hinge", "rod", "spring", "weld", "wheel" or "slider" (NULL keeps the kind a link
+ * has, and a new link is a hinge). Each option is used only when its has_ field is not 0: the others are what the link has
+ * or the usual. at, to and axis are in the window's pixels; low and high are degrees for a hinge and pixels for the
+ * rest; speed is degrees a second for a hinge and a wheel and pixels a second for a slider. */
+typedef struct {
+	const char *kind;
+	int has_at, has_to, has_axis, has_length, has_stiffness, has_damping, has_limit, has_motor, has_torque, has_collide;
+	roci_vec2 at, to, axis;
+	double length, stiffness, damping, low, high, speed, torque;
+	int collide;
+} roci_link_options;
 
 /* One gamepad: its buttons are 1 while held and named by where they are on the pad. leftstick, rightstick and dpad are
  * vectors from -1 to 1 with up negative, lefttrigger and righttrigger go from 0 to 1, and extra holds the other buttons

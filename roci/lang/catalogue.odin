@@ -201,6 +201,7 @@ Message_Id :: enum u8 {
 	Turtle_Flat,
 	Body_Not_Lasting,
 	Body_Refused,
+	Link_Refused,
 	Picture_Size,
 	Picture_Too_Big,
 	Pixels_Unavailable,
@@ -673,6 +674,9 @@ CATALOGUE := [Message_Id]Entry{
 	.Body_Refused = {.Error, "The physics cannot use `{a}` as it is",
 		"A circle needs a `radius` above 0, a rectangle a `size` that is above 0 both ways, and a wall a `from` that is not its `to`, and every number of a shape has to be a number, and the physics holds at most 20,000 shapes. It is left out, and the sketch carries on.",
 		"For example:", "{d}"},
+	.Link_Refused = {.Error, "The physics cannot link `{a}` and `{b}`",
+		"{c} The link is left out, and the sketch carries on.",
+		"Give both shapes to the physics first, then link them:", "{d}"},
 	.Too_Many_Lights = {.Error, "A scene has at most {a} lights",
 		"Each light is worked out for every pixel of every shape, so a scene keeps its first {a}. This one is left out, and the sketch carries on with the lights it has.",
 		"Fewer lights make the same scene, for example one sun and a few points:", "{d}"},
@@ -813,7 +817,7 @@ has_errors :: proc(diagnostics: []Diagnostic) -> bool {
 // gives one, so the tests of the checker's messages leave them to the interpreter.
 is_runtime :: proc(id: Message_Id) -> bool {
 	#partial switch id {
-	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Movie_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Field_Missing, .Constant_Not_Made, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Tcp_Port_Busy, .Tcp_Host_Unknown, .Tcp_Unknown_Label, .Tcp_Refused, .Websocket_Address_Bad, .Websocket_Unknown_Label, .Websocket_Refused, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Webcam_Unavailable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Body_Not_Lasting, .Body_Refused, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
+	case .Index_Out_Of_Range, .Division_By_Zero, .Recursion_Too_Deep, .Runs_Too_Long, .Expect_Failed, .Font_Missing, .Font_Licence, .Image_Missing, .Image_Unreadable, .Movie_Unreadable, .Sound_Missing, .Sound_Unreadable, .Soundfont_Unreadable, .Preset_Missing, .Field_Missing, .Constant_Not_Made, .Sound_Effect_Missing, .Effect_Setting_Unknown, .Midi_Out_Missing, .Input_Unknown, .Osc_Port_Busy, .Udp_Port_Busy, .Udp_Host_Unknown, .Udp_Data_Bad, .Tcp_Port_Busy, .Tcp_Host_Unknown, .Tcp_Unknown_Label, .Tcp_Refused, .Websocket_Address_Bad, .Websocket_Unknown_Label, .Websocket_Refused, .Osc_Address_Bad, .Osc_Host_Unknown, .Osc_Unsupported, .Webcam_Unavailable, .Model_Missing, .Model_Unreadable, .Model_Texture, .Svg_Missing, .Svg_Unreadable, .Svg_Lost, .Save_Failed, .Save_Approximate, .File_Not_Read, .Open_Failed, .Record_Failed, .Widget_Twice, .Tab_Outside_Tabs, .Key_Unknown, .Return_Nothing, .Memory_Mismatch, .Too_Many_Lights, .Turtle_Flat, .Body_Not_Lasting, .Body_Refused, .Link_Refused, .Picture_Size, .Picture_Too_Big, .Pixels_Unavailable, .Not_A_Canvas, .Canvas_Size, .Shader_Missing, .Shader_Broken, .Shader_Value:
 		return true
 	case:
 		return false

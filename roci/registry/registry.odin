@@ -65,8 +65,12 @@ Verb :: struct {
 // The connecting words. This list is closed: a verb's options must
 // come from it, and a taught verb adds its own only through `with`.
 CONNECTING_WORDS := [?]string{
-	"align", "alpha", "angle", "around", "as", "at", "attack", "bend", "blend", "bordered", "buffer", "by", "channel", "cursor", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "fps", "from", "fullscreen", "grab", "header", "height", "in",
-	"largest", "leading", "lines", "loop", "maximized", "metallic", "minimized", "modal", "note", "of", "over", "pan", "parent", "pitch", "player", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "round", "sheet", "size", "smallest", "speed", "start", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "tube", "velocity", "vibrato", "visible", "volume", "width",
+	"align", "alpha", "angle", "around", "as", "at", "attack", "axis", "bend", "blend", "bordered", "buffer", "by", "channel", "collide", "cursor",
+	"damping", "decay", "emissive", "falloff", "fill", "focusable", "focused", "font", "for", "fov", "fps", "from", "fullscreen", "grab", "header",
+	"height", "in", "largest", "leading", "length", "limit", "lines", "loop", "maximized", "metallic", "minimized", "modal", "motor", "note", "of",
+	"over", "pan", "parent", "pitch", "player", "port", "preset", "radius", "ratio", "release", "resizable", "roughness", "round", "sheet", "size",
+	"smallest", "speed", "start", "stiffness", "stops", "stroke", "style", "sustain", "thickness", "tint", "title", "to", "topmost", "torque", "tube",
+	"velocity", "vibrato", "visible", "volume", "width",
 }
 
 // Words the language itself uses, which no verb or name may take.

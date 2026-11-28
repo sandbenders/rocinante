@@ -1,0 +1,4 @@
+post = { pos: { 200, 40 }, radius: 4 }
+bob = { pos: { 200, 140 }, radius: 12 }
+simulate bob
+link post bob as rod

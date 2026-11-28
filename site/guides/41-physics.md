@@ -98,10 +98,65 @@ draw [
 
 Taking a shape out of the list does not take it out of the physics, so say `no simulate b` first, as `examples/pachinko` does for balls that have fallen out of the bottom. The physics holds up to 20,000 shapes.
 
+## Linking shapes
+
+`link a b` holds two shapes to each other. Both have to be given to the physics first, with `simulate` or `fixed`. A shape that is `fixed` and never moved is a post to hang things from:
+
+```roci picture
+post = { pos: { 200, 30 }, radius: 5 }
+bob = { pos: { 300, 30 }, radius: 18, bounce: 0.2 }
+fixed post
+simulate bob
+link post bob as rod
+
+draw [
+  line from post.pos to bob.pos stroke 200
+  circle at post.pos radius post.radius fill 120
+  circle at bob.pos radius bob.radius fill tomato
+]
+```
+
+`as` says how they are held, and there are six ways:
+
+| `as` | The shapes | Options |
+|---|---|---|
+| `hinge` | turn about a point | `at` the point, `limit low high` the angles it may reach (degrees from where it began), `motor` a speed to turn at (degrees a second) |
+| `rod` | stay as far apart as they began (or `length`) | `at` and `to` the two ends, if not the middles; `limit short long` makes a rope that may be any length between the two |
+| `spring` | are pulled to `length` apart | `stiffness` times a second it bounces, `damping` 0 to 1 how fast it settles |
+| `weld` | are glued at a point | `at`; `stiffness` makes the glue a little springy |
+| `wheel` | the second turns about a point and slides along an `axis` on a spring | `at`, `axis`, `stiffness`, `damping`, `motor` degrees a second |
+| `slider` | the second slides along an `axis` only | `at`, `axis`, `limit low high` pixels, `motor` pixels a second |
+
+A `motor` pushes as hard as `torque` says (a lot, unless you name it), and `collide true` lets the two shapes bump into each other, which they do not unless you say so. A hinge's `at` is a place in the window; for a shape with no `at` the link is in its middle.
+
+Two shapes have one link. Saying `link` for them again changes the options you name and keeps the rest, so a car can change what its wheels' motors do every frame:
+
+```roci picture
+hub = { pos: { 200, 120 }, radius: 5 }
+arm = { pos: { 200, 110 }, size: { 120, 20 }, angle: 0 }
+fixed hub
+simulate arm
+gravity { 0, 0 }
+link hub arm as hinge at { 200, 120 } limit -60 60 motor 50
+
+draw [
+  if arm.angle > 55 and arm.angle < 180 [ link hub arm motor -50 ]
+  if arm.angle < 305 and arm.angle > 180 [ link hub arm motor 50 ]
+  push [
+    move (arm.pos + arm.size / 2)
+    turn arm.angle
+    rect at { -60, -10 } size arm.size fill gold
+  ]
+  circle at hub.pos radius hub.radius fill 120
+]
+```
+
+`no link a b` lets go. A link goes when either shape is taken out of the physics. `examples/car` drives on two `wheel` links.
+
 ## From C
 
-The same words are C functions (`roci_simulate_circle`, `roci_fixed_wall`, `roci_gravity`, `roci_kick`), and a body is a number: `roci_body_pos(ball)` says where it is now. See [rocinante from C](../40-rocinante-from-c/).
+The same words are C functions (`roci_simulate_circle`, `roci_fixed_wall`, `roci_gravity`, `roci_kick`, `roci_link`), and a body is a number: `roci_body_pos(ball)` says where it is now. See [rocinante from C](../40-rocinante-from-c/).
 
 ## What is not there yet
 
-Polygons and shapes in space are not simulated. Joints (hinges, ropes, springs), sensors and motors are coming.
+Polygons and shapes in space are not simulated. Sensors are coming.

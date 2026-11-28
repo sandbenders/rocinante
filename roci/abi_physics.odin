@@ -105,6 +105,78 @@ abi_body_feel :: proc "c" (body: c.int, density, friction, bounce: f64) {
 	physics_feel(Physics_Body(body), density, friction, bounce)
 }
 
+Abi_Link_Options :: struct {
+	kind:                                                                                                          cstring,
+	has_at, has_to, has_axis, has_length, has_stiffness, has_damping, has_limit, has_motor, has_torque, has_collide: c.int,
+	at, to, axis:                                                                                                  Abi_Vec2,
+	length, stiffness, damping, low, high, speed, torque:                                                          f64,
+	collide:                                                                                                       c.int,
+}
+
+@(export, link_name = "roci_link")
+abi_link :: proc "c" (a, b: c.int, options: ^Abi_Link_Options) -> c.int {
+	context = abi_context()
+	if options == nil {
+		return 0
+	}
+	joint := Physics_Joint{a = Physics_Body(a), b = Physics_Body(b)}
+	if options.kind != nil {
+		switch string(options.kind) {
+		case "hinge":  joint.kind = .Hinge
+		case "rod":    joint.kind = .Rod
+		case "spring": joint.kind = .Spring
+		case "weld":   joint.kind = .Weld
+		case "wheel":  joint.kind = .Wheel
+		case "slider": joint.kind = .Slider
+		case:          return 0
+		}
+		joint.set += {.Kind}
+	}
+	if options.has_at != 0 {
+		joint.at, joint.set = {options.at.x, options.at.y}, joint.set + {.At}
+	}
+	if options.has_to != 0 {
+		joint.to, joint.set = {options.to.x, options.to.y}, joint.set + {.To}
+	}
+	if options.has_axis != 0 {
+		joint.axis, joint.set = {options.axis.x, options.axis.y}, joint.set + {.Axis}
+	}
+	if options.has_length != 0 {
+		joint.length, joint.set = options.length, joint.set + {.Length}
+	}
+	if options.has_stiffness != 0 {
+		joint.stiffness, joint.set = options.stiffness, joint.set + {.Stiffness}
+	}
+	if options.has_damping != 0 {
+		joint.damping, joint.set = options.damping, joint.set + {.Damping}
+	}
+	if options.has_limit != 0 {
+		joint.low, joint.high, joint.set = options.low, options.high, joint.set + {.Limit}
+	}
+	if options.has_motor != 0 {
+		joint.speed, joint.set = options.speed, joint.set + {.Motor}
+	}
+	if options.has_torque != 0 {
+		joint.torque, joint.set = options.torque, joint.set + {.Torque}
+	}
+	if options.has_collide != 0 {
+		joint.collide, joint.set = options.collide != 0, joint.set + {.Collide}
+	}
+	return 1 if physics_join(joint) else 0
+}
+
+@(export, link_name = "roci_no_link")
+abi_no_link :: proc "c" (a, b: c.int) {
+	context = abi_context()
+	physics_unjoin(Physics_Body(a), Physics_Body(b))
+}
+
+@(export, link_name = "roci_linked")
+abi_linked :: proc "c" (a, b: c.int) -> c.int {
+	context = abi_context()
+	return 1 if physics_joined(Physics_Body(a), Physics_Body(b)) else 0
+}
+
 abi_physics_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_simulate_circle", typeid_of(type_of(abi_simulate_circle)), "roci_body_id roci_simulate_circle(double x, double y, double radius)", "Gives a circle to the physics, which moves it every frame by gravity and by what it meets: its middle at x, y, in pixels. Gives its number, or 0 when it cannot be made (a radius of nothing, a number that is not one). The first body makes the world."))
 	append(all, abi_entry("roci_simulate_box", typeid_of(type_of(abi_simulate_box)), "roci_body_id roci_simulate_box(double x, double y, double width, double height, double angle)", "Gives a rectangle to the physics: its top left corner at x, y, turned `angle` degrees clockwise about its middle. Gives its number, or 0 when it cannot be made."))
@@ -122,4 +194,7 @@ abi_physics_group :: proc(all: ^[dynamic]Abi_Entry) {
 	append(all, abi_entry("roci_body_pose", typeid_of(type_of(abi_body_pose)), "void roci_body_pose(roci_body_id body, double x, double y, double angle)", "Puts a body somewhere, in the same places roci_body_pos gives. A fixed body put somewhere moves there in the next step and pushes what it meets on the way; a wall is not moved."))
 	append(all, abi_entry("roci_body_motion", typeid_of(type_of(abi_body_motion)), "void roci_body_motion(roci_body_id body, double vx, double vy, double spin)", "Gives a body a speed in pixels a second and a spin in degrees a second."))
 	append(all, abi_entry("roci_body_feel", typeid_of(type_of(abi_body_feel)), "void roci_body_feel(roci_body_id body, double density, double friction, double bounce)", "Sets how heavy, how rough and how bouncy a body is (1, 0.6 and 0 are usual); a negative number leaves what it has."))
+	append(all, abi_entry("roci_link", typeid_of(type_of(abi_link)), "int roci_link(roci_body_id a, roci_body_id b, const roci_link_options *options)", "Holds two bodies to each other, or changes the link they have: the options with a `has_` field that is not 0 are put over the link's own and the others stay. Gives 1, or 0 when it cannot be made (a body that is not there, the same body twice, a rod or spring of no length, a kind that is not one of the six, a number that is not one). A link goes when either body does."))
+	append(all, abi_entry("roci_no_link", typeid_of(type_of(abi_no_link)), "void roci_no_link(roci_body_id a, roci_body_id b)", "Lets go of the link between two bodies."))
+	append(all, abi_entry("roci_linked", typeid_of(type_of(abi_linked)), "int roci_linked(roci_body_id a, roci_body_id b)", "1 while a link holds two bodies, in either order."))
 }

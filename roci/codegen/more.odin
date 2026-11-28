@@ -114,6 +114,10 @@ more_verbs :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, args: []string) -> (te
 		return tween_call(g, e, c), false
 	case "simulate", "fixed":
 		return physics_call(g, e, c, name == "fixed"), false
+	case "link":
+		return link_call(g, e, c), false
+	case "no link":
+		return fmt.aprintf("rt.no_link(%s, %s)", args[0], args[1], allocator = context.temp_allocator), false
 	case "no simulate":
 		return fmt.aprintf("rt.no_simulate(%s)", args[0], allocator = context.temp_allocator), false
 	case "gravity":
@@ -362,4 +366,43 @@ physics_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call, fixed: bool) -> stri
 		return ""
 	}
 	return fmt.aprintf("rt.simulate(%s, .%s, %v)", expr(g, c.args[0]), shape, fixed, allocator = context.temp_allocator)
+}
+
+// `link a b as rod at p length 80 limit 0 90 motor 30`: the options written become the fields of the joint that say they were given.
+@(private)
+link_call :: proc(g: ^Gen, e: ^lang.IR, c: lang.IR_Call) -> string {
+	if len(c.args) < 2 || kind_of(g, c.args[0]) != .Record || kind_of(g, c.args[1]) != .Record {
+		refuse(g, e.span, "`link` of something that is not a record")
+		return ""
+	}
+	fields := make([dynamic]string, context.temp_allocator)
+	given := make([dynamic]string, context.temp_allocator)
+	one :: proc(g: ^Gen, c: lang.IR_Call, fields, given: ^[dynamic]string, word, field, flag: string) {
+		if o := option(c.options, word); o != nil {
+			append(fields, fmt.tprintf("%s = %s", field, expr(g, o.args[0])))
+			append(given, flag)
+		}
+	}
+	if o := option(c.options, "as"); o != nil {
+		if word, ok := word_of(o.args[0]); ok {
+			append(&fields, fmt.tprintf("kind = .%s", capitalise(word)))
+			append(&given, ".Kind")
+		}
+	}
+	one(g, c, &fields, &given, "at", "at", ".At")
+	one(g, c, &fields, &given, "to", "to", ".To")
+	one(g, c, &fields, &given, "axis", "axis", ".Axis")
+	one(g, c, &fields, &given, "length", "length", ".Length")
+	one(g, c, &fields, &given, "stiffness", "stiffness", ".Stiffness")
+	one(g, c, &fields, &given, "damping", "damping", ".Damping")
+	one(g, c, &fields, &given, "motor", "speed", ".Motor")
+	one(g, c, &fields, &given, "torque", "torque", ".Torque")
+	one(g, c, &fields, &given, "collide", "collide", ".Collide")
+	if o := option(c.options, "limit"); o != nil && len(o.args) >= 2 {
+		append(&fields, fmt.tprintf("low = %s", expr(g, o.args[0])))
+		append(&fields, fmt.tprintf("high = %s", expr(g, o.args[1])))
+		append(&given, ".Limit")
+	}
+	append(&fields, fmt.tprintf("set = {{%s}}", strings.join(given[:], ", ", context.temp_allocator)))
+	return fmt.aprintf("rt.link(%s, %s, roci.Physics_Joint{{%s}})", expr(g, c.args[0]), expr(g, c.args[1]), strings.join(fields[:], ", ", context.temp_allocator), allocator = context.temp_allocator)
 }

@@ -18,7 +18,7 @@ import "../../roci/gfx"
 import "../../roci/interp"
 
 // The examples built as programs, which draw a picture of window 1.
-COMPILED := [?]string{"circle", "shapes", "particles", "life", "shapes3d", "solids", "lamp", "images", "fills", "paint", "blend", "starfield", "bounce", "rays", "flocking", "movie", "pachinko"}
+COMPILED := [?]string{"circle", "shapes", "particles", "life", "shapes3d", "solids", "lamp", "images", "fills", "paint", "blend", "starfield", "bounce", "rays", "flocking", "movie", "pachinko", "car"}
 
 run_compiled_examples :: proc(update: bool, only: []string) -> (ran, failures: int) {
 	if update {

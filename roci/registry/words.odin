@@ -54,6 +54,7 @@ WORD_CHOICES := []Word_Choices{
 	{"light", "kind", {"ambient", "sun", "point", "spot"}},
 	{"synth", "wave", {"sine", "triangle", "square", "saw", "noise"}},
 	{"turn", "around", {"x", "y", "z"}},
+	{"link", "as", {"hinge", "rod", "spring", "weld", "wheel", "slider"}},
 	{"window", "cursor", CURSOR_WORDS},
 	{"set", "cursor", CURSOR_WORDS},
 	{"fill", "as", GRADIENT_KINDS},

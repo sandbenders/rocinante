@@ -51,6 +51,18 @@ typedef struct { int id; roci_vec2 pos, start; double pressure; } roci_finger;
 /* How far in from each side of a window the screen is free of what a phone keeps for itself, in the window's units. */
 typedef struct { double top, bottom, left, right; } roci_insets;
 
+/* How roci_link holds two bodies. kind is "hinge", "rod", "spring", "weld", "wheel" or "slider" (NULL keeps the kind a link
+ * has, and a new link is a hinge). Each option is used only when its has_ field is not 0: the others are what the link has
+ * or the usual. at, to and axis are in the window's pixels; low and high are degrees for a hinge and pixels for the
+ * rest; speed is degrees a second for a hinge and a wheel and pixels a second for a slider. */
+typedef struct {
+	const char *kind;
+	int has_at, has_to, has_axis, has_length, has_stiffness, has_damping, has_limit, has_motor, has_torque, has_collide;
+	roci_vec2 at, to, axis;
+	double length, stiffness, damping, low, high, speed, torque;
+	int collide;
+} roci_link_options;
+
 /* One gamepad: its buttons are 1 while held and named by where they are on the pad. leftstick, rightstick and dpad are
  * vectors from -1 to 1 with up negative, lefttrigger and righttrigger go from 0 to 1, and extra holds the other buttons
  * (MISC1 to MISC6, four paddles and the touchpad press). connected is 0 for a pad that is not there. */
@@ -1585,6 +1597,15 @@ void roci_body_motion(roci_body_id body, double vx, double vy, double spin);
 
 /* Sets how heavy, how rough and how bouncy a body is (1, 0.6 and 0 are usual); a negative number leaves what it has. */
 void roci_body_feel(roci_body_id body, double density, double friction, double bounce);
+
+/* Holds two bodies to each other, or changes the link they have: the options with a `has_` field that is not 0 are put over the link's own and the others stay. Gives 1, or 0 when it cannot be made (a body that is not there, the same body twice, a rod or spring of no length, a kind that is not one of the six, a number that is not one). A link goes when either body does. */
+int roci_link(roci_body_id a, roci_body_id b, const roci_link_options *options);
+
+/* Lets go of the link between two bodies. */
+void roci_no_link(roci_body_id a, roci_body_id b);
+
+/* 1 while a link holds two bodies, in either order. */
+int roci_linked(roci_body_id a, roci_body_id b);
 
 /* Keeps a number under a name, in memory.toml beside the program, for the next run to read with roci_recall_number. The file is written after a pause in the changes and when the program ends, so this may be called every frame. */
 void roci_remember_number(const char *key, double value);

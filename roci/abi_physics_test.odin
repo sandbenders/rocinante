@@ -60,3 +60,34 @@ test_the_c_functions_give_0_for_what_cannot_be_made :: proc(t: ^testing.T) {
 	testing.expect_value(t, abi_fixed_wall(5, 5, 5, 5), 0)
 	testing.expect_value(t, abi_body_exists(0), 0)
 }
+
+@(test)
+test_the_c_functions_link_bodies_with_options_and_let_go :: proc(t: ^testing.T) {
+	begin()
+	defer finish()
+	abi_gravity(0, 400)
+	post := abi_fixed_circle(200, 50, 5)
+	bob := abi_simulate_circle(300, 50, 10)
+	options := Abi_Link_Options{kind = "rod"}
+	testing.expect_value(t, abi_link(post, bob, &options), 1)
+	testing.expect_value(t, abi_linked(bob, post), 1)
+	for _ in 0 ..< 90 {
+		step()
+	}
+	p := abi_body_pos(bob)
+	reach := Abi_Vec2{p.x - 200, p.y - 50}
+	testing.expect(t, abs(reach.x * reach.x + reach.y * reach.y - 10000) < 300, "100 pixels from the post")
+	// again, naming the options that change: the kind stays
+	options = Abi_Link_Options{has_limit = 1, low = 0, high = 100}
+	testing.expect_value(t, abi_link(post, bob, &options), 1)
+	spring := Abi_Link_Options{kind = "spring", has_length = 1, length = 50, has_stiffness = 1, stiffness = 3}
+	testing.expect_value(t, abi_link(post, bob, &spring), 1)
+	bad := Abi_Link_Options{kind = "glue"}
+	testing.expect_value(t, abi_link(post, bob, &bad), 0)
+	testing.expect_value(t, abi_link(post, bob, nil), 0)
+	testing.expect_value(t, abi_link(post, post, &options), 0)
+	testing.expect_value(t, abi_link(post, 99, &options), 0)
+	abi_no_link(bob, post)
+	testing.expect_value(t, abi_linked(post, bob), 0)
+	abi_no_link(1, 99)
+}
